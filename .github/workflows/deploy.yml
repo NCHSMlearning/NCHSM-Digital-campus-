@@ -1,0 +1,54 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Generate config.js from GitHub Secrets
+        run: |
+          # Create config.js with secrets
+          cat > config.js << 'EOF'
+          // config.js - Generated from GitHub Secrets
+          window.APP_CONFIG = {
+              SUPABASE_URL: "${{ secrets.SUPABASE_URL }}",
+              SUPABASE_ANON_KEY: "${{ secrets.SUPABASE_ANON_KEY }}",
+              LOCATIONIQ_API_KEY: "${{ secrets.LOCATIONIQ_API_KEY }}",
+              BUILD_TIME: "${{ github.event.head_commit.timestamp || github.run_started_at }}",
+              COMMIT_SHA: "${{ github.sha }}",
+              ENVIRONMENT: "production"
+          };
+          EOF
+          
+          # Display first few chars for verification (not full secrets!)
+          echo "Config generated. Build time: ${{ github.event.head_commit.timestamp || github.run_started_at }}"
+          echo "Supabase URL starts with: ${ secrets.SUPABASE_URL:0:20 }..."
+      
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+  
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
