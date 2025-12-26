@@ -27,42 +27,6 @@
     
     <!-- Mobile PWA Support -->
     <meta name="mobile-web-app-capable" content="yes">
-    
-    <!-- EMERGENCY FIX -->
-    <style>
-    /* Immediate fix to hide footer from sidebar */
-    aside.sidebar .app-footer,
-    aside.sidebar footer {
-        display: none !important;
-        visibility: hidden !important;
-        opacity: 0 !important;
-        height: 0 !important;
-        padding: 0 !important;
-        margin: 0 !important;
-    }
-    
-    /* Hide any dashboard content in sidebar */
-    aside.sidebar .tab-content,
-    aside.sidebar .card,
-    aside.sidebar .welcome-card,
-    aside.sidebar .cards {
-        display: none !important;
-    }
-    
-    /* Ensure sidebar only shows nav */
-    .sidebar {
-        display: flex !important;
-        flex-direction: column !important;
-    }
-    
-    .sidebar > *:not(.sidebar-header):not(.nav):not(.logout) {
-        display: none !important;
-    }
-    
-    .sidebar-header, .nav, .logout {
-        display: block !important;
-    }
-    </style>
 </head>
 <body>
     <!-- Offline Indicator -->
@@ -72,7 +36,7 @@
 
     <!-- Mobile Header -->
     <div class="mobile-header">
-        <button class="menu-toggle" onclick="app.ui.toggleMenu()">☰</button>
+        <button class="menu-toggle" id="menuToggle">☰</button>
         <div class="header-title-container">
             <span>NCHSM Digital Student Portal</span>
             <img 
@@ -85,7 +49,7 @@
     </div>
 
     <!-- Mobile Overlay -->
-    <div class="overlay" onclick="app.ui.closeMenu()"></div>
+    <div class="overlay" id="overlay"></div>
 
     <!-- Main Container -->
     <div class="container">
@@ -115,7 +79,7 @@
                 </a></li>
                 <li><a href="#" data-tab="coming-soon-quizlets">📝 Coming Soon: Quizlets</a></li>
             </ul>
-            <div class="logout"><a href="#" onclick="app.auth.logout()">Logout</a></div>
+            <div class="logout"><a href="#" id="logoutBtn">Logout</a></div>
         </aside>
 
         <!-- Main Content -->
@@ -137,33 +101,33 @@
 
                 <h2 style="margin-top: 20px; color: var(--color-primary); font-weight: 700;">Quick Snapshot</h2>
                 <div class="cards">
-                    <div class="card alert-card" onclick="app.ui.showTab('attendance')">
+                    <div class="card alert-card" data-tab="attendance">
                         <h3>Attendance Rate</h3>
                         <p class="data" id="dashboard-attendance-rate">--%</p>
                         <small>Verified Check-ins: <strong id="dashboard-verified-count">0</strong> / <strong id="dashboard-total-count">0</strong></small>
                         <small style="display:block; margin-top: 5px; color:var(--color-alert);">Pending Review: <strong id="dashboard-pending-count">0</strong></small>
                     </div>
 
-                    <div class="card" onclick="app.ui.showTab('cats')">
+                    <div class="card" data-tab="cats">
                         <h3>Upcoming Exam</h3>
                         <p style="font-size: 1.2rem; font-weight: 700; color: #F97316;" id="dashboard-upcoming-exam">Loading...</p>
                         <small>Next CAT/Exam date</small>
                     </div>
 
-                    <div class="card" onclick="app.ui.showTab('courses')">
+                    <div class="card" data-tab="courses">
                         <h3>Active Courses</h3>
                         <p class="data" id="dashboard-active-courses">0</p>
                         <small>Currently enrolled</small>
                     </div>
 
-                    <div class="card" onclick="app.ui.showTab('resources')">
+                    <div class="card" data-tab="resources">
                         <h3>New Resources</h3>
                         <p class="data" id="dashboard-new-resources">0</p>
                         <small>Last 7 days</small>
                     </div>
 
                     <!-- NurseIQ Card on Dashboard -->
-                    <div class="card nurseiq-card" onclick="app.ui.showTab('nurseiq')" style="border-left: 4px solid #8B5CF6;">
+                    <div class="card nurseiq-card" data-tab="nurseiq" style="border-left: 4px solid #8B5CF6;">
                         <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
                             <i class="fas fa-brain" style="color: #8B5CF6; font-size: 1.2rem;"></i>
                             <h3 style="margin: 0;">NurseIQ Progress</h3>
@@ -179,13 +143,13 @@
                     <div id="action-passport" class="card" style="border-left-color: var(--color-alert); cursor: default; display: none;">
                         <h3>Missing Passport Photo</h3>
                         <p>Your profile is incomplete. Please upload your passport photo immediately.</p>
-                        <button class="profile-button" onclick="app.ui.showTab('profile')">Go to Profile</button>
+                        <button class="profile-button" data-tab="profile">Go to Profile</button>
                     </div>
                     
                     <div class="card" style="border-left-color: var(--color-warning); cursor: default;">
                         <h3>Review New Course Material</h3>
                         <p>New study materials have been posted for this block.</p>
-                        <button class="profile-button" onclick="app.ui.showTab('resources')" style="background-color: var(--color-warning);">View Resources</button>
+                        <button class="profile-button" data-tab="resources" style="background-color: var(--color-warning);">View Resources</button>
                     </div>
                     
                     <div id="latest-announcement-card" class="card" style="border-left-color: var(--color-success); display: none; cursor: pointer;">
@@ -195,14 +159,14 @@
                             <span id="announcement-date"></span> | 
                             <span id="announcement-status" style="font-weight: bold;"></span>
                         </div>
-                        <button onclick="app.ui.showTab('messages')" class="profile-button" style="background-color: var(--color-primary); margin-top: 15px;">Go to Messages Tab</button>
+                        <button data-tab="messages" class="profile-button" style="background-color: var(--color-primary); margin-top: 15px;">Go to Messages Tab</button>
                     </div>
 
                     <!-- NurseIQ Action Card -->
                     <div id="nurseiq-action-card" class="card" style="border-left-color: #8B5CF6; cursor: pointer; display: none;">
                         <h3><i class="fas fa-brain" style="margin-right: 8px;"></i> NurseIQ Practice Needed</h3>
                         <p id="nurseiq-action-message">Complete your NurseIQ assessments to improve your scores.</p>
-                        <button onclick="app.ui.showTab('nurseiq')" class="profile-button" style="background: linear-gradient(135deg, #8B5CF6, #7C3AED); margin-top: 10px;">
+                        <button data-tab="nurseiq" class="profile-button" style="background: linear-gradient(135deg, #8B5CF6, #7C3AED); margin-top: 10px;">
                             <i class="fas fa-play-circle"></i> Start Practicing
                         </button>
                     </div>
@@ -265,7 +229,7 @@
 
                 <div class="calendar-controls" style="margin-bottom: 20px;">
                     <label for="calendar-filter">Filter by Type:</label>
-                    <select id="calendar-filter" onchange="app.calendar.loadAcademicCalendar()">
+                    <select id="calendar-filter">
                         <option value="all">Show All</option>
                         <option value="Clinical">Clinical Rotations</option>
                         <option value="Class">Scheduled Sessions</option>
@@ -316,7 +280,7 @@
                 <div class="check-in-controls">
                     <div class="control-group">
                         <label for="session-type">Session Type:</label>
-                        <select id="session-type" onchange="app.attendance.updateTargetSelect()">
+                        <select id="session-type">
                             <option value="Clinical">Clinical Session</option>
                             <option value="Class">On Class Session</option>
                         </select>
@@ -329,7 +293,7 @@
                         </select>
                     </div>
 
-                    <button id="check-in-button" onclick="app.attendance.geoCheckIn()">Check In Now</button>
+                    <button id="check-in-button">Check In Now</button>
 
                     <p id="geo-message">Select a <strong>Session Type</strong> and then a specific <strong>Department or Course</strong> to check in at your current GPS location and time.</p>
                 </div>
@@ -359,8 +323,7 @@
 
                 <div class="exam-controls" style="margin-bottom: 20px; display:flex; align-items:center; gap:10px;">
                     <label for="exam-type-filter" style="font-weight:600; color:#374151;">Filter by Type:</label>
-                    <select id="exam-type-filter" onchange="app.exams.loadExams()" 
-                            style="padding:6px 10px; border:1px solid #D1D5DB; border-radius:6px; background:white; color:#111827;">
+                    <select id="exam-type-filter" style="padding:6px 10px; border:1px solid #D1D5DB; border-radius:6px; background:white; color:#111827;">
                         <option value="all">Show All (CATS & Exams)</option>
                         <option value="CAT">Show Only CATS</option>
                         <option value="Final">Show Only Final Exams</option>
@@ -428,7 +391,7 @@
                 <!-- Mobile Reader View -->
                 <div id="mobile-reader" class="mobile-reader" style="display: none;">
                     <div class="reader-header">
-                        <button class="reader-back" onclick="app.resources.closeReader()">
+                        <button class="reader-back" id="readerBackBtn">
                             <i class="fas fa-arrow-left"></i>
                         </button>
                         <h3 id="reader-title">Resource Title</h3>
@@ -488,10 +451,10 @@
                                     <input type="text" id="studentQuestionBankSearch" placeholder="Search courses..." 
                                            style="width: 100%; padding: 12px 12px 12px 40px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
                                 </div>
-                                <button onclick="app.nurseiq.loadQuestionBankCards()" style="background: #4f46e5; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                                <button id="nurseiqSearchBtn" style="background: #4f46e5; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-weight: 500;">
                                     <i class="fas fa-search"></i> Search
                                 </button>
-                                <button onclick="app.nurseiq.clearQuestionBankSearch()" style="background: #6b7280; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                                <button id="clearSearchBtn" style="background: #6b7280; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-weight: 500;">
                                     <i class="fas fa-redo"></i> Clear
                                 </button>
                             </div>
@@ -534,8 +497,7 @@
                                     </div>
                                 </div>
                                 
-                                <button onclick="app.nurseiq.loadQuestionBankCards()" 
-                                        style="background: linear-gradient(135deg, #4f46e5, #7c3aed); color: white; border: none; padding: 14px 28px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 16px; display: inline-flex; align-items: center; gap: 10px; transition: transform 0.2s;">
+                                <button id="loadCourseCatalogBtn" style="background: linear-gradient(135deg, #4f46e5, #7c3aed); color: white; border: none; padding: 14px 28px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 16px; display: inline-flex; align-items: center; gap: 10px; transition: transform 0.2s;">
                                     <i class="fas fa-play-circle"></i>
                                     Load Course Catalog
                                 </button>
@@ -605,20 +567,20 @@
                     <div class="footer-section">
                         <h3>Quick Links</h3>
                         <ul class="footer-links">
-                            <li><a href="#" onclick="app.ui.showTab('dashboard')"><i class="fas fa-home"></i> Dashboard</a></li>
-                            <li><a href="#" onclick="app.ui.showTab('courses')"><i class="fas fa-book"></i> My Courses</a></li>
-                            <li><a href="#" onclick="app.ui.showTab('calendar')"><i class="fas fa-calendar"></i> Academic Calendar</a></li>
-                            <li><a href="#" onclick="app.ui.showTab('resources')"><i class="fas fa-file-pdf"></i> Resources</a></li>
+                            <li><a href="#" data-tab="dashboard"><i class="fas fa-home"></i> Dashboard</a></li>
+                            <li><a href="#" data-tab="courses"><i class="fas fa-book"></i> My Courses</a></li>
+                            <li><a href="#" data-tab="calendar"><i class="fas fa-calendar"></i> Academic Calendar</a></li>
+                            <li><a href="#" data-tab="resources"><i class="fas fa-file-pdf"></i> Resources</a></li>
                         </ul>
                     </div>
                     
                     <div class="footer-section">
                         <h3>Support</h3>
                         <ul class="footer-links">
-                            <li><a href="#" onclick="app.ui.showTab('messages')"><i class="fas fa-question-circle"></i> Contact Admin</a></li>
+                            <li><a href="#" data-tab="messages"><i class="fas fa-question-circle"></i> Contact Admin</a></li>
                             <li><a href="#" id="clearCacheBtn"><i class="fas fa-broom"></i> Clear Cache</a></li>
                             <li><a href="#" id="exportDataBtn"><i class="fas fa-download"></i> Export Data</a></li>
-                            <li><a href="#" onclick="app.ui.showSystemInfo()"><i class="fas fa-info-circle"></i> System Info</a></li>
+                            <li><a href="#" id="systemInfoBtn"><i class="fas fa-info-circle"></i> System Info</a></li>
                         </ul>
                     </div>
                 </div>
@@ -650,7 +612,7 @@
     <!-- Transcript Modal - No Print -->
     <div id="transcript-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); justify-content:center; align-items:center; z-index:1000;">
         <div style="background:white; padding:16px; border-radius:8px; max-width:350px; width:90%; position:relative; box-shadow:0 4px 20px rgba(0,0,0,0.15);">
-            <button onclick="app.exams.closeTranscriptModal()" style="position:absolute; top:8px; right:8px; background:none; border:none; font-size:1.2em; cursor:pointer; color:#6B7280; padding:4px; width:28px; height:28px; display:flex; align-items:center; justify-content:center; border-radius:50%;">×</button>
+            <button id="closeTranscriptBtn" style="position:absolute; top:8px; right:8px; background:none; border:none; font-size:1.2em; cursor:pointer; color:#6B7280; padding:4px; width:28px; height:28px; display:flex; align-items:center; justify-content:center; border-radius:50%;">×</button>
             
             <!-- Header -->
             <div style="text-align:center; margin-bottom:15px; padding-bottom:8px; border-bottom:1px solid var(--color-primary, #4F46E5);">
@@ -692,7 +654,7 @@
             
             <!-- Close Button Only -->
             <div style="margin-top:15px; text-align:center;">
-                <button onclick="app.exams.closeTranscriptModal()" style="padding:8px 20px; background:var(--color-primary, #4F46E5); color:white; border:none; border-radius:6px; cursor:pointer; font-size:0.9em; font-weight:500; width:100%;">
+                <button id="closeTranscriptModalBtn" style="padding:8px 20px; background:var(--color-primary, #4F46E5); color:white; border:none; border-radius:6px; cursor:pointer; font-size:0.9em; font-weight:500; width:100%;">
                     Close Transcript
                 </button>
             </div>
@@ -716,42 +678,194 @@
     <script src="./js/services/cache-manager.js"></script>
     <script src="./js/services/toast.js"></script>
     
- <!-- Add this simple script -->
+    <!-- Main App Initialization -->
     <script>
+    // Global app object to store module functions
+    window.app = {
+        ui: {},
+        auth: {},
+        profile: {},
+        attendance: {},
+        calendar: {},
+        courses: {},
+        exams: {},
+        resources: {},
+        messages: {},
+        nurseiq: {},
+        utils: {}
+    };
+
     document.addEventListener('DOMContentLoaded', async function() {
         try {
-            // 1. Initialize database (loads GitHub Secrets + checks auth)
+            console.log('Initializing app...');
+            
+            // Initialize the database first
             await db.initialize();
             
-            // 2. User is now authenticated, start your app
-            console.log('App ready! User:', db.currentUserProfile.full_name);
+            // Initialize UI
+            if (typeof initUI === 'function') {
+                initUI();
+            }
             
-            // 3. Setup your UI functions here or in a separate file
-            setupUI();
+            // Load dashboard data
+            if (typeof loadDashboard === 'function') {
+                loadDashboard();
+            }
             
-            // 4. Load initial data
-            loadInitialData();
+            // Load profile data
+            if (typeof loadProfile === 'function') {
+                loadProfile();
+            }
+            
+            console.log('App initialized successfully!');
             
         } catch (error) {
-            // Errors are already handled by database.js
-            console.error('App failed to start:', error);
+            console.error('Failed to initialize app:', error);
+            if (typeof showToast === 'function') {
+                showToast('Failed to initialize app. Please refresh the page.', 'error');
+            }
         }
     });
-    
-    function setupUI() {
-        // Your UI code here
-        document.querySelector('.menu-toggle').onclick = toggleMenu;
-        document.querySelector('.logout a').onclick = () => db.logout();
-        // ... etc
+
+    // Basic UI functions that will be used by all modules
+    function toggleMenu() {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('overlay');
+        sidebar.classList.toggle('active');
+        overlay.classList.toggle('active');
     }
-    
-    function loadInitialData() {
-        // Use db.getCourses(), db.getExams(), etc.
+
+    function closeMenu() {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('overlay');
+        sidebar.classList.remove('active');
+        overlay.classList.remove('active');
     }
+
+    function showTab(tabId) {
+        // Hide all tabs
+        document.querySelectorAll('.tab-content').forEach(tab => {
+            tab.classList.remove('active');
+        });
+        
+        // Show selected tab
+        const selectedTab = document.getElementById(tabId);
+        if (selectedTab) {
+            selectedTab.classList.add('active');
+        }
+        
+        // Update active nav link
+        document.querySelectorAll('.nav a').forEach(link => {
+            link.classList.remove('active');
+            if (link.getAttribute('data-tab') === tabId) {
+                link.classList.add('active');
+            }
+        });
+        
+        // Close mobile menu
+        closeMenu();
+        
+        // Load tab-specific data
+        loadTabData(tabId);
+    }
+
+    async function loadTabData(tabId) {
+        switch(tabId) {
+            case 'dashboard':
+                if (typeof loadDashboard === 'function') loadDashboard();
+                break;
+            case 'profile':
+                if (typeof loadProfile === 'function') loadProfile();
+                break;
+            case 'calendar':
+                if (typeof loadAcademicCalendar === 'function') loadAcademicCalendar();
+                break;
+            case 'courses':
+                if (typeof loadCourses === 'function') loadCourses();
+                break;
+            case 'attendance':
+                if (typeof loadAttendance === 'function') loadAttendance();
+                break;
+            case 'cats':
+                if (typeof loadExams === 'function') loadExams();
+                break;
+            case 'resources':
+                if (typeof loadResources === 'function') loadResources();
+                break;
+            case 'messages':
+                if (typeof loadMessages === 'function') loadMessages();
+                break;
+            case 'nurseiq':
+                if (typeof loadNurseIQ === 'function') loadNurseIQ();
+                break;
+        }
+    }
+
+    async function logout() {
+        try {
+            await db.logout();
+            window.location.href = 'login.html';
+        } catch (error) {
+            console.error('Logout error:', error);
+            if (typeof showToast === 'function') {
+                showToast('Logout failed. Please try again.', 'error');
+            }
+        }
+    }
+
+    // Set up event listeners
+    function setupEventListeners() {
+        // Menu toggle
+        document.getElementById('menuToggle').addEventListener('click', toggleMenu);
+        document.getElementById('overlay').addEventListener('click', closeMenu);
+        
+        // Logout
+        document.getElementById('logoutBtn').addEventListener('click', logout);
+        
+        // Tab navigation
+        document.querySelectorAll('.nav a[data-tab]').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const tabId = this.getAttribute('data-tab');
+                showTab(tabId);
+            });
+        });
+        
+        // Dashboard card clicks
+        document.querySelectorAll('.card[data-tab]').forEach(card => {
+            card.addEventListener('click', function() {
+                const tabId = this.getAttribute('data-tab');
+                showTab(tabId);
+            });
+        });
+        
+        // Footer links
+        document.querySelectorAll('.footer-links a[data-tab]').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const tabId = this.getAttribute('data-tab');
+                showTab(tabId);
+            });
+        });
+    }
+
+    // Initialize event listeners when DOM is loaded
+    document.addEventListener('DOMContentLoaded', setupEventListeners);
+
+    // Export functions to global scope for use in individual JS files
+    window.toggleMenu = toggleMenu;
+    window.closeMenu = closeMenu;
+    window.showTab = showTab;
+    window.logout = logout;
+    
+    // Store in app object for compatibility
+    app.ui.toggleMenu = toggleMenu;
+    app.ui.closeMenu = closeMenu;
+    app.ui.showTab = showTab;
+    app.auth.logout = logout;
     </script>
     
     <!-- config.js generated by GitHub Actions -->
-    <!-- Config file generated by GitHub Actions with secrets -->
     <script src="./config.js"></script>
 </body>
-</html>
+                            </html>
