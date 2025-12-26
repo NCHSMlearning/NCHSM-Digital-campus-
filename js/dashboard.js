@@ -1,424 +1,556 @@
-// dashboard.js - Dashboard functionality
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialize dashboard if we're on the dashboard tab
-    if (document.getElementById('dashboard').classList.contains('active')) {
-        loadDashboard();
+// js/dashboard.js - Dashboard Management Module
+class DashboardModule {
+    constructor(supabaseClient) {
+        this.sb = supabaseClient;
+        this.userId = null;
+        this.userProfile = null;
+        
+        // Dashboard elements
+        this.welcomeHeader = document.getElementById('welcome-header');
+        this.welcomeMessage = document.getElementById('student-welcome-message');
+        this.studentAnnouncement = document.getElementById('student-announcement');
+        
+        // Stats elements
+        this.dashboardAttendanceRate = document.getElementById('dashboard-attendance-rate');
+        this.dashboardVerifiedCount = document.getElementById('dashboard-verified-count');
+        this.dashboardTotalCount = document.getElementById('dashboard-total-count');
+        this.dashboardPendingCount = document.getElementById('dashboard-pending-count');
+        this.dashboardUpcomingExam = document.getElementById('dashboard-upcoming-exam');
+        this.dashboardActiveCourses = document.getElementById('dashboard-active-courses');
+        this.dashboardNewResources = document.getElementById('dashboard-new-resources');
+        
+        // NurseIQ elements
+        this.dashboardNurseiqProgress = document.getElementById('dashboard-nurseiq-progress');
+        this.dashboardNurseiqAccuracy = document.getElementById('dashboard-nurseiq-accuracy');
+        this.dashboardNurseiqQuestions = document.getElementById('dashboard-nurseiq-questions');
+        this.nurseiqActionCard = document.getElementById('nurseiq-action-card');
+        this.nurseiqActionMessage = document.getElementById('nurseiq-action-message');
+        this.nurseiqBadge = document.getElementById('nurseiqBadge');
+        
+        // Action cards
+        this.actionPassport = document.getElementById('action-passport');
+        this.latestAnnouncementCard = document.getElementById('latest-announcement-card');
+        this.announcementTitle = document.getElementById('announcement-title');
+        this.announcementBody = document.getElementById('announcement-body');
+        this.announcementDate = document.getElementById('announcement-date');
+        this.announcementStatus = document.getElementById('announcement-status');
+        
+        // Current time display
+        this.currentDateTime = document.getElementById('currentDateTime');
+        
+        this.initializeElements();
     }
     
-    // Setup dashboard card click events
-    setupDashboardEvents();
-});
-
-// Global function to load dashboard
-window.loadDashboard = async function() {
-    try {
-        console.log('Loading dashboard data...');
+    initializeElements() {
+        // Setup dashboard card click events
+        this.setupDashboardEvents();
         
-        // Show loading state
-        document.getElementById('dashboard-attendance-rate').textContent = '...';
-        document.getElementById('dashboard-upcoming-exam').textContent = 'Loading...';
-        document.getElementById('dashboard-active-courses').textContent = '0';
-        document.getElementById('dashboard-new-resources').textContent = '0';
-        
-        // Load user data first
-        await loadUserWelcome();
-        
-        // Load all dashboard data in parallel
-        await Promise.all([
-            loadAttendanceStats(),
-            loadUpcomingExams(),
-            loadCourseCount(),
-            loadNewResourcesCount(),
-            loadAnnouncements(),
-            loadNurseIQStats(),
-            checkMissingPassport()
-        ]);
-        
-        // Update time display
-        updateDateTime();
-        setInterval(updateDateTime, 60000); // Update every minute
-        
-        console.log('Dashboard loaded successfully');
-        
-    } catch (error) {
-        console.error('Error loading dashboard:', error);
-        showToast('Failed to load dashboard data', 'error');
+        // Start live clock
+        this.startLiveClock();
     }
-};
-
-// Setup dashboard event listeners
-function setupDashboardEvents() {
-    // Dashboard card clicks
-    document.querySelectorAll('.card[data-tab]').forEach(card => {
-        card.addEventListener('click', function() {
-            const tabId = this.getAttribute('data-tab');
-            if (typeof showTab === 'function') {
-                showTab(tabId);
-            }
-        });
-    });
     
-    // Action card buttons
-    document.querySelectorAll('.profile-button[data-tab]').forEach(button => {
-        button.addEventListener('click', function(e) {
-            e.stopPropagation(); // Prevent card click
-            const tabId = this.getAttribute('data-tab');
-            if (typeof showTab === 'function') {
-                showTab(tabId);
-            }
+    setupDashboardEvents() {
+        // Dashboard card clicks
+        document.querySelectorAll('.card[data-tab]').forEach(card => {
+            card.addEventListener('click', function() {
+                const tabId = this.getAttribute('data-tab');
+                if (typeof showTab === 'function') {
+                    showTab(tabId);
+                }
+            });
         });
-    });
-}
-
-// Load user welcome message
-async function loadUserWelcome() {
-    try {
-        const user = await db.getCurrentUserProfile();
-        if (user) {
-            const welcomeHeader = document.getElementById('welcome-header');
-            const welcomeMessage = document.getElementById('student-welcome-message');
+        
+        // Action card buttons
+        document.querySelectorAll('.profile-button[data-tab]').forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.stopPropagation(); // Prevent card click
+                const tabId = this.getAttribute('data-tab');
+                if (typeof showTab === 'function') {
+                    showTab(tabId);
+                }
+            });
+        });
+    }
+    
+    // Initialize with user ID and profile
+    initialize(userId, userProfile) {
+        this.userId = userId;
+        this.userProfile = userProfile;
+        
+        if (userId && userProfile) {
+            this.loadDashboard();
+        }
+    }
+    
+    // Main dashboard loading function
+    async loadDashboard() {
+        try {
+            console.log('Loading dashboard data...');
             
-            if (welcomeHeader) {
-                welcomeHeader.textContent = `Welcome back, ${user.full_name || 'Student'}!`;
+            // Show loading state
+            this.showLoadingStates();
+            
+            // Load user welcome
+            this.loadUserWelcome();
+            
+            // Load all dashboard data in parallel
+            await Promise.allSettled([
+                this.loadAttendanceStats(),
+                this.loadUpcomingExams(),
+                this.loadCourseCount(),
+                this.loadNewResourcesCount(),
+                this.loadAnnouncements(),
+                this.loadNurseIQStats(),
+                this.checkMissingPassport(),
+                this.loadLatestOfficialAnnouncement()
+            ]);
+            
+            console.log('Dashboard loaded successfully');
+            
+        } catch (error) {
+            console.error('Error loading dashboard:', error);
+            if (window.showToast) {
+                showToast('Failed to load dashboard data', 'error');
             }
+        }
+    }
+    
+    showLoadingStates() {
+        if (this.dashboardAttendanceRate) this.dashboardAttendanceRate.textContent = '...';
+        if (this.dashboardUpcomingExam) this.dashboardUpcomingExam.textContent = 'Loading...';
+        if (this.dashboardActiveCourses) this.dashboardActiveCourses.textContent = '0';
+        if (this.dashboardNewResources) this.dashboardNewResources.textContent = '0';
+        if (this.dashboardNurseiqProgress) this.dashboardNurseiqProgress.textContent = '--%';
+        if (this.dashboardNurseiqAccuracy) this.dashboardNurseiqAccuracy.textContent = '--%';
+        if (this.dashboardNurseiqQuestions) this.dashboardNurseiqQuestions.textContent = '0';
+    }
+    
+    loadUserWelcome() {
+        if (!this.userProfile) return;
+        
+        const welcomeHeader = document.getElementById('welcome-header');
+        const welcomeMessage = document.getElementById('student-welcome-message');
+        
+        if (welcomeHeader) {
+            welcomeHeader.textContent = `Welcome back, ${this.userProfile.full_name || 'Student'}!`;
+        }
+        
+        if (welcomeMessage) {
+            const now = new Date();
+            const hour = now.getHours();
+            let greeting = 'Good Day';
             
-            if (welcomeMessage) {
-                const now = new Date();
-                const hour = now.getHours();
-                let greeting = 'Good Day';
-                
-                if (hour < 12) greeting = 'Good Morning';
-                else if (hour < 18) greeting = 'Good Afternoon';
-                else greeting = 'Good Evening';
-                
-                welcomeMessage.textContent = `${greeting}! Access your courses, schedule, and check your attendance status.`;
+            if (hour < 12) greeting = 'Good Morning';
+            else if (hour < 18) greeting = 'Good Afternoon';
+            else greeting = 'Good Evening';
+            
+            welcomeMessage.textContent = `${greeting}! Access your courses, schedule, and check your attendance status.`;
+        }
+        
+        // Update profile photo in header if available
+        if (this.userProfile.passport_url) {
+            const headerPhoto = document.getElementById('header-passport-preview');
+            if (headerPhoto) {
+                const photoUrl = `${window.APP_CONFIG.SUPABASE_URL}/storage/v1/object/public/passports/${this.userProfile.passport_url}?t=${new Date().getTime()}`;
+                headerPhoto.src = photoUrl;
+                headerPhoto.onerror = function() {
+                    this.onerror = null;
+                    this.src = 'https://dummyimage.com/150x150/cccccc/000000.png&text=NO+PHOTO';
+                };
             }
+        }
+    }
+    
+    // Load attendance statistics
+    async loadAttendanceStats() {
+        try {
+            const { data: logs, error } = await this.sb
+                .from('geo_attendance_logs')
+                .select('is_verified')
+                .eq('student_id', this.userId);
             
-            // Update profile photo in header if available
-            if (user.passport_photo_url) {
-                const headerPhoto = document.getElementById('header-passport-preview');
-                if (headerPhoto) {
-                    headerPhoto.src = user.passport_photo_url;
+            if (error) throw error;
+            
+            const totalLogs = logs.length;
+            const verifiedCount = logs.filter(l => l.is_verified === true).length;
+            const pendingCount = logs.filter(l => !l.is_verified).length;
+            const attendanceRate = totalLogs > 0 ? Math.round((verifiedCount / totalLogs) * 100) : 0;
+            
+            // Update UI
+            if (this.dashboardAttendanceRate) {
+                this.dashboardAttendanceRate.textContent = `${attendanceRate}%`;
+                
+                // Color code based on rate
+                if (attendanceRate >= 80) {
+                    this.dashboardAttendanceRate.style.color = 'var(--color-success)';
+                } else if (attendanceRate >= 60) {
+                    this.dashboardAttendanceRate.style.color = 'var(--color-warning)';
+                } else {
+                    this.dashboardAttendanceRate.style.color = 'var(--color-alert)';
                 }
             }
-        }
-    } catch (error) {
-        console.error('Error loading user welcome:', error);
-    }
-}
-
-// Load attendance statistics
-async function loadAttendanceStats() {
-    try {
-        const attendance = await db.getAttendanceStats();
-        const rateElement = document.getElementById('dashboard-attendance-rate');
-        const verifiedElement = document.getElementById('dashboard-verified-count');
-        const totalElement = document.getElementById('dashboard-total-count');
-        const pendingElement = document.getElementById('dashboard-pending-count');
-        
-        if (rateElement && attendance) {
-            const attendanceRate = attendance.attendance_rate || 0;
-            rateElement.textContent = `${attendanceRate}%`;
             
-            // Color code based on rate
-            if (attendanceRate >= 80) {
-                rateElement.style.color = 'var(--color-success)';
-            } else if (attendanceRate >= 60) {
-                rateElement.style.color = 'var(--color-warning)';
-            } else {
-                rateElement.style.color = 'var(--color-alert)';
-            }
-        }
-        
-        if (verifiedElement) verifiedElement.textContent = attendance?.verified_checkins || '0';
-        if (totalElement) totalElement.textContent = attendance?.total_checkins || '0';
-        if (pendingElement) pendingElement.textContent = attendance?.pending_checkins || '0';
-        
-    } catch (error) {
-        console.error('Error loading attendance stats:', error);
-    }
-}
-
-// Load upcoming exams
-async function loadUpcomingExams() {
-    try {
-        const exams = await db.getUpcomingExams();
-        const upcomingElement = document.getElementById('dashboard-upcoming-exam');
-        
-        if (upcomingElement && exams && exams.length > 0) {
-            const nextExam = exams[0]; // Get the closest exam
-            const examDate = new Date(nextExam.exam_date);
-            const today = new Date();
-            const diffTime = examDate - today;
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            if (this.dashboardVerifiedCount) this.dashboardVerifiedCount.textContent = verifiedCount;
+            if (this.dashboardTotalCount) this.dashboardTotalCount.textContent = totalLogs;
+            if (this.dashboardPendingCount) this.dashboardPendingCount.textContent = pendingCount;
             
-            if (diffDays <= 0) {
-                upcomingElement.textContent = 'Today';
-                upcomingElement.style.color = 'var(--color-alert)';
-            } else if (diffDays <= 7) {
-                upcomingElement.textContent = `${diffDays} day${diffDays !== 1 ? 's' : ''}`;
-                upcomingElement.style.color = '#F97316'; // Orange
-            } else {
-                upcomingElement.textContent = examDate.toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric'
-                });
-                upcomingElement.style.color = '#F97316';
-            }
-        } else {
-            upcomingElement.textContent = 'No upcoming exams';
-            upcomingElement.style.color = '#6B7280';
+        } catch (error) {
+            console.error('Error loading attendance stats:', error);
         }
-        
-    } catch (error) {
-        console.error('Error loading upcoming exams:', error);
-        document.getElementById('dashboard-upcoming-exam').textContent = 'Error loading';
     }
-}
-
-// Load course count
-async function loadCourseCount() {
-    try {
-        const courses = await db.getCourses();
-        const coursesElement = document.getElementById('dashboard-active-courses');
-        
-        if (coursesElement && courses) {
-            const activeCourses = courses.filter(course => 
-                course.status === 'Active' || course.status === 'In Progress'
-            );
-            coursesElement.textContent = activeCourses.length.toString();
-        }
-        
-    } catch (error) {
-        console.error('Error loading course count:', error);
-    }
-}
-
-// Load new resources count (last 7 days)
-async function loadNewResourcesCount() {
-    try {
-        const resources = await db.getResources();
-        const resourcesElement = document.getElementById('dashboard-new-resources');
-        
-        if (resourcesElement && resources) {
-            const now = new Date();
-            const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    
+    // Load upcoming exams
+    async loadUpcomingExams() {
+        try {
+            // Fetch exams for this student
+            const { data: exams, error } = await this.sb
+                .from('exams_with_courses')
+                .select('exam_name, exam_date')
+                .or(`program_type.eq.${this.userProfile?.program || this.userProfile?.department},program_type.eq.General`)
+                .or(`block_term.eq.${this.userProfile?.block},block_term.is.null,block_term.eq.General`)
+                .eq('intake_year', this.userProfile?.intake_year)
+                .gte('exam_date', new Date().toISOString().split('T')[0])
+                .order('exam_date', { ascending: true })
+                .limit(1);
             
-            const newResources = resources.filter(resource => {
-                const resourceDate = new Date(resource.created_at);
-                return resourceDate >= sevenDaysAgo;
-            });
+            if (error) throw error;
             
-            resourcesElement.textContent = newResources.length.toString();
-        }
-        
-    } catch (error) {
-        console.error('Error loading resources count:', error);
-    }
-}
-
-// Load announcements
-async function loadAnnouncements() {
-    try {
-        const announcements = await db.getAnnouncements();
-        const announcementElement = document.getElementById('student-announcement');
-        const announcementCard = document.getElementById('latest-announcement-card');
-        
-        if (announcements && announcements.length > 0) {
-            const latestAnnouncement = announcements[0];
-            
-            // Update banner
-            if (announcementElement) {
-                announcementElement.textContent = latestAnnouncement.message;
+            if (this.dashboardUpcomingExam) {
+                if (exams && exams.length > 0) {
+                    const nextExam = exams[0];
+                    const examDate = new Date(nextExam.exam_date);
+                    const today = new Date();
+                    const diffTime = examDate - today;
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    
+                    if (diffDays <= 0) {
+                        this.dashboardUpcomingExam.textContent = 'Today';
+                        this.dashboardUpcomingExam.style.color = 'var(--color-alert)';
+                    } else if (diffDays <= 7) {
+                        this.dashboardUpcomingExam.textContent = `${diffDays} day${diffDays !== 1 ? 's' : ''}`;
+                        this.dashboardUpcomingExam.style.color = '#F97316';
+                    } else {
+                        this.dashboardUpcomingExam.textContent = examDate.toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric'
+                        });
+                        this.dashboardUpcomingExam.style.color = '#F97316';
+                    }
+                } else {
+                    this.dashboardUpcomingExam.textContent = 'No upcoming exams';
+                    this.dashboardUpcomingExam.style.color = '#6B7280';
+                }
             }
             
-            // Update announcement card
-            if (announcementCard) {
-                announcementCard.style.display = 'block';
-                document.getElementById('announcement-title').textContent = latestAnnouncement.title;
-                document.getElementById('announcement-body').textContent = 
-                    latestAnnouncement.message.length > 150 
-                    ? latestAnnouncement.message.substring(0, 150) + '...'
-                    : latestAnnouncement.message;
+        } catch (error) {
+            console.error('Error loading upcoming exams:', error);
+            if (this.dashboardUpcomingExam) {
+                this.dashboardUpcomingExam.textContent = 'Error loading';
+            }
+        }
+    }
+    
+    // Load course count
+    async loadCourseCount() {
+        try {
+            const { data: courses, error } = await this.sb
+                .from('courses')
+                .select('status')
+                .or(`target_program.eq.${this.userProfile?.program || this.userProfile?.department},target_program.eq.General`)
+                .or(`block.eq.${this.userProfile?.block},block.is.null,block.eq.General`)
+                .eq('intake_year', this.userProfile?.intake_year);
+            
+            if (error) throw error;
+            
+            if (this.dashboardActiveCourses && courses) {
+                const activeCourses = courses.filter(course => 
+                    course.status === 'Active' || course.status === 'In Progress'
+                );
+                this.dashboardActiveCourses.textContent = activeCourses.length.toString();
+            }
+            
+        } catch (error) {
+            console.error('Error loading course count:', error);
+        }
+    }
+    
+    // Load new resources count (last 7 days)
+    async loadNewResourcesCount() {
+        try {
+            const oneWeekAgo = new Date();
+            oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+            
+            const { data: resources, error } = await this.sb
+                .from('resources')
+                .select('created_at')
+                .eq('program_type', this.userProfile?.program || this.userProfile?.department)
+                .eq('block', this.userProfile?.block)
+                .eq('intake', this.userProfile?.intake_year)
+                .gte('created_at', oneWeekAgo.toISOString());
+            
+            if (error) throw error;
+            
+            if (this.dashboardNewResources && resources) {
+                this.dashboardNewResources.textContent = resources.length.toString();
+            }
+            
+        } catch (error) {
+            console.error('Error loading resources count:', error);
+        }
+    }
+    
+    // Load announcements
+    async loadAnnouncements() {
+        try {
+            const { data: announcements, error } = await this.sb
+                .from('notifications')
+                .select('*')
+                .or(`target_program.eq.${this.userProfile?.program || this.userProfile?.department},target_program.is.null`)
+                .order('created_at', { ascending: false })
+                .limit(5);
+            
+            if (error) throw error;
+            
+            // Update system messages card
+            if (announcements && announcements.length > 0) {
+                const latestAnnouncement = announcements[0];
                 
-                const date = new Date(latestAnnouncement.created_at);
-                document.getElementById('announcement-date').textContent = 
-                    date.toLocaleDateString('en-US', { 
-                        month: 'short', 
-                        day: 'numeric',
-                        year: 'numeric'
-                    });
-                
-                document.getElementById('announcement-status').textContent = 
-                    latestAnnouncement.priority || 'General';
-                document.getElementById('announcement-status').style.color = 
-                    latestAnnouncement.priority === 'Urgent' ? 'var(--color-alert)' : 
-                    latestAnnouncement.priority === 'High' ? 'var(--color-warning)' : 
-                    'var(--color-primary)';
+                if (this.latestAnnouncementCard) {
+                    this.latestAnnouncementCard.style.display = 'block';
+                    
+                    if (this.announcementTitle) {
+                        this.announcementTitle.textContent = latestAnnouncement.subject || latestAnnouncement.title || 'New Announcement';
+                    }
+                    
+                    if (this.announcementBody) {
+                        const message = latestAnnouncement.message || latestAnnouncement.body || '';
+                        this.announcementBody.textContent = message.length > 150 
+                            ? message.substring(0, 150) + '...'
+                            : message;
+                    }
+                    
+                    if (this.announcementDate) {
+                        const date = new Date(latestAnnouncement.created_at);
+                        this.announcementDate.textContent = date.toLocaleDateString('en-US', { 
+                            month: 'short', 
+                            day: 'numeric',
+                            year: 'numeric'
+                        });
+                    }
+                    
+                    if (this.announcementStatus) {
+                        const priority = latestAnnouncement.priority || 'General';
+                        this.announcementStatus.textContent = priority;
+                        this.announcementStatus.style.color = 
+                            priority === 'Urgent' ? 'var(--color-alert)' : 
+                            priority === 'High' ? 'var(--color-warning)' : 
+                            'var(--color-primary)';
+                    }
+                }
             }
+            
+        } catch (error) {
+            console.error('Error loading announcements:', error);
         }
-        
-    } catch (error) {
-        console.error('Error loading announcements:', error);
     }
-}
-
-// Load NurseIQ statistics
-async function loadNurseIQStats() {
-    try {
-        const stats = await db.getNurseIQStats();
-        const progressElement = document.getElementById('dashboard-nurseiq-progress');
-        const accuracyElement = document.getElementById('dashboard-nurseiq-accuracy');
-        const questionsElement = document.getElementById('dashboard-nurseiq-questions');
-        const actionCard = document.getElementById('nurseiq-action-card');
-        const badgeElement = document.getElementById('nurseiqBadge');
-        
-        if (stats) {
+    
+    // Load latest official announcement
+    async loadLatestOfficialAnnouncement() {
+        try {
+            const { data: announcements, error } = await this.sb
+                .from('notifications')
+                .select('*')
+                .eq('subject', 'Official Announcement')
+                .order('created_at', { ascending: false })
+                .limit(1);
+            
+            if (error) throw error;
+            
+            if (this.studentAnnouncement) {
+                if (announcements && announcements.length > 0) {
+                    this.studentAnnouncement.textContent = announcements[0].message;
+                } else {
+                    this.studentAnnouncement.textContent = 'No official announcements at this time.';
+                }
+            }
+            
+        } catch (error) {
+            console.error('Error loading official announcement:', error);
+        }
+    }
+    
+    // Load NurseIQ statistics
+    async loadNurseIQStats() {
+        try {
+            // Fetch NurseIQ stats for the user
+            const { data: stats, error } = await this.sb
+                .from('nurseiq_user_stats')
+                .select('*')
+                .eq('student_id', this.userId)
+                .single();
+            
+            if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+                throw error;
+            }
+            
+            const nurseiqStats = stats || {
+                progress: 0,
+                accuracy: 0,
+                questions_completed: 0,
+                pending_practice: 0
+            };
+            
             // Update progress
-            if (progressElement) {
-                const progress = stats.progress || 0;
-                progressElement.textContent = `${progress}%`;
-                progressElement.style.color = progress >= 70 ? 'var(--color-success)' : 
-                                            progress >= 40 ? 'var(--color-warning)' : 
-                                            'var(--color-alert)';
+            if (this.dashboardNurseiqProgress) {
+                const progress = nurseiqStats.progress || 0;
+                this.dashboardNurseiqProgress.textContent = `${progress}%`;
+                this.dashboardNurseiqProgress.style.color = progress >= 70 ? 'var(--color-success)' : 
+                                                          progress >= 40 ? 'var(--color-warning)' : 
+                                                          'var(--color-alert)';
             }
             
             // Update accuracy
-            if (accuracyElement) {
-                const accuracy = stats.accuracy || 0;
-                accuracyElement.textContent = `${accuracy}%`;
+            if (this.dashboardNurseiqAccuracy) {
+                const accuracy = nurseiqStats.accuracy || 0;
+                this.dashboardNurseiqAccuracy.textContent = `${accuracy}%`;
             }
             
             // Update questions count
-            if (questionsElement) {
-                questionsElement.textContent = stats.questions_completed || '0';
+            if (this.dashboardNurseiqQuestions) {
+                this.dashboardNurseiqQuestions.textContent = nurseiqStats.questions_completed || '0';
             }
             
             // Update badge
-            if (badgeElement && stats.pending_practice) {
-                badgeElement.textContent = stats.pending_practice;
-                badgeElement.style.display = 'inline-block';
+            if (this.nurseiqBadge && nurseiqStats.pending_practice) {
+                this.nurseiqBadge.textContent = nurseiqStats.pending_practice;
+                this.nurseiqBadge.style.display = 'inline-block';
             }
             
             // Show action card if needed
-            if (actionCard) {
-                if (stats.progress < 50 || stats.accuracy < 60) {
-                    actionCard.style.display = 'block';
-                    const messageElement = document.getElementById('nurseiq-action-message');
-                    if (messageElement) {
-                        if (stats.progress < 30) {
-                            messageElement.textContent = 'Start your NurseIQ practice to build your knowledge base.';
-                        } else if (stats.accuracy < 60) {
-                            messageElement.textContent = 'Improve your accuracy by practicing more questions.';
+            if (this.nurseiqActionCard) {
+                if (nurseiqStats.progress < 50 || nurseiqStats.accuracy < 60) {
+                    this.nurseiqActionCard.style.display = 'block';
+                    
+                    if (this.nurseiqActionMessage) {
+                        if (nurseiqStats.progress < 30) {
+                            this.nurseiqActionMessage.textContent = 'Start your NurseIQ practice to build your knowledge base.';
+                        } else if (nurseiqStats.accuracy < 60) {
+                            this.nurseiqActionMessage.textContent = 'Improve your accuracy by practicing more questions.';
                         } else {
-                            messageElement.textContent = 'Complete your NurseIQ assessments to improve your scores.';
+                            this.nurseiqActionMessage.textContent = 'Complete your NurseIQ assessments to improve your scores.';
                         }
                     }
                 }
             }
+            
+        } catch (error) {
+            console.error('Error loading NurseIQ stats:', error);
         }
+    }
+    
+    // Check for missing passport photo
+    checkMissingPassport() {
+        if (this.actionPassport && this.userProfile && !this.userProfile.passport_url) {
+            this.actionPassport.style.display = 'block';
+        }
+    }
+    
+    // Start live clock for dashboard
+    startLiveClock() {
+        const updateTime = () => {
+            if (!this.currentDateTime) return;
+            
+            const now = new Date();
+            const options = { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true
+            };
+            
+            this.currentDateTime.textContent = now.toLocaleDateString('en-US', options);
+        };
         
-    } catch (error) {
-        console.error('Error loading NurseIQ stats:', error);
+        updateTime();
+        setInterval(updateTime, 1000);
+    }
+    
+    // Update user profile (called when profile is updated)
+    updateUserProfile(userProfile) {
+        this.userProfile = userProfile;
+        this.loadUserWelcome();
+        this.checkMissingPassport();
+    }
+    
+    // Refresh specific dashboard sections
+    async refreshDashboard() {
+        try {
+            await Promise.allSettled([
+                this.loadAttendanceStats(),
+                this.loadUpcomingExams(),
+                this.loadCourseCount(),
+                this.loadNewResourcesCount(),
+                this.loadAnnouncements(),
+                this.loadNurseIQStats()
+            ]);
+            
+            if (window.showToast) {
+                showToast('Dashboard refreshed', 'success');
+            }
+        } catch (error) {
+            console.error('Error refreshing dashboard:', error);
+        }
     }
 }
 
-// Check for missing passport photo
-async function checkMissingPassport() {
-    try {
-        const user = await db.getCurrentUserProfile();
-        const passportCard = document.getElementById('action-passport');
-        
-        if (passportCard && user && !user.passport_photo_url) {
-            passportCard.style.display = 'block';
-        }
-        
-    } catch (error) {
-        console.error('Error checking passport:', error);
+// Create global instance and export functions
+let dashboardModule = null;
+
+// Initialize dashboard module
+function initDashboardModule(supabaseClient, userId, userProfile) {
+    dashboardModule = new DashboardModule(supabaseClient);
+    dashboardModule.initialize(userId, userProfile);
+    return dashboardModule;
+}
+
+// Global function to load dashboard
+async function loadDashboard() {
+    if (dashboardModule) {
+        await dashboardModule.loadDashboard();
     }
 }
 
-// Update date and time display
-function updateDateTime() {
-    const dateTimeElement = document.getElementById('currentDateTime');
-    if (!dateTimeElement) return;
-    
-    const now = new Date();
-    const options = { 
-        weekday: 'long', 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true
-    };
-    
-    dateTimeElement.textContent = now.toLocaleDateString('en-US', options);
-}
-
-// Toast notification function (if not already defined)
-function showToast(message, type = 'info') {
-    const toast = document.getElementById('toast');
-    if (!toast) {
-        // Create toast if it doesn't exist
-        const toastDiv = document.createElement('div');
-        toastDiv.className = `toast ${type}`;
-        toastDiv.textContent = message;
-        toastDiv.style.cssText = `
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background: ${type === 'error' ? '#ef4444' : type === 'success' ? '#10b981' : '#3b82f6'};
-            color: white;
-            padding: 12px 20px;
-            border-radius: 6px;
-            z-index: 1000;
-            animation: slideIn 0.3s ease;
-        `;
-        document.body.appendChild(toastDiv);
-        
-        setTimeout(() => {
-            toastDiv.style.animation = 'slideOut 0.3s ease';
-            setTimeout(() => toastDiv.remove(), 300);
-        }, 3000);
-        return;
+// Global function to refresh dashboard
+async function refreshDashboard() {
+    if (dashboardModule) {
+        await dashboardModule.refreshDashboard();
     }
-    
-    toast.textContent = message;
-    toast.className = `toast ${type}`;
-    toast.style.display = 'block';
-    
-    setTimeout(() => {
-        toast.style.display = 'none';
-    }, 3000);
 }
 
-// Add CSS for toast animations
-if (!document.querySelector('style[data-toast-styles]')) {
-    const style = document.createElement('style');
-    style.setAttribute('data-toast-styles', 'true');
-    style.textContent = `
-        @keyframes slideIn {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-        @keyframes slideOut {
-            from { transform: translateX(0); opacity: 1; }
-            to { transform: translateX(100%); opacity: 0; }
-        }
-    `;
-    document.head.appendChild(style);
-}
-
-// Export functions to global scope
+// Make functions globally available
+window.DashboardModule = DashboardModule;
+window.initDashboardModule = initDashboardModule;
 window.loadDashboard = loadDashboard;
-window.loadUserWelcome = loadUserWelcome;
-window.loadAttendanceStats = loadAttendanceStats;
-window.loadUpcomingExams = loadUpcomingExams;
-window.loadCourseCount = loadCourseCount;
-window.loadNewResourcesCount = loadNewResourcesCount;
-window.loadAnnouncements = loadAnnouncements;
-window.loadNurseIQStats = loadNurseIQStats;
-window.checkMissingPassport = checkMissingPassport;
-window.updateDateTime = updateDateTime;
+window.refreshDashboard = refreshDashboard;
+
+// Auto-initialize when DOM is ready and dashboard tab is active
+document.addEventListener('DOMContentLoaded', function() {
+    // Check if we're on the dashboard tab
+    if (document.getElementById('dashboard')?.classList.contains('active')) {
+        console.log('Dashboard tab active, will load when user data is available...');
+    }
+    
+    // Setup refresh button if it exists
+    const refreshBtn = document.getElementById('refreshDashboardBtn');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', function() {
+            if (window.refreshDashboard) {
+                refreshDashboard();
+            }
+        });
+    }
+});
