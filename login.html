@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nakuru College Digital Portal Login - NCHSM</title>
+    <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" sizes="32x32">
+    
+    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"></noscript>
+    
+    <style>
+        /* --- NCHSM Branding Colors & Modern Palette --- */
+        :root {
+            --nchsm-blue-dark: #073450;
+            --nchsm-blue-light: #0A3D62;
+            --nchsm-green: #38A169;
+            --nchsm-green-hover: #2F855A;
+            --background: #FFFFFF;
+            --page-bg: #F8FAFC;
+            --gradient-primary: linear-gradient(135deg, #0A3D62 0%, #073450 100%);
+            --gradient-accent: linear-gradient(135deg, #38A169 0%, #2F855A 100%);
+            --shadow: 0 8px 32px rgba(10, 61, 98, 0.12);
+            --input-border: #E2E8F0;
+            --text-muted: #64748B;
+            --text-dark: #1E293B;
+            --focus-ring: 0 0 0 3px rgba(56, 161, 105, 0.15);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: var(--page-bg);
+            min-height: 100vh;
+            line-height: 1.5;
+        }
+
+        .login-wrapper {
+            display: flex;
+            width: 100%;
+            min-height: 100vh;
+            background: var(--background);
+        }
+
+        /* Left Panel - Branding & Visual */
+        .brand-panel {
+            flex: 0.8;
+            background: linear-gradient(rgba(10, 61, 98, 0.85), rgba(7, 52, 80, 0.9)), 
+                        url('https://nakurucollegeofhealth.ac.ke/wp-content/uploads/2022/12/IMG-20221130-WA0018.jpg') center/cover;
+            color: white;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            position: relative;
+        }
+
+        .brand-content {
+            position: relative;
+            z-index: 2;
+            text-align: center;
+        }
+
+        .logo {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 20px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 16px;
+            padding: 12px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            filter: brightness(0) invert(1);
+        }
+
+        .college-title {
+            font-size: 1.6rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+            line-height: 1.3;
+        }
+
+        .tagline {
+            font-size: 1rem;
+            font-weight: 400;
+            opacity: 0.9;
+            margin-bottom: 20px;
+        }
+
+        .portal-label {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 8px 18px;
+            border-radius: 20px;
+            font-size: 0.95rem;
+            font-weight: 500;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            margin-bottom: 25px;
+        }
+
+        .features-list {
+            text-align: left;
+            margin-top: 30px;
+        }
+
+        .feature-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 18px;
+            font-size: 0.95rem;
+            opacity: 0.9;
+        }
+
+        .feature-item i {
+            margin-right: 12px;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 6px;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        /* Right Panel - Login Form */
+        .login-panel {
+            flex: 1.2;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            overflow-y: auto;
+        }
+
+        .login-content {
+            max-width: 420px;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        .welcome-section {
+            margin-bottom: 35px;
+            text-align: center;
+        }
+
+        .welcome-msg {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--nchsm-blue-dark);
+            margin-bottom: 8px;
+            line-height: 1.2;
+        }
+
+        .sub-msg {
+            font-size: 1.1rem;
+            color: var(--text-muted);
+            font-weight: 400;
+        }
+
+        /* Form Styles */
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            width: 100%;
+        }
+
+        .input-group {
+            position: relative;
+            width: 100%;
+        }
+
+        input {
+            width: 100%;
+            padding: 16px 50px 16px 18px; /* Added right padding for toggle button */
+            border-radius: 10px;
+            border: 1.5px solid var(--input-border);
+            background-color: var(--background);
+            font-size: 1rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            color: var(--text-dark);
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--nchsm-green);
+            box-shadow: var(--focus-ring);
+        }
+
+        input::placeholder {
+            color: #94A3B8;
+            font-weight: 400;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            border-radius: 4px;
+            transition: all 0.2s ease;
+            width: 36px;
+            height: 36px;
+        }
+
+        .password-toggle:hover {
+            background: rgba(10, 61, 98, 0.05);
+        }
+
+        .password-toggle:focus {
+            outline: none;
+            box-shadow: var(--focus-ring);
+        }
+
+        .checkbox-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 15px 0;
+            width: 100%;
+        }
+
+        .checkbox-row label {
+            display: flex;
+            align-items: center;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.95rem;
+            flex-shrink: 0;
+        }
+
+        .checkbox-row input[type="checkbox"] {
+            margin-right: 10px;
+            width: 18px;
+            height: 18px;
+            accent-color: var(--nchsm-green);
+        }
+
+        .forgot-password {
+            color: var(--nchsm-blue-light);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.95rem;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        .forgot-password:hover {
+            color: var(--nchsm-green);
+            text-decoration: underline;
+        }
+
+        button[type="submit"] {
+            background: var(--gradient-accent);
+            color: #fff;
+            border: none;
+            padding: 16px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            margin-top: 10px;
+            width: 100%;
+            box-shadow: 0 4px 12px rgba(56, 161, 105, 0.3);
+        }
+
+        button[type="submit"]:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(56, 161, 105, 0.4);
+        }
+
+        button[type="submit"]:active {
+            transform: translateY(0);
+        }
+
+        button[type="submit"]:disabled {
+            background: #CBD5E1;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* Error - Only displayed when there's an error */
+        .error {
+            color: #EF4444;
+            font-size: 0.95rem;
+            margin: 15px 0;
+            text-align: center;
+            font-weight: 500;
+            padding: 12px;
+            background: rgba(239, 68, 68, 0.05);
+            border-radius: 8px;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            display: none;
+        }
+
+        .error.show {
+            display: block;
+        }
+
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            width: 100%;
+        }
+
+        .footer p {
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+        }
+
+        .footer a {
+            color: var(--nchsm-blue-light);
+            font-weight: 600;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .footer a:hover {
+            color: var(--nchsm-green);
+            text-decoration: underline;
+        }
+
+        .copyright-line {
+            color: #94A3B8;
+            font-size: 0.85rem;
+            margin-top: 10px;
+        }
+
+        /* Loading Animation */
+        .btn-loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid transparent;
+            border-top: 2px solid #ffffff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* --- Mobile Optimizations --- */
+        @media (max-width: 1024px) {
+            .brand-panel {
+                padding: 25px;
+            }
+            
+            .login-panel {
+                padding: 35px;
+            }
+            
+            .logo {
+                width: 70px;
+                height: 70px;
+            }
+            
+            .college-title {
+                font-size: 1.4rem;
+            }
+            
+            .tagline {
+                font-size: 0.9rem;
+            }
+            
+            .feature-item {
+                font-size: 0.85rem;
+            }
+            
+            .welcome-msg {
+                font-size: 1.8rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .login-wrapper {
+                flex-direction: column;
+                min-height: 100vh;
+            }
+            
+            .brand-panel {
+                padding: 25px 20px;
+                flex: 0;
+                min-height: 40vh;
+            }
+            
+            .login-panel {
+                padding: 30px 25px;
+                flex: 1;
+                min-height: 60vh;
+            }
+            
+            .login-content {
+                max-width: 100%;
+            }
+            
+            .logo {
+                width: 60px;
+                height: 60px;
+            }
+            
+            .college-title {
+                font-size: 1.3rem;
+            }
+            
+            .tagline {
+                font-size: 0.85rem;
+            }
+            
+            .feature-item {
+                font-size: 0.8rem;
+                margin-bottom: 12px;
+            }
+            
+            .welcome-msg {
+                font-size: 1.6rem;
+            }
+            
+            .sub-msg {
+                font-size: 1rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .login-wrapper {
+                flex-direction: column;
+            }
+            
+            .brand-panel {
+                padding: 20px 15px;
+                min-height: 35vh;
+            }
+            
+            .login-panel {
+                padding: 25px 20px;
+                min-height: 65vh;
+            }
+            
+            .logo {
+                width: 50px;
+                height: 50px;
+            }
+            
+            .college-title {
+                font-size: 1.1rem;
+            }
+            
+            .tagline {
+                font-size: 0.8rem;
+            }
+            
+            .portal-label {
+                font-size: 0.85rem;
+                padding: 6px 14px;
+            }
+            
+            .feature-item {
+                font-size: 0.75rem;
+                margin-bottom: 10px;
+            }
+            
+            .welcome-msg {
+                font-size: 1.4rem;
+            }
+            
+            .sub-msg {
+                font-size: 0.9rem;
+            }
+            
+            input {
+                padding: 14px 45px 14px 16px;
+                font-size: 0.95rem;
+            }
+            
+            button[type="submit"] {
+                padding: 14px;
+                font-size: 0.95rem;
+            }
+            
+            .password-toggle {
+                width: 32px;
+                height: 32px;
+                right: 10px;
+            }
+        }
+
+        @media (max-width: 360px) {
+            .login-wrapper {
+                flex-direction: column;
+            }
+            
+            .brand-panel {
+                padding: 15px 12px;
+                min-height: 30vh;
+            }
+            
+            .login-panel {
+                padding: 20px 15px;
+                min-height: 70vh;
+            }
+            
+            .college-title {
+                font-size: 1rem;
+            }
+            
+            .welcome-msg {
+                font-size: 1.3rem;
+            }
+            
+            input {
+                padding: 12px 42px 12px 14px;
+            }
+            
+            button[type="submit"] {
+                padding: 12px;
+            }
+            
+            .checkbox-row {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+            
+            .forgot-password {
+                align-self: flex-end;
+            }
+        }
+
+        /* Landscape mode adjustments */
+        @media (max-height: 500px) and (orientation: landscape) {
+            .login-wrapper {
+                flex-direction: row;
+            }
+            
+            .brand-panel, .login-panel {
+                padding: 15px;
+            }
+            
+            .features-list {
+                margin-top: 15px;
+            }
+            
+            .feature-item {
+                margin-bottom: 8px;
+                font-size: 0.8rem;
+            }
+            
+            .footer {
+                margin-top: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-wrapper">
+        <!-- Left Panel - Branding & Visual -->
+        <div class="brand-panel">
+            <div class="brand-content">
+                <div class="logo">
+                    <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="Nakuru College Logo">
+                </div>
+                <div class="college-title">NAKURU COLLEGE OF HEALTH SCIENCES AND MANAGEMENT</div>
+                <div class="tagline">Centre of Nursing & Health Sciences Excellence</div>
+                <span class="portal-label">Digital Learning Platform</span>
+
+                <div class="features-list">
+                    <div class="feature-item">
+                        <i data-feather="book-open"></i>
+                        <span>Access to comprehensive learning materials</span>
+                    </div>
+                    <div class="feature-item">
+                        <i data-feather="award"></i>
+                        <span>Track your academic progress</span>
+                    </div>
+                    <div class="feature-item">
+                        <i data-feather="users"></i>
+                        <span>Connect with lecturers and peers</span>
+                    </div>
+                    <div class="feature-item">
+                        <i data-feather="bar-chart-2"></i>
+                        <span>Real-time performance analytics</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel - Login Form -->
+        <div class="login-panel">
+            <div class="login-content">
+                <div class="welcome-section">
+                    <div class="welcome-msg">Hi, welcome back</div>
+                    <div class="sub-msg">Please fill in your details to log in</div>
+                </div>
+
+                <!-- Error message container - hidden by default -->
+                <div id="errorMsg" class="error"></div>
+                
+                <form id="loginForm">
+                    <div class="input-group">
+                        <input type="email" id="email" placeholder="Username / Email" required>
+                    </div>
+                    
+                    <div class="input-group">
+                        <input type="password" id="password" placeholder="Password" required>
+                        <button type="button" id="password-toggle-btn" class="password-toggle" aria-label="Show password">
+                            <i data-feather="eye-off" id="toggle-icon" width="16" height="16"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="checkbox-row">
+                        <label>
+                            <input type="checkbox" id="rememberMe"> Remember me
+                        </label>
+                        <a href="forgot-password.html" class="forgot-password">Forgot Password?</a>
+                    </div>
+
+                    <button type="submit" id="loginButton">
+                        <span id="button-text">Log In</span>
+                    </button>
+                </form>
+                
+                <div class="footer">
+                    <p>Don't have an account? <a href="register.html">Sign Up</a></p>
+                    <span class="copyright-line">Copyright &copy; 2025 - Nakuru College of Health Sciences and Management</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Initialize Feather Icons
+        if (typeof feather !== 'undefined') {
+            feather.replace(); 
+        }
+
+        const passwordInput = document.getElementById('password');
+        const toggleButton = document.getElementById('password-toggle-btn');
+        const toggleIcon = document.getElementById('toggle-icon');
+
+        if (passwordInput && toggleButton && toggleIcon) {
+            toggleButton.addEventListener('click', () => {
+                const isPassword = passwordInput.type === 'password';
+                passwordInput.type = isPassword ? 'text' : 'password';
+                const iconName = isPassword ? 'eye' : 'eye-off';
+                toggleIcon.setAttribute('data-feather', iconName);
+                
+                if (typeof feather !== 'undefined') {
+                    feather.replace();
+                }
+                toggleButton.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
+            });
+        }
+
+        // Remove .html from URL
+        if (window.location.pathname.endsWith('.html')) {
+            const cleanPath = window.location.pathname.replace(/\.html$/, '');
+            window.history.replaceState({}, '', cleanPath);
+        }
+
+        const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        const errorMsg = document.getElementById('errorMsg');
+        const loginForm = document.getElementById('loginForm');
+        const loginButton = document.getElementById('loginButton');
+        const buttonText = document.getElementById('button-text');
+
+        if (!loginForm) return;
+
+        loginForm.addEventListener('submit', async e => {
+            e.preventDefault();
+            errorMsg.innerText = '';
+            errorMsg.classList.remove('show');
+            loginButton.disabled = true;
+            buttonText.innerHTML = '<div class="btn-loading"></div> Signing In...';
+
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+
+            try {
+                const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password });
+                if (authError || !authData.user) {
+                    errorMsg.innerText = authError?.message || 'Login failed. Check your email and password.';
+                    errorMsg.classList.add('show');
+                    loginButton.disabled = false;
+                    buttonText.textContent = 'Log In';
+                    return;
+                }
+
+                const { data: refreshedData, error: refreshError } = await supabase.auth.refreshSession();
+                if (refreshError) console.warn('Session refresh failed', refreshError);
+                const sessionUser = refreshedData?.session?.user ?? authData.user;
+
+                let role = sessionUser.user_metadata?.role?.toLowerCase() ?? 'student';
+
+                if (role === 'superadmin') {
+                    window.location.href = 'superadmin.html';
+                    return;
+                } else if (role === 'admin') {
+                    window.location.href = 'admin.html';
+                    return;
+                }
+
+                const { data: profileData, error: profileError } = await supabase
+                    .from('consolidated_user_profiles_table')
+                    .select('*')
+                    .eq('user_id', sessionUser.id)
+                    .maybeSingle();
+
+                if (profileError || !profileData) {
+                    errorMsg.innerText = 'Login failed: Profile access issue.';
+                    errorMsg.classList.add('show');
+                    await supabase.auth.signOut();
+                    loginButton.disabled = false;
+                    buttonText.textContent = 'Log In';
+                    return;
+                }
+
+                const currentStatus = profileData.status?.toLowerCase() ?? 'pending';
+                if (currentStatus !== 'approved') {
+                    errorMsg.innerText = 'Login failed: Your account is pending approval.';
+                    errorMsg.classList.add('show');
+                    await supabase.auth.signOut();
+                    loginButton.disabled = false;
+                    buttonText.textContent = 'Log In';
+                    return;
+                }
+
+                localStorage.setItem('currentUserProfile', JSON.stringify(profileData));
+
+                const profileRole = profileData.role?.toLowerCase() ?? 'student';
+
+                // Enhanced role-based redirect logic with HOD support
+                if (profileRole === 'student') {
+                    window.location.href = 'index.html';
+                } else if (profileRole === 'lecturer') {
+                    window.location.href = 'lecturer.html';
+                } else if (profileRole === 'admin') {
+                    window.location.href = 'admin.html';
+                } else if (profileRole === 'superadmin') {
+                    window.location.href = 'superadmin.html';
+                } else if (profileRole === 'hod') {
+                    // ADDED: Redirect HOD users to hod-tracker.html
+                    window.location.href = 'hod-tracker.html';
+                } else {
+                    window.location.href = 'index.html';
+                }
+
+            } catch (err) {
+                console.error('Unexpected system error:', err);
+                errorMsg.innerText = 'A critical system error occurred. Please try again later.';
+                errorMsg.classList.add('show');
+                loginButton.disabled = false;
+                buttonText.textContent = 'Log In';
+            }
+        });
+    });
+    </script>
+</body>
+</html>
