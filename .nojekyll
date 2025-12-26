@@ -1,0 +1,18 @@
+console.log('🚀 FIXING GITHUB PAGES DEPLOYMENT...');
+console.log('====================================');
+
+console.log('\n📝 STEP 1: Create .nojekyll file');
+console.log('Go to: https://github.com/NCHSMlearning/NCHSM-Digital-campus-');
+console.log('Click "Add file" → "Create new file"');
+console.log('Name: .nojekyll');
+console.log('Content: (empty - just the file name with dot)');
+console.log('Click "Commit changes"');
+
+console.log('\n📝 STEP 2: Check GitHub Pages settings');
+console.log('Go to: https://github.com/NCHSMlearning/NCHSM-Digital-campus-/settings/pages');
+console.log('Make sure:');
+console.log('  - Source: Deploy from a branch');
+console.log('  - Branch: main');
+console.log('  - Folder: / (root)');
+
+console.log('\n📝 STEP 3: Wait 2-3 minutes for GitHub Pages to rebuild');
