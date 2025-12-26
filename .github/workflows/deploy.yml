@@ -1,3 +1,4 @@
+
 name: Deploy to GitHub Pages
 
 on:
@@ -23,19 +24,21 @@ jobs:
           # Create config.js with secrets
           cat > config.js << 'EOF'
           // config.js - Generated from GitHub Secrets
+          // DO NOT EDIT - This file is auto-generated from GitHub Secrets
           window.APP_CONFIG = {
               SUPABASE_URL: "${{ secrets.SUPABASE_URL }}",
               SUPABASE_ANON_KEY: "${{ secrets.SUPABASE_ANON_KEY }}",
               LOCATIONIQ_API_KEY: "${{ secrets.LOCATIONIQ_API_KEY }}",
-              BUILD_TIME: "${{ github.event.head_commit.timestamp || github.run_started_at }}",
+              BUILD_TIME: "${{ github.run_started_at }}",
               COMMIT_SHA: "${{ github.sha }}",
               ENVIRONMENT: "production"
           };
           EOF
           
-          # Display first few chars for verification (not full secrets!)
-          echo "Config generated. Build time: ${{ github.event.head_commit.timestamp || github.run_started_at }}"
-          echo "Supabase URL starts with: ${ secrets.SUPABASE_URL:0:20 }..."
+          echo "✅ Config.js generated from GitHub Secrets"
+          echo "Build time: ${{ github.run_started_at }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Supabase project: lwhtjozfsmbyihenfunw"
       
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
