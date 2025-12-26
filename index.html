@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -8,12 +7,18 @@
     <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" sizes="32x32">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- External Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    
+    <!-- Load config.js FIRST -->
+    <script src="./config.js"></script>
+    
     <link rel="stylesheet" href="indexstyle.css">
     
     <!-- PWA Manifest -->
-    <link rel="manifest" href="/manifest.json">
+    <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#4C1D95">
     
     <!-- iOS PWA Support -->
@@ -661,10 +666,20 @@
         </div>
     </div>
     
-    <!-- JavaScript Modules -->
-    <script src="./config.js"></script>
+    <!-- JavaScript Modules - Load in CORRECT order -->
+    <!-- Core Database Module MUST be loaded after config.js -->
     <script src="./js/database.js"></script>
+    
+    <!-- UI Module -->
     <script src="./js/ui.js"></script>
+    
+    <!-- Utility Modules -->
+    <script src="./js/utils.js"></script>
+    <script src="./js/services/toast.js"></script>
+    <script src="./js/services/cache-manager.js"></script>
+    <script src="./js/services/offline-manager.js"></script>
+    
+    <!-- Feature Modules -->
     <script src="./js/dashboard.js"></script>
     <script src="./js/profile.js"></script>
     <script src="./js/attendance.js"></script>
@@ -674,10 +689,6 @@
     <script src="./js/calendar.js"></script>
     <script src="./js/messages.js"></script>
     <script src="./js/nurseiq.js"></script>
-    <script src="./js/utils.js"></script>
-    <script src="./js/services/offline-manager.js"></script>
-    <script src="./js/services/cache-manager.js"></script>
-    <script src="./js/services/toast.js"></script>
     
     <!-- Main App Initialization -->
     <script>
@@ -696,39 +707,7 @@
         utils: {}
     };
 
-    document.addEventListener('DOMContentLoaded', async function() {
-        try {
-            console.log('Initializing app...');
-            
-            // Initialize the database first
-            await db.initialize();
-            
-            // Initialize UI
-            if (typeof initUI === 'function') {
-                initUI();
-            }
-            
-            // Load dashboard data
-            if (typeof loadDashboard === 'function') {
-                loadDashboard();
-            }
-            
-            // Load profile data
-            if (typeof loadProfile === 'function') {
-                loadProfile();
-            }
-            
-            console.log('App initialized successfully!');
-            
-        } catch (error) {
-            console.error('Failed to initialize app:', error);
-            if (typeof showToast === 'function') {
-                showToast('Failed to initialize app. Please refresh the page.', 'error');
-            }
-        }
-    });
-
-    // Basic UI functions that will be used by all modules
+    // Basic UI functions
     function toggleMenu() {
         const sidebar = document.getElementById('sidebar');
         const overlay = document.getElementById('overlay');
@@ -771,40 +750,46 @@
     }
 
     async function loadTabData(tabId) {
-        switch(tabId) {
-            case 'dashboard':
-                if (typeof loadDashboard === 'function') loadDashboard();
-                break;
-            case 'profile':
-                if (typeof loadProfile === 'function') loadProfile();
-                break;
-            case 'calendar':
-                if (typeof loadAcademicCalendar === 'function') loadAcademicCalendar();
-                break;
-            case 'courses':
-                if (typeof loadCourses === 'function') loadCourses();
-                break;
-            case 'attendance':
-                if (typeof loadAttendance === 'function') loadAttendance();
-                break;
-            case 'cats':
-                if (typeof loadExams === 'function') loadExams();
-                break;
-            case 'resources':
-                if (typeof loadResources === 'function') loadResources();
-                break;
-            case 'messages':
-                if (typeof loadMessages === 'function') loadMessages();
-                break;
-            case 'nurseiq':
-                if (typeof loadNurseIQ === 'function') loadNurseIQ();
-                break;
+        try {
+            switch(tabId) {
+                case 'dashboard':
+                    if (typeof loadDashboard === 'function') await loadDashboard();
+                    break;
+                case 'profile':
+                    if (typeof loadProfile === 'function') await loadProfile();
+                    break;
+                case 'calendar':
+                    if (typeof loadAcademicCalendar === 'function') await loadAcademicCalendar();
+                    break;
+                case 'courses':
+                    if (typeof loadCourses === 'function') await loadCourses();
+                    break;
+                case 'attendance':
+                    if (typeof loadAttendance === 'function') await loadAttendance();
+                    break;
+                case 'cats':
+                    if (typeof loadExams === 'function') await loadExams();
+                    break;
+                case 'resources':
+                    if (typeof loadResources === 'function') await loadResources();
+                    break;
+                case 'messages':
+                    if (typeof loadMessages === 'function') await loadMessages();
+                    break;
+                case 'nurseiq':
+                    if (typeof loadNurseIQ === 'function') await loadNurseIQ();
+                    break;
+            }
+        } catch (error) {
+            console.error(`Error loading tab ${tabId}:`, error);
         }
     }
 
     async function logout() {
         try {
-            await db.logout();
+            if (typeof db !== 'undefined' && db.logout) {
+                await db.logout();
+            }
             window.location.href = 'login.html';
         } catch (error) {
             console.error('Logout error:', error);
@@ -816,57 +801,144 @@
 
     // Set up event listeners
     function setupEventListeners() {
-        // Menu toggle
-        document.getElementById('menuToggle').addEventListener('click', toggleMenu);
-        document.getElementById('overlay').addEventListener('click', closeMenu);
-        
-        // Logout
-        document.getElementById('logoutBtn').addEventListener('click', logout);
-        
-        // Tab navigation
-        document.querySelectorAll('.nav a[data-tab]').forEach(link => {
-            link.addEventListener('click', function(e) {
-                e.preventDefault();
-                const tabId = this.getAttribute('data-tab');
-                showTab(tabId);
+        try {
+            // Menu toggle
+            const menuToggle = document.getElementById('menuToggle');
+            const overlay = document.getElementById('overlay');
+            const logoutBtn = document.getElementById('logoutBtn');
+            
+            if (menuToggle) {
+                menuToggle.addEventListener('click', toggleMenu);
+            }
+            
+            if (overlay) {
+                overlay.addEventListener('click', closeMenu);
+            }
+            
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', logout);
+            }
+            
+            // Tab navigation
+            document.querySelectorAll('.nav a[data-tab]').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const tabId = this.getAttribute('data-tab');
+                    showTab(tabId);
+                });
             });
-        });
-        
-        // Dashboard card clicks
-        document.querySelectorAll('.card[data-tab]').forEach(card => {
-            card.addEventListener('click', function() {
-                const tabId = this.getAttribute('data-tab');
-                showTab(tabId);
+            
+            // Dashboard card clicks
+            document.querySelectorAll('.card[data-tab]').forEach(card => {
+                card.addEventListener('click', function() {
+                    const tabId = this.getAttribute('data-tab');
+                    showTab(tabId);
+                });
             });
-        });
-        
-        // Footer links
-        document.querySelectorAll('.footer-links a[data-tab]').forEach(link => {
-            link.addEventListener('click', function(e) {
-                e.preventDefault();
-                const tabId = this.getAttribute('data-tab');
-                showTab(tabId);
+            
+            // Footer links
+            document.querySelectorAll('.footer-links a[data-tab]').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const tabId = this.getAttribute('data-tab');
+                    showTab(tabId);
+                });
             });
-        });
+            
+            console.log('Event listeners set up successfully');
+        } catch (error) {
+            console.error('Error setting up event listeners:', error);
+        }
     }
 
-    // Initialize event listeners when DOM is loaded
-    document.addEventListener('DOMContentLoaded', setupEventListeners);
+    // Initialize the application
+    async function initializeApp() {
+        try {
+            console.log('Starting app initialization...');
+            
+            // Check if config is loaded
+            if (typeof supabaseConfig === 'undefined') {
+                throw new Error('Configuration not loaded. config.js must be loaded first.');
+            }
+            
+            // Check if database module exists
+            if (typeof db === 'undefined') {
+                throw new Error('Database module not loaded. Check script loading order.');
+            }
+            
+            // Initialize the database
+            console.log('Initializing database...');
+            await db.initialize();
+            
+            // Set up event listeners
+            console.log('Setting up event listeners...');
+            setupEventListeners();
+            
+            // Load initial dashboard data
+            console.log('Loading initial dashboard...');
+            await loadTabData('dashboard');
+            
+            // Show success message
+            if (typeof showToast === 'function') {
+                showToast('Dashboard loaded successfully!', 'success');
+            }
+            
+            console.log('App initialized successfully!');
+            
+        } catch (error) {
+            console.error('Failed to initialize app:', error);
+            
+            // Show user-friendly error message
+            const errorContainer = document.getElementById('welcome-section');
+            if (errorContainer) {
+                errorContainer.innerHTML = `
+                    <h2 style="color: var(--color-alert);">Initialization Error</h2>
+                    <p>Failed to load the dashboard. Please try:</p>
+                    <ol>
+                        <li>Refreshing the page</li>
+                        <li>Checking your internet connection</li>
+                        <li>Contacting support if the issue persists</li>
+                    </ol>
+                    <button onclick="window.location.reload()" style="padding: 10px 20px; background: var(--color-primary); color: white; border: none; border-radius: 6px; cursor: pointer; margin-top: 10px;">
+                        Refresh Page
+                    </button>
+                `;
+            }
+            
+            if (typeof showToast === 'function') {
+                showToast('Failed to initialize app. Please refresh the page.', 'error');
+            }
+        }
+    }
 
-    // Export functions to global scope for use in individual JS files
+    // Export functions to global scope
     window.toggleMenu = toggleMenu;
     window.closeMenu = closeMenu;
     window.showTab = showTab;
     window.logout = logout;
+    window.loadTabData = loadTabData;
     
     // Store in app object for compatibility
     app.ui.toggleMenu = toggleMenu;
     app.ui.closeMenu = closeMenu;
     app.ui.showTab = showTab;
     app.auth.logout = logout;
+
+    // Initialize app when DOM is fully loaded
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('DOM fully loaded, initializing app...');
+        setTimeout(initializeApp, 100); // Small delay to ensure all scripts are loaded
+    });
+
+    // Add animation style
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    `;
+    document.head.appendChild(style);
     </script>
-    
-    <!-- config.js generated by GitHub Actions -->
-    <script src="./config.js"></script>
 </body>
-                            </html>
+</html>
