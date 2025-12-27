@@ -1,37 +1,45 @@
-// js/attendance.js - Attendance Management Module
+// js/attendance.js - Attendance System Module
 class AttendanceModule {
-    constructor(supabaseClient, locationiqApiKey) {
-        this.sb = supabaseClient;
-        this.locationiqApiKey = locationiqApiKey;
+    constructor() {
         this.userId = null;
         this.userProfile = null;
-        
-        // Attendance elements
-        this.sessionTypeSelect = document.getElementById('session-type');
-        this.attendanceTargetSelect = document.getElementById('attendance-target');
-        this.checkInButton = document.getElementById('check-in-button');
-        this.geoMessage = document.getElementById('geo-message');
-        this.targetLabel = document.getElementById('target-label');
-        this.geoAttendanceHistory = document.getElementById('geo-attendance-history');
-        
-        // Data caches
         this.cachedClinicalAreas = [];
         this.cachedCourses = [];
         
         // Constants
-        this.MAX_DISTANCE_RADIUS = 200;
-        this.FALLBACK_LAT = 0.00;
-        this.FALLBACK_LON = 0.00;
-        this.FALLBACK_ACCURACY = 9999;
-        this.LOCATIONIQ_API_URL = 'https://us1.locationiq.com/v1/reverse.php';
+        this.FALLBACK_LAT = -1.2921;
+        this.FALLBACK_LON = 36.8219;
+        this.FALLBACK_ACCURACY = 1000;
+        this.MAX_DISTANCE_RADIUS = 50; // 50 meters
+        this.LOCATIONIQ_API_URL = 'https://us1.locationiq.com/v1/reverse';
+        this.LOCATIONIQ_API_KEY = 'pk.b5a1de84afc36de2fd38643ba63d3124';
+        
+        // DOM elements
+        this.sessionTypeSelect = document.getElementById('session-type');
+        this.attendanceTargetSelect = document.getElementById('attendance-target');
+        this.targetLabel = document.getElementById('target-label');
+        this.geoMessage = document.getElementById('geo-message');
+        this.checkInButton = document.getElementById('check-in-button');
+        this.geoAttendanceHistory = document.getElementById('geo-attendance-history');
         
         this.initializeElements();
     }
     
     initializeElements() {
+        console.log('🔧 AttendanceModule elements:', {
+            sessionTypeSelect: !!this.sessionTypeSelect,
+            attendanceTargetSelect: !!this.attendanceTargetSelect,
+            geoMessage: !!this.geoMessage,
+            checkInButton: !!this.checkInButton,
+            geoAttendanceHistory: !!this.geoAttendanceHistory
+        });
+        
         // Setup event listeners
         if (this.sessionTypeSelect) {
-            this.sessionTypeSelect.addEventListener('change', () => this.updateTargetSelect());
+            this.sessionTypeSelect.addEventListener('change', () => {
+                console.log('🔄 Session type changed to:', this.sessionTypeSelect.value);
+                this.updateTargetSelect();
+            });
         }
         
         if (this.checkInButton) {
@@ -40,46 +48,75 @@ class AttendanceModule {
     }
     
     // Initialize with user ID and profile
-    initialize(userId, userProfile) {
-        this.userId = userId;
-        this.userProfile = userProfile;
+    initialize() {
+        console.log('🚀 AttendanceModule.initialize() called');
+        this.userId = getCurrentUserId();
+        this.userProfile = getUserProfile();
         
-        if (userId && userProfile) {
+        console.log('👤 Attendance user data:', {
+            userId: this.userId,
+            userProfile: this.userProfile ? 'Loaded' : 'Missing'
+        });
+        
+        if (this.userId && this.userProfile) {
+            console.log('✅ User data available, loading attendance data...');
             this.loadAttendanceData();
+        } else {
+            console.error('❌ Missing user data for attendance');
         }
     }
     
+    // Get Supabase client
+    getSupabaseClient() {
+        return window.supabaseClient || getSupabaseClient();
+    }
+    
+    // Load all attendance data
     async loadAttendanceData() {
+        console.log('📥 Loading attendance data...');
         try {
             await Promise.all([
                 this.loadClinicalTargets(),
-                this.loadClassTargets(),
-                this.loadAttendanceHistory()
+                this.loadClassTargets()
             ]);
             
+            // Update dropdown after data is loaded
             this.updateTargetSelect();
             
+            // Load attendance history
+            if (this.geoAttendanceHistory) {
+                this.loadGeoAttendanceHistory();
+            }
+            
+            console.log('✅ Attendance data loaded successfully');
         } catch (error) {
-            console.error('Error loading attendance data:', error);
+            console.error('❌ Error loading attendance data:', error);
         }
     }
     
     // Load clinical targets
     async loadClinicalTargets() {
-        if (!this.userProfile) return;
+        console.log('🏥 Loading clinical targets...');
+        
+        if (!this.userProfile) {
+            this.userProfile = getUserProfile();
+        }
         
         const program = this.userProfile?.program || this.userProfile?.department;
         const intakeYear = this.userProfile?.intake_year;
         const blockTerm = this.userProfile?.block || null;
         
+        console.log('🎯 Clinical query params:', { program, intakeYear, blockTerm });
+        
         if (!program || !intakeYear) {
+            console.warn('⚠️ Missing program or intake year for clinical targets');
             this.cachedClinicalAreas = [];
             return;
         }
         
         try {
             // Geo-based clinical areas
-            const { data: areaData, error: areaError } = await this.sb
+            const { data: areaData, error: areaError } = await this.getSupabaseClient()
                 .from('clinical_areas')
                 .select('id, name, latitude, longitude, block, program, intake_year')
                 .ilike('program', program)
@@ -87,9 +124,10 @@ class AttendanceModule {
                 .or(blockTerm ? `block.ilike.${blockTerm},block.is.null` : 'block.is.null');
             
             if (areaError) throw areaError;
+            console.log(`✅ Loaded ${areaData?.length || 0} clinical areas`);
             
             // Textual clinical names including UUID + coordinates
-            const { data: nameData, error: nameError } = await this.sb
+            const { data: nameData, error: nameError } = await this.getSupabaseClient()
                 .from('clinical_names')
                 .select('id, uuid, clinical_area_name, latitude, longitude, program, intake_year, block_term')
                 .ilike('program', program)
@@ -97,6 +135,7 @@ class AttendanceModule {
                 .or(blockTerm ? `block_term.ilike.${blockTerm},block_term.is.null` : 'block_term.is.null');
             
             if (nameError) throw nameError;
+            console.log(`✅ Loaded ${nameData?.length || 0} clinical names`);
             
             // Map textual names to use actual UUIDs + keep coordinates
             const mappedNames = (nameData || []).map(n => ({
@@ -113,33 +152,46 @@ class AttendanceModule {
                 .filter((v, i, a) => a.findIndex(t => t.name === v.name) === i)
                 .sort((a, b) => a.name.localeCompare(b.name));
             
+            console.log(`✅ Total unique clinical areas: ${this.cachedClinicalAreas.length}`);
+            
         } catch (error) {
-            console.error("Error loading clinical areas:", error);
+            console.error("❌ Error loading clinical areas:", error);
             this.cachedClinicalAreas = [];
         }
     }
     
     // Load class targets
     async loadClassTargets() {
-        if (!this.userProfile) return;
+        console.log('🏫 Loading class targets...');
+        
+        if (!this.userProfile) {
+            this.userProfile = getUserProfile();
+        }
         
         const program = this.userProfile?.program || this.userProfile?.department;
         const intakeYear = this.userProfile?.intake_year;
         const block = this.userProfile?.block || null;
         
+        console.log('🎯 Class query params:', { program, intakeYear, block });
+        
         if (!program || !intakeYear) {
+            console.warn('⚠️ Missing program or intake year for class targets');
             this.cachedCourses = [];
             return;
         }
         
         try {
-            let query = this.sb.from('courses_sections')
+            let query = this.getSupabaseClient()
+                .from('courses_sections')
                 .select('id, name, code, latitude, longitude')
                 .eq('program', program)
                 .eq('intake_year', intakeYear);
             
-            if (block) query = query.or(`block.eq.${block},block.is.null`);
-            else query = query.is('block', null);
+            if (block) {
+                query = query.or(`block.eq.${block},block.is.null`);
+            } else {
+                query = query.is('block', null);
+            }
             
             const { data, error } = await query.order('name');
             if (error) throw error;
@@ -151,15 +203,81 @@ class AttendanceModule {
                 latitude: c.latitude,
                 longitude: c.longitude
             }));
+            
+            console.log(`✅ Loaded ${this.cachedCourses.length} class targets`);
+            
         } catch (error) {
-            console.error("Error loading class targets:", error);
+            console.error("❌ Error loading class targets:", error);
             this.cachedCourses = [];
+        }
+    }
+    
+    // Load attendance history
+    async loadGeoAttendanceHistory() {
+        if (!this.geoAttendanceHistory) return;
+        
+        console.log('📊 Loading attendance history...');
+        this.geoAttendanceHistory.innerHTML = '<tr><td colspan="4">Loading geo check-in history...</td></tr>';
+        
+        try {
+            const { data: logs, error } = await this.getSupabaseClient()
+                .from('geo_attendance_logs')
+                .select('check_in_time, session_type, target_name, is_verified')
+                .eq('student_id', this.userId)
+                .order('check_in_time', { ascending: false })
+                .limit(100);
+            
+            if (error) throw error;
+            
+            this.geoAttendanceHistory.innerHTML = '';
+            if (!logs || logs.length === 0) {
+                console.log('📭 No attendance logs found');
+                this.geoAttendanceHistory.innerHTML = '<tr><td colspan="4">No check-in logs found.</td></tr>';
+                return;
+            }
+            
+            console.log(`✅ Loaded ${logs.length} attendance logs`);
+            
+            logs.forEach(log => {
+                const timeStr = new Date(log.check_in_time).toLocaleString();
+                const verifiedText = log.is_verified ? '✅ Verified' : '⏳ Pending verification';
+                const verifiedClass = log.is_verified ? 'verified' : 'pending';
+                
+                const row = `
+                    <tr>
+                        <td>${timeStr}</td>
+                        <td>${log.session_type}</td>
+                        <td>${log.target_name}</td>
+                        <td class="verification-status ${verifiedClass}">${verifiedText}</td>
+                    </tr>
+                `;
+                this.geoAttendanceHistory.innerHTML += row;
+            });
+            
+        } catch (error) {
+            console.error("❌ Failed to load attendance history:", error);
+            this.geoAttendanceHistory.innerHTML = `
+                <tr>
+                    <td colspan="4" style="color:#EF4444;">
+                        Error loading attendance logs: ${error.message}
+                        <br>
+                        <button onclick="attendanceModule.loadGeoAttendanceHistory()" class="btn-small">
+                            Retry
+                        </button>
+                    </td>
+                </tr>
+            `;
         }
     }
     
     // Update target dropdown
     updateTargetSelect() {
-        if (!this.sessionTypeSelect || !this.attendanceTargetSelect || !this.geoMessage) return;
+        console.log('🔄 Updating target select dropdown');
+        
+        if (!this.sessionTypeSelect || !this.attendanceTargetSelect || !this.geoMessage) {
+            console.warn('⚠️ Missing required elements for target select');
+            return;
+        }
         
         const sessionType = this.sessionTypeSelect.value;
         this.attendanceTargetSelect.innerHTML = '';
@@ -174,6 +292,7 @@ class AttendanceModule {
                 text: `${d.name} (Clinical)`
             }));
             label = 'Department/Area:';
+            console.log(`🎯 Clinical targets available: ${targetList.length}`);
         } else if (sessionType === 'Class') {
             targetList = this.cachedCourses.map(c => ({
                 id: c.id,
@@ -182,15 +301,20 @@ class AttendanceModule {
                 text: `${c.code ? c.code + ' - ' : ''}${c.name} (Class)`
             }));
             label = 'Course/Subject:';
+            console.log(`🎯 Class targets available: ${targetList.length}`);
         }
         
-        if (this.targetLabel) this.targetLabel.textContent = label;
+        // Update label
+        if (this.targetLabel) {
+            this.targetLabel.textContent = label;
+        }
         
         if (targetList.length === 0) {
             const message = sessionType === 'Class'
                 ? 'No active courses found for your block.'
                 : 'No clinical areas assigned to your block.';
             this.attendanceTargetSelect.innerHTML = `<option value="">${message}</option>`;
+            console.log(`📭 ${message}`);
         } else {
             const defaultOption = document.createElement('option');
             defaultOption.value = '';
@@ -205,9 +329,12 @@ class AttendanceModule {
             });
             
             this.attendanceTargetSelect.selectedIndex = 0;
+            console.log(`✅ Populated dropdown with ${targetList.length} options`);
         }
         
-        this.geoMessage.innerHTML = `Please select a specific <strong>${label.replace(':', '')}</strong> to check in.`;
+        if (this.geoMessage) {
+            this.geoMessage.innerHTML = `Please select a specific <strong>${label.replace(':', '')}</strong> to check in.`;
+        }
     }
     
     // Get device ID
@@ -216,19 +343,122 @@ class AttendanceModule {
         if (!deviceId) {
             deviceId = crypto.randomUUID();
             localStorage.setItem('device_id', deviceId);
+            console.log('📱 Generated new device ID:', deviceId);
+        } else {
+            console.log('📱 Using existing device ID:', deviceId);
         }
         return deviceId;
     }
     
-    // Geo check-in function
-    async geoCheckIn() {
-        if (this.checkInButton) this.checkInButton.disabled = true;
-        if (this.geoMessage) this.geoMessage.textContent = '⏱️ Initializing check-in...';
+    // Get current location
+    async getCurrentLocation() {
+        console.log('📍 Getting current location...');
+        
+        return new Promise((resolve, reject) => {
+            if (!navigator.geolocation) {
+                console.warn('⚠️ Geolocation not supported by browser');
+                resolve({
+                    lat: this.FALLBACK_LAT,
+                    lon: this.FALLBACK_LON,
+                    acc: this.FALLBACK_ACCURACY,
+                    friendly: 'GPS unavailable in browser'
+                });
+                return;
+            }
+            
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const location = {
+                        lat: position.coords.latitude,
+                        lon: position.coords.longitude,
+                        acc: position.coords.accuracy,
+                        friendly: null
+                    };
+                    console.log('📍 GPS location obtained:', location);
+                    resolve(location);
+                },
+                (error) => {
+                    console.warn('⚠️ GPS error:', error.message);
+                    resolve({
+                        lat: this.FALLBACK_LAT,
+                        lon: this.FALLBACK_LON,
+                        acc: this.FALLBACK_ACCURACY,
+                        friendly: `GPS denied: ${error.message}`
+                    });
+                },
+                { 
+                    enableHighAccuracy: true, 
+                    timeout: 15000, 
+                    maximumAge: 0 
+                }
+            );
+        });
+    }
+    
+    // Reverse geocode location
+    async reverseGeocode(lat, lon) {
+        console.log('🗺️ Reverse geocoding location...');
         
         try {
+            const res = await fetch(
+                `${this.LOCATIONIQ_API_URL}?key=${this.LOCATIONIQ_API_KEY}&lat=${lat}&lon=${lon}&format=json`
+            );
+            
+            if (res.ok) {
+                const geoData = await res.json();
+                const friendlyName = geoData?.display_name || `Lat:${lat.toFixed(4)}, Lon:${lon.toFixed(4)}`;
+                console.log('✅ Reverse geocode successful:', friendlyName);
+                return friendlyName;
+            } else {
+                const fallback = `Lat:${lat.toFixed(4)}, Lon:${lon.toFixed(4)}`;
+                console.warn('⚠️ Reverse geocode API failed, using fallback');
+                return fallback;
+            }
+        } catch (err) {
+            const fallback = `Lat:${lat.toFixed(4)}, Lon:${lon.toFixed(4)}`;
+            console.warn('⚠️ Reverse geocode error:', err.message);
+            return fallback;
+        }
+    }
+    
+    // Calculate distance between two points (Haversine formula)
+    calculateDistance(lat1, lon1, lat2, lon2) {
+        const R = 6371000; // Earth radius in meters
+        const toRad = (x) => (x * Math.PI) / 180;
+        
+        const dLat = toRad(lat2 - lat1);
+        const dLon = toRad(lon2 - lon1);
+        const radLat1 = toRad(lat1);
+        const radLat2 = toRad(lat2);
+        
+        const a = Math.sin(dLat / 2) ** 2 +
+                Math.cos(radLat1) * Math.cos(radLat2) *
+                Math.sin(dLon / 2) ** 2;
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        const distanceMeters = R * c;
+        
+        console.log(`📏 Distance calculation: ${distanceMeters.toFixed(2)} meters`);
+        return distanceMeters;
+    }
+    
+    // Geo check-in function
+    async geoCheckIn() {
+        console.log('📍 Starting geo check-in process...');
+        
+        if (this.checkInButton) this.checkInButton.disabled = true;
+        if (this.geoMessage) {
+            this.geoMessage.textContent = '⏱️ Initializing check-in...';
+            this.geoMessage.className = 'info-message';
+        }
+        
+        try {
+            // Ensure user profile is loaded
             if (!this.userProfile) {
-                if (this.geoMessage) this.geoMessage.textContent = 'Error: Student profile not loaded.';
-                return;
+                this.userProfile = getUserProfile();
+            }
+            
+            if (!this.userProfile) {
+                throw new Error('Student profile not loaded');
             }
             
             const studentProgram = this.userProfile?.program || this.userProfile?.department || null;
@@ -237,181 +467,155 @@ class AttendanceModule {
             const targetSelect = this.attendanceTargetSelect?.value;
             const checkInTime = new Date().toISOString();
             
-            if (!sessionType || !targetSelect || targetSelect === '') {
-                if (this.geoMessage) this.geoMessage.textContent = 'Error: Select session type and target.';
-                return;
-            }
-            
-            // TargetSelect format is ID|NAME
-            const [targetId, targetNameFromDropdown] = targetSelect.split('|');
-            
-            if (!targetId || !targetNameFromDropdown) {
-                if (this.geoMessage) this.geoMessage.textContent = 'Error: Invalid target selected.';
-                return;
-            }
-            
-            // Check if offline
-            if (!navigator.onLine) {
-                // Add to offline queue (you need to implement OfflineManager)
-                if (window.OfflineManager && window.OfflineManager.addToQueue) {
-                    window.OfflineManager.addToQueue('checkIn', {
-                        sessionType,
-                        targetId,
-                        targetNameFromDropdown,
-                        studentProgram,
-                        checkInTime,
-                        deviceId
-                    });
-                }
-                if (this.geoMessage) this.geoMessage.innerHTML = `✅ Check-in saved offline. Will sync when back online.`;
-                if (this.checkInButton) this.checkInButton.disabled = false;
-                return;
-            }
-            
-            if (this.geoMessage) this.geoMessage.textContent = '⏱️ Requesting device location... (Allow up to 15 seconds for GPS lock)';
-            
-            // Get geolocation
-            const location = await new Promise(resolve => {
-                if (!navigator.geolocation) return resolve({ lat: this.FALLBACK_LAT, lon: this.FALLBACK_LON, acc: this.FALLBACK_ACCURACY, friendly: 'GPS unavailable' });
-                navigator.geolocation.getCurrentPosition(
-                    pos => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude, acc: pos.coords.accuracy, friendly: null }),
-                    () => resolve({ lat: this.FALLBACK_LAT, lon: this.FALLBACK_LON, acc: this.FALLBACK_ACCURACY, friendly: 'GPS denied/timeout' }),
-                    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-                );
+            console.log('📋 Check-in parameters:', {
+                sessionType,
+                targetSelect,
+                studentProgram,
+                deviceId
             });
             
-            // Reverse-geocode for friendly name
-            if (!location.friendly) {
-                try {
-                    const res = await fetch(`${this.LOCATIONIQ_API_URL}?key=${this.locationiqApiKey}&lat=${location.lat}&lon=${location.lon}&format=json`);
-                    if (res.ok) {
-                        const geoData = await res.json();
-                        location.friendly = geoData?.display_name || `Lat:${location.lat.toFixed(4)}, Lon:${location.lon.toFixed(4)}`;
-                    } else {
-                        location.friendly = `Lat:${location.lat.toFixed(4)}, Lon:${location.lon.toFixed(4)} (Geo-API failed)`;
-                    }
-                } catch (err) {
-                    location.friendly = `Lat:${location.lat.toFixed(4)}, Lon:${location.lon.toFixed(4)} (Geo-API error)`;
-                    console.warn('Reverse geocoding error:', err);
-                }
+            // Validate inputs
+            if (!sessionType || !targetSelect || targetSelect === '') {
+                throw new Error('Please select session type and target');
             }
             
-            // Find the target entry to get coordinates and the CORRECT name
+            // Parse target selection
+            const [targetId, targetNameFromDropdown] = targetSelect.split('|');
+            if (!targetId || !targetNameFromDropdown) {
+                throw new Error('Invalid target selected');
+            }
+            
+            // Check offline status
+            if (!navigator.onLine) {
+                console.log('📴 Offline mode detected');
+                if (this.geoMessage) {
+                    this.geoMessage.innerHTML = `
+                        <span class="offline-message">
+                            ✅ Check-in saved offline. Will sync when back online.
+                        </span>
+                    `;
+                    this.geoMessage.className = 'offline-message';
+                }
+                // TODO: Implement offline queue
+                return;
+            }
+            
+            // Get current location
+            if (this.geoMessage) {
+                this.geoMessage.textContent = '📍 Requesting location... (Please allow GPS access)';
+            }
+            
+            const location = await this.getCurrentLocation();
+            
+            // Reverse geocode for friendly name
+            if (!location.friendly) {
+                location.friendly = await this.reverseGeocode(location.lat, location.lon);
+            }
+            
+            // Find target entry
             let targetEntry = sessionType === 'Clinical'
                 ? this.cachedClinicalAreas.find(c => c.id === targetId)
                 : this.cachedCourses.find(c => c.id === targetId);
                 
-            if (!targetEntry || (targetEntry.latitude === null || targetEntry.longitude === null)) {
-                if (this.geoMessage) this.geoMessage.textContent = 'Error: Target location coordinates not found.';
-                return;
+            if (!targetEntry) {
+                throw new Error('Selected target not found in cache');
             }
             
+            if (targetEntry.latitude === null || targetEntry.longitude === null) {
+                throw new Error('Target location coordinates not available');
+            }
+            
+            // Prepare data for database
             let dbTargetId = targetEntry.id;
-            let targetNameToLog = targetNameFromDropdown;
+            let targetNameToLog = targetEntry.name; // Use the actual name from cache
             let selectedCourseId = null;
             
-            // Set name and ID for logging based on type
             if (sessionType === 'Class') {
-                targetNameToLog = targetEntry.name; 
                 selectedCourseId = targetEntry.id;
-            } else if (sessionType === 'Clinical') {
-                targetNameToLog = targetEntry.name;
-                dbTargetId = targetEntry.id;
             }
             
-            // Haversine distance calculation
-            const R = 6371000; // Earth radius in meters
-            const toRad = x => x * Math.PI / 180;
-            const dLat = toRad(location.lat - targetEntry.latitude);
-            const dLon = toRad(location.lon - targetEntry.longitude);
-            const lat1 = toRad(location.lat);
-            const lat2 = toRad(targetEntry.latitude);
-            const a = Math.sin(dLat/2)**2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon/2)**2;
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-            const distanceMeters = R * c;
-            const isVerified = distanceMeters <= this.MAX_DISTANCE_RADIUS;
+            // Calculate distance and verify
+            const distanceMeters = this.calculateDistance(
+                location.lat, location.lon,
+                targetEntry.latitude, targetEntry.longitude
+            );
             
-            // RPC call to insert check-in
-            const { error } = await this.sb.rpc('check_in_and_defer_fk', {
-                p_student_id: this.userId,
-                p_check_in_time: checkInTime,
-                p_session_type: sessionType === 'Clinical' ? 'Clinical' : 'Class',
-                p_target_id: dbTargetId,
-                p_target_name: targetNameToLog,
-                p_latitude: location.lat,
-                p_longitude: location.lon,
-                p_accuracy_m: location.acc,
-                p_location_friendly_name: location.friendly,
-                p_program: studentProgram,
-                p_block: this.userProfile.block,
-                p_intake_year: this.userProfile.intake_year,
-                p_device_id: deviceId,
-                p_is_verified: isVerified,
-                p_course_id: selectedCourseId,
-                p_student_name: this.userProfile.full_name || this.userProfile.name || 'Unknown Student'
-            });
+            const isVerified = distanceMeters <= this.MAX_DISTANCE_RADIUS;
+            console.log(`✅ Verification: ${isVerified ? 'Within range' : 'Out of range'} (${distanceMeters.toFixed(2)}m)`);
+            
+            // Insert check-in via RPC
+            if (this.geoMessage) {
+                this.geoMessage.textContent = '📡 Submitting check-in...';
+            }
+            
+            const { error } = await this.getSupabaseClient()
+                .rpc('check_in_and_defer_fk', {
+                    p_student_id: this.userId,
+                    p_check_in_time: checkInTime,
+                    p_session_type: sessionType === 'Clinical' ? 'Clinical' : 'Class',
+                    p_target_id: dbTargetId,
+                    p_target_name: targetNameToLog,
+                    p_latitude: location.lat,
+                    p_longitude: location.lon,
+                    p_accuracy_m: location.acc,
+                    p_location_friendly_name: location.friendly,
+                    p_program: studentProgram,
+                    p_block: this.userProfile.block,
+                    p_intake_year: this.userProfile.intake_year,
+                    p_device_id: deviceId,
+                    p_is_verified: isVerified,
+                    p_course_id: selectedCourseId,
+                    p_student_name: this.userProfile.full_name || this.userProfile.name || 'Unknown Student'
+                });
             
             if (error) {
-                console.error('Check-in failed:', error);
-                if (this.geoMessage) this.geoMessage.textContent = `Check-in failed: ${error.message}`;
-            } else {
-                if (this.geoMessage) this.geoMessage.innerHTML = `✅ Check-in complete! ${isVerified ? 'Verified successfully' : 'Pending verification'}`;
-                this.loadAttendanceHistory();
+                console.error('❌ RPC error:', error);
+                throw new Error(`Check-in failed: ${error.message}`);
             }
             
-        } catch (e) {
-            console.error('GeoCheckIn error:', e);
-            if (this.geoMessage) this.geoMessage.textContent = `🚫 Critical error: ${e.message}`;
-        } finally {
-            if (this.checkInButton) this.checkInButton.disabled = false;
-        }
-    }
-    
-    // Load attendance history
-    async loadAttendanceHistory() {
-        if (!this.geoAttendanceHistory) return;
-        
-        this.geoAttendanceHistory.innerHTML = '<tr><td colspan="4">Loading geo check-in history...</td></tr>';
-        
-        try {
-            const { data: logs, error } = await this.sb
-                .from('geo_attendance_logs')
-                .select('check_in_time, session_type, target_name, is_verified')
-                .eq('student_id', this.userId)
-                .order('check_in_time', { ascending: false })
-                .limit(100);
-        
-            if (error) throw error;
-        
-            this.geoAttendanceHistory.innerHTML = '';
-            if (!logs || logs.length === 0) {
-                this.geoAttendanceHistory.innerHTML = '<tr><td colspan="4">No check-in logs found.</td></tr>';
-                return;
-            }
-        
-            logs.forEach(log => {
-                const timeStr = new Date(log.check_in_time).toLocaleString();
-                const verifiedText = log.is_verified ? '✅ Verified' : '⏳ Pending verification';
-        
-                const row = `
-                    <tr>
-                        <td>${timeStr}</td>
-                        <td>${log.session_type}</td>
-                        <td>${log.target_name}</td>
-                        <td>${verifiedText}</td>
-                    </tr>
+            // Success
+            console.log('✅ Check-in successful!');
+            if (this.geoMessage) {
+                this.geoMessage.innerHTML = `
+                    <span class="success-message">
+                        ✅ Check-in complete! ${isVerified ? 'Verified successfully' : 'Pending verification'}
+                        <br><small>Distance: ${distanceMeters.toFixed(2)}m from target</small>
+                    </span>
                 `;
-                this.geoAttendanceHistory.innerHTML += row;
-            });
+                this.geoMessage.className = 'success-message';
+            }
+            
+            // Refresh attendance history
+            this.loadGeoAttendanceHistory();
+            
         } catch (error) {
-            console.error("Failed to load attendance history:", error);
-            this.geoAttendanceHistory.innerHTML = `<tr><td colspan="4" style="color:#EF4444;">Error loading attendance logs: ${error.message}</td></tr>`;
+            console.error('❌ Geo check-in error:', error);
+            if (this.geoMessage) {
+                this.geoMessage.innerHTML = `
+                    <span class="error-message">
+                        🚫 ${error.message}
+                    </span>
+                `;
+                this.geoMessage.className = 'error-message';
+            }
+        } finally {
+            if (this.checkInButton) {
+                this.checkInButton.disabled = false;
+            }
+            console.log('🏁 Geo check-in process completed');
         }
     }
     
     // Update user profile
     updateUserProfile(userProfile) {
+        console.log('👤 Updating user profile in AttendanceModule');
         this.userProfile = userProfile;
+    }
+    
+    // Reload all attendance data
+    async reloadAttendanceData() {
+        console.log('🔄 Reloading all attendance data...');
+        await this.loadAttendanceData();
     }
 }
 
@@ -419,36 +623,84 @@ class AttendanceModule {
 let attendanceModule = null;
 
 // Initialize attendance module
-function initAttendanceModule(supabaseClient, locationiqApiKey, userId, userProfile) {
-    attendanceModule = new AttendanceModule(supabaseClient, locationiqApiKey);
-    attendanceModule.initialize(userId, userProfile);
-    return attendanceModule;
-}
-
-// Global function to load attendance
-async function loadAttendance() {
-    if (attendanceModule) {
-        await attendanceModule.loadAttendanceData();
+function initAttendanceModule() {
+    console.log('🚀 initAttendanceModule() called');
+    try {
+        attendanceModule = new AttendanceModule();
+        attendanceModule.initialize();
+        console.log('✅ AttendanceModule initialized successfully');
+        return attendanceModule;
+    } catch (error) {
+        console.error('❌ Failed to initialize AttendanceModule:', error);
+        return null;
     }
 }
 
-// Global function to update target select
+// Global functions
+function loadAttendanceData() {
+    if (attendanceModule) {
+        attendanceModule.loadAttendanceData();
+    } else {
+        console.warn('⚠️ attendanceModule not initialized');
+        initAttendanceModule();
+    }
+}
+
+function geoCheckIn() {
+    if (attendanceModule) {
+        attendanceModule.geoCheckIn();
+    } else {
+        console.error('❌ attendanceModule not initialized');
+    }
+}
+
+function loadGeoAttendanceHistory() {
+    if (attendanceModule) {
+        attendanceModule.loadGeoAttendanceHistory();
+    }
+}
+
 function updateTargetSelect() {
     if (attendanceModule) {
         attendanceModule.updateTargetSelect();
     }
 }
 
-// Global function for geo check-in
-function geoCheckIn() {
-    if (attendanceModule) {
-        attendanceModule.geoCheckIn();
-    }
-}
-
 // Make functions globally available
 window.AttendanceModule = AttendanceModule;
 window.initAttendanceModule = initAttendanceModule;
-window.loadAttendance = loadAttendance;
-window.updateTargetSelect = updateTargetSelect;
+window.loadAttendanceData = loadAttendanceData;
 window.geoCheckIn = geoCheckIn;
+window.loadGeoAttendanceHistory = loadGeoAttendanceHistory;
+window.updateTargetSelect = updateTargetSelect;
+window.attendanceModule = null; // Will be set after init
+
+// Optional: Add CSS for status indicators
+const attendanceStyles = document.createElement('style');
+attendanceStyles.textContent = `
+    .info-message { color: #3b82f6; }
+    .success-message { color: #10b981; }
+    .error-message { color: #ef4444; }
+    .offline-message { color: #f59e0b; }
+    
+    .verification-status.verified { color: #10b981; font-weight: 600; }
+    .verification-status.pending { color: #f59e0b; font-weight: 600; }
+    
+    .btn-small {
+        padding: 4px 8px;
+        font-size: 0.8rem;
+        background: #3b82f6;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-top: 5px;
+    }
+    
+    .btn-small:hover {
+        background: #2563eb;
+    }
+`;
+document.head.appendChild(attendanceStyles);
+
+console.log('🏁 Attendance module loaded, ready to initialize');
