@@ -1,7 +1,7 @@
 // js/exams.js - Exams Management Module
 class ExamsModule {
-    constructor(supabaseClient) {
-        this.sb = supabaseClient;
+    constructor() {
+        // Removed supabaseClient parameter since we'll use getSupabaseClient()
         this.userId = null;
         this.userProfile = null;
         this.cachedExams = [];
@@ -46,13 +46,19 @@ class ExamsModule {
     }
     
     // Initialize with user ID and profile
-    initialize(userId, userProfile) {
-        this.userId = userId;
-        this.userProfile = userProfile;
+    initialize() {
+        // Get user info from global functions
+        this.userId = getCurrentUserId();
+        this.userProfile = getUserProfile();
         
-        if (userId && userProfile) {
+        if (this.userId && this.userProfile) {
             this.loadExams();
         }
+    }
+    
+    // Get Supabase client
+    getSupabaseClient() {
+        return window.supabaseClient || getSupabaseClient();
     }
     
     // Load exams and grades
@@ -61,7 +67,14 @@ class ExamsModule {
         
         this.showLoading(this.examsTable, 'Loading your exams and grades...');
         
-        if (!this.userProfile) return;
+        if (!this.userProfile) {
+            this.userProfile = getUserProfile();
+        }
+        
+        if (!this.userId) {
+            this.userId = getCurrentUserId();
+        }
+        
         const program = this.userProfile?.program || this.userProfile?.department;
         const block = this.userProfile?.block;
         const intakeYear = this.userProfile?.intake_year;
@@ -75,7 +88,7 @@ class ExamsModule {
         
         try {
             // Fetch exams for this student's program
-            const { data: exams, error: examsError } = await this.sb
+            const { data: exams, error: examsError } = await this.getSupabaseClient()
                 .from('exams_with_courses')
                 .select(`
                     id,
@@ -96,7 +109,7 @@ class ExamsModule {
             if (examsError) throw examsError;
             
             // Fetch overall grades
-            const { data: grades, error: gradesError } = await this.sb
+            const { data: grades, error: gradesError } = await this.getSupabaseClient()
                 .from('exam_grades')
                 .select(`
                     exam_id,
@@ -459,7 +472,7 @@ class ExamsModule {
                     gradedByStr = this.lecturerCache[grade.graded_by];
                 } else {
                     try {
-                        const { data: lecturer, error } = await this.sb
+                        const { data: lecturer, error } = await this.getSupabaseClient()
                             .from('users')
                             .select('full_name, email, username')
                             .eq('id', grade.graded_by)
@@ -623,10 +636,10 @@ class ExamsModule {
 // Create global instance and export functions
 let examsModule = null;
 
-// Initialize exams module
-function initExamsModule(supabaseClient, userId, userProfile) {
-    examsModule = new ExamsModule(supabaseClient);
-    examsModule.initialize(userId, userProfile);
+// Initialize exams module (updated to not require parameters)
+function initExamsModule() {
+    examsModule = new ExamsModule();
+    examsModule.initialize();
     return examsModule;
 }
 
