@@ -217,62 +217,61 @@ async function loadAcademicCalendar() {
 }
 // Fetch all schedule data from multiple sources
 async function fetchAllScheduleData() {
-    // Get user profile from database instance or global variables
-    let currentUserProfile = window.db?.currentUserProfile || 
-                           window.currentUserProfile || 
-                           window.userProfile || {};
+    console.log('📅 Starting fetchAllScheduleData...');
     
-    let currentUserId = window.db?.currentUserId || 
-                       window.currentUserId || 
-                       currentUserProfile?.user_id;
+    // ALWAYS use window.db.supabase - it's the working client
+    const supabaseClient = window.db?.supabase;
     
-    const sb = window.supabase || window.db?.supabase;
-    
-    if (!sb) {
-        console.error("Supabase client not available");
+    if (!supabaseClient || typeof supabaseClient.from !== 'function') {
+        console.error('❌ No valid Supabase client found');
+        console.log('Available clients:', {
+            'window.db.supabase': window.db?.supabase,
+            'window.supabase': window.supabase,
+            'window.sb': window.sb
+        });
         return [];
     }
     
-    // Load profile if missing
-    if (!currentUserProfile || (!currentUserProfile.program && !currentUserProfile.department) || !currentUserProfile.intake_year) {
-        try {
-            // Try to load profile via database
-            if (window.db && currentUserId) {
-                await window.db.loadUserProfile();
-                // Update local reference
-                currentUserProfile = window.db.currentUserProfile || currentUserProfile;
-                currentUserId = window.db.currentUserId || currentUserId;
-                window.currentUserProfile = currentUserProfile; // Set for backward compatibility
-                window.currentUserId = currentUserId;
-            }
-        } catch (error) {
-            console.error("Failed to load profile:", error);
-            return [];
-        }
-    }
+    // Get user data
+    const currentUserProfile = window.db?.currentUserProfile || window.currentUserProfile || {};
+    const currentUserId = window.db?.currentUserId || window.currentUserId;
+    
+    console.log('👤 Using profile:', {
+        name: currentUserProfile.full_name,
+        program: currentUserProfile.program,
+        block: currentUserProfile.block,
+        intakeYear: currentUserProfile.intake_year
+    });
     
     const program = currentUserProfile?.program || currentUserProfile?.department;
     const block = currentUserProfile?.block;
     const intakeYear = currentUserProfile?.intake_year;
     
     if (!program || !block || !intakeYear) {
-        console.warn("User profile data incomplete:", { program, block, intakeYear });
+        console.warn('❌ Missing profile data:', { program, block, intakeYear });
         return [];
     }
     
     const events = [];
     
     try {
+        console.log('🔍 Querying calendar_events table...');
+        
         // Fetch events from calendar_events table
-        const { data: calendarEvents, error: eventsError } = await sb
+        const { data: calendarEvents, error: eventsError } = await supabaseClient
             .from('calendar_events')
             .select('event_name, event_date, type, description, target_program, target_block, target_intake_year, venue, start_time, end_time, organizer')
             .or(`target_program.eq.${program},target_program.eq.General`)
-            .or(`block_term.eq.${block},block_term.is.null,block_term.eq.General`)
+            .or(`target_block.eq.${block},target_block.is.null`)
             .eq('target_intake_year', intakeYear)
             .order('event_date', { ascending: true });
         
-        if (eventsError) throw eventsError;
+        if (eventsError) {
+            console.error('❌ Error fetching calendar events:', eventsError);
+            throw eventsError;
+        }
+        
+        console.log(`✅ Found ${calendarEvents?.length || 0} calendar events`);
         
         // Format calendar events
         if (calendarEvents && calendarEvents.length > 0) {
@@ -299,8 +298,11 @@ async function fetchAllScheduleData() {
         let exams = [];
         if (window.cachedExams && window.cachedExams.length > 0) {
             exams = window.cachedExams;
-        } else if (window.db) {
+            console.log(`📝 Using ${exams.length} cached exams`);
+        } else if (window.db && typeof window.db.getExams === 'function') {
+            console.log('📝 Fetching exams from database...');
             exams = await window.db.getExams() || [];
+            console.log(`✅ Found ${exams.length} exams`);
         }
         
         exams.forEach(exam => {
@@ -323,88 +325,50 @@ async function fetchAllScheduleData() {
             }
         });
         
-        // Fetch clinical sessions (if any)
-        const clinicalSessions = await fetchClinicalSessions(program, block, intakeYear);
-        clinicalSessions.forEach(session => {
-            events.push({
-                id: `clinical_${session.date}_${session.department}`,
-                date: session.date,
-                title: `Clinical - ${session.department}`,
-                type: 'Clinical',
-                subtype: 'Clinical Rotation',
-                details: session.description || `Clinical session at ${session.department}`,
-                venue: session.hospital || 'Clinical Site',
-                startTime: session.start_time || '08:00',
-                endTime: session.end_time || '17:00',
-                organizer: 'Clinical Department',
-                fullDate: session.date,
-                color: '#10B981',
-                icon: 'fas fa-hospital'
-            });
-        });
-        
-        // Fetch class sessions (if any)
-        const classSessions = await fetchClassSessions(program, block, intakeYear);
-        classSessions.forEach(session => {
-            events.push({
-                id: `class_${session.date}_${session.course_name}`,
-                date: session.date,
-                title: session.course_name,
-                type: 'Class',
-                subtype: 'Class Session',
-                details: session.description || `${session.course_name} class session`,
-                venue: session.venue || 'Classroom',
-                startTime: session.start_time || '08:00',
-                endTime: session.end_time || '10:00',
-                organizer: session.lecturer || 'Lecturer',
-                fullDate: session.date,
-                color: '#3B82F6',
-                icon: 'fas fa-chalkboard-teacher'
-            });
-        });
-        
-        // Sort all events by date
-        events.sort((a, b) => new Date(a.date) - new Date(b.date));
-        
+        console.log(`🎯 Total events collected: ${events.length}`);
         return events;
         
     } catch (error) {
-        console.error("Error fetching schedule data:", error);
+        console.error("❌ Error fetching schedule data:", error);
+        return [];
+    }
+}
+// Fetch clinical sessions
+async function fetchClinicalSessions(program, block, intakeYear) {
+    try {
+        const supabaseClient = window.db?.supabase;
+        if (!supabaseClient) return [];
+        
+        const { data: sessions, error } = await supabaseClient
+            .from('clinical_sessions')
+            .select('date, department, description, hospital, start_time, end_time, supervisor')
+            .eq('program', program)
+            .eq('block', block)
+            .eq('intake_year', intakeYear)
+            .order('date', { ascending: true });
+        
+        if (error) throw error;
+        
+        return sessions || [];
+    } catch (error) {
+        console.error("Error fetching clinical sessions:", error);
         return [];
     }
 }
 
-// Helper functions (if not already defined)
-function getEventColor(type) {
-    const colors = {
-        'Exam': '#EF4444',
-        'Clinical': '#10B981',
-        'Class': '#3B82F6',
-        'Event': '#8B5CF6',
-        'Holiday': '#F59E0B',
-        'Meeting': '#EC4899',
-        'Deadline': '#6366F1'
-    };
-    return colors[type] || '#6B7280';
-}
-
-function getEventIcon(type) {
-    const icons = {
-        'Exam': 'fas fa-file-alt',
-        'Clinical': 'fas fa-hospital',
-        'Class': 'fas fa-chalkboard-teacher',
-        'Event': 'fas fa-calendar-day',
-        'Holiday': 'fas fa-umbrella-beach',
-        'Meeting': 'fas fa-users',
-        'Deadline': 'fas fa-flag-checkered'
-    };
-    return icons[type] || 'fas fa-calendar';
-}
 
 // Fetch clinical sessions
 async function fetchClinicalSessions(program, block, intakeYear) {
     try {
-        const { data: sessions, error } = await sb
+        // USE window.db.supabase instead of sb
+        const supabaseClient = window.db?.supabase;
+        
+        if (!supabaseClient || typeof supabaseClient.from !== 'function') {
+            console.error("❌ No valid Supabase client for clinical sessions");
+            return [];
+        }
+        
+        const { data: sessions, error } = await supabaseClient
             .from('clinical_sessions')
             .select('date, department, description, hospital, start_time, end_time, supervisor')
             .eq('program', program)
@@ -424,7 +388,15 @@ async function fetchClinicalSessions(program, block, intakeYear) {
 // Fetch class sessions
 async function fetchClassSessions(program, block, intakeYear) {
     try {
-        const { data: sessions, error } = await sb
+        // USE window.db.supabase instead of sb
+        const supabaseClient = window.db?.supabase;
+        
+        if (!supabaseClient || typeof supabaseClient.from !== 'function') {
+            console.error("❌ No valid Supabase client for class sessions");
+            return [];
+        }
+        
+        const { data: sessions, error } = await supabaseClient
             .from('class_sessions')
             .select('date, course_name, description, venue, start_time, end_time, lecturer')
             .eq('program', program)
@@ -440,7 +412,6 @@ async function fetchClassSessions(program, block, intakeYear) {
         return [];
     }
 }
-
 // Render list view (original implementation)
 function renderListView(events, filterType) {
     const tableBody = document.getElementById('calendar-table');
