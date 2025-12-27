@@ -1,4 +1,4 @@
-// js/attendance.js - Attendance System Module
+// js/attendance.js - Attendance System Module (Updated)
 class AttendanceModule {
     constructor() {
         this.userId = null;
@@ -160,62 +160,65 @@ class AttendanceModule {
         }
     }
     
-   // REPLACE THE ENTIRE loadClassTargets METHOD WITH THIS:
-async loadClassTargets() {
-    console.log('🏫 Loading class targets...');
-    
-    if (!this.userProfile) {
-        this.userProfile = getUserProfile();
-    }
-    
-    const program = this.userProfile?.program || this.userProfile?.department;
-    const intakeYear = this.userProfile?.intake_year;
-    const block = this.userProfile?.block || null;
-    
-    console.log('🎯 Class query params:', { program, intakeYear, block });
-    
-    if (!program || !intakeYear) {
-        console.warn('⚠️ Missing program or intake year for class targets');
-        this.cachedCourses = [];
-        return;
-    }
-    
-    try {
-        // FIX: Use 'courses' table instead of 'courses_sections'
-        const { data, error } = await this.getSupabaseClient()
-            .from('courses')  // CHANGED FROM 'courses_sections'
-            .select('id, course_name, unit_code, block')
-            .or(`target_program.eq.${program},target_program.eq.General`)
-            .eq('intake_year', intakeYear)
-            .or(block ? `block.eq.${block},block.is.null` : 'block.is.null')
-            .order('course_name');
+    // Load class targets - FIXED: Uses 'courses' table instead of 'courses_sections'
+    async loadClassTargets() {
+        console.log('🏫 Loading class targets...');
         
-        if (error) throw error;
-        
-        // Map data to expected format
-        this.cachedCourses = (data || []).map(course => ({
-            id: course.id,
-            name: course.course_name,
-            code: course.unit_code,
-            latitude: -1.2921,  // Default latitude (you should add this to courses table)
-            longitude: 36.8219  // Default longitude (you should add this to courses table)
-        }));
-        
-        console.log(`✅ Loaded ${this.cachedCourses.length} class targets from 'courses' table`);
-        
-        // Log what we found
-        if (this.cachedCourses.length > 0) {
-            console.log('📋 Courses found:');
-            this.cachedCourses.forEach((course, i) => {
-                console.log(`   ${i + 1}. ${course.code}: ${course.name}`);
-            });
+        if (!this.userProfile) {
+            this.userProfile = getUserProfile();
         }
         
-    } catch (error) {
-        console.error("❌ Error loading class targets:", error);
-        this.cachedCourses = [];
+        const program = this.userProfile?.program || this.userProfile?.department;
+        const intakeYear = this.userProfile?.intake_year;
+        const block = this.userProfile?.block || null;
+        
+        console.log('🎯 Class query params:', { program, intakeYear, block });
+        
+        if (!program || !intakeYear) {
+            console.warn('⚠️ Missing program or intake year for class targets');
+            this.cachedCourses = [];
+            return;
+        }
+        
+        try {
+            // FIXED: Query the 'courses' table which has your actual data
+            const { data, error } = await this.getSupabaseClient()
+                .from('courses')  // Changed from 'courses_sections'
+                .select('id, course_name, unit_code, block')
+                .or(`target_program.eq.${program},target_program.eq.General`)
+                .eq('intake_year', intakeYear)
+                .or(block ? `block.eq.${block},block.is.null` : 'block.is.null')
+                .order('course_name', { ascending: true });
+            
+            if (error) throw error;
+            
+            // Map data to expected format
+            this.cachedCourses = (data || []).map(course => ({
+                id: course.id,
+                name: course.course_name,
+                code: course.unit_code,
+                latitude: -1.2921,  // Default coordinates
+                longitude: 36.8219  // Default coordinates
+            }));
+            
+            console.log(`✅ Loaded ${this.cachedCourses.length} class targets from 'courses' table`);
+            
+            // Log details for debugging
+            if (this.cachedCourses.length > 0) {
+                console.log('📋 Courses found:');
+                this.cachedCourses.forEach((course, i) => {
+                    console.log(`   ${i + 1}. ${course.code}: ${course.name}`);
+                });
+            }
+            
+        } catch (error) {
+            console.error("❌ Error loading class targets:", error);
+            this.cachedCourses = [];
+            
+            // Fallback to empty array if error
+            console.log('🔄 Using empty course list as fallback');
+        }
     }
-}
     
     // Load attendance history
     async loadGeoAttendanceHistory() {
