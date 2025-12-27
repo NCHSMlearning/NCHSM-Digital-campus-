@@ -12,6 +12,7 @@ class Database {
             messages: []
         };
         this.isInitialized = false;
+        this.profileModule = null; // Add reference to profile module
     }
     
     // Initialize database connection with GitHub Secrets
@@ -269,6 +270,8 @@ class Database {
     
     async loadUserProfile() {
         try {
+            console.log('👤 Loading user profile...');
+            
             const { data: profile, error } = await this.supabase
                 .from('consolidated_user_profiles_table')
                 .select('*')
@@ -276,15 +279,142 @@ class Database {
                 .single();
             
             if (error) throw error;
+            
             this.currentUserProfile = profile;
             console.log('✅ User profile loaded:', profile.full_name);
+            
+            // ========== CRITICAL FIX: INITIALIZE PROFILE MODULE ==========
+            // Make user data globally accessible
+            window.currentUserId = this.currentUserId;
+            window.currentUser = profile;
+            window.userProfile = profile;
+            window.db = this; // Make database instance globally available
+            
+            console.log('🌐 Global user data set:', {
+                id: window.currentUserId,
+                name: profile.full_name,
+                studentId: profile.student_id || profile.reg_no,
+                email: profile.email
+            });
+            
+            // Initialize Profile Module if available
+            if (typeof window.initProfileModule === 'function') {
+                console.log('🔄 Initializing Profile Module...');
+                this.profileModule = window.initProfileModule(this.supabase, this.currentUserId);
+                window.profileModule = this.profileModule;
+                
+                console.log('✅ Profile Module initialized:', this.profileModule ? 'Yes' : 'No');
+                
+                // Check if profile tab is active and load immediately
+                const profileTab = document.getElementById('profile');
+                if (profileTab && profileTab.classList.contains('active')) {
+                    console.log('📱 Profile tab is active, loading data immediately...');
+                    setTimeout(() => {
+                        this.loadProfileData();
+                    }, 300);
+                }
+            } else {
+                console.warn('⚠️ Profile module functions not loaded yet. Ensure profile.js is included.');
+                
+                // Try to load profile.js dynamically if not loaded
+                if (!document.querySelector('script[src*="profile.js"]')) {
+                    console.log('📦 Attempting to load profile.js dynamically...');
+                    this.loadProfileScript();
+                }
+            }
+            // ========== END OF FIX ==========
+            
             return profile;
             
         } catch (error) {
             console.error('Failed to load profile:', error);
             this.currentUserProfile = {};
+            
+            // Still set global variables
+            window.currentUserId = this.currentUserId;
+            window.currentUser = {};
+            window.userProfile = {};
+            
             return {};
         }
+    }
+    
+    // Load profile.js script dynamically
+    loadProfileScript() {
+        return new Promise((resolve) => {
+            const script = document.createElement('script');
+            script.src = 'js/profile.js';
+            script.onload = () => {
+                console.log('✅ profile.js loaded dynamically');
+                // Now initialize the profile module
+                if (typeof window.initProfileModule === 'function' && this.currentUserId) {
+                    this.profileModule = window.initProfileModule(this.supabase, this.currentUserId);
+                    window.profileModule = this.profileModule;
+                    console.log('✅ Profile Module initialized after dynamic load');
+                }
+                resolve();
+            };
+            script.onerror = () => {
+                console.error('❌ Failed to load profile.js');
+                resolve();
+            };
+            document.head.appendChild(script);
+        });
+    }
+    
+    // Load profile data (called when profile tab is activated)
+    async loadProfileData() {
+        console.log('🔄 Database.loadProfileData() called');
+        
+        if (this.profileModule) {
+            console.log('🎯 Loading profile via module...');
+            await this.profileModule.loadProfile();
+        } else if (typeof window.loadProfile === 'function') {
+            console.log('🎯 Loading profile via global function...');
+            await window.loadProfile();
+        } else if (this.currentUserId && this.supabase) {
+            console.log('🎯 Loading profile directly...');
+            await this.loadUserProfile(); // Reload profile data
+        }
+    }
+    
+    // Setup tab switch listener
+    setupTabSwitchListener() {
+        console.log('🎧 Setting up tab switch listener...');
+        
+        // Method 1: Listen for tab click events
+        document.addEventListener('click', (event) => {
+            const tabButton = event.target.closest('.tab-button');
+            if (tabButton && tabButton.dataset.tab === 'profile') {
+                console.log('🎯 Profile tab button clicked');
+                setTimeout(() => {
+                    this.loadProfileData();
+                }, 200);
+            }
+        });
+        
+        // Method 2: Listen for DOM changes (tab content becoming active)
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                    const target = mutation.target;
+                    if (target.id === 'profile' && target.classList.contains('active')) {
+                        console.log('🎯 Profile tab became active via DOM change');
+                        setTimeout(() => {
+                            this.loadProfileData();
+                        }, 100);
+                    }
+                }
+            });
+        });
+        
+        // Start observing the profile tab
+        const profileTab = document.getElementById('profile');
+        if (profileTab) {
+            observer.observe(profileTab, { attributes: true });
+        }
+        
+        console.log('✅ Tab switch listener setup complete');
     }
     
     async logout() {
@@ -877,6 +1007,12 @@ class Database {
             
             // Update cached profile
             this.currentUserProfile = { ...this.currentUserProfile, ...updates };
+            
+            // Also update global reference
+            if (window.currentUser) {
+                window.currentUser = { ...window.currentUser, ...updates };
+            }
+            
             return { success: true };
             
         } catch (error) {
@@ -908,12 +1044,27 @@ class Database {
             
             if (updateError) throw updateError;
             
+            // Update cached profile
+            if (this.currentUserProfile) {
+                this.currentUserProfile.passport_url = filePath;
+            }
+            
             return { success: true, filePath };
             
         } catch (error) {
             console.error('Failed to upload photo:', error);
             return { success: false, error: error.message };
         }
+    }
+    
+    // Get current user profile for other modules
+    getCurrentUserProfile() {
+        return this.currentUserProfile;
+    }
+    
+    // Get database instance
+    getInstance() {
+        return this;
     }
 }
 
@@ -949,3 +1100,11 @@ After adding secrets, push your code. GitHub Actions will:
     
     alert(helpText);
 }
+
+// Auto-initialize when DOM is ready (optional)
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('📄 DOM ready, checking if database needs initialization...');
+    
+    // You can optionally auto-initialize here
+    // But usually you'll call db.initialize() from your main app
+});
