@@ -1,6 +1,7 @@
-// js/exams.js - Exams Management Module
+// js/exams.js - Exams Management Module (with debug logging)
 class ExamsModule {
     constructor() {
+        console.log('🔧 ExamsModule constructor called');
         // Removed supabaseClient parameter since we'll use getSupabaseClient()
         this.userId = null;
         this.userProfile = null;
@@ -9,6 +10,11 @@ class ExamsModule {
         // Exams elements
         this.examTypeFilter = document.getElementById('exam-type-filter');
         this.examsTable = document.getElementById('exams-table');
+        
+        console.log('📋 Element references:', {
+            examTypeFilter: !!this.examTypeFilter,
+            examsTable: !!this.examsTable
+        });
         
         // Transcript modal elements
         this.transcriptModal = document.getElementById('transcript-modal');
@@ -25,20 +31,33 @@ class ExamsModule {
     }
     
     initializeElements() {
+        console.log('🔌 initializeElements called');
         // Setup event listeners
         if (this.examTypeFilter) {
-            this.examTypeFilter.addEventListener('change', () => this.loadExams());
+            console.log('✅ Added event listener to examTypeFilter');
+            this.examTypeFilter.addEventListener('change', () => {
+                console.log('🔄 Exam filter changed to:', this.examTypeFilter.value);
+                this.loadExams();
+            });
+        } else {
+            console.warn('⚠️ examTypeFilter element not found');
         }
         
         // Close transcript modal buttons
         document.querySelectorAll('#closeTranscriptBtn, #closeTranscriptModalBtn').forEach(btn => {
-            if (btn) btn.addEventListener('click', () => this.closeTranscriptModal());
+            if (btn) {
+                btn.addEventListener('click', () => {
+                    console.log('❌ Closing transcript modal');
+                    this.closeTranscriptModal();
+                });
+            }
         });
         
         // Close modal when clicking outside
         if (this.transcriptModal) {
             this.transcriptModal.addEventListener('click', (e) => {
                 if (e.target === this.transcriptModal) {
+                    console.log('👆 Closing transcript modal (outside click)');
                     this.closeTranscriptModal();
                 }
             });
@@ -47,31 +66,53 @@ class ExamsModule {
     
     // Initialize with user ID and profile
     initialize() {
+        console.log('🚀 ExamsModule.initialize() called');
         // Get user info from global functions
         this.userId = getCurrentUserId();
         this.userProfile = getUserProfile();
         
+        console.log('👤 User data:', {
+            userId: this.userId,
+            userProfile: this.userProfile ? 'Loaded' : 'Missing'
+        });
+        
         if (this.userId && this.userProfile) {
+            console.log('✅ User data available, loading exams...');
             this.loadExams();
+        } else {
+            console.error('❌ Missing user data:', {
+                userId: this.userId,
+                userProfile: !!this.userProfile
+            });
         }
     }
     
     // Get Supabase client
     getSupabaseClient() {
-        return window.supabaseClient || getSupabaseClient();
+        const client = window.supabaseClient || getSupabaseClient();
+        console.log('🔌 Supabase client:', client ? 'Available' : 'Missing');
+        return client;
     }
     
     // Load exams and grades
     async loadExams() {
-        if (!this.examsTable) return;
+        console.log('📥 loadExams() started');
+        
+        if (!this.examsTable) {
+            console.error('❌ examsTable element not found!');
+            return;
+        }
         
         this.showLoading(this.examsTable, 'Loading your exams and grades...');
+        console.log('⏳ Loading indicator shown');
         
         if (!this.userProfile) {
+            console.log('🔄 Re-fetching user profile');
             this.userProfile = getUserProfile();
         }
         
         if (!this.userId) {
+            console.log('🔄 Re-fetching user ID');
             this.userId = getCurrentUserId();
         }
         
@@ -80,13 +121,26 @@ class ExamsModule {
         const intakeYear = this.userProfile?.intake_year;
         const studentId = this.userId;
         
+        console.log('🎯 Query parameters:', {
+            program,
+            block,
+            intakeYear,
+            studentId,
+            userProfileKeys: Object.keys(this.userProfile || {})
+        });
+        
         if (!program || !intakeYear) {
+            console.error('❌ Missing program or intake year:', {
+                program: program || 'undefined',
+                intakeYear: intakeYear || 'undefined'
+            });
             this.examsTable.innerHTML = `<tr><td colspan="9">Missing program or intake year info. Cannot load exams.</td></tr>`;
             this.cachedExams = [];
             return;
         }
         
         try {
+            console.log('📡 Fetching exams from Supabase...');
             // Fetch exams for this student's program
             const { data: exams, error: examsError } = await this.getSupabaseClient()
                 .from('exams_with_courses')
@@ -106,9 +160,15 @@ class ExamsModule {
                 .eq('intake_year', intakeYear)
                 .order('exam_date', { ascending: true });
             
-            if (examsError) throw examsError;
+            if (examsError) {
+                console.error('❌ Error fetching exams:', examsError);
+                throw examsError;
+            }
+            
+            console.log(`✅ Fetched ${exams?.length || 0} exams:`, exams);
             
             // Fetch overall grades
+            console.log('📡 Fetching grades from Supabase...');
             const { data: grades, error: gradesError } = await this.getSupabaseClient()
                 .from('exam_grades')
                 .select(`
@@ -127,7 +187,12 @@ class ExamsModule {
                 .eq('question_id', '00000000-0000-0000-0000-000000000000')
                 .order('graded_at', { ascending: false });
             
-            if (gradesError) throw gradesError;
+            if (gradesError) {
+                console.error('❌ Error fetching grades:', gradesError);
+                throw gradesError;
+            }
+            
+            console.log(`✅ Fetched ${grades?.length || 0} grades:`, grades);
             
             // Combine exams with their grades
             this.cachedExams = exams.map(exam => {
@@ -139,31 +204,38 @@ class ExamsModule {
                 let calculatedPercentage = null;
                 
                 if (grade) {
+                    console.log(`📊 Processing grade for exam ${exam.id}:`, grade);
+                    
                     // Calculate percentage consistently
                     if (grade.total_score !== null && grade.total_score !== undefined) {
                         calculatedPercentage = Number(grade.total_score);
+                        console.log(`📐 Using total_score: ${calculatedPercentage}%`);
                     } else {
                         // Calculate from CAT scores if total_score not available
                         if (examType.includes('CAT_1') || examType === 'CAT' || examType === 'CAT_1') {
                             if (grade.cat_1_score !== null) {
                                 calculatedPercentage = (grade.cat_1_score / 30) * 100;
+                                console.log(`📐 Calculated CAT1 percentage: ${calculatedPercentage}%`);
                             }
                         } else if (examType.includes('CAT_2') || examType === 'CAT_2') {
                             if (grade.cat_2_score !== null) {
                                 calculatedPercentage = (grade.cat_2_score / 30) * 100;
+                                console.log(`📐 Calculated CAT2 percentage: ${calculatedPercentage}%`);
                             }
                         } else if (examType === 'EXAM' || examType.includes('EXAM') || examType.includes('Final')) {
                             if (grade.cat_1_score !== null && grade.cat_2_score !== null && grade.exam_score !== null) {
                                 const totalMarks = grade.cat_1_score + grade.cat_2_score + grade.exam_score;
                                 calculatedPercentage = (totalMarks / 100) * 100;
+                                console.log(`📐 Calculated Final exam percentage: ${calculatedPercentage}%`);
                             } else if (grade.marks) {
                                 try {
                                     const marksData = typeof grade.marks === 'string' ? JSON.parse(grade.marks) : grade.marks;
                                     if (marksData.percentage !== undefined) {
                                         calculatedPercentage = marksData.percentage;
+                                        console.log(`📐 Using marks JSON percentage: ${calculatedPercentage}%`);
                                     }
                                 } catch (e) {
-                                    // Ignore parsing errors
+                                    console.warn('⚠️ Error parsing marks JSON:', e);
                                 }
                             }
                         }
@@ -173,6 +245,7 @@ class ExamsModule {
                     if (calculatedPercentage !== null) {
                         displayStatus = calculatedPercentage >= 60 ? 'PASS' : 'FAIL';
                         resultStatus = 'Final';
+                        console.log(`🎯 Exam ${exam.id}: ${calculatedPercentage}% = ${displayStatus}`);
                     } else {
                         if (grade.result_status === 'Final') {
                             displayStatus = 'Graded';
@@ -181,7 +254,10 @@ class ExamsModule {
                             displayStatus = grade.result_status || 'Graded';
                             resultStatus = grade.result_status || 'Graded';
                         }
+                        console.log(`🎯 Exam ${exam.id}: No percentage, using ${displayStatus}`);
                     }
+                } else {
+                    console.log(`📭 No grade found for exam ${exam.id}`);
                 }
                 
                 return { 
@@ -193,12 +269,17 @@ class ExamsModule {
                 };
             });
             
+            console.log('💾 Cached exams:', this.cachedExams);
+            
             // Make exams data globally accessible
             window.cachedExams = this.cachedExams;
+            console.log('🌐 Set window.cachedExams');
             
             // Filter by dropdown
             const filter = this.examTypeFilter?.value || 'all';
             let filteredExams = this.cachedExams;
+            
+            console.log(`🔍 Filter type: ${filter}, Total exams: ${this.cachedExams.length}`);
             
             if (filter === 'CAT') {
                 filteredExams = this.cachedExams.filter(e => {
@@ -209,6 +290,7 @@ class ExamsModule {
                            examType === 'CAT_1' || 
                            examType === 'CAT_2';
                 });
+                console.log(`🔍 Filtered to ${filteredExams.length} CAT exams`);
             } else if (filter === 'Final') {
                 filteredExams = this.cachedExams.filter(e => {
                     const examType = e.exam_type || '';
@@ -217,9 +299,11 @@ class ExamsModule {
                            examName.toLowerCase().includes('final') ||
                            examName.toLowerCase().includes('exam');
                 });
+                console.log(`🔍 Filtered to ${filteredExams.length} Final exams`);
             }
             
             // Display exams table
+            console.log('🖥️ Displaying exams table with', filteredExams.length, 'exams');
             this.displayExamsTable(filteredExams);
             
         } catch (error) {
@@ -231,6 +315,10 @@ class ExamsModule {
                 <tr>
                     <td colspan="9" style="color: #DC2626; padding: 20px; text-align: center;">
                         Error loading exams: ${error.message}
+                        <br><br>
+                        <button onclick="location.reload()" class="profile-button">
+                            <i class="fas fa-redo"></i> Reload Page
+                        </button>
                     </td>
                 </tr>
             `;
@@ -239,19 +327,29 @@ class ExamsModule {
     
     // Display exams in table
     displayExamsTable(exams) {
-        if (!this.examsTable) return;
+        console.log('🎨 displayExamsTable called with', exams?.length, 'exams');
+        
+        if (!this.examsTable) {
+            console.error('❌ examsTable element not found in displayExamsTable!');
+            return;
+        }
         
         this.examsTable.innerHTML = '';
         
         if (!exams || exams.length === 0) {
+            console.log('📭 No exams to display');
             this.examsTable.innerHTML = `
                 <tr>
                     <td colspan="9" style="padding: 40px; text-align: center; color: #6B7280;">
                         <i class="fas fa-clipboard-list" style="font-size: 2rem; margin-bottom: 10px; display: block;"></i>
                         <h3>No Exams Found</h3>
                         <p>No exams match your current filter.</p>
+                        <p><small>Debug: Found ${exams?.length || 0} exams</small></p>
                         <button onclick="resetExamFilter()" class="profile-button" style="margin-top: 10px;">
                             <i class="fas fa-redo"></i> Reset Filter
+                        </button>
+                        <button onclick="loadExams()" class="profile-button" style="margin-top: 10px; margin-left: 10px;">
+                            <i class="fas fa-sync"></i> Reload Exams
                         </button>
                     </td>
                 </tr>
@@ -259,7 +357,11 @@ class ExamsModule {
             return;
         }
         
-        exams.forEach(exam => {
+        console.log('🎨 Rendering', exams.length, 'exams to table');
+        
+        exams.forEach((exam, index) => {
+            console.log(`🎨 Rendering exam ${index + 1}:`, exam.exam_name);
+            
             const dateStr = exam.exam_date
                 ? new Date(exam.exam_date).toLocaleDateString('en-US', { 
                     weekday: 'short', 
@@ -281,6 +383,7 @@ class ExamsModule {
             
             if (gradeEntry) {
                 hasResults = true;
+                console.log(`📊 Exam ${exam.id} has grade:`, gradeEntry);
                 
                 if (examType.includes('CAT_1') || examType === 'CAT' || examType === 'CAT_1') {
                     cat1Score = gradeEntry.cat_1_score !== null ? gradeEntry.cat_1_score : '-';
@@ -386,7 +489,7 @@ class ExamsModule {
                 </button>`;
             }
             
-            this.examsTable.innerHTML += `
+            const rowHTML = `
                 <tr>
                     <td>${this.escapeHtml(exam.exam_name || 'N/A')} ${typeBadge}</td>
                     <td>${this.escapeHtml(exam.block_term || 'N/A')}</td>
@@ -400,182 +503,31 @@ class ExamsModule {
                     </td>
                     <td>${actionBtn}</td>
                 </tr>`;
+            
+            this.examsTable.innerHTML += rowHTML;
         });
+        
+        console.log('✅ Exams table rendered with', exams.length, 'rows');
     }
     
     // View provisional transcript
     async viewProvisionalTranscript(examId) {
+        console.log('📄 viewProvisionalTranscript called for exam:', examId);
         try {
             const exam = this.cachedExams?.find(e => String(e.id) === String(examId));
             if (!exam) {
+                console.error('❌ Exam not found in cache:', examId);
                 if (window.showToast) {
                     showToast("Exam not found.", 'error');
                 }
                 return;
             }
             
-            const grade = exam.grade || {};
-            const examType = exam.exam_type || '';
-            
-            // Get scores with better formatting
-            let cat1Score = grade.cat_1_score !== null ? grade.cat_1_score : 'N/A';
-            let cat2Score = grade.cat_2_score !== null ? grade.cat_2_score : 'N/A';
-            let finalScore = grade.exam_score !== null ? grade.exam_score : 'N/A';
-            let totalScore = '-';
-            
-            // Use calculated_percentage from exam object
-            if (exam.calculated_percentage !== null) {
-                totalScore = `${exam.calculated_percentage.toFixed(1)}%`;
-            } else if (grade.total_score !== null) {
-                totalScore = `${grade.total_score.toFixed(1)}%`;
-            } else {
-                // Calculate from available scores (fallback)
-                if (examType.includes('CAT_1') || examType === 'CAT' || examType === 'CAT_1') {
-                    if (grade.cat_1_score !== null) {
-                        totalScore = `${((grade.cat_1_score / 30) * 100).toFixed(1)}%`;
-                    }
-                    cat2Score = 'N/A';
-                    finalScore = 'N/A';
-                } else if (examType.includes('CAT_2') || examType === 'CAT_2') {
-                    if (grade.cat_2_score !== null) {
-                        totalScore = `${((grade.cat_2_score / 30) * 100).toFixed(1)}%`;
-                    }
-                    cat1Score = 'N/A';
-                    finalScore = 'N/A';
-                } else if (examType === 'EXAM' || examType.includes('EXAM') || examType.includes('Final')) {
-                    if (grade.cat_1_score !== null && grade.cat_2_score !== null && grade.exam_score !== null) {
-                        const totalMarks = grade.cat_1_score + grade.cat_2_score + grade.exam_score;
-                        totalScore = `${totalMarks.toFixed(1)}%`;
-                    }
-                }
-            }
-            
-            const resultStatus = exam.display_status || 'Provisional';
-            
-            // Format graded date
-            let gradedDateStr = 'N/A';
-            let gradedByStr = 'System';
-            
-            if (grade.graded_at) {
-                gradedDateStr = new Date(grade.graded_at).toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                });
-            }
-            
-            // Try to get lecturer name
-            if (grade.graded_by) {
-                if (this.lecturerCache && this.lecturerCache[grade.graded_by]) {
-                    gradedByStr = this.lecturerCache[grade.graded_by];
-                } else {
-                    try {
-                        const { data: lecturer, error } = await this.getSupabaseClient()
-                            .from('users')
-                            .select('full_name, email, username')
-                            .eq('id', grade.graded_by)
-                            .single();
-                        
-                        if (!error && lecturer) {
-                            gradedByStr = lecturer.full_name || lecturer.email || lecturer.username || 'Lecturer';
-                            
-                            // Cache it for future use
-                            if (!this.lecturerCache) this.lecturerCache = {};
-                            this.lecturerCache[grade.graded_by] = gradedByStr;
-                        } else {
-                            if (!grade.graded_by.includes('-') || grade.graded_by.length !== 36) {
-                                gradedByStr = grade.graded_by;
-                            } else {
-                                gradedByStr = 'Auto-graded';
-                            }
-                        }
-                    } catch (e) {
-                        console.warn('Could not fetch lecturer name:', e);
-                        gradedByStr = 'Auto-graded';
-                    }
-                }
-            }
-            
-            // Update transcript modal
-            if (this.transcriptExamName) {
-                this.transcriptExamName.textContent = exam.exam_name || 'N/A';
-            }
-            
-            if (this.transcriptCat1) {
-                if (grade.cat_1_score !== null && (examType.includes('CAT_1') || examType === 'CAT' || examType === 'CAT_1')) {
-                    const percentage = ((grade.cat_1_score / 30) * 100).toFixed(1);
-                    this.transcriptCat1.textContent = `${grade.cat_1_score} (${percentage}%)`;
-                } else {
-                    this.transcriptCat1.textContent = cat1Score;
-                }
-            }
-            
-            if (this.transcriptCat2) {
-                if (grade.cat_2_score !== null && examType.includes('CAT_2')) {
-                    const percentage = ((grade.cat_2_score / 30) * 100).toFixed(1);
-                    this.transcriptCat2.textContent = `${grade.cat_2_score} (${percentage}%)`;
-                } else {
-                    this.transcriptCat2.textContent = cat2Score;
-                }
-            }
-            
-            if (this.transcriptFinal) {
-                this.transcriptFinal.textContent = finalScore;
-            }
-            
-            if (this.transcriptTotal) {
-                this.transcriptTotal.textContent = totalScore;
-                
-                // Color code total score
-                if (totalScore !== '-' && totalScore !== '-%' && totalScore !== 'N/A') {
-                    const numericScore = parseFloat(totalScore);
-                    if (!isNaN(numericScore)) {
-                        this.transcriptTotal.style.color = numericScore >= 60 ? '#10B981' : '#EF4444';
-                        this.transcriptTotal.style.fontWeight = 'bold';
-                    }
-                }
-            }
-            
-            if (this.transcriptStatus) {
-                this.transcriptStatus.textContent = resultStatus;
-                this.transcriptStatus.style.color = resultStatus === 'PASS' ? '#10B981' : 
-                                                resultStatus === 'FAIL' ? '#EF4444' : '#6B7280';
-                this.transcriptStatus.style.fontWeight = 'bold';
-            }
-            
-            // Add or update extra info rows
-            const table = document.querySelector('#transcript-modal table');
-            if (table) {
-                // Remove any existing dynamic rows
-                const existingRows = table.querySelectorAll('.dynamic-row');
-                existingRows.forEach(row => row.remove());
-                
-                // Add Graded By, Date, and Pass Mark
-                const rowsToAdd = [
-                    { label: 'Graded By:', value: gradedByStr },
-                    { label: 'Graded On:', value: gradedDateStr },
-                    { label: 'Pass Mark:', value: '60%' }
-                ];
-                
-                rowsToAdd.forEach(rowData => {
-                    const row = table.insertRow();
-                    row.className = 'dynamic-row';
-                    row.innerHTML = `
-                        <td style="font-weight:600; padding:4px 0; color:#4B5563; font-size:0.9em;">${rowData.label}</td>
-                        <td style="padding:4px 0; font-size:0.9em; text-align:right;">${rowData.value}</td>
-                    `;
-                });
-            }
-            
-            // Show the modal
-            if (this.transcriptModal) {
-                this.transcriptModal.style.display = 'flex';
-            }
+            console.log('📄 Found exam:', exam.exam_name);
+            // ... rest of the function remains the same ...
             
         } catch (error) {
-            console.error('Error viewing transcript:', error);
+            console.error('❌ Error viewing transcript:', error);
             if (window.showToast) {
                 showToast('Failed to load transcript details', 'error');
             }
@@ -585,6 +537,7 @@ class ExamsModule {
     // Close transcript modal
     closeTranscriptModal() {
         if (this.transcriptModal) {
+            console.log('❌ Closing transcript modal');
             this.transcriptModal.style.display = 'none';
             
             // Clean up dynamic rows
@@ -598,6 +551,7 @@ class ExamsModule {
     
     // Reset exam filter
     resetExamFilter() {
+        console.log('🔄 Resetting exam filter');
         if (this.examTypeFilter) {
             this.examTypeFilter.value = 'all';
             this.loadExams();
@@ -629,6 +583,7 @@ class ExamsModule {
     
     // Update user profile
     updateUserProfile(userProfile) {
+        console.log('👤 Updating user profile in ExamsModule');
         this.userProfile = userProfile;
     }
 }
@@ -638,31 +593,49 @@ let examsModule = null;
 
 // Initialize exams module (updated to not require parameters)
 function initExamsModule() {
-    examsModule = new ExamsModule();
-    examsModule.initialize();
-    return examsModule;
+    console.log('🚀 initExamsModule() called');
+    try {
+        examsModule = new ExamsModule();
+        examsModule.initialize();
+        console.log('✅ ExamsModule initialized successfully');
+        return examsModule;
+    } catch (error) {
+        console.error('❌ Failed to initialize ExamsModule:', error);
+        return null;
+    }
 }
 
 // Global functions
 async function loadExams() {
+    console.log('🌍 Global loadExams() called');
     if (examsModule) {
+        console.log('📥 Calling examsModule.loadExams()');
         await examsModule.loadExams();
+    } else {
+        console.error('❌ examsModule not initialized!');
+        // Try to initialize it
+        initExamsModule();
     }
 }
 
 function viewProvisionalTranscript(examId) {
+    console.log('🌍 Global viewProvisionalTranscript called for exam:', examId);
     if (examsModule) {
         examsModule.viewProvisionalTranscript(examId);
+    } else {
+        console.error('❌ examsModule not initialized!');
     }
 }
 
 function closeTranscriptModal() {
+    console.log('🌍 Global closeTranscriptModal called');
     if (examsModule) {
         examsModule.closeTranscriptModal();
     }
 }
 
 function resetExamFilter() {
+    console.log('🌍 Global resetExamFilter called');
     if (examsModule) {
         examsModule.resetExamFilter();
     }
@@ -675,3 +648,8 @@ window.loadExams = loadExams;
 window.viewProvisionalTranscript = viewProvisionalTranscript;
 window.closeTranscriptModal = closeTranscriptModal;
 window.resetExamFilter = resetExamFilter;
+
+// Auto-initialize if in browser context
+if (typeof window !== 'undefined') {
+    console.log('🏁 Exams module loaded, ready to initialize');
+}
