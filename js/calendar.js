@@ -5,7 +5,7 @@
 // *************************************************************************
 
 let cachedCalendarEvents = [];
-let currentCalendarView = 'month'; // month, week, day
+let currentCalendarView = 'list'; // month, week, day
 let currentDate = new Date();
 let isLoadingCalendar = false;
 
