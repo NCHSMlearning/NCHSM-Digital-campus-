@@ -916,7 +916,20 @@
             loadTabData(tabId);
         }
     };
-
+// Initialize attendance module when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('📱 Page loaded, initializing attendance module...');
+        
+        // Wait a bit for everything to be ready
+        setTimeout(() => {
+            if (typeof initAttendanceModule === 'function') {
+                initAttendanceModule();
+                console.log('✅ Attendance module initialized');
+            } else {
+                console.error('❌ initAttendanceModule not found');
+            }
+        }, 500);
+    });
     async function loadTabData(tabId) {
         try {
             switch(tabId) {
