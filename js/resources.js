@@ -2,13 +2,46 @@
 // *** ENHANCED RESOURCES SYSTEM - VIEW ONLY ***
 // *************************************************************************
 
+// Helper function for safe Supabase client access
+function getSupabaseClient() {
+    const client = window.db?.supabase;
+    if (!client || typeof client.from !== 'function') {
+        console.error('❌ No valid Supabase client available');
+        return null;
+    }
+    return client;
+}
+
+// Helper function for safe user profile access
+function getUserProfile() {
+    return window.db?.currentUserProfile || 
+           window.currentUserProfile || 
+           window.userProfile || 
+           {};
+}
+
+// Helper function for safe user ID access
+function getCurrentUserId() {
+    return window.db?.currentUserId || window.currentUserId;
+}
+
 let currentResources = [];
 let filteredResources = [];
 let currentReaderResource = null;
 
 // Enhanced loadResources function
 async function loadResources() {
-    if (!currentUserProfile) await loadProfile(currentUserId);
+    const userProfile = getUserProfile();
+    const userId = getCurrentUserId();
+    const supabaseClient = getSupabaseClient();
+    
+    if (!supabaseClient) {
+        const resourcesGrid = document.getElementById('resources-grid');
+        if (resourcesGrid) {
+            AppUtils.showError(resourcesGrid, 'Database connection error');
+        }
+        return;
+    }
     
     const resourcesGrid = document.getElementById('resources-grid');
     if (!resourcesGrid) return;
@@ -17,16 +50,16 @@ async function loadResources() {
     currentResources = [];
 
     try {
-        const program = currentUserProfile?.program;
-        const block = currentUserProfile?.block;
-        const intakeYear = currentUserProfile?.intake_year;
+        const program = userProfile?.program;
+        const block = userProfile?.block;
+        const intakeYear = userProfile?.intake_year;
 
         if (!program || !intakeYear || !block) {
             resourcesGrid.innerHTML = '<div class="error-state">Missing enrollment details</div>';
             return;
         }
 
-        const { data: resources, error } = await sb
+        const { data: resources, error } = await supabaseClient
             .from('resources')
             .select('id, title, file_path, file_url, program_type, block, intake, uploaded_by_name, created_at, description, file_type')
             .eq('program_type', program)
@@ -48,7 +81,7 @@ async function loadResources() {
     }
 
     if (typeof loadDashboardMetrics === 'function') {
-        loadDashboardMetrics(currentUserId);
+        loadDashboardMetrics(userId);
     }
 }
 
@@ -409,12 +442,52 @@ function escapeHtml(str) {
 }
 
 // Set up event listeners for resources
-document.getElementById('resource-search').addEventListener('input', filterResources);
-document.getElementById('resource-filter').addEventListener('change', filterResources);
-document.getElementById('course-filter').addEventListener('change', filterResources);
+document.addEventListener('DOMContentLoaded', function() {
+    const resourceSearch = document.getElementById('resource-search');
+    const resourceFilter = document.getElementById('resource-filter');
+    const courseFilter = document.getElementById('course-filter');
+    
+    if (resourceSearch) {
+        resourceSearch.addEventListener('input', filterResources);
+    }
+    
+    if (resourceFilter) {
+        resourceFilter.addEventListener('change', filterResources);
+    }
+    
+    if (courseFilter) {
+        courseFilter.addEventListener('change', filterResources);
+    }
+});
+
+// Initialize resources module
+function initializeResourcesModule() {
+    console.log('📁 Initializing Resources Module...');
+    
+    // Set up event listeners for resources tab
+    const resourcesTab = document.querySelector('.nav a[data-tab="resources"]');
+    if (resourcesTab) {
+        resourcesTab.addEventListener('click', () => {
+            if (getCurrentUserId()) {
+                loadResources();
+            }
+        });
+    }
+    
+    console.log('✅ Resources Module initialized');
+}
 
 // Make functions globally available
+window.loadResources = loadResources;
 window.closeReader = closeReader;
 window.filterResources = filterResources;
 window.changePDFPage = function() {}; // Placeholder
 window.zoomPDF = function() {}; // Placeholder
+window.initializeResourcesModule = initializeResourcesModule;
+
+// Auto-initialize when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeResourcesModule);
+} else {
+    initializeResourcesModule();
+}
