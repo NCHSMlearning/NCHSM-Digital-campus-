@@ -4,6 +4,29 @@
 // *** MESSAGES SYSTEM ***
 // *************************************************************************
 
+// Helper function for safe Supabase client access
+function getSupabaseClient() {
+    const client = window.db?.supabase;
+    if (!client || typeof client.from !== 'function') {
+        console.error('❌ No valid Supabase client available');
+        return null;
+    }
+    return client;
+}
+
+// Helper function for safe user profile access
+function getUserProfile() {
+    return window.db?.currentUserProfile || 
+           window.currentUserProfile || 
+           window.userProfile || 
+           {};
+}
+
+// Helper function for safe user ID access
+function getCurrentUserId() {
+    return window.db?.currentUserId || window.currentUserId;
+}
+
 let currentMessages = [];
 let currentAnnouncements = [];
 let messageTemplates = [];
@@ -22,7 +45,7 @@ function initializeMessagesSystem() {
     const messagesTab = document.querySelector('.nav a[data-tab="messages"]');
     if (messagesTab) {
         messagesTab.addEventListener('click', () => {
-            if (currentUserId) {
+            if (getCurrentUserId()) {
                 loadStudentMessagesAndAnnouncements();
                 loadMessageTemplates();
             }
@@ -64,11 +87,19 @@ function initializeMessagesSystem() {
 
 // Load student messages and announcements
 async function loadStudentMessagesAndAnnouncements() {
-    if (!currentUserProfile || (!currentUserProfile.program && !currentUserProfile.department)) {
-        await loadProfile(currentUserId);
+    const userProfile = getUserProfile();
+    const userId = getCurrentUserId();
+    const supabaseClient = getSupabaseClient();
+    
+    if (!supabaseClient) {
+        const messageContainer = document.getElementById('messages-list');
+        if (messageContainer) {
+            AppUtils.showError(messageContainer, 'Database connection error');
+        }
+        return;
     }
     
-    const program = currentUserProfile?.program || currentUserProfile?.department;
+    const program = userProfile?.program || userProfile?.department;
     const messageContainer = document.getElementById('messages-list');
     if (!messageContainer) return;
     
@@ -76,16 +107,16 @@ async function loadStudentMessagesAndAnnouncements() {
     
     try {
         // Load personal messages
-        const { data: personalMessages, error: personalError } = await sb
+        const { data: personalMessages, error: personalError } = await supabaseClient
             .from('student_messages')
             .select('*')
-            .or(`recipient_id.eq.${currentUserId},recipient_program.eq.${program}`)
+            .or(`recipient_id.eq.${userId},recipient_program.eq.${program}`)
             .order('created_at', { ascending: false });
         
         if (personalError) throw personalError;
         
         // Load official announcements
-        const { data: notifications, error: notifError } = await sb
+        const { data: notifications, error: notifError } = await supabaseClient
             .from('notifications')
             .select('*')
             .or(`target_program.eq.${program},target_program.is.null`)
@@ -517,11 +548,17 @@ function closeMessageModal() {
 
 // Toggle message read status
 async function toggleMessageReadStatus(messageId, messageType, action) {
+    const supabaseClient = getSupabaseClient();
+    if (!supabaseClient) {
+        AppUtils.showToast('Database connection error', 'error');
+        return;
+    }
+    
     try {
         const tableName = messageType === 'Personal' ? 'student_messages' : 'notifications';
         const isRead = action === 'read';
         
-        const { error } = await sb
+        const { error } = await supabaseClient
             .from(tableName)
             .update({ is_read: isRead, read_at: new Date().toISOString() })
             .eq('id', messageId);
@@ -622,10 +659,16 @@ async function deleteMessage(messageId, messageType) {
         return;
     }
     
+    const supabaseClient = getSupabaseClient();
+    if (!supabaseClient) {
+        AppUtils.showToast('Database connection error', 'error');
+        return;
+    }
+    
     try {
         const tableName = messageType === 'Personal' ? 'student_messages' : 'notifications';
         
-        const { error } = await sb
+        const { error } = await supabaseClient
             .from(tableName)
             .delete()
             .eq('id', messageId);
@@ -662,8 +705,12 @@ async function handleMessageSubmit(e) {
         return;
     }
     
-    if (!currentUserProfile) {
-        AppUtils.showToast('User profile not loaded', 'error');
+    const userProfile = getUserProfile();
+    const userId = getCurrentUserId();
+    const supabaseClient = getSupabaseClient();
+    
+    if (!userProfile || !supabaseClient) {
+        AppUtils.showToast('System error: User profile or database not available', 'error');
         return;
     }
     
@@ -683,19 +730,19 @@ async function handleMessageSubmit(e) {
             subject: 'Message from Student',
             body: messageBody.value.trim(),
             recipient_id: 'admin', // Default admin recipient
-            recipient_program: currentUserProfile.program || currentUserProfile.department,
-            sender_id: currentUserId,
-            sender_name: currentUserProfile.full_name || currentUserProfile.name || 'Student',
-            sender_email: currentUserProfile.email || '',
-            sender_program: currentUserProfile.program || currentUserProfile.department,
-            sender_block: currentUserProfile.block,
-            sender_intake_year: currentUserProfile.intake_year,
+            recipient_program: userProfile.program || userProfile.department,
+            sender_id: userId,
+            sender_name: userProfile.full_name || userProfile.name || 'Student',
+            sender_email: userProfile.email || '',
+            sender_program: userProfile.program || userProfile.department,
+            sender_block: userProfile.block,
+            sender_intake_year: userProfile.intake_year,
             is_read: false,
             priority: 'normal',
             created_at: new Date().toISOString()
         };
         
-        const { error } = await sb
+        const { error } = await supabaseClient
             .from('student_messages')
             .insert([messageData]);
         
@@ -865,12 +912,20 @@ function updateDashboardAnnouncement() {
 
 // Load message templates
 async function loadMessageTemplates() {
+    const userProfile = getUserProfile();
+    const supabaseClient = getSupabaseClient();
+    
+    if (!supabaseClient) {
+        console.error('❌ No Supabase client for loading templates');
+        return;
+    }
+    
     try {
-        const { data: templates, error } = await sb
+        const { data: templates, error } = await supabaseClient
             .from('message_templates')
             .select('*')
             .eq('is_active', true)
-            .or(`target_program.eq.${currentUserProfile?.program || 'General'},target_program.is.null`)
+            .or(`target_program.eq.${userProfile?.program || 'General'},target_program.is.null`)
             .order('name', { ascending: true });
         
         if (error) throw error;
