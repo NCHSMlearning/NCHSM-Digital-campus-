@@ -5,7 +5,7 @@
 // *************************************************************************
 
 let cachedCalendarEvents = [];
-let currentCalendarView = 'month'; // month, week, day
+let currentCalendarView = 'list'; // month, week, day, list
 let currentDate = new Date();
 let isLoadingCalendar = false;
 
@@ -110,7 +110,7 @@ async function loadAcademicCalendar() {
     if (!tableBody) return;
     
     isLoadingCalendar = true;
-    AppUtils.showLoading(tableBody, 'Loading academic schedule...');
+   AppUtils.showLoading(tableBody, 'Loading academic schedule...');
     
     try {
         // ====== CRITICAL FIX: Ensure user profile is available ======
@@ -1198,9 +1198,20 @@ function updateDashboardCalendarEvents(events) {
 
 // Clear calendar rendering
 function clearCalendarRendering() {
+    console.log("🧹 Clearing calendar rendering...");
+    
+    // Clear table view
+    const tableBody = document.getElementById('calendar-table');
+    if (tableBody) {
+        tableBody.innerHTML = '';
+        console.log("   Cleared #calendar-table");
+    }
+    
+    // Clear container view
     const calendarContainer = document.getElementById('calendar-container');
     if (calendarContainer) {
         calendarContainer.innerHTML = '';
+        console.log("   Cleared #calendar-container");
     }
 }
 
