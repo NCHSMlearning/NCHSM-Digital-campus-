@@ -4,6 +4,29 @@
 // *** COURSES MANAGEMENT SYSTEM ***
 // *************************************************************************
 
+// Helper function for safe Supabase client access
+function getSupabaseClient() {
+    const client = window.db?.supabase;
+    if (!client || typeof client.from !== 'function') {
+        console.error('❌ No valid Supabase client available');
+        return null;
+    }
+    return client;
+}
+
+// Helper function for safe user profile access
+function getUserProfile() {
+    return window.db?.currentUserProfile || 
+           window.currentUserProfile || 
+           window.userProfile || 
+           {};
+}
+
+// Helper function for safe user ID access
+function getCurrentUserId() {
+    return window.db?.currentUserId || window.currentUserId;
+}
+
 let cachedCourses = [];
 
 // Load courses for the current student
@@ -12,12 +35,21 @@ async function loadCourses() {
     if (!tableBody) return;
     AppUtils.showLoading(tableBody, 'Loading courses...');
 
-    if (!currentUserProfile) await loadProfile(currentUserId); 
+    // Get user profile safely
+    const userProfile = getUserProfile();
+    const userId = getCurrentUserId();
     
-    const program = currentUserProfile?.program;
-    const department = currentUserProfile?.department;
-    const block = currentUserProfile?.block;
-    const intakeYear = currentUserProfile?.intake_year;
+    // Get Supabase client safely
+    const supabaseClient = getSupabaseClient();
+    if (!supabaseClient) {
+        AppUtils.showError(tableBody, 'Database connection error');
+        return;
+    }
+    
+    const program = userProfile?.program;
+    const department = userProfile?.department;
+    const block = userProfile?.block;
+    const intakeYear = userProfile?.intake_year;
 
     if ((!program && !department) || !intakeYear) {
         tableBody.innerHTML = `<tr><td colspan="4">
@@ -50,7 +82,7 @@ async function loadCourses() {
             programFilter = `target_program.eq.${program}`;
         }
 
-        const { data: courses, error } = await sb
+        const { data: courses, error } = await supabaseClient
             .from('courses')
             .select('*')
             .or(programFilter)
@@ -89,19 +121,22 @@ async function loadCourses() {
     }
 
     if (typeof loadDashboardMetrics === "function") {
-        loadDashboardMetrics(currentUserId);
+        loadDashboardMetrics(userId);
     }
 }
 
 // Load courses for attendance target selection
 async function loadClassTargets() {
-    if (!currentUserProfile || (!currentUserProfile.program && !currentUserProfile.department) || !currentUserProfile.intake_year) {
-        await loadProfile(currentUserId); 
-    }
-
-    const program = currentUserProfile?.program || currentUserProfile?.department;
-    const intakeYear = currentUserProfile?.intake_year;
-    const block = currentUserProfile?.block || null;
+    // Get user profile safely
+    const userProfile = getUserProfile();
+    
+    // Get Supabase client safely
+    const supabaseClient = getSupabaseClient();
+    if (!supabaseClient) return;
+    
+    const program = userProfile?.program || userProfile?.department;
+    const intakeYear = userProfile?.intake_year;
+    const block = userProfile?.block || null;
 
     if (!program || !intakeYear) {
         cachedCourses = [];
@@ -109,7 +144,7 @@ async function loadClassTargets() {
     }
 
     try {
-        let query = sb.from('courses_sections')
+        let query = supabaseClient.from('courses_sections')
             .select('id, name, code, latitude, longitude')
             .eq('program', program)
             .eq('intake_year', intakeYear);
@@ -216,16 +251,18 @@ async function refreshCourses() {
 
 // Load course schedule for academic calendar
 async function loadCourseSchedule() {
-    if (!currentUserProfile) await loadProfile(currentUserId);
+    const userProfile = getUserProfile();
+    const supabaseClient = getSupabaseClient();
+    if (!supabaseClient) return [];
     
-    const program = currentUserProfile?.program || currentUserProfile?.department;
-    const block = currentUserProfile?.block;
-    const intakeYear = currentUserProfile?.intake_year;
+    const program = userProfile?.program || userProfile?.department;
+    const block = userProfile?.block;
+    const intakeYear = userProfile?.intake_year;
 
     if (!program || !block || !intakeYear) return [];
 
     try {
-        const { data: schedule, error } = await sb
+        const { data: schedule, error } = await supabaseClient
             .from('course_schedule')
             .select('*')
             .eq('program', program)
@@ -293,8 +330,11 @@ async function getUpcomingCourses() {
 
 // Load course materials
 async function loadCourseMaterials(courseId) {
+    const supabaseClient = getSupabaseClient();
+    if (!supabaseClient) return [];
+    
     try {
-        const { data: materials, error } = await sb
+        const { data: materials, error } = await supabaseClient
             .from('course_materials')
             .select('*')
             .eq('course_id', courseId)
@@ -311,11 +351,13 @@ async function loadCourseMaterials(courseId) {
 
 // Get recent course materials (last 7 days)
 async function getRecentCourseMaterials(days = 7) {
-    if (!currentUserProfile) await loadProfile(currentUserId);
+    const userProfile = getUserProfile();
+    const supabaseClient = getSupabaseClient();
+    if (!supabaseClient) return [];
     
-    const program = currentUserProfile?.program || currentUserProfile?.department;
-    const block = currentUserProfile?.block;
-    const intakeYear = currentUserProfile?.intake_year;
+    const program = userProfile?.program || userProfile?.department;
+    const block = userProfile?.block;
+    const intakeYear = userProfile?.intake_year;
 
     if (!program || !block || !intakeYear) return [];
 
@@ -324,7 +366,7 @@ async function getRecentCourseMaterials(days = 7) {
 
     try {
         // First get courses for this student
-        const { data: courses, error: coursesError } = await sb
+        const { data: courses, error: coursesError } = await supabaseClient
             .from('courses')
             .select('id')
             .eq('program_type', program)
@@ -338,7 +380,7 @@ async function getRecentCourseMaterials(days = 7) {
         if (courseIds.length === 0) return [];
 
         // Then get recent materials for these courses
-        const { data: materials, error: materialsError } = await sb
+        const { data: materials, error: materialsError } = await supabaseClient
             .from('course_materials')
             .select('*')
             .in('course_id', courseIds)
@@ -360,8 +402,11 @@ async function getRecentCourseMaterials(days = 7) {
 
 // Load course assignments
 async function loadCourseAssignments(courseId) {
+    const supabaseClient = getSupabaseClient();
+    if (!supabaseClient) return [];
+    
     try {
-        const { data: assignments, error } = await sb
+        const { data: assignments, error } = await supabaseClient
             .from('assignments')
             .select('*')
             .eq('course_id', courseId)
@@ -379,11 +424,13 @@ async function loadCourseAssignments(courseId) {
 
 // Get upcoming assignments
 async function getUpcomingAssignments() {
-    if (!currentUserProfile) await loadProfile(currentUserId);
+    const userProfile = getUserProfile();
+    const supabaseClient = getSupabaseClient();
+    if (!supabaseClient) return [];
     
-    const program = currentUserProfile?.program || currentUserProfile?.department;
-    const block = currentUserProfile?.block;
-    const intakeYear = currentUserProfile?.intake_year;
+    const program = userProfile?.program || userProfile?.department;
+    const block = userProfile?.block;
+    const intakeYear = userProfile?.intake_year;
 
     if (!program || !block || !intakeYear) return [];
 
@@ -393,7 +440,7 @@ async function getUpcomingAssignments() {
 
     try {
         // First get courses for this student
-        const { data: courses, error: coursesError } = await sb
+        const { data: courses, error: coursesError } = await supabaseClient
             .from('courses')
             .select('id, course_name')
             .eq('program_type', program)
@@ -407,7 +454,7 @@ async function getUpcomingAssignments() {
         if (courseIds.length === 0) return [];
 
         // Then get upcoming assignments for these courses
-        const { data: assignments, error: assignmentsError } = await sb
+        const { data: assignments, error: assignmentsError } = await supabaseClient
             .from('assignments')
             .select('*')
             .in('course_id', courseIds)
@@ -438,13 +485,15 @@ async function getUpcomingAssignments() {
 
 // Load course grades
 async function loadCourseGrades(courseId) {
-    if (!currentUserId) return [];
+    const userId = getCurrentUserId();
+    const supabaseClient = getSupabaseClient();
+    if (!userId || !supabaseClient) return [];
 
     try {
-        const { data: grades, error } = await sb
+        const { data: grades, error } = await supabaseClient
             .from('exam_grades')
             .select('*')
-            .eq('student_id', currentUserId)
+            .eq('student_id', userId)
             .eq('course_id', courseId)
             .order('graded_at', { ascending: false });
 
@@ -476,13 +525,15 @@ async function calculateCourseAverage(courseId) {
 
 // Load course attendance
 async function loadCourseAttendance(courseId) {
-    if (!currentUserId) return [];
+    const userId = getCurrentUserId();
+    const supabaseClient = getSupabaseClient();
+    if (!userId || !supabaseClient) return [];
 
     try {
-        const { data: attendance, error } = await sb
+        const { data: attendance, error } = await supabaseClient
             .from('geo_attendance_logs')
             .select('*')
-            .eq('student_id', currentUserId)
+            .eq('student_id', userId)
             .eq('course_id', courseId)
             .order('check_in_time', { ascending: false });
 
@@ -646,7 +697,7 @@ function initializeCoursesModule() {
     const coursesTab = document.querySelector('.nav a[data-tab="courses"]');
     if (coursesTab) {
         coursesTab.addEventListener('click', () => {
-            if (currentUserId) {
+            if (getCurrentUserId()) {
                 loadCourses();
             }
         });
