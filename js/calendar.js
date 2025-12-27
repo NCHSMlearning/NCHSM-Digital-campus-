@@ -113,6 +113,69 @@ async function loadAcademicCalendar() {
     AppUtils.showLoading(tableBody, 'Loading academic schedule...');
     
     try {
+        // ====== CRITICAL FIX: Ensure user profile is available ======
+        // Try multiple sources for user profile
+        let userProfile = window.db?.currentUserProfile || 
+                         window.currentUserProfile || 
+                         window.userProfile;
+        
+        const userId = window.db?.currentUserId || 
+                      window.currentUserId || 
+                      userProfile?.user_id;
+        
+        const supabaseClient = window.supabase || window.db?.supabase;
+        
+        // If no profile found, try to load it
+        if (!userProfile || !userId || !supabaseClient) {
+            console.warn('📅 User profile or database not available, attempting to load...');
+            
+            // Try to get from auth
+            if (supabaseClient) {
+                const { data: { user } } = await supabaseClient.auth.getUser();
+                if (user) {
+                    window.currentUserId = user.id;
+                    
+                    // Try to load profile from database
+                    const { data: profile } = await supabaseClient
+                        .from('consolidated_user_profiles_table')
+                        .select('*')
+                        .eq('user_id', user.id)
+                        .single();
+                    
+                    if (profile) {
+                        userProfile = profile;
+                        window.currentUserProfile = profile;
+                        window.userProfile = profile;
+                        
+                        if (window.db) {
+                            window.db.currentUserProfile = profile;
+                            window.db.currentUserId = user.id;
+                        }
+                        
+                        console.log('✅ Calendar: User profile loaded');
+                    }
+                }
+            }
+            
+            // If still no profile, show error
+            if (!userProfile) {
+                throw new Error('User profile not available. Please refresh the page or log in again.');
+            }
+        }
+        
+        // Set global variables for fetchAllScheduleData function
+        window.currentUserProfile = userProfile;
+        window.currentUserId = userId;
+        window.sb = supabaseClient;
+        
+        console.log('📅 Calendar using profile:', {
+            name: userProfile.full_name,
+            program: userProfile.program || userProfile.department,
+            block: userProfile.block,
+            intakeYear: userProfile.intake_year
+        });
+        // ====== END OF FIX ======
+        
         // Clear any existing calendar rendering
         clearCalendarRendering();
         
@@ -147,23 +210,55 @@ async function loadAcademicCalendar() {
         
     } catch (error) {
         console.error("Failed to load academic calendar:", error);
-        AppUtils.showError(tableBody, 'Error loading calendar data.');
+        AppUtils.showError(tableBody, 'Error loading calendar data: ' + error.message);
     } finally {
         isLoadingCalendar = false;
     }
 }
-
 // Fetch all schedule data from multiple sources
 async function fetchAllScheduleData() {
-    if (!currentUserProfile || !currentUserProfile.program && !currentUserProfile.department || !currentUserProfile.intake_year) {
-        await loadProfile(currentUserId); 
+    // Get user profile from database instance or global variables
+    let currentUserProfile = window.db?.currentUserProfile || 
+                           window.currentUserProfile || 
+                           window.userProfile || {};
+    
+    let currentUserId = window.db?.currentUserId || 
+                       window.currentUserId || 
+                       currentUserProfile?.user_id;
+    
+    const sb = window.supabase || window.db?.supabase;
+    
+    if (!sb) {
+        console.error("Supabase client not available");
+        return [];
+    }
+    
+    // Load profile if missing
+    if (!currentUserProfile || (!currentUserProfile.program && !currentUserProfile.department) || !currentUserProfile.intake_year) {
+        try {
+            // Try to load profile via database
+            if (window.db && currentUserId) {
+                await window.db.loadUserProfile();
+                // Update local reference
+                currentUserProfile = window.db.currentUserProfile || currentUserProfile;
+                currentUserId = window.db.currentUserId || currentUserId;
+                window.currentUserProfile = currentUserProfile; // Set for backward compatibility
+                window.currentUserId = currentUserId;
+            }
+        } catch (error) {
+            console.error("Failed to load profile:", error);
+            return [];
+        }
     }
     
     const program = currentUserProfile?.program || currentUserProfile?.department;
     const block = currentUserProfile?.block;
     const intakeYear = currentUserProfile?.intake_year;
     
-    if (!program || !block || !intakeYear) return [];
+    if (!program || !block || !intakeYear) {
+        console.warn("User profile data incomplete:", { program, block, intakeYear });
+        return [];
+    }
     
     const events = [];
     
@@ -173,7 +268,7 @@ async function fetchAllScheduleData() {
             .from('calendar_events')
             .select('event_name, event_date, type, description, target_program, target_block, target_intake_year, venue, start_time, end_time, organizer')
             .or(`target_program.eq.${program},target_program.eq.General`)
-            .or(`target_block.eq.${block},target_block.is.null`)
+            .or(`block_term.eq.${block},block_term.is.null,block_term.eq.General`)
             .eq('target_intake_year', intakeYear)
             .order('event_date', { ascending: true });
         
@@ -200,8 +295,14 @@ async function fetchAllScheduleData() {
             });
         }
         
-        // Fetch exams from cached exams
-        const exams = window.cachedExams || [];
+        // Fetch exams from cached exams or database
+        let exams = [];
+        if (window.cachedExams && window.cachedExams.length > 0) {
+            exams = window.cachedExams;
+        } else if (window.db) {
+            exams = await window.db.getExams() || [];
+        }
+        
         exams.forEach(exam => {
             if (exam.exam_date) {
                 events.push({
@@ -271,6 +372,33 @@ async function fetchAllScheduleData() {
         console.error("Error fetching schedule data:", error);
         return [];
     }
+}
+
+// Helper functions (if not already defined)
+function getEventColor(type) {
+    const colors = {
+        'Exam': '#EF4444',
+        'Clinical': '#10B981',
+        'Class': '#3B82F6',
+        'Event': '#8B5CF6',
+        'Holiday': '#F59E0B',
+        'Meeting': '#EC4899',
+        'Deadline': '#6366F1'
+    };
+    return colors[type] || '#6B7280';
+}
+
+function getEventIcon(type) {
+    const icons = {
+        'Exam': 'fas fa-file-alt',
+        'Clinical': 'fas fa-hospital',
+        'Class': 'fas fa-chalkboard-teacher',
+        'Event': 'fas fa-calendar-day',
+        'Holiday': 'fas fa-umbrella-beach',
+        'Meeting': 'fas fa-users',
+        'Deadline': 'fas fa-flag-checkered'
+    };
+    return icons[type] || 'fas fa-calendar';
 }
 
 // Fetch clinical sessions
