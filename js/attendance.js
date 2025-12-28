@@ -1,4 +1,4 @@
-// js/attendance.js - Attendance System Module (Updated)
+// js/attendance.js - Attendance System Module (Integrated with database.js)
 class AttendanceModule {
     constructor() {
         this.userId = null;
@@ -50,8 +50,10 @@ class AttendanceModule {
     // Initialize with user ID and profile
     initialize() {
         console.log('🚀 AttendanceModule.initialize() called');
-        this.userId = getCurrentUserId();
-        this.userProfile = getUserProfile();
+        
+        // Get user data from database.js (FIXED)
+        this.userId = this.getCurrentUserId();
+        this.userProfile = this.getUserProfile();
         
         console.log('👤 Attendance user data:', {
             userId: this.userId,
@@ -63,12 +65,46 @@ class AttendanceModule {
             this.loadAttendanceData();
         } else {
             console.error('❌ Missing user data for attendance');
+            // Wait and retry (database might still be initializing)
+            setTimeout(() => {
+                console.log('🔄 Retrying attendance initialization...');
+                this.initialize();
+            }, 1000);
         }
     }
     
-    // Get Supabase client
+    // Get user ID from database.js
+    getCurrentUserId() {
+        if (window.db && window.db.currentUserId) {
+            return window.db.currentUserId;
+        }
+        if (window.currentUserId) {
+            return window.currentUserId;
+        }
+        return null;
+    }
+    
+    // Get user profile from database.js
+    getUserProfile() {
+        if (window.db && window.db.currentUserProfile) {
+            return window.db.currentUserProfile;
+        }
+        if (window.currentUserProfile || window.userProfile) {
+            return window.currentUserProfile || window.userProfile;
+        }
+        return null;
+    }
+    
+    // Get Supabase client from database.js
     getSupabaseClient() {
-        return window.supabaseClient || getSupabaseClient();
+        if (window.db && window.db.supabase) {
+            return window.db.supabase;
+        }
+        if (window.app && window.app.supabase) {
+            return window.app.supabase;
+        }
+        console.error('❌ No Supabase client found');
+        return null;
     }
     
     // Load all attendance data
@@ -94,12 +130,12 @@ class AttendanceModule {
         }
     }
     
-    // Load clinical targets
+    // Load clinical targets (using database.js)
     async loadClinicalTargets() {
         console.log('🏥 Loading clinical targets...');
         
         if (!this.userProfile) {
-            this.userProfile = getUserProfile();
+            this.userProfile = this.getUserProfile();
         }
         
         const program = this.userProfile?.program || this.userProfile?.department;
@@ -115,8 +151,22 @@ class AttendanceModule {
         }
         
         try {
-            // Geo-based clinical areas
-            const { data: areaData, error: areaError } = await this.getSupabaseClient()
+            // Use database.js if available (it has caching!)
+            if (window.db && window.db.getClinicalTargets) {
+                console.log('📦 Using cached clinical targets from database.js');
+                const clinicalTargets = await window.db.getClinicalTargets();
+                this.cachedClinicalAreas = clinicalTargets;
+                console.log(`✅ Loaded ${this.cachedClinicalAreas.length} clinical areas from cache`);
+                return;
+            }
+            
+            // Fallback: direct database query
+            const supabase = this.getSupabaseClient();
+            if (!supabase) {
+                throw new Error('No database connection');
+            }
+            
+            const { data: areaData, error: areaError } = await supabase
                 .from('clinical_areas')
                 .select('id, name, latitude, longitude, block, program, intake_year')
                 .ilike('program', program)
@@ -124,10 +174,8 @@ class AttendanceModule {
                 .or(blockTerm ? `block.ilike.${blockTerm},block.is.null` : 'block.is.null');
             
             if (areaError) throw areaError;
-            console.log(`✅ Loaded ${areaData?.length || 0} clinical areas`);
             
-            // Textual clinical names including UUID + coordinates
-            const { data: nameData, error: nameError } = await this.getSupabaseClient()
+            const { data: nameData, error: nameError } = await supabase
                 .from('clinical_names')
                 .select('id, uuid, clinical_area_name, latitude, longitude, program, intake_year, block_term')
                 .ilike('program', program)
@@ -135,9 +183,7 @@ class AttendanceModule {
                 .or(blockTerm ? `block_term.ilike.${blockTerm},block_term.is.null` : 'block_term.is.null');
             
             if (nameError) throw nameError;
-            console.log(`✅ Loaded ${nameData?.length || 0} clinical names`);
             
-            // Map textual names to use actual UUIDs + keep coordinates
             const mappedNames = (nameData || []).map(n => ({
                 id: n.uuid,
                 original_id: n.id,
@@ -147,12 +193,11 @@ class AttendanceModule {
                 block: n.block_term || null
             }));
             
-            // Merge + deduplicate
             this.cachedClinicalAreas = [...(areaData || []), ...mappedNames]
                 .filter((v, i, a) => a.findIndex(t => t.name === v.name) === i)
                 .sort((a, b) => a.name.localeCompare(b.name));
             
-            console.log(`✅ Total unique clinical areas: ${this.cachedClinicalAreas.length}`);
+            console.log(`✅ Loaded ${this.cachedClinicalAreas.length} clinical areas`);
             
         } catch (error) {
             console.error("❌ Error loading clinical areas:", error);
@@ -160,12 +205,12 @@ class AttendanceModule {
         }
     }
     
-    // Load class targets - FIXED: Uses 'courses' table instead of 'courses_sections'
+    // Load class targets (using database.js)
     async loadClassTargets() {
         console.log('🏫 Loading class targets...');
         
         if (!this.userProfile) {
-            this.userProfile = getUserProfile();
+            this.userProfile = this.getUserProfile();
         }
         
         const program = this.userProfile?.program || this.userProfile?.department;
@@ -181,9 +226,29 @@ class AttendanceModule {
         }
         
         try {
-            // FIXED: Query the 'courses' table which has your actual data
-            const { data, error } = await this.getSupabaseClient()
-                .from('courses')  // Changed from 'courses_sections'
+            // Use database.js if available
+            if (window.db && window.db.getCourses) {
+                console.log('📦 Using cached courses from database.js');
+                const courses = await window.db.getCourses();
+                this.cachedCourses = courses.map(course => ({
+                    id: course.id,
+                    name: course.course_name,
+                    code: course.unit_code,
+                    latitude: -1.2921,  // Default coordinates
+                    longitude: 36.8219  // Default coordinates
+                }));
+                console.log(`✅ Loaded ${this.cachedCourses.length} courses from cache`);
+                return;
+            }
+            
+            // Fallback: direct database query
+            const supabase = this.getSupabaseClient();
+            if (!supabase) {
+                throw new Error('No database connection');
+            }
+            
+            const { data, error } = await supabase
+                .from('courses')
                 .select('id, course_name, unit_code, block')
                 .or(`target_program.eq.${program},target_program.eq.General`)
                 .eq('intake_year', intakeYear)
@@ -192,31 +257,19 @@ class AttendanceModule {
             
             if (error) throw error;
             
-            // Map data to expected format
             this.cachedCourses = (data || []).map(course => ({
                 id: course.id,
                 name: course.course_name,
                 code: course.unit_code,
-                latitude: -1.2921,  // Default coordinates
-                longitude: 36.8219  // Default coordinates
+                latitude: -1.2921,
+                longitude: 36.8219
             }));
             
-            console.log(`✅ Loaded ${this.cachedCourses.length} class targets from 'courses' table`);
-            
-            // Log details for debugging
-            if (this.cachedCourses.length > 0) {
-                console.log('📋 Courses found:');
-                this.cachedCourses.forEach((course, i) => {
-                    console.log(`   ${i + 1}. ${course.code}: ${course.name}`);
-                });
-            }
+            console.log(`✅ Loaded ${this.cachedCourses.length} class targets`);
             
         } catch (error) {
             console.error("❌ Error loading class targets:", error);
             this.cachedCourses = [];
-            
-            // Fallback to empty array if error
-            console.log('🔄 Using empty course list as fallback');
         }
     }
     
@@ -228,7 +281,12 @@ class AttendanceModule {
         this.geoAttendanceHistory.innerHTML = '<tr><td colspan="4">Loading geo check-in history...</td></tr>';
         
         try {
-            const { data: logs, error } = await this.getSupabaseClient()
+            const supabase = this.getSupabaseClient();
+            if (!supabase) {
+                throw new Error('No database connection');
+            }
+            
+            const { data: logs, error } = await supabase
                 .from('geo_attendance_logs')
                 .select('check_in_time, session_type, target_name, is_verified')
                 .eq('student_id', this.userId)
@@ -462,7 +520,7 @@ class AttendanceModule {
         try {
             // Ensure user profile is loaded
             if (!this.userProfile) {
-                this.userProfile = getUserProfile();
+                this.userProfile = this.getUserProfile();
             }
             
             if (!this.userProfile) {
@@ -535,7 +593,7 @@ class AttendanceModule {
             
             // Prepare data for database
             let dbTargetId = targetEntry.id;
-            let targetNameToLog = targetEntry.name; // Use the actual name from cache
+            let targetNameToLog = targetEntry.name;
             let selectedCourseId = null;
             
             if (sessionType === 'Class') {
@@ -556,7 +614,12 @@ class AttendanceModule {
                 this.geoMessage.textContent = '📡 Submitting check-in...';
             }
             
-            const { error } = await this.getSupabaseClient()
+            const supabase = this.getSupabaseClient();
+            if (!supabase) {
+                throw new Error('No database connection');
+            }
+            
+            const { error } = await supabase
                 .rpc('check_in_and_defer_fk', {
                     p_student_id: this.userId,
                     p_check_in_time: checkInTime,
@@ -596,6 +659,9 @@ class AttendanceModule {
             // Refresh attendance history
             this.loadGeoAttendanceHistory();
             
+            // Dispatch event to notify dashboard
+            document.dispatchEvent(new CustomEvent('attendanceCheckedIn'));
+            
         } catch (error) {
             console.error('❌ Geo check-in error:', error);
             if (this.geoMessage) {
@@ -627,12 +693,20 @@ class AttendanceModule {
     }
 }
 
-// Create global instance and export functions
+// Create global instance
 let attendanceModule = null;
 
-// Initialize attendance module
+// Initialize attendance module (updated to wait for database)
 function initAttendanceModule() {
     console.log('🚀 initAttendanceModule() called');
+    
+    // Wait for database to be ready
+    if (!window.db || !window.db.isInitialized) {
+        console.log('⏳ Waiting for database to initialize...');
+        setTimeout(initAttendanceModule, 500);
+        return null;
+    }
+    
     try {
         attendanceModule = new AttendanceModule();
         attendanceModule.initialize();
@@ -673,20 +747,15 @@ function updateTargetSelect() {
         attendanceModule.updateTargetSelect();
     }
 }
-// ============================================
-// AUTO-INITIALIZATION - ADD THIS TO THE END
-// ============================================
 
-// Auto-initialize when page loads
+// Auto-initialize when page loads (updated)
 function autoInitializeAttendance() {
     console.log('🔄 Auto-initializing attendance module...');
     
     // Wait for DOM to be ready
     if (document.readyState === 'loading') {
-        // DOM is still loading, wait for it
         document.addEventListener('DOMContentLoaded', initializeWhenReady);
     } else {
-        // DOM is already ready
         initializeWhenReady();
     }
 }
@@ -702,23 +771,27 @@ function initializeWhenReady() {
     if (hasAttendanceElements) {
         console.log('✅ Attendance elements found, initializing module...');
         
-        // Wait a bit more to ensure all dependencies are loaded
-        setTimeout(() => {
-            if (typeof initAttendanceModule === 'function') {
-                initAttendanceModule();
-                console.log('✅ Attendance module auto-initialized');
+        // Wait for database to be ready
+        const checkDatabase = () => {
+            if (window.db && window.db.isInitialized) {
+                if (typeof initAttendanceModule === 'function') {
+                    initAttendanceModule();
+                    console.log('✅ Attendance module auto-initialized');
+                }
             } else {
-                console.warn('⚠️ initAttendanceModule not available yet');
+                console.log('⏳ Waiting for database...');
+                setTimeout(checkDatabase, 500);
             }
-        }, 300);
+        };
+        
+        setTimeout(checkDatabase, 300);
     } else {
         console.log('📭 No attendance elements on this page');
     }
 }
 
-// Also initialize if user navigates to attendance tab
+// Initialize when tab is opened
 function initializeAttendanceIfNeeded() {
-    // Check if we're on a page with attendance
     if (document.getElementById('session-type') && !attendanceModule) {
         console.log('📍 Attendance tab opened, initializing...');
         if (typeof initAttendanceModule === 'function') {
@@ -727,29 +800,26 @@ function initializeAttendanceIfNeeded() {
     }
 }
 
-// Set up tab change detection (if using tabs)
-if (typeof setupTabListeners === 'function') {
-    // If you have a tab system, listen for tab changes
-    document.addEventListener('tabChanged', function(e) {
-        if (e.detail && e.detail.tabId === 'attendance-tab') {
-            initializeAttendanceIfNeeded();
-        }
-    });
-}
+// Listen for tab changes
+document.addEventListener('tabChanged', function(e) {
+    if (e.detail && e.detail.tabId === 'attendance') {
+        initializeAttendanceIfNeeded();
+    }
+});
+
+// Listen for app ready event
+document.addEventListener('appReady', function() {
+    console.log('🎯 App is ready, checking attendance...');
+    if (document.getElementById('session-type') && !attendanceModule) {
+        setTimeout(() => {
+            initAttendanceModule();
+        }, 300);
+    }
+});
 
 // Auto-initialize on page load
 autoInitializeAttendance();
 
-// Also make it available globally for manual trigger
-window.initializeAttendance = function() {
-    if (typeof initAttendanceModule === 'function') {
-        initAttendanceModule();
-        return true;
-    }
-    return false;
-};
-
-console.log('🏁 Attendance module ready with auto-initialization');
 // Make functions globally available
 window.AttendanceModule = AttendanceModule;
 window.initAttendanceModule = initAttendanceModule;
@@ -757,9 +827,9 @@ window.loadAttendanceData = loadAttendanceData;
 window.geoCheckIn = geoCheckIn;
 window.loadGeoAttendanceHistory = loadGeoAttendanceHistory;
 window.updateTargetSelect = updateTargetSelect;
-window.attendanceModule = null; // Will be set after init
+window.attendanceModule = null;
 
-// Optional: Add CSS for status indicators
+// Add CSS for status indicators
 const attendanceStyles = document.createElement('style');
 attendanceStyles.textContent = `
     .info-message { color: #3b82f6; }
@@ -787,4 +857,4 @@ attendanceStyles.textContent = `
 `;
 document.head.appendChild(attendanceStyles);
 
-console.log('🏁 Attendance module loaded, ready to initialize');
+console.log('🏁 Attendance module loaded, will auto-initialize when database is ready');
