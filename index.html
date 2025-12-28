@@ -684,8 +684,7 @@
             </div>
         </div>
     </div>
-
-   <!-- JavaScript Files -->
+<!-- JavaScript Files -->
 <script src="./js/database.js"></script>
 <script src="./js/utils.js"></script>
 <script src="./js/ui.js"></script>
@@ -699,12 +698,9 @@
 <script src="./js/messages.js"></script>
 <script src="./js/nurseiq.js"></script>
 
-<!-- Add App.js AFTER all modules -->
-<script src="./js/app.js"></script>
-
 <!-- Initialize App -->
 <script>
-// Global app state (for backward compatibility)
+// Global app state
 window.app = {
     config: null,
     supabase: null,
@@ -791,45 +787,26 @@ async function initializeApp() {
             }
         );
         
-        // Check if we should use the new App class or old approach
-        if (typeof App === 'function') {
-            // NEW APPROACH: Use App class
-            updateLoadingStatus('Initializing application...');
-            
-            // Create App instance
-            window.appInstance = new App();
-            await window.appInstance.initialize();
-            
-        } else {
-            // OLD APPROACH: Use individual modules
-            updateLoadingStatus('Initializing database...');
-            
-            // Initialize database module
-            if (typeof db === 'undefined') {
-                throw new Error('Database module not loaded');
-            }
-            
-            await db.initialize();
-            
-            // Check authentication
-            updateLoadingStatus('Checking authentication...');
-            const isAuthenticated = await db.checkAuth();
-            
-            if (!isAuthenticated) {
-                window.location.href = 'login.html';
-                return;
-            }
-            
-            // Load user profile
-            updateLoadingStatus('Loading user profile...');
-            await db.loadUserProfile();
-            
-            // Set user data for modules
-            window.currentUserId = db.getCurrentUserId();
-            window.currentUserProfile = db.getUserProfile();
-            
-            updateLoadingStatus('Loading dashboard...');
+        // Initialize database module
+        updateLoadingStatus('Initializing database...');
+        
+        if (typeof db === 'undefined') {
+            throw new Error('Database module not loaded');
         }
+        
+        // This single call does everything:
+        // 1. Connects to Supabase
+        // 2. Authenticates user
+        // 3. Loads user profile
+        // 4. Sets global variables
+        await db.initialize();
+        
+        // Check if authentication was successful
+        if (!window.currentUserId) {
+            throw new Error('User not authenticated');
+        }
+        
+        updateLoadingStatus('Loading dashboard...');
         
         // Hide loading screen and show app
         setTimeout(() => {
@@ -840,26 +817,17 @@ async function initializeApp() {
                 document.getElementById('loading-screen').style.display = 'none';
                 
                 // Initialize UI
-                if (window.appInstance && window.appInstance.ui) {
-                    // New approach: Use App's UI module
-                    window.appInstance.ui.initialize();
-                } else if (typeof initUI === 'function') {
-                    // Old approach
+                if (typeof initUI === 'function') {
                     initUI();
                 }
                 
                 // Load initial dashboard
-                if (window.appInstance && window.appInstance.dashboard) {
-                    // Already loaded by App class
-                } else if (typeof loadDashboard === 'function') {
-                    // Old approach
+                if (typeof loadDashboard === 'function') {
                     loadDashboard();
                 }
                 
-                // Initialize attendance module
-                if (window.appInstance && window.appInstance.attendance) {
-                    // Already initialized by App class
-                } else if (typeof initAttendanceModule === 'function') {
+                // Initialize attendance module if on attendance tab
+                if (document.getElementById('session-type') && typeof initAttendanceModule === 'function') {
                     setTimeout(() => {
                         initAttendanceModule();
                         console.log('✅ Attendance module initialized');
@@ -869,6 +837,15 @@ async function initializeApp() {
                 window.app.isInitialized = true;
                 
                 console.log('✅ Application initialized successfully');
+                
+                // Dispatch event that app is ready
+                document.dispatchEvent(new CustomEvent('appReady', {
+                    detail: {
+                        userId: window.currentUserId,
+                        userProfile: window.currentUserProfile
+                    }
+                }));
+                
             }, 300);
         }, 1000);
         
@@ -907,7 +884,7 @@ async function initializeApp() {
     }
 }
 
-// Tab switching with both old and new approach support
+// Tab switching
 window.showTab = function(tabId) {
     console.log(`Switching to tab: ${tabId}`);
     
@@ -940,111 +917,95 @@ window.showTab = function(tabId) {
         console.warn('Could not save tab state:', e);
     }
     
-    // Load tab data based on approach
-    if (window.appInstance) {
-        // NEW APPROACH: Use App class
-        loadTabDataNew(tabId);
-    } else {
-        // OLD APPROACH: Use individual functions
-        loadTabDataOld(tabId);
-    }
+    // Load tab data
+    loadTabData(tabId);
 };
 
-// Load tab data for NEW approach (App class)
-async function loadTabDataNew(tabId) {
-    if (!window.appInstance) return;
+// Load tab data
+async function loadTabData(tabId) {
+    if (!window.app.isInitialized) {
+        console.warn('App not initialized yet, waiting...');
+        setTimeout(() => loadTabData(tabId), 500);
+        return;
+    }
     
     try {
-        console.log(`Loading tab ${tabId} with App class...`);
+        console.log(`📂 Loading tab data: ${tabId}`);
+        
+        // Ensure we have user data
+        if (!window.currentUserId && window.db && window.db.currentUserId) {
+            window.currentUserId = window.db.currentUserId;
+            window.currentUserProfile = window.db.currentUserProfile;
+        }
         
         switch(tabId) {
             case 'dashboard':
-                if (window.appInstance.dashboard && window.appInstance.dashboard.refreshDashboard) {
-                    await window.appInstance.dashboard.refreshDashboard();
+                if (typeof loadDashboard === 'function') {
+                    await loadDashboard();
+                } else if (window.dashboardModule && window.dashboardModule.refreshDashboard) {
+                    await window.dashboardModule.refreshDashboard();
                 }
                 break;
+                
             case 'profile':
-                if (window.appInstance.profile && window.appInstance.profile.loadProfile) {
-                    await window.appInstance.profile.loadProfile();
+                if (typeof loadProfile === 'function') {
+                    await loadProfile();
+                } else if (window.db && window.db.loadProfileData) {
+                    await window.db.loadProfileData();
                 }
                 break;
-            case 'attendance':
-                if (window.appInstance.attendance && window.appInstance.attendance.loadAttendanceData) {
-                    await window.appInstance.attendance.loadAttendanceData();
-                }
-                break;
-            case 'courses':
-                if (window.appInstance.courses && window.appInstance.courses.loadCourses) {
-                    await window.appInstance.courses.loadCourses();
-                }
-                break;
-            case 'cats':
-                if (window.appInstance.exams && window.appInstance.exams.loadExams) {
-                    await window.appInstance.exams.loadExams();
-                }
-                break;
-            case 'resources':
-                if (window.appInstance.resources && window.appInstance.resources.loadResources) {
-                    await window.appInstance.resources.loadResources();
-                }
-                break;
+                
             case 'calendar':
-                if (window.appInstance.calendar && window.appInstance.calendar.loadCalendar) {
-                    await window.appInstance.calendar.loadCalendar();
+                if (typeof loadAcademicCalendar === 'function') {
+                    await loadAcademicCalendar();
                 }
                 break;
+                
+            case 'courses':
+                if (typeof loadCourses === 'function') {
+                    await loadCourses();
+                }
+                break;
+                
+            case 'attendance':
+                // Attendance auto-initializes on page load
+                if (window.attendanceModule && window.attendanceModule.loadAttendanceData) {
+                    await window.attendanceModule.loadAttendanceData();
+                }
+                break;
+                
+            case 'cats':
+                if (typeof loadExams === 'function') {
+                    await loadExams();
+                }
+                break;
+                
+            case 'resources':
+                if (typeof loadResources === 'function') {
+                    await loadResources();
+                }
+                break;
+                
             case 'messages':
-                if (window.appInstance.messages && window.appInstance.messages.loadMessages) {
-                    await window.appInstance.messages.loadMessages();
+                if (typeof loadMessages === 'function') {
+                    await loadMessages();
                 }
                 break;
+                
             case 'nurseiq':
-                if (window.appInstance.nurseiq && window.appInstance.nurseiq.loadNurseIQ) {
-                    await window.appInstance.nurseiq.loadNurseIQ();
+                if (typeof loadNurseIQ === 'function') {
+                    await loadNurseIQ();
                 }
                 break;
+                
+            default:
+                console.log(`No specific loader for tab: ${tabId}`);
         }
-    } catch (error) {
-        console.error(`Error loading tab ${tabId}:`, error);
-    }
-}
-
-// Load tab data for OLD approach (individual functions)
-async function loadTabDataOld(tabId) {
-    try {
-        console.log(`Loading tab ${tabId} with old approach...`);
         
-        switch(tabId) {
-            case 'dashboard':
-                if (typeof loadDashboard === 'function') await loadDashboard();
-                break;
-            case 'profile':
-                if (typeof loadProfile === 'function') await loadProfile();
-                break;
-            case 'calendar':
-                if (typeof loadAcademicCalendar === 'function') await loadAcademicCalendar();
-                break;
-            case 'courses':
-                if (typeof loadCourses === 'function') await loadCourses();
-                break;
-            case 'attendance':
-                if (typeof loadAttendance === 'function') await loadAttendance();
-                break;
-            case 'cats':
-                if (typeof loadExams === 'function') await loadExams();
-                break;
-            case 'resources':
-                if (typeof loadResources === 'function') await loadResources();
-                break;
-            case 'messages':
-                if (typeof loadMessages === 'function') await loadMessages();
-                break;
-            case 'nurseiq':
-                if (typeof loadNurseIQ === 'function') await loadNurseIQ();
-                break;
-        }
+        console.log(`✅ Tab ${tabId} loaded successfully`);
+        
     } catch (error) {
-        console.error(`Error loading tab ${tabId}:`, error);
+        console.error(`❌ Error loading tab ${tabId}:`, error);
     }
 }
 
@@ -1067,22 +1028,27 @@ window.closeMenu = function() {
 function restoreLastTab() {
     try {
         const lastTab = localStorage.getItem('last_active_tab');
-        if (lastTab) {
-            // Wait for everything to be ready
+        if (lastTab && document.getElementById(lastTab)) {
+            console.log(`📁 Restoring last tab: ${lastTab}`);
             setTimeout(() => {
                 showTab(lastTab);
             }, 100);
+        } else {
+            // Default to dashboard
+            console.log('📊 Defaulting to dashboard tab');
+            showTab('dashboard');
         }
     } catch (e) {
         console.warn('Could not restore last tab:', e);
+        showTab('dashboard');
     }
 }
 
 // Logout function
 window.logout = async function() {
     try {
-        if (window.appInstance && window.appInstance.logout) {
-            await window.appInstance.logout();
+        if (window.db && window.db.logout) {
+            await window.db.logout();
         } else if (window.app.supabase) {
             await window.app.supabase.auth.signOut();
             // Clear localStorage
@@ -1098,20 +1064,58 @@ window.logout = async function() {
 
 // Global refresh function
 window.refreshApp = function() {
-    if (window.appInstance && window.appInstance.refreshAll) {
-        window.appInstance.refreshAll();
-    } else {
-        location.reload();
+    console.log('🔄 Refreshing application...');
+    
+    // Clear caches
+    if (window.db && window.db.clearCache) {
+        window.db.clearCache();
+    }
+    
+    // Clear module caches
+    if (window.dashboardModule && window.dashboardModule.clearCache) {
+        window.dashboardModule.clearCache();
+    }
+    
+    // Reload current tab
+    const currentTab = document.querySelector('.tab-content.active')?.id || 'dashboard';
+    if (currentTab && window.showTab) {
+        window.showTab(currentTab);
+    }
+    
+    // Show toast if available
+    if (window.showToast) {
+        window.showToast('Application refreshed', 'success');
     }
 };
 
+// Global function to check if app is ready
+window.isAppReady = function() {
+    return window.app.isInitialized;
+};
+
+// Listen for app ready event
+document.addEventListener('appReady', function(e) {
+    console.log('🎉 App is ready!', e.detail);
+    
+    // Initialize modules that need app to be ready
+    if (typeof initAttendanceModule === 'function' && document.getElementById('session-type')) {
+        setTimeout(() => {
+            initAttendanceModule();
+        }, 300);
+    }
+});
+
 // Start initialization when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('📱 DOM ready, starting app initialization...');
+    
     // Start app initialization
     initializeApp();
     
-    // Restore last tab
-    restoreLastTab();
+    // Restore last tab after app is initialized
+    setTimeout(() => {
+        restoreLastTab();
+    }, 1500);
 });
 
 // Add CSS for loading screen
@@ -1219,6 +1223,65 @@ document.addEventListener('DOMContentLoaded', function() {
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+}
+
+/* Toast notifications */
+.toast {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: #10B981;
+    color: white;
+    padding: 12px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    animation: slideIn 0.3s ease;
+}
+
+.toast.error {
+    background: #EF4444;
+}
+
+.toast.warning {
+    background: #F59E0B;
+}
+
+.toast.info {
+    background: #3B82F6;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Global refresh button */
+.refresh-btn {
+    background: #3B82F6;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: background 0.2s;
+}
+
+.refresh-btn:hover {
+    background: #2563EB;
 }
 </style>
 </body>
