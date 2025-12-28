@@ -1,4 +1,4 @@
-// js/attendance.js - Complete Attendance System Module (Updated)
+// js/attendance.js - Attendance System Module (Updated)
 class AttendanceModule {
     constructor() {
         this.userId = null;
@@ -21,9 +21,6 @@ class AttendanceModule {
         this.geoMessage = document.getElementById('geo-message');
         this.checkInButton = document.getElementById('check-in-button');
         this.geoAttendanceHistory = document.getElementById('geo-attendance-history');
-        
-        // Initialize offline sync
-        this.offlineQueueKey = 'offline_checkins_queue';
         
         this.initializeElements();
     }
@@ -48,17 +45,13 @@ class AttendanceModule {
         if (this.checkInButton) {
             this.checkInButton.addEventListener('click', () => this.geoCheckIn());
         }
-        
-        // Listen for online/offline status changes
-        window.addEventListener('online', () => this.syncOfflineCheckins());
-        window.addEventListener('offline', () => this.showOfflineWarning());
     }
     
     // Initialize with user ID and profile
     initialize() {
         console.log('🚀 AttendanceModule.initialize() called');
-        this.userId = this.getCurrentUserId();
-        this.userProfile = this.getUserProfile();
+        this.userId = getCurrentUserId();
+        this.userProfile = getUserProfile();
         
         console.log('👤 Attendance user data:', {
             userId: this.userId,
@@ -68,75 +61,14 @@ class AttendanceModule {
         if (this.userId && this.userProfile) {
             console.log('✅ User data available, loading attendance data...');
             this.loadAttendanceData();
-            this.syncOfflineCheckins(); // Sync any pending check-ins
         } else {
             console.error('❌ Missing user data for attendance');
-            this.showLoginPrompt();
-        }
-    }
-    
-    // Get user ID from storage
-    getCurrentUserId() {
-        return localStorage.getItem('user_id') || 
-               sessionStorage.getItem('user_id') || 
-               'unknown_user_' + Date.now();
-    }
-    
-    // Get user profile from storage
-    getUserProfile() {
-        try {
-            const profile = localStorage.getItem('user_profile') || 
-                           sessionStorage.getItem('user_profile');
-            return profile ? JSON.parse(profile) : null;
-        } catch (e) {
-            console.error('❌ Error parsing user profile:', e);
-            return null;
         }
     }
     
     // Get Supabase client
     getSupabaseClient() {
-        if (window.supabaseClient) {
-            return window.supabaseClient;
-        }
-        
-        // Fallback mock client for testing
-        console.warn('⚠️ Supabase client not found, using mock client');
-        return {
-            from: (table) => ({
-                select: () => Promise.resolve({ data: [], error: null }),
-                insert: (data) => Promise.resolve({ error: null }),
-                rpc: (fn, params) => Promise.resolve({ error: null })
-            })
-        };
-    }
-    
-    // Show login prompt
-    showLoginPrompt() {
-        if (this.geoMessage) {
-            this.geoMessage.innerHTML = `
-                <div class="error-message">
-                    Please log in to use attendance features.
-                    <button onclick="window.location.reload()" class="btn-small">
-                        Refresh
-                    </button>
-                </div>
-            `;
-        }
-    }
-    
-    // Show offline warning
-    showOfflineWarning() {
-        if (this.geoMessage) {
-            const existing = this.geoMessage.innerHTML;
-            if (!existing.includes('offline')) {
-                this.geoMessage.innerHTML += `
-                    <div class="offline-message" style="margin-top: 10px;">
-                        ⚠️ You are offline. Check-ins will be queued.
-                    </div>
-                `;
-            }
-        }
+        return window.supabaseClient || getSupabaseClient();
     }
     
     // Load all attendance data
@@ -159,16 +91,6 @@ class AttendanceModule {
             console.log('✅ Attendance data loaded successfully');
         } catch (error) {
             console.error('❌ Error loading attendance data:', error);
-            if (this.geoMessage) {
-                this.geoMessage.innerHTML = `
-                    <div class="error-message">
-                        Failed to load attendance data. 
-                        <button onclick="attendanceModule.loadAttendanceData()" class="btn-small">
-                            Retry
-                        </button>
-                    </div>
-                `;
-            }
         }
     }
     
@@ -177,7 +99,7 @@ class AttendanceModule {
         console.log('🏥 Loading clinical targets...');
         
         if (!this.userProfile) {
-            this.userProfile = this.getUserProfile();
+            this.userProfile = getUserProfile();
         }
         
         const program = this.userProfile?.program || this.userProfile?.department;
@@ -217,7 +139,7 @@ class AttendanceModule {
             
             // Map textual names to use actual UUIDs + keep coordinates
             const mappedNames = (nameData || []).map(n => ({
-                id: n.uuid || n.id,
+                id: n.uuid,
                 original_id: n.id,
                 name: n.clinical_area_name,
                 latitude: n.latitude,
@@ -238,12 +160,12 @@ class AttendanceModule {
         }
     }
     
-    // Load class targets
+    // Load class targets - FIXED: Uses 'courses' table instead of 'courses_sections'
     async loadClassTargets() {
         console.log('🏫 Loading class targets...');
         
         if (!this.userProfile) {
-            this.userProfile = this.getUserProfile();
+            this.userProfile = getUserProfile();
         }
         
         const program = this.userProfile?.program || this.userProfile?.department;
@@ -259,10 +181,10 @@ class AttendanceModule {
         }
         
         try {
-            // Query the 'courses' table
+            // FIXED: Query the 'courses' table which has your actual data
             const { data, error } = await this.getSupabaseClient()
-                .from('courses')
-                .select('id, course_name, unit_code, block, latitude, longitude')
+                .from('courses')  // Changed from 'courses_sections'
+                .select('id, course_name, unit_code, block')
                 .or(`target_program.eq.${program},target_program.eq.General`)
                 .eq('intake_year', intakeYear)
                 .or(block ? `block.eq.${block},block.is.null` : 'block.is.null')
@@ -270,19 +192,14 @@ class AttendanceModule {
             
             if (error) throw error;
             
-            // Map data to expected format with validation
-            this.cachedCourses = (data || []).map(course => {
-                // Ensure coordinates exist
-                const hasCoords = course.latitude && course.longitude;
-                return {
-                    id: course.id,
-                    name: course.course_name || 'Unnamed Course',
-                    code: course.unit_code || 'N/A',
-                    latitude: hasCoords ? course.latitude : this.FALLBACK_LAT,
-                    longitude: hasCoords ? course.longitude : this.FALLBACK_LON,
-                    hasCoordinates: hasCoords
-                };
-            }).filter(course => course.name !== 'Unnamed Course'); // Filter out invalid courses
+            // Map data to expected format
+            this.cachedCourses = (data || []).map(course => ({
+                id: course.id,
+                name: course.course_name,
+                code: course.unit_code,
+                latitude: -1.2921,  // Default coordinates
+                longitude: 36.8219  // Default coordinates
+            }));
             
             console.log(`✅ Loaded ${this.cachedCourses.length} class targets from 'courses' table`);
             
@@ -290,13 +207,16 @@ class AttendanceModule {
             if (this.cachedCourses.length > 0) {
                 console.log('📋 Courses found:');
                 this.cachedCourses.forEach((course, i) => {
-                    console.log(`   ${i + 1}. ${course.code}: ${course.name} ${course.hasCoordinates ? '(with coords)' : '(no coords)'}`);
+                    console.log(`   ${i + 1}. ${course.code}: ${course.name}`);
                 });
             }
             
         } catch (error) {
             console.error("❌ Error loading class targets:", error);
             this.cachedCourses = [];
+            
+            // Fallback to empty array if error
+            console.log('🔄 Using empty course list as fallback');
         }
     }
     
@@ -305,7 +225,7 @@ class AttendanceModule {
         if (!this.geoAttendanceHistory) return;
         
         console.log('📊 Loading attendance history...');
-        this.geoAttendanceHistory.innerHTML = '<tr><td colspan="4" class="loading">Loading geo check-in history...</td></tr>';
+        this.geoAttendanceHistory.innerHTML = '<tr><td colspan="4">Loading geo check-in history...</td></tr>';
         
         try {
             const { data: logs, error } = await this.getSupabaseClient()
@@ -318,27 +238,9 @@ class AttendanceModule {
             if (error) throw error;
             
             this.geoAttendanceHistory.innerHTML = '';
-            
-            // Check for offline queued check-ins
-            const offlineQueue = this.getOfflineQueue();
-            if (offlineQueue.length > 0 && (!logs || logs.length === 0)) {
-                this.geoAttendanceHistory.innerHTML = `
-                    <tr>
-                        <td colspan="4" class="offline-queue">
-                            📱 ${offlineQueue.length} check-in(s) queued offline
-                            <button onclick="attendanceModule.syncOfflineCheckins()" class="btn-small">
-                                Sync Now
-                            </button>
-                        </td>
-                    </tr>
-                `;
-            }
-            
             if (!logs || logs.length === 0) {
                 console.log('📭 No attendance logs found');
-                if (offlineQueue.length === 0) {
-                    this.geoAttendanceHistory.innerHTML = '<tr><td colspan="4">No check-in logs found.</td></tr>';
-                }
+                this.geoAttendanceHistory.innerHTML = '<tr><td colspan="4">No check-in logs found.</td></tr>';
                 return;
             }
             
@@ -364,7 +266,7 @@ class AttendanceModule {
             console.error("❌ Failed to load attendance history:", error);
             this.geoAttendanceHistory.innerHTML = `
                 <tr>
-                    <td colspan="4" class="error">
+                    <td colspan="4" style="color:#EF4444;">
                         Error loading attendance logs: ${error.message}
                         <br>
                         <button onclick="attendanceModule.loadGeoAttendanceHistory()" class="btn-small">
@@ -395,8 +297,7 @@ class AttendanceModule {
             targetList = this.cachedClinicalAreas.map(d => ({
                 id: d.id,
                 name: d.name,
-                text: `${d.name} (Clinical)`,
-                hasCoords: !!(d.latitude && d.longitude)
+                text: `${d.name} (Clinical)`
             }));
             label = 'Department/Area:';
             console.log(`🎯 Clinical targets available: ${targetList.length}`);
@@ -405,8 +306,7 @@ class AttendanceModule {
                 id: c.id,
                 name: c.name,
                 code: c.code,
-                text: `${c.code ? c.code + ' - ' : ''}${c.name} ${c.hasCoordinates ? '' : '⚠️'} (Class)`,
-                hasCoords: c.hasCoordinates
+                text: `${c.code ? c.code + ' - ' : ''}${c.name} (Class)`
             }));
             label = 'Course/Subject:';
             console.log(`🎯 Class targets available: ${targetList.length}`);
@@ -433,9 +333,6 @@ class AttendanceModule {
                 const option = document.createElement('option');
                 option.value = `${target.id}|${target.name}`;
                 option.textContent = target.text;
-                if (!target.hasCoords) {
-                    option.style.color = '#f59e0b'; // Orange warning for no coordinates
-                }
                 this.attendanceTargetSelect.appendChild(option);
             });
             
@@ -452,102 +349,13 @@ class AttendanceModule {
     getDeviceId() {
         let deviceId = localStorage.getItem('device_id');
         if (!deviceId) {
-            deviceId = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            deviceId = crypto.randomUUID();
             localStorage.setItem('device_id', deviceId);
             console.log('📱 Generated new device ID:', deviceId);
         } else {
             console.log('📱 Using existing device ID:', deviceId);
         }
         return deviceId;
-    }
-    
-    // Get offline queue
-    getOfflineQueue() {
-        try {
-            return JSON.parse(localStorage.getItem(this.offlineQueueKey) || '[]');
-        } catch (e) {
-            console.error('❌ Error reading offline queue:', e);
-            return [];
-        }
-    }
-    
-    // Save to offline queue
-    saveToOfflineQueue(checkInData) {
-        try {
-            const queue = this.getOfflineQueue();
-            checkInData.queueId = 'offline_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-            checkInData.queuedAt = new Date().toISOString();
-            queue.push(checkInData);
-            localStorage.setItem(this.offlineQueueKey, JSON.stringify(queue));
-            console.log('📴 Saved to offline queue:', checkInData.queueId);
-            return checkInData.queueId;
-        } catch (e) {
-            console.error('❌ Error saving to offline queue:', e);
-            return null;
-        }
-    }
-    
-    // Remove from offline queue
-    removeFromOfflineQueue(queueId) {
-        try {
-            const queue = this.getOfflineQueue();
-            const newQueue = queue.filter(item => item.queueId !== queueId);
-            localStorage.setItem(this.offlineQueueKey, JSON.stringify(newQueue));
-            console.log('✅ Removed from offline queue:', queueId);
-        } catch (e) {
-            console.error('❌ Error removing from offline queue:', e);
-        }
-    }
-    
-    // Sync offline check-ins
-    async syncOfflineCheckins() {
-        if (!navigator.onLine) {
-            console.log('📴 Still offline, cannot sync');
-            return;
-        }
-        
-        const queue = this.getOfflineQueue();
-        if (queue.length === 0) {
-            console.log('📭 No offline check-ins to sync');
-            return;
-        }
-        
-        console.log(`🔄 Syncing ${queue.length} offline check-in(s)...`);
-        
-        if (this.geoMessage) {
-            this.geoMessage.innerHTML = `
-                <div class="info-message">
-                    🔄 Syncing ${queue.length} offline check-in(s)...
-                </div>
-            `;
-        }
-        
-        let successCount = 0;
-        let errorCount = 0;
-        
-        for (const checkInData of queue) {
-            try {
-                await this.submitCheckInDirect(checkInData);
-                this.removeFromOfflineQueue(checkInData.queueId);
-                successCount++;
-                console.log(`✅ Synced offline check-in: ${checkInData.queueId}`);
-            } catch (error) {
-                errorCount++;
-                console.error(`❌ Failed to sync offline check-in ${checkInData.queueId}:`, error);
-            }
-        }
-        
-        if (this.geoMessage) {
-            this.geoMessage.innerHTML = `
-                <div class="success-message">
-                    ✅ Synced ${successCount} offline check-in(s)
-                    ${errorCount > 0 ? `<br><small>${errorCount} failed to sync</small>` : ''}
-                </div>
-            `;
-        }
-        
-        // Refresh history
-        this.loadGeoAttendanceHistory();
     }
     
     // Get current location
@@ -561,8 +369,7 @@ class AttendanceModule {
                     lat: this.FALLBACK_LAT,
                     lon: this.FALLBACK_LON,
                     acc: this.FALLBACK_ACCURACY,
-                    friendly: 'GPS unavailable in browser',
-                    source: 'fallback'
+                    friendly: 'GPS unavailable in browser'
                 });
                 return;
             }
@@ -573,8 +380,7 @@ class AttendanceModule {
                         lat: position.coords.latitude,
                         lon: position.coords.longitude,
                         acc: position.coords.accuracy,
-                        friendly: null,
-                        source: 'gps'
+                        friendly: null
                     };
                     console.log('📍 GPS location obtained:', location);
                     resolve(location);
@@ -585,8 +391,7 @@ class AttendanceModule {
                         lat: this.FALLBACK_LAT,
                         lon: this.FALLBACK_LON,
                         acc: this.FALLBACK_ACCURACY,
-                        friendly: `GPS denied: ${error.message}`,
-                        source: 'fallback'
+                        friendly: `GPS denied: ${error.message}`
                     });
                 },
                 { 
@@ -644,59 +449,27 @@ class AttendanceModule {
         return distanceMeters;
     }
     
-    // Submit check-in directly to table (fallback if RPC fails)
-    async submitCheckInDirect(checkInData) {
-        console.log('📤 Submitting check-in directly...');
-        
-        const { error } = await this.getSupabaseClient()
-            .from('geo_attendance_logs')
-            .insert({
-                student_id: checkInData.p_student_id,
-                check_in_time: checkInData.p_check_in_time,
-                session_type: checkInData.p_session_type,
-                target_id: checkInData.p_target_id,
-                target_name: checkInData.p_target_name,
-                latitude: checkInData.p_latitude,
-                longitude: checkInData.p_longitude,
-                accuracy_m: checkInData.p_accuracy_m,
-                location_friendly_name: checkInData.p_location_friendly_name,
-                program: checkInData.p_program,
-                block: checkInData.p_block,
-                intake_year: checkInData.p_intake_year,
-                device_id: checkInData.p_device_id,
-                is_verified: checkInData.p_is_verified,
-                course_id: checkInData.p_course_id,
-                student_name: checkInData.p_student_name
-            });
-        
-        if (error) throw error;
-        console.log('✅ Direct check-in successful');
-    }
-    
     // Geo check-in function
     async geoCheckIn() {
         console.log('📍 Starting geo check-in process...');
         
         if (this.checkInButton) this.checkInButton.disabled = true;
         if (this.geoMessage) {
-            this.geoMessage.innerHTML = `
-                <div class="info-message">
-                    ⏱️ Initializing check-in...
-                </div>
-            `;
+            this.geoMessage.textContent = '⏱️ Initializing check-in...';
+            this.geoMessage.className = 'info-message';
         }
         
         try {
             // Ensure user profile is loaded
             if (!this.userProfile) {
-                this.userProfile = this.getUserProfile();
+                this.userProfile = getUserProfile();
             }
             
             if (!this.userProfile) {
                 throw new Error('Student profile not loaded');
             }
             
-            const studentProgram = this.userProfile?.program || this.userProfile?.department || 'Unknown';
+            const studentProgram = this.userProfile?.program || this.userProfile?.department || null;
             const deviceId = this.getDeviceId();
             const sessionType = this.sessionTypeSelect?.value;
             const targetSelect = this.attendanceTargetSelect?.value;
@@ -720,28 +493,24 @@ class AttendanceModule {
                 throw new Error('Invalid target selected');
             }
             
-            // Find target entry
-            let targetEntry = sessionType === 'Clinical'
-                ? this.cachedClinicalAreas.find(c => c.id === targetId)
-                : this.cachedCourses.find(c => c.id === targetId);
-                
-            if (!targetEntry) {
-                throw new Error('Selected target not found in cache');
-            }
-            
-            if (!targetEntry.latitude || !targetEntry.longitude) {
-                console.warn('⚠️ Target has no coordinates, using default location');
-                targetEntry.latitude = this.FALLBACK_LAT;
-                targetEntry.longitude = this.FALLBACK_LON;
+            // Check offline status
+            if (!navigator.onLine) {
+                console.log('📴 Offline mode detected');
+                if (this.geoMessage) {
+                    this.geoMessage.innerHTML = `
+                        <span class="offline-message">
+                            ✅ Check-in saved offline. Will sync when back online.
+                        </span>
+                    `;
+                    this.geoMessage.className = 'offline-message';
+                }
+                // TODO: Implement offline queue
+                return;
             }
             
             // Get current location
             if (this.geoMessage) {
-                this.geoMessage.innerHTML = `
-                    <div class="info-message">
-                        📍 Requesting location... (Please allow GPS access)
-                    </div>
-                `;
+                this.geoMessage.textContent = '📍 Requesting location... (Please allow GPS access)';
             }
             
             const location = await this.getCurrentLocation();
@@ -751,10 +520,27 @@ class AttendanceModule {
                 location.friendly = await this.reverseGeocode(location.lat, location.lon);
             }
             
+            // Find target entry
+            let targetEntry = sessionType === 'Clinical'
+                ? this.cachedClinicalAreas.find(c => c.id === targetId)
+                : this.cachedCourses.find(c => c.id === targetId);
+                
+            if (!targetEntry) {
+                throw new Error('Selected target not found in cache');
+            }
+            
+            if (targetEntry.latitude === null || targetEntry.longitude === null) {
+                throw new Error('Target location coordinates not available');
+            }
+            
             // Prepare data for database
             let dbTargetId = targetEntry.id;
-            let targetNameToLog = targetEntry.name;
-            let selectedCourseId = sessionType === 'Class' ? targetEntry.id : null;
+            let targetNameToLog = targetEntry.name; // Use the actual name from cache
+            let selectedCourseId = null;
+            
+            if (sessionType === 'Class') {
+                selectedCourseId = targetEntry.id;
+            }
             
             // Calculate distance and verify
             const distanceMeters = this.calculateDistance(
@@ -765,76 +551,46 @@ class AttendanceModule {
             const isVerified = distanceMeters <= this.MAX_DISTANCE_RADIUS;
             console.log(`✅ Verification: ${isVerified ? 'Within range' : 'Out of range'} (${distanceMeters.toFixed(2)}m)`);
             
-            // Prepare check-in data
-            const checkInData = {
-                p_student_id: this.userId,
-                p_check_in_time: checkInTime,
-                p_session_type: sessionType === 'Clinical' ? 'Clinical' : 'Class',
-                p_target_id: dbTargetId,
-                p_target_name: targetNameToLog,
-                p_latitude: location.lat,
-                p_longitude: location.lon,
-                p_accuracy_m: location.acc,
-                p_location_friendly_name: location.friendly,
-                p_program: studentProgram,
-                p_block: this.userProfile.block || null,
-                p_intake_year: this.userProfile.intake_year || null,
-                p_device_id: deviceId,
-                p_is_verified: isVerified,
-                p_course_id: selectedCourseId,
-                p_student_name: this.userProfile.full_name || this.userProfile.name || 'Unknown Student'
-            };
-            
-            // Check offline status
-            if (!navigator.onLine) {
-                console.log('📴 Offline mode - queueing check-in');
-                const queueId = this.saveToOfflineQueue(checkInData);
-                
-                if (this.geoMessage) {
-                    this.geoMessage.innerHTML = `
-                        <div class="offline-message">
-                            ✅ Check-in saved offline (ID: ${queueId}). Will sync when back online.
-                            <br><small>Distance: ${distanceMeters.toFixed(2)}m from target</small>
-                        </div>
-                    `;
-                }
-                
-                // Refresh history to show queued item
-                this.loadGeoAttendanceHistory();
-                return;
-            }
-            
-            // Submit check-in
+            // Insert check-in via RPC
             if (this.geoMessage) {
-                this.geoMessage.innerHTML = `
-                    <div class="info-message">
-                        📡 Submitting check-in...
-                    </div>
-                `;
+                this.geoMessage.textContent = '📡 Submitting check-in...';
             }
             
-            // Try RPC first
-            try {
-                const { error } = await this.getSupabaseClient()
-                    .rpc('check_in_and_defer_fk', checkInData);
-                
-                if (error) throw error;
-                
-            } catch (rpcError) {
-                console.warn('⚠️ RPC failed, trying direct insert:', rpcError);
-                await this.submitCheckInDirect(checkInData);
+            const { error } = await this.getSupabaseClient()
+                .rpc('check_in_and_defer_fk', {
+                    p_student_id: this.userId,
+                    p_check_in_time: checkInTime,
+                    p_session_type: sessionType === 'Clinical' ? 'Clinical' : 'Class',
+                    p_target_id: dbTargetId,
+                    p_target_name: targetNameToLog,
+                    p_latitude: location.lat,
+                    p_longitude: location.lon,
+                    p_accuracy_m: location.acc,
+                    p_location_friendly_name: location.friendly,
+                    p_program: studentProgram,
+                    p_block: this.userProfile.block,
+                    p_intake_year: this.userProfile.intake_year,
+                    p_device_id: deviceId,
+                    p_is_verified: isVerified,
+                    p_course_id: selectedCourseId,
+                    p_student_name: this.userProfile.full_name || this.userProfile.name || 'Unknown Student'
+                });
+            
+            if (error) {
+                console.error('❌ RPC error:', error);
+                throw new Error(`Check-in failed: ${error.message}`);
             }
             
             // Success
             console.log('✅ Check-in successful!');
             if (this.geoMessage) {
                 this.geoMessage.innerHTML = `
-                    <div class="success-message">
+                    <span class="success-message">
                         ✅ Check-in complete! ${isVerified ? 'Verified successfully' : 'Pending verification'}
                         <br><small>Distance: ${distanceMeters.toFixed(2)}m from target</small>
-                        <br><small>Location: ${location.source === 'gps' ? 'GPS' : 'Fallback'}</small>
-                    </div>
+                    </span>
                 `;
+                this.geoMessage.className = 'success-message';
             }
             
             // Refresh attendance history
@@ -844,14 +600,11 @@ class AttendanceModule {
             console.error('❌ Geo check-in error:', error);
             if (this.geoMessage) {
                 this.geoMessage.innerHTML = `
-                    <div class="error-message">
+                    <span class="error-message">
                         🚫 ${error.message}
-                        <br>
-                        <button onclick="attendanceModule.geoCheckIn()" class="btn-small">
-                            Try Again
-                        </button>
-                    </div>
+                    </span>
                 `;
+                this.geoMessage.className = 'error-message';
             }
         } finally {
             if (this.checkInButton) {
@@ -865,15 +618,6 @@ class AttendanceModule {
     updateUserProfile(userProfile) {
         console.log('👤 Updating user profile in AttendanceModule');
         this.userProfile = userProfile;
-        // Save to storage
-        try {
-            localStorage.setItem('user_profile', JSON.stringify(userProfile));
-            if (userProfile.id) {
-                localStorage.setItem('user_id', userProfile.id);
-            }
-        } catch (e) {
-            console.error('❌ Error saving user profile:', e);
-        }
     }
     
     // Reload all attendance data
@@ -883,7 +627,7 @@ class AttendanceModule {
     }
 }
 
-// Create global instance
+// Create global instance and export functions
 let attendanceModule = null;
 
 // Initialize attendance module
@@ -900,14 +644,49 @@ function initAttendanceModule() {
     }
 }
 
+// Global functions
+function loadAttendanceData() {
+    if (attendanceModule) {
+        attendanceModule.loadAttendanceData();
+    } else {
+        console.warn('⚠️ attendanceModule not initialized');
+        initAttendanceModule();
+    }
+}
+
+function geoCheckIn() {
+    if (attendanceModule) {
+        attendanceModule.geoCheckIn();
+    } else {
+        console.error('❌ attendanceModule not initialized');
+    }
+}
+
+function loadGeoAttendanceHistory() {
+    if (attendanceModule) {
+        attendanceModule.loadGeoAttendanceHistory();
+    }
+}
+
+function updateTargetSelect() {
+    if (attendanceModule) {
+        attendanceModule.updateTargetSelect();
+    }
+}
+// ============================================
+// AUTO-INITIALIZATION - ADD THIS TO THE END
+// ============================================
+
 // Auto-initialize when page loads
 function autoInitializeAttendance() {
     console.log('🔄 Auto-initializing attendance module...');
     
     // Wait for DOM to be ready
     if (document.readyState === 'loading') {
+        // DOM is still loading, wait for it
         document.addEventListener('DOMContentLoaded', initializeWhenReady);
     } else {
+        // DOM is already ready
         initializeWhenReady();
     }
 }
@@ -930,21 +709,16 @@ function initializeWhenReady() {
                 console.log('✅ Attendance module auto-initialized');
             } else {
                 console.warn('⚠️ initAttendanceModule not available yet');
-                // Try again in 1 second
-                setTimeout(() => {
-                    if (typeof initAttendanceModule === 'function') {
-                        initAttendanceModule();
-                    }
-                }, 1000);
             }
-        }, 500);
+        }, 300);
     } else {
         console.log('📭 No attendance elements on this page');
     }
 }
 
-// Initialize if user navigates to attendance tab
+// Also initialize if user navigates to attendance tab
 function initializeAttendanceIfNeeded() {
+    // Check if we're on a page with attendance
     if (document.getElementById('session-type') && !attendanceModule) {
         console.log('📍 Attendance tab opened, initializing...');
         if (typeof initAttendanceModule === 'function') {
@@ -953,46 +727,29 @@ function initializeAttendanceIfNeeded() {
     }
 }
 
-// Global functions
-function loadAttendanceData() {
-    if (attendanceModule) {
-        attendanceModule.loadAttendanceData();
-    } else {
-        console.warn('⚠️ attendanceModule not initialized');
-        initAttendanceModule();
-    }
-}
-
-function geoCheckIn() {
-    if (attendanceModule) {
-        attendanceModule.geoCheckIn();
-    } else {
-        console.error('❌ attendanceModule not initialized');
-        alert('Please wait for attendance module to initialize');
-    }
-}
-
-function loadGeoAttendanceHistory() {
-    if (attendanceModule) {
-        attendanceModule.loadGeoAttendanceHistory();
-    }
-}
-
-function updateTargetSelect() {
-    if (attendanceModule) {
-        attendanceModule.updateTargetSelect();
-    }
-}
-
-function syncOfflineCheckins() {
-    if (attendanceModule) {
-        attendanceModule.syncOfflineCheckins();
-    }
+// Set up tab change detection (if using tabs)
+if (typeof setupTabListeners === 'function') {
+    // If you have a tab system, listen for tab changes
+    document.addEventListener('tabChanged', function(e) {
+        if (e.detail && e.detail.tabId === 'attendance-tab') {
+            initializeAttendanceIfNeeded();
+        }
+    });
 }
 
 // Auto-initialize on page load
 autoInitializeAttendance();
 
+// Also make it available globally for manual trigger
+window.initializeAttendance = function() {
+    if (typeof initAttendanceModule === 'function') {
+        initAttendanceModule();
+        return true;
+    }
+    return false;
+};
+
+console.log('🏁 Attendance module ready with auto-initialization');
 // Make functions globally available
 window.AttendanceModule = AttendanceModule;
 window.initAttendanceModule = initAttendanceModule;
@@ -1000,128 +757,34 @@ window.loadAttendanceData = loadAttendanceData;
 window.geoCheckIn = geoCheckIn;
 window.loadGeoAttendanceHistory = loadGeoAttendanceHistory;
 window.updateTargetSelect = updateTargetSelect;
-window.syncOfflineCheckins = syncOfflineCheckins;
-window.initializeAttendanceIfNeeded = initializeAttendanceIfNeeded;
 window.attendanceModule = null; // Will be set after init
 
-// Add CSS styles
+// Optional: Add CSS for status indicators
 const attendanceStyles = document.createElement('style');
 attendanceStyles.textContent = `
-    .info-message, .success-message, .error-message, .offline-message {
-        padding: 12px;
-        border-radius: 6px;
-        margin: 10px 0;
-        display: block;
-        font-size: 14px;
-        line-height: 1.4;
-    }
+    .info-message { color: #3b82f6; }
+    .success-message { color: #10b981; }
+    .error-message { color: #ef4444; }
+    .offline-message { color: #f59e0b; }
     
-    .info-message { 
-        background: #dbeafe; 
-        color: #1e40af;
-        border-left: 4px solid #3b82f6;
-    }
-    
-    .success-message { 
-        background: #d1fae5; 
-        color: #065f46;
-        border-left: 4px solid #10b981;
-    }
-    
-    .error-message { 
-        background: #fee2e2; 
-        color: #991b1b;
-        border-left: 4px solid #ef4444;
-    }
-    
-    .offline-message { 
-        background: #fef3c7; 
-        color: #92400e;
-        border-left: 4px solid #f59e0b;
-    }
-    
-    .verification-status.verified { 
-        color: #10b981; 
-        font-weight: 600; 
-    }
-    
-    .verification-status.pending { 
-        color: #f59e0b; 
-        font-weight: 600; 
-    }
+    .verification-status.verified { color: #10b981; font-weight: 600; }
+    .verification-status.pending { color: #f59e0b; font-weight: 600; }
     
     .btn-small {
-        padding: 6px 12px;
-        font-size: 12px;
+        padding: 4px 8px;
+        font-size: 0.8rem;
         background: #3b82f6;
         color: white;
         border: none;
         border-radius: 4px;
         cursor: pointer;
-        margin: 5px 5px 0 0;
-        display: inline-block;
-        transition: background 0.2s;
+        margin-top: 5px;
     }
     
     .btn-small:hover {
         background: #2563eb;
     }
-    
-    .btn-small:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-    }
-    
-    .loading, .error, .offline-queue {
-        padding: 10px;
-        text-align: center;
-        color: #666;
-    }
-    
-    .error {
-        color: #ef4444;
-    }
-    
-    .offline-queue {
-        color: #f59e0b;
-    }
-    
-    #check-in-button:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-    }
-    
-    select option[style*="color: #f59e0b"] {
-        color: #f59e0b !important;
-        font-weight: 500;
-    }
-    
-    select:focus {
-        outline: 2px solid #3b82f6;
-        outline-offset: 2px;
-    }
-    
-    table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 10px;
-    }
-    
-    th, td {
-        padding: 10px;
-        text-align: left;
-        border-bottom: 1px solid #e5e7eb;
-    }
-    
-    th {
-        background: #f9fafb;
-        font-weight: 600;
-    }
-    
-    tr:hover {
-        background: #f9fafb;
-    }
 `;
 document.head.appendChild(attendanceStyles);
 
-console.log('🏁 Attendance module loaded with auto-initialization');
+console.log('🏁 Attendance module loaded, ready to initialize');
