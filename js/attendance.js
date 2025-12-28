@@ -673,7 +673,83 @@ function updateTargetSelect() {
         attendanceModule.updateTargetSelect();
     }
 }
+// ============================================
+// AUTO-INITIALIZATION - ADD THIS TO THE END
+// ============================================
 
+// Auto-initialize when page loads
+function autoInitializeAttendance() {
+    console.log('🔄 Auto-initializing attendance module...');
+    
+    // Wait for DOM to be ready
+    if (document.readyState === 'loading') {
+        // DOM is still loading, wait for it
+        document.addEventListener('DOMContentLoaded', initializeWhenReady);
+    } else {
+        // DOM is already ready
+        initializeWhenReady();
+    }
+}
+
+function initializeWhenReady() {
+    console.log('📱 DOM ready, checking for attendance elements...');
+    
+    // Check if attendance elements exist on this page
+    const hasAttendanceElements = 
+        document.getElementById('session-type') && 
+        document.getElementById('attendance-target');
+    
+    if (hasAttendanceElements) {
+        console.log('✅ Attendance elements found, initializing module...');
+        
+        // Wait a bit more to ensure all dependencies are loaded
+        setTimeout(() => {
+            if (typeof initAttendanceModule === 'function') {
+                initAttendanceModule();
+                console.log('✅ Attendance module auto-initialized');
+            } else {
+                console.warn('⚠️ initAttendanceModule not available yet');
+            }
+        }, 300);
+    } else {
+        console.log('📭 No attendance elements on this page');
+    }
+}
+
+// Also initialize if user navigates to attendance tab
+function initializeAttendanceIfNeeded() {
+    // Check if we're on a page with attendance
+    if (document.getElementById('session-type') && !attendanceModule) {
+        console.log('📍 Attendance tab opened, initializing...');
+        if (typeof initAttendanceModule === 'function') {
+            initAttendanceModule();
+        }
+    }
+}
+
+// Set up tab change detection (if using tabs)
+if (typeof setupTabListeners === 'function') {
+    // If you have a tab system, listen for tab changes
+    document.addEventListener('tabChanged', function(e) {
+        if (e.detail && e.detail.tabId === 'attendance-tab') {
+            initializeAttendanceIfNeeded();
+        }
+    });
+}
+
+// Auto-initialize on page load
+autoInitializeAttendance();
+
+// Also make it available globally for manual trigger
+window.initializeAttendance = function() {
+    if (typeof initAttendanceModule === 'function') {
+        initAttendanceModule();
+        return true;
+    }
+    return false;
+};
+
+console.log('🏁 Attendance module ready with auto-initialization');
 // Make functions globally available
 window.AttendanceModule = AttendanceModule;
 window.initAttendanceModule = initAttendanceModule;
