@@ -685,115 +685,130 @@
         </div>
     </div>
 
-    <!-- JavaScript Files -->
-    <script src="./js/database.js"></script>
-    <script src="./js/utils.js"></script>
-    <script src="./js/ui.js"></script>
-    <script src="./js/dashboard.js"></script>
-    <script src="./js/profile.js"></script>
-    <script src="./js/attendance.js"></script>
-    <script src="./js/courses.js"></script>
-    <script src="./js/exams.js"></script>
-    <script src="./js/resources.js"></script>
-    <script src="./js/calendar.js"></script>
-    <script src="./js/messages.js"></script>
-    <script src="./js/nurseiq.js"></script>
+   <!-- JavaScript Files -->
+<script src="./js/database.js"></script>
+<script src="./js/utils.js"></script>
+<script src="./js/ui.js"></script>
+<script src="./js/dashboard.js"></script>
+<script src="./js/profile.js"></script>
+<script src="./js/attendance.js"></script>
+<script src="./js/courses.js"></script>
+<script src="./js/exams.js"></script>
+<script src="./js/resources.js"></script>
+<script src="./js/calendar.js"></script>
+<script src="./js/messages.js"></script>
+<script src="./js/nurseiq.js"></script>
+
+<!-- Add App.js AFTER all modules -->
+<script src="./js/app.js"></script>
+
+<!-- Initialize App -->
+<script>
+// Global app state (for backward compatibility)
+window.app = {
+    config: null,
+    supabase: null,
+    db: null,
+    user: null,
+    isInitialized: false
+};
+
+// Update loading status
+function updateLoadingStatus(status, details = '') {
+    const statusEl = document.getElementById('status-text');
+    const detailsEl = document.getElementById('config-details');
     
-    <!-- Initialize App -->
-    <script>
-    // Global app state
-    window.app = {
-        config: null,
-        supabase: null,
-        db: null,
-        user: null,
-        isInitialized: false
-    };
-
-    // Update loading status
-    function updateLoadingStatus(status, details = '') {
-        const statusEl = document.getElementById('status-text');
-        const detailsEl = document.getElementById('config-details');
-        
-        if (statusEl) statusEl.textContent = status;
-        if (detailsEl && details) {
-            detailsEl.innerHTML = `<small>${details}</small>`;
-        }
+    if (statusEl) statusEl.textContent = status;
+    if (detailsEl && details) {
+        detailsEl.innerHTML = `<small>${details}</small>`;
     }
+}
 
-    // Show error screen
-    function showErrorScreen(title, message, details = '') {
-        const loadingScreen = document.getElementById('loading-screen');
-        loadingScreen.innerHTML = `
-            <div class="loading-content">
-                <div class="loading-logo" style="background: #ef4444;">
-                    <i class="fas fa-exclamation-triangle"></i>
-                </div>
-                <h1>${title}</h1>
-                <p>${message}</p>
-                ${details ? `<div class="error-details">${details}</div>` : ''}
-                <div style="margin-top: 30px;">
-                    <button onclick="window.location.reload()" class="retry-btn">
-                        <i class="fas fa-redo"></i> Try Again
-                    </button>
-                </div>
+// Show error screen
+function showErrorScreen(title, message, details = '') {
+    const loadingScreen = document.getElementById('loading-screen');
+    loadingScreen.innerHTML = `
+        <div class="loading-content">
+            <div class="loading-logo" style="background: #ef4444;">
+                <i class="fas fa-exclamation-triangle"></i>
             </div>
-        `;
-    }
+            <h1>${title}</h1>
+            <p>${message}</p>
+            ${details ? `<div class="error-details">${details}</div>` : ''}
+            <div style="margin-top: 30px;">
+                <button onclick="window.location.reload()" class="retry-btn">
+                    <i class="fas fa-redo"></i> Try Again
+                </button>
+            </div>
+        </div>
+    `;
+}
 
-    // Initialize application
-    async function initializeApp() {
-        try {
-            updateLoadingStatus('Checking configuration...');
-            
-            // Wait for config.js to load
-            if (!window.APP_CONFIG) {
-                throw new Error('Configuration not loaded. Check if config.js exists.');
-            }
-            
-            const config = window.APP_CONFIG;
-            window.app.config = config;
-            
-            // Validate configuration
-            if (!config.SUPABASE_URL || config.SUPABASE_URL === '%%SUPABASE_URL%%') {
-                throw new Error('SUPABASE_URL is not configured in GitHub Secrets');
-            }
-            
-            if (!config.SUPABASE_ANON_KEY || config.SUPABASE_ANON_KEY === '%%SUPABASE_ANON_KEY%%') {
-                throw new Error('SUPABASE_ANON_KEY is not configured in GitHub Secrets');
-            }
-            
-            updateLoadingStatus('Configuration loaded', `
-                Environment: ${config.ENVIRONMENT || 'production'}<br>
-                Build: ${config.BUILD_TIME || 'Unknown'}<br>
-                Commit: ${config.COMMIT_SHA ? config.COMMIT_SHA.substring(0, 7) : 'Unknown'}
-            `);
-            
-            // Initialize Supabase
-            updateLoadingStatus('Connecting to database...');
-            
-            if (typeof supabase === 'undefined') {
-                throw new Error('Supabase library not loaded');
-            }
-            
-            window.app.supabase = supabase.createClient(
-                config.SUPABASE_URL,
-                config.SUPABASE_ANON_KEY,
-                {
-                    auth: {
-                        persistSession: true,
-                        autoRefreshToken: true,
-                        detectSessionInUrl: true
-                    }
+// Initialize application
+async function initializeApp() {
+    try {
+        updateLoadingStatus('Checking configuration...');
+        
+        // Wait for config.js to load
+        if (!window.APP_CONFIG) {
+            throw new Error('Configuration not loaded. Check if config.js exists.');
+        }
+        
+        const config = window.APP_CONFIG;
+        window.app.config = config;
+        
+        // Validate configuration
+        if (!config.SUPABASE_URL || config.SUPABASE_URL === '%%SUPABASE_URL%%') {
+            throw new Error('SUPABASE_URL is not configured in GitHub Secrets');
+        }
+        
+        if (!config.SUPABASE_ANON_KEY || config.SUPABASE_ANON_KEY === '%%SUPABASE_ANON_KEY%%') {
+            throw new Error('SUPABASE_ANON_KEY is not configured in GitHub Secrets');
+        }
+        
+        updateLoadingStatus('Configuration loaded', `
+            Environment: ${config.ENVIRONMENT || 'production'}<br>
+            Build: ${config.BUILD_TIME || 'Unknown'}<br>
+            Commit: ${config.COMMIT_SHA ? config.COMMIT_SHA.substring(0, 7) : 'Unknown'}
+        `);
+        
+        // Initialize Supabase
+        updateLoadingStatus('Connecting to database...');
+        
+        if (typeof supabase === 'undefined') {
+            throw new Error('Supabase library not loaded');
+        }
+        
+        window.app.supabase = supabase.createClient(
+            config.SUPABASE_URL,
+            config.SUPABASE_ANON_KEY,
+            {
+                auth: {
+                    persistSession: true,
+                    autoRefreshToken: true,
+                    detectSessionInUrl: true
                 }
-            );
+            }
+        );
+        
+        // Check if we should use the new App class or old approach
+        if (typeof App === 'function') {
+            // NEW APPROACH: Use App class
+            updateLoadingStatus('Initializing application...');
+            
+            // Create App instance
+            window.appInstance = new App();
+            await window.appInstance.initialize();
+            
+        } else {
+            // OLD APPROACH: Use individual modules
+            updateLoadingStatus('Initializing database...');
             
             // Initialize database module
             if (typeof db === 'undefined') {
                 throw new Error('Database module not loaded');
             }
             
-            updateLoadingStatus('Initializing database...');
             await db.initialize();
             
             // Check authentication
@@ -809,280 +824,402 @@
             updateLoadingStatus('Loading user profile...');
             await db.loadUserProfile();
             
-            // Hide loading screen and show app
+            // Set user data for modules
+            window.currentUserId = db.getCurrentUserId();
+            window.currentUserProfile = db.getUserProfile();
+            
             updateLoadingStatus('Loading dashboard...');
+        }
+        
+        // Hide loading screen and show app
+        setTimeout(() => {
+            document.getElementById('loading-screen').style.opacity = '0';
+            document.getElementById('app-content').style.display = 'block';
             
             setTimeout(() => {
-                document.getElementById('loading-screen').style.opacity = '0';
-                document.getElementById('app-content').style.display = 'block';
+                document.getElementById('loading-screen').style.display = 'none';
                 
-                setTimeout(() => {
-                    document.getElementById('loading-screen').style.display = 'none';
-                    
-                    // Initialize UI
-                    if (typeof initUI === 'function') {
-                        initUI();
-                    }
-                    
-                    // Load dashboard data
-                    if (typeof loadDashboard === 'function') {
-                        loadDashboard();
-                    }
-                    
-                    window.app.isInitialized = true;
-                    
-                    console.log('✅ Application initialized successfully');
-                }, 300);
-            }, 1000);
-            
-        } catch (error) {
-            console.error('❌ Initialization failed:', error);
-            
-            let errorTitle = 'Initialization Error';
-            let errorMessage = 'Failed to initialize the application.';
-            let errorDetails = error.message;
-            
-            if (error.message.includes('GitHub Secrets')) {
-                errorTitle = 'Configuration Error';
-                errorMessage = 'API keys are not configured.';
-                errorDetails = `
-                    Please configure the following GitHub Secrets:<br>
-                    <ul style="text-align: left; margin: 10px 0;">
-                        <li><strong>SUPABASE_URL</strong> - Your Supabase project URL</li>
-                        <li><strong>SUPABASE_ANON_KEY</strong> - Your Supabase anonymous key</li>
-                        <li><strong>LOCATIONIQ_API_KEY</strong> - Optional: LocationIQ API key</li>
-                    </ul>
-                    <p style="margin-top: 10px;">
-                        Go to your repository Settings → Secrets and variables → Actions
-                    </p>
-                `;
-            } else if (error.message.includes('config.js')) {
-                errorTitle = 'Configuration Missing';
-                errorMessage = 'Configuration file not found.';
-                errorDetails = 'The config.js file was not generated by GitHub Actions.';
-            } else if (error.message.includes('Supabase')) {
-                errorTitle = 'Database Error';
-                errorMessage = 'Failed to connect to database.';
-                errorDetails = 'Check your Supabase credentials and network connection.';
-            }
-            
-            showErrorScreen(errorTitle, errorMessage, errorDetails);
+                // Initialize UI
+                if (window.appInstance && window.appInstance.ui) {
+                    // New approach: Use App's UI module
+                    window.appInstance.ui.initialize();
+                } else if (typeof initUI === 'function') {
+                    // Old approach
+                    initUI();
+                }
+                
+                // Load initial dashboard
+                if (window.appInstance && window.appInstance.dashboard) {
+                    // Already loaded by App class
+                } else if (typeof loadDashboard === 'function') {
+                    // Old approach
+                    loadDashboard();
+                }
+                
+                // Initialize attendance module
+                if (window.appInstance && window.appInstance.attendance) {
+                    // Already initialized by App class
+                } else if (typeof initAttendanceModule === 'function') {
+                    setTimeout(() => {
+                        initAttendanceModule();
+                        console.log('✅ Attendance module initialized');
+                    }, 500);
+                }
+                
+                window.app.isInitialized = true;
+                
+                console.log('✅ Application initialized successfully');
+            }, 300);
+        }, 1000);
+        
+    } catch (error) {
+        console.error('❌ Initialization failed:', error);
+        
+        let errorTitle = 'Initialization Error';
+        let errorMessage = 'Failed to initialize the application.';
+        let errorDetails = error.message;
+        
+        if (error.message.includes('GitHub Secrets')) {
+            errorTitle = 'Configuration Error';
+            errorMessage = 'API keys are not configured.';
+            errorDetails = `
+                Please configure the following GitHub Secrets:<br>
+                <ul style="text-align: left; margin: 10px 0;">
+                    <li><strong>SUPABASE_URL</strong> - Your Supabase project URL</li>
+                    <li><strong>SUPABASE_ANON_KEY</strong> - Your Supabase anonymous key</li>
+                    <li><strong>LOCATIONIQ_API_KEY</strong> - Optional: LocationIQ API key</li>
+                </ul>
+                <p style="margin-top: 10px;">
+                    Go to your repository Settings → Secrets and variables → Actions
+                </p>
+            `;
+        } else if (error.message.includes('config.js')) {
+            errorTitle = 'Configuration Missing';
+            errorMessage = 'Configuration file not found.';
+            errorDetails = 'The config.js file was not generated by GitHub Actions.';
+        } else if (error.message.includes('Supabase')) {
+            errorTitle = 'Database Error';
+            errorMessage = 'Failed to connect to database.';
+            errorDetails = 'Check your Supabase credentials and network connection.';
         }
+        
+        showErrorScreen(errorTitle, errorMessage, errorDetails);
     }
+}
 
-    // Start initialization when DOM is loaded
-    document.addEventListener('DOMContentLoaded', initializeApp);
-
-    // Basic UI functions
-    window.toggleMenu = function() {
-        const sidebar = document.getElementById('sidebar');
-        const overlay = document.getElementById('overlay');
-        sidebar.classList.toggle('active');
-        overlay.classList.toggle('active');
-    };
-
-    window.closeMenu = function() {
-        const sidebar = document.getElementById('sidebar');
-        const overlay = document.getElementById('overlay');
-        sidebar.classList.remove('active');
-        overlay.classList.remove('active');
-    };
-
-    window.showTab = function(tabId) {
-        // Hide all tabs
-        document.querySelectorAll('.tab-content').forEach(tab => {
-            tab.classList.remove('active');
-        });
-        
-        // Show selected tab
-        const selectedTab = document.getElementById(tabId);
-        if (selectedTab) {
-            selectedTab.classList.add('active');
-        }
-        
-        // Update active nav link
-        document.querySelectorAll('.nav a').forEach(link => {
-            link.classList.remove('active');
-            if (link.getAttribute('data-tab') === tabId) {
-                link.classList.add('active');
-            }
-        });
-        
-        // Close mobile menu
-        closeMenu();
-        
-        // Load tab-specific data
-        if (window.app.isInitialized) {
-            loadTabData(tabId);
-        }
-    };
-// Initialize attendance module when page loads
-    document.addEventListener('DOMContentLoaded', function() {
-        console.log('📱 Page loaded, initializing attendance module...');
-        
-        // Wait a bit for everything to be ready
-        setTimeout(() => {
-            if (typeof initAttendanceModule === 'function') {
-                initAttendanceModule();
-                console.log('✅ Attendance module initialized');
-            } else {
-                console.error('❌ initAttendanceModule not found');
-            }
-        }, 500);
+// Tab switching with both old and new approach support
+window.showTab = function(tabId) {
+    console.log(`Switching to tab: ${tabId}`);
+    
+    // Hide all tabs
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.remove('active');
     });
-    async function loadTabData(tabId) {
-        try {
-            switch(tabId) {
-                case 'dashboard':
-                    if (typeof loadDashboard === 'function') await loadDashboard();
-                    break;
-                case 'profile':
-                    if (typeof loadProfile === 'function') await loadProfile();
-                    break;
-                case 'calendar':
-                    if (typeof loadAcademicCalendar === 'function') await loadAcademicCalendar();
-                    break;
-                case 'courses':
-                    if (typeof loadCourses === 'function') await loadCourses();
-                    break;
-                case 'attendance':
-                    if (typeof loadAttendance === 'function') await loadAttendance();
-                    break;
-                case 'cats':
-                    if (typeof loadExams === 'function') await loadExams();
-                    break;
-                case 'resources':
-                    if (typeof loadResources === 'function') await loadResources();
-                    break;
-                case 'messages':
-                    if (typeof loadMessages === 'function') await loadMessages();
-                    break;
-                case 'nurseiq':
-                    if (typeof loadNurseIQ === 'function') await loadNurseIQ();
-                    break;
-            }
-        } catch (error) {
-            console.error(`Error loading tab ${tabId}:`, error);
-        }
+    
+    // Show selected tab
+    const selectedTab = document.getElementById(tabId);
+    if (selectedTab) {
+        selectedTab.classList.add('active');
     }
+    
+    // Update active nav link
+    document.querySelectorAll('.nav a').forEach(link => {
+        link.classList.remove('active');
+        if (link.getAttribute('data-tab') === tabId) {
+            link.classList.add('active');
+        }
+    });
+    
+    // Close mobile menu
+    closeMenu();
+    
+    // Save current tab for persistence
+    try {
+        localStorage.setItem('last_active_tab', tabId);
+    } catch (e) {
+        console.warn('Could not save tab state:', e);
+    }
+    
+    // Load tab data based on approach
+    if (window.appInstance) {
+        // NEW APPROACH: Use App class
+        loadTabDataNew(tabId);
+    } else {
+        // OLD APPROACH: Use individual functions
+        loadTabDataOld(tabId);
+    }
+};
 
-    window.logout = async function() {
-        try {
-            if (window.app.supabase) {
-                await window.app.supabase.auth.signOut();
-            }
-            window.location.href = 'login.html';
-        } catch (error) {
-            console.error('Logout error:', error);
+// Load tab data for NEW approach (App class)
+async function loadTabDataNew(tabId) {
+    if (!window.appInstance) return;
+    
+    try {
+        console.log(`Loading tab ${tabId} with App class...`);
+        
+        switch(tabId) {
+            case 'dashboard':
+                if (window.appInstance.dashboard && window.appInstance.dashboard.refreshDashboard) {
+                    await window.appInstance.dashboard.refreshDashboard();
+                }
+                break;
+            case 'profile':
+                if (window.appInstance.profile && window.appInstance.profile.loadProfile) {
+                    await window.appInstance.profile.loadProfile();
+                }
+                break;
+            case 'attendance':
+                if (window.appInstance.attendance && window.appInstance.attendance.loadAttendanceData) {
+                    await window.appInstance.attendance.loadAttendanceData();
+                }
+                break;
+            case 'courses':
+                if (window.appInstance.courses && window.appInstance.courses.loadCourses) {
+                    await window.appInstance.courses.loadCourses();
+                }
+                break;
+            case 'cats':
+                if (window.appInstance.exams && window.appInstance.exams.loadExams) {
+                    await window.appInstance.exams.loadExams();
+                }
+                break;
+            case 'resources':
+                if (window.appInstance.resources && window.appInstance.resources.loadResources) {
+                    await window.appInstance.resources.loadResources();
+                }
+                break;
+            case 'calendar':
+                if (window.appInstance.calendar && window.appInstance.calendar.loadCalendar) {
+                    await window.appInstance.calendar.loadCalendar();
+                }
+                break;
+            case 'messages':
+                if (window.appInstance.messages && window.appInstance.messages.loadMessages) {
+                    await window.appInstance.messages.loadMessages();
+                }
+                break;
+            case 'nurseiq':
+                if (window.appInstance.nurseiq && window.appInstance.nurseiq.loadNurseIQ) {
+                    await window.appInstance.nurseiq.loadNurseIQ();
+                }
+                break;
         }
-    };
-    </script>
-    
-    <!-- Add CSS for loading screen -->
-    <style>
-    #loading-screen {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        z-index: 9999;
-        color: white;
-        font-family: 'Inter', sans-serif;
-        transition: opacity 0.3s;
+    } catch (error) {
+        console.error(`Error loading tab ${tabId}:`, error);
     }
-    
-    .loading-content {
-        text-align: center;
-        padding: 20px;
-        max-width: 500px;
-        width: 90%;
+}
+
+// Load tab data for OLD approach (individual functions)
+async function loadTabDataOld(tabId) {
+    try {
+        console.log(`Loading tab ${tabId} with old approach...`);
+        
+        switch(tabId) {
+            case 'dashboard':
+                if (typeof loadDashboard === 'function') await loadDashboard();
+                break;
+            case 'profile':
+                if (typeof loadProfile === 'function') await loadProfile();
+                break;
+            case 'calendar':
+                if (typeof loadAcademicCalendar === 'function') await loadAcademicCalendar();
+                break;
+            case 'courses':
+                if (typeof loadCourses === 'function') await loadCourses();
+                break;
+            case 'attendance':
+                if (typeof loadAttendance === 'function') await loadAttendance();
+                break;
+            case 'cats':
+                if (typeof loadExams === 'function') await loadExams();
+                break;
+            case 'resources':
+                if (typeof loadResources === 'function') await loadResources();
+                break;
+            case 'messages':
+                if (typeof loadMessages === 'function') await loadMessages();
+                break;
+            case 'nurseiq':
+                if (typeof loadNurseIQ === 'function') await loadNurseIQ();
+                break;
+        }
+    } catch (error) {
+        console.error(`Error loading tab ${tabId}:`, error);
     }
-    
-    .loading-logo {
-        width: 100px;
-        height: 100px;
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin: 0 auto 20px;
+}
+
+// Basic UI functions
+window.toggleMenu = function() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('overlay');
+    sidebar.classList.toggle('active');
+    overlay.classList.toggle('active');
+};
+
+window.closeMenu = function() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('overlay');
+    sidebar.classList.remove('active');
+    overlay.classList.remove('active');
+};
+
+// Restore last active tab on page load
+function restoreLastTab() {
+    try {
+        const lastTab = localStorage.getItem('last_active_tab');
+        if (lastTab) {
+            // Wait for everything to be ready
+            setTimeout(() => {
+                showTab(lastTab);
+            }, 100);
+        }
+    } catch (e) {
+        console.warn('Could not restore last tab:', e);
     }
-    
-    .loading-logo i {
-        font-size: 48px;
+}
+
+// Logout function
+window.logout = async function() {
+    try {
+        if (window.appInstance && window.appInstance.logout) {
+            await window.appInstance.logout();
+        } else if (window.app.supabase) {
+            await window.app.supabase.auth.signOut();
+            // Clear localStorage
+            localStorage.clear();
+            sessionStorage.clear();
+            window.location.href = 'login.html';
+        }
+    } catch (error) {
+        console.error('Logout error:', error);
+        window.location.href = 'login.html';
     }
-    
-    .loading-content h1 {
-        margin-bottom: 10px;
-        font-size: 24px;
+};
+
+// Global refresh function
+window.refreshApp = function() {
+    if (window.appInstance && window.appInstance.refreshAll) {
+        window.appInstance.refreshAll();
+    } else {
+        location.reload();
     }
+};
+
+// Start initialization when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    // Start app initialization
+    initializeApp();
     
-    .loading-content p {
-        opacity: 0.8;
-        margin-bottom: 30px;
-    }
-    
-    .loading-status {
-        background: rgba(255, 255, 255, 0.1);
-        padding: 15px;
-        border-radius: 10px;
-        margin-top: 20px;
-    }
-    
-    .status-item {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-bottom: 10px;
-    }
-    
-    .status-item i {
-        margin-right: 10px;
-    }
-    
-    .config-details {
-        font-size: 12px;
-        opacity: 0.8;
-        margin-top: 10px;
-    }
-    
-    .error-details {
-        background: rgba(255, 255, 255, 0.1);
-        padding: 15px;
-        border-radius: 10px;
-        margin: 20px 0;
-        font-size: 14px;
-        text-align: left;
-    }
-    
-    .retry-btn {
-        background: white;
-        color: #4f46e5;
-        border: none;
-        padding: 12px 24px;
-        border-radius: 8px;
-        cursor: pointer;
-        font-weight: 600;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-    }
-    
-    .retry-btn:hover {
-        background: #f3f4f6;
-    }
-    
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-    }
-    </style>
+    // Restore last tab
+    restoreLastTab();
+});
+
+// Add CSS for loading screen
+</style>
+<style>
+#loading-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    color: white;
+    font-family: 'Inter', sans-serif;
+    transition: opacity 0.3s;
+}
+
+.loading-content {
+    text-align: center;
+    padding: 20px;
+    max-width: 500px;
+    width: 90%;
+}
+
+.loading-logo {
+    width: 100px;
+    height: 100px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+}
+
+.loading-logo i {
+    font-size: 48px;
+}
+
+.loading-content h1 {
+    margin-bottom: 10px;
+    font-size: 24px;
+}
+
+.loading-content p {
+    opacity: 0.8;
+    margin-bottom: 30px;
+}
+
+.loading-status {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 15px;
+    border-radius: 10px;
+    margin-top: 20px;
+}
+
+.status-item {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 10px;
+}
+
+.status-item i {
+    margin-right: 10px;
+}
+
+.config-details {
+    font-size: 12px;
+    opacity: 0.8;
+    margin-top: 10px;
+}
+
+.error-details {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 15px;
+    border-radius: 10px;
+    margin: 20px 0;
+    font-size: 14px;
+    text-align: left;
+}
+
+.retry-btn {
+    background: white;
+    color: #4f46e5;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.retry-btn:hover {
+    background: #f3f4f6;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+</style>
 </body>
 </html>
