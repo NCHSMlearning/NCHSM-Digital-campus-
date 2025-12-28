@@ -1,52 +1,70 @@
-// js/dashboard.js - Integrated Dashboard Management Module
+// js/dashboard.js - Dashboard Management Module (Complete Working Version)
 class DashboardModule {
     constructor(supabaseClient) {
+        console.log('🚀 Initializing DashboardModule...');
         this.sb = supabaseClient;
         this.userId = null;
         this.userProfile = null;
+        
+        // Store cached data
         this.cachedCourses = [];
         this.cachedExams = [];
         this.cachedResources = [];
         
-        // Dashboard elements
-        this.welcomeHeader = document.getElementById('welcome-header');
-        this.welcomeMessage = document.getElementById('student-welcome-message');
-        this.studentAnnouncement = document.getElementById('student-announcement');
+        // Dashboard elements - Check if they exist
+        this.welcomeHeader = this.getElement('welcome-header');
+        this.welcomeMessage = this.getElement('student-welcome-message');
+        this.studentAnnouncement = this.getElement('student-announcement');
         
         // Stats elements
-        this.dashboardAttendanceRate = document.getElementById('dashboard-attendance-rate');
-        this.dashboardVerifiedCount = document.getElementById('dashboard-verified-count');
-        this.dashboardTotalCount = document.getElementById('dashboard-total-count');
-        this.dashboardPendingCount = document.getElementById('dashboard-pending-count');
-        this.dashboardUpcomingExam = document.getElementById('dashboard-upcoming-exam');
-        this.dashboardActiveCourses = document.getElementById('dashboard-active-courses');
-        this.dashboardNewResources = document.getElementById('dashboard-new-resources');
+        this.dashboardAttendanceRate = this.getElement('dashboard-attendance-rate');
+        this.dashboardVerifiedCount = this.getElement('dashboard-verified-count');
+        this.dashboardTotalCount = this.getElement('dashboard-total-count');
+        this.dashboardPendingCount = this.getElement('dashboard-pending-count');
+        this.dashboardUpcomingExam = this.getElement('dashboard-upcoming-exam');
+        this.dashboardActiveCourses = this.getElement('dashboard-active-courses');
+        this.dashboardNewResources = this.getElement('dashboard-new-resources');
+        
+        // Action cards
+        this.actionPassport = this.getElement('action-passport');
+        
+        // Live clock
+        this.currentDateTime = this.getElement('currentDateTime');
         
         // Initialize
-        this.initialize();
+        this.setupEventListeners();
+        this.startLiveClock();
+        
+        console.log('✅ DashboardModule initialized');
     }
     
-    // Initialize the module
-    async initialize() {
-        console.log('🔧 Initializing DashboardModule...');
-        this.setupEventListeners();
-        
-        // Load cached data first
-        await this.loadCachedData();
-        
-        // Start live clock
-        this.startLiveClock();
+    // Helper to safely get elements
+    getElement(id) {
+        const element = document.getElementById(id);
+        if (!element) {
+            console.warn(`⚠️ Element #${id} not found`);
+        }
+        return element;
     }
     
     // Setup event listeners
     setupEventListeners() {
         // Dashboard card clicks
         document.querySelectorAll('.card[data-tab]').forEach(card => {
-            card.addEventListener('click', function() {
-                const tabId = this.getAttribute('data-tab');
+            card.addEventListener('click', (e) => {
+                const tabId = card.getAttribute('data-tab');
                 console.log(`Dashboard card clicked: ${tabId}`);
+                
+                // Prevent default if it's a link
+                if (card.tagName === 'A') {
+                    e.preventDefault();
+                }
+                
+                // Show the tab if showTab function exists
                 if (typeof showTab === 'function') {
                     showTab(tabId);
+                } else if (window.app && window.app.ui && typeof window.app.ui.showTab === 'function') {
+                    window.app.ui.showTab(tabId);
                 }
             });
         });
@@ -57,81 +75,89 @@ class DashboardModule {
             refreshBtn.addEventListener('click', () => this.refreshDashboard());
         }
         
-        // Listen for attendance check-ins (if attendance module exists)
-        if (window.attendanceModule) {
-            console.log('📡 Listening for attendance check-ins...');
-            document.addEventListener('attendanceCheckedIn', () => {
-                console.log('🔄 Attendance check-in detected, refreshing dashboard...');
-                this.loadAttendanceMetrics(this.userId);
-            });
-        }
+        // Listen for data updates from other modules
+        this.setupDataUpdateListeners();
     }
     
-    // Load cached data
-    async loadCachedData() {
-        try {
-            // These should be loaded from your main app
-            if (window.cachedCourses) {
-                this.cachedCourses = window.cachedCourses;
+    // Listen for data updates from other modules
+    setupDataUpdateListeners() {
+        // Listen for attendance check-in
+        document.addEventListener('attendanceCheckedIn', () => {
+            console.log('🔄 Dashboard: Attendance check-in detected');
+            this.loadAttendanceMetrics();
+        });
+        
+        // Listen for profile updates
+        document.addEventListener('profileUpdated', () => {
+            console.log('🔄 Dashboard: Profile updated');
+            this.loadProfilePhoto();
+        });
+        
+        // Listen for course data updates
+        document.addEventListener('coursesUpdated', (e) => {
+            if (e.detail && e.detail.courses) {
+                this.cachedCourses = e.detail.courses;
+                this.loadCourseMetrics();
             }
-            
-            if (window.cachedExams) {
-                this.cachedExams = window.cachedExams;
+        });
+        
+        // Listen for exam data updates
+        document.addEventListener('examsUpdated', (e) => {
+            if (e.detail && e.detail.exams) {
+                this.cachedExams = e.detail.exams;
+                this.loadExamMetrics();
             }
-            
-            if (window.cachedResources) {
-                this.cachedResources = window.cachedResources;
+        });
+        
+        // Listen for resource data updates
+        document.addEventListener('resourcesUpdated', (e) => {
+            if (e.detail && e.detail.resources) {
+                this.cachedResources = e.detail.resources;
+                this.loadResourceMetrics();
             }
-            
-            console.log('📦 Loaded cached data:', {
-                courses: this.cachedCourses.length,
-                exams: this.cachedExams.length,
-                resources: this.cachedResources.length
-            });
-        } catch (error) {
-            console.error('❌ Error loading cached data:', error);
-        }
+        });
     }
     
     // Main function to initialize with user data
-    async initializeWithUser(userId, userProfile) {
+    async initialize(userId, userProfile) {
+        console.log('👤 Dashboard initializing with user:', { userId, profile: userProfile?.full_name });
+        
         this.userId = userId;
         this.userProfile = userProfile;
         
-        console.log('👤 Dashboard initialized with user:', {
-            userId,
-            name: userProfile?.full_name
-        });
-        
-        if (userId && userProfile) {
-            await this.loadDashboard();
-            return true;
+        if (!userId || !userProfile) {
+            console.error('❌ Dashboard: Missing user data');
+            return false;
         }
-        return false;
+        
+        // Show loading states
+        this.showLoadingStates();
+        
+        // Load all dashboard data
+        await this.loadDashboard();
+        
+        return true;
     }
     
     // Main dashboard loading function
     async loadDashboard() {
+        console.log('📊 Loading dashboard data...');
+        
         try {
-            console.log('📊 Loading dashboard data...');
-            
-            // Show loading states
-            this.showLoadingStates();
-            
-            // Load welcome section
-            this.loadWelcomeDetails();
-            
             // Load all metrics in parallel
-            await Promise.allSettled([
-                this.loadAttendanceMetrics(),
+            const loadPromises = [
+                this.loadWelcomeDetails(),
                 this.loadStudentMessage(),
                 this.loadLatestOfficialAnnouncement(),
-                this.loadSystemMessages(),
-                this.loadProfilePhoto(),
+                this.loadAttendanceMetrics(),
                 this.loadCourseMetrics(),
                 this.loadExamMetrics(),
-                this.loadResourceMetrics()
-            ]);
+                this.loadResourceMetrics(),
+                this.loadProfilePhoto(),
+                this.loadSystemMessages()
+            ];
+            
+            await Promise.allSettled(loadPromises);
             
             console.log('✅ Dashboard loaded successfully');
             
@@ -143,62 +169,58 @@ class DashboardModule {
     
     // Show loading states
     showLoadingStates() {
-        if (this.dashboardAttendanceRate) this.dashboardAttendanceRate.textContent = '--%';
-        if (this.dashboardVerifiedCount) this.dashboardVerifiedCount.textContent = '0';
-        if (this.dashboardTotalCount) this.dashboardTotalCount.textContent = '0';
-        if (this.dashboardPendingCount) this.dashboardPendingCount.textContent = '0';
-        if (this.dashboardUpcomingExam) this.dashboardUpcomingExam.textContent = 'Loading...';
-        if (this.dashboardActiveCourses) this.dashboardActiveCourses.textContent = '0';
-        if (this.dashboardNewResources) this.dashboardNewResources.textContent = '0';
+        this.setText(this.dashboardAttendanceRate, '...');
+        this.setText(this.dashboardVerifiedCount, '...');
+        this.setText(this.dashboardTotalCount, '...');
+        this.setText(this.dashboardPendingCount, '...');
+        this.setText(this.dashboardUpcomingExam, 'Loading...');
+        this.setText(this.dashboardActiveCourses, '...');
+        this.setText(this.dashboardNewResources, '...');
     }
     
     // Show error states
     showErrorStates() {
-        if (this.dashboardAttendanceRate) this.dashboardAttendanceRate.textContent = 'Err';
-        if (this.dashboardUpcomingExam) this.dashboardUpcomingExam.textContent = 'Error';
-        if (this.dashboardActiveCourses) this.dashboardActiveCourses.textContent = '0';
-        if (this.dashboardNewResources) this.dashboardNewResources.textContent = '0';
+        this.setText(this.dashboardAttendanceRate, 'Error');
+        this.setText(this.dashboardUpcomingExam, 'Error');
+        this.setText(this.dashboardActiveCourses, '0');
+        this.setText(this.dashboardNewResources, '0');
+    }
+    
+    // Helper to set text safely
+    setText(element, text) {
+        if (element) element.textContent = text;
     }
     
     // Load welcome details with live clock
     loadWelcomeDetails() {
-        if (!this.userProfile) return;
+        if (!this.userProfile || !this.welcomeHeader) return;
         
         const studentName = this.userProfile.full_name || 'Student';
         
-        function getGreeting(hour) {
+        const getGreeting = (hour) => {
             if (hour >= 5 && hour < 12) return "Good Morning";
             if (hour >= 12 && hour < 17) return "Good Afternoon";
             if (hour >= 17 && hour < 21) return "Good Evening";
             return "Good Night";
-        }
-        
-        const updateHeader = () => {
-            if (!this.welcomeHeader) return;
-            
-            const now = new Date();
-            const hour = now.getHours();
-            const minute = now.getMinutes().toString().padStart(2, '0');
-            const second = now.getSeconds().toString().padStart(2, '0');
-            
-            this.welcomeHeader.textContent = `${getGreeting(hour)}, ${studentName}`;
-            
-            // Update time separately if you want it
-            if (this.currentDateTime) {
-                this.currentDateTime.textContent = `${hour.toString().padStart(2,'0')}:${minute}:${second}`;
-            }
         };
         
-        // Initialize and start the live clock
+        const updateHeader = () => {
+            const now = new Date();
+            const hour = now.getHours();
+            
+            this.welcomeHeader.textContent = `${getGreeting(hour)}, ${studentName}!`;
+        };
+        
+        // Initialize and update every minute
         updateHeader();
-        setInterval(updateHeader.bind(this), 1000);
+        setInterval(updateHeader, 60000);
     }
     
     // Start live clock for current time display
     startLiveClock() {
+        if (!this.currentDateTime) return;
+        
         const updateTime = () => {
-            if (!this.currentDateTime) return;
-            
             const now = new Date();
             const options = { 
                 weekday: 'long', 
@@ -207,7 +229,6 @@ class DashboardModule {
                 day: 'numeric',
                 hour: '2-digit',
                 minute: '2-digit',
-                second: '2-digit',
                 hour12: true
             };
             
@@ -215,10 +236,10 @@ class DashboardModule {
         };
         
         updateTime();
-        setInterval(updateTime, 1000);
+        setInterval(updateTime, 60000); // Update every minute
     }
     
-    // Load student message from app_settings
+    // Load student welcome message
     async loadStudentMessage() {
         if (!this.welcomeMessage) return;
         
@@ -234,7 +255,7 @@ class DashboardModule {
             if (data && data.value) {
                 this.welcomeMessage.innerHTML = data.value;
             } else {
-                this.welcomeMessage.textContent = 'Welcome to your student dashboard!';
+                this.welcomeMessage.textContent = 'Welcome to your student dashboard! Access your courses, schedule, and check your attendance status.';
             }
         } catch (error) {
             console.error('❌ Failed to load student message:', error);
@@ -269,40 +290,56 @@ class DashboardModule {
     
     // Load attendance metrics
     async loadAttendanceMetrics() {
-        if (!this.userId) return;
+        console.log('📊 Loading attendance metrics...');
+        
+        if (!this.userId) {
+            console.warn('⚠️ No user ID for attendance metrics');
+            return;
+        }
         
         try {
+            // Fetch attendance logs
             const { data: logs, error } = await this.sb
                 .from('geo_attendance_logs')
                 .select('is_verified')
                 .eq('student_id', this.userId);
             
-            if (error) throw error;
-            
-            const totalLogs = logs.length;
-            const verifiedCount = logs.filter(l => l.is_verified === true).length;
-            const pendingCount = logs.filter(l => !l.is_verified).length;
-            const attendanceRate = totalLogs > 0 ? Math.round((verifiedCount / totalLogs) * 100) : 0;
-            
-            // Update UI
-            if (this.dashboardAttendanceRate) {
-                this.dashboardAttendanceRate.textContent = `${attendanceRate}%`;
-                
-                // Color code based on rate
-                if (attendanceRate >= 80) {
-                    this.dashboardAttendanceRate.style.color = '#10B981';
-                } else if (attendanceRate >= 60) {
-                    this.dashboardAttendanceRate.style.color = '#F59E0B';
-                } else {
-                    this.dashboardAttendanceRate.style.color = '#EF4444';
-                }
+            if (error) {
+                console.error('❌ Database error loading attendance:', error);
+                return;
             }
             
-            if (this.dashboardVerifiedCount) this.dashboardVerifiedCount.textContent = verifiedCount;
-            if (this.dashboardTotalCount) this.dashboardTotalCount.textContent = totalLogs;
-            if (this.dashboardPendingCount) this.dashboardPendingCount.textContent = pendingCount;
+            console.log(`📋 Found ${logs?.length || 0} attendance logs`);
             
-            console.log('✅ Attendance metrics updated:', { attendanceRate, verifiedCount, totalLogs });
+            // Calculate metrics
+            const totalLogs = logs?.length || 0;
+            const verifiedCount = logs?.filter(l => l.is_verified === true).length || 0;
+            const pendingCount = logs?.filter(l => !l.is_verified).length || 0;
+            const attendanceRate = totalLogs > 0 ? Math.round((verifiedCount / totalLogs) * 100) : 0;
+            
+            console.log('📈 Attendance stats:', { 
+                totalLogs, 
+                verifiedCount, 
+                pendingCount, 
+                attendanceRate 
+            });
+            
+            // Update UI
+            this.setText(this.dashboardAttendanceRate, `${attendanceRate}%`);
+            this.setText(this.dashboardVerifiedCount, verifiedCount);
+            this.setText(this.dashboardTotalCount, totalLogs);
+            this.setText(this.dashboardPendingCount, pendingCount);
+            
+            // Color code attendance rate
+            if (this.dashboardAttendanceRate) {
+                if (attendanceRate >= 80) {
+                    this.dashboardAttendanceRate.style.color = '#10B981'; // Green
+                } else if (attendanceRate >= 60) {
+                    this.dashboardAttendanceRate.style.color = '#F59E0B'; // Orange
+                } else {
+                    this.dashboardAttendanceRate.style.color = '#EF4444'; // Red
+                }
+            }
             
         } catch (error) {
             console.error('❌ Error loading attendance stats:', error);
@@ -311,58 +348,96 @@ class DashboardModule {
     
     // Load course metrics
     async loadCourseMetrics() {
+        console.log('📚 Loading course metrics...');
+        
         try {
-            // Use cached courses or fetch from database
             let courses = this.cachedCourses;
             
+            // If no cached courses, fetch from database
             if (!courses || courses.length === 0) {
+                console.log('📥 Fetching courses from database...');
+                
                 const { data, error } = await this.sb
                     .from('courses')
-                    .select('id, course_name, status')
+                    .select('id, course_name, status, target_program, intake_year')
                     .or(`target_program.eq.${this.userProfile?.program || this.userProfile?.department},target_program.eq.General`)
-                    .eq('intake_year', this.userProfile?.intake_year);
+                    .eq('intake_year', this.userProfile?.intake_year || '2024');
                 
-                if (error) throw error;
+                if (error) {
+                    console.error('❌ Database error loading courses:', error);
+                    return;
+                }
+                
                 courses = data || [];
+                this.cachedCourses = courses;
+                
+                // Dispatch event for other modules
+                document.dispatchEvent(new CustomEvent('coursesUpdated', {
+                    detail: { courses }
+                }));
             }
             
+            console.log(`📋 Found ${courses.length} courses`);
+            
+            // Count active courses
             const activeCourses = courses.filter(course => 
-                course.status === 'Active' || course.status === 'In Progress'
+                course.status === 'Active' || course.status === 'In Progress' || !course.status
             );
             
-            if (this.dashboardActiveCourses) {
-                this.dashboardActiveCourses.textContent = activeCourses.length.toString();
-            }
+            console.log(`📈 Active courses: ${activeCourses.length}`);
+            
+            // Update UI
+            this.setText(this.dashboardActiveCourses, activeCourses.length);
             
         } catch (error) {
-            console.error('❌ Error loading course count:', error);
+            console.error('❌ Error loading course metrics:', error);
+            this.setText(this.dashboardActiveCourses, '0');
         }
     }
     
     // Load exam metrics
     async loadExamMetrics() {
+        console.log('📝 Loading exam metrics...');
+        
         try {
-            // Use cached exams or fetch from database
             let exams = this.cachedExams;
             
+            // If no cached exams, fetch from database
             if (!exams || exams.length === 0) {
+                console.log('📥 Fetching exams from database...');
+                
                 const { data, error } = await this.sb
                     .from('exams_with_courses')
-                    .select('exam_name, exam_date')
+                    .select('exam_name, exam_date, program_type, block_term, intake_year')
                     .or(`program_type.eq.${this.userProfile?.program || this.userProfile?.department},program_type.eq.General`)
                     .or(`block_term.eq.${this.userProfile?.block},block_term.is.null,block_term.eq.General`)
-                    .eq('intake_year', this.userProfile?.intake_year)
+                    .eq('intake_year', this.userProfile?.intake_year || '2024')
                     .gte('exam_date', new Date().toISOString().split('T')[0])
-                    .order('exam_date', { ascending: true })
-                    .limit(1);
+                    .order('exam_date', { ascending: true });
                 
-                if (error) throw error;
+                if (error) {
+                    console.error('❌ Database error loading exams:', error);
+                    return;
+                }
+                
                 exams = data || [];
+                this.cachedExams = exams;
+                
+                // Dispatch event for other modules
+                document.dispatchEvent(new CustomEvent('examsUpdated', {
+                    detail: { exams }
+                }));
             }
             
+            console.log(`📋 Found ${exams.length} upcoming exams`);
+            
+            // Find next exam
+            const upcomingExams = exams.filter(exam => new Date(exam.exam_date) > new Date());
+            const nextExam = upcomingExams[0];
+            
+            // Update UI
             if (this.dashboardUpcomingExam) {
-                if (exams && exams.length > 0) {
-                    const nextExam = exams[0];
+                if (nextExam) {
                     const examDate = new Date(nextExam.exam_date);
                     const today = new Date();
                     const diffTime = examDate - today;
@@ -381,48 +456,70 @@ class DashboardModule {
                         });
                         this.dashboardUpcomingExam.style.color = '#F97316';
                     }
+                    
+                    console.log(`📅 Next exam: ${nextExam.exam_name} in ${diffDays} days`);
                 } else {
                     this.dashboardUpcomingExam.textContent = 'No upcoming exams';
                     this.dashboardUpcomingExam.style.color = '#6B7280';
+                    console.log('📅 No upcoming exams found');
                 }
             }
             
         } catch (error) {
-            console.error('❌ Error loading upcoming exams:', error);
-            if (this.dashboardUpcomingExam) {
-                this.dashboardUpcomingExam.textContent = 'Error loading';
-            }
+            console.error('❌ Error loading exam metrics:', error);
+            this.setText(this.dashboardUpcomingExam, 'Error loading');
         }
     }
     
     // Load resource metrics (last 7 days)
     async loadResourceMetrics() {
+        console.log('📁 Loading resource metrics...');
+        
         try {
-            const oneWeekAgo = new Date();
-            oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-            
-            // Use cached resources or fetch from database
             let resources = this.cachedResources;
             
+            // If no cached resources or we need fresh data for last 7 days
             if (!resources || resources.length === 0) {
+                console.log('📥 Fetching resources from database...');
+                
+                const oneWeekAgo = new Date();
+                oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+                
                 const { data, error } = await this.sb
                     .from('resources')
-                    .select('created_at')
+                    .select('created_at, program_type, block, intake')
                     .eq('program_type', this.userProfile?.program || this.userProfile?.department)
                     .eq('block', this.userProfile?.block)
-                    .eq('intake', this.userProfile?.intake_year)
+                    .eq('intake', this.userProfile?.intake_year || '2024')
                     .gte('created_at', oneWeekAgo.toISOString());
                 
-                if (error) throw error;
+                if (error) {
+                    console.error('❌ Database error loading resources:', error);
+                    return;
+                }
+                
                 resources = data || [];
+                this.cachedResources = resources;
+                
+                // Dispatch event for other modules
+                document.dispatchEvent(new CustomEvent('resourcesUpdated', {
+                    detail: { resources }
+                }));
             }
             
-            if (this.dashboardNewResources) {
-                this.dashboardNewResources.textContent = resources.length.toString();
-            }
+            // Filter resources from last 7 days
+            const oneWeekAgo = new Date();
+            oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+            const newResources = resources.filter(r => new Date(r.created_at) >= oneWeekAgo);
+            
+            console.log(`📈 New resources (last 7 days): ${newResources.length}`);
+            
+            // Update UI
+            this.setText(this.dashboardNewResources, newResources.length);
             
         } catch (error) {
-            console.error('❌ Error loading resources count:', error);
+            console.error('❌ Error loading resource metrics:', error);
+            this.setText(this.dashboardNewResources, '0');
         }
     }
     
@@ -466,8 +563,11 @@ class DashboardModule {
                 card.style.display = 'block';
                 card.style.borderLeftColor = cardBorderColor;
                 
+                console.log('📢 Loaded system message:', latestMsg.subject);
+                
             } else {
                 card.style.display = 'none';
+                console.log('📭 No system messages found');
             }
             
         } catch (error) {
@@ -478,12 +578,15 @@ class DashboardModule {
     
     // Load profile photo
     async loadProfilePhoto() {
+        console.log('🖼️ Loading profile photo...');
+        
         const passportImg = document.getElementById('passport-preview');
         const headerPassportImg = document.getElementById('header-passport-preview');
-        const passportCard = document.getElementById('action-passport');
+        const passportCard = this.actionPassport;
         
         const photoUrl = this.userProfile?.passport_url;
         
+        // Show/hide passport upload card
         if (passportCard) {
             passportCard.style.display = photoUrl ? 'none' : 'block';
         }
@@ -495,63 +598,86 @@ class DashboardModule {
             // Construct proper Supabase URL
             const supabaseUrl = window.APP_CONFIG?.SUPABASE_URL || 'https://api.supabase.co';
             finalPhotoSrc = `${supabaseUrl}/storage/v1/object/public/passports/${photoUrl}?t=${new Date().getTime()}`;
+            console.log('📸 Profile photo URL:', finalPhotoSrc);
         }
         
         // Update both profile and header images
-        if (passportImg) {
-            passportImg.src = finalPhotoSrc;
-            passportImg.onerror = function() {
-                this.onerror = null;
-                this.src = 'https://dummyimage.com/150x150/cccccc/000000.png&text=NO+PHOTO';
-            };
-        }
+        const updateImage = (imgElement) => {
+            if (imgElement) {
+                imgElement.src = finalPhotoSrc;
+                imgElement.onerror = function() {
+                    console.warn('⚠️ Failed to load profile photo, using fallback');
+                    this.onerror = null;
+                    this.src = 'https://dummyimage.com/150x150/cccccc/000000.png&text=NO+PHOTO';
+                };
+            }
+        };
         
-        if (headerPassportImg) {
-            headerPassportImg.src = finalPhotoSrc;
-            headerPassportImg.onerror = function() {
-                this.onerror = null;
-                this.src = 'https://dummyimage.com/150x150/cccccc/000000.png&text=NO+PHOTO';
-            };
-        }
+        updateImage(passportImg);
+        updateImage(headerPassportImg);
     }
     
-    // Refresh dashboard
+    // Refresh dashboard - manually trigger update
     async refreshDashboard() {
-        console.log('🔄 Refreshing dashboard...');
+        console.log('🔄 Manually refreshing dashboard...');
         
-        if (window.AppUtils && window.AppUtils.showLoading) {
-            AppUtils.showToast('Refreshing dashboard...', 'info');
+        // Show toast notification
+        if (window.showToast) {
+            showToast('Refreshing dashboard data...', 'info');
         }
         
-        try {
-            await this.loadDashboard();
-            
-            if (window.AppUtils && window.AppUtils.showToast) {
-                AppUtils.showToast('Dashboard refreshed', 'success');
-            }
-            
-        } catch (error) {
-            console.error('❌ Error refreshing dashboard:', error);
-            
-            if (window.AppUtils && window.AppUtils.showToast) {
-                AppUtils.showToast('Failed to refresh dashboard', 'error');
-            }
+        // Clear caches to force fresh data
+        this.cachedCourses = [];
+        this.cachedExams = [];
+        this.cachedResources = [];
+        
+        // Show loading states
+        this.showLoadingStates();
+        
+        // Reload all metrics
+        await this.loadDashboard();
+        
+        // Show success message
+        if (window.showToast) {
+            showToast('Dashboard refreshed successfully!', 'success');
         }
+        
+        console.log('✅ Dashboard refreshed');
     }
     
-    // Update user profile
+    // Update user profile (called when profile is updated)
     updateUserProfile(userProfile) {
+        console.log('👤 Dashboard: Updating user profile');
         this.userProfile = userProfile;
-        console.log('👤 Dashboard user profile updated');
         
         // Refresh relevant sections
         this.loadWelcomeDetails();
         this.loadProfilePhoto();
         
-        // Update metrics if user ID changed
+        // If user ID changed, reload attendance metrics
         if (userProfile.id && userProfile.id !== this.userId) {
             this.userId = userProfile.id;
             this.loadAttendanceMetrics();
+        }
+    }
+    
+    // Update cached data from other modules
+    updateCachedData(type, data) {
+        console.log(`📦 Dashboard: Updating cached ${type} data`);
+        
+        switch (type) {
+            case 'courses':
+                this.cachedCourses = data;
+                this.loadCourseMetrics();
+                break;
+            case 'exams':
+                this.cachedExams = data;
+                this.loadExamMetrics();
+                break;
+            case 'resources':
+                this.cachedResources = data;
+                this.loadResourceMetrics();
+                break;
         }
     }
 }
@@ -572,17 +698,17 @@ function initDashboardModule(supabaseClient) {
     return dashboardModule;
 }
 
-// Global function to load dashboard with user data
+// Function to load dashboard with user data
 async function loadDashboardWithUser(userId, userProfile) {
     if (!dashboardModule) {
         console.error('❌ Dashboard module not initialized');
         return false;
     }
     
-    return await dashboardModule.initializeWithUser(userId, userProfile);
+    return await dashboardModule.initialize(userId, userProfile);
 }
 
-// Global function to refresh dashboard
+// Function to refresh dashboard
 function refreshDashboard() {
     if (dashboardModule) {
         dashboardModule.refreshDashboard();
@@ -591,50 +717,74 @@ function refreshDashboard() {
     }
 }
 
-// Global function to update user profile
+// Function to update user profile
 function updateDashboardProfile(userProfile) {
     if (dashboardModule) {
         dashboardModule.updateUserProfile(userProfile);
     }
 }
 
-// Auto-initialize when dashboard tab is active
+// Function to update cached data
+function updateDashboardCache(type, data) {
+    if (dashboardModule) {
+        dashboardModule.updateCachedData(type, data);
+    }
+}
+
+// Auto-initialize when page loads
 document.addEventListener('DOMContentLoaded', function() {
     console.log('📱 DOM ready, checking dashboard...');
     
-    // Check if we're on dashboard page
-    const dashboardTab = document.getElementById('dashboard');
-    if (dashboardTab && dashboardTab.classList.contains('active')) {
-        console.log('📍 Dashboard tab is active');
+    // Check if dashboard elements exist
+    const hasDashboardElements = document.getElementById('dashboard-attendance-rate') || 
+                                 document.getElementById('dashboard');
+    
+    if (hasDashboardElements) {
+        console.log('✅ Dashboard elements found');
         
-        // Wait for supabase client to be available
-        setTimeout(() => {
+        // Initialize when supabase client is available
+        const initDashboard = () => {
             if (window.sb && !dashboardModule) {
                 initDashboardModule(window.sb);
                 
                 // If user data is already available, load it
                 if (window.currentUserProfile && window.currentUserId) {
+                    console.log('👤 Found existing user data, loading dashboard...');
                     setTimeout(() => {
                         loadDashboardWithUser(window.currentUserId, window.currentUserProfile);
-                    }, 500);
+                    }, 1000);
                 }
             }
-        }, 1000);
+        };
+        
+        // Try immediately
+        initDashboard();
+        
+        // Also try after a delay in case supabase loads later
+        setTimeout(initDashboard, 2000);
+    } else {
+        console.log('📭 No dashboard elements found on this page');
     }
 });
 
-// Listen for tab changes
+// Listen for tab changes to refresh dashboard when it becomes active
 document.addEventListener('tabChanged', function(e) {
-    if (e.detail && e.detail.tabId === 'dashboard' && !dashboardModule) {
-        console.log('📊 Dashboard tab opened, initializing...');
+    if (e.detail && e.detail.tabId === 'dashboard') {
+        console.log('📊 Dashboard tab activated');
         
-        if (window.sb) {
+        if (dashboardModule) {
+            // Refresh dashboard data when tab is switched to
+            setTimeout(() => {
+                dashboardModule.refreshDashboard();
+            }, 500);
+        } else if (window.sb) {
+            // Initialize if not already done
             initDashboardModule(window.sb);
             
             if (window.currentUserProfile && window.currentUserId) {
                 setTimeout(() => {
                     loadDashboardWithUser(window.currentUserId, window.currentUserProfile);
-                }, 300);
+                }, 500);
             }
         }
     }
@@ -646,5 +796,6 @@ window.initDashboardModule = initDashboardModule;
 window.loadDashboardWithUser = loadDashboardWithUser;
 window.refreshDashboard = refreshDashboard;
 window.updateDashboardProfile = updateDashboardProfile;
+window.updateDashboardCache = updateDashboardCache;
 
-console.log('🏁 Dashboard module loaded and ready');
+console.log('🏁 Dashboard module loaded');
