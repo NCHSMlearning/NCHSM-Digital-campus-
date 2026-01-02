@@ -873,4 +873,440 @@
     color: var(--color-success) !important;
 }
 
-.grid-inc
+.grid-incorrect {
+    background: #FEE2E2 !important;
+    border-color: var(--color-alert) !important;
+    color: var(--color-alert) !important;
+}
+
+.grid-marked {
+    background: #FEF3C7 !important;
+    border-color: var(--color-warning) !important;
+    color: var(--color-warning) !important;
+}
+
+.grid-viewed {
+    border-color: #9CA3AF !important;
+    color: #9CA3AF !important;
+}
+
+.grid-flag {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    font-size: 0.7rem;
+    color: var(--color-warning);
+}
+
+.grid-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.grid-scroll-btn {
+    background: #F3F4F6;
+    border: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #6B7280;
+    transition: var(--transition);
+}
+
+.grid-scroll-btn:hover {
+    background: #E5E7EB;
+}
+
+.grid-jump-btn {
+    flex: 1;
+    padding: 10px;
+    background: #F3F4F6;
+    border: none;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    color: #6B7280;
+    font-weight: 500;
+    transition: var(--transition);
+}
+
+.grid-jump-btn:hover {
+    background: #E5E7EB;
+}
+
+/* Tips Card */
+.tips-card {
+    background: white;
+    border-radius: var(--border-radius-lg);
+    padding: var(--space-lg);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+}
+
+.tips-title {
+    margin: 0 0 var(--space-lg) 0;
+    font-size: 1rem;
+    color: var(--color-text-dark);
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.tips-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.tips-list li {
+    padding: 8px 0;
+    color: #6B7280;
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    font-size: 0.9rem;
+}
+
+.tips-list li i {
+    color: var(--color-success);
+    font-size: 0.8rem;
+}
+
+/* Progress Summary */
+.progress-summary-card {
+    background: white;
+    border-radius: var(--border-radius-lg);
+    padding: var(--space-lg);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+}
+
+.stats-title {
+    margin: 0 0 var(--space-lg) 0;
+    font-size: 1rem;
+    color: var(--color-text-dark);
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.progress-details {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+}
+
+.progress-detail-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #F3F4F6;
+}
+
+.progress-detail-item:last-child {
+    border-bottom: none;
+}
+
+.detail-label {
+    color: #6B7280;
+    font-size: 0.9rem;
+}
+
+.detail-value {
+    font-weight: 600;
+    color: var(--color-text-dark);
+}
+
+/* Bottom Navigation */
+.bottom-navigation-bar {
+    background: white;
+    padding: var(--space-lg);
+    border-top: 1px solid #E5E7EB;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    bottom: 0;
+    z-index: 99;
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+}
+
+.nav-left,
+.nav-right {
+    display: flex;
+    gap: var(--space-sm);
+}
+
+.nav-center {
+    flex: 1;
+    max-width: 400px;
+    margin: 0 var(--space-lg);
+}
+
+.nav-btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: var(--border-radius);
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    transition: var(--transition);
+    font-size: 0.95rem;
+    white-space: nowrap;
+}
+
+.prev-nav-btn {
+    background: #F3F4F6;
+    color: #6B7280;
+}
+
+.prev-nav-btn:hover:not(:disabled) {
+    background: #E5E7EB;
+}
+
+.next-nav-btn {
+    background: var(--color-primary);
+    color: white;
+}
+
+.next-nav-btn:hover:not(:disabled) {
+    background: #4338CA;
+    transform: translateX(3px);
+}
+
+.finish-btn {
+    background: var(--color-success);
+    color: white;
+}
+
+.finish-btn:hover:not(:disabled) {
+    background: #059669;
+    transform: translateY(-2px);
+}
+
+.nav-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+.progress-indicator {
+    text-align: center;
+}
+
+.progress-bar {
+    height: 8px;
+    background: #F3F4F6;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: var(--space-xs);
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--color-primary), #6D28D9);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+.progress-text {
+    color: #6B7280;
+    font-size: 0.85rem;
+}
+
+/* Feedback Notification */
+.feedback-notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: var(--space-md) var(--space-lg);
+    border-radius: var(--border-radius);
+    color: white;
+    font-weight: 600;
+    box-shadow: var(--shadow-lg);
+    z-index: var(--z-toast);
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    animation: slideInRight 0.3s ease, fadeOut 0.3s ease 2.7s forwards;
+}
+
+.feedback-notification.success {
+    background: var(--color-success);
+}
+
+.feedback-notification.error {
+    background: var(--color-alert);
+}
+
+/* ========== RESPONSIVE DESIGN ========== */
+@media (max-width: 1200px) {
+    .questions-main-container {
+        flex-direction: column;
+    }
+    
+    .stats-panel {
+        min-width: 100%;
+    }
+    
+    .horizontal-question-grid {
+        justify-content: center;
+    }
+}
+
+@media (max-width: 768px) {
+    .questions-header-bar {
+        padding: var(--space-md);
+    }
+    
+    .header-content {
+        flex-direction: column;
+        gap: var(--space-md);
+        text-align: center;
+    }
+    
+    .header-back-btn {
+        align-self: flex-start;
+    }
+    
+    .header-progress-stats {
+        width: 100%;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: var(--space-md);
+    }
+    
+    .progress-stat-top {
+        min-width: 70px;
+    }
+    
+    .questions-main-container {
+        padding: var(--space-md);
+        margin: var(--space-md) auto;
+    }
+    
+    .question-panel {
+        padding: var(--space-lg);
+    }
+    
+    .question-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--space-md);
+    }
+    
+    .question-meta {
+        justify-content: center;
+    }
+    
+    .mini-navigation {
+        justify-content: center;
+    }
+    
+    .action-buttons-panel {
+        flex-direction: column;
+        gap: var(--space-md);
+    }
+    
+    .button-group-left,
+    .button-group-right {
+        width: 100%;
+        justify-content: space-between;
+    }
+    
+    .action-btn {
+        flex: 1;
+        justify-content: center;
+    }
+    
+    .bottom-navigation-bar {
+        flex-direction: column;
+        gap: var(--space-md);
+        padding: var(--space-md);
+    }
+    
+    .nav-left,
+    .nav-center,
+    .nav-right {
+        width: 100%;
+    }
+    
+    .nav-center {
+        margin: var(--space-sm) 0;
+        order: -1;
+    }
+    
+    .nav-btn {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .courses-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 480px) {
+    .question-bank-container {
+        padding: var(--space-md);
+    }
+    
+    .stats-header {
+        padding: var(--space-lg);
+    }
+    
+    .overall-stats {
+        grid-template-columns: 1fr;
+    }
+    
+    .course-card {
+        margin-bottom: var(--space-md);
+    }
+    
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .quick-stats {
+        flex-direction: column;
+        gap: var(--space-md);
+    }
+    
+    .question-number-badge {
+        font-size: 0.9rem;
+        padding: 6px 12px;
+    }
+    
+    .difficulty-badge {
+        font-size: 0.7rem;
+        padding: 3px 8px;
+    }
+    
+    .option-letter-circle {
+        width: 32px;
+        height: 32px;
+        font-size: 0.9rem;
+    }
+    
+    .option-text-improved {
+        font-size: 0.95rem;
+    }
+    
+    .action-btn {
+        padding: 10px 16px;
+        font-size: 0.9rem;
+    }
+    
+    .grid-question-number {
+        width: 36px;
+        height: 36px;
+        min-width: 36px;
+        font-size: 0.85rem;
+    }
+}
