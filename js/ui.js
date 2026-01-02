@@ -38,6 +38,31 @@ class UIModule {
         this.initializeDateTime();
         this.setupOfflineIndicator();
         this.loadLastTab();
+        this.fixInitialDisplay(); // New fix
+    }
+    
+    // FIX: Ensure proper initial display
+    fixInitialDisplay() {
+        // Hide all tabs first
+        this.tabs.forEach(tab => {
+            tab.style.display = 'none';
+            tab.classList.remove('active');
+        });
+        
+        // Show dashboard by default
+        const dashboardTab = document.getElementById('dashboard');
+        if (dashboardTab) {
+            dashboardTab.style.display = 'block';
+            dashboardTab.classList.add('active');
+        }
+        
+        // Set active nav link
+        this.navLinks.forEach(link => {
+            link.classList.remove('active');
+            if (link.getAttribute('data-tab') === 'dashboard') {
+                link.classList.add('active');
+            }
+        });
     }
     
     setupHashNavigation() {
@@ -78,12 +103,11 @@ class UIModule {
         // Load last active tab from localStorage on init
         const lastTab = localStorage.getItem(this.storageKey);
         if (lastTab && this.isValidTab(lastTab)) {
-            // Don't show tab here, let hash navigation handle it
-            // Just update currentTab variable
             this.currentTab = lastTab;
         }
     }
     
+    // FIXED: Unified tab switching with display control
     showTab(tabId) {
         if (!this.isValidTab(tabId)) {
             console.error(`Invalid tab ID: ${tabId}`);
@@ -93,6 +117,29 @@ class UIModule {
         // Don't do anything if we're already on this tab
         if (this.currentTab === tabId) return;
         
+        console.log(`🔄 Switching to tab: ${tabId} (from: ${this.currentTab})`);
+        
+        // FIX: First hide all tabs
+        this.tabs.forEach(tab => {
+            tab.style.display = 'none';
+            tab.classList.remove('active');
+        });
+        
+        // FIX: Then show selected tab
+        const selectedTab = document.getElementById(tabId);
+        if (selectedTab) {
+            selectedTab.style.display = 'block';
+            selectedTab.classList.add('active');
+        }
+        
+        // Update navigation links
+        this.navLinks.forEach(link => {
+            link.classList.remove('active');
+            if (link.getAttribute('data-tab') === tabId) {
+                link.classList.add('active');
+            }
+        });
+        
         // Update URL hash WITHOUT triggering hashchange
         if (window.location.hash.substring(1) !== tabId) {
             history.replaceState(null, null, `#${tabId}`);
@@ -100,16 +147,6 @@ class UIModule {
         
         // Save to localStorage
         localStorage.setItem(this.storageKey, tabId);
-        
-        // Highlight active link
-        this.navLinks.forEach(l => l.classList.remove('active'));
-        const activeLink = document.querySelector(`.nav a[data-tab="${tabId}"]`);
-        if (activeLink) activeLink.classList.add('active');
-        
-        // Show active tab content
-        this.tabs.forEach(tab => tab.classList.remove('active'));
-        const activeTab = document.getElementById(tabId);
-        if (activeTab) activeTab.classList.add('active');
         
         // Close mobile menu if open
         this.closeMenu();
@@ -127,10 +164,12 @@ class UIModule {
             }
         }));
         
-        console.log(`Switched to tab: ${tabId} (from: ${previousTab})`);
-        
         // Update page title based on tab
         this.updatePageTitle(tabId);
+        
+        // FIX: Debug log to verify display
+        console.log(`✅ Tab ${tabId} is now active. Display:`, 
+            selectedTab ? window.getComputedStyle(selectedTab).display : 'not found');
     }
     
     updatePageTitle(tabId) {
@@ -151,7 +190,6 @@ class UIModule {
         document.title = `${tabName} - NCHSM Student Portal`;
     }
     
-    // Rest of your UI functions remain the same...
     setupEventListeners() {
         // Menu toggle
         if (this.menuToggle) {
@@ -163,13 +201,15 @@ class UIModule {
             this.overlay.addEventListener('click', () => this.closeMenu());
         }
         
-        // Navigation links
+        // Navigation links - FIXED: Use unified click handler
         this.navLinks.forEach(link => {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
                 const tabId = link.getAttribute('data-tab');
-                this.showTab(tabId);
-                this.closeMenu();
+                if (tabId) {
+                    this.showTab(tabId);
+                    this.closeMenu();
+                }
             });
         });
         
@@ -225,44 +265,47 @@ class UIModule {
             this.readerBackBtn.addEventListener('click', () => this.closeReader());
         }
         
-        // Dashboard card clicks
+        // Dashboard card clicks - FIXED: Use proper this context
         document.querySelectorAll('.card[data-tab]').forEach(card => {
-            card.addEventListener('click', function() {
-                const tabId = this.getAttribute('data-tab');
-                ui.showTab(tabId);
+            card.addEventListener('click', (e) => {
+                const tabId = card.getAttribute('data-tab');
+                if (tabId) {
+                    this.showTab(tabId);
+                }
             });
         });
         
-        // Action card buttons
+        // Action card buttons - FIXED: Use proper this context
         document.querySelectorAll('.profile-button[data-tab]').forEach(button => {
-            button.addEventListener('click', function(e) {
+            button.addEventListener('click', (e) => {
                 e.stopPropagation();
-                const tabId = this.getAttribute('data-tab');
-                ui.showTab(tabId);
+                const tabId = button.getAttribute('data-tab');
+                if (tabId) {
+                    this.showTab(tabId);
+                }
             });
         });
         
-        // Footer links
+        // Footer links - FIXED: Use proper this context
         document.querySelectorAll('.footer-links a[data-tab]').forEach(link => {
-            link.addEventListener('click', function(e) {
+            link.addEventListener('click', (e) => {
                 e.preventDefault();
-                const tabId = this.getAttribute('data-tab');
-                ui.showTab(tabId);
+                const tabId = link.getAttribute('data-tab');
+                if (tabId) {
+                    this.showTab(tabId);
+                }
             });
         });
         
-        // Prevent default hash scrolling
-        window.addEventListener('hashchange', (e) => {
-            // Check if it's a tab hash
-            const hash = window.location.hash.substring(1);
-            if (this.isValidTab(hash)) {
-                e.preventDefault();
-            }
-        });
+        // FIX: Prevent URL hash from scrolling
+        if (window.location.hash) {
+            window.scrollTo(0, 0);
+        }
     }
     
     setupTabChangeListener() {
         window.addEventListener('tabChanged', (e) => {
+            console.log(`📢 Tab changed to: ${e.detail.tabId}`);
             this.loadTabModule(e.detail.tabId);
         });
     }
@@ -277,33 +320,62 @@ class UIModule {
     }
     
     loadTabModule(tabId) {
+        console.log(`📂 Loading module for tab: ${tabId}`);
+        
         switch(tabId) {
             case 'dashboard':
-                if (typeof loadDashboard === 'function') loadDashboard();
+                if (typeof loadDashboard === 'function') {
+                    console.log('Loading dashboard...');
+                    loadDashboard();
+                }
                 break;
             case 'profile':
-                if (typeof loadProfile === 'function') loadProfile();
+                if (typeof loadProfile === 'function') {
+                    console.log('Loading profile...');
+                    loadProfile();
+                }
                 break;
             case 'calendar':
-                if (typeof loadAcademicCalendar === 'function') loadAcademicCalendar();
+                if (typeof loadAcademicCalendar === 'function') {
+                    console.log('Loading calendar...');
+                    loadAcademicCalendar();
+                }
                 break;
             case 'courses':
-                if (typeof loadCourses === 'function') loadCourses();
+                if (typeof loadCourses === 'function') {
+                    console.log('Loading courses...');
+                    loadCourses();
+                }
                 break;
             case 'attendance':
-                if (typeof loadAttendance === 'function') loadAttendance();
+                if (typeof loadAttendance === 'function') {
+                    console.log('Loading attendance...');
+                    loadAttendance();
+                }
                 break;
             case 'cats':
-                if (typeof loadExams === 'function') loadExams();
+                if (typeof loadExams === 'function') {
+                    console.log('Loading exams...');
+                    loadExams();
+                }
                 break;
             case 'resources':
-                if (typeof loadResources === 'function') loadResources();
+                if (typeof loadResources === 'function') {
+                    console.log('Loading resources...');
+                    loadResources();
+                }
                 break;
             case 'messages':
-                if (typeof loadMessages === 'function') loadMessages();
+                if (typeof loadMessages === 'function') {
+                    console.log('Loading messages...');
+                    loadMessages();
+                }
                 break;
             case 'nurseiq':
-                if (typeof loadNurseIQ === 'function') loadNurseIQ();
+                if (typeof loadNurseIQ === 'function') {
+                    console.log('Loading NurseIQ...');
+                    loadNurseIQ();
+                }
                 break;
         }
     }
@@ -518,6 +590,26 @@ class UIModule {
         window.addEventListener('offline', updateOnlineStatus);
         updateOnlineStatus(); // Initial check
     }
+    
+    // FIX: Helper function to debug tab state
+    debugTabState() {
+        console.log('🔍 Current Tab State:');
+        console.log(`Current Tab: ${this.currentTab}`);
+        
+        this.tabs.forEach(tab => {
+            console.log(`${tab.id}:`, {
+                display: window.getComputedStyle(tab).display,
+                classList: tab.className,
+                visible: tab.offsetParent !== null
+            });
+        });
+        
+        this.navLinks.forEach(link => {
+            console.log(`Nav ${link.getAttribute('data-tab')}:`, {
+                active: link.classList.contains('active')
+            });
+        });
+    }
 }
 
 // Create global instance
@@ -529,3 +621,22 @@ window.closeMenu = () => ui.closeMenu();
 window.showTab = (tabId) => ui.showTab(tabId);
 window.showToast = (message, type, duration) => ui.showToast(message, type, duration);
 window.logout = () => ui.logout();
+
+// FIX: Add cleanup function to remove any conflicting code
+window.addEventListener('DOMContentLoaded', function() {
+    console.log('✅ UI Module loaded successfully');
+    
+    // Remove any other tab switching code that might interfere
+    const scripts = document.querySelectorAll('script');
+    scripts.forEach(script => {
+        const src = script.src || '';
+        if (src.includes('ui.js')) {
+            console.log('Main UI script loaded from:', src);
+        }
+    });
+    
+    // Call debug after a short delay
+    setTimeout(() => {
+        ui.debugTabState();
+    }, 100);
+});
