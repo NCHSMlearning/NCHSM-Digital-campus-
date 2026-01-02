@@ -1,0 +1,130 @@
+/* ========== BASE VARIABLES & RESETS ========== */
+:root {
+    /* Colors */
+    --color-primary: #4C1D95;
+    --color-secondary: #FCD34D;
+    --color-alert: #EF4444;
+    --color-warning: #F59E0B;
+    --color-success: #10B981;
+    --color-info: #0EA5E9;
+    
+    /* Text */
+    --color-text-dark: #1F2937;
+    --color-text-light: #E5E7EB;
+    
+    /* Backgrounds */
+    --color-background: #F8F8F8;
+    --color-card-bg: #FFFFFF;
+    --color-sidebar: linear-gradient(180deg, var(--color-primary) 0%, #5B21B6 100%);
+    
+    /* Spacing */
+    --space-xs: 0.25rem;
+    --space-sm: 0.5rem;
+    --space-md: 1rem;
+    --space-lg: 1.5rem;
+    --space-xl: 2rem;
+    
+    /* Border radius */
+    --border-radius-sm: 6px;
+    --border-radius: 8px;
+    --border-radius-lg: 12px;
+    --border-radius-xl: 16px;
+    
+    /* Shadows */
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
+    --shadow: 0 2px 8px rgba(0,0,0,0.1);
+    --shadow-lg: 0 8px 15px rgba(0,0,0,0.2);
+    
+    /* Transitions */
+    --transition-fast: all 0.2s ease;
+    --transition: all 0.3s ease;
+    --transition-slow: all 0.5s ease;
+    
+    /* Z-index layers */
+    --z-sidebar: 1000;
+    --z-header: 1010;
+    --z-modal: 2000;
+    --z-toast: 10000;
+}
+
+/* Reset & Base Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background-color: var(--color-background);
+    color: var(--color-text-dark);
+    line-height: 1.6;
+    min-height: 100vh;
+}
+
+/* Typography Scale */
+h1 { font-size: 2.2rem; font-weight: 800; color: var(--color-primary); }
+h2 { font-size: 1.8rem; font-weight: 700; color: var(--color-primary); }
+h3 { font-size: 1.3rem; font-weight: 600; color: var(--color-primary); }
+h4 { font-size: 1.1rem; font-weight: 600; color: var(--color-text-dark); }
+h5 { font-size: 1rem; font-weight: 600; color: var(--color-text-dark); }
+h6 { font-size: 0.9rem; font-weight: 600; color: var(--color-text-dark); }
+
+/* Utility Classes */
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+.text-left { text-align: left; }
+
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.flex-row { flex-direction: row; }
+.items-center { align-items: center; }
+.justify-center { justify-content: center; }
+.justify-between { justify-content: space-between; }
+.gap-xs { gap: var(--space-xs); }
+.gap-sm { gap: var(--space-sm); }
+.gap-md { gap: var(--space-md); }
+.gap-lg { gap: var(--space-lg); }
+
+/* Container */
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 var(--space-lg);
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInRight {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #a1a1a1;
+}
