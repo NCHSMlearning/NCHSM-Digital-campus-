@@ -1,9 +1,9 @@
-// js/nurseiq.js - NurseIQ Question Bank Module (COMPLETE FIXED VERSION)
+// js/nurseiq.js - COMPLETE FIXED VERSION
 class NurseIQModule {
     constructor() {
         this.userId = null;
         
-        // NurseIQ elements - will be initialized properly
+        // NurseIQ elements
         this.studentQuestionBankSearch = null;
         this.nurseiqSearchBtn = null;
         this.clearSearchBtn = null;
@@ -19,15 +19,15 @@ class NurseIQModule {
         this.currentCourseQuestions = [];
         this.showAnswersMode = true;
         
-        // Track initialization state
+        // Track initialization
         this.initialized = false;
     }
     
-    // Initialize elements properly with DOM ready check
+    // Initialize elements
     async initializeElements() {
         console.log('🔍 Initializing NurseIQ elements...');
         
-        // Wait for DOM to be fully ready
+        // Wait for elements
         await this.waitForElement('#loadCourseCatalogBtn');
         
         // Cache DOM elements
@@ -41,11 +41,10 @@ class NurseIQModule {
         console.log('📝 Elements found:', {
             loadCourseCatalogBtn: !!this.loadCourseCatalogBtn,
             searchInput: !!this.studentQuestionBankSearch,
-            searchBtn: !!this.nurseiqSearchBtn,
             contentArea: !!this.studentQuestionBankContent
         });
         
-        // Setup search functionality
+        // Setup search
         if (this.studentQuestionBankSearch) {
             let searchTimeout;
             this.studentQuestionBankSearch.addEventListener('input', () => {
@@ -55,7 +54,6 @@ class NurseIQModule {
                 }, 300);
             });
             
-            // Also add Enter key support
             this.studentQuestionBankSearch.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
                     this.loadQuestionBankCards();
@@ -66,35 +64,26 @@ class NurseIQModule {
         // Setup button events
         if (this.nurseiqSearchBtn) {
             this.nurseiqSearchBtn.addEventListener('click', () => {
-                console.log('🔍 Search button clicked');
                 this.loadQuestionBankCards();
             });
         }
         
         if (this.clearSearchBtn) {
             this.clearSearchBtn.addEventListener('click', () => {
-                console.log('🗑️ Clear search button clicked');
                 this.clearQuestionBankSearch();
             });
         }
         
         if (this.loadCourseCatalogBtn) {
-            console.log('✅ Setting up loadCourseCatalogBtn click handler');
             this.loadCourseCatalogBtn.addEventListener('click', () => {
-                console.log('📚 Load Course Catalog button clicked');
                 this.loadQuestionBankCards();
             });
-            
-            // Also add a visual indicator for debugging
-            this.loadCourseCatalogBtn.style.position = 'relative';
-            this.loadCourseCatalogBtn.dataset.nurseiqBound = 'true';
         }
         
-        // Add tab click handler if available
+        // Tab click handler
         const nurseiqTab = document.querySelector('[data-tab="nurseiq"]');
         if (nurseiqTab) {
             nurseiqTab.addEventListener('click', () => {
-                console.log('📊 NurseIQ tab clicked');
                 if (!this.initialized) {
                     this.loadQuestionBankCards();
                 }
@@ -104,9 +93,9 @@ class NurseIQModule {
         console.log('✅ NurseIQ elements initialized');
     }
     
-    // Wait for element to exist in DOM
+    // Wait for element
     waitForElement(selector, timeout = 5000) {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
             const element = document.querySelector(selector);
             if (element) {
                 resolve(element);
@@ -128,7 +117,7 @@ class NurseIQModule {
             
             setTimeout(() => {
                 observer.disconnect();
-                console.warn(`⚠️ Timeout waiting for element: ${selector}`);
+                console.warn(`⚠️ Timeout waiting for: ${selector}`);
                 resolve(null);
             }, timeout);
         });
@@ -139,39 +128,29 @@ class NurseIQModule {
         return window.supabaseClient || getSupabaseClient();
     }
     
-    // Initialize with user ID
+    // Initialize
     async initialize() {
         console.log('🚀 Initializing NurseIQ Module...');
         
         try {
             this.userId = getCurrentUserId();
-            
-            // Initialize elements
             await this.initializeElements();
-            
-            // Load question bank on initialization
             await this.loadQuestionBankCards();
-            
             this.initialized = true;
-            console.log('✅ NurseIQ Module initialized successfully');
+            console.log('✅ NurseIQ Module initialized');
         } catch (error) {
-            console.error('❌ Failed to initialize NurseIQ Module:', error);
+            console.error('❌ Failed to initialize:', error);
         }
     }
     
-    // Load question bank in card format
+    // Load question bank
     async loadQuestionBankCards() {
         try {
-            console.log('📚 Loading question bank cards...');
-            
-            // Show loading
+            console.log('📚 Loading question bank...');
             this.showLoading();
             
-            // Fetch ALL questions with course info
             const supabase = this.getSupabaseClient();
-            if (!supabase) {
-                throw new Error('Supabase client not available');
-            }
+            if (!supabase) throw new Error('No database connection');
             
             const { data: questions, error } = await supabase
                 .from('medical_assessments')
@@ -190,7 +169,7 @@ class NurseIQModule {
             
             if (error) throw error;
             
-            console.log(`✅ Fetched ${questions?.length || 0} questions from database`);
+            console.log(`✅ Fetched ${questions?.length || 0} questions`);
             
             // Group by course
             const coursesMap = {};
@@ -222,12 +201,10 @@ class NurseIQModule {
                 coursesMap[courseId].stats.total++;
                 coursesMap[courseId].stats.active++;
                 
-                // Count by difficulty
                 if (question.difficulty === 'hard') coursesMap[courseId].stats.hard++;
                 else if (question.difficulty === 'medium') coursesMap[courseId].stats.medium++;
                 else if (question.difficulty === 'easy') coursesMap[courseId].stats.easy++;
                 
-                // Track last updated
                 if (question.updated_at) {
                     const updatedDate = new Date(question.updated_at);
                     if (!coursesMap[courseId].stats.lastUpdated || updatedDate > coursesMap[courseId].stats.lastUpdated) {
@@ -236,10 +213,7 @@ class NurseIQModule {
                 }
             });
             
-            // Convert to array
             const coursesArray = Object.values(coursesMap);
-            
-            // Calculate overall stats
             const overallStats = {
                 totalCourses: coursesArray.length,
                 totalQuestions: questions.length,
@@ -247,41 +221,31 @@ class NurseIQModule {
                 activeRate: '100%'
             };
             
-            // Display the card view
             this.displayQuestionBankCards(coursesArray, overallStats);
             
         } catch (error) {
             console.error('❌ Error loading question bank:', error);
-            this.showError(`Failed to Load Question Bank: ${error.message || 'Please try again'}`);
+            this.showError(`Failed to load: ${error.message || 'Please try again'}`);
         } finally {
             this.hideLoading();
         }
     }
     
-    // Display question bank cards (COMPLETE VERSION)
+    // Display question bank cards
     displayQuestionBankCards(courses, overallStats) {
-        if (!this.studentQuestionBankContent) {
-            console.error('❌ studentQuestionBankContent element not found');
-            return;
-        }
+        if (!this.studentQuestionBankContent) return;
         
         const searchTerm = this.studentQuestionBankSearch?.value?.toLowerCase() || '';
-        
-        console.log(`🔍 Filtering courses with search term: "${searchTerm}"`);
-        console.log(`📊 Total courses: ${courses.length}`);
-        
-        // Filter courses if search term exists
         let filteredCourses = courses;
+        
         if (searchTerm) {
             filteredCourses = courses.filter(course => 
                 course.name.toLowerCase().includes(searchTerm) ||
                 course.unit_code.toLowerCase().includes(searchTerm) ||
                 course.description.toLowerCase().includes(searchTerm)
             );
-            console.log(`📊 Filtered courses: ${filteredCourses.length}`);
         }
         
-        // Format date
         function formatDate(date) {
             if (!date) return 'Never';
             const now = new Date();
@@ -296,7 +260,7 @@ class NurseIQModule {
         
         let html = `
             <div class="question-bank-container">
-                <!-- Debug info for testing -->
+                <!-- Debug info -->
                 <div class="debug-info" style="background: #f3f4f6; padding: 10px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid #3b82f6;">
                     <p style="margin: 0; font-size: 14px; color: #6b7280;">
                         <strong>Status:</strong> Loaded ${filteredCourses.length} courses with ${overallStats.totalQuestions} questions
@@ -348,10 +312,7 @@ class NurseIQModule {
                 </div>
             `;
         } else {
-            html += `
-                <!-- Course Cards -->
-                <div class="courses-grid">
-            `;
+            html += `<div class="courses-grid">`;
             
             filteredCourses.forEach(course => {
                 const courseColor = course.color || '#4f46e5';
@@ -359,7 +320,6 @@ class NurseIQModule {
                 
                 html += `
                     <div class="course-card">
-                        <!-- Course Header -->
                         <div class="course-header" style="background: linear-gradient(135deg, ${courseColor}20, ${courseColor}10); border-bottom: 1px solid ${courseColor}20;">
                             <div class="course-title">
                                 <div>
@@ -377,16 +337,12 @@ class NurseIQModule {
                                     <i class="fas fa-book-medical"></i>
                                 </div>
                             </div>
-                            
-                            <!-- Active Questions Badge -->
                             <div class="active-badge">
                                 <i class="fas fa-check-circle"></i> Active Questions
                             </div>
                         </div>
                         
-                        <!-- Course Stats -->
                         <div class="course-stats">
-                            <!-- Stats Grid -->
                             <div class="stats-grid">
                                 <div class="stat-item">
                                     <div class="stat-value" style="color: #4f46e5;">${course.stats.active}</div>
@@ -406,14 +362,12 @@ class NurseIQModule {
                                 </div>
                             </div>
                             
-                            <!-- Start Test Button -->
                             <button class="start-test-btn" 
                                     onclick="window.startCourseTest('${course.id}', '${course.name.replace(/'/g, "\\'")}')" 
                                     style="background: ${courseColor}; margin-top: 15px; width: 100%; padding: 12px; border: none; border-radius: 8px; color: white; font-weight: 600; cursor: pointer; transition: all 0.3s ease;">
                                 <i class="fas fa-play-circle"></i> START PRACTICE TEST
                             </button>
                             
-                            <!-- Quick Stats -->
                             <div class="quick-stats">
                                 <div class="quick-stat">
                                     <div class="quick-value" style="color: #10b981;">${course.stats.easy}</div>
@@ -437,7 +391,6 @@ class NurseIQModule {
         }
         
         html += `
-                <!-- Footer Info -->
                 <div class="question-bank-footer">
                     <div class="info-message">
                         <i class="fas fa-info-circle"></i>
@@ -448,46 +401,15 @@ class NurseIQModule {
         `;
         
         this.studentQuestionBankContent.innerHTML = html;
-        
-        console.log('✅ Question bank cards displayed');
-        
-        // Add hover effects
-        setTimeout(() => {
-            document.querySelectorAll('.course-card').forEach(card => {
-                card.addEventListener('mouseenter', function() {
-                    this.style.transform = 'translateY(-5px)';
-                    this.style.boxShadow = '0 8px 25px rgba(0,0,0,0.12)';
-                });
-                
-                card.addEventListener('mouseleave', function() {
-                    this.style.transform = 'translateY(0)';
-                    this.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)';
-                });
-            });
-            
-            document.querySelectorAll('.start-test-btn').forEach(btn => {
-                btn.addEventListener('mouseenter', function() {
-                    this.style.transform = 'scale(1.02)';
-                    this.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
-                });
-                
-                btn.addEventListener('mouseleave', function() {
-                    this.style.transform = 'scale(1)';
-                    this.style.boxShadow = 'none';
-                });
-            });
-        }, 100);
+        console.log('✅ Question bank displayed');
     }
     
-    // Start test from course card
+    // Start course test
     async startCourseTest(courseId, courseName) {
         try {
-            console.log(`Starting test for course: ${courseName} (${courseId})`);
-            
-            // Show loading
+            console.log(`Starting test for course: ${courseName}`);
             this.showLoading();
             
-            // Fetch ALL questions for this course
             const { data: questions, error } = await this.getSupabaseClient()
                 .from('medical_assessments')
                 .select(`
@@ -506,7 +428,7 @@ class NurseIQModule {
             
             if (error) throw error;
             
-            console.log(`Fetched ${questions?.length || 0} questions for course ${courseName}`);
+            console.log(`Fetched ${questions?.length || 0} questions`);
             
             if (!questions || questions.length === 0) {
                 this.showNotification('No questions available for this course yet.', 'warning');
@@ -519,11 +441,10 @@ class NurseIQModule {
             this.currentQuestionIndex = 0;
             this.userTestAnswers = {};
             
-            // Start the interactive Q&A mode
             this.displayInteractiveQuestions(courseName, questions);
             
         } catch (error) {
-            console.error('Error starting course test:', error);
+            console.error('Error starting test:', error);
             this.showNotification('Failed to start test. Please try again.', 'error');
             this.loadQuestionBankCards();
         } finally {
@@ -531,7 +452,7 @@ class NurseIQModule {
         }
     }
     
-    // Main interactive questions display function
+    // Display interactive questions - FIXED VERSION
     displayInteractiveQuestions(courseName, questions) {
         if (!this.studentQuestionBankContent) return;
         
@@ -539,7 +460,7 @@ class NurseIQModule {
         
         let html = `
             <div class="interactive-questions-container">
-                <!-- Top Header Bar -->
+                <!-- Top Header Bar with Progress -->
                 <div class="questions-header-bar" style="background: ${courseColor};">
                     <div class="header-content">
                         <button onclick="window.loadQuestionBankCards()" class="header-back-btn">
@@ -551,24 +472,35 @@ class NurseIQModule {
                             <p class="practice-mode">Interactive Q&A Practice Mode</p>
                         </div>
                         
-                        <div class="header-stats">
-                            <div class="question-counter">
-                                <div class="counter-label">Question</div>
-                                <div class="counter-numbers">
-                                    <span id="currentQuestionCount" class="current-number">1</span>
-                                    <span class="total-divider">/</span>
-                                    <span id="totalQuestions" class="total-number">${questions.length}</span>
+                        <!-- Progress Stats at Top -->
+                        <div class="header-progress-stats">
+                            <div class="progress-stat-top">
+                                <div class="progress-label-top">Question</div>
+                                <div class="progress-value-top">
+                                    <span id="currentQuestionCountTop">1</span>/<span id="totalQuestionsTop">${questions.length}</span>
                                 </div>
+                            </div>
+                            <div class="progress-stat-top">
+                                <div class="progress-label-top">Answered</div>
+                                <div class="progress-value-top" id="answeredCountTop">0</div>
+                            </div>
+                            <div class="progress-stat-top">
+                                <div class="progress-label-top">Correct</div>
+                                <div class="progress-value-top" id="correctCountTop">0</div>
+                            </div>
+                            <div class="progress-stat-top">
+                                <div class="progress-label-top">Accuracy</div>
+                                <div class="progress-value-top" id="accuracyTop">0%</div>
                             </div>
                         </div>
                     </div>
                 </div>
                 
-                <!-- Main Content Container -->
+                <!-- Main Content -->
                 <div class="questions-main-container">
-                    <!-- Left Panel: Question -->
+                    <!-- Question Panel -->
                     <div class="question-panel">
-                        <!-- Question Number & Status -->
+                        <!-- Question Header -->
                         <div class="question-header">
                             <div class="question-meta">
                                 <span class="question-number-badge" style="background: ${courseColor};">
@@ -578,7 +510,6 @@ class NurseIQModule {
                                 <span class="difficulty-badge" id="difficultyBadge">Medium</span>
                             </div>
                             
-                            <!-- Mini Navigation -->
                             <div class="mini-navigation">
                                 <button onclick="window.prevQuestion()" class="mini-nav-btn" id="miniPrevBtn" ${this.currentQuestionIndex === 0 ? 'disabled' : ''}>
                                     <i class="fas fa-chevron-left"></i>
@@ -599,11 +530,11 @@ class NurseIQModule {
                             </div>
                         </div>
                         
-                        <!-- Answer Options -->
+                        <!-- Answer Options - IMPROVED -->
                         <div class="options-panel">
-                            <h3 class="options-title">Select Your Answer:</h3>
-                            <div id="optionsContainer" class="options-grid">
-                                <!-- Options will be loaded here -->
+                            <h3 class="options-title"><i class="fas fa-list-ol"></i> Select Your Answer:</h3>
+                            <div id="optionsContainer" class="options-container-improved">
+                                <!-- Options loaded here -->
                             </div>
                         </div>
                         
@@ -628,13 +559,12 @@ class NurseIQModule {
                             </div>
                         </div>
                         
-                        <!-- Answer & Explanation Section -->
+                        <!-- Answer & Explanation -->
                         <div id="answerRevealSection" class="answer-reveal-section" style="display: none;">
                             <div class="answer-header">
                                 <h3><i class="fas fa-check-double"></i> Answer & Explanation</h3>
                             </div>
                             
-                            <!-- Correct Answer Display -->
                             <div class="correct-answer-box">
                                 <div class="correct-answer-label">
                                     <i class="fas fa-check-circle"></i> Correct Answer:
@@ -644,7 +574,6 @@ class NurseIQModule {
                                 </div>
                             </div>
                             
-                            <!-- Detailed Explanation -->
                             <div class="explanation-box">
                                 <div class="explanation-label">
                                     <i class="fas fa-info-circle"></i> Explanation:
@@ -655,73 +584,19 @@ class NurseIQModule {
                                     </div>
                                 </div>
                             </div>
-                            
-                            <!-- Learning Tips -->
-                            <div class="learning-tips">
-                                <div class="tip-item">
-                                    <i class="fas fa-lightbulb"></i>
-                                    <span>Study this explanation carefully to understand the concept</span>
-                                </div>
-                                <div class="tip-item">
-                                    <i class="fas fa-book"></i>
-                                    <span>Take notes on important points for revision</span>
-                                </div>
-                            </div>
                         </div>
                     </div>
                     
-                    <!-- Right Panel: Progress & Stats -->
+                    <!-- Stats Panel on Right -->
                     <div class="stats-panel">
-                        <!-- Progress Summary -->
-                        <div class="progress-summary-card">
-                            <h3 class="stats-title">
-                                <i class="fas fa-chart-line"></i> Your Progress
-                            </h3>
-                            
-                            <div class="progress-stats-grid">
-                                <div class="progress-stat">
-                                    <div class="progress-circle answered-circle">
-                                        <span class="progress-number" id="answeredCount">0</span>
-                                    </div>
-                                    <div class="progress-label">Answered</div>
-                                </div>
-                                
-                                <div class="progress-stat">
-                                    <div class="progress-circle correct-circle">
-                                        <span class="progress-number" id="correctCount">0</span>
-                                    </div>
-                                    <div class="progress-label">Correct</div>
-                                </div>
-                                
-                                <div class="progress-stat">
-                                    <div class="progress-circle incorrect-circle">
-                                        <span class="progress-number" id="incorrectCount">0</span>
-                                    </div>
-                                    <div class="progress-label">Incorrect</div>
-                                </div>
-                                
-                                <div class="progress-stat">
-                                    <div class="progress-circle marked-circle">
-                                        <span class="progress-number" id="markedCount">0</span>
-                                    </div>
-                                    <div class="progress-label">Marked</div>
-                                </div>
-                            </div>
-                            
-                            <div class="accuracy-display">
-                                <div class="accuracy-label">Overall Accuracy</div>
-                                <div class="accuracy-percent" id="overallAccuracy">0%</div>
-                            </div>
-                        </div>
-                        
-                        <!-- Horizontal Question Navigator -->
+                        <!-- Question Navigator -->
                         <div class="horizontal-nav-card">
                             <h3 class="nav-title">
-                                <i class="fas fa-list-ol"></i> Questions
+                                <i class="fas fa-list-ol"></i> Questions Navigator
                             </h3>
                             
                             <div class="horizontal-question-grid" id="questionGridContainer">
-                                <!-- Horizontal question numbers will be loaded here -->
+                                <!-- Question numbers loaded here -->
                             </div>
                             
                             <div class="grid-controls">
@@ -749,10 +624,32 @@ class NurseIQModule {
                                 <li><i class="fas fa-check"></i> Aim for 80%+ accuracy</li>
                             </ul>
                         </div>
+                        
+                        <!-- Progress Summary -->
+                        <div class="progress-summary-card">
+                            <h3 class="stats-title">
+                                <i class="fas fa-chart-line"></i> Detailed Progress
+                            </h3>
+                            
+                            <div class="progress-details">
+                                <div class="progress-detail-item">
+                                    <span class="detail-label">Total Questions:</span>
+                                    <span class="detail-value">${questions.length}</span>
+                                </div>
+                                <div class="progress-detail-item">
+                                    <span class="detail-label">Marked for Review:</span>
+                                    <span class="detail-value" id="markedCountDetail">0</span>
+                                </div>
+                                <div class="progress-detail-item">
+                                    <span class="detail-label">Completion:</span>
+                                    <span class="detail-value" id="completionPercent">0%</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 
-                <!-- Bottom Navigation Bar -->
+                <!-- Bottom Navigation -->
                 <div class="bottom-navigation-bar">
                     <div class="nav-left">
                         <button onclick="window.prevQuestion()" id="prevBtn" class="nav-btn prev-nav-btn">
@@ -785,16 +682,16 @@ class NurseIQModule {
         
         this.studentQuestionBankContent.innerHTML = html;
         
-        // Load first question and initialize
         setTimeout(() => {
             this.loadCurrentInteractiveQuestion();
             this.updateQuestionGrid();
             this.updateProgressBar();
             this.updateMiniDots();
+            this.updateTopProgressStats(); // Added
         }, 100);
     }
     
-    // Load current question in interactive mode
+    // Load current question
     loadCurrentInteractiveQuestion() {
         const question = this.currentCourseQuestions[this.currentQuestionIndex];
         if (!question) return;
@@ -805,14 +702,13 @@ class NurseIQModule {
             questionText.innerHTML = question.question_text || 'Question text not available';
         }
         
-        // Update difficulty badge
+        // Update difficulty
         const difficultyBadge = document.getElementById('difficultyBadge');
         if (difficultyBadge) {
             difficultyBadge.textContent = question.difficulty?.toUpperCase() || 'MEDIUM';
             difficultyBadge.className = 'difficulty-badge';
             difficultyBadge.classList.add(`difficulty-${question.difficulty || 'medium'}`);
             
-            // Set color based on difficulty
             const colors = {
                 easy: '#10B981',
                 medium: '#F59E0B',
@@ -821,47 +717,45 @@ class NurseIQModule {
             difficultyBadge.style.backgroundColor = colors[question.difficulty] || colors.medium;
         }
         
-        // Load answer options
-        this.loadAnswerOptions(question);
+        // Load answer options with better display
+        this.loadAnswerOptionsImproved(question);
         
         // Update counters
         this.updateCounters();
+        this.updateTopProgressStats(); // Added
         
-        // Update navigation buttons state
+        // Update navigation
         this.updateNavigationButtons();
-        
-        // Update mark button
         this.updateMarkButton();
         
-        // Hide answer reveal section initially
+        // Hide answer section
         const answerRevealSection = document.getElementById('answerRevealSection');
         if (answerRevealSection) {
             answerRevealSection.style.display = 'none';
         }
         
-        // Reset option selection (unless already answered)
+        // Reset selection if not answered
         const userAnswer = this.userTestAnswers[this.currentQuestionIndex];
         if (!userAnswer?.answered) {
             this.resetOptionSelection();
         }
         
-        // Check if user already answered this question
+        // Show previous answer if exists
         if (userAnswer?.answered) {
             this.showUserAnswer(userAnswer);
         }
         
-        // Highlight current question in grid
+        // Highlight in grid
         this.highlightCurrentQuestionInGrid();
     }
     
-    // Load answer options
-    loadAnswerOptions(question) {
+    // Load answer options with better display
+    loadAnswerOptionsImproved(question) {
         const optionsContainer = document.getElementById('optionsContainer');
         if (!optionsContainer) return;
         
         let options = [];
         try {
-            // Parse options from question data
             if (question.options) {
                 if (Array.isArray(question.options)) {
                     options = question.options;
@@ -874,7 +768,6 @@ class NurseIQModule {
             options = [];
         }
         
-        // Default options if none provided
         if (options.length === 0) {
             options = ['Option A', 'Option B', 'Option C', 'Option D'];
         }
@@ -904,17 +797,19 @@ class NurseIQModule {
             const isCorrectAnswer = option === correctAnswer;
             
             optionsHtml += `
-                <div class="option-item" data-option-index="${index}" data-is-correct="${isCorrectAnswer}">
-                    <input type="radio" 
-                           id="${optionId}" 
-                           name="question-${this.currentQuestionIndex}" 
-                           value="${option}" 
-                           class="option-radio"
-                           ${this.userTestAnswers[this.currentQuestionIndex]?.selectedOption === option ? 'checked' : ''}>
-                    <label for="${optionId}" class="option-label">
-                        <span class="option-letter">${optionLetter}</span>
-                        <span class="option-text">${option}</span>
-                    </label>
+                <div class="option-item-improved" data-option-index="${index}" data-is-correct="${isCorrectAnswer}">
+                    <div class="option-radio-improved">
+                        <input type="radio" 
+                               id="${optionId}" 
+                               name="question-${this.currentQuestionIndex}" 
+                               value="${option}"
+                               class="option-input-hidden"
+                               ${this.userTestAnswers[this.currentQuestionIndex]?.selectedOption === option ? 'checked' : ''}>
+                        <label for="${optionId}" class="option-label-improved">
+                            <span class="option-letter-circle">${optionLetter}</span>
+                            <span class="option-text-improved">${option}</span>
+                        </label>
+                    </div>
                 </div>
             `;
         });
@@ -922,13 +817,13 @@ class NurseIQModule {
         optionsContainer.innerHTML = optionsHtml;
         
         // Add click handlers
-        optionsContainer.querySelectorAll('.option-item').forEach(item => {
+        optionsContainer.querySelectorAll('.option-item-improved').forEach(item => {
             item.addEventListener('click', () => {
-                this.selectOption(item);
+                this.selectOptionImproved(item);
             });
         });
         
-        // Update stored correct answer
+        // Store correct answer
         if (question.id) {
             this.userTestAnswers[this.currentQuestionIndex] = {
                 ...this.userTestAnswers[this.currentQuestionIndex],
@@ -938,26 +833,23 @@ class NurseIQModule {
         }
     }
     
-    // Select option
-    selectOption(optionItem) {
-        // Reset all options
+    // Select option with better display
+    selectOptionImproved(optionItem) {
         this.resetOptionSelection();
         
-        // Select this option
-        const radioInput = optionItem.querySelector('.option-radio');
+        const radioInput = optionItem.querySelector('.option-input-hidden');
         if (radioInput) {
             radioInput.checked = true;
-            optionItem.classList.add('selected');
+            optionItem.classList.add('selected-improved');
             
-            // Store selected option
             const optionIndex = optionItem.dataset.optionIndex;
-            const optionText = optionItem.querySelector('.option-text')?.textContent || '';
+            const optionText = optionItem.querySelector('.option-text-improved')?.textContent || '';
             
             this.userTestAnswers[this.currentQuestionIndex] = {
                 ...this.userTestAnswers[this.currentQuestionIndex],
                 selectedOption: optionText,
                 selectedOptionIndex: parseInt(optionIndex),
-                answered: false // Not checked yet
+                answered: false
             };
         }
     }
@@ -967,42 +859,41 @@ class NurseIQModule {
         const optionsContainer = document.getElementById('optionsContainer');
         if (!optionsContainer) return;
         
-        optionsContainer.querySelectorAll('.option-item').forEach(item => {
-            item.classList.remove('selected');
-            item.classList.remove('correct');
-            item.classList.remove('incorrect');
+        optionsContainer.querySelectorAll('.option-item-improved').forEach(item => {
+            item.classList.remove('selected-improved');
+            item.classList.remove('correct-improved');
+            item.classList.remove('incorrect-improved');
         });
         
-        // Clear stored answer if not checked yet
         if (!this.userTestAnswers[this.currentQuestionIndex]?.answered) {
             delete this.userTestAnswers[this.currentQuestionIndex];
         }
     }
     
-    // Show user's previous answer
+    // Show user's answer
     showUserAnswer(userAnswer) {
         const optionsContainer = document.getElementById('optionsContainer');
         if (!optionsContainer) return;
         
-        optionsContainer.querySelectorAll('.option-item').forEach(item => {
-            const optionText = item.querySelector('.option-text')?.textContent || '';
+        optionsContainer.querySelectorAll('.option-item-improved').forEach(item => {
+            const optionText = item.querySelector('.option-text-improved')?.textContent || '';
             
             if (optionText === userAnswer.selectedOption) {
-                item.classList.add('selected');
-                const radioInput = item.querySelector('.option-radio');
+                item.classList.add('selected-improved');
+                const radioInput = item.querySelector('.option-input-hidden');
                 if (radioInput) radioInput.checked = true;
                 
                 if (userAnswer.answered) {
                     if (userAnswer.correct) {
-                        item.classList.add('correct');
+                        item.classList.add('correct-improved');
                     } else {
-                        item.classList.add('incorrect');
+                        item.classList.add('incorrect-improved');
                         
-                        // Also highlight correct answer
-                        optionsContainer.querySelectorAll('.option-item').forEach(correctItem => {
-                            const correctOptionText = correctItem.querySelector('.option-text')?.textContent || '';
+                        // Highlight correct answer
+                        optionsContainer.querySelectorAll('.option-item-improved').forEach(correctItem => {
+                            const correctOptionText = correctItem.querySelector('.option-text-improved')?.textContent || '';
                             if (correctOptionText === userAnswer.correctAnswer) {
-                                correctItem.classList.add('correct');
+                                correctItem.classList.add('correct-improved');
                             }
                         });
                     }
@@ -1010,7 +901,6 @@ class NurseIQModule {
             }
         });
         
-        // Show answer section if answered
         if (userAnswer.answered) {
             this.showAnswerRevealSection();
         }
@@ -1024,27 +914,17 @@ class NurseIQModule {
             return;
         }
         
-        // Mark as answered
         const isCorrect = userAnswer.selectedOption === userAnswer.correctAnswer;
         userAnswer.answered = true;
         userAnswer.correct = isCorrect;
         
-        // Show result
         this.showUserAnswer(userAnswer);
-        
-        // Update statistics
         this.updateCounters();
-        
-        // Show answer section
+        this.updateTopProgressStats(); // Added
         this.showAnswerRevealSection();
-        
-        // Update question grid
         this.updateQuestionGrid();
-        
-        // Show feedback message
         this.showFeedbackNotification(isCorrect);
         
-        // Auto-advance after 2 seconds if correct
         if (isCorrect && this.currentQuestionIndex < this.currentCourseQuestions.length - 1) {
             setTimeout(() => {
                 this.nextQuestion();
@@ -1052,7 +932,7 @@ class NurseIQModule {
         }
     }
     
-    // Show answer reveal section
+    // Show answer reveal
     showAnswerRevealSection() {
         const answerRevealSection = document.getElementById('answerRevealSection');
         if (!answerRevealSection) return;
@@ -1060,7 +940,6 @@ class NurseIQModule {
         const question = this.currentCourseQuestions[this.currentQuestionIndex];
         if (!question) return;
         
-        // Get correct answer
         let correctAnswer = '';
         try {
             if (question.correct_answer) {
@@ -1074,33 +953,30 @@ class NurseIQModule {
             console.error('Error parsing correct answer:', e);
         }
         
-        // Update correct answer text
         const correctAnswerText = document.getElementById('correctAnswerText');
         if (correctAnswerText) {
             correctAnswerText.textContent = correctAnswer || 'Correct answer not available';
         }
         
-        // Update explanation text
         const explanationText = document.getElementById('explanationText');
         if (explanationText) {
             explanationText.innerHTML = question.explanation || 
-                '<div class="no-explanation">No detailed explanation available for this question. Please review the course material.</div>';
+                '<div class="no-explanation">No detailed explanation available. Please review the course material.</div>';
         }
         
-        // Show the section
         answerRevealSection.style.display = 'block';
     }
     
-    // Show feedback notification
+    // Show feedback
     showFeedbackNotification(isCorrect) {
         const notification = document.createElement('div');
         notification.className = `feedback-notification ${isCorrect ? 'success' : 'error'}`;
         notification.innerHTML = `
             <i class="fas fa-${isCorrect ? 'check-circle' : 'times-circle'}"></i>
-            <span>${isCorrect ? 'Correct! Well done!' : 'Incorrect. Review the explanation below.'}</span>
+            <span>${isCorrect ? 'Correct! Well done!' : 'Incorrect. Review the explanation.'}</span>
         `;
         
-        document.querySelector('.questions-main-container').appendChild(notification);
+        document.querySelector('.questions-main-container')?.appendChild(notification);
         
         setTimeout(() => {
             notification.classList.add('fade-out');
@@ -1108,7 +984,7 @@ class NurseIQModule {
         }, 3000);
     }
     
-    // Show general notification
+    // Show notification
     showNotification(message, type = 'info') {
         const notification = document.createElement('div');
         notification.className = `notification ${type}`;
@@ -1119,7 +995,7 @@ class NurseIQModule {
             <span>${message}</span>
         `;
         
-        document.querySelector('.questions-main-container').appendChild(notification);
+        document.querySelector('.questions-main-container')?.appendChild(notification);
         
         setTimeout(() => {
             notification.classList.add('fade-out');
@@ -1127,7 +1003,7 @@ class NurseIQModule {
         }, 3000);
     }
     
-    // Reset current question
+    // Reset question
     resetQuestion() {
         const userAnswer = this.userTestAnswers[this.currentQuestionIndex];
         if (userAnswer?.answered) {
@@ -1136,14 +1012,14 @@ class NurseIQModule {
         
         this.loadCurrentInteractiveQuestion();
         this.updateQuestionGrid();
+        this.updateTopProgressStats(); // Added
     }
     
-    // Show answer without checking
+    // Show answer
     showAnswer() {
         const question = this.currentCourseQuestions[this.currentQuestionIndex];
         if (!question) return;
         
-        // Get correct answer
         let correctAnswer = '';
         try {
             if (question.correct_answer) {
@@ -1157,21 +1033,18 @@ class NurseIQModule {
             console.error('Error parsing correct answer:', e);
         }
         
-        // Highlight correct answer
         const optionsContainer = document.getElementById('optionsContainer');
         if (optionsContainer) {
-            optionsContainer.querySelectorAll('.option-item').forEach(item => {
-                const optionText = item.querySelector('.option-text')?.textContent || '';
+            optionsContainer.querySelectorAll('.option-item-improved').forEach(item => {
+                const optionText = item.querySelector('.option-text-improved')?.textContent || '';
                 if (optionText === correctAnswer) {
-                    item.classList.add('correct');
+                    item.classList.add('correct-improved');
                 }
             });
         }
         
-        // Show answer section
         this.showAnswerRevealSection();
         
-        // Mark as viewed (but not answered)
         this.userTestAnswers[this.currentQuestionIndex] = {
             ...this.userTestAnswers[this.currentQuestionIndex],
             viewed: true
@@ -1191,6 +1064,7 @@ class NurseIQModule {
         this.updateMarkButton();
         this.updateQuestionGrid();
         this.updateMiniDots();
+        this.updateTopProgressStats(); // Added
         
         const action = !isMarked ? 'marked for review' : 'unmarked';
         this.showNotification(`Question ${currentIndex + 1} ${action}`, 'info');
@@ -1222,6 +1096,7 @@ class NurseIQModule {
             this.loadCurrentInteractiveQuestion();
             this.updateProgressBar();
             this.updateMiniDots();
+            this.updateTopProgressStats(); // Added
         }
     }
     
@@ -1232,20 +1107,22 @@ class NurseIQModule {
             this.loadCurrentInteractiveQuestion();
             this.updateProgressBar();
             this.updateMiniDots();
+            this.updateTopProgressStats(); // Added
         }
     }
     
-    // Go to specific question
+    // Go to question
     goToQuestion(index) {
         if (index >= 0 && index < this.currentCourseQuestions.length) {
             this.currentQuestionIndex = index;
             this.loadCurrentInteractiveQuestion();
             this.updateProgressBar();
             this.updateMiniDots();
+            this.updateTopProgressStats(); // Added
         }
     }
     
-    // Jump to question using input
+    // Jump to question
     jumpToQuestion() {
         const inputValue = prompt(`Enter question number (1-${this.currentCourseQuestions.length}):`);
         if (!inputValue) return;
@@ -1259,7 +1136,7 @@ class NurseIQModule {
         this.goToQuestion(questionNum - 1);
     }
     
-    // Finish practice session
+    // Finish practice
     finishPractice() {
         const answeredCount = Object.values(this.userTestAnswers).filter(a => a.answered).length;
         const correctCount = Object.values(this.userTestAnswers).filter(a => a.answered && a.correct).length;
@@ -1272,7 +1149,7 @@ class NurseIQModule {
         }
     }
     
-    // Scroll question grid horizontally
+    // Scroll questions
     scrollQuestions(direction) {
         const gridContainer = document.getElementById('questionGridContainer');
         if (!gridContainer) return;
@@ -1295,28 +1172,41 @@ class NurseIQModule {
         const incorrectCount = Object.values(this.userTestAnswers).filter(a => a.answered && !a.correct).length;
         const markedCount = Object.values(this.userTestAnswers).filter(a => a.marked).length;
         
-        const answeredCountEl = document.getElementById('answeredCount');
-        const correctCountEl = document.getElementById('correctCount');
-        const incorrectCountEl = document.getElementById('incorrectCount');
-        const markedCountEl = document.getElementById('markedCount');
-        const overallAccuracyEl = document.getElementById('overallAccuracy');
-        const currentQuestionCountEl = document.getElementById('currentQuestionCount');
-        const totalQuestionsEl = document.getElementById('totalQuestions');
+        // Update top counters
+        const currentQuestionCountEl = document.getElementById('currentQuestionCountTop');
+        const totalQuestionsEl = document.getElementById('totalQuestionsTop');
+        const answeredCountEl = document.getElementById('answeredCountTop');
+        const correctCountEl = document.getElementById('correctCountTop');
+        const accuracyEl = document.getElementById('accuracyTop');
+        const markedCountDetailEl = document.getElementById('markedCountDetail');
+        const completionPercentEl = document.getElementById('completionPercent');
         
-        if (answeredCountEl) answeredCountEl.textContent = answeredCount;
-        if (correctCountEl) correctCountEl.textContent = correctCount;
-        if (incorrectCountEl) incorrectCountEl.textContent = incorrectCount;
-        if (markedCountEl) markedCountEl.textContent = markedCount;
         if (currentQuestionCountEl) currentQuestionCountEl.textContent = this.currentQuestionIndex + 1;
         if (totalQuestionsEl) totalQuestionsEl.textContent = totalQuestions;
+        if (answeredCountEl) answeredCountEl.textContent = answeredCount;
+        if (correctCountEl) correctCountEl.textContent = correctCount;
+        if (markedCountDetailEl) markedCountDetailEl.textContent = markedCount;
         
         // Calculate accuracy
         const accuracy = answeredCount > 0 ? Math.round((correctCount / answeredCount) * 100) : 0;
-        if (overallAccuracyEl) {
-            overallAccuracyEl.textContent = `${accuracy}%`;
-            overallAccuracyEl.style.color = accuracy >= 80 ? '#10B981' : 
-                                           accuracy >= 60 ? '#F59E0B' : '#EF4444';
+        if (accuracyEl) {
+            accuracyEl.textContent = `${accuracy}%`;
+            accuracyEl.style.color = accuracy >= 80 ? '#10B981' : 
+                                    accuracy >= 60 ? '#F59E0B' : '#EF4444';
         }
+        
+        // Calculate completion
+        const completion = Math.round((answeredCount / totalQuestions) * 100);
+        if (completionPercentEl) {
+            completionPercentEl.textContent = `${completion}%`;
+            completionPercentEl.style.color = completion >= 80 ? '#10B981' : 
+                                            completion >= 50 ? '#F59E0B' : '#EF4444';
+        }
+    }
+    
+    // Update top progress stats
+    updateTopProgressStats() {
+        this.updateCounters();
     }
     
     // Update navigation buttons
@@ -1361,7 +1251,7 @@ class NurseIQModule {
         progressPercent.textContent = `${progress}%`;
     }
     
-    // Update horizontal question grid
+    // Update question grid
     updateQuestionGrid() {
         const questionGridContainer = document.getElementById('questionGridContainer');
         if (!questionGridContainer) return;
@@ -1397,12 +1287,10 @@ class NurseIQModule {
         }
         
         questionGridContainer.innerHTML = gridHtml;
-        
-        // Auto-scroll to current question
         this.scrollToCurrentQuestion();
     }
     
-    // Scroll to current question in grid
+    // Scroll to current question
     scrollToCurrentQuestion() {
         const questionGridContainer = document.getElementById('questionGridContainer');
         if (!questionGridContainer) return;
@@ -1413,22 +1301,19 @@ class NurseIQModule {
             const elementOffset = currentQuestionElement.offsetLeft;
             const elementWidth = currentQuestionElement.offsetWidth;
             
-            // Center the current question
             questionGridContainer.scrollLeft = elementOffset - (containerWidth / 2) + (elementWidth / 2);
         }
     }
     
-    // Highlight current question in grid
+    // Highlight current question
     highlightCurrentQuestionInGrid() {
         const questionGridContainer = document.getElementById('questionGridContainer');
         if (!questionGridContainer) return;
         
-        // Remove highlight from all
         questionGridContainer.querySelectorAll('.grid-question-number').forEach(el => {
             el.classList.remove('grid-current');
         });
         
-        // Add highlight to current
         const currentQuestionElement = questionGridContainer.querySelector(`[onclick*="goToQuestion(${this.currentQuestionIndex})"]`);
         if (currentQuestionElement) {
             currentQuestionElement.classList.add('grid-current');
@@ -1489,7 +1374,7 @@ class NurseIQModule {
         }
     }
     
-    // Utility functions
+    // Show loading
     showLoading() {
         if (this.studentQuestionBankLoading) {
             this.studentQuestionBankLoading.style.display = 'block';
@@ -1499,18 +1384,19 @@ class NurseIQModule {
                 <div class="loading-container">
                     <div class="loading-spinner"></div>
                     <div class="loading-text">Loading question bank...</div>
-                    <div class="loading-subtext">Fetching courses and questions</div>
                 </div>
             `;
         }
     }
     
+    // Hide loading
     hideLoading() {
         if (this.studentQuestionBankLoading) {
             this.studentQuestionBankLoading.style.display = 'none';
         }
     }
     
+    // Show error
     showError(message) {
         if (this.studentQuestionBankContent) {
             this.studentQuestionBankContent.innerHTML = `
@@ -1532,15 +1418,13 @@ class NurseIQModule {
     }
 }
 
-// Expose methods to global scope for onclick handlers
+// Global functions
 window.NurseIQModule = NurseIQModule;
 window.nurseiqModule = null;
 
-// Initialize NurseIQ module when DOM is ready
 window.initNurseIQ = async function() {
-    console.log('🚀 Starting NurseIQ initialization...');
+    console.log('🚀 Starting NurseIQ...');
     
-    // Wait for DOM to be ready if needed
     if (document.readyState === 'loading') {
         await new Promise(resolve => {
             document.addEventListener('DOMContentLoaded', resolve);
@@ -1552,29 +1436,24 @@ window.initNurseIQ = async function() {
     return window.nurseiqModule;
 };
 
-// Auto-initialize when page loads
+// Auto-initialize
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
-        console.log('📄 DOM loaded, initializing NurseIQ...');
         setTimeout(() => {
             window.initNurseIQ().catch(console.error);
-        }, 1000); // Wait a bit for other scripts to load
+        }, 1000);
     });
 } else {
-    console.log('📄 DOM already loaded, initializing NurseIQ...');
     setTimeout(() => {
         window.initNurseIQ().catch(console.error);
     }, 1000);
 }
 
-// Global helper functions for onclick handlers
+// Global helper functions
 window.loadQuestionBankCards = function() {
-    console.log('🌐 Global loadQuestionBankCards called');
     if (window.nurseiqModule) {
         window.nurseiqModule.loadQuestionBankCards();
     } else {
-        console.warn('⚠️ NurseIQ module not initialized yet');
-        // Try to initialize and load
         window.initNurseIQ().then(() => {
             window.nurseiqModule.loadQuestionBankCards();
         }).catch(console.error);
@@ -1653,450 +1532,320 @@ window.scrollQuestions = function(direction) {
     }
 };
 
-// Add CSS for horizontal question numbers and improvements
-const style = document.createElement('style');
-style.textContent = `
-    /* Horizontal Question Grid */
-    .horizontal-nav-card {
-        background: white;
-        border-radius: 10px;
-        padding: 15px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-        margin-bottom: 15px;
-        border: 1px solid #e5e7eb;
-    }
-    
-    .horizontal-question-grid {
+// Add improved CSS
+const improvedStyles = document.createElement('style');
+improvedStyles.textContent = `
+    /* Progress at Top */
+    .header-progress-stats {
         display: flex;
-        overflow-x: auto;
-        gap: 6px;
-        padding: 10px 0;
-        margin-bottom: 10px;
-        scrollbar-width: thin;
-        scrollbar-color: #cbd5e1 transparent;
-    }
-    
-    .horizontal-question-grid::-webkit-scrollbar {
-        height: 6px;
-    }
-    
-    .horizontal-question-grid::-webkit-scrollbar-track {
-        background: #f1f5f9;
-        border-radius: 3px;
-    }
-    
-    .horizontal-question-grid::-webkit-scrollbar-thumb {
-        background: #cbd5e1;
-        border-radius: 3px;
-    }
-    
-    .grid-question-number {
-        width: 40px;
-        height: 40px;
-        display: flex;
+        gap: 20px;
         align-items: center;
-        justify-content: center;
-        border-radius: 8px;
-        background: #f8fafc;
-        border: 2px solid #e2e8f0;
-        color: #64748b;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        flex-shrink: 0;
-        position: relative;
     }
     
-    .grid-question-number:hover {
-        background: #e2e8f0;
-        transform: translateY(-2px);
-    }
-    
-    .grid-current {
-        background: #3b82f6 !important;
-        border-color: #3b82f6 !important;
-        color: white !important;
-        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
-    }
-    
-    .grid-correct {
-        background: #10b981 !important;
-        border-color: #10b981 !important;
-        color: white !important;
-    }
-    
-    .grid-incorrect {
-        background: #ef4444 !important;
-        border-color: #ef4444 !important;
-        color: white !important;
-    }
-    
-    .grid-marked {
-        background: #f59e0b !important;
-        border-color: #f59e0b !important;
-        color: white !important;
-    }
-    
-    .grid-viewed {
-        border-style: dashed;
-    }
-    
-    .grid-flag {
-        position: absolute;
-        top: -4px;
-        right: -4px;
-        font-size: 10px;
-        color: #f59e0b;
-        background: white;
-        border-radius: 50%;
-        padding: 1px;
-    }
-    
-    .grid-controls {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 10px;
-        margin-top: 10px;
-    }
-    
-    .grid-scroll-btn {
-        background: #f1f5f9;
-        border: 1px solid #cbd5e1;
-        border-radius: 6px;
-        padding: 6px 12px;
-        cursor: pointer;
-        color: #64748b;
-        transition: all 0.2s ease;
-    }
-    
-    .grid-scroll-btn:hover {
-        background: #e2e8f0;
-    }
-    
-    .grid-jump-btn {
-        flex: 1;
-        background: #3b82f6;
-        color: white;
-        border: none;
-        border-radius: 6px;
-        padding: 8px;
-        cursor: pointer;
-        font-weight: 500;
-        transition: all 0.2s ease;
-    }
-    
-    .grid-jump-btn:hover {
-        background: #2563eb;
-    }
-    
-    /* Feedback Notifications */
-    .feedback-notification {
-        position: fixed;
-        top: 80px;
-        right: 20px;
-        padding: 12px 20px;
-        border-radius: 8px;
-        color: white;
-        font-weight: 500;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        z-index: 1000;
-        animation: slideIn 0.3s ease;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    }
-    
-    .feedback-notification.success {
-        background: #10b981;
-    }
-    
-    .feedback-notification.error {
-        background: #ef4444;
-    }
-    
-    .feedback-notification.fade-out {
-        animation: fadeOut 0.5s ease forwards;
-    }
-    
-    .notification {
-        position: fixed;
-        top: 80px;
-        left: 50%;
-        transform: translateX(-50%);
-        padding: 12px 20px;
-        border-radius: 8px;
-        color: white;
-        font-weight: 500;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        z-index: 1000;
-        animation: slideInDown 0.3s ease;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    }
-    
-    .notification.info {
-        background: #3b82f6;
-    }
-    
-    .notification.warning {
-        background: #f59e0b;
-    }
-    
-    .notification.error {
-        background: #ef4444;
-    }
-    
-    .notification.success {
-        background: #10b981;
-    }
-    
-    .notification.fade-out {
-        animation: fadeOut 0.5s ease forwards;
-    }
-    
-    @keyframes slideIn {
-        from {
-            transform: translateX(100%);
-            opacity: 0;
-        }
-        to {
-            transform: translateX(0);
-            opacity: 1;
-        }
-    }
-    
-    @keyframes slideInDown {
-        from {
-            transform: translate(-50%, -100%);
-            opacity: 0;
-        }
-        to {
-            transform: translate(-50%, 0);
-            opacity: 1;
-        }
-    }
-    
-    @keyframes fadeOut {
-        from {
-            opacity: 1;
-        }
-        to {
-            opacity: 0;
-        }
-    }
-    
-    /* Loading improvements */
-    .loading-container {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        min-height: 300px;
-    }
-    
-    .loading-spinner {
-        width: 50px;
-        height: 50px;
-        border: 4px solid #e2e8f0;
-        border-top-color: #3b82f6;
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-        margin-bottom: 15px;
-    }
-    
-    @keyframes spin {
-        to { transform: rotate(360deg); }
-    }
-    
-    /* No explanation message */
-    .no-explanation {
-        color: #6b7280;
-        font-style: italic;
-        padding: 10px;
-        background: #f9fafb;
-        border-radius: 6px;
-        border-left: 3px solid #d1d5db;
-    }
-    
-    /* Finish button */
-    .finish-btn {
-        background: #10b981;
-        margin-left: 10px;
-    }
-    
-    .finish-btn:hover {
-        background: #059669;
-    }
-    
-    /* Difficulty badge colors */
-    .difficulty-badge.easy {
-        background: #10b981 !important;
-    }
-    
-    .difficulty-badge.medium {
-        background: #f59e0b !important;
-    }
-    
-    .difficulty-badge.hard {
-        background: #ef4444 !important;
-    }
-    
-    /* Basic button styles */
-    .btn-primary {
-        background: #3b82f6;
-        color: white;
-        border: none;
-        padding: 10px 20px;
-        border-radius: 6px;
-        cursor: pointer;
-        font-weight: 500;
-        transition: background 0.3s ease;
-    }
-    
-    .btn-primary:hover {
-        background: #2563eb;
-    }
-    
-    .btn-secondary {
-        background: #6b7280;
-        color: white;
-        border: none;
-        padding: 10px 20px;
-        border-radius: 6px;
-        cursor: pointer;
-        font-weight: 500;
-        transition: background 0.3s ease;
-    }
-    
-    .btn-secondary:hover {
-        background: #4b5563;
-    }
-    
-    .empty-state {
+    .progress-stat-top {
         text-align: center;
-        padding: 40px 20px;
-        color: #6b7280;
+        min-width: 80px;
     }
     
-    .empty-state i {
-        font-size: 48px;
-        color: #d1d5db;
-        margin-bottom: 20px;
-    }
-    
-    .loading-container {
-        text-align: center;
-        padding: 40px 20px;
-    }
-    
-    .error-state {
-        text-align: center;
-        padding: 40px 20px;
-        color: #ef4444;
-    }
-    
-    .error-state i {
-        font-size: 48px;
-        margin-bottom: 20px;
-    }
-    
-    /* Course card styles */
-    .course-card {
-        background: white;
-        border-radius: 12px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-        overflow: hidden;
-        transition: all 0.3s ease;
-    }
-    
-    .course-header {
-        padding: 20px;
-    }
-    
-    .course-title {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: 15px;
-    }
-    
-    .course-title h3 {
-        margin: 0 0 10px 0;
-        font-size: 18px;
-        color: #1f2937;
-    }
-    
-    .course-icon {
-        width: 40px;
-        height: 40px;
-        border-radius: 8px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-    }
-    
-    .course-stats {
-        padding: 20px;
-    }
-    
-    .stats-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 15px;
-        margin-bottom: 15px;
-    }
-    
-    .stat-item {
-        text-align: center;
-    }
-    
-    .stat-value {
-        font-size: 24px;
-        font-weight: 700;
-        margin-bottom: 5px;
-    }
-    
-    .stat-label {
+    .progress-label-top {
         font-size: 12px;
-        color: #6b7280;
-        font-weight: 600;
+        color: rgba(255, 255, 255, 0.8);
+        font-weight: 500;
+        margin-bottom: 4px;
         text-transform: uppercase;
         letter-spacing: 0.5px;
     }
     
-    .quick-stats {
+    .progress-value-top {
+        font-size: 20px;
+        font-weight: 700;
+        color: white;
+        background: rgba(255, 255, 255, 0.15);
+        padding: 6px 12px;
+        border-radius: 8px;
+        min-width: 60px;
+        display: inline-block;
+    }
+    
+    /* Improved Options Display */
+    .options-container-improved {
         display: flex;
-        justify-content: space-around;
-        margin-top: 15px;
-        padding-top: 15px;
+        flex-direction: column;
+        gap: 12px;
+        margin-top: 20px;
+    }
+    
+    .option-item-improved {
+        background: white;
+        border: 2px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 16px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .option-item-improved:hover {
+        border-color: #3b82f6;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+    }
+    
+    .option-item-improved.selected-improved {
+        border-color: #3b82f6;
+        background: #eff6ff;
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+    }
+    
+    .option-item-improved.correct-improved {
+        border-color: #10b981;
+        background: #d1fae5;
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+    }
+    
+    .option-item-improved.incorrect-improved {
+        border-color: #ef4444;
+        background: #fee2e2;
+        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+    }
+    
+    .option-radio-improved {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+    
+    .option-input-hidden {
+        display: none;
+    }
+    
+    .option-label-improved {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        width: 100%;
+        cursor: pointer;
+    }
+    
+    .option-letter-circle {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: #f3f4f6;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        color: #4b5563;
+        flex-shrink: 0;
+        transition: all 0.3s ease;
+    }
+    
+    .option-item-improved.selected-improved .option-letter-circle {
+        background: #3b82f6;
+        color: white;
+    }
+    
+    .option-item-improved.correct-improved .option-letter-circle {
+        background: #10b981;
+        color: white;
+    }
+    
+    .option-item-improved.incorrect-improved .option-letter-circle {
+        background: #ef4444;
+        color: white;
+    }
+    
+    .option-text-improved {
+        flex: 1;
+        font-size: 16px;
+        line-height: 1.5;
+        color: #374151;
+    }
+    
+    /* Improved Action Buttons */
+    .action-buttons-panel {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 30px;
+        padding-top: 20px;
         border-top: 1px solid #e5e7eb;
     }
     
-    .quick-stat {
-        text-align: center;
+    .button-group-left, .button-group-right {
+        display: flex;
+        gap: 12px;
     }
     
-    .quick-value {
+    .action-btn {
+        padding: 12px 24px;
+        border-radius: 8px;
+        border: none;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.3s ease;
+        font-size: 14px;
+    }
+    
+    .primary-action-btn {
+        background: #3b82f6;
+        color: white;
+    }
+    
+    .primary-action-btn:hover {
+        background: #2563eb;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+    }
+    
+    .secondary-action-btn {
+        background: #6b7280;
+        color: white;
+    }
+    
+    .secondary-action-btn:hover {
+        background: #4b5563;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(107, 114, 128, 0.3);
+    }
+    
+    .info-action-btn {
+        background: #0ea5e9;
+        color: white;
+    }
+    
+    .info-action-btn:hover {
+        background: #0284c7;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+    }
+    
+    .warning-action-btn {
+        background: #f59e0b;
+        color: white;
+    }
+    
+    .warning-action-btn:hover {
+        background: #d97706;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+    }
+    
+    /* Question Card */
+    .question-card {
+        background: white;
+        border-radius: 12px;
+        padding: 24px;
+        margin: 20px 0;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        border: 1px solid #e5e7eb;
+    }
+    
+    .question-text {
         font-size: 18px;
-        font-weight: 700;
+        line-height: 1.6;
+        color: #1f2937;
     }
     
-    .quick-label {
-        font-size: 11px;
-        color: #6b7280;
+    /* Difficulty badges */
+    .difficulty-badge {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 700;
+        color: white;
         text-transform: uppercase;
     }
     
-    .courses-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-        gap: 20px;
-        margin: 20px 0;
+    /* Navigation */
+    .bottom-navigation-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px 20px;
+        background: white;
+        border-top: 1px solid #e5e7eb;
+        position: sticky;
+        bottom: 0;
+        z-index: 100;
+    }
+    
+    .nav-btn {
+        padding: 10px 20px;
+        border-radius: 8px;
+        border: none;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.3s ease;
+    }
+    
+    .prev-nav-btn, .next-nav-btn {
+        background: #f3f4f6;
+        color: #4b5563;
+    }
+    
+    .prev-nav-btn:hover:not(:disabled), .next-nav-btn:hover:not(:disabled) {
+        background: #e5e7eb;
+        transform: translateY(-2px);
+    }
+    
+    .finish-btn {
+        background: #10b981;
+        color: white;
+    }
+    
+    .finish-btn:hover {
+        background: #059669;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
+    
+    .progress-indicator {
+        width: 300px;
+    }
+    
+    .progress-bar {
+        height: 8px;
+        background: #e5e7eb;
+        border-radius: 4px;
+        overflow: hidden;
+        margin-bottom: 8px;
+    }
+    
+    .progress-fill {
+        height: 100%;
+        background: #3b82f6;
+        transition: width 0.3s ease;
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+        .header-progress-stats {
+            display: none;
+        }
+        
+        .action-buttons-panel {
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .button-group-left, .button-group-right {
+            width: 100%;
+            justify-content: space-between;
+        }
+        
+        .progress-indicator {
+            width: 200px;
+        }
     }
 `;
-document.head.appendChild(style);
+document.head.appendChild(improvedStyles);
 
-console.log('✅ NurseIQ module COMPLETELY loaded with all features');
+console.log('✅ NurseIQ module loaded with improved display');
