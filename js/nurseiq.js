@@ -1,4 +1,4 @@
-// js/nurseiq.js - FIXED with horizontal navigation in main panel
+// js/nurseiq.js - COMPLETE REFACTORED VERSION (No Inline Styles)
 class NurseIQModule {
     constructor() {
         this.userId = null;
@@ -177,13 +177,14 @@ class NurseIQModule {
                 const courseId = question.course_id || 'general';
                 const courseName = question.courses?.course_name || 'General Nursing';
                 const unitCode = question.courses?.unit_code || 'KRCHN';
+                const courseColor = question.courses?.color || '#4f46e5';
                 
                 if (!coursesMap[courseId]) {
                     coursesMap[courseId] = {
                         id: courseId,
                         name: courseName,
                         unit_code: unitCode,
-                        color: question.courses?.color || '#4f46e5',
+                        color: courseColor,
                         description: question.courses?.description || '',
                         questions: [],
                         stats: {
@@ -261,8 +262,8 @@ class NurseIQModule {
         let html = `
             <div class="question-bank-container">
                 <!-- Debug info -->
-                <div class="debug-info" style="background: #f3f4f6; padding: 10px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid #3b82f6;">
-                    <p style="margin: 0; font-size: 14px; color: #6b7280;">
+                <div class="debug-info card">
+                    <p class="text-sm">
                         <strong>Status:</strong> Loaded ${filteredCourses.length} courses with ${overallStats.totalQuestions} questions
                         ${searchTerm ? ` | Searching: "${searchTerm}"` : ''}
                     </p>
@@ -272,7 +273,7 @@ class NurseIQModule {
                 <div class="stats-header">
                     <div class="stats-title">
                         <h2><i class="fas fa-database"></i> Question Bank</h2>
-                        <p>Organized by courses with detailed statistics</p>
+                        <p class="subtitle">Organized by courses with detailed statistics</p>
                     </div>
                     <div class="stats-filter">
                         <i class="fas fa-filter"></i> Showing ${filteredCourses.length} of ${courses.length} courses
@@ -281,21 +282,21 @@ class NurseIQModule {
                 
                 <!-- Overall Stats Cards -->
                 <div class="overall-stats">
-                    <div class="stat-card">
-                        <div class="stat-number" style="color: #4f46e5;">${overallStats.totalCourses}</div>
-                        <div class="stat-label">Total Courses</div>
+                    <div class="overall-stat-card">
+                        <div class="overall-stat-number text-primary">${overallStats.totalCourses}</div>
+                        <div class="overall-stat-label">Total Courses</div>
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-number" style="color: #10b981;">${overallStats.totalQuestions}</div>
-                        <div class="stat-label">Total Questions</div>
+                    <div class="overall-stat-card">
+                        <div class="overall-stat-number text-success">${overallStats.totalQuestions}</div>
+                        <div class="overall-stat-label">Total Questions</div>
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-number" style="color: #0ea5e9;">${overallStats.activeQuestions}</div>
-                        <div class="stat-label">Active Questions</div>
+                    <div class="overall-stat-card">
+                        <div class="overall-stat-number text-info">${overallStats.activeQuestions}</div>
+                        <div class="overall-stat-label">Active Questions</div>
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-number" style="color: #f59e0b;">${overallStats.activeRate}</div>
-                        <div class="stat-label">Active Rate</div>
+                    <div class="overall-stat-card">
+                        <div class="overall-stat-number text-warning">${overallStats.activeRate}</div>
+                        <div class="overall-stat-label">Active Rate</div>
                     </div>
                 </div>
         `;
@@ -306,7 +307,7 @@ class NurseIQModule {
                     <i class="fas fa-search"></i>
                     <h3>No Courses Found</h3>
                     <p>No courses match your search "${searchTerm}". Try a different search term.</p>
-                    <button onclick="window.clearQuestionBankSearch()" class="btn-primary" style="margin-top: 20px;">
+                    <button onclick="window.clearQuestionBankSearch()" class="btn btn-primary mt-2">
                         <i class="fas fa-times"></i> Clear Search
                     </button>
                 </div>
@@ -320,7 +321,7 @@ class NurseIQModule {
                 
                 html += `
                     <div class="course-card">
-                        <div class="course-header" style="background: linear-gradient(135deg, ${courseColor}20, ${courseColor}10); border-bottom: 1px solid ${courseColor}20;">
+                        <div class="course-header" style="border-color: ${courseColor}20;">
                             <div class="course-title">
                                 <div>
                                     <h3>${course.name}</h3>
@@ -345,40 +346,40 @@ class NurseIQModule {
                         <div class="course-stats">
                             <div class="stats-grid">
                                 <div class="stat-item">
-                                    <div class="stat-value" style="color: #4f46e5;">${course.stats.active}</div>
+                                    <div class="stat-value text-primary">${course.stats.active}</div>
                                     <div class="stat-label">ACTIVE</div>
                                 </div>
                                 <div class="stat-item">
-                                    <div class="stat-value" style="color: #ef4444;">${course.stats.hard}</div>
+                                    <div class="stat-value text-danger">${course.stats.hard}</div>
                                     <div class="stat-label">HARD</div>
                                 </div>
                                 <div class="stat-item">
-                                    <div class="stat-value" style="color: #f59e0b;">${course.stats.medium}</div>
+                                    <div class="stat-value text-warning">${course.stats.medium}</div>
                                     <div class="stat-label">MEDIUM</div>
                                 </div>
                                 <div class="stat-item">
                                     <div class="stat-date-label">UPDATED</div>
-                                    <div class="stat-date" style="color: #4f46e5;">${lastUpdated}</div>
+                                    <div class="stat-date text-primary">${lastUpdated}</div>
                                 </div>
                             </div>
                             
                             <button class="start-test-btn" 
                                     onclick="window.startCourseTest('${course.id}', '${course.name.replace(/'/g, "\\'")}')" 
-                                    style="background: ${courseColor}; margin-top: 15px; width: 100%; padding: 12px; border: none; border-radius: 8px; color: white; font-weight: 600; cursor: pointer; transition: all 0.3s ease;">
+                                    style="background: ${courseColor}">
                                 <i class="fas fa-play-circle"></i> START PRACTICE TEST
                             </button>
                             
                             <div class="quick-stats">
                                 <div class="quick-stat">
-                                    <div class="quick-value" style="color: #10b981;">${course.stats.easy}</div>
+                                    <div class="quick-value text-success">${course.stats.easy}</div>
                                     <div class="quick-label">Easy</div>
                                 </div>
                                 <div class="quick-stat">
-                                    <div class="quick-value" style="color: #f59e0b;">${course.stats.medium}</div>
+                                    <div class="quick-value text-warning">${course.stats.medium}</div>
                                     <div class="quick-label">Medium</div>
                                 </div>
                                 <div class="quick-stat">
-                                    <div class="quick-value" style="color: #ef4444;">${course.stats.hard}</div>
+                                    <div class="quick-value text-danger">${course.stats.hard}</div>
                                     <div class="quick-label">Hard</div>
                                 </div>
                             </div>
@@ -452,7 +453,7 @@ class NurseIQModule {
         }
     }
     
-    // Display interactive questions - FIXED with horizontal navigation in main panel
+    // Display interactive questions
     displayInteractiveQuestions(courseName, questions) {
         if (!this.studentQuestionBankContent) return;
         
@@ -460,16 +461,38 @@ class NurseIQModule {
         
         let html = `
             <div class="interactive-questions-container">
-                <!-- Top Header Bar -->
-                <div class="questions-header-bar" style="background: ${courseColor};">
+                <!-- Top Header Bar with Progress -->
+                <div class="questions-header-bar">
                     <div class="header-content">
-                        <button onclick="window.loadQuestionBankCards()" class="header-back-btn">
+                        <button onclick="window.loadQuestionBankCards()" class="header-back-btn btn btn-outline">
                             <i class="fas fa-arrow-left"></i> Back to Courses
                         </button>
                         
                         <div class="header-course-info">
                             <h2 class="course-name">${courseName}</h2>
                             <p class="practice-mode">Interactive Q&A Practice Mode</p>
+                        </div>
+                        
+                        <!-- Progress Stats at Top -->
+                        <div class="header-progress-stats">
+                            <div class="progress-stat-top">
+                                <div class="progress-label-top">Question</div>
+                                <div class="progress-value-top">
+                                    <span id="currentQuestionCountTop">1</span>/<span id="totalQuestionsTop">${questions.length}</span>
+                                </div>
+                            </div>
+                            <div class="progress-stat-top">
+                                <div class="progress-label-top">Answered</div>
+                                <div class="progress-value-top" id="answeredCountTop">0</div>
+                            </div>
+                            <div class="progress-stat-top">
+                                <div class="progress-label-top">Correct</div>
+                                <div class="progress-value-top" id="correctCountTop">0</div>
+                            </div>
+                            <div class="progress-stat-top">
+                                <div class="progress-label-top">Accuracy</div>
+                                <div class="progress-value-top" id="accuracyTop">0%</div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -481,35 +504,21 @@ class NurseIQModule {
                         <!-- Question Header -->
                         <div class="question-header">
                             <div class="question-meta">
-                                <span class="question-number-badge" style="background: ${courseColor};">
-                                    Q${this.currentQuestionIndex + 1}
-                                </span>
+                                <span class="question-number-badge">Q${this.currentQuestionIndex + 1}</span>
                                 <span class="question-type">Multiple Choice</span>
-                                <div class="difficulty-container">
-                                    <span class="difficulty-label">Difficulty:</span>
-                                    <span class="difficulty-badge-large" id="difficultyBadge">MEDIUM</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- HORIZONTAL QUESTION NAVIGATOR - IN MAIN PANEL -->
-                        <div class="horizontal-navigator-main">
-                            <div class="nav-controls">
-                                <button onclick="window.prevQuestion()" class="nav-arrow-btn" id="prevArrowBtn" ${this.currentQuestionIndex === 0 ? 'disabled' : ''}>
-                                    <i class="fas fa-chevron-left"></i>
-                                </button>
-                                
-                                <div class="horizontal-dots-container" id="horizontalDots">
-                                    ${this.generateHorizontalDots(questions.length)}
-                                </div>
-                                
-                                <button onclick="window.nextQuestion()" class="nav-arrow-btn" id="nextArrowBtn" ${this.currentQuestionIndex === questions.length - 1 ? 'disabled' : ''}>
-                                    <i class="fas fa-chevron-right"></i>
-                                </button>
+                                <span class="difficulty-badge difficulty-medium" id="difficultyBadge">Medium</span>
                             </div>
                             
-                            <div class="nav-info">
-                                <span class="current-question">Question <strong id="currentQNum">${this.currentQuestionIndex + 1}</strong> of <strong>${questions.length}</strong></span>
+                            <div class="mini-navigation">
+                                <button onclick="window.prevQuestion()" class="mini-nav-btn" id="miniPrevBtn" ${this.currentQuestionIndex === 0 ? 'disabled' : ''}>
+                                    <i class="fas fa-chevron-left"></i>
+                                </button>
+                                <div class="mini-dots" id="miniDotsContainer">
+                                    ${this.generateMiniDots(questions.length)}
+                                </div>
+                                <button onclick="window.nextQuestion()" class="mini-nav-btn" id="miniNextBtn" ${this.currentQuestionIndex === questions.length - 1 ? 'disabled' : ''}>
+                                    <i class="fas fa-chevron-right"></i>
+                                </button>
                             </div>
                         </div>
                         
@@ -579,52 +588,26 @@ class NurseIQModule {
                     
                     <!-- Stats Panel on Right -->
                     <div class="stats-panel">
-                        <!-- Progress Stats Card -->
-                        <div class="progress-stats-card">
-                            <h3 class="stats-title">
-                                <i class="fas fa-chart-bar"></i> Your Progress
+                        <!-- Question Navigator -->
+                        <div class="horizontal-nav-card">
+                            <h3 class="nav-title">
+                                <i class="fas fa-list-ol"></i> Questions Navigator
                             </h3>
                             
-                            <div class="progress-stats-grid">
-                                <div class="progress-stat-item">
-                                    <div class="stat-icon answered-icon">
-                                        <i class="fas fa-check-circle"></i>
-                                    </div>
-                                    <div class="stat-details">
-                                        <div class="stat-value" id="answeredCountStat">0</div>
-                                        <div class="stat-label">Answered</div>
-                                    </div>
-                                </div>
-                                
-                                <div class="progress-stat-item">
-                                    <div class="stat-icon correct-icon">
-                                        <i class="fas fa-check-double"></i>
-                                    </div>
-                                    <div class="stat-details">
-                                        <div class="stat-value" id="correctCountStat">0</div>
-                                        <div class="stat-label">Correct</div>
-                                    </div>
-                                </div>
-                                
-                                <div class="progress-stat-item">
-                                    <div class="stat-icon marked-icon">
-                                        <i class="fas fa-flag"></i>
-                                    </div>
-                                    <div class="stat-details">
-                                        <div class="stat-value" id="markedCountStat">0</div>
-                                        <div class="stat-label">Marked</div>
-                                    </div>
-                                </div>
-                                
-                                <div class="progress-stat-item">
-                                    <div class="stat-icon accuracy-icon">
-                                        <i class="fas fa-percentage"></i>
-                                    </div>
-                                    <div class="stat-details">
-                                        <div class="stat-value" id="accuracyStat">0%</div>
-                                        <div class="stat-label">Accuracy</div>
-                                    </div>
-                                </div>
+                            <div class="horizontal-question-grid" id="questionGridContainer">
+                                <!-- Question numbers loaded here -->
+                            </div>
+                            
+                            <div class="grid-controls">
+                                <button onclick="window.scrollQuestions('left')" class="grid-scroll-btn">
+                                    <i class="fas fa-chevron-left"></i>
+                                </button>
+                                <button onclick="window.jumpToQuestion()" class="grid-jump-btn">
+                                    Jump to Question
+                                </button>
+                                <button onclick="window.scrollQuestions('right')" class="grid-scroll-btn">
+                                    <i class="fas fa-chevron-right"></i>
+                                </button>
                             </div>
                         </div>
                         
@@ -639,6 +622,28 @@ class NurseIQModule {
                                 <li><i class="fas fa-check"></i> Mark difficult questions</li>
                                 <li><i class="fas fa-check"></i> Aim for 80%+ accuracy</li>
                             </ul>
+                        </div>
+                        
+                        <!-- Progress Summary -->
+                        <div class="progress-summary-card">
+                            <h3 class="stats-title">
+                                <i class="fas fa-chart-line"></i> Detailed Progress
+                            </h3>
+                            
+                            <div class="progress-details">
+                                <div class="progress-detail-item">
+                                    <span class="detail-label">Total Questions:</span>
+                                    <span class="detail-value">${questions.length}</span>
+                                </div>
+                                <div class="progress-detail-item">
+                                    <span class="detail-label">Marked for Review:</span>
+                                    <span class="detail-value" id="markedCountDetail">0</span>
+                                </div>
+                                <div class="progress-detail-item">
+                                    <span class="detail-label">Completion:</span>
+                                    <span class="detail-value" id="completionPercent">0%</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -678,9 +683,10 @@ class NurseIQModule {
         
         setTimeout(() => {
             this.loadCurrentInteractiveQuestion();
-            this.updateProgressStats();
+            this.updateQuestionGrid();
             this.updateProgressBar();
-            this.updateHorizontalDots();
+            this.updateMiniDots();
+            this.updateTopProgressStats();
         }, 100);
     }
     
@@ -695,25 +701,34 @@ class NurseIQModule {
             questionText.innerHTML = question.question_text || 'Question text not available';
         }
         
-        // Update difficulty - ALWAYS SHOW "MEDIUM" IN CAPS
+        // Update difficulty
         const difficultyBadge = document.getElementById('difficultyBadge');
         if (difficultyBadge) {
-            difficultyBadge.textContent = 'MEDIUM';
-            difficultyBadge.className = 'difficulty-badge-large';
-            difficultyBadge.style.backgroundColor = '#F59E0B'; // Orange for medium
+            difficultyBadge.textContent = question.difficulty?.toUpperCase() || 'MEDIUM';
+            
+            // Remove existing difficulty classes
+            difficultyBadge.classList.remove('difficulty-easy', 'difficulty-medium', 'difficulty-hard');
+            
+            // Add correct difficulty class
+            if (question.difficulty === 'easy') {
+                difficultyBadge.classList.add('difficulty-easy');
+            } else if (question.difficulty === 'hard') {
+                difficultyBadge.classList.add('difficulty-hard');
+            } else {
+                difficultyBadge.classList.add('difficulty-medium');
+            }
         }
         
         // Load answer options
-        this.loadAnswerOptionsImproved(question);
+        this.loadAnswerOptions(question);
         
         // Update counters
-        this.updateProgressStats();
-        this.updateCurrentQuestionNumber();
+        this.updateCounters();
+        this.updateTopProgressStats();
         
         // Update navigation
         this.updateNavigationButtons();
         this.updateMarkButton();
-        this.updateHorizontalDots();
         
         // Hide answer section
         const answerRevealSection = document.getElementById('answerRevealSection');
@@ -731,10 +746,13 @@ class NurseIQModule {
         if (userAnswer?.answered) {
             this.showUserAnswer(userAnswer);
         }
+        
+        // Highlight in grid
+        this.highlightCurrentQuestionInGrid();
     }
     
-    // Load answer options with better display
-    loadAnswerOptionsImproved(question) {
+    // Load answer options
+    loadAnswerOptions(question) {
         const optionsContainer = document.getElementById('optionsContainer');
         if (!optionsContainer) return;
         
@@ -803,7 +821,7 @@ class NurseIQModule {
         // Add click handlers
         optionsContainer.querySelectorAll('.option-item-improved').forEach(item => {
             item.addEventListener('click', () => {
-                this.selectOptionImproved(item);
+                this.selectOption(item);
             });
         });
         
@@ -817,8 +835,8 @@ class NurseIQModule {
         }
     }
     
-    // Select option with better display
-    selectOptionImproved(optionItem) {
+    // Select option
+    selectOption(optionItem) {
         this.resetOptionSelection();
         
         const radioInput = optionItem.querySelector('.option-input-hidden');
@@ -903,8 +921,10 @@ class NurseIQModule {
         userAnswer.correct = isCorrect;
         
         this.showUserAnswer(userAnswer);
-        this.updateProgressStats();
+        this.updateCounters();
+        this.updateTopProgressStats();
         this.showAnswerRevealSection();
+        this.updateQuestionGrid();
         this.showFeedbackNotification(isCorrect);
         
         if (isCorrect && this.currentQuestionIndex < this.currentCourseQuestions.length - 1) {
@@ -969,7 +989,7 @@ class NurseIQModule {
     // Show notification
     showNotification(message, type = 'info') {
         const notification = document.createElement('div');
-        notification.className = `notification ${type}`;
+        notification.className = `toast toast-${type}`;
         notification.innerHTML = `
             <i class="fas fa-${type === 'error' ? 'exclamation-circle' : 
                                type === 'warning' ? 'exclamation-triangle' : 
@@ -977,11 +997,10 @@ class NurseIQModule {
             <span>${message}</span>
         `;
         
-        document.querySelector('.questions-main-container')?.appendChild(notification);
+        document.body.appendChild(notification);
         
         setTimeout(() => {
-            notification.classList.add('fade-out');
-            setTimeout(() => notification.remove(), 500);
+            notification.remove();
         }, 3000);
     }
     
@@ -993,7 +1012,8 @@ class NurseIQModule {
         }
         
         this.loadCurrentInteractiveQuestion();
-        this.updateProgressStats();
+        this.updateQuestionGrid();
+        this.updateTopProgressStats();
     }
     
     // Show answer
@@ -1043,8 +1063,9 @@ class NurseIQModule {
         };
         
         this.updateMarkButton();
-        this.updateProgressStats();
-        this.updateHorizontalDots();
+        this.updateQuestionGrid();
+        this.updateMiniDots();
+        this.updateTopProgressStats();
         
         const action = !isMarked ? 'marked for review' : 'unmarked';
         this.showNotification(`Question ${currentIndex + 1} ${action}`, 'info');
@@ -1061,11 +1082,9 @@ class NurseIQModule {
         if (isMarked) {
             markBtn.classList.add('marked');
             markBtnText.textContent = 'Unmark Review';
-            markBtn.style.backgroundColor = '#F59E0B';
         } else {
             markBtn.classList.remove('marked');
             markBtnText.textContent = 'Mark for Review';
-            markBtn.style.backgroundColor = '';
         }
     }
     
@@ -1075,7 +1094,8 @@ class NurseIQModule {
             this.currentQuestionIndex--;
             this.loadCurrentInteractiveQuestion();
             this.updateProgressBar();
-            this.updateHorizontalDots();
+            this.updateMiniDots();
+            this.updateTopProgressStats();
         }
     }
     
@@ -1085,7 +1105,8 @@ class NurseIQModule {
             this.currentQuestionIndex++;
             this.loadCurrentInteractiveQuestion();
             this.updateProgressBar();
-            this.updateHorizontalDots();
+            this.updateMiniDots();
+            this.updateTopProgressStats();
         }
     }
     
@@ -1095,7 +1116,8 @@ class NurseIQModule {
             this.currentQuestionIndex = index;
             this.loadCurrentInteractiveQuestion();
             this.updateProgressBar();
-            this.updateHorizontalDots();
+            this.updateMiniDots();
+            this.updateTopProgressStats();
         }
     }
     
@@ -1126,166 +1148,83 @@ class NurseIQModule {
         }
     }
     
-    // Generate horizontal dots - FIXED to show ...34567... format
-    generateHorizontalDots(totalQuestions) {
-        let dotsHtml = '';
-        const current = this.currentQuestionIndex + 1;
-        const maxVisible = 5; // Show 5 numbers max
+    // Scroll questions
+    scrollQuestions(direction) {
+        const gridContainer = document.getElementById('questionGridContainer');
+        if (!gridContainer) return;
         
-        if (totalQuestions <= maxVisible) {
-            // Show all numbers if total is small
-            for (let i = 1; i <= totalQuestions; i++) {
-                const dotClass = this.getDotClass(i);
-                dotsHtml += `<span class="${dotClass}" onclick="window.goToQuestion(${i-1})">${i}</span>`;
-            }
+        const scrollAmount = 300;
+        const currentScroll = gridContainer.scrollLeft;
+        
+        if (direction === 'left') {
+            gridContainer.scrollLeft = currentScroll - scrollAmount;
         } else {
-            // Show ...34567... format
-            let start = Math.max(2, current - 1);
-            let end = Math.min(totalQuestions - 1, current + 1);
-            
-            // Adjust to show exactly maxVisible numbers
-            if (end - start + 1 < maxVisible) {
-                if (start === 2) {
-                    end = Math.min(totalQuestions - 1, start + maxVisible - 1);
-                } else if (end === totalQuestions - 1) {
-                    start = Math.max(2, end - maxVisible + 1);
-                }
-            }
-            
-            // First number
-            const firstClass = this.getDotClass(1);
-            dotsHtml += `<span class="${firstClass}" onclick="window.goToQuestion(0)">1</span>`;
-            
-            // Ellipsis if needed
-            if (start > 2) {
-                dotsHtml += '<span class="dot-ellipsis">...</span>';
-            }
-            
-            // Middle numbers (e.g., 3,4,5,6,7)
-            for (let i = start; i <= end; i++) {
-                const dotClass = this.getDotClass(i);
-                dotsHtml += `<span class="${dotClass}" onclick="window.goToQuestion(${i-1})">${i}</span>`;
-            }
-            
-            // Ellipsis if needed
-            if (end < totalQuestions - 1) {
-                dotsHtml += '<span class="dot-ellipsis">...</span>';
-            }
-            
-            // Last number
-            const lastClass = this.getDotClass(totalQuestions);
-            dotsHtml += `<span class="${lastClass}" onclick="window.goToQuestion(${totalQuestions-1})">${totalQuestions}</span>`;
-        }
-        
-        return dotsHtml;
-    }
-    
-    // Get dot class for styling
-    getDotClass(questionNumber) {
-        const index = questionNumber - 1;
-        let dotClass = 'horizontal-dot';
-        
-        if (questionNumber === this.currentQuestionIndex + 1) {
-            dotClass += ' dot-active';
-        }
-        
-        const userAnswer = this.userTestAnswers[index];
-        if (userAnswer) {
-            if (userAnswer.answered) {
-                dotClass += userAnswer.correct ? ' dot-correct' : ' dot-incorrect';
-            } else if (userAnswer.marked) {
-                dotClass += ' dot-marked';
-            }
-        }
-        
-        return dotClass;
-    }
-    
-    // Update horizontal dots
-    updateHorizontalDots() {
-        const horizontalDots = document.getElementById('horizontalDots');
-        if (!horizontalDots) return;
-        
-        const totalQuestions = this.currentCourseQuestions.length;
-        horizontalDots.innerHTML = this.generateHorizontalDots(totalQuestions);
-        
-        // Update current question number
-        this.updateCurrentQuestionNumber();
-        
-        // Update arrow buttons
-        this.updateArrowButtons();
-    }
-    
-    // Update current question number display
-    updateCurrentQuestionNumber() {
-        const currentQNum = document.getElementById('currentQNum');
-        if (currentQNum) {
-            currentQNum.textContent = this.currentQuestionIndex + 1;
+            gridContainer.scrollLeft = currentScroll + scrollAmount;
         }
     }
     
-    // Update arrow buttons
-    updateArrowButtons() {
-        const prevArrowBtn = document.getElementById('prevArrowBtn');
-        const nextArrowBtn = document.getElementById('nextArrowBtn');
-        
-        const isFirst = this.currentQuestionIndex === 0;
-        const isLast = this.currentQuestionIndex === this.currentCourseQuestions.length - 1;
-        
-        if (prevArrowBtn) {
-            prevArrowBtn.disabled = isFirst;
-            prevArrowBtn.style.opacity = isFirst ? '0.5' : '1';
-        }
-        if (nextArrowBtn) {
-            nextArrowBtn.disabled = isLast;
-            nextArrowBtn.style.opacity = isLast ? '0.5' : '1';
-        }
-    }
-    
-    // Update progress stats
-    updateProgressStats() {
+    // Update counters
+    updateCounters() {
         const totalQuestions = this.currentCourseQuestions.length;
         const answeredCount = Object.values(this.userTestAnswers).filter(a => a.answered).length;
         const correctCount = Object.values(this.userTestAnswers).filter(a => a.answered && a.correct).length;
+        const incorrectCount = Object.values(this.userTestAnswers).filter(a => a.answered && !a.correct).length;
         const markedCount = Object.values(this.userTestAnswers).filter(a => a.marked).length;
+        
+        // Update top counters
+        const currentQuestionCountEl = document.getElementById('currentQuestionCountTop');
+        const totalQuestionsEl = document.getElementById('totalQuestionsTop');
+        const answeredCountEl = document.getElementById('answeredCountTop');
+        const correctCountEl = document.getElementById('correctCountTop');
+        const accuracyEl = document.getElementById('accuracyTop');
+        const markedCountDetailEl = document.getElementById('markedCountDetail');
+        const completionPercentEl = document.getElementById('completionPercent');
+        
+        if (currentQuestionCountEl) currentQuestionCountEl.textContent = this.currentQuestionIndex + 1;
+        if (totalQuestionsEl) totalQuestionsEl.textContent = totalQuestions;
+        if (answeredCountEl) answeredCountEl.textContent = answeredCount;
+        if (correctCountEl) correctCountEl.textContent = correctCount;
+        if (markedCountDetailEl) markedCountDetailEl.textContent = markedCount;
         
         // Calculate accuracy
         const accuracy = answeredCount > 0 ? Math.round((correctCount / answeredCount) * 100) : 0;
-        
-        // Update stats in sidebar
-        const answeredCountStat = document.getElementById('answeredCountStat');
-        const correctCountStat = document.getElementById('correctCountStat');
-        const markedCountStat = document.getElementById('markedCountStat');
-        const accuracyStat = document.getElementById('accuracyStat');
-        
-        if (answeredCountStat) answeredCountStat.textContent = answeredCount;
-        if (correctCountStat) correctCountStat.textContent = correctCount;
-        if (markedCountStat) markedCountStat.textContent = markedCount;
-        if (accuracyStat) {
-            accuracyStat.textContent = `${accuracy}%`;
-            accuracyStat.style.color = accuracy >= 80 ? '#10B981' : 
-                                      accuracy >= 60 ? '#F59E0B' : '#EF4444';
+        if (accuracyEl) {
+            accuracyEl.textContent = `${accuracy}%`;
         }
         
-        // Update bottom navigation buttons
-        this.updateNavigationButtons();
+        // Calculate completion
+        const completion = Math.round((answeredCount / totalQuestions) * 100);
+        if (completionPercentEl) {
+            completionPercentEl.textContent = `${completion}%`;
+        }
+    }
+    
+    // Update top progress stats
+    updateTopProgressStats() {
+        this.updateCounters();
     }
     
     // Update navigation buttons
     updateNavigationButtons() {
         const prevBtn = document.getElementById('prevBtn');
         const nextBtn = document.getElementById('nextBtn');
+        const miniPrevBtn = document.getElementById('miniPrevBtn');
+        const miniNextBtn = document.getElementById('miniNextBtn');
         
         const isFirst = this.currentQuestionIndex === 0;
         const isLast = this.currentQuestionIndex === this.currentCourseQuestions.length - 1;
         
         if (prevBtn) {
             prevBtn.disabled = isFirst;
-            prevBtn.style.opacity = isFirst ? '0.5' : '1';
         }
         if (nextBtn) {
             nextBtn.disabled = isLast;
-            nextBtn.style.opacity = isLast ? '0.5' : '1';
+        }
+        if (miniPrevBtn) {
+            miniPrevBtn.disabled = isFirst;
+        }
+        if (miniNextBtn) {
+            miniNextBtn.disabled = isLast;
         }
     }
     
@@ -1303,6 +1242,121 @@ class NurseIQModule {
         progressPercent.textContent = `${progress}%`;
     }
     
+    // Update question grid
+    updateQuestionGrid() {
+        const questionGridContainer = document.getElementById('questionGridContainer');
+        if (!questionGridContainer) return;
+        
+        const totalQuestions = this.currentCourseQuestions.length;
+        let gridHtml = '';
+        
+        for (let i = 0; i < totalQuestions; i++) {
+            let questionClass = 'grid-question-number';
+            
+            if (i === this.currentQuestionIndex) {
+                questionClass += ' grid-current';
+            }
+            
+            const userAnswer = this.userTestAnswers[i];
+            if (userAnswer) {
+                if (userAnswer.answered) {
+                    questionClass += userAnswer.correct ? ' grid-correct' : ' grid-incorrect';
+                } else if (userAnswer.marked) {
+                    questionClass += ' grid-marked';
+                } else if (userAnswer.viewed) {
+                    questionClass += ' grid-viewed';
+                }
+            }
+            
+            gridHtml += `
+                <div class="${questionClass}" onclick="window.goToQuestion(${i})" 
+                     title="Question ${i + 1}${userAnswer?.answered ? ` - ${userAnswer.correct ? 'Correct' : 'Incorrect'}` : ''}">
+                    ${i + 1}
+                    ${userAnswer?.marked ? '<i class="fas fa-flag grid-flag"></i>' : ''}
+                </div>
+            `;
+        }
+        
+        questionGridContainer.innerHTML = gridHtml;
+        this.scrollToCurrentQuestion();
+    }
+    
+    // Scroll to current question
+    scrollToCurrentQuestion() {
+        const questionGridContainer = document.getElementById('questionGridContainer');
+        if (!questionGridContainer) return;
+        
+        const currentQuestionElement = questionGridContainer.querySelector('.grid-current');
+        if (currentQuestionElement) {
+            const containerWidth = questionGridContainer.clientWidth;
+            const elementOffset = currentQuestionElement.offsetLeft;
+            const elementWidth = currentQuestionElement.offsetWidth;
+            
+            questionGridContainer.scrollLeft = elementOffset - (containerWidth / 2) + (elementWidth / 2);
+        }
+    }
+    
+    // Highlight current question
+    highlightCurrentQuestionInGrid() {
+        const questionGridContainer = document.getElementById('questionGridContainer');
+        if (!questionGridContainer) return;
+        
+        questionGridContainer.querySelectorAll('.grid-question-number').forEach(el => {
+            el.classList.remove('grid-current');
+        });
+        
+        const currentQuestionElement = questionGridContainer.querySelector(`[onclick*="goToQuestion(${this.currentQuestionIndex})"]`);
+        if (currentQuestionElement) {
+            currentQuestionElement.classList.add('grid-current');
+        }
+    }
+    
+    // Update mini dots
+    updateMiniDots() {
+        const miniDotsContainer = document.getElementById('miniDotsContainer');
+        if (!miniDotsContainer) return;
+        
+        const totalQuestions = this.currentCourseQuestions.length;
+        miniDotsContainer.innerHTML = this.generateMiniDots(totalQuestions);
+    }
+    
+    // Generate mini dots
+    generateMiniDots(totalQuestions) {
+        let dotsHtml = '';
+        const maxDots = 5;
+        
+        let start = Math.max(0, this.currentQuestionIndex - 2);
+        let end = Math.min(totalQuestions - 1, start + maxDots - 1);
+        
+        if (end - start < maxDots - 1) {
+            start = Math.max(0, end - maxDots + 1);
+        }
+        
+        if (start > 0) {
+            dotsHtml += '<span class="mini-dot-ellipsis">...</span>';
+        }
+        
+        for (let i = start; i <= end; i++) {
+            let dotClass = 'mini-dot';
+            if (i === this.currentQuestionIndex) {
+                dotClass += ' mini-dot-active';
+            }
+            if (this.userTestAnswers[i]?.answered) {
+                dotClass += this.userTestAnswers[i]?.correct ? ' mini-dot-correct' : ' mini-dot-incorrect';
+            } else if (this.userTestAnswers[i]?.marked) {
+                dotClass += ' mini-dot-marked';
+            }
+            
+            dotsHtml += `<span class="${dotClass}" onclick="window.goToQuestion(${i})">${i + 1}</span>`;
+        }
+        
+        if (end < totalQuestions - 1) {
+            dotsHtml += '<span class="mini-dot-ellipsis">...</span>';
+        }
+        
+        return dotsHtml;
+    }
+    
     // Clear search
     clearQuestionBankSearch() {
         if (this.studentQuestionBankSearch) {
@@ -1318,8 +1372,11 @@ class NurseIQModule {
         }
         if (this.studentQuestionBankContent) {
             this.studentQuestionBankContent.innerHTML = `
-                <div class="loading-container">
-                    <div class="loading-spinner"></div>
+                <div class="loading-content">
+                    <div class="spinner-container">
+                        <div class="spinner"></div>
+                        <div class="spinner-ring"></div>
+                    </div>
                     <div class="loading-text">Loading question bank...</div>
                 </div>
             `;
@@ -1341,11 +1398,11 @@ class NurseIQModule {
                     <i class="fas fa-exclamation-triangle"></i>
                     <h3>Failed to Load Question Bank</h3>
                     <p>${message}</p>
-                    <div style="margin-top: 20px;">
-                        <button onclick="window.loadQuestionBankCards()" class="btn-primary" style="margin-right: 10px;">
+                    <div class="mt-2">
+                        <button onclick="window.loadQuestionBankCards()" class="btn btn-primary mr-2">
                             <i class="fas fa-redo"></i> Try Again
                         </button>
-                        <button onclick="window.clearQuestionBankSearch()" class="btn-secondary">
+                        <button onclick="window.clearQuestionBankSearch()" class="btn btn-secondary">
                             <i class="fas fa-times"></i> Clear Search
                         </button>
                     </div>
@@ -1427,6 +1484,12 @@ window.goToQuestion = function(index) {
     }
 };
 
+window.jumpToQuestion = function() {
+    if (window.nurseiqModule) {
+        window.nurseiqModule.jumpToQuestion();
+    }
+};
+
 window.checkAnswer = function() {
     if (window.nurseiqModule) {
         window.nurseiqModule.checkAnswer();
@@ -1457,272 +1520,10 @@ window.finishPractice = function() {
     }
 };
 
-// Add CSS for horizontal navigation and improved display
-const horizontalNavStyles = document.createElement('style');
-horizontalNavStyles.textContent = `
-    /* Horizontal Navigator in Main Panel */
-    .horizontal-navigator-main {
-        background: white;
-        border-radius: 12px;
-        padding: 15px;
-        margin: 20px 0;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-        border: 1px solid #e5e7eb;
+window.scrollQuestions = function(direction) {
+    if (window.nurseiqModule) {
+        window.nurseiqModule.scrollQuestions(direction);
     }
-    
-    .nav-controls {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 10px;
-        margin-bottom: 10px;
-    }
-    
-    .nav-arrow-btn {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        border: 2px solid #3b82f6;
-        background: white;
-        color: #3b82f6;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        flex-shrink: 0;
-    }
-    
-    .nav-arrow-btn:hover:not(:disabled) {
-        background: #3b82f6;
-        color: white;
-        transform: scale(1.1);
-    }
-    
-    .nav-arrow-btn:disabled {
-        border-color: #d1d5db;
-        color: #d1d5db;
-        cursor: not-allowed;
-    }
-    
-    .horizontal-dots-container {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        flex-wrap: wrap;
-        min-height: 40px;
-    }
-    
-    .horizontal-dot {
-        width: 36px;
-        height: 36px;
-        border-radius: 50%;
-        background: #f3f4f6;
-        border: 2px solid #e5e7eb;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #6b7280;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        flex-shrink: 0;
-    }
-    
-    .horizontal-dot:hover {
-        background: #e5e7eb;
-        transform: translateY(-2px);
-    }
-    
-    .dot-active {
-        background: #3b82f6 !important;
-        border-color: #3b82f6 !important;
-        color: white !important;
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
-        transform: scale(1.1);
-    }
-    
-    .dot-correct {
-        background: #10b981 !important;
-        border-color: #10b981 !important;
-        color: white !important;
-    }
-    
-    .dot-incorrect {
-        background: #ef4444 !important;
-        border-color: #ef4444 !important;
-        color: white !important;
-    }
-    
-    .dot-marked {
-        background: #f59e0b !important;
-        border-color: #f59e0b !important;
-        color: white !important;
-    }
-    
-    .dot-ellipsis {
-        color: #9ca3af;
-        font-weight: bold;
-        padding: 0 5px;
-        user-select: none;
-    }
-    
-    .nav-info {
-        text-align: center;
-        padding-top: 10px;
-        border-top: 1px solid #e5e7eb;
-        color: #6b7280;
-        font-size: 14px;
-    }
-    
-    .current-question {
-        font-weight: 500;
-    }
-    
-    .current-question strong {
-        color: #3b82f6;
-    }
-    
-    /* Difficulty Badge - Large MEDIUM */
-    .difficulty-container {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-    
-    .difficulty-label {
-        color: #6b7280;
-        font-size: 14px;
-        font-weight: 500;
-    }
-    
-    .difficulty-badge-large {
-        padding: 6px 16px;
-        border-radius: 20px;
-        font-size: 14px;
-        font-weight: 700;
-        color: white;
-        text-transform: uppercase;
-        background: #F59E0B; /* Orange for MEDIUM */
-        letter-spacing: 0.5px;
-    }
-    
-    /* Progress Stats in Sidebar */
-    .progress-stats-card {
-        background: white;
-        border-radius: 12px;
-        padding: 20px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-        border: 1px solid #e5e7eb;
-        margin-bottom: 20px;
-    }
-    
-    .progress-stats-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 15px;
-        margin-top: 15px;
-    }
-    
-    .progress-stat-item {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 12px;
-        background: #f9fafb;
-        border-radius: 8px;
-        border: 1px solid #e5e7eb;
-    }
-    
-    .stat-icon {
-        width: 36px;
-        height: 36px;
-        border-radius: 8px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-size: 16px;
-    }
-    
-    .answered-icon { background: #3b82f6; }
-    .correct-icon { background: #10b981; }
-    .marked-icon { background: #f59e0b; }
-    .accuracy-icon { background: #8b5cf6; }
-    
-    .stat-details {
-        flex: 1;
-    }
-    
-    .stat-value {
-        font-size: 20px;
-        font-weight: 700;
-        color: #1f2937;
-        line-height: 1;
-    }
-    
-    .stat-label {
-        font-size: 12px;
-        color: #6b7280;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        margin-top: 2px;
-    }
-    
-    /* Question Header */
-    .question-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 20px;
-    }
-    
-    .question-meta {
-        display: flex;
-        align-items: center;
-        gap: 15px;
-    }
-    
-    .question-number-badge {
-        padding: 8px 16px;
-        border-radius: 20px;
-        font-weight: 700;
-        color: white;
-        font-size: 14px;
-    }
-    
-    .question-type {
-        color: #6b7280;
-        font-size: 14px;
-        background: #f3f4f6;
-        padding: 6px 12px;
-        border-radius: 6px;
-    }
-    
-    /* Responsive */
-    @media (max-width: 768px) {
-        .horizontal-dots-container {
-            gap: 6px;
-        }
-        
-        .horizontal-dot {
-            width: 32px;
-            height: 32px;
-            font-size: 14px;
-        }
-        
-        .progress-stats-grid {
-            grid-template-columns: 1fr;
-        }
-        
-        .question-header {
-            flex-direction: column;
-            gap: 15px;
-            align-items: flex-start;
-        }
-    }
-`;
-document.head.appendChild(horizontalNavStyles);
+};
 
-console.log('✅ NurseIQ module loaded with horizontal navigation');
+console.log('✅ NurseIQ module loaded (No Inline Styles)');
