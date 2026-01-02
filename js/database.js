@@ -12,7 +12,7 @@ class Database {
             messages: []
         };
         this.isInitialized = false;
-        this.profileModule = null; // Add reference to profile module
+        this.profileModule = null;
     }
     
     // Initialize database connection with GitHub Secrets
@@ -283,12 +283,11 @@ class Database {
             this.currentUserProfile = profile;
             console.log('✅ User profile loaded:', profile.full_name);
             
-            // ========== CRITICAL FIX: INITIALIZE PROFILE MODULE ==========
             // Make user data globally accessible
             window.currentUserId = this.currentUserId;
             window.currentUser = profile;
             window.userProfile = profile;
-            window.db = this; // Make database instance globally available
+            window.db = this;
             
             console.log('🌐 Global user data set:', {
                 id: window.currentUserId,
@@ -296,33 +295,6 @@ class Database {
                 studentId: profile.student_id || profile.reg_no,
                 email: profile.email
             });
-            
-            // Initialize Profile Module if available
-            if (typeof window.initProfileModule === 'function') {
-                console.log('🔄 Initializing Profile Module...');
-                this.profileModule = window.initProfileModule(this.supabase, this.currentUserId);
-                window.profileModule = this.profileModule;
-                
-                console.log('✅ Profile Module initialized:', this.profileModule ? 'Yes' : 'No');
-                
-                // Check if profile tab is active and load immediately
-                const profileTab = document.getElementById('profile');
-                if (profileTab && profileTab.classList.contains('active')) {
-                    console.log('📱 Profile tab is active, loading data immediately...');
-                    setTimeout(() => {
-                        this.loadProfileData();
-                    }, 300);
-                }
-            } else {
-                console.warn('⚠️ Profile module functions not loaded yet. Ensure profile.js is included.');
-                
-                // Try to load profile.js dynamically if not loaded
-                if (!document.querySelector('script[src*="profile.js"]')) {
-                    console.log('📦 Attempting to load profile.js dynamically...');
-                    this.loadProfileScript();
-                }
-            }
-            // ========== END OF FIX ==========
             
             return profile;
             
@@ -339,29 +311,6 @@ class Database {
         }
     }
     
-    // Load profile.js script dynamically
-    loadProfileScript() {
-        return new Promise((resolve) => {
-            const script = document.createElement('script');
-            script.src = 'js/profile.js';
-            script.onload = () => {
-                console.log('✅ profile.js loaded dynamically');
-                // Now initialize the profile module
-                if (typeof window.initProfileModule === 'function' && this.currentUserId) {
-                    this.profileModule = window.initProfileModule(this.supabase, this.currentUserId);
-                    window.profileModule = this.profileModule;
-                    console.log('✅ Profile Module initialized after dynamic load');
-                }
-                resolve();
-            };
-            script.onerror = () => {
-                console.error('❌ Failed to load profile.js');
-                resolve();
-            };
-            document.head.appendChild(script);
-        });
-    }
-    
     // Load profile data (called when profile tab is activated)
     async loadProfileData() {
         console.log('🔄 Database.loadProfileData() called');
@@ -374,47 +323,8 @@ class Database {
             await window.loadProfile();
         } else if (this.currentUserId && this.supabase) {
             console.log('🎯 Loading profile directly...');
-            await this.loadUserProfile(); // Reload profile data
+            await this.loadUserProfile();
         }
-    }
-    
-    // Setup tab switch listener
-    setupTabSwitchListener() {
-        console.log('🎧 Setting up tab switch listener...');
-        
-        // Method 1: Listen for tab click events
-        document.addEventListener('click', (event) => {
-            const tabButton = event.target.closest('.tab-button');
-            if (tabButton && tabButton.dataset.tab === 'profile') {
-                console.log('🎯 Profile tab button clicked');
-                setTimeout(() => {
-                    this.loadProfileData();
-                }, 200);
-            }
-        });
-        
-        // Method 2: Listen for DOM changes (tab content becoming active)
-        const observer = new MutationObserver((mutations) => {
-            mutations.forEach((mutation) => {
-                if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
-                    const target = mutation.target;
-                    if (target.id === 'profile' && target.classList.contains('active')) {
-                        console.log('🎯 Profile tab became active via DOM change');
-                        setTimeout(() => {
-                            this.loadProfileData();
-                        }, 100);
-                    }
-                }
-            });
-        });
-        
-        // Start observing the profile tab
-        const profileTab = document.getElementById('profile');
-        if (profileTab) {
-            observer.observe(profileTab, { attributes: true });
-        }
-        
-        console.log('✅ Tab switch listener setup complete');
     }
     
     async logout() {
@@ -640,11 +550,6 @@ class Database {
     }
     
     async getClassTargets() {
-        if (this.cachedData.courses.length > 0) {
-            // Use cached courses for class targets
-            return this.cachedData.courses;
-        }
-        
         const program = this.currentUserProfile?.program || this.currentUserProfile?.department;
         const intakeYear = this.currentUserProfile?.intake_year;
         const block = this.currentUserProfile?.block || null;
@@ -980,39 +885,7 @@ class Database {
             return [];
         }
     }
-    // ADD THIS TO THE END OF YOUR database.js (right before the DOMContentLoaded event)
-
-// Create global instance
-window.db = new Database();
-
-// Helper function to make database globally accessible
-window.getDatabase = async function() {
-    if (!window.db.supabase) {
-        await window.db.initialize();
-    }
-    return window.db;
-};
-
-// Make sure the database is initialized when needed
-window.initDatabase = async function() {
-    try {
-        console.log('🔧 Initializing database via global function...');
-        const dbInstance = await window.db.initialize();
-        console.log('✅ Database init result:', dbInstance ? 'Success' : 'Failed');
-        return dbInstance;
-    } catch (error) {
-        console.error('❌ Database initialization error:', error);
-        return null;
-    }
-};
-
-// Auto-initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('📄 DOM ready in database.js');
     
-    // Don't auto-init here - let main app handle it
-    // The main app will call db.initialize() in initializeApp()
-});
     // === UTILITY FUNCTIONS ===
     clearCache() {
         this.cachedData = {
@@ -1100,8 +973,31 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 }
 
-// Create global database instance
-const db = new Database();
+// ========== GLOBAL INITIALIZATION ==========
+
+// Create global instance
+window.db = new Database();
+
+// Helper function to make database globally accessible
+window.getDatabase = async function() {
+    if (!window.db.supabase) {
+        await window.db.initialize();
+    }
+    return window.db;
+};
+
+// Make sure the database is initialized when needed
+window.initDatabase = async function() {
+    try {
+        console.log('🔧 Initializing database via global function...');
+        const dbInstance = await window.db.initialize();
+        console.log('✅ Database init result:', dbInstance ? 'Success' : 'Failed');
+        return dbInstance;
+    } catch (error) {
+        console.error('❌ Database initialization error:', error);
+        return null;
+    }
+};
 
 // Helper function for GitHub Secrets help
 function showGitHubSecretsHelp() {
@@ -1133,10 +1029,8 @@ After adding secrets, push your code. GitHub Actions will:
     alert(helpText);
 }
 
-// Auto-initialize when DOM is ready (optional)
+// Auto-initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('📄 DOM ready, checking if database needs initialization...');
-    
-    // You can optionally auto-initialize here
-    // But usually you'll call db.initialize() from your main app
+    console.log('📄 database.js loaded - DOM ready');
+    // The main app will call window.db.initialize() when needed
 });
