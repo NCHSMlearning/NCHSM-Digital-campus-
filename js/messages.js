@@ -1,1040 +1,1529 @@
-// messages.js - Messages System for NCHSM Digital Student Dashboard
-
-// *************************************************************************
-// *** MESSAGES SYSTEM ***
-// *************************************************************************
-
-// Helper function for safe Supabase client access
-function getSupabaseClient() {
-    const client = window.db?.supabase;
-    if (!client || typeof client.from !== 'function') {
-        console.error('❌ No valid Supabase client available');
-        return null;
-    }
-    return client;
-}
-
-// Helper function for safe user profile access
-function getUserProfile() {
-    return window.db?.currentUserProfile || 
-           window.currentUserProfile || 
-           window.userProfile || 
-           {};
-}
-
-// Helper function for safe user ID access
-function getCurrentUserId() {
-    return window.db?.currentUserId || window.currentUserId;
-}
-
-let currentMessages = [];
-let currentAnnouncements = [];
-let messageTemplates = [];
-
-// Initialize messages system
-function initializeMessagesSystem() {
-    console.log('💬 Initializing Messages System...');
-    
-    // Set up message form submission
-    const messageForm = document.getElementById('message-form');
-    if (messageForm) {
-        messageForm.addEventListener('submit', handleMessageSubmit);
+// js/nurseiq.js - COMPLETE REFACTORED VERSION (No Inline Styles)
+class NurseIQModule {
+    constructor() {
+        this.userId = null;
+        
+        // NurseIQ elements
+        this.studentQuestionBankSearch = null;
+        this.nurseiqSearchBtn = null;
+        this.clearSearchBtn = null;
+        this.loadCourseCatalogBtn = null;
+        this.studentQuestionBankLoading = null;
+        this.studentQuestionBankContent = null;
+        
+        // Test state variables
+        this.currentTestQuestions = [];
+        this.currentQuestionIndex = 0;
+        this.userTestAnswers = {};
+        this.currentCourseForTest = null;
+        this.currentCourseQuestions = [];
+        this.showAnswersMode = true;
+        
+        // Track initialization
+        this.initialized = false;
     }
     
-    // Set up event listeners for messages tab
-    const messagesTab = document.querySelector('.nav a[data-tab="messages"]');
-    if (messagesTab) {
-        messagesTab.addEventListener('click', () => {
-            if (getCurrentUserId()) {
-                loadStudentMessagesAndAnnouncements();
-                loadMessageTemplates();
-            }
+    // Initialize elements
+    async initializeElements() {
+        console.log('🔍 Initializing NurseIQ elements...');
+        
+        // Wait for elements
+        await this.waitForElement('#loadCourseCatalogBtn');
+        
+        // Cache DOM elements
+        this.studentQuestionBankSearch = document.getElementById('studentQuestionBankSearch');
+        this.nurseiqSearchBtn = document.getElementById('nurseiqSearchBtn');
+        this.clearSearchBtn = document.getElementById('clearSearchBtn');
+        this.loadCourseCatalogBtn = document.getElementById('loadCourseCatalogBtn');
+        this.studentQuestionBankLoading = document.getElementById('studentQuestionBankLoading');
+        this.studentQuestionBankContent = document.getElementById('studentQuestionBankContent');
+        
+        console.log('📝 Elements found:', {
+            loadCourseCatalogBtn: !!this.loadCourseCatalogBtn,
+            searchInput: !!this.studentQuestionBankSearch,
+            contentArea: !!this.studentQuestionBankContent
         });
-    }
-    
-    // Set up refresh button (if exists)
-    const refreshBtn = document.getElementById('refresh-messages-btn');
-    if (refreshBtn) {
-        refreshBtn.addEventListener('click', () => {
-            loadStudentMessagesAndAnnouncements();
-            loadMessageTemplates();
-        });
-    }
-    
-    // Set up message filters (if exist)
-    const filterButtons = document.querySelectorAll('.message-filter-btn');
-    filterButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            const filterType = this.getAttribute('data-filter');
-            filterMessages(filterType);
-        });
-    });
-    
-    // Set up search functionality (if exists)
-    const searchInput = document.getElementById('message-search');
-    if (searchInput) {
-        let searchTimeout;
-        searchInput.addEventListener('input', function() {
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => {
-                searchMessages(this.value);
-            }, 300);
-        });
-    }
-    
-    console.log('✅ Messages System initialized');
-}
-
-// Load student messages and announcements
-async function loadStudentMessagesAndAnnouncements() {
-    const userProfile = getUserProfile();
-    const userId = getCurrentUserId();
-    const supabaseClient = getSupabaseClient();
-    
-    if (!supabaseClient) {
-        const messageContainer = document.getElementById('messages-list');
-        if (messageContainer) {
-            AppUtils.showError(messageContainer, 'Database connection error');
-        }
-        return;
-    }
-    
-    const program = userProfile?.program || userProfile?.department;
-    const messageContainer = document.getElementById('messages-list');
-    if (!messageContainer) return;
-    
-    AppUtils.showLoading(messageContainer, 'Loading messages...');
-    
-    try {
-        // Load personal messages
-        const { data: personalMessages, error: personalError } = await supabaseClient
-            .from('student_messages')
-            .select('*')
-            .or(`recipient_id.eq.${userId},recipient_program.eq.${program}`)
-            .order('created_at', { ascending: false });
         
-        if (personalError) throw personalError;
-        
-        // Load official announcements
-        const { data: notifications, error: notifError } = await supabaseClient
-            .from('notifications')
-            .select('*')
-            .or(`target_program.eq.${program},target_program.is.null`)
-            .order('created_at', { ascending: false });
-        
-        if (notifError) throw notifError;
-        
-        // Store messages
-        currentMessages = personalMessages || [];
-        currentAnnouncements = notifications || [];
-        
-        // Combine messages, with personal messages first
-        const allMessages = [
-            ...currentMessages.map(m => ({ ...m, type: 'Personal' })),
-            ...currentAnnouncements.map(n => ({ ...n, type: 'Announcement' }))
-        ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-        
-        // Render messages
-        renderMessages(allMessages);
-        
-        // Update unread count
-        updateUnreadCount(allMessages);
-        
-        // Update dashboard with latest announcement
-        updateDashboardAnnouncement();
-        
-    } catch (error) {
-        console.error("Failed to load student messages and announcements:", error);
-        AppUtils.showError(messageContainer, 'Error loading messages and announcements.');
-    }
-}
-
-// Render messages in the messages list
-function renderMessages(messages) {
-    const messageContainer = document.getElementById('messages-list');
-    if (!messageContainer) return;
-    
-    if (!messages || messages.length === 0) {
-        messageContainer.innerHTML = `
-            <div class="empty-state">
-                <i class="fas fa-comment-slash"></i>
-                <h3>No Messages Found</h3>
-                <p>You have no messages or announcements at this time.</p>
-            </div>
-        `;
-        return;
-    }
-    
-    messageContainer.innerHTML = messages.map(msg => createMessageCard(msg)).join('');
-    
-    // Add click handlers for message actions
-    addMessageEventListeners();
-}
-
-// Create message card HTML
-function createMessageCard(msg) {
-    const title = msg.subject || msg.title || 'Message';
-    const body = msg.body || msg.message || msg.message_content || '';
-    const isRead = msg.is_read ? 'read' : 'unread';
-    const createdAt = msg.created_at ? formatMessageDate(msg.created_at) : '';
-    const borderColor = msg.type === 'Personal' ? '#4C1D95' : '#F97316';
-    const statusColor = msg.is_read ? '#10B981' : '#F59E0B';
-    const typeIcon = msg.type === 'Personal' ? 'fa-user' : 'fa-bullhorn';
-    const priority = msg.priority || 'normal';
-    
-    // Truncate long messages
-    const truncatedBody = body.length > 300 ? body.substring(0, 300) + '...' : body;
-    
-    // Create priority badge
-    const priorityBadge = createPriorityBadge(priority);
-    
-    // Create actions menu
-    const actionsMenu = createMessageActionsMenu(msg.id, msg.type, isRead);
-    
-    return `
-        <div class="message-item ${isRead}" 
-             data-id="${msg.id}" 
-             data-type="${msg.type}"
-             data-priority="${priority}"
-             style="border-left: 4px solid ${borderColor};">
-            
-            <div class="message-header">
-                <div class="message-title-section">
-                    <i class="fas ${typeIcon} message-type-icon" style="color: ${borderColor};"></i>
-                    <div class="message-title-wrapper">
-                        <h4 class="message-title">${escapeHtml(title)}</h4>
-                        <div class="message-meta">
-                            <span class="message-date">${createdAt}</span>
-                            ${priorityBadge}
-                            <span class="message-type">${msg.type}</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="message-actions">
-                    ${actionsMenu}
-                </div>
-            </div>
-            
-            <div class="message-body">
-                <p>${escapeHtml(truncatedBody)}</p>
-                ${body.length > 300 ? 
-                    `<button class="read-more-btn" data-id="${msg.id}">Read More</button>` : ''}
-            </div>
-            
-            <div class="message-footer">
-                <span class="message-status" style="color: ${statusColor};">
-                    <i class="fas ${isRead === 'read' ? 'fa-check-circle' : 'fa-circle'}"></i>
-                    ${isRead.toUpperCase()}
-                </span>
-                ${msg.sender_name ? 
-                    `<span class="message-sender">
-                        <i class="fas fa-user-tag"></i>
-                        From: ${escapeHtml(msg.sender_name)}
-                    </span>` : ''}
-            </div>
-        </div>
-    `;
-}
-
-// Create priority badge
-function createPriorityBadge(priority) {
-    const priorityColors = {
-        high: '#EF4444',
-        medium: '#F59E0B',
-        low: '#3B82F6',
-        normal: '#6B7280'
-    };
-    
-    const priorityText = priority.charAt(0).toUpperCase() + priority.slice(1);
-    const color = priorityColors[priority] || priorityColors.normal;
-    
-    return `<span class="priority-badge" style="background: ${color};">${priorityText}</span>`;
-}
-
-// Create message actions menu
-function createMessageActionsMenu(messageId, messageType, isRead) {
-    return `
-        <div class="dropdown">
-            <button class="dropdown-btn">
-                <i class="fas fa-ellipsis-v"></i>
-            </button>
-            <div class="dropdown-content">
-                ${isRead === 'unread' ? 
-                    `<a href="#" class="mark-read-btn" data-id="${messageId}" data-type="${messageType}">
-                        <i class="fas fa-check"></i> Mark as Read
-                    </a>` : 
-                    `<a href="#" class="mark-unread-btn" data-id="${messageId}" data-type="${messageType}">
-                        <i class="fas fa-eye-slash"></i> Mark as Unread
-                    </a>`}
-                <a href="#" class="reply-btn" data-id="${messageId}" data-type="${messageType}">
-                    <i class="fas fa-reply"></i> Reply
-                </a>
-                <a href="#" class="forward-btn" data-id="${messageId}" data-type="${messageType}">
-                    <i class="fas fa-share"></i> Forward
-                </a>
-                <div class="dropdown-divider"></div>
-                <a href="#" class="delete-btn" data-id="${messageId}" data-type="${messageType}">
-                    <i class="fas fa-trash"></i> Delete
-                </a>
-            </div>
-        </div>
-    `;
-}
-
-// Add event listeners to message actions
-function addMessageEventListeners() {
-    // Read more buttons
-    document.querySelectorAll('.read-more-btn').forEach(button => {
-        button.addEventListener('click', function() {
-            const messageId = this.getAttribute('data-id');
-            showFullMessage(messageId);
-        });
-    });
-    
-    // Mark as read/unread buttons
-    document.querySelectorAll('.mark-read-btn, .mark-unread-btn').forEach(button => {
-        button.addEventListener('click', async function(e) {
-            e.preventDefault();
-            const messageId = this.getAttribute('data-id');
-            const messageType = this.getAttribute('data-type');
-            const action = this.classList.contains('mark-read-btn') ? 'read' : 'unread';
-            await toggleMessageReadStatus(messageId, messageType, action);
-        });
-    });
-    
-    // Reply buttons
-    document.querySelectorAll('.reply-btn').forEach(button => {
-        button.addEventListener('click', function(e) {
-            e.preventDefault();
-            const messageId = this.getAttribute('data-id');
-            const messageType = this.getAttribute('data-type');
-            replyToMessage(messageId, messageType);
-        });
-    });
-    
-    // Forward buttons
-    document.querySelectorAll('.forward-btn').forEach(button => {
-        button.addEventListener('click', function(e) {
-            e.preventDefault();
-            const messageId = this.getAttribute('data-id');
-            const messageType = this.getAttribute('data-type');
-            forwardMessage(messageId, messageType);
-        });
-    });
-    
-    // Delete buttons
-    document.querySelectorAll('.delete-btn').forEach(button => {
-        button.addEventListener('click', async function(e) {
-            e.preventDefault();
-            const messageId = this.getAttribute('data-id');
-            const messageType = this.getAttribute('data-type');
-            await deleteMessage(messageId, messageType);
-        });
-    });
-    
-    // Message item click (for viewing)
-    document.querySelectorAll('.message-item').forEach(item => {
-        item.addEventListener('click', function(e) {
-            // Don't trigger if clicking on action buttons
-            if (!e.target.closest('.dropdown') && !e.target.closest('.read-more-btn')) {
-                const messageId = this.getAttribute('data-id');
-                showFullMessage(messageId);
-            }
-        });
-    });
-}
-
-// Show full message in modal
-async function showFullMessage(messageId) {
-    // Find message in either messages or announcements
-    let message = currentMessages.find(m => m.id == messageId);
-    let messageType = 'Personal';
-    
-    if (!message) {
-        message = currentAnnouncements.find(a => a.id == messageId);
-        messageType = 'Announcement';
-    }
-    
-    if (!message) {
-        AppUtils.showToast('Message not found', 'error');
-        return;
-    }
-    
-    // Mark as read if unread
-    if (message.is_read === false) {
-        await toggleMessageReadStatus(messageId, messageType, 'read');
-    }
-    
-    // Create modal content
-    const modalContent = createMessageModalContent(message, messageType);
-    
-    // Show modal
-    showMessageModal(modalContent);
-}
-
-// Create message modal content
-function createMessageModalContent(message, messageType) {
-    const title = message.subject || message.title || 'Message';
-    const body = message.body || message.message || message.message_content || '';
-    const createdAt = formatMessageDate(message.created_at, true);
-    const senderName = message.sender_name || message.sent_by_name || 'Administration';
-    
-    return `
-        <div class="message-modal-content">
-            <div class="message-modal-header">
-                <div class="message-modal-title">
-                    <h3>${escapeHtml(title)}</h3>
-                    <span class="message-modal-type">${messageType}</span>
-                </div>
-                <button class="close-modal-btn" onclick="closeMessageModal()">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            
-            <div class="message-modal-body">
-                <div class="message-meta-info">
-                    <div class="meta-item">
-                        <i class="fas fa-user"></i>
-                        <span><strong>From:</strong> ${escapeHtml(senderName)}</span>
-                    </div>
-                    <div class="meta-item">
-                        <i class="fas fa-calendar"></i>
-                        <span><strong>Date:</strong> ${createdAt}</span>
-                    </div>
-                    ${message.priority ? `
-                        <div class="meta-item">
-                            <i class="fas fa-flag"></i>
-                            <span><strong>Priority:</strong> ${createPriorityBadge(message.priority)}</span>
-                        </div>
-                    ` : ''}
-                </div>
-                
-                <div class="message-content">
-                    ${escapeHtml(body).replace(/\n/g, '<br>')}
-                </div>
-                
-                ${message.attachments ? `
-                    <div class="message-attachments">
-                        <h4><i class="fas fa-paperclip"></i> Attachments</h4>
-                        <div class="attachment-list">
-                            ${renderAttachments(message.attachments)}
-                        </div>
-                    </div>
-                ` : ''}
-            </div>
-            
-            <div class="message-modal-footer">
-                <button class="btn btn-secondary" onclick="closeMessageModal()">
-                    <i class="fas fa-times"></i> Close
-                </button>
-                ${messageType === 'Personal' ? `
-                    <button class="btn btn-primary" onclick="replyToMessage('${message.id}', '${messageType}')">
-                        <i class="fas fa-reply"></i> Reply
-                    </button>
-                ` : ''}
-                <button class="btn btn-outline" onclick="forwardMessage('${message.id}', '${messageType}')">
-                    <i class="fas fa-share"></i> Forward
-                </button>
-            </div>
-        </div>
-    `;
-}
-
-// Render attachments
-function renderAttachments(attachments) {
-    if (typeof attachments === 'string') {
-        try {
-            attachments = JSON.parse(attachments);
-        } catch (e) {
-            attachments = [attachments];
-        }
-    }
-    
-    if (!Array.isArray(attachments)) {
-        attachments = [attachments];
-    }
-    
-    return attachments.map((attachment, index) => {
-        const fileName = typeof attachment === 'string' ? attachment : attachment.name || `Attachment ${index + 1}`;
-        const fileUrl = typeof attachment === 'string' ? attachment : attachment.url;
-        
-        return `
-            <div class="attachment-item">
-                <i class="fas fa-file"></i>
-                <span class="attachment-name">${escapeHtml(fileName)}</span>
-                <a href="${fileUrl}" target="_blank" class="attachment-download">
-                    <i class="fas fa-download"></i>
-                </a>
-            </div>
-        `;
-    }).join('');
-}
-
-// Show message modal
-function showMessageModal(content) {
-    // Remove existing modal if any
-    const existingModal = document.getElementById('message-modal');
-    if (existingModal) {
-        existingModal.remove();
-    }
-    
-    // Create modal
-    const modal = document.createElement('div');
-    modal.id = 'message-modal';
-    modal.className = 'modal-overlay';
-    modal.innerHTML = content;
-    
-    // Add styles
-    modal.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0,0,0,0.5);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 1000;
-        padding: 20px;
-        animation: fadeIn 0.3s ease;
-    `;
-    
-    // Add modal content styles
-    const modalContent = modal.querySelector('.message-modal-content');
-    if (modalContent) {
-        modalContent.style.cssText = `
-            background: white;
-            border-radius: 12px;
-            width: 100%;
-            max-width: 600px;
-            max-height: 80vh;
-            overflow-y: auto;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            animation: slideInUp 0.3s ease;
-        `;
-    }
-    
-    document.body.appendChild(modal);
-    
-    // Close on ESC key
-    document.addEventListener('keydown', function escHandler(e) {
-        if (e.key === 'Escape') {
-            closeMessageModal();
-            document.removeEventListener('keydown', escHandler);
-        }
-    });
-    
-    // Close on overlay click
-    modal.addEventListener('click', function(e) {
-        if (e.target === modal) {
-            closeMessageModal();
-        }
-    });
-}
-
-// Close message modal
-function closeMessageModal() {
-    const modal = document.getElementById('message-modal');
-    if (modal) {
-        modal.style.animation = 'fadeOut 0.3s ease';
-        setTimeout(() => {
-            if (modal.parentNode) {
-                modal.parentNode.removeChild(modal);
-            }
-        }, 300);
-    }
-}
-
-// Toggle message read status
-async function toggleMessageReadStatus(messageId, messageType, action) {
-    const supabaseClient = getSupabaseClient();
-    if (!supabaseClient) {
-        AppUtils.showToast('Database connection error', 'error');
-        return;
-    }
-    
-    try {
-        const tableName = messageType === 'Personal' ? 'student_messages' : 'notifications';
-        const isRead = action === 'read';
-        
-        const { error } = await supabaseClient
-            .from(tableName)
-            .update({ is_read: isRead, read_at: new Date().toISOString() })
-            .eq('id', messageId);
-        
-        if (error) throw error;
-        
-        // Update local state
-        if (messageType === 'Personal') {
-            const message = currentMessages.find(m => m.id == messageId);
-            if (message) message.is_read = isRead;
-        } else {
-            const announcement = currentAnnouncements.find(a => a.id == messageId);
-            if (announcement) announcement.is_read = isRead;
-        }
-        
-        // Re-render messages
-        loadStudentMessagesAndAnnouncements();
-        
-        AppUtils.showToast(`Message marked as ${action}`, 'success');
-        
-    } catch (error) {
-        console.error('Error toggling message read status:', error);
-        AppUtils.showToast('Failed to update message status', 'error');
-    }
-}
-
-// Reply to message
-function replyToMessage(messageId, messageType) {
-    closeMessageModal();
-    
-    // Find the original message
-    let originalMessage;
-    if (messageType === 'Personal') {
-        originalMessage = currentMessages.find(m => m.id == messageId);
-    } else {
-        originalMessage = currentAnnouncements.find(a => a.id == messageId);
-    }
-    
-    if (!originalMessage) {
-        AppUtils.showToast('Original message not found', 'error');
-        return;
-    }
-    
-    // Pre-fill the message form
-    const messageBody = document.getElementById('student-message-body');
-    if (messageBody) {
-        const subject = originalMessage.subject || originalMessage.title || '';
-        const quotedBody = originalMessage.body || originalMessage.message || originalMessage.message_content || '';
-        
-        messageBody.value = `\n\n--- Original Message ---\nSubject: ${subject}\nDate: ${formatMessageDate(originalMessage.created_at)}\n\n${quotedBody}\n\n--- Your Reply ---\n`;
-        messageBody.focus();
-        messageBody.scrollTop = messageBody.scrollHeight;
-        
-        // Scroll to message form
-        messageBody.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        
-        AppUtils.showToast('Message form pre-filled for reply', 'info');
-    }
-}
-
-// Forward message
-function forwardMessage(messageId, messageType) {
-    // For now, just copy message to clipboard
-    let message;
-    if (messageType === 'Personal') {
-        message = currentMessages.find(m => m.id == messageId);
-    } else {
-        message = currentAnnouncements.find(a => a.id == messageId);
-    }
-    
-    if (!message) {
-        AppUtils.showToast('Message not found', 'error');
-        return;
-    }
-    
-    const title = message.subject || message.title || 'Message';
-    const body = message.body || message.message || message.message_content || '';
-    const date = formatMessageDate(message.created_at);
-    
-    const forwardText = `
-Subject: ${title}
-Date: ${date}
-Message: ${body}
----
-Forwarded from NCHSM Student Portal
-    `.trim();
-    
-    navigator.clipboard.writeText(forwardText).then(() => {
-        AppUtils.showToast('Message copied to clipboard. You can now paste it elsewhere.', 'success');
-    }).catch(() => {
-        AppUtils.showToast('Failed to copy message', 'error');
-    });
-}
-
-// Delete message
-async function deleteMessage(messageId, messageType) {
-    if (!confirm('Are you sure you want to delete this message? This action cannot be undone.')) {
-        return;
-    }
-    
-    const supabaseClient = getSupabaseClient();
-    if (!supabaseClient) {
-        AppUtils.showToast('Database connection error', 'error');
-        return;
-    }
-    
-    try {
-        const tableName = messageType === 'Personal' ? 'student_messages' : 'notifications';
-        
-        const { error } = await supabaseClient
-            .from(tableName)
-            .delete()
-            .eq('id', messageId);
-        
-        if (error) throw error;
-        
-        // Remove from local state
-        if (messageType === 'Personal') {
-            currentMessages = currentMessages.filter(m => m.id != messageId);
-        } else {
-            currentAnnouncements = currentAnnouncements.filter(a => a.id != messageId);
-        }
-        
-        // Re-render messages
-        loadStudentMessagesAndAnnouncements();
-        
-        AppUtils.showToast('Message deleted successfully', 'success');
-        
-    } catch (error) {
-        console.error('Error deleting message:', error);
-        AppUtils.showToast('Failed to delete message', 'error');
-    }
-}
-
-// Handle message form submission
-async function handleMessageSubmit(e) {
-    e.preventDefault();
-    
-    const messageBody = document.getElementById('student-message-body');
-    const statusElement = document.getElementById('message-status');
-    
-    if (!messageBody || !messageBody.value.trim()) {
-        AppUtils.showToast('Please write a message', 'warning');
-        return;
-    }
-    
-    const userProfile = getUserProfile();
-    const userId = getCurrentUserId();
-    const supabaseClient = getSupabaseClient();
-    
-    if (!userProfile || !supabaseClient) {
-        AppUtils.showToast('System error: User profile or database not available', 'error');
-        return;
-    }
-    
-    // Disable form during submission
-    const submitBtn = e.target.querySelector('button[type="submit"]');
-    const originalBtnText = submitBtn.innerHTML;
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
-    
-    if (statusElement) {
-        statusElement.textContent = 'Sending message...';
-        statusElement.style.color = '#F59E0B';
-    }
-    
-    try {
-        const messageData = {
-            subject: 'Message from Student',
-            body: messageBody.value.trim(),
-            recipient_id: 'admin', // Default admin recipient
-            recipient_program: userProfile.program || userProfile.department,
-            sender_id: userId,
-            sender_name: userProfile.full_name || userProfile.name || 'Student',
-            sender_email: userProfile.email || '',
-            sender_program: userProfile.program || userProfile.department,
-            sender_block: userProfile.block,
-            sender_intake_year: userProfile.intake_year,
-            is_read: false,
-            priority: 'normal',
-            created_at: new Date().toISOString()
-        };
-        
-        const { error } = await supabaseClient
-            .from('student_messages')
-            .insert([messageData]);
-        
-        if (error) throw error;
-        
-        // Clear form
-        messageBody.value = '';
-        
-        // Show success message
-        if (statusElement) {
-            statusElement.textContent = '✓ Message sent successfully!';
-            statusElement.style.color = '#10B981';
-        }
-        
-        AppUtils.showToast('Message sent successfully!', 'success');
-        
-        // Reload messages to show the new one
-        setTimeout(() => {
-            loadStudentMessagesAndAnnouncements();
-        }, 1000);
-        
-    } catch (error) {
-        console.error('Error sending message:', error);
-        
-        if (statusElement) {
-            statusElement.textContent = `✗ Failed to send: ${error.message}`;
-            statusElement.style.color = '#EF4444';
-        }
-        
-        AppUtils.showToast('Failed to send message', 'error');
-        
-    } finally {
-        // Re-enable form
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = originalBtnText;
-        
-        // Clear status after 5 seconds
-        if (statusElement) {
-            setTimeout(() => {
-                statusElement.textContent = '';
-            }, 5000);
-        }
-    }
-}
-
-// Filter messages by type
-function filterMessages(filterType) {
-    let filteredMessages = [];
-    
-    const allMessages = [
-        ...currentMessages.map(m => ({ ...m, type: 'Personal' })),
-        ...currentAnnouncements.map(n => ({ ...n, type: 'Announcement' }))
-    ];
-    
-    switch(filterType) {
-        case 'all':
-            filteredMessages = allMessages;
-            break;
-        case 'unread':
-            filteredMessages = allMessages.filter(m => !m.is_read);
-            break;
-        case 'personal':
-            filteredMessages = currentMessages.map(m => ({ ...m, type: 'Personal' }));
-            break;
-        case 'announcements':
-            filteredMessages = currentAnnouncements.map(n => ({ ...n, type: 'Announcement' }));
-            break;
-        case 'high-priority':
-            filteredMessages = allMessages.filter(m => m.priority === 'high');
-            break;
-        default:
-            filteredMessages = allMessages;
-    }
-    
-    // Sort by date
-    filteredMessages.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-    
-    // Render filtered messages
-    renderMessages(filteredMessages);
-    
-    // Update filter button states
-    updateFilterButtonStates(filterType);
-}
-
-// Update filter button states
-function updateFilterButtonStates(activeFilter) {
-    document.querySelectorAll('.message-filter-btn').forEach(button => {
-        const filterType = button.getAttribute('data-filter');
-        if (filterType === activeFilter) {
-            button.classList.add('active');
-        } else {
-            button.classList.remove('active');
-        }
-    });
-}
-
-// Search messages
-function searchMessages(searchTerm) {
-    if (!searchTerm.trim()) {
-        renderMessages([
-            ...currentMessages.map(m => ({ ...m, type: 'Personal' })),
-            ...currentAnnouncements.map(n => ({ ...n, type: 'Announcement' }))
-        ]);
-        return;
-    }
-    
-    const allMessages = [
-        ...currentMessages.map(m => ({ ...m, type: 'Personal' })),
-        ...currentAnnouncements.map(n => ({ ...n, type: 'Announcement' }))
-    ];
-    
-    const searchLower = searchTerm.toLowerCase();
-    const filteredMessages = allMessages.filter(msg => {
-        const title = (msg.subject || msg.title || '').toLowerCase();
-        const body = (msg.body || msg.message || msg.message_content || '').toLowerCase();
-        const sender = (msg.sender_name || '').toLowerCase();
-        
-        return title.includes(searchLower) || 
-               body.includes(searchLower) || 
-               sender.includes(searchLower);
-    });
-    
-    renderMessages(filteredMessages);
-}
-
-// Update unread message count
-function updateUnreadCount(messages) {
-    const unreadCount = messages.filter(m => !m.is_read).length;
-    
-    // Update badge in navigation
-    const messagesBadge = document.getElementById('messages-badge');
-    if (messagesBadge) {
-        if (unreadCount > 0) {
-            messagesBadge.textContent = unreadCount;
-            messagesBadge.style.display = 'inline-block';
-        } else {
-            messagesBadge.style.display = 'none';
-        }
-    }
-    
-    // Update tab title
-    const messagesTab = document.querySelector('.nav a[data-tab="messages"]');
-    if (messagesTab) {
-        const tabText = messagesTab.querySelector('.nav-text') || messagesTab;
-        const baseText = tabText.textContent.replace(/\(\d+\)\s*/, '');
-        if (unreadCount > 0) {
-            tabText.textContent = `(${unreadCount}) ${baseText}`;
-        } else {
-            tabText.textContent = baseText;
-        }
-    }
-    
-    return unreadCount;
-}
-
-// Update dashboard announcement
-function updateDashboardAnnouncement() {
-    if (currentAnnouncements.length === 0) return;
-    
-    const latestAnnouncement = currentAnnouncements[0];
-    const announcementElement = document.getElementById('student-announcement');
-    
-    if (announcementElement && latestAnnouncement.message) {
-        announcementElement.textContent = latestAnnouncement.message;
-    }
-}
-
-// Load message templates
-async function loadMessageTemplates() {
-    const userProfile = getUserProfile();
-    const supabaseClient = getSupabaseClient();
-    
-    if (!supabaseClient) {
-        console.error('❌ No Supabase client for loading templates');
-        return;
-    }
-    
-    try {
-        const { data: templates, error } = await supabaseClient
-            .from('message_templates')
-            .select('*')
-            .eq('is_active', true)
-            .or(`target_program.eq.${userProfile?.program || 'General'},target_program.is.null`)
-            .order('name', { ascending: true });
-        
-        if (error) throw error;
-        
-        messageTemplates = templates || [];
-        
-        // Populate template dropdown if exists
-        const templateSelect = document.getElementById('message-template-select');
-        if (templateSelect) {
-            templateSelect.innerHTML = '<option value="">Select a template...</option>';
-            messageTemplates.forEach(template => {
-                const option = document.createElement('option');
-                option.value = template.id;
-                option.textContent = template.name;
-                templateSelect.appendChild(option);
+        // Setup search
+        if (this.studentQuestionBankSearch) {
+            let searchTimeout;
+            this.studentQuestionBankSearch.addEventListener('input', () => {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    this.loadQuestionBankCards();
+                }, 300);
             });
             
-            // Add change event
-            templateSelect.addEventListener('change', function() {
-                const templateId = this.value;
-                if (templateId) {
-                    applyMessageTemplate(templateId);
+            this.studentQuestionBankSearch.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    this.loadQuestionBankCards();
                 }
             });
         }
         
-    } catch (error) {
-        console.error('Error loading message templates:', error);
+        // Setup button events
+        if (this.nurseiqSearchBtn) {
+            this.nurseiqSearchBtn.addEventListener('click', () => {
+                this.loadQuestionBankCards();
+            });
+        }
+        
+        if (this.clearSearchBtn) {
+            this.clearSearchBtn.addEventListener('click', () => {
+                this.clearQuestionBankSearch();
+            });
+        }
+        
+        if (this.loadCourseCatalogBtn) {
+            this.loadCourseCatalogBtn.addEventListener('click', () => {
+                this.loadQuestionBankCards();
+            });
+        }
+        
+        // Tab click handler
+        const nurseiqTab = document.querySelector('[data-tab="nurseiq"]');
+        if (nurseiqTab) {
+            nurseiqTab.addEventListener('click', () => {
+                if (!this.initialized) {
+                    this.loadQuestionBankCards();
+                }
+            });
+        }
+        
+        console.log('✅ NurseIQ elements initialized');
     }
-}
-
-// Apply message template
-function applyMessageTemplate(templateId) {
-    const template = messageTemplates.find(t => t.id == templateId);
-    if (!template) return;
     
-    const messageBody = document.getElementById('student-message-body');
-    if (messageBody) {
-        messageBody.value = template.content;
-        AppUtils.showToast(`Template "${template.name}" applied`, 'success');
-    }
-}
-
-// Format message date
-function formatMessageDate(dateString, full = false) {
-    if (!dateString) return 'N/A';
-    
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now - date;
-    const diffMins = Math.floor(diffMs / (1000 * 60));
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    
-    if (full) {
-        return date.toLocaleString('en-US', {
-            weekday: 'short',
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
+    // Wait for element
+    waitForElement(selector, timeout = 5000) {
+        return new Promise((resolve) => {
+            const element = document.querySelector(selector);
+            if (element) {
+                resolve(element);
+                return;
+            }
+            
+            const observer = new MutationObserver(() => {
+                const element = document.querySelector(selector);
+                if (element) {
+                    observer.disconnect();
+                    resolve(element);
+                }
+            });
+            
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true
+            });
+            
+            setTimeout(() => {
+                observer.disconnect();
+                console.warn(`⚠️ Timeout waiting for: ${selector}`);
+                resolve(null);
+            }, timeout);
         });
     }
     
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
-    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
-    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    // Get Supabase client
+    getSupabaseClient() {
+        return window.supabaseClient || getSupabaseClient();
+    }
     
-    return date.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
-    });
+    // Initialize
+    async initialize() {
+        console.log('🚀 Initializing NurseIQ Module...');
+        
+        try {
+            this.userId = getCurrentUserId();
+            await this.initializeElements();
+            await this.loadQuestionBankCards();
+            this.initialized = true;
+            console.log('✅ NurseIQ Module initialized');
+        } catch (error) {
+            console.error('❌ Failed to initialize:', error);
+        }
+    }
+    
+    // Load question bank
+    async loadQuestionBankCards() {
+        try {
+            console.log('📚 Loading question bank...');
+            this.showLoading();
+            
+            const supabase = this.getSupabaseClient();
+            if (!supabase) throw new Error('No database connection');
+            
+            const { data: questions, error } = await supabase
+                .from('medical_assessments')
+                .select(`
+                    *,
+                    courses (
+                        id,
+                        course_name,
+                        unit_code,
+                        color,
+                        description
+                    )
+                `)
+                .eq('is_active', true)
+                .eq('is_published', true);
+            
+            if (error) throw error;
+            
+            console.log(`✅ Fetched ${questions?.length || 0} questions`);
+            
+            // Group by course
+            const coursesMap = {};
+            questions.forEach(question => {
+                const courseId = question.course_id || 'general';
+                const courseName = question.courses?.course_name || 'General Nursing';
+                const unitCode = question.courses?.unit_code || 'KRCHN';
+                const courseColor = question.courses?.color || '#4f46e5';
+                
+                if (!coursesMap[courseId]) {
+                    coursesMap[courseId] = {
+                        id: courseId,
+                        name: courseName,
+                        unit_code: unitCode,
+                        color: courseColor,
+                        description: question.courses?.description || '',
+                        questions: [],
+                        stats: {
+                            total: 0,
+                            active: 0,
+                            hard: 0,
+                            medium: 0,
+                            easy: 0,
+                            lastUpdated: null
+                        }
+                    };
+                }
+                
+                coursesMap[courseId].questions.push(question);
+                coursesMap[courseId].stats.total++;
+                coursesMap[courseId].stats.active++;
+                
+                if (question.difficulty === 'hard') coursesMap[courseId].stats.hard++;
+                else if (question.difficulty === 'medium') coursesMap[courseId].stats.medium++;
+                else if (question.difficulty === 'easy') coursesMap[courseId].stats.easy++;
+                
+                if (question.updated_at) {
+                    const updatedDate = new Date(question.updated_at);
+                    if (!coursesMap[courseId].stats.lastUpdated || updatedDate > coursesMap[courseId].stats.lastUpdated) {
+                        coursesMap[courseId].stats.lastUpdated = updatedDate;
+                    }
+                }
+            });
+            
+            const coursesArray = Object.values(coursesMap);
+            const overallStats = {
+                totalCourses: coursesArray.length,
+                totalQuestions: questions.length,
+                activeQuestions: questions.length,
+                activeRate: '100%'
+            };
+            
+            this.displayQuestionBankCards(coursesArray, overallStats);
+            
+        } catch (error) {
+            console.error('❌ Error loading question bank:', error);
+            this.showError(`Failed to load: ${error.message || 'Please try again'}`);
+        } finally {
+            this.hideLoading();
+        }
+    }
+    
+    // Display question bank cards
+    displayQuestionBankCards(courses, overallStats) {
+        if (!this.studentQuestionBankContent) return;
+        
+        const searchTerm = this.studentQuestionBankSearch?.value?.toLowerCase() || '';
+        let filteredCourses = courses;
+        
+        if (searchTerm) {
+            filteredCourses = courses.filter(course => 
+                course.name.toLowerCase().includes(searchTerm) ||
+                course.unit_code.toLowerCase().includes(searchTerm) ||
+                course.description.toLowerCase().includes(searchTerm)
+            );
+        }
+        
+        function formatDate(date) {
+            if (!date) return 'Never';
+            const now = new Date();
+            const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
+            
+            if (diffDays === 0) return 'Today';
+            if (diffDays === 1) return 'Yesterday';
+            if (diffDays < 7) return `${diffDays} days ago`;
+            if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        }
+        
+        let html = `
+            <div class="question-bank-container">
+                <!-- Debug info -->
+                <div class="debug-info card">
+                    <p class="text-sm">
+                        <strong>Status:</strong> Loaded ${filteredCourses.length} courses with ${overallStats.totalQuestions} questions
+                        ${searchTerm ? ` | Searching: "${searchTerm}"` : ''}
+                    </p>
+                </div>
+                
+                <!-- Header Stats -->
+                <div class="stats-header">
+                    <div class="stats-title">
+                        <h2><i class="fas fa-database"></i> Question Bank</h2>
+                        <p class="subtitle">Organized by courses with detailed statistics</p>
+                    </div>
+                    <div class="stats-filter">
+                        <i class="fas fa-filter"></i> Showing ${filteredCourses.length} of ${courses.length} courses
+                    </div>
+                </div>
+                
+                <!-- Overall Stats Cards -->
+                <div class="overall-stats">
+                    <div class="overall-stat-card">
+                        <div class="overall-stat-number text-primary">${overallStats.totalCourses}</div>
+                        <div class="overall-stat-label">Total Courses</div>
+                    </div>
+                    <div class="overall-stat-card">
+                        <div class="overall-stat-number text-success">${overallStats.totalQuestions}</div>
+                        <div class="overall-stat-label">Total Questions</div>
+                    </div>
+                    <div class="overall-stat-card">
+                        <div class="overall-stat-number text-info">${overallStats.activeQuestions}</div>
+                        <div class="overall-stat-label">Active Questions</div>
+                    </div>
+                    <div class="overall-stat-card">
+                        <div class="overall-stat-number text-warning">${overallStats.activeRate}</div>
+                        <div class="overall-stat-label">Active Rate</div>
+                    </div>
+                </div>
+        `;
+        
+        if (filteredCourses.length === 0) {
+            html += `
+                <div class="empty-state">
+                    <i class="fas fa-search"></i>
+                    <h3>No Courses Found</h3>
+                    <p>No courses match your search "${searchTerm}". Try a different search term.</p>
+                    <button onclick="window.clearQuestionBankSearch()" class="btn btn-primary mt-2">
+                        <i class="fas fa-times"></i> Clear Search
+                    </button>
+                </div>
+            `;
+        } else {
+            html += `<div class="courses-grid">`;
+            
+            filteredCourses.forEach(course => {
+                const courseColor = course.color || '#4f46e5';
+                const lastUpdated = formatDate(course.stats.lastUpdated);
+                
+                html += `
+                    <div class="course-card">
+                        <div class="course-header" style="border-color: ${courseColor}20;">
+                            <div class="course-title">
+                                <div>
+                                    <h3>${course.name}</h3>
+                                    <div class="course-subtitle">
+                                        <span class="unit-code" style="background: ${courseColor}30; color: ${courseColor};">
+                                            ${course.unit_code}
+                                        </span>
+                                        <span class="question-count">
+                                            <i class="fas fa-question-circle"></i> ${course.stats.total} questions
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="course-icon" style="background: ${courseColor};">
+                                    <i class="fas fa-book-medical"></i>
+                                </div>
+                            </div>
+                            <div class="active-badge">
+                                <i class="fas fa-check-circle"></i> Active Questions
+                            </div>
+                        </div>
+                        
+                        <div class="course-stats">
+                            <div class="stats-grid">
+                                <div class="stat-item">
+                                    <div class="stat-value text-primary">${course.stats.active}</div>
+                                    <div class="stat-label">ACTIVE</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-value text-danger">${course.stats.hard}</div>
+                                    <div class="stat-label">HARD</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-value text-warning">${course.stats.medium}</div>
+                                    <div class="stat-label">MEDIUM</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-date-label">UPDATED</div>
+                                    <div class="stat-date text-primary">${lastUpdated}</div>
+                                </div>
+                            </div>
+                            
+                            <button class="start-test-btn" 
+                                    onclick="window.startCourseTest('${course.id}', '${course.name.replace(/'/g, "\\'")}')" 
+                                    style="background: ${courseColor}">
+                                <i class="fas fa-play-circle"></i> START PRACTICE TEST
+                            </button>
+                            
+                            <div class="quick-stats">
+                                <div class="quick-stat">
+                                    <div class="quick-value text-success">${course.stats.easy}</div>
+                                    <div class="quick-label">Easy</div>
+                                </div>
+                                <div class="quick-stat">
+                                    <div class="quick-value text-warning">${course.stats.medium}</div>
+                                    <div class="quick-label">Medium</div>
+                                </div>
+                                <div class="quick-stat">
+                                    <div class="quick-value text-danger">${course.stats.hard}</div>
+                                    <div class="quick-label">Hard</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += `</div>`;
+        }
+        
+        html += `
+                <div class="question-bank-footer">
+                    <div class="info-message">
+                        <i class="fas fa-info-circle"></i>
+                        <span>Click START PRACTICE TEST to begin interactive Q&A with immediate feedback</span>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        this.studentQuestionBankContent.innerHTML = html;
+        console.log('✅ Question bank displayed');
+    }
+    
+    // Start course test
+    async startCourseTest(courseId, courseName) {
+        try {
+            console.log(`Starting test for course: ${courseName}`);
+            this.showLoading();
+            
+            const { data: questions, error } = await this.getSupabaseClient()
+                .from('medical_assessments')
+                .select(`
+                    *,
+                    courses (
+                        id,
+                        course_name,
+                        unit_code,
+                        color
+                    )
+                `)
+                .eq('course_id', courseId)
+                .eq('is_active', true)
+                .eq('is_published', true)
+                .order('created_at', { ascending: false });
+            
+            if (error) throw error;
+            
+            console.log(`Fetched ${questions?.length || 0} questions`);
+            
+            if (!questions || questions.length === 0) {
+                this.showNotification('No questions available for this course yet.', 'warning');
+                this.loadQuestionBankCards();
+                return;
+            }
+            
+            this.currentCourseForTest = { id: courseId, name: courseName };
+            this.currentCourseQuestions = questions;
+            this.currentQuestionIndex = 0;
+            this.userTestAnswers = {};
+            
+            this.displayInteractiveQuestions(courseName, questions);
+            
+        } catch (error) {
+            console.error('Error starting test:', error);
+            this.showNotification('Failed to start test. Please try again.', 'error');
+            this.loadQuestionBankCards();
+        } finally {
+            this.hideLoading();
+        }
+    }
+    
+    // Display interactive questions
+    displayInteractiveQuestions(courseName, questions) {
+        if (!this.studentQuestionBankContent) return;
+        
+        const courseColor = questions[0]?.courses?.color || '#4f46e5';
+        
+        let html = `
+            <div class="interactive-questions-container">
+                <!-- Top Header Bar with Progress -->
+                <div class="questions-header-bar">
+                    <div class="header-content">
+                        <button onclick="window.loadQuestionBankCards()" class="header-back-btn btn btn-outline">
+                            <i class="fas fa-arrow-left"></i> Back to Courses
+                        </button>
+                        
+                        <div class="header-course-info">
+                            <h2 class="course-name">${courseName}</h2>
+                            <p class="practice-mode">Interactive Q&A Practice Mode</p>
+                        </div>
+                        
+                        <!-- Progress Stats at Top -->
+                        <div class="header-progress-stats">
+                            <div class="progress-stat-top">
+                                <div class="progress-label-top">Question</div>
+                                <div class="progress-value-top">
+                                    <span id="currentQuestionCountTop">1</span>/<span id="totalQuestionsTop">${questions.length}</span>
+                                </div>
+                            </div>
+                            <div class="progress-stat-top">
+                                <div class="progress-label-top">Answered</div>
+                                <div class="progress-value-top" id="answeredCountTop">0</div>
+                            </div>
+                            <div class="progress-stat-top">
+                                <div class="progress-label-top">Correct</div>
+                                <div class="progress-value-top" id="correctCountTop">0</div>
+                            </div>
+                            <div class="progress-stat-top">
+                                <div class="progress-label-top">Accuracy</div>
+                                <div class="progress-value-top" id="accuracyTop">0%</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Main Content -->
+                <div class="questions-main-container">
+                    <!-- Question Panel -->
+                    <div class="question-panel">
+                        <!-- Question Header -->
+                        <div class="question-header">
+                            <div class="question-meta">
+                                <span class="question-number-badge">Q${this.currentQuestionIndex + 1}</span>
+                                <span class="question-type">Multiple Choice</span>
+                                <span class="difficulty-badge difficulty-medium" id="difficultyBadge">Medium</span>
+                            </div>
+                            
+                            <div class="mini-navigation">
+                                <button onclick="window.prevQuestion()" class="mini-nav-btn" id="miniPrevBtn" ${this.currentQuestionIndex === 0 ? 'disabled' : ''}>
+                                    <i class="fas fa-chevron-left"></i>
+                                </button>
+                                <div class="mini-dots" id="miniDotsContainer">
+                                    ${this.generateMiniDots(questions.length)}
+                                </div>
+                                <button onclick="window.nextQuestion()" class="mini-nav-btn" id="miniNextBtn" ${this.currentQuestionIndex === questions.length - 1 ? 'disabled' : ''}>
+                                    <i class="fas fa-chevron-right"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Question Text -->
+                        <div class="question-card">
+                            <div class="question-text" id="questionText">
+                                Loading question...
+                            </div>
+                        </div>
+                        
+                        <!-- Answer Options -->
+                        <div class="options-panel">
+                            <h3 class="options-title"><i class="fas fa-list-ol"></i> Select Your Answer:</h3>
+                            <div id="optionsContainer" class="options-container-improved">
+                                <!-- Options loaded here -->
+                            </div>
+                        </div>
+                        
+                        <!-- Action Buttons -->
+                        <div class="action-buttons-panel">
+                            <div class="button-group-left">
+                                <button onclick="window.checkAnswer()" id="checkAnswerBtn" class="action-btn primary-action-btn">
+                                    <i class="fas fa-check-circle"></i> Check Answer
+                                </button>
+                                <button onclick="window.resetQuestion()" id="resetBtn" class="action-btn secondary-action-btn">
+                                    <i class="fas fa-redo"></i> Reset
+                                </button>
+                            </div>
+                            
+                            <div class="button-group-right">
+                                <button onclick="window.showAnswer()" id="showAnswerBtn" class="action-btn info-action-btn">
+                                    <i class="fas fa-lightbulb"></i> Show Answer
+                                </button>
+                                <button onclick="window.markForReview()" id="markBtn" class="action-btn warning-action-btn">
+                                    <i class="fas fa-flag"></i> <span id="markBtnText">Mark for Review</span>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Answer & Explanation -->
+                        <div id="answerRevealSection" class="answer-reveal-section" style="display: none;">
+                            <div class="answer-header">
+                                <h3><i class="fas fa-check-double"></i> Answer & Explanation</h3>
+                            </div>
+                            
+                            <div class="correct-answer-box">
+                                <div class="correct-answer-label">
+                                    <i class="fas fa-check-circle"></i> Correct Answer:
+                                </div>
+                                <div class="correct-answer-text" id="correctAnswerText">
+                                    Loading...
+                                </div>
+                            </div>
+                            
+                            <div class="explanation-box">
+                                <div class="explanation-label">
+                                    <i class="fas fa-info-circle"></i> Explanation:
+                                </div>
+                                <div class="explanation-content">
+                                    <div class="explanation-text" id="explanationText">
+                                        Select an option and click "Check Answer" to see the explanation.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Stats Panel on Right -->
+                    <div class="stats-panel">
+                        <!-- Question Navigator -->
+                        <div class="horizontal-nav-card">
+                            <h3 class="nav-title">
+                                <i class="fas fa-list-ol"></i> Questions Navigator
+                            </h3>
+                            
+                            <div class="horizontal-question-grid" id="questionGridContainer">
+                                <!-- Question numbers loaded here -->
+                            </div>
+                            
+                            <div class="grid-controls">
+                                <button onclick="window.scrollQuestions('left')" class="grid-scroll-btn">
+                                    <i class="fas fa-chevron-left"></i>
+                                </button>
+                                <button onclick="window.jumpToQuestion()" class="grid-jump-btn">
+                                    Jump to Question
+                                </button>
+                                <button onclick="window.scrollQuestions('right')" class="grid-scroll-btn">
+                                    <i class="fas fa-chevron-right"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Study Tips -->
+                        <div class="tips-card">
+                            <h3 class="tips-title">
+                                <i class="fas fa-graduation-cap"></i> Study Tips
+                            </h3>
+                            <ul class="tips-list">
+                                <li><i class="fas fa-check"></i> Read each question carefully</li>
+                                <li><i class="fas fa-check"></i> Review explanations thoroughly</li>
+                                <li><i class="fas fa-check"></i> Mark difficult questions</li>
+                                <li><i class="fas fa-check"></i> Aim for 80%+ accuracy</li>
+                            </ul>
+                        </div>
+                        
+                        <!-- Progress Summary -->
+                        <div class="progress-summary-card">
+                            <h3 class="stats-title">
+                                <i class="fas fa-chart-line"></i> Detailed Progress
+                            </h3>
+                            
+                            <div class="progress-details">
+                                <div class="progress-detail-item">
+                                    <span class="detail-label">Total Questions:</span>
+                                    <span class="detail-value">${questions.length}</span>
+                                </div>
+                                <div class="progress-detail-item">
+                                    <span class="detail-label">Marked for Review:</span>
+                                    <span class="detail-value" id="markedCountDetail">0</span>
+                                </div>
+                                <div class="progress-detail-item">
+                                    <span class="detail-label">Completion:</span>
+                                    <span class="detail-value" id="completionPercent">0%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Bottom Navigation -->
+                <div class="bottom-navigation-bar">
+                    <div class="nav-left">
+                        <button onclick="window.prevQuestion()" id="prevBtn" class="nav-btn prev-nav-btn">
+                            <i class="fas fa-arrow-left"></i> Previous
+                        </button>
+                    </div>
+                    
+                    <div class="nav-center">
+                        <div class="progress-indicator">
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="progressFill" style="width: 0%;"></div>
+                            </div>
+                            <div class="progress-text">
+                                <span id="progressPercent">0%</span> complete
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="nav-right">
+                        <button onclick="window.nextQuestion()" id="nextBtn" class="nav-btn next-nav-btn">
+                            Next <i class="fas fa-arrow-right"></i>
+                        </button>
+                        <button onclick="window.finishPractice()" class="nav-btn finish-btn">
+                            <i class="fas fa-flag-checkered"></i> Finish
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        this.studentQuestionBankContent.innerHTML = html;
+        
+        setTimeout(() => {
+            this.loadCurrentInteractiveQuestion();
+            this.updateQuestionGrid();
+            this.updateProgressBar();
+            this.updateMiniDots();
+            this.updateTopProgressStats();
+        }, 100);
+    }
+    
+    // Load current question
+    loadCurrentInteractiveQuestion() {
+        const question = this.currentCourseQuestions[this.currentQuestionIndex];
+        if (!question) return;
+        
+        // Update question text
+        const questionText = document.getElementById('questionText');
+        if (questionText) {
+            questionText.innerHTML = question.question_text || 'Question text not available';
+        }
+        
+        // Update difficulty
+        const difficultyBadge = document.getElementById('difficultyBadge');
+        if (difficultyBadge) {
+            difficultyBadge.textContent = question.difficulty?.toUpperCase() || 'MEDIUM';
+            
+            // Remove existing difficulty classes
+            difficultyBadge.classList.remove('difficulty-easy', 'difficulty-medium', 'difficulty-hard');
+            
+            // Add correct difficulty class
+            if (question.difficulty === 'easy') {
+                difficultyBadge.classList.add('difficulty-easy');
+            } else if (question.difficulty === 'hard') {
+                difficultyBadge.classList.add('difficulty-hard');
+            } else {
+                difficultyBadge.classList.add('difficulty-medium');
+            }
+        }
+        
+        // Load answer options
+        this.loadAnswerOptions(question);
+        
+        // Update counters
+        this.updateCounters();
+        this.updateTopProgressStats();
+        
+        // Update navigation
+        this.updateNavigationButtons();
+        this.updateMarkButton();
+        
+        // Hide answer section
+        const answerRevealSection = document.getElementById('answerRevealSection');
+        if (answerRevealSection) {
+            answerRevealSection.style.display = 'none';
+        }
+        
+        // Reset selection if not answered
+        const userAnswer = this.userTestAnswers[this.currentQuestionIndex];
+        if (!userAnswer?.answered) {
+            this.resetOptionSelection();
+        }
+        
+        // Show previous answer if exists
+        if (userAnswer?.answered) {
+            this.showUserAnswer(userAnswer);
+        }
+        
+        // Highlight in grid
+        this.highlightCurrentQuestionInGrid();
+    }
+    
+    // Load answer options
+    loadAnswerOptions(question) {
+        const optionsContainer = document.getElementById('optionsContainer');
+        if (!optionsContainer) return;
+        
+        let options = [];
+        try {
+            if (question.options) {
+                if (Array.isArray(question.options)) {
+                    options = question.options;
+                } else if (typeof question.options === 'string') {
+                    options = JSON.parse(question.options);
+                }
+            }
+        } catch (e) {
+            console.error('Error parsing options:', e);
+            options = [];
+        }
+        
+        if (options.length === 0) {
+            options = ['Option A', 'Option B', 'Option C', 'Option D'];
+        }
+        
+        // Get correct answer
+        let correctAnswer = '';
+        try {
+            if (question.correct_answer) {
+                if (Array.isArray(question.correct_answer)) {
+                    correctAnswer = question.correct_answer[0];
+                } else if (typeof question.correct_answer === 'string') {
+                    correctAnswer = question.correct_answer;
+                }
+            }
+        } catch (e) {
+            console.error('Error parsing correct answer:', e);
+        }
+        
+        let optionsHtml = '';
+        const optionLabels = ['A', 'B', 'C', 'D', 'E', 'F'];
+        
+        options.forEach((option, index) => {
+            if (index >= optionLabels.length) return;
+            
+            const optionId = `option-${this.currentQuestionIndex}-${index}`;
+            const optionLetter = optionLabels[index];
+            const isCorrectAnswer = option === correctAnswer;
+            
+            optionsHtml += `
+                <div class="option-item-improved" data-option-index="${index}" data-is-correct="${isCorrectAnswer}">
+                    <div class="option-radio-improved">
+                        <input type="radio" 
+                               id="${optionId}" 
+                               name="question-${this.currentQuestionIndex}" 
+                               value="${option}"
+                               class="option-input-hidden"
+                               ${this.userTestAnswers[this.currentQuestionIndex]?.selectedOption === option ? 'checked' : ''}>
+                        <label for="${optionId}" class="option-label-improved">
+                            <span class="option-letter-circle">${optionLetter}</span>
+                            <span class="option-text-improved">${option}</span>
+                        </label>
+                    </div>
+                </div>
+            `;
+        });
+        
+        optionsContainer.innerHTML = optionsHtml;
+        
+        // Add click handlers
+        optionsContainer.querySelectorAll('.option-item-improved').forEach(item => {
+            item.addEventListener('click', () => {
+                this.selectOption(item);
+            });
+        });
+        
+        // Store correct answer
+        if (question.id) {
+            this.userTestAnswers[this.currentQuestionIndex] = {
+                ...this.userTestAnswers[this.currentQuestionIndex],
+                questionId: question.id,
+                correctAnswer: correctAnswer
+            };
+        }
+    }
+    
+    // Select option
+    selectOption(optionItem) {
+        this.resetOptionSelection();
+        
+        const radioInput = optionItem.querySelector('.option-input-hidden');
+        if (radioInput) {
+            radioInput.checked = true;
+            optionItem.classList.add('selected-improved');
+            
+            const optionIndex = optionItem.dataset.optionIndex;
+            const optionText = optionItem.querySelector('.option-text-improved')?.textContent || '';
+            
+            this.userTestAnswers[this.currentQuestionIndex] = {
+                ...this.userTestAnswers[this.currentQuestionIndex],
+                selectedOption: optionText,
+                selectedOptionIndex: parseInt(optionIndex),
+                answered: false
+            };
+        }
+    }
+    
+    // Reset option selection
+    resetOptionSelection() {
+        const optionsContainer = document.getElementById('optionsContainer');
+        if (!optionsContainer) return;
+        
+        optionsContainer.querySelectorAll('.option-item-improved').forEach(item => {
+            item.classList.remove('selected-improved');
+            item.classList.remove('correct-improved');
+            item.classList.remove('incorrect-improved');
+        });
+        
+        if (!this.userTestAnswers[this.currentQuestionIndex]?.answered) {
+            delete this.userTestAnswers[this.currentQuestionIndex];
+        }
+    }
+    
+    // Show user's answer
+    showUserAnswer(userAnswer) {
+        const optionsContainer = document.getElementById('optionsContainer');
+        if (!optionsContainer) return;
+        
+        optionsContainer.querySelectorAll('.option-item-improved').forEach(item => {
+            const optionText = item.querySelector('.option-text-improved')?.textContent || '';
+            
+            if (optionText === userAnswer.selectedOption) {
+                item.classList.add('selected-improved');
+                const radioInput = item.querySelector('.option-input-hidden');
+                if (radioInput) radioInput.checked = true;
+                
+                if (userAnswer.answered) {
+                    if (userAnswer.correct) {
+                        item.classList.add('correct-improved');
+                    } else {
+                        item.classList.add('incorrect-improved');
+                        
+                        // Highlight correct answer
+                        optionsContainer.querySelectorAll('.option-item-improved').forEach(correctItem => {
+                            const correctOptionText = correctItem.querySelector('.option-text-improved')?.textContent || '';
+                            if (correctOptionText === userAnswer.correctAnswer) {
+                                correctItem.classList.add('correct-improved');
+                            }
+                        });
+                    }
+                }
+            }
+        });
+        
+        if (userAnswer.answered) {
+            this.showAnswerRevealSection();
+        }
+    }
+    
+    // Check answer
+    checkAnswer() {
+        const userAnswer = this.userTestAnswers[this.currentQuestionIndex];
+        if (!userAnswer || !userAnswer.selectedOption) {
+            this.showNotification('Please select an answer first!', 'warning');
+            return;
+        }
+        
+        const isCorrect = userAnswer.selectedOption === userAnswer.correctAnswer;
+        userAnswer.answered = true;
+        userAnswer.correct = isCorrect;
+        
+        this.showUserAnswer(userAnswer);
+        this.updateCounters();
+        this.updateTopProgressStats();
+        this.showAnswerRevealSection();
+        this.updateQuestionGrid();
+        this.showFeedbackNotification(isCorrect);
+        
+        if (isCorrect && this.currentQuestionIndex < this.currentCourseQuestions.length - 1) {
+            setTimeout(() => {
+                this.nextQuestion();
+            }, 2000);
+        }
+    }
+    
+    // Show answer reveal
+    showAnswerRevealSection() {
+        const answerRevealSection = document.getElementById('answerRevealSection');
+        if (!answerRevealSection) return;
+        
+        const question = this.currentCourseQuestions[this.currentQuestionIndex];
+        if (!question) return;
+        
+        let correctAnswer = '';
+        try {
+            if (question.correct_answer) {
+                if (Array.isArray(question.correct_answer)) {
+                    correctAnswer = question.correct_answer[0];
+                } else if (typeof question.correct_answer === 'string') {
+                    correctAnswer = question.correct_answer;
+                }
+            }
+        } catch (e) {
+            console.error('Error parsing correct answer:', e);
+        }
+        
+        const correctAnswerText = document.getElementById('correctAnswerText');
+        if (correctAnswerText) {
+            correctAnswerText.textContent = correctAnswer || 'Correct answer not available';
+        }
+        
+        const explanationText = document.getElementById('explanationText');
+        if (explanationText) {
+            explanationText.innerHTML = question.explanation || 
+                '<div class="no-explanation">No detailed explanation available. Please review the course material.</div>';
+        }
+        
+        answerRevealSection.style.display = 'block';
+    }
+    
+    // Show feedback
+    showFeedbackNotification(isCorrect) {
+        const notification = document.createElement('div');
+        notification.className = `feedback-notification ${isCorrect ? 'success' : 'error'}`;
+        notification.innerHTML = `
+            <i class="fas fa-${isCorrect ? 'check-circle' : 'times-circle'}"></i>
+            <span>${isCorrect ? 'Correct! Well done!' : 'Incorrect. Review the explanation.'}</span>
+        `;
+        
+        document.querySelector('.questions-main-container')?.appendChild(notification);
+        
+        setTimeout(() => {
+            notification.classList.add('fade-out');
+            setTimeout(() => notification.remove(), 500);
+        }, 3000);
+    }
+    
+    // Show notification
+    showNotification(message, type = 'info') {
+        const notification = document.createElement('div');
+        notification.className = `toast toast-${type}`;
+        notification.innerHTML = `
+            <i class="fas fa-${type === 'error' ? 'exclamation-circle' : 
+                               type === 'warning' ? 'exclamation-triangle' : 
+                               type === 'success' ? 'check-circle' : 'info-circle'}"></i>
+            <span>${message}</span>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+            notification.remove();
+        }, 3000);
+    }
+    
+    // Reset question
+    resetQuestion() {
+        const userAnswer = this.userTestAnswers[this.currentQuestionIndex];
+        if (userAnswer?.answered) {
+            delete this.userTestAnswers[this.currentQuestionIndex];
+        }
+        
+        this.loadCurrentInteractiveQuestion();
+        this.updateQuestionGrid();
+        this.updateTopProgressStats();
+    }
+    
+    // Show answer
+    showAnswer() {
+        const question = this.currentCourseQuestions[this.currentQuestionIndex];
+        if (!question) return;
+        
+        let correctAnswer = '';
+        try {
+            if (question.correct_answer) {
+                if (Array.isArray(question.correct_answer)) {
+                    correctAnswer = question.correct_answer[0];
+                } else if (typeof question.correct_answer === 'string') {
+                    correctAnswer = question.correct_answer;
+                }
+            }
+        } catch (e) {
+            console.error('Error parsing correct answer:', e);
+        }
+        
+        const optionsContainer = document.getElementById('optionsContainer');
+        if (optionsContainer) {
+            optionsContainer.querySelectorAll('.option-item-improved').forEach(item => {
+                const optionText = item.querySelector('.option-text-improved')?.textContent || '';
+                if (optionText === correctAnswer) {
+                    item.classList.add('correct-improved');
+                }
+            });
+        }
+        
+        this.showAnswerRevealSection();
+        
+        this.userTestAnswers[this.currentQuestionIndex] = {
+            ...this.userTestAnswers[this.currentQuestionIndex],
+            viewed: true
+        };
+    }
+    
+    // Mark for review
+    markForReview() {
+        const currentIndex = this.currentQuestionIndex;
+        const isMarked = this.userTestAnswers[currentIndex]?.marked || false;
+        
+        this.userTestAnswers[currentIndex] = {
+            ...this.userTestAnswers[currentIndex],
+            marked: !isMarked
+        };
+        
+        this.updateMarkButton();
+        this.updateQuestionGrid();
+        this.updateMiniDots();
+        this.updateTopProgressStats();
+        
+        const action = !isMarked ? 'marked for review' : 'unmarked';
+        this.showNotification(`Question ${currentIndex + 1} ${action}`, 'info');
+    }
+    
+    // Update mark button
+    updateMarkButton() {
+        const markBtn = document.getElementById('markBtn');
+        const markBtnText = document.getElementById('markBtnText');
+        if (!markBtn || !markBtnText) return;
+        
+        const isMarked = this.userTestAnswers[this.currentQuestionIndex]?.marked || false;
+        
+        if (isMarked) {
+            markBtn.classList.add('marked');
+            markBtnText.textContent = 'Unmark Review';
+        } else {
+            markBtn.classList.remove('marked');
+            markBtnText.textContent = 'Mark for Review';
+        }
+    }
+    
+    // Previous question
+    prevQuestion() {
+        if (this.currentQuestionIndex > 0) {
+            this.currentQuestionIndex--;
+            this.loadCurrentInteractiveQuestion();
+            this.updateProgressBar();
+            this.updateMiniDots();
+            this.updateTopProgressStats();
+        }
+    }
+    
+    // Next question
+    nextQuestion() {
+        if (this.currentQuestionIndex < this.currentCourseQuestions.length - 1) {
+            this.currentQuestionIndex++;
+            this.loadCurrentInteractiveQuestion();
+            this.updateProgressBar();
+            this.updateMiniDots();
+            this.updateTopProgressStats();
+        }
+    }
+    
+    // Go to question
+    goToQuestion(index) {
+        if (index >= 0 && index < this.currentCourseQuestions.length) {
+            this.currentQuestionIndex = index;
+            this.loadCurrentInteractiveQuestion();
+            this.updateProgressBar();
+            this.updateMiniDots();
+            this.updateTopProgressStats();
+        }
+    }
+    
+    // Jump to question
+    jumpToQuestion() {
+        const inputValue = prompt(`Enter question number (1-${this.currentCourseQuestions.length}):`);
+        if (!inputValue) return;
+        
+        const questionNum = parseInt(inputValue);
+        if (isNaN(questionNum) || questionNum < 1 || questionNum > this.currentCourseQuestions.length) {
+            this.showNotification(`Please enter a number between 1 and ${this.currentCourseQuestions.length}`, 'warning');
+            return;
+        }
+        
+        this.goToQuestion(questionNum - 1);
+    }
+    
+    // Finish practice
+    finishPractice() {
+        const answeredCount = Object.values(this.userTestAnswers).filter(a => a.answered).length;
+        const correctCount = Object.values(this.userTestAnswers).filter(a => a.answered && a.correct).length;
+        const accuracy = answeredCount > 0 ? Math.round((correctCount / answeredCount) * 100) : 0;
+        
+        const confirmFinish = confirm(`Finish practice session?\n\nAnswered: ${answeredCount}/${this.currentCourseQuestions.length}\nCorrect: ${correctCount}\nAccuracy: ${accuracy}%\n\nReturn to question bank?`);
+        
+        if (confirmFinish) {
+            this.loadQuestionBankCards();
+        }
+    }
+    
+    // Scroll questions
+    scrollQuestions(direction) {
+        const gridContainer = document.getElementById('questionGridContainer');
+        if (!gridContainer) return;
+        
+        const scrollAmount = 300;
+        const currentScroll = gridContainer.scrollLeft;
+        
+        if (direction === 'left') {
+            gridContainer.scrollLeft = currentScroll - scrollAmount;
+        } else {
+            gridContainer.scrollLeft = currentScroll + scrollAmount;
+        }
+    }
+    
+    // Update counters
+    updateCounters() {
+        const totalQuestions = this.currentCourseQuestions.length;
+        const answeredCount = Object.values(this.userTestAnswers).filter(a => a.answered).length;
+        const correctCount = Object.values(this.userTestAnswers).filter(a => a.answered && a.correct).length;
+        const incorrectCount = Object.values(this.userTestAnswers).filter(a => a.answered && !a.correct).length;
+        const markedCount = Object.values(this.userTestAnswers).filter(a => a.marked).length;
+        
+        // Update top counters
+        const currentQuestionCountEl = document.getElementById('currentQuestionCountTop');
+        const totalQuestionsEl = document.getElementById('totalQuestionsTop');
+        const answeredCountEl = document.getElementById('answeredCountTop');
+        const correctCountEl = document.getElementById('correctCountTop');
+        const accuracyEl = document.getElementById('accuracyTop');
+        const markedCountDetailEl = document.getElementById('markedCountDetail');
+        const completionPercentEl = document.getElementById('completionPercent');
+        
+        if (currentQuestionCountEl) currentQuestionCountEl.textContent = this.currentQuestionIndex + 1;
+        if (totalQuestionsEl) totalQuestionsEl.textContent = totalQuestions;
+        if (answeredCountEl) answeredCountEl.textContent = answeredCount;
+        if (correctCountEl) correctCountEl.textContent = correctCount;
+        if (markedCountDetailEl) markedCountDetailEl.textContent = markedCount;
+        
+        // Calculate accuracy
+        const accuracy = answeredCount > 0 ? Math.round((correctCount / answeredCount) * 100) : 0;
+        if (accuracyEl) {
+            accuracyEl.textContent = `${accuracy}%`;
+        }
+        
+        // Calculate completion
+        const completion = Math.round((answeredCount / totalQuestions) * 100);
+        if (completionPercentEl) {
+            completionPercentEl.textContent = `${completion}%`;
+        }
+    }
+    
+    // Update top progress stats
+    updateTopProgressStats() {
+        this.updateCounters();
+    }
+    
+    // Update navigation buttons
+    updateNavigationButtons() {
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const miniPrevBtn = document.getElementById('miniPrevBtn');
+        const miniNextBtn = document.getElementById('miniNextBtn');
+        
+        const isFirst = this.currentQuestionIndex === 0;
+        const isLast = this.currentQuestionIndex === this.currentCourseQuestions.length - 1;
+        
+        if (prevBtn) {
+            prevBtn.disabled = isFirst;
+        }
+        if (nextBtn) {
+            nextBtn.disabled = isLast;
+        }
+        if (miniPrevBtn) {
+            miniPrevBtn.disabled = isFirst;
+        }
+        if (miniNextBtn) {
+            miniNextBtn.disabled = isLast;
+        }
+    }
+    
+    // Update progress bar
+    updateProgressBar() {
+        const progressFill = document.getElementById('progressFill');
+        const progressPercent = document.getElementById('progressPercent');
+        
+        if (!progressFill || !progressPercent) return;
+        
+        const totalQuestions = this.currentCourseQuestions.length;
+        const progress = Math.round(((this.currentQuestionIndex + 1) / totalQuestions) * 100);
+        
+        progressFill.style.width = `${progress}%`;
+        progressPercent.textContent = `${progress}%`;
+    }
+    
+    // Update question grid
+    updateQuestionGrid() {
+        const questionGridContainer = document.getElementById('questionGridContainer');
+        if (!questionGridContainer) return;
+        
+        const totalQuestions = this.currentCourseQuestions.length;
+        let gridHtml = '';
+        
+        for (let i = 0; i < totalQuestions; i++) {
+            let questionClass = 'grid-question-number';
+            
+            if (i === this.currentQuestionIndex) {
+                questionClass += ' grid-current';
+            }
+            
+            const userAnswer = this.userTestAnswers[i];
+            if (userAnswer) {
+                if (userAnswer.answered) {
+                    questionClass += userAnswer.correct ? ' grid-correct' : ' grid-incorrect';
+                } else if (userAnswer.marked) {
+                    questionClass += ' grid-marked';
+                } else if (userAnswer.viewed) {
+                    questionClass += ' grid-viewed';
+                }
+            }
+            
+            gridHtml += `
+                <div class="${questionClass}" onclick="window.goToQuestion(${i})" 
+                     title="Question ${i + 1}${userAnswer?.answered ? ` - ${userAnswer.correct ? 'Correct' : 'Incorrect'}` : ''}">
+                    ${i + 1}
+                    ${userAnswer?.marked ? '<i class="fas fa-flag grid-flag"></i>' : ''}
+                </div>
+            `;
+        }
+        
+        questionGridContainer.innerHTML = gridHtml;
+        this.scrollToCurrentQuestion();
+    }
+    
+    // Scroll to current question
+    scrollToCurrentQuestion() {
+        const questionGridContainer = document.getElementById('questionGridContainer');
+        if (!questionGridContainer) return;
+        
+        const currentQuestionElement = questionGridContainer.querySelector('.grid-current');
+        if (currentQuestionElement) {
+            const containerWidth = questionGridContainer.clientWidth;
+            const elementOffset = currentQuestionElement.offsetLeft;
+            const elementWidth = currentQuestionElement.offsetWidth;
+            
+            questionGridContainer.scrollLeft = elementOffset - (containerWidth / 2) + (elementWidth / 2);
+        }
+    }
+    
+    // Highlight current question
+    highlightCurrentQuestionInGrid() {
+        const questionGridContainer = document.getElementById('questionGridContainer');
+        if (!questionGridContainer) return;
+        
+        questionGridContainer.querySelectorAll('.grid-question-number').forEach(el => {
+            el.classList.remove('grid-current');
+        });
+        
+        const currentQuestionElement = questionGridContainer.querySelector(`[onclick*="goToQuestion(${this.currentQuestionIndex})"]`);
+        if (currentQuestionElement) {
+            currentQuestionElement.classList.add('grid-current');
+        }
+    }
+    
+    // Update mini dots
+    updateMiniDots() {
+        const miniDotsContainer = document.getElementById('miniDotsContainer');
+        if (!miniDotsContainer) return;
+        
+        const totalQuestions = this.currentCourseQuestions.length;
+        miniDotsContainer.innerHTML = this.generateMiniDots(totalQuestions);
+    }
+    
+    // Generate mini dots
+    generateMiniDots(totalQuestions) {
+        let dotsHtml = '';
+        const maxDots = 5;
+        
+        let start = Math.max(0, this.currentQuestionIndex - 2);
+        let end = Math.min(totalQuestions - 1, start + maxDots - 1);
+        
+        if (end - start < maxDots - 1) {
+            start = Math.max(0, end - maxDots + 1);
+        }
+        
+        if (start > 0) {
+            dotsHtml += '<span class="mini-dot-ellipsis">...</span>';
+        }
+        
+        for (let i = start; i <= end; i++) {
+            let dotClass = 'mini-dot';
+            if (i === this.currentQuestionIndex) {
+                dotClass += ' mini-dot-active';
+            }
+            if (this.userTestAnswers[i]?.answered) {
+                dotClass += this.userTestAnswers[i]?.correct ? ' mini-dot-correct' : ' mini-dot-incorrect';
+            } else if (this.userTestAnswers[i]?.marked) {
+                dotClass += ' mini-dot-marked';
+            }
+            
+            dotsHtml += `<span class="${dotClass}" onclick="window.goToQuestion(${i})">${i + 1}</span>`;
+        }
+        
+        if (end < totalQuestions - 1) {
+            dotsHtml += '<span class="mini-dot-ellipsis">...</span>';
+        }
+        
+        return dotsHtml;
+    }
+    
+    // Clear search
+    clearQuestionBankSearch() {
+        if (this.studentQuestionBankSearch) {
+            this.studentQuestionBankSearch.value = '';
+            this.loadQuestionBankCards();
+        }
+    }
+    
+    // Show loading
+    showLoading() {
+        if (this.studentQuestionBankLoading) {
+            this.studentQuestionBankLoading.style.display = 'block';
+        }
+        if (this.studentQuestionBankContent) {
+            this.studentQuestionBankContent.innerHTML = `
+                <div class="loading-content">
+                    <div class="spinner-container">
+                        <div class="spinner"></div>
+                        <div class="spinner-ring"></div>
+                    </div>
+                    <div class="loading-text">Loading question bank...</div>
+                </div>
+            `;
+        }
+    }
+    
+    // Hide loading
+    hideLoading() {
+        if (this.studentQuestionBankLoading) {
+            this.studentQuestionBankLoading.style.display = 'none';
+        }
+    }
+    
+    // Show error
+    showError(message) {
+        if (this.studentQuestionBankContent) {
+            this.studentQuestionBankContent.innerHTML = `
+                <div class="error-state">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <h3>Failed to Load Question Bank</h3>
+                    <p>${message}</p>
+                    <div class="mt-2">
+                        <button onclick="window.loadQuestionBankCards()" class="btn btn-primary mr-2">
+                            <i class="fas fa-redo"></i> Try Again
+                        </button>
+                        <button onclick="window.clearQuestionBankSearch()" class="btn btn-secondary">
+                            <i class="fas fa-times"></i> Clear Search
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+    }
 }
 
-// Utility to safely escape HTML
-function escapeHtml(str) {
-    if (!str) return '';
-    return String(str)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-}
+// Global functions
+window.NurseIQModule = NurseIQModule;
+window.nurseiqModule = null;
 
-// *************************************************************************
-// *** GLOBAL EXPORTS ***
-// *************************************************************************
+window.initNurseIQ = async function() {
+    console.log('🚀 Starting NurseIQ...');
+    
+    if (document.readyState === 'loading') {
+        await new Promise(resolve => {
+            document.addEventListener('DOMContentLoaded', resolve);
+        });
+    }
+    
+    window.nurseiqModule = new NurseIQModule();
+    await window.nurseiqModule.initialize();
+    return window.nurseiqModule;
+};
 
-// Make functions globally available
-window.loadStudentMessagesAndAnnouncements = loadStudentMessagesAndAnnouncements;
-window.handleMessageSubmit = handleMessageSubmit;
-window.replyToMessage = replyToMessage;
-window.forwardMessage = forwardMessage;
-window.deleteMessage = deleteMessage;
-window.toggleMessageReadStatus = toggleMessageReadStatus;
-window.showFullMessage = showFullMessage;
-window.closeMessageModal = closeMessageModal;
-window.filterMessages = filterMessages;
-window.searchMessages = searchMessages;
-window.applyMessageTemplate = applyMessageTemplate;
-window.initializeMessagesSystem = initializeMessagesSystem;
-
-// Auto-initialize when DOM is ready
+// Auto-initialize
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeMessagesSystem);
+    document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(() => {
+            window.initNurseIQ().catch(console.error);
+        }, 1000);
+    });
 } else {
-    initializeMessagesSystem();
+    setTimeout(() => {
+        window.initNurseIQ().catch(console.error);
+    }, 1000);
 }
+
+// Global helper functions
+window.loadQuestionBankCards = function() {
+    if (window.nurseiqModule) {
+        window.nurseiqModule.loadQuestionBankCards();
+    } else {
+        window.initNurseIQ().then(() => {
+            window.nurseiqModule.loadQuestionBankCards();
+        }).catch(console.error);
+    }
+};
+
+window.clearQuestionBankSearch = function() {
+    if (window.nurseiqModule) {
+        window.nurseiqModule.clearQuestionBankSearch();
+    }
+};
+
+window.startCourseTest = function(courseId, courseName) {
+    if (window.nurseiqModule) {
+        window.nurseiqModule.startCourseTest(courseId, courseName);
+    }
+};
+
+window.prevQuestion = function() {
+    if (window.nurseiqModule) {
+        window.nurseiqModule.prevQuestion();
+    }
+};
+
+window.nextQuestion = function() {
+    if (window.nurseiqModule) {
+        window.nurseiqModule.nextQuestion();
+    }
+};
+
+window.goToQuestion = function(index) {
+    if (window.nurseiqModule) {
+        window.nurseiqModule.goToQuestion(index);
+    }
+};
+
+window.jumpToQuestion = function() {
+    if (window.nurseiqModule) {
+        window.nurseiqModule.jumpToQuestion();
+    }
+};
+
+window.checkAnswer = function() {
+    if (window.nurseiqModule) {
+        window.nurseiqModule.checkAnswer();
+    }
+};
+
+window.resetQuestion = function() {
+    if (window.nurseiqModule) {
+        window.nurseiqModule.resetQuestion();
+    }
+};
+
+window.showAnswer = function() {
+    if (window.nurseiqModule) {
+        window.nurseiqModule.showAnswer();
+    }
+};
+
+window.markForReview = function() {
+    if (window.nurseiqModule) {
+        window.nurseiqModule.markForReview();
+    }
+};
+
+window.finishPractice = function() {
+    if (window.nurseiqModule) {
+        window.nurseiqModule.finishPractice();
+    }
+};
+
+window.scrollQuestions = function(direction) {
+    if (window.nurseiqModule) {
+        window.nurseiqModule.scrollQuestions(direction);
+    }
+};
+
+console.log('✅ NurseIQ module loaded (No Inline Styles)');
