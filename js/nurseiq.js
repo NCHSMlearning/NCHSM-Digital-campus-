@@ -1,4 +1,4 @@
-// js/nurseiq.js - COMPLETE REFACTORED VERSION (No Inline Styles)
+// js/nurseiq.js - FULLY UPDATED VERSION (Fixes Based on Screenshot Issues)
 class NurseIQModule {
     constructor() {
         this.userId = null;
@@ -453,7 +453,7 @@ class NurseIQModule {
         }
     }
     
-    // Display interactive questions
+    // Display interactive questions - UPDATED FIXED VERSION
     displayInteractiveQuestions(courseName, questions) {
         if (!this.studentQuestionBankContent) return;
         
@@ -586,7 +586,7 @@ class NurseIQModule {
                         </div>
                     </div>
                     
-                    <!-- Stats Panel on Right -->
+                    <!-- Stats Panel on Right - UPDATED: Removed "Detailed Progress" -->
                     <div class="stats-panel">
                         <!-- Question Navigator -->
                         <div class="horizontal-nav-card">
@@ -611,7 +611,7 @@ class NurseIQModule {
                             </div>
                         </div>
                         
-                        <!-- Study Tips -->
+                        <!-- Study Tips - FIXED CONTENT -->
                         <div class="tips-card">
                             <h3 class="tips-title">
                                 <i class="fas fa-graduation-cap"></i> Study Tips
@@ -624,31 +624,11 @@ class NurseIQModule {
                             </ul>
                         </div>
                         
-                        <!-- Progress Summary -->
-                        <div class="progress-summary-card">
-                            <h3 class="stats-title">
-                                <i class="fas fa-chart-line"></i> Detailed Progress
-                            </h3>
-                            
-                            <div class="progress-details">
-                                <div class="progress-detail-item">
-                                    <span class="detail-label">Total Questions:</span>
-                                    <span class="detail-value">${questions.length}</span>
-                                </div>
-                                <div class="progress-detail-item">
-                                    <span class="detail-label">Marked for Review:</span>
-                                    <span class="detail-value" id="markedCountDetail">0</span>
-                                </div>
-                                <div class="progress-detail-item">
-                                    <span class="detail-label">Completion:</span>
-                                    <span class="detail-value" id="completionPercent">0%</span>
-                                </div>
-                            </div>
-                        </div>
+                        <!-- PROGRESS SUMMARY REMOVED - Was causing confusion -->
                     </div>
                 </div>
                 
-                <!-- Bottom Navigation -->
+                <!-- Bottom Navigation - FIXED: Changed "enrolled" to "complete" -->
                 <div class="bottom-navigation-bar">
                     <div class="nav-left">
                         <button onclick="window.prevQuestion()" id="prevBtn" class="nav-btn prev-nav-btn">
@@ -1168,7 +1148,6 @@ class NurseIQModule {
         const totalQuestions = this.currentCourseQuestions.length;
         const answeredCount = Object.values(this.userTestAnswers).filter(a => a.answered).length;
         const correctCount = Object.values(this.userTestAnswers).filter(a => a.answered && a.correct).length;
-        const incorrectCount = Object.values(this.userTestAnswers).filter(a => a.answered && !a.correct).length;
         const markedCount = Object.values(this.userTestAnswers).filter(a => a.marked).length;
         
         // Update top counters
@@ -1177,25 +1156,16 @@ class NurseIQModule {
         const answeredCountEl = document.getElementById('answeredCountTop');
         const correctCountEl = document.getElementById('correctCountTop');
         const accuracyEl = document.getElementById('accuracyTop');
-        const markedCountDetailEl = document.getElementById('markedCountDetail');
-        const completionPercentEl = document.getElementById('completionPercent');
         
         if (currentQuestionCountEl) currentQuestionCountEl.textContent = this.currentQuestionIndex + 1;
         if (totalQuestionsEl) totalQuestionsEl.textContent = totalQuestions;
         if (answeredCountEl) answeredCountEl.textContent = answeredCount;
         if (correctCountEl) correctCountEl.textContent = correctCount;
-        if (markedCountDetailEl) markedCountDetailEl.textContent = markedCount;
         
         // Calculate accuracy
         const accuracy = answeredCount > 0 ? Math.round((correctCount / answeredCount) * 100) : 0;
         if (accuracyEl) {
             accuracyEl.textContent = `${accuracy}%`;
-        }
-        
-        // Calculate completion
-        const completion = Math.round((answeredCount / totalQuestions) * 100);
-        if (completionPercentEl) {
-            completionPercentEl.textContent = `${completion}%`;
         }
     }
     
@@ -1216,15 +1186,19 @@ class NurseIQModule {
         
         if (prevBtn) {
             prevBtn.disabled = isFirst;
+            prevBtn.classList.toggle('disabled', isFirst);
         }
         if (nextBtn) {
             nextBtn.disabled = isLast;
+            nextBtn.classList.toggle('disabled', isLast);
         }
         if (miniPrevBtn) {
             miniPrevBtn.disabled = isFirst;
+            miniPrevBtn.classList.toggle('disabled', isFirst);
         }
         if (miniNextBtn) {
             miniNextBtn.disabled = isLast;
+            miniNextBtn.classList.toggle('disabled', isLast);
         }
     }
     
@@ -1526,4 +1500,4 @@ window.scrollQuestions = function(direction) {
     }
 };
 
-console.log('✅ NurseIQ module loaded (No Inline Styles)');
+console.log('✅ NurseIQ module loaded (Updated - Fixed Issues)');
