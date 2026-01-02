@@ -1,4 +1,4 @@
-// js/nurseiq.js - COMPLETE FIXED VERSION
+// js/nurseiq.js - FIXED with horizontal navigation in main panel
 class NurseIQModule {
     constructor() {
         this.userId = null;
@@ -452,7 +452,7 @@ class NurseIQModule {
         }
     }
     
-    // Display interactive questions - FIXED VERSION
+    // Display interactive questions - FIXED with horizontal navigation in main panel
     displayInteractiveQuestions(courseName, questions) {
         if (!this.studentQuestionBankContent) return;
         
@@ -460,7 +460,7 @@ class NurseIQModule {
         
         let html = `
             <div class="interactive-questions-container">
-                <!-- Top Header Bar with Progress -->
+                <!-- Top Header Bar -->
                 <div class="questions-header-bar" style="background: ${courseColor};">
                     <div class="header-content">
                         <button onclick="window.loadQuestionBankCards()" class="header-back-btn">
@@ -470,28 +470,6 @@ class NurseIQModule {
                         <div class="header-course-info">
                             <h2 class="course-name">${courseName}</h2>
                             <p class="practice-mode">Interactive Q&A Practice Mode</p>
-                        </div>
-                        
-                        <!-- Progress Stats at Top -->
-                        <div class="header-progress-stats">
-                            <div class="progress-stat-top">
-                                <div class="progress-label-top">Question</div>
-                                <div class="progress-value-top">
-                                    <span id="currentQuestionCountTop">1</span>/<span id="totalQuestionsTop">${questions.length}</span>
-                                </div>
-                            </div>
-                            <div class="progress-stat-top">
-                                <div class="progress-label-top">Answered</div>
-                                <div class="progress-value-top" id="answeredCountTop">0</div>
-                            </div>
-                            <div class="progress-stat-top">
-                                <div class="progress-label-top">Correct</div>
-                                <div class="progress-value-top" id="correctCountTop">0</div>
-                            </div>
-                            <div class="progress-stat-top">
-                                <div class="progress-label-top">Accuracy</div>
-                                <div class="progress-value-top" id="accuracyTop">0%</div>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -507,19 +485,31 @@ class NurseIQModule {
                                     Q${this.currentQuestionIndex + 1}
                                 </span>
                                 <span class="question-type">Multiple Choice</span>
-                                <span class="difficulty-badge" id="difficultyBadge">Medium</span>
+                                <div class="difficulty-container">
+                                    <span class="difficulty-label">Difficulty:</span>
+                                    <span class="difficulty-badge-large" id="difficultyBadge">MEDIUM</span>
+                                </div>
                             </div>
-                            
-                            <div class="mini-navigation">
-                                <button onclick="window.prevQuestion()" class="mini-nav-btn" id="miniPrevBtn" ${this.currentQuestionIndex === 0 ? 'disabled' : ''}>
+                        </div>
+                        
+                        <!-- HORIZONTAL QUESTION NAVIGATOR - IN MAIN PANEL -->
+                        <div class="horizontal-navigator-main">
+                            <div class="nav-controls">
+                                <button onclick="window.prevQuestion()" class="nav-arrow-btn" id="prevArrowBtn" ${this.currentQuestionIndex === 0 ? 'disabled' : ''}>
                                     <i class="fas fa-chevron-left"></i>
                                 </button>
-                                <div class="mini-dots" id="miniDotsContainer">
-                                    ${this.generateMiniDots(questions.length)}
+                                
+                                <div class="horizontal-dots-container" id="horizontalDots">
+                                    ${this.generateHorizontalDots(questions.length)}
                                 </div>
-                                <button onclick="window.nextQuestion()" class="mini-nav-btn" id="miniNextBtn" ${this.currentQuestionIndex === questions.length - 1 ? 'disabled' : ''}>
+                                
+                                <button onclick="window.nextQuestion()" class="nav-arrow-btn" id="nextArrowBtn" ${this.currentQuestionIndex === questions.length - 1 ? 'disabled' : ''}>
                                     <i class="fas fa-chevron-right"></i>
                                 </button>
+                            </div>
+                            
+                            <div class="nav-info">
+                                <span class="current-question">Question <strong id="currentQNum">${this.currentQuestionIndex + 1}</strong> of <strong>${questions.length}</strong></span>
                             </div>
                         </div>
                         
@@ -530,7 +520,7 @@ class NurseIQModule {
                             </div>
                         </div>
                         
-                        <!-- Answer Options - IMPROVED -->
+                        <!-- Answer Options -->
                         <div class="options-panel">
                             <h3 class="options-title"><i class="fas fa-list-ol"></i> Select Your Answer:</h3>
                             <div id="optionsContainer" class="options-container-improved">
@@ -589,26 +579,52 @@ class NurseIQModule {
                     
                     <!-- Stats Panel on Right -->
                     <div class="stats-panel">
-                        <!-- Question Navigator -->
-                        <div class="horizontal-nav-card">
-                            <h3 class="nav-title">
-                                <i class="fas fa-list-ol"></i> Questions Navigator
+                        <!-- Progress Stats Card -->
+                        <div class="progress-stats-card">
+                            <h3 class="stats-title">
+                                <i class="fas fa-chart-bar"></i> Your Progress
                             </h3>
                             
-                            <div class="horizontal-question-grid" id="questionGridContainer">
-                                <!-- Question numbers loaded here -->
-                            </div>
-                            
-                            <div class="grid-controls">
-                                <button onclick="window.scrollQuestions('left')" class="grid-scroll-btn">
-                                    <i class="fas fa-chevron-left"></i>
-                                </button>
-                                <button onclick="window.jumpToQuestion()" class="grid-jump-btn">
-                                    Jump to Question
-                                </button>
-                                <button onclick="window.scrollQuestions('right')" class="grid-scroll-btn">
-                                    <i class="fas fa-chevron-right"></i>
-                                </button>
+                            <div class="progress-stats-grid">
+                                <div class="progress-stat-item">
+                                    <div class="stat-icon answered-icon">
+                                        <i class="fas fa-check-circle"></i>
+                                    </div>
+                                    <div class="stat-details">
+                                        <div class="stat-value" id="answeredCountStat">0</div>
+                                        <div class="stat-label">Answered</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="progress-stat-item">
+                                    <div class="stat-icon correct-icon">
+                                        <i class="fas fa-check-double"></i>
+                                    </div>
+                                    <div class="stat-details">
+                                        <div class="stat-value" id="correctCountStat">0</div>
+                                        <div class="stat-label">Correct</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="progress-stat-item">
+                                    <div class="stat-icon marked-icon">
+                                        <i class="fas fa-flag"></i>
+                                    </div>
+                                    <div class="stat-details">
+                                        <div class="stat-value" id="markedCountStat">0</div>
+                                        <div class="stat-label">Marked</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="progress-stat-item">
+                                    <div class="stat-icon accuracy-icon">
+                                        <i class="fas fa-percentage"></i>
+                                    </div>
+                                    <div class="stat-details">
+                                        <div class="stat-value" id="accuracyStat">0%</div>
+                                        <div class="stat-label">Accuracy</div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         
@@ -623,28 +639,6 @@ class NurseIQModule {
                                 <li><i class="fas fa-check"></i> Mark difficult questions</li>
                                 <li><i class="fas fa-check"></i> Aim for 80%+ accuracy</li>
                             </ul>
-                        </div>
-                        
-                        <!-- Progress Summary -->
-                        <div class="progress-summary-card">
-                            <h3 class="stats-title">
-                                <i class="fas fa-chart-line"></i> Detailed Progress
-                            </h3>
-                            
-                            <div class="progress-details">
-                                <div class="progress-detail-item">
-                                    <span class="detail-label">Total Questions:</span>
-                                    <span class="detail-value">${questions.length}</span>
-                                </div>
-                                <div class="progress-detail-item">
-                                    <span class="detail-label">Marked for Review:</span>
-                                    <span class="detail-value" id="markedCountDetail">0</span>
-                                </div>
-                                <div class="progress-detail-item">
-                                    <span class="detail-label">Completion:</span>
-                                    <span class="detail-value" id="completionPercent">0%</span>
-                                </div>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -684,10 +678,9 @@ class NurseIQModule {
         
         setTimeout(() => {
             this.loadCurrentInteractiveQuestion();
-            this.updateQuestionGrid();
+            this.updateProgressStats();
             this.updateProgressBar();
-            this.updateMiniDots();
-            this.updateTopProgressStats(); // Added
+            this.updateHorizontalDots();
         }, 100);
     }
     
@@ -702,31 +695,25 @@ class NurseIQModule {
             questionText.innerHTML = question.question_text || 'Question text not available';
         }
         
-        // Update difficulty
+        // Update difficulty - ALWAYS SHOW "MEDIUM" IN CAPS
         const difficultyBadge = document.getElementById('difficultyBadge');
         if (difficultyBadge) {
-            difficultyBadge.textContent = question.difficulty?.toUpperCase() || 'MEDIUM';
-            difficultyBadge.className = 'difficulty-badge';
-            difficultyBadge.classList.add(`difficulty-${question.difficulty || 'medium'}`);
-            
-            const colors = {
-                easy: '#10B981',
-                medium: '#F59E0B',
-                hard: '#EF4444'
-            };
-            difficultyBadge.style.backgroundColor = colors[question.difficulty] || colors.medium;
+            difficultyBadge.textContent = 'MEDIUM';
+            difficultyBadge.className = 'difficulty-badge-large';
+            difficultyBadge.style.backgroundColor = '#F59E0B'; // Orange for medium
         }
         
-        // Load answer options with better display
+        // Load answer options
         this.loadAnswerOptionsImproved(question);
         
         // Update counters
-        this.updateCounters();
-        this.updateTopProgressStats(); // Added
+        this.updateProgressStats();
+        this.updateCurrentQuestionNumber();
         
         // Update navigation
         this.updateNavigationButtons();
         this.updateMarkButton();
+        this.updateHorizontalDots();
         
         // Hide answer section
         const answerRevealSection = document.getElementById('answerRevealSection');
@@ -744,9 +731,6 @@ class NurseIQModule {
         if (userAnswer?.answered) {
             this.showUserAnswer(userAnswer);
         }
-        
-        // Highlight in grid
-        this.highlightCurrentQuestionInGrid();
     }
     
     // Load answer options with better display
@@ -919,10 +903,8 @@ class NurseIQModule {
         userAnswer.correct = isCorrect;
         
         this.showUserAnswer(userAnswer);
-        this.updateCounters();
-        this.updateTopProgressStats(); // Added
+        this.updateProgressStats();
         this.showAnswerRevealSection();
-        this.updateQuestionGrid();
         this.showFeedbackNotification(isCorrect);
         
         if (isCorrect && this.currentQuestionIndex < this.currentCourseQuestions.length - 1) {
@@ -1011,8 +993,7 @@ class NurseIQModule {
         }
         
         this.loadCurrentInteractiveQuestion();
-        this.updateQuestionGrid();
-        this.updateTopProgressStats(); // Added
+        this.updateProgressStats();
     }
     
     // Show answer
@@ -1062,9 +1043,8 @@ class NurseIQModule {
         };
         
         this.updateMarkButton();
-        this.updateQuestionGrid();
-        this.updateMiniDots();
-        this.updateTopProgressStats(); // Added
+        this.updateProgressStats();
+        this.updateHorizontalDots();
         
         const action = !isMarked ? 'marked for review' : 'unmarked';
         this.showNotification(`Question ${currentIndex + 1} ${action}`, 'info');
@@ -1095,8 +1075,7 @@ class NurseIQModule {
             this.currentQuestionIndex--;
             this.loadCurrentInteractiveQuestion();
             this.updateProgressBar();
-            this.updateMiniDots();
-            this.updateTopProgressStats(); // Added
+            this.updateHorizontalDots();
         }
     }
     
@@ -1106,8 +1085,7 @@ class NurseIQModule {
             this.currentQuestionIndex++;
             this.loadCurrentInteractiveQuestion();
             this.updateProgressBar();
-            this.updateMiniDots();
-            this.updateTopProgressStats(); // Added
+            this.updateHorizontalDots();
         }
     }
     
@@ -1117,8 +1095,7 @@ class NurseIQModule {
             this.currentQuestionIndex = index;
             this.loadCurrentInteractiveQuestion();
             this.updateProgressBar();
-            this.updateMiniDots();
-            this.updateTopProgressStats(); // Added
+            this.updateHorizontalDots();
         }
     }
     
@@ -1149,72 +1126,155 @@ class NurseIQModule {
         }
     }
     
-    // Scroll questions
-    scrollQuestions(direction) {
-        const gridContainer = document.getElementById('questionGridContainer');
-        if (!gridContainer) return;
+    // Generate horizontal dots - FIXED to show ...34567... format
+    generateHorizontalDots(totalQuestions) {
+        let dotsHtml = '';
+        const current = this.currentQuestionIndex + 1;
+        const maxVisible = 5; // Show 5 numbers max
         
-        const scrollAmount = 300;
-        const currentScroll = gridContainer.scrollLeft;
-        
-        if (direction === 'left') {
-            gridContainer.scrollLeft = currentScroll - scrollAmount;
+        if (totalQuestions <= maxVisible) {
+            // Show all numbers if total is small
+            for (let i = 1; i <= totalQuestions; i++) {
+                const dotClass = this.getDotClass(i);
+                dotsHtml += `<span class="${dotClass}" onclick="window.goToQuestion(${i-1})">${i}</span>`;
+            }
         } else {
-            gridContainer.scrollLeft = currentScroll + scrollAmount;
+            // Show ...34567... format
+            let start = Math.max(2, current - 1);
+            let end = Math.min(totalQuestions - 1, current + 1);
+            
+            // Adjust to show exactly maxVisible numbers
+            if (end - start + 1 < maxVisible) {
+                if (start === 2) {
+                    end = Math.min(totalQuestions - 1, start + maxVisible - 1);
+                } else if (end === totalQuestions - 1) {
+                    start = Math.max(2, end - maxVisible + 1);
+                }
+            }
+            
+            // First number
+            const firstClass = this.getDotClass(1);
+            dotsHtml += `<span class="${firstClass}" onclick="window.goToQuestion(0)">1</span>`;
+            
+            // Ellipsis if needed
+            if (start > 2) {
+                dotsHtml += '<span class="dot-ellipsis">...</span>';
+            }
+            
+            // Middle numbers (e.g., 3,4,5,6,7)
+            for (let i = start; i <= end; i++) {
+                const dotClass = this.getDotClass(i);
+                dotsHtml += `<span class="${dotClass}" onclick="window.goToQuestion(${i-1})">${i}</span>`;
+            }
+            
+            // Ellipsis if needed
+            if (end < totalQuestions - 1) {
+                dotsHtml += '<span class="dot-ellipsis">...</span>';
+            }
+            
+            // Last number
+            const lastClass = this.getDotClass(totalQuestions);
+            dotsHtml += `<span class="${lastClass}" onclick="window.goToQuestion(${totalQuestions-1})">${totalQuestions}</span>`;
+        }
+        
+        return dotsHtml;
+    }
+    
+    // Get dot class for styling
+    getDotClass(questionNumber) {
+        const index = questionNumber - 1;
+        let dotClass = 'horizontal-dot';
+        
+        if (questionNumber === this.currentQuestionIndex + 1) {
+            dotClass += ' dot-active';
+        }
+        
+        const userAnswer = this.userTestAnswers[index];
+        if (userAnswer) {
+            if (userAnswer.answered) {
+                dotClass += userAnswer.correct ? ' dot-correct' : ' dot-incorrect';
+            } else if (userAnswer.marked) {
+                dotClass += ' dot-marked';
+            }
+        }
+        
+        return dotClass;
+    }
+    
+    // Update horizontal dots
+    updateHorizontalDots() {
+        const horizontalDots = document.getElementById('horizontalDots');
+        if (!horizontalDots) return;
+        
+        const totalQuestions = this.currentCourseQuestions.length;
+        horizontalDots.innerHTML = this.generateHorizontalDots(totalQuestions);
+        
+        // Update current question number
+        this.updateCurrentQuestionNumber();
+        
+        // Update arrow buttons
+        this.updateArrowButtons();
+    }
+    
+    // Update current question number display
+    updateCurrentQuestionNumber() {
+        const currentQNum = document.getElementById('currentQNum');
+        if (currentQNum) {
+            currentQNum.textContent = this.currentQuestionIndex + 1;
         }
     }
     
-    // Update counters
-    updateCounters() {
+    // Update arrow buttons
+    updateArrowButtons() {
+        const prevArrowBtn = document.getElementById('prevArrowBtn');
+        const nextArrowBtn = document.getElementById('nextArrowBtn');
+        
+        const isFirst = this.currentQuestionIndex === 0;
+        const isLast = this.currentQuestionIndex === this.currentCourseQuestions.length - 1;
+        
+        if (prevArrowBtn) {
+            prevArrowBtn.disabled = isFirst;
+            prevArrowBtn.style.opacity = isFirst ? '0.5' : '1';
+        }
+        if (nextArrowBtn) {
+            nextArrowBtn.disabled = isLast;
+            nextArrowBtn.style.opacity = isLast ? '0.5' : '1';
+        }
+    }
+    
+    // Update progress stats
+    updateProgressStats() {
         const totalQuestions = this.currentCourseQuestions.length;
         const answeredCount = Object.values(this.userTestAnswers).filter(a => a.answered).length;
         const correctCount = Object.values(this.userTestAnswers).filter(a => a.answered && a.correct).length;
-        const incorrectCount = Object.values(this.userTestAnswers).filter(a => a.answered && !a.correct).length;
         const markedCount = Object.values(this.userTestAnswers).filter(a => a.marked).length;
-        
-        // Update top counters
-        const currentQuestionCountEl = document.getElementById('currentQuestionCountTop');
-        const totalQuestionsEl = document.getElementById('totalQuestionsTop');
-        const answeredCountEl = document.getElementById('answeredCountTop');
-        const correctCountEl = document.getElementById('correctCountTop');
-        const accuracyEl = document.getElementById('accuracyTop');
-        const markedCountDetailEl = document.getElementById('markedCountDetail');
-        const completionPercentEl = document.getElementById('completionPercent');
-        
-        if (currentQuestionCountEl) currentQuestionCountEl.textContent = this.currentQuestionIndex + 1;
-        if (totalQuestionsEl) totalQuestionsEl.textContent = totalQuestions;
-        if (answeredCountEl) answeredCountEl.textContent = answeredCount;
-        if (correctCountEl) correctCountEl.textContent = correctCount;
-        if (markedCountDetailEl) markedCountDetailEl.textContent = markedCount;
         
         // Calculate accuracy
         const accuracy = answeredCount > 0 ? Math.round((correctCount / answeredCount) * 100) : 0;
-        if (accuracyEl) {
-            accuracyEl.textContent = `${accuracy}%`;
-            accuracyEl.style.color = accuracy >= 80 ? '#10B981' : 
-                                    accuracy >= 60 ? '#F59E0B' : '#EF4444';
+        
+        // Update stats in sidebar
+        const answeredCountStat = document.getElementById('answeredCountStat');
+        const correctCountStat = document.getElementById('correctCountStat');
+        const markedCountStat = document.getElementById('markedCountStat');
+        const accuracyStat = document.getElementById('accuracyStat');
+        
+        if (answeredCountStat) answeredCountStat.textContent = answeredCount;
+        if (correctCountStat) correctCountStat.textContent = correctCount;
+        if (markedCountStat) markedCountStat.textContent = markedCount;
+        if (accuracyStat) {
+            accuracyStat.textContent = `${accuracy}%`;
+            accuracyStat.style.color = accuracy >= 80 ? '#10B981' : 
+                                      accuracy >= 60 ? '#F59E0B' : '#EF4444';
         }
         
-        // Calculate completion
-        const completion = Math.round((answeredCount / totalQuestions) * 100);
-        if (completionPercentEl) {
-            completionPercentEl.textContent = `${completion}%`;
-            completionPercentEl.style.color = completion >= 80 ? '#10B981' : 
-                                            completion >= 50 ? '#F59E0B' : '#EF4444';
-        }
-    }
-    
-    // Update top progress stats
-    updateTopProgressStats() {
-        this.updateCounters();
+        // Update bottom navigation buttons
+        this.updateNavigationButtons();
     }
     
     // Update navigation buttons
     updateNavigationButtons() {
         const prevBtn = document.getElementById('prevBtn');
         const nextBtn = document.getElementById('nextBtn');
-        const miniPrevBtn = document.getElementById('miniPrevBtn');
-        const miniNextBtn = document.getElementById('miniNextBtn');
         
         const isFirst = this.currentQuestionIndex === 0;
         const isLast = this.currentQuestionIndex === this.currentCourseQuestions.length - 1;
@@ -1226,14 +1286,6 @@ class NurseIQModule {
         if (nextBtn) {
             nextBtn.disabled = isLast;
             nextBtn.style.opacity = isLast ? '0.5' : '1';
-        }
-        if (miniPrevBtn) {
-            miniPrevBtn.disabled = isFirst;
-            miniPrevBtn.style.opacity = isFirst ? '0.5' : '1';
-        }
-        if (miniNextBtn) {
-            miniNextBtn.disabled = isLast;
-            miniNextBtn.style.opacity = isLast ? '0.5' : '1';
         }
     }
     
@@ -1249,121 +1301,6 @@ class NurseIQModule {
         
         progressFill.style.width = `${progress}%`;
         progressPercent.textContent = `${progress}%`;
-    }
-    
-    // Update question grid
-    updateQuestionGrid() {
-        const questionGridContainer = document.getElementById('questionGridContainer');
-        if (!questionGridContainer) return;
-        
-        const totalQuestions = this.currentCourseQuestions.length;
-        let gridHtml = '';
-        
-        for (let i = 0; i < totalQuestions; i++) {
-            let questionClass = 'grid-question-number';
-            
-            if (i === this.currentQuestionIndex) {
-                questionClass += ' grid-current';
-            }
-            
-            const userAnswer = this.userTestAnswers[i];
-            if (userAnswer) {
-                if (userAnswer.answered) {
-                    questionClass += userAnswer.correct ? ' grid-correct' : ' grid-incorrect';
-                } else if (userAnswer.marked) {
-                    questionClass += ' grid-marked';
-                } else if (userAnswer.viewed) {
-                    questionClass += ' grid-viewed';
-                }
-            }
-            
-            gridHtml += `
-                <div class="${questionClass}" onclick="window.goToQuestion(${i})" 
-                     title="Question ${i + 1}${userAnswer?.answered ? ` - ${userAnswer.correct ? 'Correct' : 'Incorrect'}` : ''}">
-                    ${i + 1}
-                    ${userAnswer?.marked ? '<i class="fas fa-flag grid-flag"></i>' : ''}
-                </div>
-            `;
-        }
-        
-        questionGridContainer.innerHTML = gridHtml;
-        this.scrollToCurrentQuestion();
-    }
-    
-    // Scroll to current question
-    scrollToCurrentQuestion() {
-        const questionGridContainer = document.getElementById('questionGridContainer');
-        if (!questionGridContainer) return;
-        
-        const currentQuestionElement = questionGridContainer.querySelector('.grid-current');
-        if (currentQuestionElement) {
-            const containerWidth = questionGridContainer.clientWidth;
-            const elementOffset = currentQuestionElement.offsetLeft;
-            const elementWidth = currentQuestionElement.offsetWidth;
-            
-            questionGridContainer.scrollLeft = elementOffset - (containerWidth / 2) + (elementWidth / 2);
-        }
-    }
-    
-    // Highlight current question
-    highlightCurrentQuestionInGrid() {
-        const questionGridContainer = document.getElementById('questionGridContainer');
-        if (!questionGridContainer) return;
-        
-        questionGridContainer.querySelectorAll('.grid-question-number').forEach(el => {
-            el.classList.remove('grid-current');
-        });
-        
-        const currentQuestionElement = questionGridContainer.querySelector(`[onclick*="goToQuestion(${this.currentQuestionIndex})"]`);
-        if (currentQuestionElement) {
-            currentQuestionElement.classList.add('grid-current');
-        }
-    }
-    
-    // Update mini dots
-    updateMiniDots() {
-        const miniDotsContainer = document.getElementById('miniDotsContainer');
-        if (!miniDotsContainer) return;
-        
-        const totalQuestions = this.currentCourseQuestions.length;
-        miniDotsContainer.innerHTML = this.generateMiniDots(totalQuestions);
-    }
-    
-    // Generate mini dots
-    generateMiniDots(totalQuestions) {
-        let dotsHtml = '';
-        const maxDots = 5;
-        
-        let start = Math.max(0, this.currentQuestionIndex - 2);
-        let end = Math.min(totalQuestions - 1, start + maxDots - 1);
-        
-        if (end - start < maxDots - 1) {
-            start = Math.max(0, end - maxDots + 1);
-        }
-        
-        if (start > 0) {
-            dotsHtml += '<span class="mini-dot-ellipsis">...</span>';
-        }
-        
-        for (let i = start; i <= end; i++) {
-            let dotClass = 'mini-dot';
-            if (i === this.currentQuestionIndex) {
-                dotClass += ' mini-dot-active';
-            }
-            if (this.userTestAnswers[i]?.answered) {
-                dotClass += this.userTestAnswers[i]?.correct ? ' mini-dot-correct' : ' mini-dot-incorrect';
-            } else if (this.userTestAnswers[i]?.marked) {
-                dotClass += ' mini-dot-marked';
-            }
-            
-            dotsHtml += `<span class="${dotClass}" onclick="window.goToQuestion(${i})">${i + 1}</span>`;
-        }
-        
-        if (end < totalQuestions - 1) {
-            dotsHtml += '<span class="mini-dot-ellipsis">...</span>';
-        }
-        
-        return dotsHtml;
     }
     
     // Clear search
@@ -1490,12 +1427,6 @@ window.goToQuestion = function(index) {
     }
 };
 
-window.jumpToQuestion = function() {
-    if (window.nurseiqModule) {
-        window.nurseiqModule.jumpToQuestion();
-    }
-};
-
 window.checkAnswer = function() {
     if (window.nurseiqModule) {
         window.nurseiqModule.checkAnswer();
@@ -1526,326 +1457,272 @@ window.finishPractice = function() {
     }
 };
 
-window.scrollQuestions = function(direction) {
-    if (window.nurseiqModule) {
-        window.nurseiqModule.scrollQuestions(direction);
-    }
-};
-
-// Add improved CSS
-const improvedStyles = document.createElement('style');
-improvedStyles.textContent = `
-    /* Progress at Top */
-    .header-progress-stats {
-        display: flex;
-        gap: 20px;
-        align-items: center;
-    }
-    
-    .progress-stat-top {
-        text-align: center;
-        min-width: 80px;
-    }
-    
-    .progress-label-top {
-        font-size: 12px;
-        color: rgba(255, 255, 255, 0.8);
-        font-weight: 500;
-        margin-bottom: 4px;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-    
-    .progress-value-top {
-        font-size: 20px;
-        font-weight: 700;
-        color: white;
-        background: rgba(255, 255, 255, 0.15);
-        padding: 6px 12px;
-        border-radius: 8px;
-        min-width: 60px;
-        display: inline-block;
-    }
-    
-    /* Improved Options Display */
-    .options-container-improved {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-        margin-top: 20px;
-    }
-    
-    .option-item-improved {
+// Add CSS for horizontal navigation and improved display
+const horizontalNavStyles = document.createElement('style');
+horizontalNavStyles.textContent = `
+    /* Horizontal Navigator in Main Panel */
+    .horizontal-navigator-main {
         background: white;
-        border: 2px solid #e5e7eb;
         border-radius: 12px;
-        padding: 16px;
+        padding: 15px;
+        margin: 20px 0;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        border: 1px solid #e5e7eb;
+    }
+    
+    .nav-controls {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        margin-bottom: 10px;
+    }
+    
+    .nav-arrow-btn {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        border: 2px solid #3b82f6;
+        background: white;
+        color: #3b82f6;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         cursor: pointer;
         transition: all 0.3s ease;
-        position: relative;
-        overflow: hidden;
+        flex-shrink: 0;
     }
     
-    .option-item-improved:hover {
-        border-color: #3b82f6;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+    .nav-arrow-btn:hover:not(:disabled) {
+        background: #3b82f6;
+        color: white;
+        transform: scale(1.1);
     }
     
-    .option-item-improved.selected-improved {
-        border-color: #3b82f6;
-        background: #eff6ff;
-        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+    .nav-arrow-btn:disabled {
+        border-color: #d1d5db;
+        color: #d1d5db;
+        cursor: not-allowed;
     }
     
-    .option-item-improved.correct-improved {
-        border-color: #10b981;
-        background: #d1fae5;
-        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
-    }
-    
-    .option-item-improved.incorrect-improved {
-        border-color: #ef4444;
-        background: #fee2e2;
-        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
-    }
-    
-    .option-radio-improved {
+    .horizontal-dots-container {
         display: flex;
         align-items: center;
-        gap: 15px;
+        justify-content: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        min-height: 40px;
     }
     
-    .option-input-hidden {
-        display: none;
-    }
-    
-    .option-label-improved {
-        display: flex;
-        align-items: center;
-        gap: 15px;
-        width: 100%;
-        cursor: pointer;
-    }
-    
-    .option-letter-circle {
+    .horizontal-dot {
         width: 36px;
         height: 36px;
         border-radius: 50%;
         background: #f3f4f6;
+        border: 2px solid #e5e7eb;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-weight: 700;
-        color: #4b5563;
-        flex-shrink: 0;
-        transition: all 0.3s ease;
-    }
-    
-    .option-item-improved.selected-improved .option-letter-circle {
-        background: #3b82f6;
-        color: white;
-    }
-    
-    .option-item-improved.correct-improved .option-letter-circle {
-        background: #10b981;
-        color: white;
-    }
-    
-    .option-item-improved.incorrect-improved .option-letter-circle {
-        background: #ef4444;
-        color: white;
-    }
-    
-    .option-text-improved {
-        flex: 1;
-        font-size: 16px;
-        line-height: 1.5;
-        color: #374151;
-    }
-    
-    /* Improved Action Buttons */
-    .action-buttons-panel {
-        display: flex;
-        justify-content: space-between;
-        margin-top: 30px;
-        padding-top: 20px;
-        border-top: 1px solid #e5e7eb;
-    }
-    
-    .button-group-left, .button-group-right {
-        display: flex;
-        gap: 12px;
-    }
-    
-    .action-btn {
-        padding: 12px 24px;
-        border-radius: 8px;
-        border: none;
+        color: #6b7280;
         font-weight: 600;
         cursor: pointer;
-        display: flex;
-        align-items: center;
-        gap: 8px;
         transition: all 0.3s ease;
+        flex-shrink: 0;
+    }
+    
+    .horizontal-dot:hover {
+        background: #e5e7eb;
+        transform: translateY(-2px);
+    }
+    
+    .dot-active {
+        background: #3b82f6 !important;
+        border-color: #3b82f6 !important;
+        color: white !important;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        transform: scale(1.1);
+    }
+    
+    .dot-correct {
+        background: #10b981 !important;
+        border-color: #10b981 !important;
+        color: white !important;
+    }
+    
+    .dot-incorrect {
+        background: #ef4444 !important;
+        border-color: #ef4444 !important;
+        color: white !important;
+    }
+    
+    .dot-marked {
+        background: #f59e0b !important;
+        border-color: #f59e0b !important;
+        color: white !important;
+    }
+    
+    .dot-ellipsis {
+        color: #9ca3af;
+        font-weight: bold;
+        padding: 0 5px;
+        user-select: none;
+    }
+    
+    .nav-info {
+        text-align: center;
+        padding-top: 10px;
+        border-top: 1px solid #e5e7eb;
+        color: #6b7280;
         font-size: 14px;
     }
     
-    .primary-action-btn {
-        background: #3b82f6;
-        color: white;
+    .current-question {
+        font-weight: 500;
     }
     
-    .primary-action-btn:hover {
-        background: #2563eb;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+    .current-question strong {
+        color: #3b82f6;
     }
     
-    .secondary-action-btn {
-        background: #6b7280;
-        color: white;
-    }
-    
-    .secondary-action-btn:hover {
-        background: #4b5563;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(107, 114, 128, 0.3);
-    }
-    
-    .info-action-btn {
-        background: #0ea5e9;
-        color: white;
-    }
-    
-    .info-action-btn:hover {
-        background: #0284c7;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
-    }
-    
-    .warning-action-btn {
-        background: #f59e0b;
-        color: white;
-    }
-    
-    .warning-action-btn:hover {
-        background: #d97706;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
-    }
-    
-    /* Question Card */
-    .question-card {
-        background: white;
-        border-radius: 12px;
-        padding: 24px;
-        margin: 20px 0;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-        border: 1px solid #e5e7eb;
-    }
-    
-    .question-text {
-        font-size: 18px;
-        line-height: 1.6;
-        color: #1f2937;
-    }
-    
-    /* Difficulty badges */
-    .difficulty-badge {
-        padding: 4px 12px;
-        border-radius: 20px;
-        font-size: 12px;
-        font-weight: 700;
-        color: white;
-        text-transform: uppercase;
-    }
-    
-    /* Navigation */
-    .bottom-navigation-bar {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 15px 20px;
-        background: white;
-        border-top: 1px solid #e5e7eb;
-        position: sticky;
-        bottom: 0;
-        z-index: 100;
-    }
-    
-    .nav-btn {
-        padding: 10px 20px;
-        border-radius: 8px;
-        border: none;
-        font-weight: 600;
-        cursor: pointer;
+    /* Difficulty Badge - Large MEDIUM */
+    .difficulty-container {
         display: flex;
         align-items: center;
         gap: 8px;
-        transition: all 0.3s ease;
     }
     
-    .prev-nav-btn, .next-nav-btn {
-        background: #f3f4f6;
-        color: #4b5563;
+    .difficulty-label {
+        color: #6b7280;
+        font-size: 14px;
+        font-weight: 500;
     }
     
-    .prev-nav-btn:hover:not(:disabled), .next-nav-btn:hover:not(:disabled) {
-        background: #e5e7eb;
-        transform: translateY(-2px);
-    }
-    
-    .finish-btn {
-        background: #10b981;
+    .difficulty-badge-large {
+        padding: 6px 16px;
+        border-radius: 20px;
+        font-size: 14px;
+        font-weight: 700;
         color: white;
+        text-transform: uppercase;
+        background: #F59E0B; /* Orange for MEDIUM */
+        letter-spacing: 0.5px;
     }
     
-    .finish-btn:hover {
-        background: #059669;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    /* Progress Stats in Sidebar */
+    .progress-stats-card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        border: 1px solid #e5e7eb;
+        margin-bottom: 20px;
     }
     
-    .progress-indicator {
-        width: 300px;
+    .progress-stats-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+        margin-top: 15px;
     }
     
-    .progress-bar {
-        height: 8px;
-        background: #e5e7eb;
-        border-radius: 4px;
-        overflow: hidden;
-        margin-bottom: 8px;
+    .progress-stat-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px;
+        background: #f9fafb;
+        border-radius: 8px;
+        border: 1px solid #e5e7eb;
     }
     
-    .progress-fill {
-        height: 100%;
-        background: #3b82f6;
-        transition: width 0.3s ease;
+    .stat-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 16px;
+    }
+    
+    .answered-icon { background: #3b82f6; }
+    .correct-icon { background: #10b981; }
+    .marked-icon { background: #f59e0b; }
+    .accuracy-icon { background: #8b5cf6; }
+    
+    .stat-details {
+        flex: 1;
+    }
+    
+    .stat-value {
+        font-size: 20px;
+        font-weight: 700;
+        color: #1f2937;
+        line-height: 1;
+    }
+    
+    .stat-label {
+        font-size: 12px;
+        color: #6b7280;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-top: 2px;
+    }
+    
+    /* Question Header */
+    .question-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+    
+    .question-meta {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+    
+    .question-number-badge {
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-weight: 700;
+        color: white;
+        font-size: 14px;
+    }
+    
+    .question-type {
+        color: #6b7280;
+        font-size: 14px;
+        background: #f3f4f6;
+        padding: 6px 12px;
+        border-radius: 6px;
     }
     
     /* Responsive */
     @media (max-width: 768px) {
-        .header-progress-stats {
-            display: none;
+        .horizontal-dots-container {
+            gap: 6px;
         }
         
-        .action-buttons-panel {
+        .horizontal-dot {
+            width: 32px;
+            height: 32px;
+            font-size: 14px;
+        }
+        
+        .progress-stats-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .question-header {
             flex-direction: column;
-            gap: 12px;
-        }
-        
-        .button-group-left, .button-group-right {
-            width: 100%;
-            justify-content: space-between;
-        }
-        
-        .progress-indicator {
-            width: 200px;
+            gap: 15px;
+            align-items: flex-start;
         }
     }
 `;
-document.head.appendChild(improvedStyles);
+document.head.appendChild(horizontalNavStyles);
 
-console.log('✅ NurseIQ module loaded with improved display');
+console.log('✅ NurseIQ module loaded with horizontal navigation');
