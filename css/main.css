@@ -1,23 +1,61 @@
-/* css/main.css */
-@import url('base.css');
-@import url('layout.css');
-@import url('components.css');
-@import url('dashboard.css');
-@import url('resources.css');
-@import url('reader.css');
-@import url('nurseiq.css');
-@import url('responsive.css');
+/* ========== MAIN CSS FILE - IMPORTS EVERYTHING ========== */
 
-/* Global fixes at the end */
-.interactive-questions-container {
-    isolation: isolate;
-    position: relative;
-}
+/* Import order is IMPORTANT */
+@import url('base.css');        /* Variables & resets */
+@import url('layout.css');      /* Sidebar, main, footer */
+@import url('components.css');  /* Buttons, forms, tables */
+@import url('dashboard.css');   /* Dashboard specific */
+@import url('resources.css');   /* Resources section */
+@import url('reader.css');      /* PDF/Doc viewer */
+@import url('nurseiq.css');     /* NurseIQ question bank */
+@import url('responsive.css');  /* Responsive styles */
 
+/* ========== GLOBAL OVERRIDES & FIXES ========== */
+
+/* Force NurseIQ layout to work */
 .questions-main-container {
     display: flex !important;
     gap: 30px !important;
     margin: 20px auto !important;
     padding: 0 20px !important;
     max-width: 1400px !important;
+    width: 100% !important;
+}
+
+.question-panel {
+    flex: 3 !important;
+    background: white !important;
+    padding: 30px !important;
+    border-radius: 16px !important;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08) !important;
+    border: 1px solid #e2e8f0 !important;
+}
+
+.stats-panel {
+    flex: 1 !important;
+    min-width: 320px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 20px !important;
+}
+
+/* Ensure no conflicts */
+body {
+    min-height: 100vh;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Fix z-index stacking */
+.sidebar {
+    z-index: 1000 !important;
+}
+
+.mobile-header {
+    z-index: 1010 !important;
+}
+
+.toast {
+    z-index: 10000 !important;
 }
