@@ -1218,15 +1218,25 @@ document.addEventListener('appReady', function(e) {
 document.addEventListener('DOMContentLoaded', function() {
     console.log('📱 DOM ready, starting app initialization...');
     
-    // Start app initialization
-    initializeApp();
+    // Check if initializeApp exists
+    if (typeof initializeApp === 'function') {
+        console.log('✅ initializeApp function found, calling it...');
+        initializeApp();
+    } else {
+        console.error('❌ initializeApp function NOT FOUND!');
+        // Fallback: manually show the UI
+        setTimeout(() => {
+            document.getElementById('loading-screen').style.display = 'none';
+            document.getElementById('app-content').style.display = 'block';
+            console.log('⚠️ Manual fallback activated');
+        }, 1000);
+    }
     
     // Restore last tab after app is initialized
     setTimeout(() => {
         restoreLastTab();
     }, 1500);
 });
-
 // Add CSS for loading screen
 </style>
 <style>
