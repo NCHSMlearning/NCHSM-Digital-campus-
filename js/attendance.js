@@ -1,119 +1,120 @@
-// js/attendance.js - Attendance System Module (FIXED to work with Database class)
+// attendance.js - Working version (like calendar.js)
 // *************************************************************************
 // *** ATTENDANCE SYSTEM ***
 // *************************************************************************
 
-// Global variables
-let currentUserId = null;
-let currentUserProfile = null;
 let cachedClinicalAreas = [];
 let cachedCourses = [];
-let db = null; // Database instance
-
-// Constants
-const FALLBACK_LAT = -1.2921;
-const FALLBACK_LON = 36.8219;
-const FALLBACK_ACCURACY = 1000;
-const MAX_DISTANCE_RADIUS = 50;
-const LOCATIONIQ_API_URL = 'https://us1.locationiq.com/v1/reverse';
-const LOCATIONIQ_API_KEY = 'pk.b5a1de84afc36de2fd38643ba63d3124';
+let attendanceUserId = null;
+let attendanceUserProfile = null;
+let isLoadingAttendance = false;
 
 // Initialize attendance system
-async function initAttendance() {
-    console.log('🚀 Initializing attendance system...');
+function initializeAttendanceSystem() {
+    console.log('📱 Initializing Attendance System...');
     
-    // Get database instance
-    db = getDatabaseInstance();
-    
-    if (!db) {
-        console.error('❌ Database instance not available');
-        setTimeout(initAttendance, 1000);
-        return;
+    // Set up event listeners for attendance tab
+    const attendanceTab = document.querySelector('.nav a[data-tab="attendance"]');
+    if (attendanceTab) {
+        attendanceTab.addEventListener('click', () => {
+            if (!isLoadingAttendance) {
+                loadAttendanceData();
+            }
+        });
     }
     
-    // Make sure database is initialized
-    if (!db.isInitialized) {
-        console.log('⏳ Database not initialized yet, waiting...');
-        setTimeout(initAttendance, 500);
-        return;
-    }
-    
-    console.log('✅ Database instance found:', db);
-    
-    // Get current user data
-    currentUserId = db.currentUserId;
-    currentUserProfile = db.currentUserProfile;
-    
-    if (!currentUserId || !currentUserProfile) {
-        console.log('⏳ User data not loaded yet, waiting...');
-        setTimeout(initAttendance, 500);
-        return;
-    }
-    
-    console.log('✅ User data loaded:', currentUserProfile.full_name);
-    
-    // Initialize UI elements
-    initializeAttendanceUI();
-    
-    // Load initial data
-    await loadInitialAttendanceData();
-    
-    console.log('✅ Attendance system initialized successfully');
-}
-
-// Get database instance from available sources
-function getDatabaseInstance() {
-    // Priority 1: window.db (should be your Database class instance)
-    if (window.db && window.db.constructor && window.db.constructor.name === 'Database') {
-        return window.db;
-    }
-    
-    // Priority 2: Check if Database class instance exists globally
-    if (typeof Database !== 'undefined' && window.databaseInstance) {
-        return window.databaseInstance;
-    }
-    
-    // Priority 3: Try to find any database instance
-    if (window.db && window.db.getCurrentUserProfile) {
-        return window.db;
-    }
-    
-    console.log('❌ No Database class instance found');
-    return null;
-}
-
-// Initialize UI elements
-function initializeAttendanceUI() {
-    console.log('🔧 Initializing attendance UI...');
-    
-    const sessionTypeSelect = document.getElementById('session-type');
-    const attendanceTargetSelect = document.getElementById('attendance-target');
+    // Set up check-in button
     const checkInButton = document.getElementById('check-in-button');
-    const geoAttendanceHistory = document.getElementById('geo-attendance-history');
-    
-    if (sessionTypeSelect) {
-        sessionTypeSelect.addEventListener('change', updateTargetSelect);
-    }
-    
     if (checkInButton) {
         checkInButton.addEventListener('click', geoCheckIn);
     }
     
-    console.log('✅ UI elements initialized');
+    // Set up session type change
+    const sessionTypeSelect = document.getElementById('session-type');
+    if (sessionTypeSelect) {
+        sessionTypeSelect.addEventListener('change', updateTargetSelect);
+    }
+    
+    console.log('✅ Attendance System initialized');
 }
 
-// Load initial attendance data
-async function loadInitialAttendanceData() {
-    console.log('📥 Loading initial attendance data...');
+// Load attendance data
+async function loadAttendanceData() {
+    if (isLoadingAttendance) return;
+    
+    const geoMessage = document.getElementById('geo-message');
+    const attendanceTargetSelect = document.getElementById('attendance-target');
+    
+    isLoadingAttendance = true;
+    if (geoMessage) {
+        geoMessage.textContent = '⏳ Loading attendance data...';
+        geoMessage.className = 'info-message';
+    }
     
     try {
-        // Load clinical targets using Database class method
-        cachedClinicalAreas = await db.getClinicalTargets();
-        console.log(`✅ Loaded ${cachedClinicalAreas.length} clinical areas`);
+        // ====== CRITICAL FIX: Ensure user profile is available ======
+        // Try multiple sources for user profile
+        attendanceUserProfile = window.db?.currentUserProfile || 
+                               window.currentUserProfile || 
+                               window.userProfile;
         
-        // Load class targets using Database class method  
-        cachedCourses = await db.getClassTargets();
-        console.log(`✅ Loaded ${cachedCourses.length} courses`);
+        attendanceUserId = window.db?.currentUserId || 
+                          window.currentUserId || 
+                          attendanceUserProfile?.user_id;
+        
+        const supabaseClient = window.db?.supabase || window.supabase;
+        
+        // If no profile found, try to load it
+        if (!attendanceUserProfile || !attendanceUserId || !supabaseClient) {
+            console.warn('📱 User profile or database not available for attendance, attempting to load...');
+            
+            // Try to get from auth
+            if (supabaseClient) {
+                const { data: { user } } = await supabaseClient.auth.getUser();
+                if (user) {
+                    window.currentUserId = user.id;
+                    
+                    // Try to load profile from database
+                    const { data: profile } = await supabaseClient
+                        .from('consolidated_user_profiles_table')
+                        .select('*')
+                        .eq('user_id', user.id)
+                        .single();
+                    
+                    if (profile) {
+                        attendanceUserProfile = profile;
+                        window.currentUserProfile = profile;
+                        window.userProfile = profile;
+                        
+                        if (window.db) {
+                            window.db.currentUserProfile = profile;
+                            window.db.currentUserId = user.id;
+                        }
+                        
+                        console.log('✅ Attendance: User profile loaded');
+                    }
+                }
+            }
+            
+            // If still no profile, show error
+            if (!attendanceUserProfile) {
+                throw new Error('User profile not available. Please refresh the page or log in again.');
+            }
+        }
+        
+        console.log('📱 Attendance using profile:', {
+            name: attendanceUserProfile.full_name,
+            program: attendanceUserProfile.program || attendanceUserProfile.department,
+            block: attendanceUserProfile.block,
+            intakeYear: attendanceUserProfile.intake_year
+        });
+        // ====== END OF FIX ======
+        
+        // Load clinical targets
+        await loadClinicalTargets();
+        
+        // Load class targets  
+        await loadClassTargets();
         
         // Update target dropdown
         updateTargetSelect();
@@ -123,50 +124,142 @@ async function loadInitialAttendanceData() {
             await loadGeoAttendanceHistory();
         }
         
+        if (geoMessage) {
+            geoMessage.textContent = '✅ Attendance data loaded. Select session type and target to check in.';
+            geoMessage.className = 'success-message';
+        }
+        
     } catch (error) {
-        console.error('❌ Error loading attendance data:', error);
+        console.error("Failed to load attendance data:", error);
+        if (geoMessage) {
+            geoMessage.textContent = '❌ Error loading attendance data: ' + error.message;
+            geoMessage.className = 'error-message';
+        }
+    } finally {
+        isLoadingAttendance = false;
     }
 }
 
-// Load clinical targets using Database class
+// Load clinical targets
 async function loadClinicalTargets() {
     console.log('🏥 Loading clinical targets...');
     
-    if (!currentUserProfile || (!currentUserProfile.program && !currentUserProfile.department) || !currentUserProfile.intake_year) {
-        console.warn('⚠️ Missing user profile data');
+    if (!attendanceUserProfile || (!attendanceUserProfile.program && !attendanceUserProfile.department) || !attendanceUserProfile.intake_year) {
+        console.warn('⚠️ Missing user profile data for clinical targets');
         cachedClinicalAreas = [];
         return;
     }
     
     try {
-        cachedClinicalAreas = await db.getClinicalTargets();
+        // USE window.db.supabase (like calendar.js does)
+        const supabaseClient = window.db?.supabase;
+        
+        if (!supabaseClient || typeof supabaseClient.from !== 'function') {
+            console.error("❌ No valid Supabase client for clinical targets");
+            cachedClinicalAreas = [];
+            return;
+        }
+        
+        const program = attendanceUserProfile?.program || attendanceUserProfile?.department;
+        const intakeYear = attendanceUserProfile?.intake_year;
+        const blockTerm = attendanceUserProfile?.block || null;
+        
+        console.log('🎯 Clinical query params:', { program, intakeYear, blockTerm });
+        
+        const { data: areaData, error: areaError } = await supabaseClient
+            .from('clinical_areas')
+            .select('id, name, latitude, longitude, block, program, intake_year')
+            .ilike('program', program)
+            .ilike('intake_year', intakeYear)
+            .or(blockTerm ? `block.ilike.${blockTerm},block.is.null` : 'block.is.null');
+        
+        if (areaError) throw areaError;
+        
+        const { data: nameData, error: nameError } = await supabaseClient
+            .from('clinical_names')
+            .select('id, uuid, clinical_area_name, latitude, longitude, program, intake_year, block_term')
+            .ilike('program', program)
+            .ilike('intake_year', intakeYear)
+            .or(blockTerm ? `block_term.ilike.${blockTerm},block_term.is.null` : 'block_term.is.null');
+        
+        if (nameError) throw nameError;
+        
+        const mappedNames = (nameData || []).map(n => ({
+            id: n.uuid,
+            original_id: n.id,
+            name: n.clinical_area_name,
+            latitude: n.latitude,
+            longitude: n.longitude,
+            block: n.block_term || null
+        }));
+        
+        cachedClinicalAreas = [...(areaData || []), ...mappedNames]
+            .filter((v, i, a) => a.findIndex(t => t.name === v.name) === i)
+            .sort((a, b) => a.name.localeCompare(b.name));
+        
         console.log(`✅ Loaded ${cachedClinicalAreas.length} clinical areas`);
+        
     } catch (error) {
         console.error("Error loading clinical areas:", error);
         cachedClinicalAreas = [];
     }
 }
 
-// Load class targets using Database class
+// Load class targets
 async function loadClassTargets() {
     console.log('🏫 Loading class targets...');
     
-    if (!currentUserProfile || (!currentUserProfile.program && !currentUserProfile.department) || !currentUserProfile.intake_year) {
-        console.warn('⚠️ Missing user profile data');
+    if (!attendanceUserProfile || (!attendanceUserProfile.program && !attendanceUserProfile.department) || !attendanceUserProfile.intake_year) {
+        console.warn('⚠️ Missing user profile data for class targets');
         cachedCourses = [];
         return;
     }
     
     try {
-        cachedCourses = await db.getClassTargets();
+        // USE window.db.supabase (like calendar.js does)
+        const supabaseClient = window.db?.supabase;
+        
+        if (!supabaseClient || typeof supabaseClient.from !== 'function') {
+            console.error("❌ No valid Supabase client for class targets");
+            cachedCourses = [];
+            return;
+        }
+        
+        const program = attendanceUserProfile?.program || attendanceUserProfile?.department;
+        const intakeYear = attendanceUserProfile?.intake_year;
+        const block = attendanceUserProfile?.block || null;
+        
+        console.log('🎯 Class query params:', { program, intakeYear, block });
+        
+        let query = supabaseClient.from('courses_sections')
+            .select('id, name, code, latitude, longitude')
+            .eq('program', program)
+            .eq('intake_year', intakeYear);
+        
+        if (block) query = query.or(`block.eq.${block},block.is.null`);
+        else query = query.is('block', null);
+        
+        const { data, error } = await query.order('name');
+        
+        if (error) throw error;
+        
+        cachedCourses = (data || []).map(course => ({
+            id: course.id,
+            name: course.name,
+            code: course.code,
+            latitude: course.latitude,
+            longitude: course.longitude
+        }));
+        
         console.log(`✅ Loaded ${cachedCourses.length} class targets`);
+        
     } catch (error) {
         console.error("Error loading class targets:", error);
         cachedCourses = [];
     }
 }
 
-// Load attendance history using Database class
+// Load attendance history
 async function loadGeoAttendanceHistory() {
     const tableBody = document.getElementById('geo-attendance-history');
     if (!tableBody) return;
@@ -174,7 +267,21 @@ async function loadGeoAttendanceHistory() {
     tableBody.innerHTML = '<tr><td colspan="4">Loading geo check-in history...</td></tr>';
     
     try {
-        const logs = await db.getAttendanceHistory();
+        // USE window.db.supabase (like calendar.js does)
+        const supabaseClient = window.db?.supabase;
+        
+        if (!supabaseClient || typeof supabaseClient.from !== 'function') {
+            throw new Error('No valid database connection for attendance history');
+        }
+        
+        const { data: logs, error } = await supabaseClient
+            .from('geo_attendance_logs')
+            .select('check_in_time, session_type, target_name, is_verified')
+            .eq('student_id', attendanceUserId)
+            .order('check_in_time', { ascending: false })
+            .limit(100);
+        
+        if (error) throw error;
         
         tableBody.innerHTML = '';
         if (!logs || logs.length === 0) {
@@ -199,6 +306,7 @@ async function loadGeoAttendanceHistory() {
             `;
             tableBody.innerHTML += row;
         });
+        
     } catch (error) {
         console.error("Failed to load attendance history:", error);
         tableBody.innerHTML = `
@@ -221,7 +329,10 @@ function updateTargetSelect() {
     const attendanceTargetSelect = document.getElementById('attendance-target');
     const geoMessage = document.getElementById('geo-message');
     
-    if (!sessionTypeSelect || !attendanceTargetSelect || !geoMessage) return;
+    if (!sessionTypeSelect || !attendanceTargetSelect || !geoMessage) {
+        console.warn('⚠️ Missing required elements for target select');
+        return;
+    }
     
     const sessionType = sessionTypeSelect.value;
     attendanceTargetSelect.innerHTML = '';
@@ -236,6 +347,7 @@ function updateTargetSelect() {
             text: `${d.name} (Clinical)`
         }));
         label = 'Department/Area:';
+        console.log(`🎯 Clinical targets available: ${targetList.length}`);
     } else if (sessionType === 'Class') {
         targetList = cachedCourses.map(c => ({
             id: c.id,
@@ -244,16 +356,21 @@ function updateTargetSelect() {
             text: `${c.code ? c.code + ' - ' : ''}${c.name} (Class)`
         }));
         label = 'Course/Subject:';
+        console.log(`🎯 Class targets available: ${targetList.length}`);
     }
     
+    // Update label
     const targetLabel = document.getElementById('target-label');
-    if (targetLabel) targetLabel.textContent = label;
+    if (targetLabel) {
+        targetLabel.textContent = label;
+    }
     
     if (targetList.length === 0) {
         const message = sessionType === 'Class'
             ? 'No active courses found for your block.'
             : 'No clinical areas assigned to your block.';
         attendanceTargetSelect.innerHTML = `<option value="">${message}</option>`;
+        console.log(`📭 ${message}`);
     } else {
         const defaultOption = document.createElement('option');
         defaultOption.value = '';
@@ -268,9 +385,12 @@ function updateTargetSelect() {
         });
         
         attendanceTargetSelect.selectedIndex = 0;
+        console.log(`✅ Populated dropdown with ${targetList.length} options`);
     }
     
-    geoMessage.innerHTML = `Please select a specific <strong>${label.replace(':', '')}</strong> to check in.`;
+    if (geoMessage) {
+        geoMessage.innerHTML = `Please select a specific <strong>${label.replace(':', '')}</strong> to check in.`;
+    }
 }
 
 // Get device ID
@@ -280,6 +400,8 @@ function getDeviceId() {
         deviceId = crypto.randomUUID();
         localStorage.setItem('device_id', deviceId);
         console.log('📱 Generated new device ID:', deviceId);
+    } else {
+        console.log('📱 Using existing device ID:', deviceId);
     }
     return deviceId;
 }
@@ -292,9 +414,9 @@ async function getCurrentLocation() {
         if (!navigator.geolocation) {
             console.warn('⚠️ Geolocation not supported by browser');
             resolve({
-                lat: FALLBACK_LAT,
-                lon: FALLBACK_LON,
-                acc: FALLBACK_ACCURACY,
+                lat: -1.2921,
+                lon: 36.8219,
+                acc: 1000,
                 friendly: 'GPS unavailable in browser'
             });
             return;
@@ -314,9 +436,9 @@ async function getCurrentLocation() {
             (error) => {
                 console.warn('⚠️ GPS error:', error.message);
                 resolve({
-                    lat: FALLBACK_LAT,
-                    lon: FALLBACK_LON,
-                    acc: FALLBACK_ACCURACY,
+                    lat: -1.2921,
+                    lon: 36.8219,
+                    acc: 1000,
                     friendly: `GPS denied: ${error.message}`
                 });
             },
@@ -335,7 +457,7 @@ async function reverseGeocode(lat, lon) {
     
     try {
         const res = await fetch(
-            `${LOCATIONIQ_API_URL}?key=${LOCATIONIQ_API_KEY}&lat=${lat}&lon=${lon}&format=json`
+            `https://us1.locationiq.com/v1/reverse?key=pk.b5a1de84afc36de2fd38643ba63d3124&lat=${lat}&lon=${lon}&format=json`
         );
         
         if (res.ok) {
@@ -375,7 +497,7 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
     return distanceMeters;
 }
 
-// Geo check-in function using Database class
+// Geo check-in function
 async function geoCheckIn() {
     console.log('📍 Starting geo check-in process...');
     
@@ -391,14 +513,16 @@ async function geoCheckIn() {
     }
     
     try {
-        if (!currentUserProfile) {
+        // Ensure user profile is loaded
+        if (!attendanceUserProfile) {
             throw new Error('Student profile not loaded');
         }
         
-        const studentProgram = currentUserProfile?.program || currentUserProfile?.department || null;
+        const studentProgram = attendanceUserProfile?.program || attendanceUserProfile?.department || null;
         const deviceId = getDeviceId();
         const sessionType = sessionTypeSelect?.value;
         const targetSelect = attendanceTargetSelect?.value;
+        const checkInTime = new Date().toISOString();
         
         console.log('📋 Check-in parameters:', {
             sessionType,
@@ -473,24 +597,44 @@ async function geoCheckIn() {
             targetEntry.latitude, targetEntry.longitude
         );
         
-        const isVerified = distanceMeters <= MAX_DISTANCE_RADIUS;
+        const isVerified = distanceMeters <= 50; // 50m radius
         console.log(`✅ Verification: ${isVerified ? 'Within range' : 'Out of range'} (${distanceMeters.toFixed(2)}m)`);
         
-        // Use Database class method for check-in
+        // Insert check-in via RPC
         if (geoMessage) {
             geoMessage.textContent = '📡 Submitting check-in...';
         }
         
-        const result = await db.checkInAttendance(
-            sessionType,
-            targetId,
-            targetNameToLog,
-            location,
-            studentProgram
-        );
+        // USE window.db.supabase (like calendar.js does)
+        const supabaseClient = window.db?.supabase;
         
-        if (!result.success) {
-            throw new Error(result.error || 'Check-in failed');
+        if (!supabaseClient || typeof supabaseClient.rpc !== 'function') {
+            throw new Error('No valid database connection for check-in');
+        }
+        
+        const { error } = await supabaseClient
+            .rpc('check_in_and_defer_fk', {
+                p_student_id: attendanceUserId,
+                p_check_in_time: checkInTime,
+                p_session_type: sessionType === 'Clinical' ? 'Clinical' : 'Class',
+                p_target_id: dbTargetId,
+                p_target_name: targetNameToLog,
+                p_latitude: location.lat,
+                p_longitude: location.lon,
+                p_accuracy_m: location.acc,
+                p_location_friendly_name: location.friendly,
+                p_program: studentProgram,
+                p_block: attendanceUserProfile.block,
+                p_intake_year: attendanceUserProfile.intake_year,
+                p_device_id: deviceId,
+                p_is_verified: isVerified,
+                p_course_id: selectedCourseId,
+                p_student_name: attendanceUserProfile.full_name || attendanceUserProfile.name || 'Unknown Student'
+            });
+        
+        if (error) {
+            console.error('❌ RPC error:', error);
+            throw new Error(`Check-in failed: ${error.message}`);
         }
         
         // Success
@@ -506,7 +650,7 @@ async function geoCheckIn() {
         }
         
         // Refresh attendance history
-        await loadGeoAttendanceHistory();
+        loadGeoAttendanceHistory();
         
         // Dispatch event to notify dashboard
         document.dispatchEvent(new CustomEvent('attendanceCheckedIn'));
@@ -529,79 +673,50 @@ async function geoCheckIn() {
     }
 }
 
-// Auto-initialize when page loads
-function autoInitializeAttendance() {
-    console.log('🔄 Auto-initializing attendance system...');
-    
-    // Wait for DOM to be ready
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initializeWhenReady);
-    } else {
-        initializeWhenReady();
-    }
-}
-
-function initializeWhenReady() {
-    console.log('📱 DOM ready, checking for attendance elements...');
-    
-    // Check if attendance elements exist on this page
-    const hasAttendanceElements = 
-        document.getElementById('session-type') && 
-        document.getElementById('attendance-target');
-    
-    if (hasAttendanceElements) {
-        console.log('✅ Attendance elements found, initializing system...');
-        
-        // Wait for database to be ready
-        const checkDatabase = () => {
-            if (window.db && window.db.isInitialized) {
-                initAttendance();
-                console.log('✅ Attendance system auto-initialized');
-            } else {
-                console.log('⏳ Waiting for database...');
-                setTimeout(checkDatabase, 500);
-            }
-        };
-        
-        setTimeout(checkDatabase, 300);
-    } else {
-        console.log('📭 No attendance elements on this page');
-    }
-}
-
-// Initialize when tab is opened
-function initializeAttendanceIfNeeded() {
-    if (document.getElementById('session-type') && !db) {
-        console.log('📍 Attendance tab opened, initializing...');
-        initAttendance();
-    }
-}
-
-// Listen for tab changes
-document.addEventListener('tabChanged', function(e) {
-    if (e.detail && e.detail.tabId === 'attendance') {
-        initializeAttendanceIfNeeded();
-    }
-});
-
-// Listen for app ready event
-document.addEventListener('appReady', function() {
-    console.log('🎯 App is ready, checking attendance...');
-    if (document.getElementById('session-type') && !db) {
-        setTimeout(() => {
-            initAttendance();
-        }, 300);
-    }
-});
+// *************************************************************************
+// *** GLOBAL EXPORTS ***
+// *************************************************************************
 
 // Make functions globally available
-window.initAttendance = initAttendance;
-window.loadAttendanceData = async function() {
-    await loadInitialAttendanceData();
-};
+window.loadAttendanceData = loadAttendanceData;
 window.geoCheckIn = geoCheckIn;
 window.loadGeoAttendanceHistory = loadGeoAttendanceHistory;
 window.updateTargetSelect = updateTargetSelect;
+window.initializeAttendanceSystem = initializeAttendanceSystem;
 
-// Auto-initialize on page load
-autoInitializeAttendance();
+// Add CSS for status indicators
+const attendanceStyles = document.createElement('style');
+attendanceStyles.textContent = `
+    .info-message { color: #3b82f6; }
+    .success-message { color: #10b981; }
+    .error-message { color: #ef4444; }
+    .offline-message { color: #f59e0b; }
+    
+    .verification-status.verified { color: #10b981; font-weight: 600; }
+    .verification-status.pending { color: #f59e0b; font-weight: 600; }
+    
+    .btn-small {
+        padding: 4px 8px;
+        font-size: 0.8rem;
+        background: #3b82f6;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-top: 5px;
+    }
+    
+    .btn-small:hover {
+        background: #2563eb;
+    }
+`;
+document.head.appendChild(attendanceStyles);
+
+// Auto-initialize when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeAttendanceSystem);
+} else {
+    initializeAttendanceSystem();
+}
+
+console.log('✅ Attendance module loaded');
