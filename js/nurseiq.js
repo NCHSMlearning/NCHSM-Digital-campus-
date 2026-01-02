@@ -1,4 +1,4 @@
-// js/nurseiq.js - FULLY UPDATED VERSION (Fixes Based on Screenshot Issues)
+// js/nurseiq.js - FULLY FIXED VERSION (for separate option columns)
 class NurseIQModule {
     constructor() {
         this.userId = null;
@@ -430,6 +430,7 @@ class NurseIQModule {
             if (error) throw error;
             
             console.log(`Fetched ${questions?.length || 0} questions`);
+            console.log('Sample question data:', questions?.[0]);
             
             if (!questions || questions.length === 0) {
                 this.showNotification('No questions available for this course yet.', 'warning');
@@ -453,7 +454,7 @@ class NurseIQModule {
         }
     }
     
-    // Display interactive questions - UPDATED FIXED VERSION
+    // Display interactive questions
     displayInteractiveQuestions(courseName, questions) {
         if (!this.studentQuestionBankContent) return;
         
@@ -586,7 +587,7 @@ class NurseIQModule {
                         </div>
                     </div>
                     
-                    <!-- Stats Panel on Right - UPDATED: Removed "Detailed Progress" -->
+                    <!-- Stats Panel on Right -->
                     <div class="stats-panel">
                         <!-- Question Navigator -->
                         <div class="horizontal-nav-card">
@@ -611,7 +612,7 @@ class NurseIQModule {
                             </div>
                         </div>
                         
-                        <!-- Study Tips - FIXED CONTENT -->
+                        <!-- Study Tips -->
                         <div class="tips-card">
                             <h3 class="tips-title">
                                 <i class="fas fa-graduation-cap"></i> Study Tips
@@ -624,11 +625,11 @@ class NurseIQModule {
                             </ul>
                         </div>
                         
-                        <!-- PROGRESS SUMMARY REMOVED - Was causing confusion -->
+                        <!-- Progress Summary REMOVED as requested -->
                     </div>
                 </div>
                 
-                <!-- Bottom Navigation - FIXED: Changed "enrolled" to "complete" -->
+                <!-- Bottom Navigation -->
                 <div class="bottom-navigation-bar">
                     <div class="nav-left">
                         <button onclick="window.prevQuestion()" id="prevBtn" class="nav-btn prev-nav-btn">
@@ -670,10 +671,25 @@ class NurseIQModule {
         }, 100);
     }
     
-    // Load current question
+    // Load current question - FIXED
     loadCurrentInteractiveQuestion() {
         const question = this.currentCourseQuestions[this.currentQuestionIndex];
-        if (!question) return;
+        if (!question) {
+            console.error('No question found at index:', this.currentQuestionIndex);
+            return;
+        }
+        
+        console.log('Loading question:', question.id);
+        console.log('Question data:', {
+            text: question.question_text,
+            options: {
+                a: question.option_a,
+                b: question.option_b,
+                c: question.option_c,
+                d: question.option_d
+            },
+            correct_answer: question.correct_answer
+        });
         
         // Update question text
         const questionText = document.getElementById('questionText');
@@ -699,7 +715,7 @@ class NurseIQModule {
             }
         }
         
-        // Load answer options
+        // Load answer options - USING SEPARATE COLUMNS
         this.loadAnswerOptions(question);
         
         // Update counters
@@ -731,45 +747,44 @@ class NurseIQModule {
         this.highlightCurrentQuestionInGrid();
     }
     
-    // Load answer options
+    // Load answer options - FIXED for separate columns
     loadAnswerOptions(question) {
         const optionsContainer = document.getElementById('optionsContainer');
         if (!optionsContainer) return;
         
+        console.log('Building options from separate columns for question:', question.id);
+        
+        // Build options array from separate columns
         let options = [];
-        try {
-            if (question.options) {
-                if (Array.isArray(question.options)) {
-                    options = question.options;
-                } else if (typeof question.options === 'string') {
-                    options = JSON.parse(question.options);
-                }
-            }
-        } catch (e) {
-            console.error('Error parsing options:', e);
-            options = [];
+        const optionLabels = ['A', 'B', 'C', 'D'];
+        
+        // Check each option column
+        if (question.option_a && question.option_a.trim() !== '') {
+            options.push(question.option_a);
+        }
+        if (question.option_b && question.option_b.trim() !== '') {
+            options.push(question.option_b);
+        }
+        if (question.option_c && question.option_c.trim() !== '') {
+            options.push(question.option_c);
+        }
+        if (question.option_d && question.option_d.trim() !== '') {
+            options.push(question.option_d);
         }
         
+        console.log('Options from columns:', options);
+        
+        // If no options found, use fallbacks
         if (options.length === 0) {
+            console.warn('No options found in columns, using fallbacks');
             options = ['Option A', 'Option B', 'Option C', 'Option D'];
         }
         
-        // Get correct answer
-        let correctAnswer = '';
-        try {
-            if (question.correct_answer) {
-                if (Array.isArray(question.correct_answer)) {
-                    correctAnswer = question.correct_answer[0];
-                } else if (typeof question.correct_answer === 'string') {
-                    correctAnswer = question.correct_answer;
-                }
-            }
-        } catch (e) {
-            console.error('Error parsing correct answer:', e);
-        }
+        // Get correct answer from database
+        let correctAnswer = question.correct_answer || '';
+        console.log('Correct answer from database:', correctAnswer);
         
         let optionsHtml = '';
-        const optionLabels = ['A', 'B', 'C', 'D', 'E', 'F'];
         
         options.forEach((option, index) => {
             if (index >= optionLabels.length) return;
@@ -833,6 +848,8 @@ class NurseIQModule {
                 selectedOptionIndex: parseInt(optionIndex),
                 answered: false
             };
+            
+            console.log('Selected option:', optionText);
         }
     }
     
@@ -888,7 +905,7 @@ class NurseIQModule {
         }
     }
     
-    // Check answer
+    // Check answer - FIXED for separate columns
     checkAnswer() {
         const userAnswer = this.userTestAnswers[this.currentQuestionIndex];
         if (!userAnswer || !userAnswer.selectedOption) {
@@ -896,7 +913,16 @@ class NurseIQModule {
             return;
         }
         
-        const isCorrect = userAnswer.selectedOption === userAnswer.correctAnswer;
+        const question = this.currentCourseQuestions[this.currentQuestionIndex];
+        const correctAnswer = question.correct_answer || '';
+        
+        console.log('Checking answer:', {
+            userAnswer: userAnswer.selectedOption,
+            correctAnswer: correctAnswer,
+            questionId: question.id
+        });
+        
+        const isCorrect = userAnswer.selectedOption === correctAnswer;
         userAnswer.answered = true;
         userAnswer.correct = isCorrect;
         
@@ -914,7 +940,7 @@ class NurseIQModule {
         }
     }
     
-    // Show answer reveal
+    // Show answer reveal - FIXED for separate columns
     showAnswerRevealSection() {
         const answerRevealSection = document.getElementById('answerRevealSection');
         if (!answerRevealSection) return;
@@ -922,22 +948,12 @@ class NurseIQModule {
         const question = this.currentCourseQuestions[this.currentQuestionIndex];
         if (!question) return;
         
-        let correctAnswer = '';
-        try {
-            if (question.correct_answer) {
-                if (Array.isArray(question.correct_answer)) {
-                    correctAnswer = question.correct_answer[0];
-                } else if (typeof question.correct_answer === 'string') {
-                    correctAnswer = question.correct_answer;
-                }
-            }
-        } catch (e) {
-            console.error('Error parsing correct answer:', e);
-        }
+        // Use correct_answer column directly
+        const correctAnswer = question.correct_answer || 'Correct answer not available';
         
         const correctAnswerText = document.getElementById('correctAnswerText');
         if (correctAnswerText) {
-            correctAnswerText.textContent = correctAnswer || 'Correct answer not available';
+            correctAnswerText.textContent = correctAnswer;
         }
         
         const explanationText = document.getElementById('explanationText');
@@ -996,23 +1012,12 @@ class NurseIQModule {
         this.updateTopProgressStats();
     }
     
-    // Show answer
+    // Show answer - FIXED for separate columns
     showAnswer() {
         const question = this.currentCourseQuestions[this.currentQuestionIndex];
         if (!question) return;
         
-        let correctAnswer = '';
-        try {
-            if (question.correct_answer) {
-                if (Array.isArray(question.correct_answer)) {
-                    correctAnswer = question.correct_answer[0];
-                } else if (typeof question.correct_answer === 'string') {
-                    correctAnswer = question.correct_answer;
-                }
-            }
-        } catch (e) {
-            console.error('Error parsing correct answer:', e);
-        }
+        const correctAnswer = question.correct_answer || '';
         
         const optionsContainer = document.getElementById('optionsContainer');
         if (optionsContainer) {
@@ -1148,6 +1153,7 @@ class NurseIQModule {
         const totalQuestions = this.currentCourseQuestions.length;
         const answeredCount = Object.values(this.userTestAnswers).filter(a => a.answered).length;
         const correctCount = Object.values(this.userTestAnswers).filter(a => a.answered && a.correct).length;
+        const incorrectCount = Object.values(this.userTestAnswers).filter(a => a.answered && !a.correct).length;
         const markedCount = Object.values(this.userTestAnswers).filter(a => a.marked).length;
         
         // Update top counters
@@ -1500,4 +1506,4 @@ window.scrollQuestions = function(direction) {
     }
 };
 
-console.log('✅ NurseIQ module loaded (Updated - Fixed Issues)');
+console.log('✅ NurseIQ module loaded (Fixed for separate option columns)');
