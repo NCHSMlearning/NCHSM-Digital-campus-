@@ -739,13 +739,23 @@ function showErrorScreen(title, message, details = '') {
         </div>
     `;
 }
-
-// Initialize application - UPDATED VERSION
+// Initialize application - FIXED VERSION (Consolidated Profiles Table)
 async function initializeApp() {
     try {
+        // 1. Initialize app object if it doesn't exist
+        if (!window.app) {
+            window.app = {
+                config: null,
+                supabase: null,
+                db: null,
+                user: null,
+                isInitialized: false
+            };
+        }
+        
         updateLoadingStatus('Checking configuration...');
         
-        // Wait for config.js to load
+        // 2. Wait for config.js to load
         if (!window.APP_CONFIG) {
             throw new Error('Configuration not loaded. Check if config.js exists.');
         }
@@ -753,7 +763,7 @@ async function initializeApp() {
         const config = window.APP_CONFIG;
         window.app.config = config;
         
-        // Validate configuration
+        // 3. Validate configuration
         if (!config.SUPABASE_URL || config.SUPABASE_URL === '%%SUPABASE_URL%%') {
             throw new Error('SUPABASE_URL is not configured in GitHub Secrets');
         }
@@ -768,7 +778,7 @@ async function initializeApp() {
             Commit: ${config.COMMIT_SHA ? config.COMMIT_SHA.substring(0, 7) : 'Unknown'}
         `);
         
-        // Initialize database FIRST - CRITICAL FIX
+        // 4. Initialize database
         updateLoadingStatus('Initializing database...');
         
         if (typeof window.db === 'undefined') {
@@ -781,103 +791,206 @@ async function initializeApp() {
             throw new Error('Database initialization failed');
         }
         
-        console.log('✅ Database initialized, user:', window.db.currentUserId);
+        console.log('✅ Database initialized');
         
-        // Check authentication via database module
+        // 5. Check authentication
         updateLoadingStatus('Checking authentication...');
         
-        const isAuthenticated = await window.db.checkAuth();
-        if (!isAuthenticated) {
+        let userSession = null;
+        if (window.db.supabase) {
+            const { data, error } = await window.db.supabase.auth.getSession();
+            if (error) throw error;
+            userSession = data.session;
+        }
+        
+        if (!userSession) {
             console.log('⚠️ No active session, redirecting to login...');
             window.location.href = 'login.html';
             return;
         }
         
+        // 6. Set user ID
+        window.db.currentUserId = userSession.user.id;
+        
+        // 7. LOAD USER FROM CONSOLIDATED PROFILES TABLE - FIXED
+        updateLoadingStatus('Loading user profile...');
+        
+        try {
+            // Try consolidated user profiles table first
+            const { data: consolidatedProfile, error: consolidatedError } = await window.db.supabase
+                .from('consolidated_user_profiles_table')  // CHANGED TABLE NAME
+                .select('*')
+                .eq('id', userSession.user.id)
+                .single();
+            
+            if (!consolidatedError && consolidatedProfile) {
+                // Success! Use consolidated profile
+                window.db.currentUserProfile = consolidatedProfile;
+                console.log('✅ User loaded from consolidated_user_profiles_table');
+            } else {
+                // Fallback 1: Try regular profiles table
+                console.log('Trying regular profiles table...');
+                const { data: regularProfile, error: regularError } = await window.db.supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', userSession.user.id)
+                    .single();
+                
+                if (!regularError && regularProfile) {
+                    window.db.currentUserProfile = regularProfile;
+                    console.log('✅ User loaded from profiles table');
+                } else {
+                    // Fallback 2: Use auth data with email lookup
+                    console.log('Trying email lookup...');
+                    const { data: emailProfile, error: emailError } = await window.db.supabase
+                        .from('consolidated_user_profiles_table')  // Try email match
+                        .select('*')
+                        .eq('email', userSession.user.email)
+                        .single();
+                    
+                    if (!emailError && emailProfile) {
+                        window.db.currentUserProfile = emailProfile;
+                        console.log('✅ User loaded by email from consolidated table');
+                    } else {
+                        // Ultimate fallback: Use auth data
+                        console.warn('Using auth data as fallback');
+                        window.db.currentUserProfile = {
+                            id: userSession.user.id,
+                            email: userSession.user.email,
+                            full_name: userSession.user.email.split('@')[0],
+                            student_id: userSession.user.id.substring(0, 8),
+                            program: 'Unknown',
+                            block: 'Unknown',
+                            intake_year: new Date().getFullYear()
+                        };
+                    }
+                }
+            }
+        } catch (profileError) {
+            console.error('Profile loading error:', profileError);
+            // Emergency fallback
+            window.db.currentUserProfile = {
+                id: userSession.user.id,
+                email: userSession.user.email,
+                full_name: userSession.user.email.split('@')[0]
+            };
+        }
+        
+        console.log('✅ User authenticated:', {
+            userId: window.db.currentUserId,
+            email: window.db.currentUserProfile.email,
+            name: window.db.currentUserProfile.full_name,
+            studentId: window.db.currentUserProfile.student_id
+        });
+        
+        // 8. HIDE LOADING SCREEN IMMEDIATELY
         updateLoadingStatus('Loading dashboard...');
         
-        // Hide loading screen and show app
-        setTimeout(() => {
-            document.getElementById('loading-screen').style.opacity = '0';
-            document.getElementById('app-content').style.display = 'block';
-            
-            setTimeout(() => {
-                document.getElementById('loading-screen').style.display = 'none';
-                
-                // Set global variables for backward compatibility
-                window.supabase = window.db.supabase;
-                window.currentUserId = window.db.currentUserId;
-                window.currentUserProfile = window.db.currentUserProfile;
-                
-                console.log('🌐 Global variables set:', {
-                    userId: window.currentUserId,
-                    user: window.currentUserProfile?.full_name,
-                    email: window.currentUserProfile?.email
-                });
-                
-                // Initialize UI
-                if (typeof initUI === 'function') {
-                    initUI();
-                }
-                
-                // Load initial dashboard
-                if (typeof loadDashboard === 'function') {
-                    loadDashboard();
-                }
-                
-                window.app.isInitialized = true;
-                window.app.supabase = window.db.supabase;
-                window.app.user = window.db.currentUserProfile;
-                
-                console.log('✅ Application initialized successfully');
-                
-                // Dispatch event that app is ready
-                document.dispatchEvent(new CustomEvent('appReady', {
-                    detail: {
-                        userId: window.currentUserId,
-                        userProfile: window.currentUserProfile,
-                        database: window.db
-                    }
-                }));
-                
-            }, 300);
-        }, 1000);
+        // Remove the problematic setTimeout and opacity animation
+        document.getElementById('loading-screen').style.display = 'none';
+        document.getElementById('app-content').style.display = 'block';
+        
+        // 9. Set global variables for backward compatibility
+        window.supabase = window.db.supabase;
+        window.currentUserId = window.db.currentUserId;
+        window.currentUserProfile = window.db.currentUserProfile;
+        
+        console.log('🌐 Global variables set:', {
+            userId: window.currentUserId,
+            user: window.currentUserProfile?.full_name,
+            email: window.currentUserProfile?.email,
+            studentId: window.currentUserProfile?.student_id
+        });
+        
+        // 10. Update welcome message immediately
+        const welcomeHeader = document.getElementById('welcome-header');
+        if (welcomeHeader && window.db.currentUserProfile?.full_name) {
+            welcomeHeader.textContent = `Welcome back, ${window.db.currentUserProfile.full_name}!`;
+        }
+        
+        // 11. Initialize UI immediately
+        if (typeof initUI === 'function') {
+            initUI();
+        }
+        
+        // 12. Ensure dashboard tab is active
+        document.querySelectorAll('.tab-content').forEach(tab => {
+            tab.style.display = 'none';
+            tab.classList.remove('active');
+        });
+        
+        const dashboard = document.getElementById('dashboard');
+        if (dashboard) {
+            dashboard.style.display = 'block';
+            dashboard.classList.add('active');
+            dashboard.style.opacity = '1';
+            dashboard.style.visibility = 'visible';
+        }
+        
+        // Activate dashboard nav
+        document.querySelectorAll('.nav a').forEach(link => {
+            link.classList.remove('active');
+            if (link.getAttribute('data-tab') === 'dashboard') {
+                link.classList.add('active');
+            }
+        });
+        
+        // 13. Load initial dashboard
+        if (typeof loadDashboard === 'function') {
+            setTimeout(() => loadDashboard(), 100);
+        }
+        
+        // 14. Mark app as initialized
+        window.app.isInitialized = true;
+        window.app.supabase = window.db.supabase;
+        window.app.user = window.db.currentUserProfile;
+        
+        console.log('✅ Application initialized successfully');
+        
+        // 15. Dispatch event that app is ready
+        document.dispatchEvent(new CustomEvent('appReady', {
+            detail: {
+                userId: window.currentUserId,
+                userProfile: window.currentUserProfile,
+                database: window.db
+            }
+        }));
         
     } catch (error) {
         console.error('❌ Initialization failed:', error);
         
-        let errorTitle = 'Initialization Error';
-        let errorMessage = 'Failed to initialize the application.';
-        let errorDetails = error.message;
-        
-        if (error.message.includes('GitHub Secrets')) {
-            errorTitle = 'Configuration Error';
-            errorMessage = 'API keys are not configured.';
-            errorDetails = `
-                Please configure the following GitHub Secrets:<br>
-                <ul style="text-align: left; margin: 10px 0;">
-                    <li><strong>SUPABASE_URL</strong> - Your Supabase project URL</li>
-                    <li><strong>SUPABASE_ANON_KEY</strong> - Your Supabase anonymous key</li>
-                    <li><strong>LOCATIONIQ_API_KEY</strong> - Optional: LocationIQ API key</li>
-                </ul>
-                <p style="margin-top: 10px;">
-                    Go to your repository Settings → Secrets and variables → Actions
-                </p>
-            `;
-        } else if (error.message.includes('config.js')) {
-            errorTitle = 'Configuration Missing';
-            errorMessage = 'Configuration file not found.';
-            errorDetails = 'The config.js file was not generated by GitHub Actions.';
-        } else if (error.message.includes('Supabase')) {
-            errorTitle = 'Database Error';
-            errorMessage = 'Failed to connect to database.';
-            errorDetails = 'Check your Supabase credentials and network connection.';
-        } else if (error.message.includes('Database module not loaded')) {
-            errorTitle = 'Database Module Error';
-            errorMessage = 'Database module not found.';
-            errorDetails = 'Please check if js/database.js exists and is loaded correctly.';
+        // Try to show the UI anyway
+        try {
+            document.getElementById('loading-screen').style.display = 'none';
+            document.getElementById('app-content').style.display = 'block';
+            
+            // Show dashboard
+            const dashboard = document.getElementById('dashboard');
+            if (dashboard) {
+                dashboard.style.display = 'block';
+                dashboard.classList.add('active');
+            }
+            
+            // Show error message on dashboard
+            const welcomeSection = document.getElementById('welcome-section');
+            if (welcomeSection) {
+                welcomeSection.innerHTML = `
+                    <h2>Application Error</h2>
+                    <p>${error.message}</p>
+                    <button onclick="location.reload()" class="profile-button">Retry</button>
+                `;
+            }
+            
+            console.log('⚠️ Showing UI in error fallback mode');
+            
+        } catch (uiError) {
+            // Ultimate fallback error screen
+            showErrorScreen(
+                'Initialization Error',
+                'Failed to initialize the application.',
+                error.message + '<br><br>Please check your console for details.'
+            );
         }
-        
-        showErrorScreen(errorTitle, errorMessage, errorDetails);
     }
 }
 // Tab switching
