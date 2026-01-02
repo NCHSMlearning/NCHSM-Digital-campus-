@@ -1,4 +1,4 @@
-// attendance.js - Working version with proper scope - FIXED
+// attendance.js - Working version with proper scope - FIXED PROPERLY
 // *************************************************************************
 // *** ATTENDANCE SYSTEM ***
 // *************************************************************************
@@ -211,9 +211,9 @@
         }
     }
     
-    // Load class targets - FIXED VERSION
+    // Load class targets - SIMPLIFIED TO USE COURSES TABLE DIRECTLY
     async function loadClassTargets() {
-        console.log('🏫 Loading class targets...');
+        console.log('🏫 Loading class targets from courses table...');
         
         if (!attendanceUserProfile || (!attendanceUserProfile.program && !attendanceUserProfile.department) || !attendanceUserProfile.intake_year) {
             console.warn('⚠️ Missing user profile data for class targets');
@@ -234,138 +234,57 @@
             const intakeYear = attendanceUserProfile?.intake_year;
             const block = attendanceUserProfile?.block || null;
             
-            console.log('🎯 Class query params:', { program, intakeYear, block });
+            console.log('🎯 Course query params:', { program, intakeYear, block });
             
-            // FIRST: Check if user has courses assigned via user_role_courses (for instructors)
-            console.log('🔍 Checking user_role_courses for instructor assignments...');
+            // SIMPLE DIRECT QUERY TO COURSES TABLE - matching your courses.js
+            let query = supabaseClient
+                .from('courses')
+                .select('id, course_name, unit_code, latitude, longitude, program_type, intake_year, block')
+                .eq('intake_year', intakeYear);
             
-            const { data: roleCourses, error: roleError } = await supabaseClient
-                .from('user_role_courses')
-                .select(`
-                    course_id,
-                    courses (
-                        id,
-                        course_name,
-                        unit_code,
-                        latitude,
-                        longitude,
-                        program_type,
-                        intake_year,
-                        block
-                    )
-                `)
-                .eq('user_id', attendanceUserId);
-            
-            let courses = [];
-            
-            if (roleCourses && roleCourses.length > 0) {
-                // Filter courses that match user's program and intake year
-                courses = roleCourses
-                    .filter(item => item.courses)
-                    .map(item => ({
-                        id: item.courses.id,
-                        name: item.courses.course_name,
-                        code: item.courses.unit_code,
-                        latitude: item.courses.latitude,
-                        longitude: item.courses.longitude,
-                        program: item.courses.program_type,
-                        intake_year: item.courses.intake_year,
-                        block: item.courses.block,
-                        source: 'user_role_courses'
-                    }))
-                    .filter(course => 
-                        course.program === program && 
-                        course.intake_year === intakeYear
-                    );
-                
-                console.log(`📚 Found ${courses.length} courses via user_role_courses`);
+            // Apply program filter - match your courses.js logic
+            if (program === 'TVET' || program === 'TVET') {
+                query = query.eq('program_type', 'TVET');
+            } else if (program === 'KRCHN') {
+                query = query.eq('program_type', 'KRCHN');
+            } else if (program === 'Nursing') {
+                query = query.eq('program_type', 'Nursing');
+            } else if (program === 'Clinical Medicine') {
+                query = query.eq('program_type', 'Clinical Medicine');
+            } else if (program === 'Management') {
+                query = query.eq('program_type', 'Management');
+            } else {
+                query = query.eq('program_type', program);
             }
             
-            // SECOND: If no courses via user_role_courses, try courses_sections table
-            if (courses.length === 0) {
-                console.log('🔍 Checking courses_sections table...');
-                
-                let query = supabaseClient.from('courses_sections')
-                    .select('id, name, code, latitude, longitude, program, intake_year, block')
-                    .eq('program', program)
-                    .eq('intake_year', intakeYear);
-                
-                if (block) query = query.or(`block.eq.${block},block.is.null`);
-                else query = query.is('block', null);
-                
-                const { data: sectionsData, error: sectionsError } = await query.order('name');
-                
-                if (sectionsError) {
-                    console.warn('⚠️ Error checking courses_sections:', sectionsError);
-                } else if (sectionsData) {
-                    courses = sectionsData.map(course => ({
-                        id: course.id,
-                        name: course.name,
-                        code: course.code,
-                        latitude: course.latitude,
-                        longitude: course.longitude,
-                        program: course.program,
-                        intake_year: course.intake_year,
-                        block: course.block,
-                        source: 'courses_sections'
-                    }));
-                    
-                    console.log(`📚 Found ${courses.length} courses via courses_sections`);
-                }
+            // Apply block filter - match your courses.js logic
+            if (block) {
+                query = query.or(`block.eq.${block},block.is.null,block.eq.General`);
             }
             
-            // THIRD: If still no courses, try direct courses table
-            if (courses.length === 0) {
-                console.log('🔍 Checking courses table directly...');
-                
-                let query = supabaseClient
-                    .from('courses')
-                    .select('id, course_name, unit_code, latitude, longitude, program_type, intake_year, block')
-                    .eq('program_type', program)
-                    .eq('intake_year', intakeYear);
-                
-                if (block) {
-                    query = query.or(`block.eq.${block},block.is.null`);
-                } else {
-                    query = query.is('block', null);
-                }
-                
-                const { data: coursesData, error: coursesError } = await query.order('course_name');
-                
-                if (coursesError) {
-                    console.warn('⚠️ Error checking courses table:', coursesError);
-                } else if (coursesData) {
-                    courses = coursesData.map(course => ({
-                        id: course.id,
-                        name: course.course_name,
-                        code: course.unit_code,
-                        latitude: course.latitude,
-                        longitude: course.longitude,
-                        program: course.program_type,
-                        intake_year: course.intake_year,
-                        block: course.block,
-                        source: 'courses_table'
-                    }));
-                    
-                    console.log(`📚 Found ${courses.length} courses via direct query`);
-                }
+            const { data: courses, error } = await query.order('course_name');
+            
+            if (error) {
+                console.error("❌ Error loading courses:", error);
+                attendanceCachedCourses = [];
+                return;
             }
             
-            // Filter courses by block if specified
-            if (block && courses.length > 0) {
-                courses = courses.filter(course => 
-                    !course.block || course.block === block || course.block === 'General'
-                );
-            }
+            // Map to expected format
+            attendanceCachedCourses = (courses || [])
+                .filter(course => course.course_name && course.latitude && course.longitude)
+                .map(course => ({
+                    id: course.id,
+                    name: course.course_name,
+                    code: course.unit_code || '',
+                    latitude: course.latitude,
+                    longitude: course.longitude,
+                    program: course.program_type,
+                    intake_year: course.intake_year,
+                    block: course.block
+                }));
             
-            attendanceCachedCourses = courses
-                .filter(course => course.name && course.latitude && course.longitude)
-                .filter((course, index, array) => 
-                    array.findIndex(c => c.id === course.id) === index
-                )
-                .sort((a, b) => a.name.localeCompare(b.name));
-            
-            console.log(`✅ Loaded ${attendanceCachedCourses.length} class targets`);
+            console.log(`✅ Loaded ${attendanceCachedCourses.length} courses from courses table`);
             
         } catch (error) {
             console.error("Error loading class targets:", error);
@@ -436,7 +355,7 @@
         }
     }
     
-    // Update target dropdown - KEEPING YOUR ORIGINAL CODE WITH SMALL FIX
+    // Update target dropdown - KEEPING YOUR ORIGINAL CODE
     function attendanceUpdateTargetSelect() {
         const sessionTypeSelect = document.getElementById('session-type');
         const attendanceTargetSelect = document.getElementById('attendance-target');
