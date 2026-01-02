@@ -980,7 +980,39 @@ class Database {
             return [];
         }
     }
+    // ADD THIS TO THE END OF YOUR database.js (right before the DOMContentLoaded event)
+
+// Create global instance
+window.db = new Database();
+
+// Helper function to make database globally accessible
+window.getDatabase = async function() {
+    if (!window.db.supabase) {
+        await window.db.initialize();
+    }
+    return window.db;
+};
+
+// Make sure the database is initialized when needed
+window.initDatabase = async function() {
+    try {
+        console.log('🔧 Initializing database via global function...');
+        const dbInstance = await window.db.initialize();
+        console.log('✅ Database init result:', dbInstance ? 'Success' : 'Failed');
+        return dbInstance;
+    } catch (error) {
+        console.error('❌ Database initialization error:', error);
+        return null;
+    }
+};
+
+// Auto-initialize when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('📄 DOM ready in database.js');
     
+    // Don't auto-init here - let main app handle it
+    // The main app will call db.initialize() in initializeApp()
+});
     // === UTILITY FUNCTIONS ===
     clearCache() {
         this.cachedData = {
