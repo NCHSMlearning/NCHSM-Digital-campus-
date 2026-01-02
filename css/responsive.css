@@ -1,0 +1,704 @@
+/* ========== RESPONSIVE STYLES ========== */
+
+/* Tablet Optimization */
+@media (max-width: 1024px) and (min-width: 769px) {
+    .pdf-controls-mobile {
+        gap: var(--space-xl);
+    }
+    
+    .pdf-nav-btn {
+        width: 65px;
+        height: 65px;
+        font-size: 1.4rem;
+    }
+    
+    .pdf-page-info {
+        padding: 14px 24px;
+        min-width: 140px;
+        font-size: 1.1rem;
+    }
+    
+    .sidebar {
+        width: 260px;
+    }
+    
+    .cards {
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    }
+    
+    #profile-form {
+        grid-template-columns: 200px 1fr;
+        gap: var(--space-lg);
+    }
+    
+    .resources-grid {
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: var(--space-md);
+    }
+    
+    .footer-content {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 30px;
+        padding: 0 var(--space-lg);
+    }
+    
+    .footer-bottom {
+        padding: 25px var(--space-lg) 0;
+    }
+}
+
+/* Mobile Devices */
+@media (max-width: 768px) {
+    /* Main Layout */
+    .container { 
+        flex-direction: column; 
+    }
+    
+    .mobile-header { 
+        display: flex; 
+    }
+    
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 85%;
+        height: 100%;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease-in-out;
+        box-shadow: 4px 0 20px rgba(0, 0, 0, 0.3);
+        overflow-y: auto;
+        padding-bottom: 20px;
+        z-index: 1005;
+    }
+    
+    .sidebar.open { 
+        transform: translateX(0); 
+    }
+    
+    .overlay.active { 
+        display: block; 
+    }
+    
+    .sidebar-header {
+        display: flex;
+        justify-content: flex-start;
+        align-items: center;
+        gap: var(--space-md);
+        margin-bottom: var(--space-lg);
+        padding: 15px 20px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        flex-shrink: 0;
+    }
+    
+    .sidebar-header img { 
+        width: 50px; 
+        height: 50px;
+        margin-bottom: 0; 
+    }
+    
+    .sidebar-header h2 { 
+        font-size: 1.2rem; 
+    }
+    
+    .nav { 
+        display: flex; 
+        flex-direction: column; 
+        padding: 0 15px; 
+        gap: 6px;
+    }
+    
+    .nav a {
+        padding: 14px 15px;
+        font-size: 0.9rem;
+    }
+    
+    .logout { 
+        display: block; 
+        margin-top: 15px; 
+        flex-shrink: 0; 
+        padding: 0 15px; 
+    }
+    
+    .main { 
+        margin-left: 0 !important;
+        width: 100% !important;
+        padding: var(--space-lg); 
+    }
+    
+    .tab-content {
+        padding: var(--space-lg) var(--space-md) !important;
+    }
+    
+    /* PDF Mobile Navigation */
+    .pdf-controls-mobile {
+        padding: var(--space-md);
+        gap: var(--space-lg);
+        position: sticky;
+        bottom: 0;
+        background: white;
+        z-index: 5;
+    }
+    
+    .pdf-nav-btn {
+        width: 55px;
+        height: 55px;
+        font-size: 1.2rem;
+    }
+    
+    .pdf-page-info {
+        padding: 10px 16px;
+        min-width: 100px;
+        font-size: 0.9rem;
+    }
+    
+    .pdf-container-mobile {
+        padding: var(--space-md);
+        padding-bottom: var(--space-lg);
+        min-height: 65vh;
+    }
+    
+    /* Enhanced Mobile PDF Viewer */
+    .mobile-reader {
+        height: 100vh;
+    }
+    
+    .reader-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        padding: 0;
+    }
+    
+    .pdf-mobile-viewer {
+        height: 100%;
+    }
+    
+    .pdf-container-mobile {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 60vh;
+    }
+    
+    #pdf-canvas-mobile {
+        max-width: 100%;
+        max-height: 100%;
+        width: auto;
+        height: auto;
+    }
+    
+    .reader-header {
+        padding: var(--space-md);
+        min-height: 60px;
+    }
+    
+    .reader-header h3 {
+        font-size: 1.1rem;
+    }
+    
+    .view-only-notice {
+        padding: var(--space-sm) var(--space-md);
+        font-size: 0.85rem;
+    }
+    
+    /* Cards */
+    .cards { 
+        grid-template-columns: 1fr; 
+        gap: var(--space-md); 
+        margin-bottom: var(--space-lg); 
+    }
+    
+    .card { 
+        padding: var(--space-lg); 
+        min-height: 130px;
+    }
+    
+    .card h3 { 
+        font-size: 1rem; 
+    }
+    
+    .card p.data { 
+        font-size: 2rem; 
+    }
+    
+    #dashboard-actions { 
+        grid-template-columns: 1fr; 
+        gap: var(--space-md);
+    }
+    
+    /* Profile Form */
+    #profile-form { 
+        grid-template-columns: 1fr; 
+        padding: var(--space-lg); 
+        gap: var(--space-lg); 
+    }
+    
+    .profile-details { 
+        grid-template-columns: 1fr; 
+        gap: var(--space-md); 
+    }
+    
+    .profile-media { 
+        width: 100%; 
+        position: static;
+        text-align: center;
+    }
+    
+    .form-field.full-width { 
+        grid-column: 1; 
+    }
+    
+    /* Resources */
+    .resources-grid {
+        grid-template-columns: 1fr;
+        gap: var(--space-md);
+    }
+    
+    .resources-controls {
+        padding: var(--space-md);
+    }
+    
+    .filter-group {
+        flex-direction: column;
+        gap: var(--space-sm);
+    }
+    
+    .filter-group select {
+        min-width: 100%;
+    }
+    
+    .resource-card {
+        margin-bottom: var(--space-sm);
+    }
+    
+    .card-header {
+        padding: var(--space-md);
+    }
+    
+    .card-body {
+        padding: var(--space-md);
+    }
+    
+    .card-footer {
+        padding: var(--space-md);
+        flex-direction: column;
+    }
+    
+    .card-btn {
+        width: 100%;
+    }
+    
+    /* Mobile Reader Optimizations */
+    .reader-header {
+        padding: var(--space-md);
+    }
+    
+    .reader-header h3 {
+        font-size: 1.1rem;
+    }
+    
+    .reader-content {
+        padding: var(--space-md);
+    }
+    
+    .office-viewer,
+    .fallback-viewer {
+        padding: var(--space-lg);
+    }
+    
+    .viewer-actions {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    .viewer-actions .profile-button {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    /* Footer Mobile */
+    .footer-content {
+        grid-template-columns: 1fr;
+        gap: 25px;
+        padding: 0 var(--space-md);
+    }
+    
+    .footer-section {
+        text-align: center;
+        align-items: center;
+    }
+    
+    .footer-section h3 {
+        text-align: center;
+        width: 100%;
+    }
+    
+    .footer-section h3::after {
+        left: 50%;
+        transform: translateX(-50%);
+        width: 40px;
+    }
+    
+    .footer-contact {
+        align-items: center;
+    }
+    
+    .contact-item {
+        flex-direction: column;
+        text-align: center;
+        gap: 5px;
+    }
+    
+    .contact-item i {
+        font-size: 1.3rem;
+    }
+    
+    .footer-links {
+        align-items: center;
+    }
+    
+    .footer-links li {
+        width: 100%;
+        text-align: center;
+    }
+    
+    .footer-links a {
+        justify-content: center;
+    }
+    
+    .footer-bottom {
+        flex-direction: column;
+        text-align: center;
+        gap: 15px;
+        margin-top: 30px;
+        padding: 20px var(--space-md) 0;
+    }
+    
+    .footer-social {
+        justify-content: center;
+    }
+    
+    .social-icon {
+        width: 40px;
+        height: 40px;
+        font-size: 1rem;
+    }
+    
+    /* Welcome card adjustments */
+    .welcome-card {
+        padding: var(--space-lg);
+    }
+    
+    .welcome-card h2 {
+        font-size: 1.8rem;
+    }
+    
+    /* Table improvements */
+    table {
+        font-size: 0.85rem;
+    }
+    
+    th, td {
+        padding: 12px 10px;
+    }
+    
+    /* Scroll to Top Button Mobile */
+    .scroll-to-top {
+        bottom: 20px;
+        right: 20px;
+        width: 50px;
+        height: 50px;
+        font-size: 1.3rem;
+    }
+}
+
+/* Small Mobile Devices */
+@media (max-width: 480px) {
+    .mobile-header span {
+        font-size: 0.85rem;
+    }
+    
+    .header-profile-photo {
+        width: 40px;
+        height: 40px;
+    }
+    
+    .main {
+        padding: var(--space-md);
+    }
+    
+    .cards { 
+        grid-template-columns: 1fr; 
+        gap: var(--space-sm);
+    }
+    
+    .card {
+        padding: var(--space-md);
+        min-height: 120px;
+    }
+    
+    .card p.data {
+        font-size: 1.8rem;
+    }
+    
+    /* Small Screen Resources */
+    .resources-grid {
+        gap: var(--space-sm);
+    }
+    
+    .resource-card {
+        margin-bottom: var(--space-sm);
+    }
+    
+    .card-header {
+        padding: var(--space-sm) var(--space-md);
+    }
+    
+    .file-icon {
+        width: 40px;
+        height: 40px;
+        font-size: 1.2rem;
+    }
+    
+    .card-title h3 {
+        font-size: 1rem;
+    }
+    
+    .card-body {
+        padding: var(--space-md);
+    }
+    
+    .card-meta {
+        gap: var(--space-xs);
+    }
+    
+    .meta-item {
+        font-size: 0.8rem;
+    }
+    
+    .card-footer {
+        padding: var(--space-md);
+    }
+    
+    .card-btn {
+        padding: 10px 12px;
+        font-size: 0.85rem;
+    }
+    
+    /* Small Screen PDF Navigation */
+    .pdf-controls-mobile {
+        padding: var(--space-sm) var(--space-md);
+        gap: var(--space-md);
+    }
+    
+    .pdf-nav-btn {
+        width: 50px;
+        height: 50px;
+        font-size: 1.1rem;
+    }
+    
+    .pdf-page-info {
+        padding: 8px 14px;
+        min-width: 90px;
+        font-size: 0.85rem;
+    }
+    
+    .pdf-container-mobile {
+        padding: var(--space-sm);
+        padding-bottom: var(--space-md);
+        min-height: 70vh;
+    }
+    
+    #pdf-canvas-mobile {
+        max-width: 95%;
+        max-height: 95%;
+    }
+    
+    /* Mobile Reader Small Screens */
+    .reader-header {
+        padding: var(--space-sm) var(--space-md);
+    }
+    
+    .reader-header h3 {
+        font-size: 1rem;
+    }
+    
+    .reader-back {
+        width: 40px;
+        height: 40px;
+        font-size: 1.1rem;
+    }
+    
+    .view-only-badge {
+        font-size: 0.75rem;
+        padding: 4px 8px;
+    }
+    
+    .view-only-notice {
+        padding: var(--space-sm);
+        font-size: 0.85rem;
+    }
+    
+    /* Profile small screens */
+    #profile-form {
+        padding: var(--space-md);
+    }
+    
+    .welcome-card {
+        padding: var(--space-md);
+    }
+    
+    .welcome-card h2 {
+        font-size: 1.6rem;
+    }
+    
+    th, td {
+        padding: 10px 8px;
+        font-size: 0.8rem;
+    }
+    
+    /* Footer small screens */
+    .footer-content {
+        gap: 20px;
+        padding: 0 var(--space-sm);
+    }
+    
+    .footer-section h3 {
+        font-size: 1.2rem;
+    }
+    
+    .app-footer {
+        padding: 25px 0 15px !important;
+    }
+    
+    .social-icon {
+        width: 38px;
+        height: 38px;
+        font-size: 0.95rem;
+    }
+    
+    .tab-content {
+        padding: var(--space-md) var(--space-sm) !important;
+    }
+    
+    /* Scroll to Top Button Small Screens */
+    .scroll-to-top {
+        bottom: 15px;
+        right: 15px;
+        width: 45px;
+        height: 45px;
+        font-size: 1.2rem;
+    }
+}
+
+/* Landscape Mobile Optimization */
+@media (max-width: 768px) and (orientation: landscape) {
+    .pdf-controls-mobile {
+        padding: var(--space-sm) var(--space-md);
+    }
+    
+    .pdf-nav-btn {
+        width: 45px;
+        height: 45px;
+        font-size: 1rem;
+    }
+    
+    .pdf-page-info {
+        padding: 6px 12px;
+        min-width: 80px;
+        font-size: 0.8rem;
+    }
+    
+    .pdf-container-mobile {
+        padding: var(--space-sm);
+        padding-bottom: var(--space-md);
+        min-height: 75vh;
+    }
+    
+    .reader-header {
+        padding: var(--space-sm) var(--space-md);
+        min-height: 50px;
+    }
+    
+    .reader-header h3 {
+        font-size: 1rem;
+    }
+    
+    .view-only-notice {
+        padding: 8px var(--space-md);
+        font-size: 0.8rem;
+    }
+    
+    .scroll-to-top {
+        bottom: 10px;
+        right: 10px;
+        width: 40px;
+        height: 40px;
+        font-size: 1rem;
+    }
+    
+    .resources-grid {
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    }
+}
+
+/* High-resolution mobile devices */
+@media (max-width: 768px) and (min-resolution: 2dppx) {
+    .resource-card {
+        border-left-width: 3px;
+    }
+    
+    .file-icon {
+        border-radius: 8px;
+    }
+}
+
+/* Print Styles */
+@media print {
+    .sidebar,
+    .mobile-header,
+    .logout,
+    .check-in-controls button,
+    .resources-controls,
+    .card-footer,
+    .scroll-to-top {
+        display: none !important;
+    }
+    
+    .main {
+        margin: 0;
+        padding: 0;
+    }
+    
+    .card {
+        break-inside: avoid;
+        box-shadow: none;
+        border: 1px solid #ccc;
+    }
+    
+    .resource-card {
+        box-shadow: none;
+        border: 1px solid #ccc;
+        margin-bottom: 10px;
+    }
+    
+    .mobile-reader {
+        position: static;
+        height: auto;
+    }
+    
+    .reader-header {
+        display: none;
+    }
+    
+    .reader-content {
+        padding: 0;
+    }
+    
+    .pdf-controls-mobile,
+    .view-only-notice {
+        display: none;
+    }
+}
