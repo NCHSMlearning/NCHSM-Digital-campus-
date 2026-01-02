@@ -740,7 +740,7 @@ function showErrorScreen(title, message, details = '') {
     `;
 }
 
-// Initialize application
+// Initialize application - UPDATED VERSION
 async function initializeApp() {
     try {
         updateLoadingStatus('Checking configuration...');
@@ -768,42 +768,29 @@ async function initializeApp() {
             Commit: ${config.COMMIT_SHA ? config.COMMIT_SHA.substring(0, 7) : 'Unknown'}
         `);
         
-        // Initialize Supabase
-        updateLoadingStatus('Connecting to database...');
-        
-        if (typeof supabase === 'undefined') {
-            throw new Error('Supabase library not loaded');
-        }
-        
-        window.app.supabase = supabase.createClient(
-            config.SUPABASE_URL,
-            config.SUPABASE_ANON_KEY,
-            {
-                auth: {
-                    persistSession: true,
-                    autoRefreshToken: true,
-                    detectSessionInUrl: true
-                }
-            }
-        );
-        
-        // Initialize database module
+        // Initialize database FIRST - CRITICAL FIX
         updateLoadingStatus('Initializing database...');
         
-        if (typeof db === 'undefined') {
-            throw new Error('Database module not loaded');
+        if (typeof window.db === 'undefined') {
+            throw new Error('Database module not loaded. Check js/database.js');
         }
         
-        // This single call does everything:
-        // 1. Connects to Supabase
-        // 2. Authenticates user
-        // 3. Loads user profile
-        // 4. Sets global variables
-        await db.initialize();
+        // Initialize the database
+        const dbInstance = await window.db.initialize();
+        if (!dbInstance) {
+            throw new Error('Database initialization failed');
+        }
         
-        // Check if authentication was successful
-        if (!window.currentUserId) {
-            throw new Error('User not authenticated');
+        console.log('✅ Database initialized, user:', window.db.currentUserId);
+        
+        // Check authentication via database module
+        updateLoadingStatus('Checking authentication...');
+        
+        const isAuthenticated = await window.db.checkAuth();
+        if (!isAuthenticated) {
+            console.log('⚠️ No active session, redirecting to login...');
+            window.location.href = 'login.html';
+            return;
         }
         
         updateLoadingStatus('Loading dashboard...');
@@ -816,6 +803,17 @@ async function initializeApp() {
             setTimeout(() => {
                 document.getElementById('loading-screen').style.display = 'none';
                 
+                // Set global variables for backward compatibility
+                window.supabase = window.db.supabase;
+                window.currentUserId = window.db.currentUserId;
+                window.currentUserProfile = window.db.currentUserProfile;
+                
+                console.log('🌐 Global variables set:', {
+                    userId: window.currentUserId,
+                    user: window.currentUserProfile?.full_name,
+                    email: window.currentUserProfile?.email
+                });
+                
                 // Initialize UI
                 if (typeof initUI === 'function') {
                     initUI();
@@ -826,15 +824,9 @@ async function initializeApp() {
                     loadDashboard();
                 }
                 
-                // Initialize attendance module if on attendance tab
-                if (document.getElementById('session-type') && typeof initAttendanceModule === 'function') {
-                    setTimeout(() => {
-                        initAttendanceModule();
-                        console.log('✅ Attendance module initialized');
-                    }, 500);
-                }
-                
                 window.app.isInitialized = true;
+                window.app.supabase = window.db.supabase;
+                window.app.user = window.db.currentUserProfile;
                 
                 console.log('✅ Application initialized successfully');
                 
@@ -842,7 +834,8 @@ async function initializeApp() {
                 document.dispatchEvent(new CustomEvent('appReady', {
                     detail: {
                         userId: window.currentUserId,
-                        userProfile: window.currentUserProfile
+                        userProfile: window.currentUserProfile,
+                        database: window.db
                     }
                 }));
                 
@@ -878,12 +871,15 @@ async function initializeApp() {
             errorTitle = 'Database Error';
             errorMessage = 'Failed to connect to database.';
             errorDetails = 'Check your Supabase credentials and network connection.';
+        } else if (error.message.includes('Database module not loaded')) {
+            errorTitle = 'Database Module Error';
+            errorMessage = 'Database module not found.';
+            errorDetails = 'Please check if js/database.js exists and is loaded correctly.';
         }
         
         showErrorScreen(errorTitle, errorMessage, errorDetails);
     }
 }
-
 // Tab switching
 window.showTab = function(tabId) {
     console.log(`Switching to tab: ${tabId}`);
@@ -1044,7 +1040,7 @@ function restoreLastTab() {
     }
 }
 
-// Logout function
+// Logout function - UPDATED
 window.logout = async function() {
     try {
         if (window.db && window.db.logout) {
