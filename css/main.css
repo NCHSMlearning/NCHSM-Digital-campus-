@@ -4,6 +4,8 @@
 @import url('base.css');        /* Variables & resets */
 @import url('layout.css');      /* Sidebar, main, footer */
 @import url('components.css');  /* Buttons, forms, tables */
+@import url('exams.css');       /* Exams & CATs */
+@import url('courses.css');     /* Courses & curriculum */
 @import url('dashboard.css');   /* Dashboard specific */
 @import url('resources.css');   /* Resources section */
 @import url('reader.css');      /* PDF/Doc viewer */
