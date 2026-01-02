@@ -698,7 +698,8 @@
 <script src="./js/messages.js"></script>
 <script src="./js/nurseiq.js"></script>
 
-<!-- Initialize App -->
+
+     <!-- Initialize App -->
 <script>
 // Global app state
 window.app = {
@@ -710,53 +711,45 @@ window.app = {
 };
 
 // Update loading status
-function updateLoadingStatus(status, details = '') {
+function updateLoadingStatus(status, details) {
     const statusEl = document.getElementById('status-text');
     const detailsEl = document.getElementById('config-details');
     
     if (statusEl) statusEl.textContent = status;
     if (detailsEl && details) {
-        detailsEl.innerHTML = `<small>${details}</small>`;
+        detailsEl.innerHTML = '<small>' + details + '</small>';
     }
 }
 
 // Show error screen
-function showErrorScreen(title, message, details = '') {
+function showErrorScreen(title, message, details) {
     const loadingScreen = document.getElementById('loading-screen');
-    loadingScreen.innerHTML = `
-        <div class="loading-content">
-            <div class="loading-logo" style="background: #ef4444;">
-                <i class="fas fa-exclamation-triangle"></i>
-            </div>
-            <h1>${title}</h1>
-            <p>${message}</p>
-            ${details ? `<div class="error-details">${details}</div>` : ''}
-            <div style="margin-top: 30px;">
-                <button onclick="window.location.reload()" class="retry-btn">
-                    <i class="fas fa-redo"></i> Try Again
-                </button>
-            </div>
-        </div>
-    `;
+    const errorHTML = 
+        '<div class="loading-content">' +
+        '<div class="loading-logo" style="background: #ef4444;">' +
+        '<i class="fas fa-exclamation-triangle"></i>' +
+        '</div>' +
+        '<h1>' + title + '</h1>' +
+        '<p>' + message + '</p>' +
+        (details ? '<div class="error-details">' + details + '</div>' : '') +
+        '<div style="margin-top: 30px;">' +
+        '<button onclick="window.location.reload()" class="retry-btn">' +
+        '<i class="fas fa-redo"></i> Try Again' +
+        '</button>' +
+        '</div>' +
+        '</div>';
+    
+    loadingScreen.innerHTML = errorHTML;
 }
 
-// Initialize application - FIXED VERSION (Consolidated Profiles Table)
+// Initialize application - WORKING VERSION
 async function initializeApp() {
     try {
-        // 1. Initialize app object if it doesn't exist
-        if (!window.app) {
-            window.app = {
-                config: null,
-                supabase: null,
-                db: null,
-                user: null,
-                isInitialized: false
-            };
-        }
+        console.log('🚀 Starting app initialization...');
         
         updateLoadingStatus('Checking configuration...');
         
-        // 2. Wait for config.js to load
+        // 1. Check config
         if (!window.APP_CONFIG) {
             throw new Error('Configuration not loaded. Check if config.js exists.');
         }
@@ -764,7 +757,7 @@ async function initializeApp() {
         const config = window.APP_CONFIG;
         window.app.config = config;
         
-        // 3. Validate configuration
+        // Validate configuration
         if (!config.SUPABASE_URL || config.SUPABASE_URL === '%%SUPABASE_URL%%') {
             throw new Error('SUPABASE_URL is not configured in GitHub Secrets');
         }
@@ -773,20 +766,19 @@ async function initializeApp() {
             throw new Error('SUPABASE_ANON_KEY is not configured in GitHub Secrets');
         }
         
-        updateLoadingStatus('Configuration loaded', `
-            Environment: ${config.ENVIRONMENT || 'production'}<br>
-            Build: ${config.BUILD_TIME || 'Unknown'}<br>
-            Commit: ${config.COMMIT_SHA ? config.COMMIT_SHA.substring(0, 7) : 'Unknown'}
-        `);
+        updateLoadingStatus('Configuration loaded', 
+            'Environment: ' + (config.ENVIRONMENT || 'production') + '<br>' +
+            'Build: ' + (config.BUILD_TIME || 'Unknown') + '<br>' +
+            'Commit: ' + (config.COMMIT_SHA ? config.COMMIT_SHA.substring(0, 7) : 'Unknown')
+        );
         
-        // 4. Initialize database
+        // 2. Initialize database
         updateLoadingStatus('Initializing database...');
         
         if (typeof window.db === 'undefined') {
             throw new Error('Database module not loaded. Check js/database.js');
         }
         
-        // Initialize the database
         const dbInstance = await window.db.initialize();
         if (!dbInstance) {
             throw new Error('Database initialization failed');
@@ -794,7 +786,7 @@ async function initializeApp() {
         
         console.log('✅ Database initialized');
         
-        // 5. Check authentication
+        // 3. Check authentication
         updateLoadingStatus('Checking authentication...');
         
         let userSession = null;
@@ -810,14 +802,14 @@ async function initializeApp() {
             return;
         }
         
-        // 6. Set user ID
+        // 4. Set user ID
         window.db.currentUserId = userSession.user.id;
         
-        // 7. LOAD USER FROM CONSOLIDATED PROFILES TABLE - FIXED
+        // 5. Load user profile
         updateLoadingStatus('Loading user profile...');
         
         try {
-            // Try consolidated user profiles table first
+            // Try consolidated user profiles table
             const { data: consolidatedProfile, error: consolidatedError } = await window.db.supabase
                 .from('consolidated_user_profiles_table')
                 .select('*')
@@ -825,12 +817,10 @@ async function initializeApp() {
                 .single();
             
             if (!consolidatedError && consolidatedProfile) {
-                // Success! Use consolidated profile
                 window.db.currentUserProfile = consolidatedProfile;
                 console.log('✅ User loaded from consolidated_user_profiles_table');
             } else {
-                // Fallback 1: Try regular profiles table
-                console.log('Trying regular profiles table...');
+                // Fallback to profiles table
                 const { data: regularProfile, error: regularError } = await window.db.supabase
                     .from('profiles')
                     .select('*')
@@ -841,8 +831,7 @@ async function initializeApp() {
                     window.db.currentUserProfile = regularProfile;
                     console.log('✅ User loaded from profiles table');
                 } else {
-                    // Fallback 2: Use auth data with email lookup
-                    console.log('Trying email lookup...');
+                    // Fallback to email lookup
                     const { data: emailProfile, error: emailError } = await window.db.supabase
                         .from('consolidated_user_profiles_table')
                         .select('*')
@@ -853,7 +842,7 @@ async function initializeApp() {
                         window.db.currentUserProfile = emailProfile;
                         console.log('✅ User loaded by email from consolidated table');
                     } else {
-                        // Ultimate fallback: Use auth data
+                        // Ultimate fallback
                         console.warn('Using auth data as fallback');
                         window.db.currentUserProfile = {
                             id: userSession.user.id,
@@ -880,41 +869,32 @@ async function initializeApp() {
         console.log('✅ User authenticated:', {
             userId: window.db.currentUserId,
             email: window.db.currentUserProfile.email,
-            name: window.db.currentUserProfile.full_name,
-            studentId: window.db.currentUserProfile.student_id
+            name: window.db.currentUserProfile.full_name
         });
         
-        // 8. HIDE LOADING SCREEN IMMEDIATELY
+        // 6. HIDE LOADING SCREEN AND SHOW APP
         updateLoadingStatus('Loading dashboard...');
         
-        // Remove the problematic setTimeout and opacity animation
         document.getElementById('loading-screen').style.display = 'none';
         document.getElementById('app-content').style.display = 'block';
         
-        // 9. Set global variables for backward compatibility
+        // 7. Set global variables
         window.supabase = window.db.supabase;
         window.currentUserId = window.db.currentUserId;
         window.currentUserProfile = window.db.currentUserProfile;
         
-        console.log('🌐 Global variables set:', {
-            userId: window.currentUserId,
-            user: window.currentUserProfile?.full_name,
-            email: window.currentUserProfile?.email,
-            studentId: window.currentUserProfile?.student_id
-        });
-        
-        // 10. Update welcome message immediately
+        // 8. Update welcome message
         const welcomeHeader = document.getElementById('welcome-header');
-        if (welcomeHeader && window.db.currentUserProfile?.full_name) {
-            welcomeHeader.textContent = `Welcome back, ${window.db.currentUserProfile.full_name}!`;
+        if (welcomeHeader && window.db.currentUserProfile.full_name) {
+            welcomeHeader.textContent = 'Welcome back, ' + window.db.currentUserProfile.full_name + '!';
         }
         
-        // 11. Initialize UI immediately
+        // 9. Initialize UI if function exists
         if (typeof initUI === 'function') {
             initUI();
         }
         
-        // 12. Ensure dashboard tab is active
+        // 10. Ensure dashboard is active
         document.querySelectorAll('.tab-content').forEach(tab => {
             tab.style.display = 'none';
             tab.classList.remove('active');
@@ -928,27 +908,26 @@ async function initializeApp() {
             dashboard.style.visibility = 'visible';
         }
         
-        // Activate dashboard nav
+        // 11. Activate navigation
         document.querySelectorAll('.nav a').forEach(link => {
             link.classList.remove('active');
-            if (link.getAttribute('data-tab') === 'dashboard') {
-                link.classList.add('active');
-            }
         });
+        const dashboardNav = document.querySelector('[data-tab="dashboard"]');
+        if (dashboardNav) dashboardNav.classList.add('active');
         
-        // 13. Load initial dashboard
+        // 12. Load dashboard data
         if (typeof loadDashboard === 'function') {
             setTimeout(() => loadDashboard(), 100);
         }
         
-        // 14. Mark app as initialized
+        // 13. Mark as initialized
         window.app.isInitialized = true;
         window.app.supabase = window.db.supabase;
         window.app.user = window.db.currentUserProfile;
         
         console.log('✅ Application initialized successfully');
         
-        // 15. Dispatch event that app is ready
+        // 14. Dispatch app ready event
         document.dispatchEvent(new CustomEvent('appReady', {
             detail: {
                 userId: window.currentUserId,
@@ -960,44 +939,35 @@ async function initializeApp() {
     } catch (error) {
         console.error('❌ Initialization failed:', error);
         
-        // Try to show the UI anyway
+        // Show error but at least show the UI
         try {
             document.getElementById('loading-screen').style.display = 'none';
             document.getElementById('app-content').style.display = 'block';
             
-            // Show dashboard
             const dashboard = document.getElementById('dashboard');
             if (dashboard) {
                 dashboard.style.display = 'block';
                 dashboard.classList.add('active');
             }
             
-            // Show error message on dashboard
             const welcomeSection = document.getElementById('welcome-section');
             if (welcomeSection) {
-                welcomeSection.innerHTML = `
-                    <h2>Application Error</h2>
-                    <p>${error.message}</p>
-                    <button onclick="location.reload()" class="profile-button">Retry</button>
-                `;
+                welcomeSection.innerHTML = 
+                    '<h2>Application Error</h2>' +
+                    '<p>' + error.message + '</p>' +
+                    '<button onclick="location.reload()" class="profile-button">Retry</button>';
             }
             
             console.log('⚠️ Showing UI in error fallback mode');
-            
         } catch (uiError) {
-            // Ultimate fallback error screen
-            showErrorScreen(
-                'Initialization Error',
-                'Failed to initialize the application.',
-                error.message + '<br><br>Please check your console for details.'
-            );
+            showErrorScreen('Initialization Error', 'Failed to initialize the application.', error.message);
         }
     }
 }
 
 // Tab switching
 window.showTab = function(tabId) {
-    console.log(`Switching to tab: ${tabId}`);
+    console.log('Switching to tab:', tabId);
     
     // Hide all tabs
     document.querySelectorAll('.tab-content').forEach(tab => {
@@ -1028,8 +998,10 @@ window.showTab = function(tabId) {
         console.warn('Could not save tab state:', e);
     }
     
-    // Load tab data
-    loadTabData(tabId);
+    // Load tab data if function exists
+    if (typeof loadTabData === 'function') {
+        loadTabData(tabId);
+    }
 };
 
 // Load tab data
@@ -1041,7 +1013,7 @@ async function loadTabData(tabId) {
     }
     
     try {
-        console.log(`📂 Loading tab data: ${tabId}`);
+        console.log('Loading tab data:', tabId);
         
         // Ensure we have user data
         if (!window.currentUserId && window.db && window.db.currentUserId) {
@@ -1053,69 +1025,55 @@ async function loadTabData(tabId) {
             case 'dashboard':
                 if (typeof loadDashboard === 'function') {
                     await loadDashboard();
-                } else if (window.dashboardModule && window.dashboardModule.refreshDashboard) {
-                    await window.dashboardModule.refreshDashboard();
                 }
                 break;
-                
             case 'profile':
                 if (typeof loadProfile === 'function') {
                     await loadProfile();
-                } else if (window.db && window.db.loadProfileData) {
-                    await window.db.loadProfileData();
                 }
                 break;
-                
             case 'calendar':
                 if (typeof loadAcademicCalendar === 'function') {
                     await loadAcademicCalendar();
                 }
                 break;
-                
             case 'courses':
                 if (typeof loadCourses === 'function') {
                     await loadCourses();
                 }
                 break;
-                
             case 'attendance':
                 if (window.attendanceModule && window.attendanceModule.loadAttendanceData) {
                     await window.attendanceModule.loadAttendanceData();
                 }
                 break;
-                
             case 'cats':
                 if (typeof loadExams === 'function') {
                     await loadExams();
                 }
                 break;
-                
             case 'resources':
                 if (typeof loadResources === 'function') {
                     await loadResources();
                 }
                 break;
-                
             case 'messages':
                 if (typeof loadMessages === 'function') {
                     await loadMessages();
                 }
                 break;
-                
             case 'nurseiq':
                 if (typeof loadNurseIQ === 'function') {
                     await loadNurseIQ();
                 }
                 break;
-                
             default:
-                console.log(`No specific loader for tab: ${tabId}`);
+                console.log('No specific loader for tab:', tabId);
         }
         
-        console.log(`✅ Tab ${tabId} loaded successfully`);
-        
+        console.log('✅ Tab loaded successfully:', tabId);
     } catch (error) {
-        console.error(`❌ Error loading tab ${tabId}:`, error);
+        console.error('Error loading tab:', tabId, error);
     }
 }
 
@@ -1139,13 +1097,13 @@ function restoreLastTab() {
     try {
         const lastTab = localStorage.getItem('last_active_tab');
         if (lastTab && document.getElementById(lastTab)) {
-            console.log(`📁 Restoring last tab: ${lastTab}`);
+            console.log('Restoring last tab:', lastTab);
             setTimeout(() => {
                 showTab(lastTab);
             }, 100);
         } else {
             // Default to dashboard
-            console.log('📊 Defaulting to dashboard tab');
+            console.log('Defaulting to dashboard tab');
             showTab('dashboard');
         }
     } catch (e) {
@@ -1174,27 +1132,17 @@ window.logout = async function() {
 
 // Global refresh function
 window.refreshApp = function() {
-    console.log('🔄 Refreshing application...');
+    console.log('Refreshing application...');
     
     // Clear caches
     if (window.db && window.db.clearCache) {
         window.db.clearCache();
     }
     
-    // Clear module caches
-    if (window.dashboardModule && window.dashboardModule.clearCache) {
-        window.dashboardModule.clearCache();
-    }
-    
     // Reload current tab
-    const currentTab = document.querySelector('.tab-content.active')?.id || 'dashboard';
+    const currentTab = document.querySelector('.tab-content.active').id || 'dashboard';
     if (currentTab && window.showTab) {
         window.showTab(currentTab);
-    }
-    
-    // Show toast if available
-    if (window.showToast) {
-        window.showToast('Application refreshed', 'success');
     }
 };
 
@@ -1238,5 +1186,6 @@ document.addEventListener('DOMContentLoaded', function() {
         restoreLastTab();
     }, 1500);
 });
+</script>
 </body>
 </html>
