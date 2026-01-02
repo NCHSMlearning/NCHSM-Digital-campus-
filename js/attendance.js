@@ -1,4 +1,5 @@
-// attendance.js - Working version with proper scope - FIXED PROPERLY
+
+// attendance.js - EXACT COPY OF YOUR ORIGINAL WORKING CODE
 // *************************************************************************
 // *** ATTENDANCE SYSTEM ***
 // *************************************************************************
@@ -147,7 +148,7 @@
         }
     }
     
-    // Load clinical targets - KEEPING YOUR ORIGINAL CODE
+    // Load clinical targets
     async function loadClinicalTargets() {
         console.log('🏥 Loading clinical targets...');
         
@@ -211,9 +212,9 @@
         }
     }
     
-    // Load class targets - SIMPLIFIED TO USE COURSES TABLE DIRECTLY
+    // Load class targets - EXACT ORIGINAL CODE
     async function loadClassTargets() {
-        console.log('🏫 Loading class targets from courses table...');
+        console.log('🏫 Loading class targets...');
         
         if (!attendanceUserProfile || (!attendanceUserProfile.program && !attendanceUserProfile.department) || !attendanceUserProfile.intake_year) {
             console.warn('⚠️ Missing user profile data for class targets');
@@ -234,57 +235,33 @@
             const intakeYear = attendanceUserProfile?.intake_year;
             const block = attendanceUserProfile?.block || null;
             
-            console.log('🎯 Course query params:', { program, intakeYear, block });
+            console.log('🎯 Class query params:', { program, intakeYear, block });
             
-            // SIMPLE DIRECT QUERY TO COURSES TABLE - matching your courses.js
-            let query = supabaseClient
-                .from('courses')
-                .select('id, course_name, unit_code, latitude, longitude, program_type, intake_year, block')
+            // ORIGINAL QUERY - Using courses_sections table
+            let query = supabaseClient.from('courses_sections')
+                .select('id, name, code, latitude, longitude')
+                .eq('program', program)
                 .eq('intake_year', intakeYear);
             
-            // Apply program filter - match your courses.js logic
-            if (program === 'TVET' || program === 'TVET') {
-                query = query.eq('program_type', 'TVET');
-            } else if (program === 'KRCHN') {
-                query = query.eq('program_type', 'KRCHN');
-            } else if (program === 'Nursing') {
-                query = query.eq('program_type', 'Nursing');
-            } else if (program === 'Clinical Medicine') {
-                query = query.eq('program_type', 'Clinical Medicine');
-            } else if (program === 'Management') {
-                query = query.eq('program_type', 'Management');
-            } else {
-                query = query.eq('program_type', program);
-            }
+            if (block) query = query.or(`block.eq.${block},block.is.null`);
+            else query = query.is('block', null);
             
-            // Apply block filter - match your courses.js logic
-            if (block) {
-                query = query.or(`block.eq.${block},block.is.null,block.eq.General`);
-            }
+            const { data, error } = await query.order('name');
             
-            const { data: courses, error } = await query.order('course_name');
+            if (error) throw error;
             
-            if (error) {
-                console.error("❌ Error loading courses:", error);
-                attendanceCachedCourses = [];
-                return;
-            }
+            attendanceCachedCourses = (data || []).map(course => ({
+                id: course.id,
+                name: course.name,
+                code: course.code,
+                latitude: course.latitude,
+                longitude: course.longitude
+            }));
             
-            // Map to expected format
-            attendanceCachedCourses = (courses || [])
-                .filter(course => course.course_name && course.latitude && course.longitude)
-                .map(course => ({
-                    id: course.id,
-                    name: course.course_name,
-                    code: course.unit_code || '',
-                    latitude: course.latitude,
-                    longitude: course.longitude,
-                    program: course.program_type,
-                    intake_year: course.intake_year,
-                    block: course.block
-                }));
+            console.log(`✅ Loaded ${attendanceCachedCourses.length} class targets from courses_sections table`);
             
-            console.log(`✅ Loaded ${attendanceCachedCourses.length} courses from courses table`);
+            // DEBUG: Log what we got
+            console.log('📊 Courses data:', attendanceCachedCourses);
             
         } catch (error) {
             console.error("Error loading class targets:", error);
@@ -292,7 +269,7 @@
         }
     }
     
-    // Load attendance history - KEEPING YOUR ORIGINAL CODE
+    // Load attendance history
     async function loadGeoAttendanceHistory() {
         const tableBody = document.getElementById('geo-attendance-history');
         if (!tableBody) return;
@@ -355,7 +332,7 @@
         }
     }
     
-    // Update target dropdown - KEEPING YOUR ORIGINAL CODE
+    // Update target dropdown
     function attendanceUpdateTargetSelect() {
         const sessionTypeSelect = document.getElementById('session-type');
         const attendanceTargetSelect = document.getElementById('attendance-target');
@@ -389,6 +366,7 @@
             }));
             label = 'Course/Subject:';
             console.log(`🎯 Class targets available: ${targetList.length}`);
+            console.log('📋 Class target list:', targetList);
         }
         
         // Update label
@@ -425,7 +403,7 @@
         }
     }
     
-    // Get device ID - KEEPING YOUR ORIGINAL CODE
+    // Get device ID
     function getAttendanceDeviceId() {
         let deviceId = localStorage.getItem('attendance_device_id');
         if (!deviceId) {
@@ -436,7 +414,7 @@
         return deviceId;
     }
     
-    // Get current location - KEEPING YOUR ORIGINAL CODE
+    // Get current location
     async function getAttendanceCurrentLocation() {
         console.log('📍 Getting current location...');
         
@@ -481,7 +459,7 @@
         });
     }
     
-    // Reverse geocode location - KEEPING YOUR ORIGINAL CODE
+    // Reverse geocode location
     async function attendanceReverseGeocode(lat, lon) {
         console.log('🗺️ Reverse geocoding location...');
         
@@ -507,7 +485,7 @@
         }
     }
     
-    // Calculate distance between two points (Haversine formula) - KEEPING YOUR ORIGINAL CODE
+    // Calculate distance between two points (Haversine formula)
     function calculateAttendanceDistance(lat1, lon1, lat2, lon2) {
         const R = 6371000; // Earth radius in meters
         const toRad = (x) => (x * Math.PI) / 180;
@@ -527,7 +505,7 @@
         return distanceMeters;
     }
     
-    // Geo check-in function - KEEPING YOUR ORIGINAL CODE
+    // Geo check-in function
     async function attendanceGeoCheckIn() {
         console.log('📍 Starting attendance geo check-in process...');
         
@@ -701,7 +679,7 @@
         }
     }
     
-    // Add CSS for attendance status indicators - KEEPING YOUR ORIGINAL CODE
+    // Add CSS for attendance status indicators
     const attendanceStyles = document.createElement('style');
     attendanceStyles.textContent = `
         .attendance-info-message { color: #3b82f6; }
