@@ -1,92 +1,23 @@
-/* ========== MAIN CSS FILE (IMPORTS) ========== */
+/* css/main.css */
 @import url('base.css');
+@import url('layout.css');
 @import url('components.css');
+@import url('dashboard.css');
+@import url('resources.css');
+@import url('reader.css');
 @import url('nurseiq.css');
+@import url('responsive.css');
 
-/* ========== LAYOUT STYLES ========== */
-.container {
-    display: flex;
-    min-height: 100vh;
-}
-
-/* Sidebar */
-.sidebar {
-    width: 280px;
-    background: var(--color-sidebar);
-    color: var(--color-text-light);
-    display: flex;
-    flex-direction: column;
-    position: fixed;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    z-index: var(--z-sidebar);
-    height: 100vh;
-    overflow-y: auto;
-    box-shadow: var(--shadow-lg);
-}
-
-/* Main Content */
-.main {
-    flex: 1;
-    margin-left: 280px;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-}
-
-/* Tab Content */
-.tab-content {
-    display: none;
-    flex: 1;
-    padding: var(--space-xl) var(--space-lg);
-    max-width: 1400px;
-    margin: 0 auto;
-    width: 100%;
-    box-sizing: border-box;
-}
-
-.tab-content.active {
-    display: block;
-    animation: fadeIn 0.5s ease;
-}
-
-/* Footer */
-.app-footer {
-    background: linear-gradient(145deg, #0f172a 0%, #1e293b 100%);
-    color: #e2e8f0;
-    width: 100%;
-    margin-top: auto;
-    padding: 40px 0 30px;
+/* Global fixes at the end */
+.interactive-questions-container {
+    isolation: isolate;
     position: relative;
-    z-index: 100;
-    flex-shrink: 0;
 }
 
-/* ========== RESPONSIVE LAYOUT ========== */
-@media (max-width: 768px) {
-    .sidebar {
-        width: 85%;
-        transform: translateX(-100%);
-        transition: transform 0.3s ease-in-out;
-    }
-    
-    .sidebar.open {
-        transform: translateX(0);
-    }
-    
-    .main {
-        margin-left: 0;
-        width: 100%;
-    }
-    
-    .tab-content {
-        padding: var(--space-lg) var(--space-md);
-    }
-}
-
-@media (max-width: 480px) {
-    .tab-content {
-        padding: var(--space-md) var(--space-sm);
-    }
+.questions-main-container {
+    display: flex !important;
+    gap: 30px !important;
+    margin: 20px auto !important;
+    padding: 0 20px !important;
+    max-width: 1400px !important;
 }
