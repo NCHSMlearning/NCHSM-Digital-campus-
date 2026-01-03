@@ -1,8 +1,8 @@
-// js/exams.js - FINAL WORKING VERSION BASED ON SIMPLE MODULE
+// js/exams.js - COMPLETE FINAL VERSION (Based on Working Simple Module)
 (function() {
     'use strict';
     
-    console.log('✅ exams.js - Final Working Version');
+    console.log('✅ exams.js - Complete Final Version');
     
     class ExamsModule {
         constructor() {
@@ -15,9 +15,111 @@
             this.completedEmpty = document.getElementById('completed-empty');
             this.currentCountElement = document.getElementById('current-count');
             this.completedCountElement = document.getElementById('completed-count');
+            this.completedAverageElement = document.getElementById('completed-average');
+            
+            // Initialize event listeners
+            this.initializeEventListeners();
+            
+            // Set default filter
+            this.currentFilter = 'all';
+            this.updateFilterButtons();
             
             // Load exams immediately
             this.loadExams();
+        }
+        
+        initializeEventListeners() {
+            console.log('🔌 Setting up event listeners...');
+            
+            // 1. Refresh button
+            const refreshBtn = document.getElementById('refresh-assessments');
+            if (refreshBtn) {
+                refreshBtn.addEventListener('click', () => this.refresh());
+            }
+            
+            // 2. Filter buttons
+            this.setupFilterButton('view-all-assessments', 'all');
+            this.setupFilterButton('view-current-only', 'current');
+            this.setupFilterButton('view-completed-only', 'completed');
+            
+            // 3. Transcript button
+            const transcriptBtn = document.getElementById('view-transcript');
+            if (transcriptBtn) {
+                transcriptBtn.addEventListener('click', () => this.showTranscript());
+            }
+            
+            // 4. Print button
+            const printBtn = document.getElementById('print-assessments');
+            if (printBtn) {
+                printBtn.addEventListener('click', () => this.printAssessments());
+            }
+            
+            console.log('✅ Event listeners initialized');
+        }
+        
+        setupFilterButton(buttonId, filterType) {
+            const button = document.getElementById(buttonId);
+            if (button) {
+                button.addEventListener('click', () => {
+                    console.log(`🔍 ${buttonId} clicked, filtering: ${filterType}`);
+                    this.applyFilter(filterType);
+                });
+            }
+        }
+        
+        applyFilter(filterType) {
+            console.log(`🔍 Applying filter: ${filterType}`);
+            this.currentFilter = filterType;
+            
+            // Update button states
+            this.updateFilterButtons();
+            
+            // Show/hide sections
+            this.showFilteredSections();
+            
+            // Reload data
+            this.loadExams();
+        }
+        
+        updateFilterButtons() {
+            // Remove active class from all filter buttons
+            document.querySelectorAll('.quick-actions .action-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Add active class to current filter button
+            let activeButtonId = 'view-all-assessments';
+            if (this.currentFilter === 'current') {
+                activeButtonId = 'view-current-only';
+            } else if (this.currentFilter === 'completed') {
+                activeButtonId = 'view-completed-only';
+            }
+            
+            const activeButton = document.getElementById(activeButtonId);
+            if (activeButton) {
+                activeButton.classList.add('active');
+            }
+        }
+        
+        showFilteredSections() {
+            const currentSection = document.querySelector('.current-section');
+            const completedSection = document.querySelector('.completed-section');
+            
+            if (!currentSection || !completedSection) return;
+            
+            switch(this.currentFilter) {
+                case 'current':
+                    currentSection.style.display = 'block';
+                    completedSection.style.display = 'none';
+                    break;
+                case 'completed':
+                    currentSection.style.display = 'none';
+                    completedSection.style.display = 'block';
+                    break;
+                default: // 'all'
+                    currentSection.style.display = 'block';
+                    completedSection.style.display = 'block';
+            }
         }
         
         async loadExams() {
@@ -64,9 +166,19 @@
                 // Process and display
                 this.processAndDisplay(exams || [], grades || []);
                 
+                // Show success toast
+                if (window.AppUtils && window.AppUtils.showToast) {
+                    window.AppUtils.showToast('Assessments loaded successfully', 'success');
+                }
+                
             } catch (error) {
                 console.error('❌ Error loading exams:', error);
                 this.showError('Failed to load assessments: ' + error.message);
+                
+                // Show error toast
+                if (window.AppUtils && window.AppUtils.showToast) {
+                    window.AppUtils.showToast('Failed to load assessments', 'error');
+                }
             }
         }
         
@@ -121,11 +233,17 @@
                 };
             });
             
-            // Split into current and completed
-            const current = examData.filter(e => !e.isCompleted);
-            const completed = examData.filter(e => e.isCompleted);
+            // Apply filter
+            let current = examData.filter(e => !e.isCompleted);
+            let completed = examData.filter(e => e.isCompleted);
             
-            console.log(`📊 Current: ${current.length}, Completed: ${completed.length}`);
+            if (this.currentFilter === 'current') {
+                completed = [];
+            } else if (this.currentFilter === 'completed') {
+                current = [];
+            }
+            
+            console.log(`📊 Displaying: ${current.length} current, ${completed.length} completed`);
             
             // Display
             this.displayTable(this.currentTable, current, false);
@@ -173,9 +291,15 @@
                 let statusIcon = 'fa-clock';
                 
                 if (isCompleted) {
-                    statusClass = exam.percentage >= 60 ? exam.gradeClass : 'failed';
-                    statusText = exam.percentage >= 60 ? exam.gradeText : 'Failed';
-                    statusIcon = exam.percentage >= 60 ? 'fa-check-circle' : 'fa-times-circle';
+                    if (exam.percentage !== null) {
+                        statusClass = exam.percentage >= 60 ? exam.gradeClass : 'failed';
+                        statusText = exam.percentage >= 60 ? exam.gradeText : 'Failed';
+                        statusIcon = exam.percentage >= 60 ? 'fa-check-circle' : 'fa-times-circle';
+                    } else {
+                        statusClass = 'graded';
+                        statusText = 'Graded';
+                        statusIcon = 'fa-clipboard-check';
+                    }
                 }
                 
                 const gradeColumn = isCompleted 
@@ -221,9 +345,18 @@
             // Update header counts
             const currentHeader = document.getElementById('current-assessments-count');
             const completedHeader = document.getElementById('completed-assessments-count');
+            const overallAverage = document.getElementById('overall-average');
             
             if (currentHeader) currentHeader.textContent = current;
             if (completedHeader) completedHeader.textContent = completed;
+            
+            // Calculate and update average
+            if (this.completedAverageElement) {
+                // This would need actual completed exams with percentages
+                // For now, just show placeholder
+                this.completedAverageElement.textContent = 'Average: --';
+            }
+            if (overallAverage) overallAverage.textContent = '--';
         }
         
         updatePerformanceSummary(completedExams) {
@@ -295,11 +428,81 @@
                 this.updateElement(id, '--');
             });
             
-            // Reset bars
             ['distinction-bar', 'credit-bar', 'pass-bar', 'fail-bar'].forEach(id => {
                 const bar = document.getElementById(id);
                 if (bar) bar.style.width = '0%';
             });
+        }
+        
+        showTranscript() {
+            console.log('📋 Showing transcript...');
+            if (window.AppUtils && window.AppUtils.showToast) {
+                window.AppUtils.showToast('Transcript feature coming soon!', 'info');
+            }
+        }
+        
+        printAssessments() {
+            console.log('🖨️ Printing assessments...');
+            
+            // Create a print-friendly version
+            const printContent = document.getElementById('assessments-content');
+            if (!printContent) {
+                console.log('❌ Assessments content not found');
+                return;
+            }
+            
+            const printWindow = window.open('', '_blank');
+            
+            printWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Assessments Report</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; margin: 20px; }
+                        h1 { color: #2c3e50; }
+                        .print-header { margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #3498db; }
+                        .print-info { margin-bottom: 20px; }
+                        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                        th { background-color: #f8f9fa; padding: 10px; text-align: left; border: 1px solid #dee2e6; }
+                        td { padding: 8px; border: 1px solid #dee2e6; }
+                        .status-badge { padding: 4px 8px; border-radius: 4px; font-weight: bold; }
+                        .completed { background-color: #d4edda; color: #155724; }
+                        .failed { background-color: #f8d7da; color: #721c24; }
+                        .pending { background-color: #fff3cd; color: #856404; }
+                        .print-footer { margin-top: 30px; text-align: center; color: #6c757d; }
+                        @media print {
+                            .no-print { display: none; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="print-header">
+                        <h1>Academic Assessments Report</h1>
+                        <div class="print-info">
+                            <p><strong>Student:</strong> ${window.db?.currentUserProfile?.full_name || 'N/A'}</p>
+                            <p><strong>Program:</strong> ${window.db?.currentUserProfile?.program || 'N/A'}</p>
+                            <p><strong>Intake Year:</strong> ${window.db?.currentUserProfile?.intake_year || 'N/A'}</p>
+                            <p><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
+                        </div>
+                    </div>
+                    ${printContent.innerHTML}
+                    <div class="print-footer">
+                        <p>Generated by NCHSM Digital Campus • ${new Date().toLocaleString()}</p>
+                    </div>
+                    <script>
+                        window.onload = function() {
+                            window.print();
+                            window.onafterprint = function() {
+                                window.close();
+                            };
+                        };
+                    </script>
+                </body>
+                </html>
+            `);
+            
+            printWindow.document.close();
         }
         
         showLoading() {
@@ -328,7 +531,7 @@
                         <div class="error-content">
                             <i class="fas fa-exclamation-circle"></i>
                             <p>${message}</p>
-                            <button onclick="window.examsModule?.loadExams()" class="btn btn-sm btn-primary">
+                            <button onclick="window.examsModule?.refresh()" class="btn btn-sm btn-primary">
                                 <i class="fas fa-redo"></i> Retry
                             </button>
                         </div>
@@ -352,6 +555,7 @@
         
         // Public refresh method
         refresh() {
+            console.log('🔄 Manual refresh requested');
             this.loadExams();
         }
     }
@@ -360,8 +564,40 @@
     window.examsModule = new ExamsModule();
     
     // Global functions for backward compatibility
-    window.loadExams = () => window.examsModule?.refresh();
-    window.refreshAssessments = () => window.examsModule?.refresh();
+    window.loadExams = () => {
+        console.log('🌍 Global loadExams() called');
+        if (window.examsModule) {
+            window.examsModule.refresh();
+        }
+    };
     
-    console.log('✅ Exams module ready');
+    window.refreshAssessments = () => {
+        console.log('🌍 Global refreshAssessments() called');
+        if (window.examsModule) {
+            window.examsModule.refresh();
+        }
+    };
+    
+    window.switchToCurrentAssessments = () => {
+        console.log('🌍 Global switchToCurrentAssessments() called');
+        if (window.examsModule) {
+            window.examsModule.applyFilter('current');
+        }
+    };
+    
+    window.switchToCompletedAssessments = () => {
+        console.log('🌍 Global switchToCompletedAssessments() called');
+        if (window.examsModule) {
+            window.examsModule.applyFilter('completed');
+        }
+    };
+    
+    window.switchToAllAssessments = () => {
+        console.log('🌍 Global switchToAllAssessments() called');
+        if (window.examsModule) {
+            window.examsModule.applyFilter('all');
+        }
+    };
+    
+    console.log('✅ Complete exams module ready with all features');
 })();
