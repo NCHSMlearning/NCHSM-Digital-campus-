@@ -280,25 +280,178 @@
                     </div>
                 </section>
 
-                <!-- Courses Tab -->
-                <section id="courses" class="tab-content">
-                    <h2 style="color: var(--color-primary);">My Courses</h2>
-                    <div style="overflow-x: auto;">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Course Name</th>
-                                    <th>Unit Code</th>
-                                    <th>Description</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody id="courses-table">
-                                <tr><td colspan="4">Loading courses...</td></tr>
-                            </tbody>
-                        </table>
+              <!-- Courses Tab -->
+<section id="courses" class="tab-content">
+    <!-- Header Section -->
+    <div class="courses-header">
+        <div class="header-content">
+            <h2><i class="fas fa-book-open"></i> My Courses</h2>
+            <p class="subtitle">View your current and completed courses</p>
+        </div>
+        <div class="header-stats">
+            <div class="stat-card">
+                <i class="fas fa-spinner stat-icon active"></i>
+                <div class="stat-info">
+                    <span class="stat-value" id="active-courses-count">0</span>
+                    <span class="stat-label">Active Courses</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-check-circle stat-icon completed"></i>
+                <div class="stat-info">
+                    <span class="stat-value" id="completed-courses-count">0</span>
+                    <span class="stat-label">Completed</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-star stat-icon credits"></i>
+                <div class="stat-info">
+                    <span class="stat-value" id="total-credits">0</span>
+                    <span class="stat-label">Credits Earned</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="quick-actions">
+        <button id="view-all-courses" class="action-btn active">
+            <i class="fas fa-list"></i> View All Courses
+        </button>
+        <button id="view-active-only" class="action-btn">
+            <i class="fas fa-spinner"></i> Active Only
+        </button>
+        <button id="view-completed-only" class="action-btn">
+            <i class="fas fa-check-circle"></i> Completed Only
+        </button>
+        <button id="refresh-courses-btn" class="action-btn refresh">
+            <i class="fas fa-sync-alt"></i> Refresh
+        </button>
+    </div>
+
+    <!-- Current Courses Section -->
+    <div class="courses-section">
+        <div class="section-header">
+            <h3><i class="fas fa-spinner"></i> Current & Upcoming Courses</h3>
+            <div class="section-info">
+                <span class="course-count" id="current-count">0 courses</span>
+                <span class="term-info" id="current-term">Current Term</span>
+            </div>
+        </div>
+        
+        <div class="courses-grid" id="current-courses-grid">
+            <!-- Loading state -->
+            <div class="course-card loading">
+                <div class="loading-content">
+                    <div class="loading-spinner"></div>
+                    <p>Loading current courses...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Empty state -->
+        <div id="current-empty" class="empty-state" style="display: none;">
+            <div class="empty-icon">
+                <i class="fas fa-calendar-plus"></i>
+            </div>
+            <h3>No Current Courses</h3>
+            <p>You don't have any active or upcoming courses at the moment.</p>
+        </div>
+    </div>
+
+    <!-- Completed Courses Section -->
+    <div class="courses-section completed-section">
+        <div class="section-header">
+            <h3><i class="fas fa-trophy"></i> Completed Courses</h3>
+            <div class="section-info">
+                <span class="course-count" id="completed-total-count">0 courses</span>
+                <span class="credits-earned" id="completed-credits-total">0 credits earned</span>
+            </div>
+        </div>
+        
+        <div class="courses-table-container">
+            <table class="courses-table">
+                <thead>
+                    <tr>
+                        <th>Course Name</th>
+                        <th>Unit Code</th>
+                        <th>Grade</th>
+                        <th>Credits</th>
+                        <th>Term</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="completed-courses-table">
+                    <tr class="loading">
+                        <td colspan="6">
+                            <div class="loading-content">
+                                <div class="loading-spinner"></div>
+                                <p>Loading completed courses...</p>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Completed Summary -->
+        <div class="summary-cards">
+            <div class="summary-card">
+                <div class="card-header">
+                    <i class="fas fa-chart-bar"></i>
+                    <h4>Academic Summary</h4>
+                </div>
+                <div class="card-body">
+                    <div class="summary-item">
+                        <span class="label">GPA (Completed)</span>
+                        <span class="value" id="completed-gpa">0.00</span>
                     </div>
-                </section>
+                    <div class="summary-item">
+                        <span class="label">Highest Grade</span>
+                        <span class="value grade-A" id="highest-grade">--</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="label">Average Grade</span>
+                        <span class="value" id="average-grade">--</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="summary-card">
+                <div class="card-header">
+                    <i class="fas fa-calendar-alt"></i>
+                    <h4>Completion Timeline</h4>
+                </div>
+                <div class="card-body">
+                    <div class="timeline-item">
+                        <span class="label">First Course</span>
+                        <span class="value" id="first-course-date">--</span>
+                    </div>
+                    <div class="timeline-item">
+                        <span class="label">Latest Course</span>
+                        <span class="value" id="latest-course-date">--</span>
+                    </div>
+                    <div class="timeline-item">
+                        <span class="label">Completion Rate</span>
+                        <span class="value" id="completion-rate">0%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Empty state -->
+        <div id="completed-empty" class="empty-state" style="display: none;">
+            <div class="empty-icon">
+                <i class="fas fa-graduation-cap"></i>
+            </div>
+            <h3>No Completed Courses</h3>
+            <p>Complete your current courses to see them listed here!</p>
+            <button onclick="switchToCurrentCourses()" class="btn btn-primary">
+                <i class="fas fa-eye"></i> View Current Courses
+            </button>
+        </div>
+    </div>
+</section>
 
                 <!-- Attendance Tab -->
                 <section id="attendance" class="tab-content">
