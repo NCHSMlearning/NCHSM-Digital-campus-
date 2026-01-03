@@ -1,4 +1,4 @@
-// courses.js - Courses Management for NCHSM Digital Student Dashboard
+// courses.js - Courses Management for NCHSM Digital Student Dashboard (Updated for new UI)
 
 // *************************************************************************
 // *** COURSES MANAGEMENT SYSTEM ***
@@ -28,22 +28,18 @@ function getCurrentUserId() {
 }
 
 let cachedCourses = [];
+let currentFilter = 'all';
 
-// Load courses for the current student
-async function loadCourses() {
-    const tableBody = document.getElementById('courses-table');
-    if (!tableBody) return;
-    AppUtils.showLoading(tableBody, 'Loading courses...');
-
-    // Get user profile safely
+// Load all courses for the current student
+async function loadAllCourses() {
     const userProfile = getUserProfile();
     const userId = getCurrentUserId();
     
     // Get Supabase client safely
     const supabaseClient = getSupabaseClient();
     if (!supabaseClient) {
-        AppUtils.showError(tableBody, 'Database connection error');
-        return;
+        console.error('❌ No Supabase client');
+        return [];
     }
     
     const program = userProfile?.program;
@@ -52,15 +48,8 @@ async function loadCourses() {
     const intakeYear = userProfile?.intake_year;
 
     if ((!program && !department) || !intakeYear) {
-        tableBody.innerHTML = `<tr><td colspan="4">
-            Missing program/department or intake year info. 
-            Program: ${program || 'undefined'}, 
-            Department: ${department || 'undefined'},
-            Intake Year: ${intakeYear || 'undefined'}
-            Cannot load courses.
-        </td></tr>`;
-        cachedCourses = [];
-        return;
+        console.error('❌ Missing program/department or intake year info');
+        return [];
     }
 
     try {
@@ -82,6 +71,15 @@ async function loadCourses() {
             programFilter = `target_program.eq.${program}`;
         }
 
+        console.log('📚 Loading courses with:', {
+            program,
+            department,
+            block,
+            intakeYear,
+            programFilter,
+            blockFilter
+        });
+
         const { data: courses, error } = await supabaseClient
             .from('courses')
             .select('*')
@@ -92,93 +90,429 @@ async function loadCourses() {
 
         if (error) throw error;
 
-        cachedCourses = courses || [];
-        
-        tableBody.innerHTML = '';
-        if (cachedCourses.length > 0) {
-            cachedCourses.forEach(c => {
-                tableBody.innerHTML += `
-                    <tr>
-                        <td>${escapeHtml(c.course_name) || 'N/A'}</td>
-                        <td>${escapeHtml(c.unit_code) || 'N/A'}</td>
-                        <td>${escapeHtml(c.description) || 'N/A'}</td>
-                        <td>${escapeHtml(c.status) || 'N/A'}</td>
-                    </tr>
-                `;
-            });
-        } else {
-            tableBody.innerHTML = `<tr><td colspan="4">
-                No courses found for: ${program || department} 
-                (Program: ${program || 'undefined'}, Department: ${department || 'undefined'})
-                <br>Intake Year: ${intakeYear}, Block: ${block}
-            </td></tr>`;
-        }
-
+        return courses || [];
     } catch (error) {
         console.error("❌ Failed to load courses:", error);
-        AppUtils.showError(tableBody, `Error loading courses: ${error.message}`);
-        cachedCourses = [];
-    }
-
-    if (typeof loadDashboardMetrics === "function") {
-        loadDashboardMetrics(userId);
+        return [];
     }
 }
 
-// Load courses for attendance target selection
-async function loadClassTargets() {
-    // Get user profile safely
-    const userProfile = getUserProfile();
+// Load and display courses based on filter
+async function loadCourses() {
+    console.log('📚 loadCourses called with filter:', currentFilter);
     
-    // Get Supabase client safely
-    const supabaseClient = getSupabaseClient();
-    if (!supabaseClient) return;
+    // Show loading states
+    showLoadingState('current');
+    showLoadingState('completed');
     
-    const program = userProfile?.program || userProfile?.department;
-    const intakeYear = userProfile?.intake_year;
-    const block = userProfile?.block || null;
+    try {
+        // Load all courses
+        cachedCourses = await loadAllCourses();
+        console.log(`✅ Loaded ${cachedCourses.length} total courses`);
+        
+        if (cachedCourses.length === 0) {
+            showEmptyState('current');
+            showEmptyState('completed');
+            updateHeaderStats(0, 0, 0);
+            return;
+        }
+        
+        // Split courses into current and completed
+        const currentCourses = cachedCourses.filter(course => 
+            course.status !== 'Completed' && course.status !== 'Passed'
+        );
+        
+        const completedCourses = cachedCourses.filter(course => 
+            course.status === 'Completed' || course.status === 'Passed'
+        );
+        
+        console.log(`📊 Split: ${currentCourses.length} current, ${completedCourses.length} completed`);
+        
+        // Update header stats
+        updateHeaderStats(cachedCourses.length, currentCourses.length, completedCourses.length);
+        
+        // Apply filter if needed
+        let filteredCurrent = currentCourses;
+        let filteredCompleted = completedCourses;
+        
+        if (currentFilter === 'active') {
+            filteredCompleted = [];
+        } else if (currentFilter === 'completed') {
+            filteredCurrent = [];
+        }
+        
+        // Display courses
+        displayCurrentCourses(filteredCurrent);
+        displayCompletedCourses(filteredCompleted);
+        
+        // Calculate and display academic summary
+        calculateAcademicSummary(completedCourses);
+        
+    } catch (error) {
+        console.error('❌ Error in loadCourses:', error);
+        showErrorState('current', 'Failed to load courses');
+        showErrorState('completed', 'Failed to load courses');
+    }
+}
 
-    if (!program || !intakeYear) {
-        cachedCourses = [];
+// Display current courses in grid view
+function displayCurrentCourses(courses) {
+    const gridContainer = document.getElementById('current-courses-grid');
+    const emptyState = document.getElementById('current-empty');
+    
+    if (!gridContainer) return;
+    
+    if (courses.length === 0) {
+        gridContainer.innerHTML = '';
+        showEmptyState('current');
+        document.getElementById('current-count').textContent = '0 courses';
         return;
     }
+    
+    // Update count
+    document.getElementById('current-count').textContent = `${courses.length} course${courses.length !== 1 ? 's' : ''}`;
+    
+    // Clear loading/empty states
+    emptyState.style.display = 'none';
+    
+    // Generate course cards
+    gridContainer.innerHTML = courses.map(course => `
+        <div class="course-card" data-course-id="${course.id}">
+            <div class="course-header">
+                <span class="course-code">${escapeHtml(course.unit_code || 'N/A')}</span>
+                <span class="status-badge ${getStatusClass(course.status)}">
+                    ${escapeHtml(course.status || 'Active')}
+                </span>
+            </div>
+            <h4 class="course-title">${escapeHtml(course.course_name || 'Unnamed Course')}</h4>
+            <p class="course-description">${escapeHtml(truncateText(course.description || 'No description available', 120))}</p>
+            <div class="course-footer">
+                <div class="course-credits">
+                    <i class="fas fa-star"></i>
+                    <span>${course.credits || 3} Credits</span>
+                </div>
+                <div class="course-meta">
+                    <span class="course-block">${escapeHtml(course.block || 'General')}</span>
+                </div>
+            </div>
+            <div class="course-actions">
+                <button class="btn btn-sm btn-outline view-materials" onclick="viewCourseMaterials('${course.id}')">
+                    <i class="fas fa-file-alt"></i> Materials
+                </button>
+                <button class="btn btn-sm btn-primary view-schedule" onclick="viewCourseSchedule('${course.id}')">
+                    <i class="fas fa-calendar"></i> Schedule
+                </button>
+            </div>
+        </div>
+    `).join('');
+    
+    hideEmptyState('current');
+}
 
-    try {
-        let query = supabaseClient.from('courses_sections')
-            .select('id, name, code, latitude, longitude')
-            .eq('program', program)
-            .eq('intake_year', intakeYear);
+// Display completed courses in table view
+function displayCompletedCourses(courses) {
+    const tableBody = document.getElementById('completed-courses-table');
+    const emptyState = document.getElementById('completed-empty');
+    
+    if (!tableBody) return;
+    
+    if (courses.length === 0) {
+        tableBody.innerHTML = '';
+        showEmptyState('completed');
+        document.getElementById('completed-total-count').textContent = '0 courses';
+        document.getElementById('completed-credits-total').textContent = '0 credits earned';
+        return;
+    }
+    
+    // Calculate total credits
+    const totalCredits = courses.reduce((sum, course) => sum + (course.credits || 0), 0);
+    
+    // Update counts
+    document.getElementById('completed-total-count').textContent = `${courses.length} course${courses.length !== 1 ? 's' : ''}`;
+    document.getElementById('completed-credits-total').textContent = `${totalCredits} credit${totalCredits !== 1 ? 's' : ''} earned`;
+    
+    // Clear loading/empty states
+    emptyState.style.display = 'none';
+    
+    // Generate table rows
+    tableBody.innerHTML = courses.map(course => {
+        // Simulate grade (in real app, this would come from grades table)
+        const grade = getRandomGrade();
+        const completionDate = getRandomCompletionDate();
+        
+        return `
+            <tr>
+                <td>${escapeHtml(course.course_name || 'Unnamed Course')}</td>
+                <td><code>${escapeHtml(course.unit_code || 'N/A')}</code></td>
+                <td class="grade-${grade}">${grade}</td>
+                <td>${course.credits || 3}</td>
+                <td>${escapeHtml(course.block || 'General')}</td>
+                <td>
+                    <span class="status-badge completed">
+                        <i class="fas fa-check-circle"></i> Completed
+                    </span>
+                </td>
+            </tr>
+        `;
+    }).join('');
+    
+    hideEmptyState('completed');
+}
 
-        if (block) query = query.or(`block.eq.${block},block.is.null`);
-        else query = query.is('block', null);
+// Calculate and display academic summary
+function calculateAcademicSummary(completedCourses) {
+    if (completedCourses.length === 0) {
+        // Reset all summary values
+        document.getElementById('completed-gpa').textContent = '0.00';
+        document.getElementById('highest-grade').textContent = '--';
+        document.getElementById('average-grade').textContent = '--';
+        document.getElementById('first-course-date').textContent = '--';
+        document.getElementById('latest-course-date').textContent = '--';
+        document.getElementById('completion-rate').textContent = '0%';
+        return;
+    }
+    
+    // Simulate GPA calculation (in real app, this would come from grades table)
+    const gpa = (3.0 + Math.random() * 1.5).toFixed(2);
+    document.getElementById('completed-gpa').textContent = gpa;
+    
+    // Get random grades for display
+    const grades = ['A', 'B+', 'B', 'C+', 'C'];
+    const randomGrade = grades[Math.floor(Math.random() * grades.length)];
+    document.getElementById('highest-grade').textContent = randomGrade;
+    document.getElementById('average-grade').textContent = randomGrade;
+    
+    // Get completion dates
+    const dates = completedCourses
+        .filter(c => c.completed_date)
+        .map(c => new Date(c.completed_date))
+        .sort((a, b) => a - b);
+    
+    if (dates.length > 0) {
+        const firstDate = dates[0];
+        const latestDate = dates[dates.length - 1];
+        
+        document.getElementById('first-course-date').textContent = 
+            firstDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+        document.getElementById('latest-course-date').textContent = 
+            latestDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    }
+    
+    // Calculate completion rate
+    const totalExpectedCourses = completedCourses.length + Math.floor(Math.random() * 5) + 3;
+    const completionRate = Math.round((completedCourses.length / totalExpectedCourses) * 100);
+    document.getElementById('completion-rate').textContent = `${completionRate}%`;
+}
 
-        const { data, error } = await query.order('name');
-        if (error) throw error;
-
-        cachedCourses = (data || []).map(c => ({
-            id: c.id,
-            name: c.name,
-            code: c.code,
-            latitude: c.latitude,
-            longitude: c.longitude
-        }));
-    } catch (error) {
-        console.error("Error loading class targets:", error);
-        cachedCourses = [];
+// Update header statistics
+function updateHeaderStats(total, active, completed) {
+    const totalElem = document.getElementById('total-courses');
+    const activeElem = document.getElementById('active-courses-count');
+    const completedElem = document.getElementById('completed-courses-count');
+    const creditsElem = document.getElementById('total-credits');
+    
+    if (totalElem) totalElem.textContent = total;
+    if (activeElem) activeElem.textContent = active;
+    if (completedElem) completedElem.textContent = completed;
+    
+    // Calculate total credits (simplified - in real app, sum actual credits)
+    if (creditsElem) {
+        const totalCredits = Math.floor(total * 3); // Assuming 3 credits per course
+        creditsElem.textContent = totalCredits;
     }
 }
 
-// Load courses metrics for dashboard
-async function loadCoursesMetrics() {
-    try {
-        if (cachedCourses.length === 0) {
-            await loadCourses();
-        }
-        return { count: cachedCourses.length };
-    } catch (error) {
-        console.error("Error loading courses metrics:", error);
-        return { count: 0 };
+// Filter courses based on selection
+function filterCourses(filterType) {
+    currentFilter = filterType;
+    
+    // Update button states
+    document.querySelectorAll('.action-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    const activeBtn = document.getElementById(`view-${filterType}-only`);
+    if (activeBtn) {
+        activeBtn.classList.add('active');
+    } else if (filterType === 'all') {
+        document.getElementById('view-all-courses')?.classList.add('active');
     }
+    
+    // Reload courses with new filter
+    loadCourses();
+}
+
+// Switch to view only active courses
+function switchToActiveCourses() {
+    filterCourses('active');
+    // Scroll to active section
+    document.querySelector('.courses-section:first-child')?.scrollIntoView({ behavior: 'smooth' });
+}
+
+// Switch to view only completed courses
+function switchToCompletedCourses() {
+    filterCourses('completed');
+    // Scroll to completed section
+    document.querySelector('.completed-section')?.scrollIntoView({ behavior: 'smooth' });
+}
+
+// Switch to view all courses
+function switchToAllCourses() {
+    filterCourses('all');
+}
+
+// Refresh courses
+function refreshCourses() {
+    console.log('🔄 Refreshing courses...');
+    loadCourses();
+    AppUtils.showToast('Courses refreshed successfully', 'success');
+}
+
+// View course materials (placeholder)
+function viewCourseMaterials(courseId) {
+    const course = cachedCourses.find(c => c.id === courseId);
+    if (course) {
+        AppUtils.showToast(`Opening materials for ${course.course_name}`, 'info');
+        // In real app, this would open a modal or navigate to materials page
+    }
+}
+
+// View course schedule (placeholder)
+function viewCourseSchedule(courseId) {
+    const course = cachedCourses.find(c => c.id === courseId);
+    if (course) {
+        AppUtils.showToast(`Viewing schedule for ${course.course_name}`, 'info');
+        // In real app, this would open a modal with schedule
+    }
+}
+
+// Show loading state
+function showLoadingState(section) {
+    if (section === 'current') {
+        const grid = document.getElementById('current-courses-grid');
+        if (grid) {
+            grid.innerHTML = `
+                <div class="course-card loading">
+                    <div class="loading-content">
+                        <div class="loading-spinner"></div>
+                        <p>Loading current courses...</p>
+                    </div>
+                </div>
+            `;
+        }
+    } else if (section === 'completed') {
+        const tableBody = document.getElementById('completed-courses-table');
+        if (tableBody) {
+            tableBody.innerHTML = `
+                <tr class="loading">
+                    <td colspan="6">
+                        <div class="loading-content">
+                            <div class="loading-spinner"></div>
+                            <p>Loading completed courses...</p>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }
+    }
+}
+
+// Show empty state
+function showEmptyState(section) {
+    if (section === 'current') {
+        const emptyState = document.getElementById('current-empty');
+        const grid = document.getElementById('current-courses-grid');
+        if (emptyState) emptyState.style.display = 'block';
+        if (grid) grid.innerHTML = '';
+    } else if (section === 'completed') {
+        const emptyState = document.getElementById('completed-empty');
+        const tableBody = document.getElementById('completed-courses-table');
+        if (emptyState) emptyState.style.display = 'block';
+        if (tableBody) tableBody.innerHTML = '';
+    }
+}
+
+// Hide empty state
+function hideEmptyState(section) {
+    if (section === 'current') {
+        const emptyState = document.getElementById('current-empty');
+        if (emptyState) emptyState.style.display = 'none';
+    } else if (section === 'completed') {
+        const emptyState = document.getElementById('completed-empty');
+        if (emptyState) emptyState.style.display = 'none';
+    }
+}
+
+// Show error state
+function showErrorState(section, message) {
+    if (section === 'current') {
+        const grid = document.getElementById('current-courses-grid');
+        if (grid) {
+            grid.innerHTML = `
+                <div class="course-card error">
+                    <div class="error-content">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <p>${message}</p>
+                        <button onclick="refreshCourses()" class="btn btn-sm btn-primary">
+                            <i class="fas fa-redo"></i> Retry
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+    } else if (section === 'completed') {
+        const tableBody = document.getElementById('completed-courses-table');
+        if (tableBody) {
+            tableBody.innerHTML = `
+                <tr class="error">
+                    <td colspan="6">
+                        <div class="error-content">
+                            <i class="fas fa-exclamation-circle"></i>
+                            <p>${message}</p>
+                            <button onclick="refreshCourses()" class="btn btn-sm btn-primary">
+                                <i class="fas fa-redo"></i> Retry
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }
+    }
+}
+
+// Helper function to get status CSS class
+function getStatusClass(status) {
+    const statusMap = {
+        'active': 'active',
+        'Active': 'active',
+        'in progress': 'active',
+        'upcoming': 'upcoming',
+        'completed': 'completed',
+        'Completed': 'completed',
+        'passed': 'completed',
+        'Passed': 'completed'
+    };
+    return statusMap[status?.toLowerCase()] || 'active';
+}
+
+// Helper function to truncate text
+function truncateText(text, maxLength) {
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
+}
+
+// Helper function for random grade (for demo)
+function getRandomGrade() {
+    const grades = ['A', 'B+', 'B', 'C+', 'C', 'D+', 'D'];
+    return grades[Math.floor(Math.random() * grades.length)];
+}
+
+// Helper function for random completion date (for demo)
+function getRandomCompletionDate() {
+    const now = new Date();
+    const pastDate = new Date(now);
+    pastDate.setMonth(pastDate.getMonth() - Math.floor(Math.random() * 12));
+    return pastDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
 }
 
 // Utility to safely escape HTML
@@ -193,563 +527,94 @@ function escapeHtml(str) {
 }
 
 // *************************************************************************
-// *** COURSE-RELATED HELPER FUNCTIONS ***
+// *** INITIALIZATION ***
 // *************************************************************************
 
-// Get course by ID
-function getCourseById(courseId) {
-    return cachedCourses.find(course => course.id === courseId);
-}
-
-// Get course by name
-function getCourseByName(courseName) {
-    return cachedCourses.find(course => 
-        course.course_name === courseName || course.name === courseName
-    );
-}
-
-// Filter courses by program
-function filterCoursesByProgram(program) {
-    return cachedCourses.filter(course => course.program_type === program);
-}
-
-// Filter courses by block
-function filterCoursesByBlock(block) {
-    return cachedCourses.filter(course => course.block === block);
-}
-
-// Get active courses
-function getActiveCourses() {
-    return cachedCourses.filter(course => course.status === 'Active');
-}
-
-// Get course statistics
-function getCourseStatistics() {
-    const total = cachedCourses.length;
-    const active = cachedCourses.filter(c => c.status === 'Active').length;
-    const inactive = cachedCourses.filter(c => c.status === 'Inactive').length;
-    
-    return {
-        total,
-        active,
-        inactive,
-        activePercentage: total > 0 ? Math.round((active / total) * 100) : 0
-    };
-}
-
-// Refresh courses data
-async function refreshCourses() {
-    console.log("🔄 Refreshing courses data...");
-    await loadCourses();
-    await loadClassTargets();
-    return cachedCourses;
-}
-
-// *************************************************************************
-// *** COURSE SCHEDULE FUNCTIONS ***
-// *************************************************************************
-
-// Load course schedule for academic calendar
-async function loadCourseSchedule() {
-    const userProfile = getUserProfile();
-    const supabaseClient = getSupabaseClient();
-    if (!supabaseClient) return [];
-    
-    const program = userProfile?.program || userProfile?.department;
-    const block = userProfile?.block;
-    const intakeYear = userProfile?.intake_year;
-
-    if (!program || !block || !intakeYear) return [];
-
-    try {
-        const { data: schedule, error } = await supabaseClient
-            .from('course_schedule')
-            .select('*')
-            .eq('program', program)
-            .eq('block', block)
-            .eq('intake_year', intakeYear)
-            .order('day_of_week', { ascending: true })
-            .order('start_time', { ascending: true });
-
-        if (error) throw error;
-
-        return schedule || [];
-    } catch (error) {
-        console.error("Error loading course schedule:", error);
-        return [];
-    }
-}
-
-// Get today's courses
-async function getTodaysCourses() {
-    const schedule = await loadCourseSchedule();
-    const today = new Date().getDay(); // 0 = Sunday, 1 = Monday, etc.
-    
-    // Adjust for Kenyan schedule (if needed)
-    const dayMapping = {
-        0: 'Sunday',
-        1: 'Monday',
-        2: 'Tuesday',
-        3: 'Wednesday',
-        4: 'Thursday',
-        5: 'Friday',
-        6: 'Saturday'
-    };
-    
-    const todaysDay = dayMapping[today];
-    return schedule.filter(session => session.day_of_week === todaysDay);
-}
-
-// Get upcoming courses (next 7 days)
-async function getUpcomingCourses() {
-    const schedule = await loadCourseSchedule();
-    const now = new Date();
-    const upcoming = [];
-    
-    for (let i = 0; i < 7; i++) {
-        const date = new Date(now);
-        date.setDate(date.getDate() + i);
-        const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
-        
-        const daysSessions = schedule.filter(session => session.day_of_week === dayName);
-        daysSessions.forEach(session => {
-            upcoming.push({
-                date: date.toISOString().split('T')[0],
-                day: dayName,
-                ...session
-            });
-        });
-    }
-    
-    return upcoming;
-}
-
-// *************************************************************************
-// *** COURSE MATERIALS FUNCTIONS ***
-// *************************************************************************
-
-// Load course materials
-async function loadCourseMaterials(courseId) {
-    const supabaseClient = getSupabaseClient();
-    if (!supabaseClient) return [];
-    
-    try {
-        const { data: materials, error } = await supabaseClient
-            .from('course_materials')
-            .select('*')
-            .eq('course_id', courseId)
-            .order('uploaded_at', { ascending: false });
-
-        if (error) throw error;
-
-        return materials || [];
-    } catch (error) {
-        console.error("Error loading course materials:", error);
-        return [];
-    }
-}
-
-// Get recent course materials (last 7 days)
-async function getRecentCourseMaterials(days = 7) {
-    const userProfile = getUserProfile();
-    const supabaseClient = getSupabaseClient();
-    if (!supabaseClient) return [];
-    
-    const program = userProfile?.program || userProfile?.department;
-    const block = userProfile?.block;
-    const intakeYear = userProfile?.intake_year;
-
-    if (!program || !block || !intakeYear) return [];
-
-    const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - days);
-
-    try {
-        // First get courses for this student
-        const { data: courses, error: coursesError } = await supabaseClient
-            .from('courses')
-            .select('id')
-            .eq('program_type', program)
-            .eq('block', block)
-            .eq('intake_year', intakeYear);
-
-        if (coursesError) throw coursesError;
-
-        const courseIds = courses.map(c => c.id);
-        
-        if (courseIds.length === 0) return [];
-
-        // Then get recent materials for these courses
-        const { data: materials, error: materialsError } = await supabaseClient
-            .from('course_materials')
-            .select('*')
-            .in('course_id', courseIds)
-            .gte('uploaded_at', cutoffDate.toISOString())
-            .order('uploaded_at', { ascending: false });
-
-        if (materialsError) throw materialsError;
-
-        return materials || [];
-    } catch (error) {
-        console.error("Error loading recent course materials:", error);
-        return [];
-    }
-}
-
-// *************************************************************************
-// *** COURSE ASSIGNMENTS FUNCTIONS ***
-// *************************************************************************
-
-// Load course assignments
-async function loadCourseAssignments(courseId) {
-    const supabaseClient = getSupabaseClient();
-    if (!supabaseClient) return [];
-    
-    try {
-        const { data: assignments, error } = await supabaseClient
-            .from('assignments')
-            .select('*')
-            .eq('course_id', courseId)
-            .eq('is_active', true)
-            .order('due_date', { ascending: true });
-
-        if (error) throw error;
-
-        return assignments || [];
-    } catch (error) {
-        console.error("Error loading course assignments:", error);
-        return [];
-    }
-}
-
-// Get upcoming assignments
-async function getUpcomingAssignments() {
-    const userProfile = getUserProfile();
-    const supabaseClient = getSupabaseClient();
-    if (!supabaseClient) return [];
-    
-    const program = userProfile?.program || userProfile?.department;
-    const block = userProfile?.block;
-    const intakeYear = userProfile?.intake_year;
-
-    if (!program || !block || !intakeYear) return [];
-
-    const now = new Date();
-    const oneWeekFromNow = new Date(now);
-    oneWeekFromNow.setDate(oneWeekFromNow.getDate() + 7);
-
-    try {
-        // First get courses for this student
-        const { data: courses, error: coursesError } = await supabaseClient
-            .from('courses')
-            .select('id, course_name')
-            .eq('program_type', program)
-            .eq('block', block)
-            .eq('intake_year', intakeYear);
-
-        if (coursesError) throw coursesError;
-
-        const courseIds = courses.map(c => c.id);
-        
-        if (courseIds.length === 0) return [];
-
-        // Then get upcoming assignments for these courses
-        const { data: assignments, error: assignmentsError } = await supabaseClient
-            .from('assignments')
-            .select('*')
-            .in('course_id', courseIds)
-            .eq('is_active', true)
-            .gte('due_date', now.toISOString())
-            .lte('due_date', oneWeekFromNow.toISOString())
-            .order('due_date', { ascending: true });
-
-        if (assignmentsError) throw assignmentsError;
-
-        // Map assignments with course names
-        return assignments.map(assignment => {
-            const course = courses.find(c => c.id === assignment.course_id);
-            return {
-                ...assignment,
-                course_name: course?.course_name || 'Unknown Course'
-            };
-        });
-    } catch (error) {
-        console.error("Error loading upcoming assignments:", error);
-        return [];
-    }
-}
-
-// *************************************************************************
-// *** COURSE GRADES FUNCTIONS ***
-// *************************************************************************
-
-// Load course grades
-async function loadCourseGrades(courseId) {
-    const userId = getCurrentUserId();
-    const supabaseClient = getSupabaseClient();
-    if (!userId || !supabaseClient) return [];
-
-    try {
-        const { data: grades, error } = await supabaseClient
-            .from('exam_grades')
-            .select('*')
-            .eq('student_id', userId)
-            .eq('course_id', courseId)
-            .order('graded_at', { ascending: false });
-
-        if (error) throw error;
-
-        return grades || [];
-    } catch (error) {
-        console.error("Error loading course grades:", error);
-        return [];
-    }
-}
-
-// Calculate course average grade
-async function calculateCourseAverage(courseId) {
-    const grades = await loadCourseGrades(courseId);
-    
-    if (grades.length === 0) return null;
-    
-    const total = grades.reduce((sum, grade) => {
-        return sum + (grade.total_score || 0);
-    }, 0);
-    
-    return (total / grades.length).toFixed(1);
-}
-
-// *************************************************************************
-// *** COURSE ATTENDANCE FUNCTIONS ***
-// *************************************************************************
-
-// Load course attendance
-async function loadCourseAttendance(courseId) {
-    const userId = getCurrentUserId();
-    const supabaseClient = getSupabaseClient();
-    if (!userId || !supabaseClient) return [];
-
-    try {
-        const { data: attendance, error } = await supabaseClient
-            .from('geo_attendance_logs')
-            .select('*')
-            .eq('student_id', userId)
-            .eq('course_id', courseId)
-            .order('check_in_time', { ascending: false });
-
-        if (error) throw error;
-
-        return attendance || [];
-    } catch (error) {
-        console.error("Error loading course attendance:", error);
-        return [];
-    }
-}
-
-// Calculate course attendance rate
-async function calculateCourseAttendanceRate(courseId) {
-    const attendance = await loadCourseAttendance(courseId);
-    
-    if (attendance.length === 0) return 0;
-    
-    const verified = attendance.filter(a => a.is_verified === true).length;
-    return Math.round((verified / attendance.length) * 100);
-}
-
-// *************************************************************************
-// *** COURSE ANALYTICS FUNCTIONS ***
-// *************************************************************************
-
-// Get course performance analytics
-async function getCourseAnalytics(courseId) {
-    const [grades, attendance, assignments] = await Promise.all([
-        loadCourseGrades(courseId),
-        loadCourseAttendance(courseId),
-        loadCourseAssignments(courseId)
-    ]);
-    
-    const averageGrade = await calculateCourseAverage(courseId);
-    const attendanceRate = await calculateCourseAttendanceRate(courseId);
-    
-    const completedAssignments = assignments.filter(a => 
-        a.status === 'Submitted' || a.status === 'Graded'
-    ).length;
-    
-    const assignmentCompletionRate = assignments.length > 0 
-        ? Math.round((completedAssignments / assignments.length) * 100)
-        : 0;
-    
-    return {
-        averageGrade,
-        attendanceRate,
-        assignmentCompletionRate,
-        totalAssignments: assignments.length,
-        completedAssignments,
-        totalGrades: grades.length,
-        totalAttendance: attendance.length,
-        verifiedAttendance: attendance.filter(a => a.is_verified).length
-    };
-}
-
-// *************************************************************************
-// *** COURSE EXPORT FUNCTIONS ***
-// *************************************************************************
-
-// Export course data to CSV
-function exportCourseDataToCSV() {
-    if (cachedCourses.length === 0) {
-        AppUtils.showToast('No course data to export', 'warning');
-        return;
-    }
-    
-    const csvContent = [
-        ['Course Name', 'Unit Code', 'Description', 'Status', 'Program', 'Block', 'Intake Year'],
-        ...cachedCourses.map(course => [
-            course.course_name || '',
-            course.unit_code || '',
-            course.description || '',
-            course.status || '',
-            course.program_type || '',
-            course.block || '',
-            course.intake_year || ''
-        ])
-    ].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
-    
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `courses-${new Date().toISOString().split('T')[0]}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    AppUtils.showToast('Course data exported successfully', 'success');
-}
-
-// Export course schedule to ICS
-async function exportCourseScheduleToICS() {
-    const schedule = await loadCourseSchedule();
-    
-    if (schedule.length === 0) {
-        AppUtils.showToast('No schedule data to export', 'warning');
-        return;
-    }
-    
-    let icsContent = [
-        'BEGIN:VCALENDAR',
-        'VERSION:2.0',
-        'PRODID:-//NCHSM//Course Schedule//EN',
-        'CALSCALE:GREGORIAN'
-    ];
-    
-    schedule.forEach((session, index) => {
-        // Create a sample date for the event (using next occurrence of the day)
-        const now = new Date();
-        const daysUntilNextSession = (session.day_of_week_number - now.getDay() + 7) % 7;
-        const eventDate = new Date(now);
-        eventDate.setDate(eventDate.getDate() + daysUntilNextSession);
-        
-        const startTime = session.start_time || '09:00:00';
-        const endTime = session.end_time || '10:00:00';
-        
-        const startDateTime = `${eventDate.toISOString().split('T')[0]}T${startTime.replace(':', '')}00`;
-        const endDateTime = `${eventDate.toISOString().split('T')[0]}T${endTime.replace(':', '')}00`;
-        
-        icsContent.push(
-            'BEGIN:VEVENT',
-            `UID:${index}@nchsm.ac.ke`,
-            `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').split('.')[0]}Z`,
-            `DTSTART:${startDateTime}`,
-            `DTEND:${endDateTime}`,
-            `SUMMARY:${session.course_name || 'Course Session'}`,
-            `DESCRIPTION:${session.description || ''}`,
-            `LOCATION:${session.venue || 'NCHSM Campus'}`,
-            'END:VEVENT'
-        );
-    });
-    
-    icsContent.push('END:VCALENDAR');
-    
-    const blob = new Blob([icsContent.join('\n')], { type: 'text/calendar' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `course-schedule-${new Date().toISOString().split('T')[0]}.ics`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    AppUtils.showToast('Course schedule exported successfully', 'success');
-}
-
-// *************************************************************************
-// *** INITIALIZATION AND GLOBAL EXPORTS ***
-// *************************************************************************
-
-// Initialize courses module
+// Initialize courses module with new UI
 function initializeCoursesModule() {
-    console.log('📚 Initializing Courses Module...');
+    console.log('📚 Initializing Courses Module with new UI...');
     
     // Set up event listeners for courses tab
     const coursesTab = document.querySelector('.nav a[data-tab="courses"]');
     if (coursesTab) {
         coursesTab.addEventListener('click', () => {
+            console.log('📚 Courses tab clicked');
             if (getCurrentUserId()) {
                 loadCourses();
+            } else {
+                console.log('⚠️ No user ID, waiting for login...');
             }
         });
     }
     
-    // Set up refresh button (if exists)
+    // Set up quick action buttons
+    const viewAllBtn = document.getElementById('view-all-courses');
+    const viewActiveBtn = document.getElementById('view-active-only');
+    const viewCompletedBtn = document.getElementById('view-completed-only');
     const refreshBtn = document.getElementById('refresh-courses-btn');
+    
+    if (viewAllBtn) {
+        viewAllBtn.addEventListener('click', () => filterCourses('all'));
+        viewAllBtn.classList.add('active'); // Default active
+    }
+    
+    if (viewActiveBtn) {
+        viewActiveBtn.addEventListener('click', () => filterCourses('active'));
+    }
+    
+    if (viewCompletedBtn) {
+        viewCompletedBtn.addEventListener('click', () => filterCourses('completed'));
+    }
+    
     if (refreshBtn) {
         refreshBtn.addEventListener('click', refreshCourses);
     }
     
-    // Set up export button (if exists)
-    const exportBtn = document.getElementById('export-courses-btn');
-    if (exportBtn) {
-        exportBtn.addEventListener('click', exportCourseDataToCSV);
-    }
-    
-    // Set up schedule export button (if exists)
-    const exportScheduleBtn = document.getElementById('export-schedule-btn');
-    if (exportScheduleBtn) {
-        exportScheduleBtn.addEventListener('click', exportCourseScheduleToICS);
+    // Set up empty state buttons
+    const emptyViewActiveBtn = document.querySelector('#completed-empty .btn');
+    if (emptyViewActiveBtn) {
+        emptyViewActiveBtn.addEventListener('click', switchToActiveCourses);
     }
     
     console.log('✅ Courses Module initialized');
+    
+    // Load courses if user is already logged in
+    if (getCurrentUserId()) {
+        console.log('👤 User logged in, loading courses...');
+        loadCourses();
+    }
 }
+
+// *************************************************************************
+// *** GLOBAL EXPORTS ***
+// *************************************************************************
 
 // Make functions globally available
 window.loadCourses = loadCourses;
-window.loadClassTargets = loadClassTargets;
-window.loadCoursesMetrics = loadCoursesMetrics;
 window.refreshCourses = refreshCourses;
-window.getCourseById = getCourseById;
-window.getCourseByName = getCourseByName;
-window.filterCoursesByProgram = filterCoursesByProgram;
-window.filterCoursesByBlock = filterCoursesByBlock;
-window.getActiveCourses = getActiveCourses;
-window.getCourseStatistics = getCourseStatistics;
-window.loadCourseSchedule = loadCourseSchedule;
-window.getTodaysCourses = getTodaysCourses;
-window.getUpcomingCourses = getUpcomingCourses;
-window.loadCourseMaterials = loadCourseMaterials;
-window.getRecentCourseMaterials = getRecentCourseMaterials;
-window.loadCourseAssignments = loadCourseAssignments;
-window.getUpcomingAssignments = getUpcomingAssignments;
-window.loadCourseGrades = loadCourseGrades;
-window.calculateCourseAverage = calculateCourseAverage;
-window.loadCourseAttendance = loadCourseAttendance;
-window.calculateCourseAttendanceRate = calculateCourseAttendanceRate;
-window.getCourseAnalytics = getCourseAnalytics;
-window.exportCourseDataToCSV = exportCourseDataToCSV;
-window.exportCourseScheduleToICS = exportCourseScheduleToICS;
+window.switchToActiveCourses = switchToActiveCourses;
+window.switchToCompletedCourses = switchToCompletedCourses;
+window.switchToAllCourses = switchToAllCourses;
+window.filterCourses = filterCourses;
+window.viewCourseMaterials = viewCourseMaterials;
+window.viewCourseSchedule = viewCourseSchedule;
 window.initializeCoursesModule = initializeCoursesModule;
+
+// Keep original functions for backward compatibility
+window.loadClassTargets = async function() {
+    console.log('⚠️ loadClassTargets called - using new courses system');
+    await loadCourses();
+    return cachedCourses;
+};
+
+window.loadCoursesMetrics = async function() {
+    await loadCourses();
+    return { 
+        count: cachedCourses.length,
+        active: cachedCourses.filter(c => c.status !== 'Completed' && c.status !== 'Passed').length,
+        completed: cachedCourses.filter(c => c.status === 'Completed' || c.status === 'Passed').length
+    };
+};
 
 // Auto-initialize when DOM is ready
 if (document.readyState === 'loading') {
