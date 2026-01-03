@@ -1308,147 +1308,75 @@ body, input, button, select, textarea {
     100% { transform: rotate(360deg); }
 }
 
-/* ========== RESPONSIVE DESIGN ========== */
-@media (max-width: 1200px) {
-    .questions-main-container {
-        flex-direction: column;
-    }
-    
-    .stats-panel {
-        min-width: 100%;
-    }
-    
-    .horizontal-question-grid {
-        justify-content: center;
-    }
-}
-
+/* ========== MOBILE-SPECIFIC FIXES ========== */
 @media (max-width: 768px) {
+    /* Header fixes */
     .questions-header-bar {
-        padding: var(--space-md);
+        padding: 15px;
     }
     
     .header-content {
         flex-direction: column;
-        gap: var(--space-md);
+        gap: 12px;
         text-align: center;
     }
     
     .header-back-btn {
         align-self: flex-start;
+        padding: 8px 15px;
+        font-size: 0.9rem;
+    }
+    
+    .header-course-info h2 {
+        font-size: 1.2rem;
+    }
+    
+    .practice-mode {
+        font-size: 0.85rem;
     }
     
     .header-progress-stats {
-        width: 100%;
-        justify-content: center;
         flex-wrap: wrap;
-        gap: var(--space-md);
+        gap: 10px;
+        justify-content: center;
     }
     
     .progress-stat-top {
         min-width: 70px;
     }
     
+    .progress-value-top {
+        font-size: 1.1rem;
+        padding: 5px 10px;
+    }
+    
+    /* Main container fixes */
     .questions-main-container {
-        padding: var(--space-md);
-        margin: var(--space-md) auto;
+        padding: 15px;
+        margin: 15px auto;
+        flex-direction: column;
+        gap: 15px;
     }
     
     .question-panel {
-        padding: var(--space-lg);
+        padding: 18px;
+        border-radius: 12px;
+        min-height: auto;
     }
     
+    /* Question header fixes */
     .question-header {
         flex-direction: column;
         align-items: stretch;
-        gap: var(--space-md);
+        gap: 12px;
+        margin-bottom: 15px;
+        padding-bottom: 12px;
     }
     
     .question-meta {
-        justify-content: center;
-    }
-    
-    .mini-navigation {
-        justify-content: center;
-    }
-    
-    .action-buttons-panel {
-        flex-direction: column;
-        gap: var(--space-md);
-    }
-    
-    .button-group-left,
-    .button-group-right {
-        width: 100%;
-        justify-content: space-between;
-    }
-    
-    .action-btn {
-        flex: 1;
-        justify-content: center;
-    }
-    
-    .compact-navigation {
-        flex-wrap: wrap;
+        justify-content: flex-start;
         gap: 10px;
-        padding: 12px;
-    }
-    
-    .compact-nav-btn {
-        padding: 10px 16px;
-        font-size: 0.9rem;
-        min-width: 90px;
-    }
-    
-    .compact-progress {
-        order: -1;
-        flex: 100%;
-        max-width: 100%;
-        margin-bottom: 10px;
-    }
-    
-    .courses-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .horizontal-question-grid {
-        grid-template-columns: repeat(auto-fill, minmax(36px, 1fr));
-        gap: 6px;
-    }
-    
-    .grid-question-number {
-        width: 36px;
-        height: 36px;
-        min-width: 36px !important;
-        min-height: 36px !important;
-        font-size: 0.85rem;
-    }
-}
-
-@media (max-width: 480px) {
-    .question-bank-container {
-        padding: var(--space-md);
-    }
-    
-    .stats-header {
-        padding: var(--space-lg);
-    }
-    
-    .overall-stats {
-        grid-template-columns: 1fr;
-    }
-    
-    .course-card {
-        margin-bottom: var(--space-md);
-    }
-    
-    .stats-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .quick-stats {
-        flex-direction: column;
-        gap: var(--space-md);
+        flex-wrap: wrap;
     }
     
     .question-number-badge {
@@ -1456,9 +1384,51 @@ body, input, button, select, textarea {
         padding: 6px 12px;
     }
     
+    .question-type {
+        font-size: 0.85rem;
+    }
+    
     .difficulty-badge {
-        font-size: 0.7rem;
+        font-size: 0.75rem;
         padding: 3px 8px;
+    }
+    
+    .mini-navigation {
+        justify-content: center;
+        width: 100%;
+    }
+    
+    /* Question content fixes */
+    .question-card {
+        padding: 15px;
+        margin-bottom: 15px;
+        min-height: 100px;
+    }
+    
+    .question-text {
+        font-size: 1rem;
+        line-height: 1.5;
+    }
+    
+    /* Options fixes */
+    .options-panel {
+        margin-bottom: 15px;
+    }
+    
+    .options-title {
+        font-size: 0.95rem;
+        margin-bottom: 12px;
+    }
+    
+    .options-container-improved {
+        min-height: auto;
+        gap: 8px;
+    }
+    
+    .option-item-improved {
+        padding: 12px;
+        min-height: 60px;
+        gap: 10px;
     }
     
     .option-letter-circle {
@@ -1471,15 +1441,252 @@ body, input, button, select, textarea {
         font-size: 0.95rem;
     }
     
+    /* Action buttons fixes */
+    .action-buttons-panel {
+        flex-direction: column;
+        gap: 12px;
+        margin: 15px 0;
+        padding: 15px 0;
+    }
+    
+    .button-group-left,
+    .button-group-right {
+        width: 100%;
+        justify-content: space-between;
+        gap: 8px;
+    }
+    
     .action-btn {
-        padding: 10px 16px;
+        flex: 1;
+        padding: 10px 15px;
         font-size: 0.9rem;
+        justify-content: center;
+    }
+    
+    /* Compact navigation mobile fixes */
+    .compact-navigation {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: auto auto;
+        gap: 10px;
+        margin: 15px 0;
+        padding: 12px;
+        border-radius: 10px;
+    }
+    
+    .compact-nav-prev {
+        grid-column: 1;
+        grid-row: 1;
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .compact-nav-next {
+        grid-column: 2;
+        grid-row: 1;
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .compact-progress {
+        grid-column: 1 / span 2;
+        grid-row: 2;
+        width: 100%;
+        margin: 5px 0 10px 0;
+        order: -1;
+    }
+    
+    .compact-nav-finish {
+        grid-column: 1 / span 2;
+        grid-row: 3;
+        width: 100%;
+        justify-content: center;
+        margin-top: 5px;
+    }
+    
+    .compact-nav-btn {
+        padding: 10px 15px;
+        font-size: 0.9rem;
+        min-width: 0;
+        width: 100%;
+        justify-content: center;
+        gap: 6px;
+    }
+    
+    .compact-progress-bar {
+        height: 5px;
+    }
+    
+    .compact-progress-text {
+        font-size: 0.8rem;
+    }
+    
+    /* Stats panel fixes */
+    .stats-panel {
+        min-width: 100%;
+    }
+    
+    .horizontal-nav-card {
+        padding: 15px;
+        min-height: auto;
+    }
+    
+    .nav-title {
+        font-size: 0.95rem;
+        margin-bottom: 12px;
+    }
+    
+    .horizontal-question-grid {
+        grid-template-columns: repeat(auto-fill, minmax(36px, 1fr));
+        gap: 6px;
+        padding: 6px;
+        max-height: 180px;
+    }
+    
+    .grid-question-number {
+        width: 36px;
+        height: 36px;
+        min-width: 36px !important;
+        min-height: 36px !important;
+        font-size: 0.85rem;
+    }
+    
+    .grid-controls {
+        margin-top: 12px;
+    }
+    
+    .tips-card {
+        padding: 15px;
+        min-height: auto;
+    }
+    
+    .tips-title {
+        font-size: 0.95rem;
+        margin-bottom: 12px;
+    }
+    
+    .tips-list li {
+        font-size: 0.85rem;
+        padding: 6px 0;
+    }
+    
+    /* Answer reveal fixes */
+    .answer-reveal-section {
+        padding: 15px;
+        margin-top: 15px;
+        min-height: auto;
+    }
+    
+    .answer-header h3 {
+        font-size: 1.1rem;
+    }
+    
+    .correct-answer-box,
+    .explanation-box {
+        padding: 12px;
+    }
+    
+    /* Course grid fixes */
+    .courses-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .course-card {
+        min-height: auto;
+    }
+    
+    .course-header {
+        padding: 15px;
+    }
+    
+    .course-stats {
+        padding: 15px;
+    }
+    
+    .stats-grid {
+        gap: 12px;
+    }
+    
+    .stat-value {
+        font-size: 1.5rem;
+    }
+    
+    .start-test-btn {
+        padding: 12px;
+        font-size: 0.9rem;
+    }
+    
+    .overall-stats {
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+    }
+    
+    .overall-stat-card {
+        padding: 15px;
+        min-height: 80px;
+    }
+    
+    .overall-stat-number {
+        font-size: 1.6rem;
+    }
+    
+    .stats-header {
+        padding: 20px;
+    }
+    
+    .question-bank-container {
+        padding: 15px;
+    }
+}
+
+@media (max-width: 480px) {
+    /* Extra small screen fixes */
+    .header-progress-stats {
+        gap: 8px;
+    }
+    
+    .progress-stat-top {
+        min-width: 60px;
+    }
+    
+    .progress-value-top {
+        font-size: 1rem;
+        padding: 4px 8px;
+    }
+    
+    .question-text {
+        font-size: 0.95rem;
+    }
+    
+    .option-item-improved {
+        padding: 10px;
+        min-height: 55px;
+    }
+    
+    .option-letter-circle {
+        width: 30px;
+        height: 30px;
+        font-size: 0.85rem;
+    }
+    
+    .option-text-improved {
+        font-size: 0.9rem;
+    }
+    
+    .action-btn {
+        padding: 8px 12px;
+        font-size: 0.85rem;
     }
     
     .compact-nav-btn {
         padding: 8px 12px;
         font-size: 0.85rem;
-        min-width: 80px;
+    }
+    
+    .horizontal-question-grid {
+        grid-template-columns: repeat(auto-fill, minmax(32px, 1fr));
+        gap: 5px;
     }
     
     .grid-question-number {
@@ -1488,5 +1695,9 @@ body, input, button, select, textarea {
         min-width: 32px !important;
         min-height: 32px !important;
         font-size: 0.8rem;
+    }
+    
+    .overall-stats {
+        grid-template-columns: 1fr;
     }
 }
