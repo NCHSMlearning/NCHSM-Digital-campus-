@@ -564,13 +564,13 @@
                         <th>Assessment</th>
                         <th>Type</th>
                         <th>Unit</th>
-                        <th>Block</th>
+                        <th class="text-center">Block</th>
                         <th>Due Date</th>
                         <th>Status</th>
-                        <th>CAT 1</th>
-                        <th>CAT 2</th>
-                        <th>Final</th>
-                        <th>Total</th>
+                        <th class="text-center">CAT 1</th>
+                        <th class="text-center">CAT 2</th>
+                        <th class="text-center">Final</th>
+                        <th class="text-center">Total</th>
                     </tr>
                 </thead>
                 <tbody id="current-assessments-table">
@@ -613,14 +613,14 @@
                         <th>Assessment</th>
                         <th>Type</th>
                         <th>Unit</th>
-                        <th>Block</th>
+                        <th class="text-center">Block</th>
                         <th>Date Graded</th>
                         <th>Status</th>
-                        <th>CAT 1</th>
-                        <th>CAT 2</th>
-                        <th>Final Exam</th>
-                        <th>Total (%)</th>
-                        <th>Grade</th>
+                        <th class="text-center">CAT 1</th>
+                        <th class="text-center">CAT 2</th>
+                        <th class="text-center">Final Exam</th>
+                        <th class="text-center">Total (%)</th>
+                        <th class="text-center">Grade</th>
                     </tr>
                 </thead>
                 <tbody id="completed-assessments-table">
@@ -666,32 +666,32 @@
                 </div>
                 <div class="card-body">
                     <div class="distribution-item">
-                        <span class="label">A (80-100%)</span>
+                        <span class="label">Distinction (≥70%)</span>
                         <div class="distribution-bar">
-                            <div class="bar-fill" id="grade-a-bar" style="width: 0%"></div>
+                            <div class="bar-fill" id="distinction-bar" style="width: 0%"></div>
                         </div>
-                        <span class="value" id="grade-a-count">0</span>
+                        <span class="value" id="distinction-count">0</span>
                     </div>
                     <div class="distribution-item">
-                        <span class="label">B (70-79%)</span>
+                        <span class="label">Credit (60-69%)</span>
                         <div class="distribution-bar">
-                            <div class="bar-fill" id="grade-b-bar" style="width: 0%"></div>
+                            <div class="bar-fill" id="credit-bar" style="width: 0%"></div>
                         </div>
-                        <span class="value" id="grade-b-count">0</span>
+                        <span class="value" id="credit-count">0</span>
                     </div>
                     <div class="distribution-item">
-                        <span class="label">C (60-69%)</span>
+                        <span class="label">Pass (50-59%)</span>
                         <div class="distribution-bar">
-                            <div class="bar-fill" id="grade-c-bar" style="width: 0%"></div>
+                            <div class="bar-fill" id="pass-bar" style="width: 0%"></div>
                         </div>
-                        <span class="value" id="grade-c-count">0</span>
+                        <span class="value" id="pass-count">0</span>
                     </div>
                     <div class="distribution-item">
-                        <span class="label">F (<60%)</span>
+                        <span class="label">Fail (<50%)</span>
                         <div class="distribution-bar">
-                            <div class="bar-fill" id="grade-f-bar" style="width: 0%"></div>
+                            <div class="bar-fill" id="fail-bar" style="width: 0%"></div>
                         </div>
-                        <span class="value" id="grade-f-count">0</span>
+                        <span class="value" id="fail-count">0</span>
                     </div>
                 </div>
             </div>
@@ -735,16 +735,16 @@
     <div class="notes-section">
         <div class="notes-header">
             <i class="fas fa-info-circle"></i>
-            <h4>Grading Information (Pass Mark: 60%)</h4>
+            <h4>Grading Information (Pass Mark: 50%)</h4>
         </div>
         <div class="notes-content">
             <div class="grading-breakdown">
                 <h5>Grade Distribution:</h5>
                 <ul>
-                    <li><strong>A:</strong> 80% - 100% (Excellent)</li>
-                    <li><strong>B:</strong> 70% - 79% (Very Good)</li>
-                    <li><strong>C:</strong> 60% - 69% (Good - PASS)</li>
-                    <li><strong>F:</strong> 0% - 59% (Fail)</li>
+                    <li><strong>Distinction:</strong> 70% and above</li>
+                    <li><strong>Credit:</strong> 60% - 69%</li>
+                    <li><strong>Pass:</strong> 50% - 59%</li>
+                    <li><strong>Fail:</strong> Below 50%</li>
                 </ul>
             </div>
             <div class="weighting-info">
@@ -759,7 +759,7 @@
             <div class="important-notes">
                 <h5>Important Notes:</h5>
                 <ul>
-                    <li>Minimum pass mark is <strong>60%</strong></li>
+                    <li>Minimum pass mark is <strong>50%</strong></li>
                     <li>Grades are provisional until officially confirmed</li>
                     <li>Contact your lecturer for grade inquiries</li>
                     <li>Official transcripts can be requested from administration</li>
@@ -768,6 +768,9 @@
         </div>
     </div>
 </section>
+
+<!-- Add Font Awesome for icons -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
                 <!-- Enhanced Resources Tab - VIEW ONLY -->
                 <section id="resources" class="tab-content">
