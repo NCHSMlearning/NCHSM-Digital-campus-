@@ -1,8 +1,8 @@
-// js/exams.js - FINAL WORKING VERSION BASED ON SIMPLE MODULE
+// js/exams.js - UNIVERSAL VERSION FOR ALL PROGRAMS (KRCHN & TVET)
 (function() {
     'use strict';
     
-    console.log('✅ exams.js - Final Working Version');
+    console.log('✅ exams.js - Universal Version for KRCHN & TVET');
     
     class ExamsModule {
         constructor() {
@@ -13,8 +13,6 @@
             this.completedTable = document.getElementById('completed-assessments-table');
             this.currentEmpty = document.getElementById('current-empty');
             this.completedEmpty = document.getElementById('completed-empty');
-            this.currentCountElement = document.getElementById('current-count');
-            this.completedCountElement = document.getElementById('completed-count');
             
             // Load exams immediately
             this.loadExams();
@@ -26,30 +24,37 @@
             this.showLoading();
             
             try {
-                // DIRECT ACCESS to data - no complex extraction
-                const program = window.db?.currentUserProfile?.program || 'KRCHN';
-                const intakeYear = window.db?.currentUserProfile?.intake_year ? 
-                    parseInt(window.db.currentUserProfile.intake_year, 10) : 2025;
-                const block = window.db?.currentUserProfile?.block || 'A';
-                const userId = window.db?.currentUserId || '322a2ee6-989a-4ba8-b58f-b21374869467';
+                // Get user data DIRECTLY
+                const profile = window.db?.currentUserProfile;
+                const program = profile?.program || profile?.department || '';
+                const intakeYear = profile?.intake_year ? parseInt(profile.intake_year, 10) : null;
+                const block = profile?.block || '';
+                const userId = window.db?.currentUserId;
                 
-                console.log('🎯 Using:', { program, intakeYear, block, userId });
+                console.log('🎯 User data:', { program, intakeYear, block, userId });
+                
+                // VALIDATION
+                if (!program || !intakeYear || !userId) {
+                    throw new Error(`Invalid profile data. Program: "${program}", Intake: "${intakeYear}", User: "${userId ? 'OK' : 'Missing'"`);
+                }
                 
                 const supabase = window.db?.supabase;
                 if (!supabase) throw new Error('No database connection');
                 
-                // 1. Get exams
+                // 1. Get exams - UNIVERSAL QUERY for all programs
                 const { data: exams, error: examsError } = await supabase
                     .from('exams_with_courses')
                     .select('*')
-                    .or(`program_type.eq.${program},program_type.eq.General`)
+                    // FIXED: This works for ANY program name (KRCHN, TVET, etc.)
+                    .or(`program_type.eq.${program},program_type.eq.General,program_type.is.null`)
+                    // FIXED: Handle block properly
                     .or(`block_term.eq.${block},block_term.is.null,block_term.eq.General`)
                     .eq('intake_year', intakeYear)
                     .order('exam_date', { ascending: true });
                 
                 if (examsError) throw examsError;
                 
-                // 2. Get grades
+                // 2. Get grades - UNIVERSAL for all students
                 const { data: grades, error: gradesError } = await supabase
                     .from('exam_grades')
                     .select('*')
@@ -62,7 +67,7 @@
                 console.log(`✅ Found ${exams?.length || 0} exams and ${grades?.length || 0} grades`);
                 
                 // Process and display
-                this.processAndDisplay(exams || [], grades || []);
+                this.processAndDisplay(exams || [], grades || [], program);
                 
             } catch (error) {
                 console.error('❌ Error loading exams:', error);
@@ -70,25 +75,39 @@
             }
         }
         
-        processAndDisplay(exams, grades) {
+        processAndDisplay(exams, grades, program) {
+            console.log(`📊 Processing for program: ${program}`);
+            
             // Process each exam
             const examData = exams.map(exam => {
                 const grade = grades.find(g => String(g.exam_id) === String(exam.id));
                 const examType = exam.exam_type || '';
                 
-                // Calculate percentage
+                // Calculate percentage - UNIVERSAL for all exam types
                 let percentage = null;
                 if (grade) {
-                    if (grade.total_score !== null) {
+                    // Try total_score first (works for all)
+                    if (grade.total_score !== null && grade.total_score !== undefined) {
                         percentage = Number(grade.total_score);
-                    } else if (examType.includes('CAT_1') && grade.cat_1_score !== null) {
+                    } 
+                    // CAT exams (both KRCHN and TVET)
+                    else if (examType.includes('CAT') && grade.cat_1_score !== null) {
                         percentage = (grade.cat_1_score / 30) * 100;
-                    } else if (examType.includes('CAT_2') && grade.cat_2_score !== null) {
-                        percentage = (grade.cat_2_score / 30) * 100;
+                    }
+                    // Practical/Assignment exams (common in TVET)
+                    else if (examType.includes('Practical') && grade.exam_score !== null) {
+                        percentage = Number(grade.exam_score);
+                    }
+                    // Final exams
+                    else if (examType.includes('EXAM') || examType.includes('Final')) {
+                        if (grade.cat_1_score !== null && grade.cat_2_score !== null && grade.exam_score !== null) {
+                            const totalMarks = grade.cat_1_score + grade.cat_2_score + grade.exam_score;
+                            percentage = (totalMarks / 100) * 100;
+                        }
                     }
                 }
                 
-                // Determine grade
+                // Determine grade - UNIVERSAL grading system
                 let gradeText = '--';
                 let gradeClass = '';
                 if (percentage !== null) {
@@ -117,7 +136,9 @@
                     dateGraded: grade?.graded_at,
                     cat1Score: grade?.cat_1_score,
                     cat2Score: grade?.cat_2_score,
-                    examScore: grade?.exam_score
+                    examScore: grade?.exam_score,
+                    // Add program info for debugging
+                    studentProgram: program
                 };
             });
             
@@ -125,24 +146,24 @@
             const current = examData.filter(e => !e.isCompleted);
             const completed = examData.filter(e => e.isCompleted);
             
-            console.log(`📊 Current: ${current.length}, Completed: ${completed.length}`);
+            console.log(`📊 Results for ${program}: ${current.length} current, ${completed.length} completed`);
             
             // Display
-            this.displayTable(this.currentTable, current, false);
-            this.displayTable(this.completedTable, completed, true);
+            this.displayTable(this.currentTable, current, false, program);
+            this.displayTable(this.completedTable, completed, true, program);
             
             // Update empty states
             this.toggleEmptyState('current', current.length === 0);
             this.toggleEmptyState('completed', completed.length === 0);
             
             // Update counts
-            this.updateCounts(current.length, completed.length);
+            this.updateCounts(current.length, completed.length, program);
             
             // Update performance summary
-            this.updatePerformanceSummary(completed);
+            this.updatePerformanceSummary(completed, program);
         }
         
-        displayTable(tableElement, exams, isCompleted) {
+        displayTable(tableElement, exams, isCompleted, program) {
             if (!tableElement) return;
             
             if (exams.length === 0) {
@@ -163,8 +184,20 @@
                         })
                         : '--');
                 
-                const typeBadge = exam.exam_type?.includes('CAT') ? 'cat' : 'exam';
-                const typeText = exam.exam_type?.includes('CAT') ? 'CAT' : 'Exam';
+                // Determine exam type badge - UNIVERSAL
+                let typeBadge = 'exam';
+                let typeText = 'Exam';
+                
+                if (exam.exam_type?.includes('CAT')) {
+                    typeBadge = 'cat';
+                    typeText = 'CAT';
+                } else if (exam.exam_type?.includes('Practical')) {
+                    typeBadge = 'practical';
+                    typeText = 'Practical';
+                } else if (exam.exam_type?.includes('Assignment')) {
+                    typeBadge = 'assignment';
+                    typeText = 'Assignment';
+                }
                 
                 const scoreDisplay = exam.percentage !== null ? `${exam.percentage.toFixed(1)}%` : '--';
                 
@@ -173,9 +206,15 @@
                 let statusIcon = 'fa-clock';
                 
                 if (isCompleted) {
-                    statusClass = exam.percentage >= 60 ? exam.gradeClass : 'failed';
-                    statusText = exam.percentage >= 60 ? exam.gradeText : 'Failed';
-                    statusIcon = exam.percentage >= 60 ? 'fa-check-circle' : 'fa-times-circle';
+                    if (exam.percentage !== null) {
+                        statusClass = exam.percentage >= 60 ? exam.gradeClass : 'failed';
+                        statusText = exam.percentage >= 60 ? exam.gradeText : 'Failed';
+                        statusIcon = exam.percentage >= 60 ? 'fa-check-circle' : 'fa-times-circle';
+                    } else {
+                        statusClass = 'graded';
+                        statusText = 'Graded';
+                        statusIcon = 'fa-clipboard-check';
+                    }
                 }
                 
                 const gradeColumn = isCompleted 
@@ -209,14 +248,15 @@
             }
         }
         
-        updateCounts(current, completed) {
+        updateCounts(current, completed, program) {
+            console.log(`📊 ${program}: ${current} current, ${completed} completed`);
+            
             // Update section counts
-            if (this.currentCountElement) {
-                this.currentCountElement.textContent = `${current} pending`;
-            }
-            if (this.completedCountElement) {
-                this.completedCountElement.textContent = `${completed} graded`;
-            }
+            const currentCount = document.getElementById('current-count');
+            const completedCount = document.getElementById('completed-count');
+            
+            if (currentCount) currentCount.textContent = `${current} pending`;
+            if (completedCount) completedCount.textContent = `${completed} graded`;
             
             // Update header counts
             const currentHeader = document.getElementById('current-assessments-count');
@@ -226,7 +266,7 @@
             if (completedHeader) completedHeader.textContent = completed;
         }
         
-        updatePerformanceSummary(completedExams) {
+        updatePerformanceSummary(completedExams, program) {
             const scoredExams = completedExams.filter(e => e.percentage !== null);
             
             if (scoredExams.length === 0) {
@@ -250,6 +290,8 @@
                 pass: scoredExams.filter(e => e.percentage >= 60 && e.percentage < 70).length,
                 fail: scoredExams.filter(e => e.percentage < 60).length
             };
+            
+            console.log(`📈 ${program} Performance: Best ${bestScore.toFixed(1)}%, Pass Rate ${passRate.toFixed(0)}%`);
             
             // Update DOM elements
             this.updateElement('best-score', `${bestScore.toFixed(1)}%`);
@@ -295,7 +337,6 @@
                 this.updateElement(id, '--');
             });
             
-            // Reset bars
             ['distinction-bar', 'credit-bar', 'pass-bar', 'fail-bar'].forEach(id => {
                 const bar = document.getElementById(id);
                 if (bar) bar.style.width = '0%';
@@ -363,5 +404,5 @@
     window.loadExams = () => window.examsModule?.refresh();
     window.refreshAssessments = () => window.examsModule?.refresh();
     
-    console.log('✅ Exams module ready');
+    console.log('✅ Universal exams module ready for KRCHN & TVET');
 })();
