@@ -1,6 +1,27 @@
-// js/exams.js - Updated Exams Management Module for new UI
+// js/exams.js - Complete Fixed Exams Management Module for new UI
 (function() {
     'use strict';
+    
+    // Helper functions (same as courses.js)
+    function getSupabaseClient() {
+        const client = window.db?.supabase;
+        if (!client || typeof client.from !== 'function') {
+            console.error('❌ No valid Supabase client available');
+            return null;
+        }
+        return client;
+    }
+    
+    function getUserProfile() {
+        return window.db?.currentUserProfile || 
+               window.currentUserProfile || 
+               window.userProfile || 
+               {};
+    }
+    
+    function getCurrentUserId() {
+        return window.db?.currentUserId || window.currentUserId;
+    }
     
     class ExamsModule {
         constructor() {
@@ -44,6 +65,11 @@
             });
             
             this.initializeElements();
+            
+            // Initialize after a short delay to ensure DOM is ready
+            setTimeout(() => {
+                this.initialize();
+            }, 100);
         }
         
         initializeElements() {
@@ -98,33 +124,55 @@
         // Initialize with user ID and profile
         initialize() {
             console.log('🚀 ExamsModule.initialize() called');
+            
+            // Get user info using the helper functions
             this.userId = getCurrentUserId();
             this.userProfile = getUserProfile();
             
-            console.log('👤 User data:', {
+            console.log('👤 User data in initialize():', {
                 userId: this.userId,
-                userProfile: this.userProfile ? 'Loaded' : 'Missing'
+                userProfile: this.userProfile,
+                program: this.userProfile?.program,
+                department: this.userProfile?.department,
+                intake_year: this.userProfile?.intake_year,
+                block: this.userProfile?.block,
+                profileKeys: Object.keys(this.userProfile || {})
             });
             
             if (this.userId && this.userProfile) {
-                console.log('✅ User data available, loading exams...');
-                this.loadExams();
+                const program = this.userProfile.program || this.userProfile.department;
+                const intakeYear = this.userProfile.intake_year;
+                
+                if (program && intakeYear) {
+                    console.log('✅ User data available, loading exams...');
+                    this.loadExams();
+                } else {
+                    console.error('❌ Missing program or intake year in profile:', {
+                        program: program || 'undefined',
+                        intakeYear: intakeYear || 'undefined',
+                        profile: this.userProfile
+                    });
+                    this.showErrorState('current', 'Missing program or intake year information in profile');
+                    this.showErrorState('completed', 'Missing program or intake year information in profile');
+                }
             } else {
                 console.error('❌ Missing user data:', {
                     userId: this.userId,
                     userProfile: !!this.userProfile
                 });
+                this.showErrorState('current', 'User data not available. Please ensure you are logged in.');
+                this.showErrorState('completed', 'User data not available. Please ensure you are logged in.');
             }
         }
         
         // Get Supabase client
         getSupabaseClient() {
-            const client = window.supabaseClient || getSupabaseClient();
+            const client = getSupabaseClient();
             console.log('🔌 Supabase client:', client ? 'Available' : 'Missing');
             return client;
         }
         
-        // Load exams and grades (ORIGINAL FETCHING LOGIC)
+        // Load exams and grades
         async loadExams() {
             console.log('📥 loadExams() started');
             
@@ -132,14 +180,10 @@
             this.showLoadingState('current');
             this.showLoadingState('completed');
             
-            if (!this.userProfile) {
-                console.log('🔄 Re-fetching user profile');
-                this.userProfile = getUserProfile();
-            }
-            
-            if (!this.userId) {
-                console.log('🔄 Re-fetching user ID');
+            // Ensure we have latest user data
+            if (!this.userProfile || !this.userId) {
                 this.userId = getCurrentUserId();
+                this.userProfile = getUserProfile();
             }
             
             const program = this.userProfile?.program || this.userProfile?.department;
@@ -152,24 +196,32 @@
                 block,
                 intakeYear,
                 studentId,
-                userProfileKeys: Object.keys(this.userProfile || {})
+                hasProgram: !!program,
+                hasIntakeYear: !!intakeYear,
+                userProfile: this.userProfile
             });
             
             if (!program || !intakeYear) {
                 console.error('❌ Missing program or intake year:', {
                     program: program || 'undefined',
-                    intakeYear: intakeYear || 'undefined'
+                    intakeYear: intakeYear || 'undefined',
+                    userProfile: this.userProfile
                 });
-                this.showErrorState('current', 'Missing program or intake year info');
-                this.showErrorState('completed', 'Missing program or intake year info');
+                
+                this.showErrorState('current', `Cannot load assessments: Missing program (${program || 'none'}) or intake year (${intakeYear || 'none'})`);
+                this.showErrorState('completed', `Cannot load assessments: Missing program (${program || 'none'}) or intake year (${intakeYear || 'none'})`);
                 this.cachedExams = [];
                 return;
             }
             
             try {
                 console.log('📡 Fetching exams from Supabase...');
-                // Fetch exams for this student's program
-                const { data: exams, error: examsError } = await this.getSupabaseClient()
+                const supabase = this.getSupabaseClient();
+                if (!supabase) {
+                    throw new Error('Supabase client not available');
+                }
+                
+                const { data: exams, error: examsError } = await supabase
                     .from('exams_with_courses')
                     .select(`
                         id,
@@ -192,11 +244,11 @@
                     throw examsError;
                 }
                 
-                console.log(`✅ Fetched ${exams?.length || 0} exams:`, exams);
+                console.log(`✅ Fetched ${exams?.length || 0} exams`);
                 
                 // Fetch overall grades
                 console.log('📡 Fetching grades from Supabase...');
-                const { data: grades, error: gradesError } = await this.getSupabaseClient()
+                const { data: grades, error: gradesError } = await supabase
                     .from('exam_grades')
                     .select(`
                         exam_id,
@@ -219,7 +271,7 @@
                     throw gradesError;
                 }
                 
-                console.log(`✅ Fetched ${grades?.length || 0} grades:`, grades);
+                console.log(`✅ Fetched ${grades?.length || 0} grades`);
                 
                 // Combine exams with their grades
                 this.cachedExams = exams.map(exam => {
@@ -231,35 +283,28 @@
                     let calculatedPercentage = null;
                     
                     if (grade) {
-                        console.log(`📊 Processing grade for exam ${exam.id}:`, grade);
-                        
                         // Calculate percentage consistently
                         if (grade.total_score !== null && grade.total_score !== undefined) {
                             calculatedPercentage = Number(grade.total_score);
-                            console.log(`📐 Using total_score: ${calculatedPercentage}%`);
                         } else {
                             // Calculate from CAT scores if total_score not available
                             if (examType.includes('CAT_1') || examType === 'CAT' || examType === 'CAT_1') {
                                 if (grade.cat_1_score !== null) {
                                     calculatedPercentage = (grade.cat_1_score / 30) * 100;
-                                    console.log(`📐 Calculated CAT1 percentage: ${calculatedPercentage}%`);
                                 }
                             } else if (examType.includes('CAT_2') || examType === 'CAT_2') {
                                 if (grade.cat_2_score !== null) {
                                     calculatedPercentage = (grade.cat_2_score / 30) * 100;
-                                    console.log(`📐 Calculated CAT2 percentage: ${calculatedPercentage}%`);
                                 }
                             } else if (examType === 'EXAM' || examType.includes('EXAM') || examType.includes('Final')) {
                                 if (grade.cat_1_score !== null && grade.cat_2_score !== null && grade.exam_score !== null) {
                                     const totalMarks = grade.cat_1_score + grade.cat_2_score + grade.exam_score;
                                     calculatedPercentage = (totalMarks / 100) * 100;
-                                    console.log(`📐 Calculated Final exam percentage: ${calculatedPercentage}%`);
                                 } else if (grade.marks) {
                                     try {
                                         const marksData = typeof grade.marks === 'string' ? JSON.parse(grade.marks) : grade.marks;
                                         if (marksData.percentage !== undefined) {
                                             calculatedPercentage = marksData.percentage;
-                                            console.log(`📐 Using marks JSON percentage: ${calculatedPercentage}%`);
                                         }
                                     } catch (e) {
                                         console.warn('⚠️ Error parsing marks JSON:', e);
@@ -272,7 +317,6 @@
                         if (calculatedPercentage !== null) {
                             displayStatus = calculatedPercentage >= 60 ? 'PASS' : 'FAIL';
                             resultStatus = 'Final';
-                            console.log(`🎯 Exam ${exam.id}: ${calculatedPercentage}% = ${displayStatus}`);
                         } else {
                             if (grade.result_status === 'Final') {
                                 displayStatus = 'Graded';
@@ -281,10 +325,7 @@
                                 displayStatus = grade.result_status || 'Graded';
                                 resultStatus = grade.result_status || 'Graded';
                             }
-                            console.log(`🎯 Exam ${exam.id}: No percentage, using ${displayStatus}`);
                         }
-                    } else {
-                        console.log(`📭 No grade found for exam ${exam.id}`);
                     }
                     
                     // Determine if assessment is current or completed
@@ -300,7 +341,6 @@
                         result_status: resultStatus,
                         calculated_percentage: calculatedPercentage,
                         assessment_status: assessmentStatus,
-                        // Add additional fields for new UI
                         totalPercentage: calculatedPercentage,
                         cat1Score: grade?.cat_1_score || null,
                         cat2Score: grade?.cat_2_score || null,
@@ -309,7 +349,7 @@
                     };
                 });
                 
-                console.log('💾 Cached exams:', this.cachedExams);
+                console.log(`📊 Processed ${this.cachedExams.length} exams`);
                 
                 // Split into current and completed
                 const currentAssessments = this.cachedExams.filter(exam => exam.assessment_status === 'current');
@@ -350,8 +390,8 @@
                 
             } catch (error) {
                 console.error('❌ Failed to load exams:', error);
-                this.showErrorState('current', 'Failed to load assessments');
-                this.showErrorState('completed', 'Failed to load assessments');
+                this.showErrorState('current', `Failed to load assessments: ${error.message}`);
+                this.showErrorState('completed', `Failed to load assessments: ${error.message}`);
                 this.cachedExams = [];
             }
         }
@@ -374,9 +414,7 @@
                 this.currentCountElement.textContent = `${assessments.length} pending`;
             }
             
-            assessments.forEach((exam, index) => {
-                console.log(`🎨 Rendering current exam ${index + 1}:`, exam.exam_name);
-                
+            assessments.forEach((exam) => {
                 const dateStr = exam.exam_date
                     ? new Date(exam.exam_date).toLocaleDateString('en-US', { 
                         year: 'numeric', 
@@ -450,8 +488,6 @@
                 
                 this.currentAssessmentsTable.innerHTML += rowHTML;
             });
-            
-            console.log('✅ Current table rendered with', assessments.length, 'rows');
         }
         
         // Display completed assessments in new table format
@@ -483,9 +519,7 @@
                 this.completedAverageElement.textContent = `Average: ${averageScore}`;
             }
             
-            assessments.forEach((exam, index) => {
-                console.log(`🎨 Rendering completed exam ${index + 1}:`, exam.exam_name);
-                
+            assessments.forEach((exam) => {
                 const dateStr = exam.exam_date
                     ? new Date(exam.exam_date).toLocaleDateString('en-US', { 
                         year: 'numeric', 
@@ -531,17 +565,17 @@
                     }
                 }
                 
-                // Calculate grade based on percentage
+                // Calculate grade based on percentage using updated scale
                 let grade = '--';
                 let gradeClass = '';
                 if (exam.calculated_percentage !== null) {
-                    if (exam.calculated_percentage >= 70) {
+                    if (exam.calculated_percentage >= 85) {
                         grade = 'Distinction';
                         gradeClass = 'distinction';
-                    } else if (exam.calculated_percentage >= 60) {
+                    } else if (exam.calculated_percentage >= 70) {
                         grade = 'Credit';
                         gradeClass = 'credit';
-                    } else if (exam.calculated_percentage >= 50) {
+                    } else if (exam.calculated_percentage >= 60) {
                         grade = 'Pass';
                         gradeClass = 'pass';
                     } else {
@@ -594,8 +628,6 @@
                 
                 this.completedAssessmentsTable.innerHTML += rowHTML;
             });
-            
-            console.log('✅ Completed table rendered with', assessments.length, 'rows');
         }
         
         // Calculate performance summary
@@ -625,17 +657,17 @@
             if (this.bestScoreElement) this.bestScoreElement.textContent = `${bestScore.toFixed(1)}%`;
             if (this.lowestScoreElement) this.lowestScoreElement.textContent = `${lowestScore.toFixed(1)}%`;
             
-            // Calculate pass rate (50% or higher is pass)
-            const passedAssessments = scoredAssessments.filter(a => a.calculated_percentage >= 50);
+            // Calculate pass rate (60% or higher is pass based on new scale)
+            const passedAssessments = scoredAssessments.filter(a => a.calculated_percentage >= 60);
             const passRate = (passedAssessments.length / scoredAssessments.length) * 100;
             if (this.passRateElement) this.passRateElement.textContent = `${passRate.toFixed(0)}%`;
             
-            // Calculate grade distribution
+            // Calculate grade distribution using new scale
             const gradeCounts = {
-                distinction: scoredAssessments.filter(a => a.calculated_percentage >= 70).length,
-                credit: scoredAssessments.filter(a => a.calculated_percentage >= 60 && a.calculated_percentage < 70).length,
-                pass: scoredAssessments.filter(a => a.calculated_percentage >= 50 && a.calculated_percentage < 60).length,
-                fail: scoredAssessments.filter(a => a.calculated_percentage < 50).length
+                distinction: scoredAssessments.filter(a => a.calculated_percentage >= 85).length,
+                credit: scoredAssessments.filter(a => a.calculated_percentage >= 70 && a.calculated_percentage < 85).length,
+                pass: scoredAssessments.filter(a => a.calculated_percentage >= 60 && a.calculated_percentage < 70).length,
+                fail: scoredAssessments.filter(a => a.calculated_percentage < 60).length
             };
             
             // Update grade counts
@@ -769,8 +801,6 @@
         
         // Show loading state
         showLoadingState(section) {
-            console.log(`⏳ Showing loading state for: ${section}`);
-            
             if (section === 'current') {
                 const tableBody = this.currentAssessmentsTable;
                 if (tableBody) {
@@ -804,8 +834,6 @@
         
         // Show empty state
         showEmptyState(section) {
-            console.log(`📭 Showing empty state for: ${section}`);
-            
             if (section === 'current') {
                 if (this.currentEmptyState) {
                     this.currentEmptyState.style.display = 'block';
@@ -826,8 +854,6 @@
         
         // Hide empty state
         hideEmptyState(section) {
-            console.log(`👁️ Hiding empty state for: ${section}`);
-            
             if (section === 'current') {
                 if (this.currentEmptyState) {
                     this.currentEmptyState.style.display = 'none';
@@ -888,12 +914,6 @@
                 .replace(/"/g, "&quot;")
                 .replace(/'/g, "&#039;");
         }
-        
-        // Update user profile
-        updateUserProfile(userProfile) {
-            console.log('👤 Updating user profile in ExamsModule');
-            this.userProfile = userProfile;
-        }
     }
     
     // Create global instance
@@ -904,7 +924,6 @@
         console.log('🚀 initExamsModule() called');
         try {
             examsModule = new ExamsModule();
-            examsModule.initialize();
             console.log('✅ ExamsModule initialized successfully');
             return examsModule;
         } catch (error) {
@@ -946,31 +965,22 @@
         }
     }
     
-    function filterAssessments(filterType) {
-        console.log('🌍 Global filterAssessments called:', filterType);
-        if (examsModule) {
-            examsModule.filterAssessments(filterType);
-        }
-    }
-    
-    // Make functions globally available
+    // Expose to global scope
     window.ExamsModule = ExamsModule;
     window.initExamsModule = initExamsModule;
     window.loadExams = loadExams;
     window.refreshAssessments = refreshAssessments;
     window.switchToCurrentAssessments = switchToCurrentAssessments;
     window.switchToCompletedAssessments = switchToCompletedAssessments;
-    window.filterAssessments = filterAssessments;
     
-    // Auto-initialize
-    if (typeof window !== 'undefined') {
-        console.log('🏁 Exams module loaded, ready to initialize');
-        // Initialize when DOM is ready
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initExamsModule);
-        } else {
+    // Auto-initialize when DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('📄 DOM fully loaded, initializing ExamsModule');
             initExamsModule();
-        }
+        });
+    } else {
+        console.log('📄 DOM already loaded, initializing ExamsModule immediately');
+        initExamsModule();
     }
-    
 })();
