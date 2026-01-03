@@ -2,6 +2,9 @@
 // *** ENHANCED RESOURCES SYSTEM - VIEW ONLY ***
 // *************************************************************************
 
+// PDF.js Library Management
+let pdfjsLib = null;
+
 // Helper function for safe Supabase client access
 function getSupabaseClient() {
     const client = window.db?.supabase;
@@ -28,9 +31,108 @@ function getCurrentUserId() {
 let currentResources = [];
 let filteredResources = [];
 let currentReaderResource = null;
+let currentPDFDoc = null;
+let currentPDFPage = 1;
+let currentPDFScale = 1.5;
+
+// Initialize PDF.js library
+async function initializePDFJS() {
+    console.log('📚 Initializing PDF.js...');
+    
+    // Check if already loaded
+    if (window.pdfjsLib) {
+        pdfjsLib = window.pdfjsLib;
+        console.log('✅ PDF.js already available globally');
+    } else if (typeof pdfjsLib !== 'undefined') {
+        console.log('✅ PDF.js already loaded');
+    } else {
+        // Try to load from CDN
+        console.log('📥 Loading PDF.js from CDN...');
+        await loadPDFJSLibrary();
+    }
+    
+    // Set worker source
+    if (pdfjsLib && !pdfjsLib.GlobalWorkerOptions.workerSrc) {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 
+            'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        console.log('✅ PDF.js worker source set');
+    }
+    
+    return pdfjsLib;
+}
+
+// Load PDF.js library dynamically
+function loadPDFJSLibrary() {
+    return new Promise((resolve, reject) => {
+        // Check if already loading
+        if (document.getElementById('pdfjs-script')) {
+            console.log('PDF.js script already loading');
+            resolve();
+            return;
+        }
+        
+        // Load main PDF.js library
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+        script.id = 'pdfjs-script';
+        
+        script.onload = () => {
+            console.log('✅ PDF.js library loaded');
+            pdfjsLib = window.pdfjsLib;
+            
+            // Load worker script
+            const workerScript = document.createElement('script');
+            workerScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+            workerScript.id = 'pdfjs-worker-script';
+            
+            workerScript.onload = () => {
+                console.log('✅ PDF.js worker loaded');
+                
+                // Verify PDF.js is available
+                if (typeof pdfjsLib !== 'undefined') {
+                    pdfjsLib.GlobalWorkerOptions.workerSrc = 
+                        'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                    console.log('✅ PDF.js fully initialized');
+                    resolve(pdfjsLib);
+                } else {
+                    console.error('❌ PDF.js not defined after loading');
+                    reject(new Error('PDF.js failed to initialize'));
+                }
+            };
+            
+            workerScript.onerror = (error) => {
+                console.error('❌ Failed to load PDF.js worker:', error);
+                // Still try to continue without worker
+                if (typeof pdfjsLib !== 'undefined') {
+                    resolve(pdfjsLib);
+                } else {
+                    reject(error);
+                }
+            };
+            
+            document.head.appendChild(workerScript);
+        };
+        
+        script.onerror = (error) => {
+            console.error('❌ Failed to load PDF.js:', error);
+            reject(error);
+        };
+        
+        document.head.appendChild(script);
+    });
+}
 
 // Enhanced loadResources function
 async function loadResources() {
+    console.log('📁 Loading resources...');
+    
+    // Initialize PDF.js first
+    try {
+        await initializePDFJS();
+    } catch (error) {
+        console.warn('⚠️ PDF.js initialization warning:', error.message);
+    }
+    
     const userProfile = getUserProfile();
     const userId = getCurrentUserId();
     const supabaseClient = getSupabaseClient();
@@ -143,8 +245,13 @@ function renderResourcesGrid() {
 
 // Open resource in mobile-optimized reader - VIEW ONLY
 async function openResource(resourceId) {
+    console.log(`📄 Opening resource ${resourceId}...`);
+    
     const resource = currentResources.find(r => r.id == resourceId);
-    if (!resource) return;
+    if (!resource) {
+        console.error('Resource not found:', resourceId);
+        return;
+    }
 
     currentReaderResource = resource;
 
@@ -152,23 +259,43 @@ async function openResource(resourceId) {
     const readerTitle = document.getElementById('reader-title');
     const readerContent = document.getElementById('reader-content');
 
-    if (!reader || !readerTitle || !readerContent) return;
+    if (!reader || !readerTitle || !readerContent) {
+        console.error('Reader elements not found');
+        return;
+    }
 
     // Show reader
     reader.style.display = 'block';
     readerTitle.textContent = resource.title;
 
+    // Clear previous content
+    readerContent.innerHTML = '<div class="loading-state"><p>Loading resource...</p></div>';
+
     // Load content based on file type
     const fileType = getFileType(resource.file_path);
     
-    if (fileType === 'pdf') {
-        await loadPDFInReader(resource, readerContent);
-    } else if (['doc', 'docx', 'ppt', 'pptx'].includes(fileType)) {
-        loadOfficeInReader(resource, readerContent);
-    } else if (fileType === 'video') {
-        loadVideoInReader(resource, readerContent);
-    } else {
-        loadFallbackView(resource, readerContent);
+    try {
+        if (fileType === 'pdf') {
+            await loadPDFInReader(resource, readerContent);
+        } else if (['doc', 'docx', 'ppt', 'pptx'].includes(fileType)) {
+            loadOfficeInReader(resource, readerContent);
+        } else if (fileType === 'video') {
+            loadVideoInReader(resource, readerContent);
+        } else {
+            loadFallbackView(resource, readerContent);
+        }
+    } catch (error) {
+        console.error('Error loading resource:', error);
+        readerContent.innerHTML = `
+            <div class="error-state">
+                <i class="fas fa-exclamation-triangle"></i>
+                <h3>Failed to load resource</h3>
+                <p>${error.message}</p>
+                <button onclick="window.open('${resource.file_url}', '_blank')" class="profile-button" style="margin-top: 15px;">
+                    <i class="fas fa-external-link-alt"></i> Open in New Tab
+                </button>
+            </div>
+        `;
     }
 }
 
@@ -180,6 +307,8 @@ function closeReader() {
     if (reader) {
         reader.style.display = 'none';
         currentReaderResource = null;
+        currentPDFDoc = null;
+        currentPDFPage = 1;
     }
 }
 
@@ -244,115 +373,84 @@ function getFileIcon(filePath) {
     }
 }
 
-// PDF loading for mobile - VIEW ONLY - HIGH QUALITY + FIXED NAVIGATION
+// PDF loading for mobile - VIEW ONLY
 async function loadPDFInReader(resource, container) {
+    console.log('📄 Loading PDF:', resource.title);
+    
+    // Check if PDF.js is available
+    if (!pdfjsLib) {
+        console.warn('PDF.js not loaded, attempting to initialize...');
+        try {
+            await initializePDFJS();
+        } catch (error) {
+            console.error('Failed to initialize PDF.js:', error);
+            container.innerHTML = `
+                <div class="error-state">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <h3>PDF Viewer Unavailable</h3>
+                    <p>PDF library failed to load. Please refresh the page.</p>
+                    <button onclick="window.open('${resource.file_url}', '_blank')" class="profile-button">
+                        <i class="fas fa-external-link-alt"></i> Open PDF in New Tab
+                    </button>
+                </div>
+            `;
+            return;
+        }
+    }
+    
     container.innerHTML = `
         <div class="pdf-mobile-viewer">
             <div class="view-only-notice">
                 <i class="fas fa-eye"></i>
                 <span>View Only - Content cannot be downloaded</span>
             </div>
-            <!-- PDF CONTENT FIRST -->
+            <!-- PDF CONTAINER -->
             <div class="pdf-container-mobile">
                 <canvas id="pdf-canvas-mobile"></canvas>
             </div>
-            <!-- NAVIGATION CONTROLS AT THE BOTTOM -->
+            <!-- NAVIGATION CONTROLS -->
             <div class="pdf-controls-mobile">
-                <button onclick="changePDFPage(-1)" class="pdf-nav-btn">
+                <button id="prev-page-btn" class="pdf-nav-btn">
                     <i class="fas fa-chevron-left"></i>
                 </button>
-                <span class="pdf-page-info">Page: <span id="current-page">1</span> of <span id="total-pages">1</span></span>
-                <button onclick="changePDFPage(1)" class="pdf-nav-btn">
+                <span class="pdf-page-info">
+                    Page: <span id="current-page">1</span> of <span id="total-pages">...</span>
+                </span>
+                <button id="next-page-btn" class="pdf-nav-btn">
                     <i class="fas fa-chevron-right"></i>
+                </button>
+                <button id="zoom-in-btn" class="pdf-nav-btn">
+                    <i class="fas fa-search-plus"></i>
+                </button>
+                <button id="zoom-out-btn" class="pdf-nav-btn">
+                    <i class="fas fa-search-minus"></i>
                 </button>
             </div>
         </div>
     `;
 
     try {
-        const pdfDoc = await pdfjsLib.getDocument(resource.file_url).promise;
-        let currentPage = 1;
-        let pdfScale = 1.8;
+        // Load PDF document
+        const loadingTask = pdfjsLib.getDocument(resource.file_url);
+        const pdfDoc = await loadingTask.promise;
         
+        currentPDFDoc = pdfDoc;
+        currentPDFPage = 1;
+        
+        // Update total pages
         document.getElementById('total-pages').textContent = pdfDoc.numPages;
         
-        function renderPage(pageNum) {
-            pdfDoc.getPage(pageNum).then(page => {
-                const canvas = document.getElementById('pdf-canvas-mobile');
-                const ctx = canvas.getContext('2d');
-                const container = document.querySelector('.pdf-container-mobile');
-                
-                const containerWidth = container.clientWidth - 40;
-                const maxContainerHeight = window.innerHeight * 0.7;
-                
-                const viewport = page.getViewport({ scale: 1 });
-                
-                const scaleX = containerWidth / viewport.width;
-                const scaleY = maxContainerHeight / viewport.height;
-                const optimalScale = Math.min(scaleX, scaleY, pdfScale) * (window.devicePixelRatio || 1);
-                
-                const scaledViewport = page.getViewport({ scale: optimalScale });
-                
-                canvas.width = scaledViewport.width;
-                canvas.height = scaledViewport.height;
-                
-                canvas.style.width = (scaledViewport.width / (window.devicePixelRatio || 1)) + 'px';
-                canvas.style.height = (scaledViewport.height / (window.devicePixelRatio || 1)) + 'px';
-                
-                const renderContext = {
-                    canvasContext: ctx,
-                    viewport: scaledViewport,
-                    enableWebGL: true,
-                    intent: 'display',
-                    renderInteractiveForms: false,
-                    imageLayer: false
-                };
-                
-                page.render(renderContext).promise.then(() => {
-                    document.getElementById('current-page').textContent = pageNum;
-                });
-            }).catch(error => {
-                console.error('Error rendering page:', error);
-                container.innerHTML = `
-                    <div class="error-state">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <h3>Failed to render PDF page</h3>
-                        <p>${error.message}</p>
-                    </div>
-                `;
-            });
-        }
+        // Render first page
+        await renderPDFPage(currentPDFPage);
         
-        window.changePDFPage = function(delta) {
-            const newPage = currentPage + delta;
-            if (newPage >= 1 && newPage <= pdfDoc.numPages) {
-                currentPage = newPage;
-                renderPage(currentPage);
-            }
-        };
+        // Set up event listeners for controls
+        document.getElementById('prev-page-btn').onclick = () => changePDFPage(-1);
+        document.getElementById('next-page-btn').onclick = () => changePDFPage(1);
+        document.getElementById('zoom-in-btn').onclick = () => zoomPDF(true);
+        document.getElementById('zoom-out-btn').onclick = () => zoomPDF(false);
         
-        window.zoomPDF = function(zoomIn) {
-            if (zoomIn) {
-                pdfScale = Math.min(pdfScale + 0.25, 3.0);
-            } else {
-                pdfScale = Math.max(pdfScale - 0.25, 0.5);
-            }
-            renderPage(currentPage);
-        };
-        
-        renderPage(currentPage);
-        
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'ArrowLeft') {
-                changePDFPage(-1);
-            } else if (e.key === 'ArrowRight') {
-                changePDFPage(1);
-            } else if (e.key === '+' || e.key === '=') {
-                zoomPDF(true);
-            } else if (e.key === '-' || e.key === '_') {
-                zoomPDF(false);
-            }
-        });
+        // Keyboard navigation
+        container.addEventListener('keydown', handlePDFKeyboardNavigation);
         
     } catch (error) {
         console.error('PDF loading error:', error);
@@ -367,6 +465,100 @@ async function loadPDFInReader(resource, container) {
                 </button>
             </div>
         `;
+    }
+}
+
+// Render PDF page
+async function renderPDFPage(pageNum) {
+    if (!currentPDFDoc || pageNum < 1 || pageNum > currentPDFDoc.numPages) {
+        return;
+    }
+    
+    try {
+        const page = await currentPDFDoc.getPage(pageNum);
+        const canvas = document.getElementById('pdf-canvas-mobile');
+        const context = canvas.getContext('2d');
+        const container = document.querySelector('.pdf-container-mobile');
+        
+        // Calculate dimensions
+        const containerWidth = container.clientWidth - 40;
+        const containerHeight = Math.min(container.clientHeight, window.innerHeight * 0.6);
+        
+        const viewport = page.getViewport({ scale: 1 });
+        const scale = Math.min(containerWidth / viewport.width, containerHeight / viewport.height, currentPDFScale);
+        
+        const scaledViewport = page.getViewport({ scale });
+        
+        // Set canvas dimensions
+        canvas.height = scaledViewport.height;
+        canvas.width = scaledViewport.width;
+        canvas.style.height = scaledViewport.height + 'px';
+        canvas.style.width = scaledViewport.width + 'px';
+        
+        // Clear canvas
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Render page
+        const renderContext = {
+            canvasContext: context,
+            viewport: scaledViewport
+        };
+        
+        await page.render(renderContext).promise;
+        
+        // Update page counter
+        document.getElementById('current-page').textContent = pageNum;
+        currentPDFPage = pageNum;
+        
+    } catch (error) {
+        console.error('Error rendering PDF page:', error);
+        throw error;
+    }
+}
+
+// Change PDF page
+function changePDFPage(delta) {
+    if (!currentPDFDoc) return;
+    
+    const newPage = currentPDFPage + delta;
+    if (newPage >= 1 && newPage <= currentPDFDoc.numPages) {
+        renderPDFPage(newPage);
+    }
+}
+
+// Zoom PDF
+function zoomPDF(zoomIn) {
+    if (zoomIn) {
+        currentPDFScale = Math.min(currentPDFScale + 0.25, 3.0);
+    } else {
+        currentPDFScale = Math.max(currentPDFScale - 0.25, 0.5);
+    }
+    renderPDFPage(currentPDFPage);
+}
+
+// Handle keyboard navigation for PDF
+function handlePDFKeyboardNavigation(e) {
+    if (!currentPDFDoc) return;
+    
+    switch(e.key) {
+        case 'ArrowLeft':
+            e.preventDefault();
+            changePDFPage(-1);
+            break;
+        case 'ArrowRight':
+            e.preventDefault();
+            changePDFPage(1);
+            break;
+        case '+':
+        case '=':
+            e.preventDefault();
+            zoomPDF(true);
+            break;
+        case '-':
+        case '_':
+            e.preventDefault();
+            zoomPDF(false);
+            break;
     }
 }
 
@@ -464,6 +656,13 @@ document.addEventListener('DOMContentLoaded', function() {
 function initializeResourcesModule() {
     console.log('📁 Initializing Resources Module...');
     
+    // Initialize PDF.js first
+    initializePDFJS().then(() => {
+        console.log('✅ PDF.js ready for Resources');
+    }).catch(error => {
+        console.warn('⚠️ PDF.js initialization warning:', error.message);
+    });
+    
     // Set up event listeners for resources tab
     const resourcesTab = document.querySelector('.nav a[data-tab="resources"]');
     if (resourcesTab) {
@@ -481,8 +680,8 @@ function initializeResourcesModule() {
 window.loadResources = loadResources;
 window.closeReader = closeReader;
 window.filterResources = filterResources;
-window.changePDFPage = function() {}; // Placeholder
-window.zoomPDF = function() {}; // Placeholder
+window.changePDFPage = changePDFPage;
+window.zoomPDF = zoomPDF;
 window.initializeResourcesModule = initializeResourcesModule;
 
 // Auto-initialize when DOM is ready
@@ -490,4 +689,15 @@ if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initializeResourcesModule);
 } else {
     initializeResourcesModule();
+}
+
+// Export for module support
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+        loadResources,
+        openResource,
+        closeReader,
+        filterResources,
+        initializeResourcesModule
+    };
 }
