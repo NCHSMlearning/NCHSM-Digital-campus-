@@ -25,23 +25,22 @@ body {
     margin: 0 !important;
     padding: 0 !important;
     overflow-x: hidden !important;
-    position: relative !important;
 }
 
-/* Force container layout */
+/* Force container layout - FIXED: Remove display:flex */
 .container {
-    display: flex !important;
     min-height: 100vh !important;
     width: 100% !important;
     position: relative !important;
+    display: block !important; /* Changed from flex to block */
 }
 
-/* Force sidebar visibility on desktop */
+/* Force sidebar visibility on desktop - FIXED: Remove position:fixed from here */
 .sidebar {
     width: 280px !important;
     min-height: 100vh !important;
     background: white !important;
-    position: fixed !important;
+    position: fixed !important; /* Desktop: fixed positioning */
     left: 0 !important;
     top: 0 !important;
     bottom: 0 !important;
@@ -49,20 +48,19 @@ body {
     box-shadow: 2px 0 10px rgba(0,0,0,0.1) !important;
     border-right: 1px solid #e2e8f0 !important;
     overflow-y: auto !important;
-    transform: translateX(0) !important; /* Always visible on desktop */
+    transform: translateX(0) !important;
     transition: transform 0.3s ease-in-out !important;
 }
 
-/* Force main content area */
+/* Force main content area - FIXED: Add proper positioning */
 .main {
-    margin-left: 280px !important;
-    width: calc(100% - 280px) !important;
     min-height: 100vh !important;
     background-color: #f8fafc !important;
     padding: 0 !important;
     display: block !important;
     position: relative !important;
-    transition: margin-left 0.3s ease-in-out, width 0.3s ease-in-out !important;
+    transition: margin-left 0.3s ease-in-out !important;
+    width: 100% !important; /* Default to full width */
 }
 
 /* ========== TAB SWITCHING - FINAL PERFECT SOLUTION ========== */
@@ -249,17 +247,20 @@ input:focus, select:focus, textarea:focus {
     background-color: #f7fafc !important;
 }
 
-/* ========== DESKTOP MEDIA QUERY ========== */
+/* ========== DESKTOP MEDIA QUERY - CRITICAL FIXES ========== */
 @media (min-width: 1024px) {
     .sidebar {
+        position: fixed !important; /* Desktop: fixed */
         transform: translateX(0) !important;
-        position: fixed !important;
+        z-index: 1000 !important;
     }
     
     .main {
-        margin-left: 280px !important;
-        width: calc(100% - 280px) !important;
+        margin-left: 280px !important; /* Push main content right */
+        width: calc(100% - 280px) !important; /* Calculate remaining width */
         padding: 0 !important;
+        margin-top: 0 !important;
+        position: relative !important;
     }
     
     .mobile-header {
@@ -277,22 +278,30 @@ input:focus, select:focus, textarea:focus {
     .tab-content {
         margin: 30px auto !important;
         padding: 30px !important;
+        max-width: calc(1400px - 280px) !important; /* Account for sidebar */
+    }
+    
+    /* Ensure content is above sidebar z-index */
+    .main > * {
+        position: relative !important;
+        z-index: 1 !important;
     }
 }
 
-/* ========== TABLET MEDIA QUERY - FIXED ========== */
+/* ========== TABLET MEDIA QUERY ========== */
 @media (max-width: 1023px) and (min-width: 768px) {
     .sidebar {
+        position: fixed !important; /* Mobile/Tablet: fixed but hidden */
         transform: translateX(-100%) !important;
         width: 280px !important;
+        z-index: 1001 !important; /* Above overlay */
     }
     
     .sidebar.active {
         transform: translateX(0) !important;
-        z-index: 1000 !important;
     }
     
-    /* CRITICAL FIX: Remove sidebar margin when sidebar is hidden */
+    /* No sidebar margin when sidebar is hidden */
     .main {
         margin-left: 0 !important;
         width: 100% !important;
@@ -319,7 +328,7 @@ input:focus, select:focus, textarea:focus {
     
     .overlay.active {
         display: block !important;
-        z-index: 999 !important;
+        z-index: 1000 !important;
     }
     
     /* Tab content adjustments for tablet */
@@ -331,12 +340,12 @@ input:focus, select:focus, textarea:focus {
     }
 }
 
-/* ========== MOBILE MEDIA QUERY - FIXED ========== */
+/* ========== MOBILE MEDIA QUERY ========== */
 @media (max-width: 767px) {
     .sidebar {
+        position: fixed !important;
         transform: translateX(-100%) !important;
         width: 280px !important;
-        position: fixed !important;
         top: 0 !important;
         left: 0 !important;
         height: 100vh !important;
@@ -347,7 +356,7 @@ input:focus, select:focus, textarea:focus {
         transform: translateX(0) !important;
     }
     
-    /* CRITICAL FIX: Remove sidebar margin when sidebar is hidden */
+    /* No sidebar margin when sidebar is hidden */
     .main {
         margin-left: 0 !important;
         width: 100% !important;
@@ -421,6 +430,37 @@ body.sidebar-active,
 body.menu-open {
     overflow: hidden !important;
     height: 100vh !important;
+}
+
+/* ========== CRITICAL FIX: SIDEBAR & MAIN RELATIONSHIP ========== */
+/* On desktop, ensure main content flows correctly */
+@media (min-width: 1024px) {
+    .container {
+        display: flex !important;
+        min-height: 100vh !important;
+    }
+    
+    .sidebar {
+        position: fixed !important;
+        width: 280px !important;
+        height: 100vh !important;
+        flex-shrink: 0 !important;
+    }
+    
+    .main {
+        flex: 1 !important;
+        margin-left: 280px !important;
+        width: calc(100% - 280px) !important;
+        min-width: 0 !important; /* Allow shrinking */
+        overflow-x: hidden !important;
+    }
+    
+    /* Ensure tab content doesn't extend under sidebar */
+    .tab-content {
+        position: relative !important;
+        left: 0 !important;
+        right: 0 !important;
+    }
 }
 
 /* ========== NURSEIQ FIX ========== */
@@ -558,7 +598,6 @@ body.menu-open {
 
 /* Ensure smooth transition between sidebar and content */
 .sidebar + .main {
-    margin-left: 280px !important;
     transition: margin-left 0.3s ease !important;
 }
 
@@ -685,4 +724,21 @@ body.menu-open {
 
 .menu-toggle i {
     font-size: 1.1rem !important;
+}
+
+/* ========== Z-INDEX FIX FOR OVERLAP ========== */
+@media (min-width: 1024px) {
+    .sidebar {
+        z-index: 100 !important; /* Lower z-index on desktop */
+    }
+    
+    .main {
+        z-index: 1 !important; /* Ensure main is below sidebar if needed */
+        position: relative !important;
+    }
+    
+    .tab-content {
+        z-index: 1 !important;
+        position: relative !important;
+    }
 }
