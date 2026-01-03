@@ -1,4 +1,5 @@
 // js/exams.js - Enhanced Exams Management Module for Student Dashboard
+// Updated with Pass/Credit/Distinction/Fail grading system
 
 // *************************************************************************
 // *** EXAMS & ASSESSMENTS MANAGEMENT SYSTEM ***
@@ -29,6 +30,36 @@ function getCurrentUserId() {
 
 let cachedAssessments = [];
 let currentFilter = 'all';
+
+// Calculate grade based on percentage score
+function calculateGrade(percentage) {
+    if (percentage >= 70) return 'Distinction';
+    if (percentage >= 60) return 'Credit';
+    if (percentage >= 50) return 'Pass';
+    return 'Fail';
+}
+
+// Get grade color class
+function getGradeClass(grade) {
+    switch(grade) {
+        case 'Distinction': return 'distinction';
+        case 'Credit': return 'credit';
+        case 'Pass': return 'pass';
+        case 'Fail': return 'fail';
+        default: return '';
+    }
+}
+
+// Get grade icon
+function getGradeIcon(grade) {
+    switch(grade) {
+        case 'Distinction': return 'fas fa-award';
+        case 'Credit': return 'fas fa-star';
+        case 'Pass': return 'fas fa-check-circle';
+        case 'Fail': return 'fas fa-times-circle';
+        default: return 'fas fa-question-circle';
+    }
+}
 
 // Load all assessments for the current student
 async function loadAllAssessments() {
@@ -112,7 +143,7 @@ async function loadAllAssessments() {
             let status = 'pending';
             let gradedDate = null;
             let totalPercentage = null;
-            let gradeLetter = '--';
+            let gradeResult = '--';
             
             if (grade) {
                 gradedDate = grade.graded_at || new Date().toISOString();
@@ -143,14 +174,10 @@ async function loadAllAssessments() {
                     }
                 }
                 
-                // Determine grade letter based on 60% pass mark
+                // Calculate grade based on percentage
                 if (totalPercentage !== null) {
-                    if (totalPercentage >= 80) gradeLetter = 'A';
-                    else if (totalPercentage >= 70) gradeLetter = 'B';
-                    else if (totalPercentage >= 60) gradeLetter = 'C';
-                    else gradeLetter = 'F';
-                    
-                    status = totalPercentage >= 60 ? 'completed' : 'failed';
+                    gradeResult = calculateGrade(totalPercentage);
+                    status = totalPercentage >= 50 ? 'completed' : 'failed';
                 } else {
                     status = 'graded';
                 }
@@ -169,7 +196,7 @@ async function loadAllAssessments() {
                 cat2Score: grade?.cat_2_score || null,
                 finalScore: grade?.exam_score || null,
                 totalPercentage: totalPercentage,
-                grade: gradeLetter,
+                grade: gradeResult,
                 examLink: exam.exam_link,
                 gradedBy: grade?.graded_by,
                 originalData: { ...exam, grade }
@@ -395,8 +422,8 @@ function displayCompletedAssessments(assessments) {
         let statusClass = '';
         
         if (assessment.status === 'completed') {
-            statusDisplay = '<i class="fas fa-check-circle"></i> Passed';
-            statusClass = 'completed';
+            statusDisplay = `<i class="${getGradeIcon(assessment.grade)}"></i> ${assessment.grade}`;
+            statusClass = getGradeClass(assessment.grade);
         } else {
             statusDisplay = '<i class="fas fa-times-circle"></i> Failed';
             statusClass = 'failed';
@@ -410,12 +437,7 @@ function displayCompletedAssessments(assessments) {
             `${assessment.totalPercentage.toFixed(1)}%` : '--';
         
         // Grade with color coding
-        let gradeDisplay = assessment.grade;
-        let gradeClass = '';
-        if (assessment.grade === 'A') gradeClass = 'grade-a';
-        else if (assessment.grade === 'B') gradeClass = 'grade-b';
-        else if (assessment.grade === 'C') gradeClass = 'grade-c';
-        else if (assessment.grade === 'F') gradeClass = 'grade-f';
+        const gradeClass = getGradeClass(assessment.grade);
         
         return `
             <tr>
@@ -429,7 +451,7 @@ function displayCompletedAssessments(assessments) {
                 <td class="text-center">${cat2Display}</td>
                 <td class="text-center">${finalDisplay}</td>
                 <td class="text-center"><strong>${totalDisplay}</strong></td>
-                <td class="text-center"><span class="grade-badge ${gradeClass}">${gradeDisplay}</span></td>
+                <td class="text-center"><span class="grade-badge ${gradeClass}">${assessment.grade}</span></td>
             </tr>
         `;
     }).join('');
@@ -454,16 +476,16 @@ function calculatePerformanceSummary(assessments) {
         document.getElementById('best-score').textContent = '--';
         document.getElementById('lowest-score').textContent = '--';
         document.getElementById('pass-rate').textContent = '--';
-        document.getElementById('grade-a-count').textContent = '0';
-        document.getElementById('grade-b-count').textContent = '0';
-        document.getElementById('grade-c-count').textContent = '0';
-        document.getElementById('grade-f-count').textContent = '0';
+        document.getElementById('distinction-count').textContent = '0';
+        document.getElementById('credit-count').textContent = '0';
+        document.getElementById('pass-count').textContent = '0';
+        document.getElementById('fail-count').textContent = '0';
         document.getElementById('first-assessment-date').textContent = '--';
         document.getElementById('latest-assessment-date').textContent = '--';
         document.getElementById('total-submitted').textContent = '0';
         
         // Reset bars
-        ['grade-a-bar', 'grade-b-bar', 'grade-c-bar', 'grade-f-bar'].forEach(id => {
+        ['distinction-bar', 'credit-bar', 'pass-bar', 'fail-bar'].forEach(id => {
             const bar = document.getElementById(id);
             if (bar) bar.style.width = '0%';
         });
@@ -479,32 +501,32 @@ function calculatePerformanceSummary(assessments) {
     document.getElementById('best-score').textContent = `${bestScore.toFixed(1)}%`;
     document.getElementById('lowest-score').textContent = `${lowestScore.toFixed(1)}%`;
     
-    // Calculate pass rate (60% or higher is pass)
-    const passedAssessments = scoredAssessments.filter(a => a.totalPercentage >= 60);
+    // Calculate pass rate (50% or higher is pass)
+    const passedAssessments = scoredAssessments.filter(a => a.totalPercentage >= 50);
     const passRate = (passedAssessments.length / scoredAssessments.length) * 100;
     document.getElementById('pass-rate').textContent = `${passRate.toFixed(0)}%`;
     
-    // Calculate grade distribution
+    // Calculate grade distribution (Pass/Credit/Distinction/Fail)
     const gradeCounts = {
-        A: scoredAssessments.filter(a => a.totalPercentage >= 80).length,
-        B: scoredAssessments.filter(a => a.totalPercentage >= 70 && a.totalPercentage < 80).length,
-        C: scoredAssessments.filter(a => a.totalPercentage >= 60 && a.totalPercentage < 70).length,
-        F: scoredAssessments.filter(a => a.totalPercentage < 60).length
+        distinction: scoredAssessments.filter(a => a.totalPercentage >= 70).length,
+        credit: scoredAssessments.filter(a => a.totalPercentage >= 60 && a.totalPercentage < 70).length,
+        pass: scoredAssessments.filter(a => a.totalPercentage >= 50 && a.totalPercentage < 60).length,
+        fail: scoredAssessments.filter(a => a.totalPercentage < 50).length
     };
     
     // Update grade counts
-    document.getElementById('grade-a-count').textContent = gradeCounts.A;
-    document.getElementById('grade-b-count').textContent = gradeCounts.B;
-    document.getElementById('grade-c-count').textContent = gradeCounts.C;
-    document.getElementById('grade-f-count').textContent = gradeCounts.F;
+    document.getElementById('distinction-count').textContent = gradeCounts.distinction;
+    document.getElementById('credit-count').textContent = gradeCounts.credit;
+    document.getElementById('pass-count').textContent = gradeCounts.pass;
+    document.getElementById('fail-count').textContent = gradeCounts.fail;
     
     // Update distribution bars
     const totalCount = scoredAssessments.length;
     if (totalCount > 0) {
-        document.getElementById('grade-a-bar').style.width = `${(gradeCounts.A / totalCount) * 100}%`;
-        document.getElementById('grade-b-bar').style.width = `${(gradeCounts.B / totalCount) * 100}%`;
-        document.getElementById('grade-c-bar').style.width = `${(gradeCounts.C / totalCount) * 100}%`;
-        document.getElementById('grade-f-bar').style.width = `${(gradeCounts.F / totalCount) * 100}%`;
+        document.getElementById('distinction-bar').style.width = `${(gradeCounts.distinction / totalCount) * 100}%`;
+        document.getElementById('credit-bar').style.width = `${(gradeCounts.credit / totalCount) * 100}%`;
+        document.getElementById('pass-bar').style.width = `${(gradeCounts.pass / totalCount) * 100}%`;
+        document.getElementById('fail-bar').style.width = `${(gradeCounts.fail / totalCount) * 100}%`;
     }
     
     // Get assessment dates
