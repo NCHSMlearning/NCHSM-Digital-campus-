@@ -58,6 +58,7 @@ body {
     min-height: 100vh;
     background-color: #f8fafc;
     padding: 16px;
+    transition: margin 0.3s ease, width 0.3s ease;
 }
 
 /* ========== MOBILE HEADER ========== */
@@ -139,6 +140,7 @@ body {
     border-radius: 8px;
     color: #4a5568;
     text-decoration: none;
+    transition: background 0.3s ease, color 0.3s ease;
 }
 
 .nav a.active {
@@ -157,6 +159,13 @@ button,
     border-radius: 8px;
     font-weight: 600;
     cursor: pointer;
+    transition: background 0.3s ease;
+}
+
+button:hover,
+.profile-button:hover,
+.card-btn:hover {
+    background-color: #6d28d9;
 }
 
 /* ========== FORMS ========== */
@@ -170,7 +179,7 @@ textarea {
     margin-bottom: 16px;
 }
 
-/* ========== DESKTOP ========== */
+/* ========== DESKTOP ======= */
 @media (min-width: 1024px) {
     .sidebar {
         transform: translateX(0);
@@ -187,11 +196,12 @@ textarea {
     }
 }
 
-/* ========== TABLET ========== */
+/* ========== TABLET / MOBILE ======= */
 @media (max-width: 1023px) {
     .main {
         margin-left: 0;
         width: 100%;
+        padding: 16px;
     }
 
     .mobile-header {
@@ -199,7 +209,7 @@ textarea {
     }
 }
 
-/* ========== ANIMATION ========== */
+/* ========== ANIMATION ======= */
 @keyframes fadeIn {
     from {
         opacity: 0;
