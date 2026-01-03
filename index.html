@@ -713,6 +713,7 @@
 
 
      <!-- Initialize App -->
+<!-- Initialize App -->
 <script>
 // Global app state
 window.app = {
@@ -907,18 +908,16 @@ async function initializeApp() {
             initUI();
         }
         
-        // 10. Ensure dashboard is active
+        // 10. Ensure dashboard is active - USING CSS CLASSES ONLY (NO INLINE STYLES)
         document.querySelectorAll('.tab-content').forEach(tab => {
-            tab.style.display = 'none';
+            // REMOVED: tab.style.display = 'none'; - This was causing conflicts
             tab.classList.remove('active');
         });
         
         const dashboard = document.getElementById('dashboard');
         if (dashboard) {
-            dashboard.style.display = 'block';
+            // REMOVED: inline styles that were breaking CSS
             dashboard.classList.add('active');
-            dashboard.style.opacity = '1';
-            dashboard.style.visibility = 'visible';
         }
         
         // 11. Activate navigation
@@ -959,7 +958,7 @@ async function initializeApp() {
             
             const dashboard = document.getElementById('dashboard');
             if (dashboard) {
-                dashboard.style.display = 'block';
+                // USE CLASSES ONLY - NO INLINE STYLES
                 dashboard.classList.add('active');
             }
             
@@ -978,42 +977,23 @@ async function initializeApp() {
     }
 }
 
-// Tab switching
+// Tab switching - Use the UIModule instance (UPDATED)
 window.showTab = function(tabId) {
-    console.log('Switching to tab:', tabId);
-    
-    // Hide all tabs
-    document.querySelectorAll('.tab-content').forEach(tab => {
-        tab.classList.remove('active');
-    });
-    
-    // Show selected tab
-    const selectedTab = document.getElementById(tabId);
-    if (selectedTab) {
-        selectedTab.classList.add('active');
-    }
-    
-    // Update active nav link
-    document.querySelectorAll('.nav a').forEach(link => {
-        link.classList.remove('active');
-        if (link.getAttribute('data-tab') === tabId) {
-            link.classList.add('active');
+    if (window.ui && typeof window.ui.showTab === 'function') {
+        console.log('📱 Using UIModule for tab switching');
+        window.ui.showTab(tabId);
+    } else {
+        // Fallback - USING CSS CLASSES ONLY
+        console.warn('UIModule not available, using CSS-only fallback');
+        document.querySelectorAll('.tab-content').forEach(tab => {
+            // NO inline styles - use classes only
+            tab.classList.remove('active');
+        });
+        const selectedTab = document.getElementById(tabId);
+        if (selectedTab) {
+            selectedTab.classList.add('active');
+            console.log(`✅ Tab ${tabId} activated via CSS classes`);
         }
-    });
-    
-    // Close mobile menu
-    closeMenu();
-    
-    // Save current tab for persistence
-    try {
-        localStorage.setItem('last_active_tab', tabId);
-    } catch (e) {
-        console.warn('Could not save tab state:', e);
-    }
-    
-    // Load tab data if function exists
-    if (typeof loadTabData === 'function') {
-        loadTabData(tabId);
     }
 };
 
@@ -1152,6 +1132,13 @@ window.refreshApp = function() {
         window.db.clearCache();
     }
     
+    // Clear any remaining inline styles
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.style.removeProperty('display');
+        tab.style.removeProperty('opacity');
+        tab.style.removeProperty('visibility');
+    });
+    
     // Reload current tab
     const currentTab = document.querySelector('.tab-content.active').id || 'dashboard';
     if (currentTab && window.showTab) {
@@ -1180,6 +1167,13 @@ document.addEventListener('appReady', function(e) {
 document.addEventListener('DOMContentLoaded', function() {
     console.log('📱 DOM ready, starting app initialization...');
     
+    // First, clear any existing inline styles
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.style.removeProperty('display');
+        tab.style.removeProperty('opacity');
+        tab.style.removeProperty('visibility');
+    });
+    
     // Check if initializeApp exists
     if (typeof initializeApp === 'function') {
         console.log('✅ initializeApp function found, calling it...');
@@ -1190,6 +1184,11 @@ document.addEventListener('DOMContentLoaded', function() {
         setTimeout(() => {
             document.getElementById('loading-screen').style.display = 'none';
             document.getElementById('app-content').style.display = 'block';
+            
+            // Use CSS classes only
+            const dashboard = document.getElementById('dashboard');
+            if (dashboard) dashboard.classList.add('active');
+            
             console.log('⚠️ Manual fallback activated');
         }, 1000);
     }
