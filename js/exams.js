@@ -1,5 +1,5 @@
 // js/exams.js - Enhanced Exams Management Module for Student Dashboard
-// Updated with Pass/Credit/Distinction/Fail grading system
+// Updated to work with actual database schema
 
 // *************************************************************************
 // *** EXAMS & ASSESSMENTS MANAGEMENT SYSTEM ***
@@ -31,6 +31,41 @@ function getCurrentUserId() {
 let cachedAssessments = [];
 let currentFilter = 'all';
 
+// Convert string scores to numbers safely
+function parseScore(score) {
+    if (score === null || score === undefined || score === '') return null;
+    const num = parseFloat(score);
+    return isNaN(num) ? null : num;
+}
+
+// Calculate total percentage from individual scores
+function calculateTotalPercentage(cat1, cat2, exam, totalScore) {
+    // If total_score is provided, use it
+    if (totalScore !== null && totalScore !== undefined) {
+        return parseScore(totalScore);
+    }
+    
+    // Otherwise calculate from individual scores
+    const cat1Num = parseScore(cat1);
+    const cat2Num = parseScore(cat2);
+    const examNum = parseScore(exam);
+    
+    if (cat1Num !== null && cat2Num !== null && examNum !== null) {
+        // Assuming CAT1 and CAT2 are out of 15 each (15% each), exam is out of 70 (70%)
+        const totalMarks = cat1Num + cat2Num + examNum;
+        // If scores are already percentages, return as is
+        if (totalMarks <= 100) {
+            return totalMarks;
+        }
+        // If scores are raw marks, calculate percentage
+        // CAT1: 15%, CAT2: 15%, Exam: 70% = 100% total
+        const totalPossible = 15 + 15 + 70; // 100
+        return (totalMarks / totalPossible) * 100;
+    }
+    
+    return null;
+}
+
 // Calculate grade based on percentage score
 function calculateGrade(percentage) {
     if (percentage >= 70) return 'Distinction';
@@ -61,6 +96,38 @@ function getGradeIcon(grade) {
     }
 }
 
+// Determine assessment status
+function determineAssessmentStatus(gradeData) {
+    if (!gradeData) return 'pending';
+    
+    const resultStatus = gradeData.result_status;
+    const cat1Score = parseScore(gradeData.cat_1_score);
+    const cat2Score = parseScore(gradeData.cat_2_score);
+    const examScore = parseScore(gradeData.exam_score);
+    
+    // If result_status indicates completion
+    if (resultStatus === 'Completed' || resultStatus === 'Graded' || resultStatus === 'Final') {
+        const totalPercentage = calculateTotalPercentage(
+            cat1Score, 
+            cat2Score, 
+            examScore, 
+            parseScore(gradeData.total_score)
+        );
+        
+        if (totalPercentage !== null) {
+            return totalPercentage >= 50 ? 'completed' : 'failed';
+        }
+        return 'graded';
+    }
+    
+    // Check if any scores are available
+    if (cat1Score !== null || cat2Score !== null || examScore !== null) {
+        return 'graded';
+    }
+    
+    return 'pending';
+}
+
 // Load all assessments for the current student
 async function loadAllAssessments() {
     const userProfile = getUserProfile();
@@ -85,7 +152,7 @@ async function loadAllAssessments() {
     }
 
     try {
-        console.log('📡 Fetching assessments from Supabase...');
+        console.log('📡 Fetching exams from Supabase...');
         
         // Fetch exams for this student's program
         const { data: exams, error: examsError } = await supabaseClient
@@ -99,8 +166,12 @@ async function loadAllAssessments() {
                 block_term,
                 program_type,
                 exam_link,
+                online_link,
                 course_name,
-                intake_year
+                course_code,
+                intake_year,
+                duration_minutes,
+                exam_start_time
             `)
             .or(`program_type.eq.${program},program_type.eq.General`)
             .or(`block_term.eq.${block},block_term.is.null,block_term.eq.General`)
@@ -124,7 +195,9 @@ async function loadAllAssessments() {
                 result_status,
                 marks,
                 graded_by,
-                graded_at
+                graded_at,
+                created_at,
+                updated_at
             `)
             .eq('student_id', userId)
             .eq('question_id', '00000000-0000-0000-0000-000000000000')
@@ -134,71 +207,53 @@ async function loadAllAssessments() {
 
         console.log(`✅ Fetched ${grades?.length || 0} grades`);
 
-        // Combine exams with their grades and calculate status
+        // Combine exams with their grades
         const assessments = exams.map(exam => {
-            const grade = grades?.find(g => String(g.exam_id) === String(exam.id));
+            const grade = grades?.find(g => g.exam_id === exam.id);
             const examType = exam.exam_type || 'EXAM';
             
-            // Determine assessment status
-            let status = 'pending';
-            let gradedDate = null;
-            let totalPercentage = null;
-            let gradeResult = '--';
+            // Parse scores
+            const cat1Score = grade ? parseScore(grade.cat_1_score) : null;
+            const cat2Score = grade ? parseScore(grade.cat_2_score) : null;
+            const examScore = grade ? parseScore(grade.exam_score) : null;
+            const totalScore = grade ? parseScore(grade.total_score) : null;
             
+            // Calculate total percentage
+            let totalPercentage = null;
             if (grade) {
-                gradedDate = grade.graded_at || new Date().toISOString();
-                
-                // Calculate total percentage
-                if (grade.total_score !== null && grade.total_score !== undefined) {
-                    totalPercentage = Number(grade.total_score);
-                } else {
-                    // Calculate based on scores available
-                    let totalMarks = 0;
-                    let totalPossible = 0;
-                    
-                    if (grade.cat_1_score !== null) {
-                        totalMarks += grade.cat_1_score;
-                        totalPossible += 15; // CAT 1 is 15% of total
-                    }
-                    if (grade.cat_2_score !== null) {
-                        totalMarks += grade.cat_2_score;
-                        totalPossible += 15; // CAT 2 is 15% of total
-                    }
-                    if (grade.exam_score !== null) {
-                        totalMarks += grade.exam_score;
-                        totalPossible += 70; // Final exam is 70% of total
-                    }
-                    
-                    if (totalPossible > 0) {
-                        totalPercentage = (totalMarks / totalPossible) * 100;
-                    }
-                }
-                
-                // Calculate grade based on percentage
-                if (totalPercentage !== null) {
-                    gradeResult = calculateGrade(totalPercentage);
-                    status = totalPercentage >= 50 ? 'completed' : 'failed';
-                } else {
-                    status = 'graded';
-                }
+                totalPercentage = calculateTotalPercentage(cat1Score, cat2Score, examScore, totalScore);
+            }
+            
+            // Determine assessment status
+            const status = determineAssessmentStatus(grade);
+            
+            // Calculate grade
+            let gradeResult = '--';
+            if (totalPercentage !== null) {
+                gradeResult = calculateGrade(totalPercentage);
             }
             
             return {
                 id: exam.id,
                 name: exam.exam_name || 'Unnamed Assessment',
                 type: examType.includes('CAT') ? 'CAT' : 'Exam',
-                unit: exam.course_name || 'General',
+                unit: exam.course_name || exam.course_code || 'General',
+                code: exam.course_code || '',
                 block: exam.block_term || 'General',
                 dueDate: exam.exam_date,
-                dateGraded: gradedDate,
+                dateGraded: grade?.graded_at,
                 status: status,
-                cat1Score: grade?.cat_1_score || null,
-                cat2Score: grade?.cat_2_score || null,
-                finalScore: grade?.exam_score || null,
+                cat1Score: cat1Score,
+                cat2Score: cat2Score,
+                finalScore: examScore,
+                totalScore: totalScore,
                 totalPercentage: totalPercentage,
                 grade: gradeResult,
-                examLink: exam.exam_link,
+                examLink: exam.exam_link || exam.online_link,
+                resultStatus: grade?.result_status || 'Scheduled',
                 gradedBy: grade?.graded_by,
+                duration: exam.duration_minutes,
+                startTime: exam.exam_start_time,
                 originalData: { ...exam, grade }
             };
         });
@@ -342,17 +397,31 @@ function displayCurrentAssessments(assessments) {
                 statusClass = 'unknown';
         }
         
-        // Format scores
-        const cat1Display = assessment.cat1Score !== null ? assessment.cat1Score : '--';
-        const cat2Display = assessment.cat2Score !== null ? assessment.cat2Score : '--';
-        const finalDisplay = assessment.finalScore !== null ? assessment.finalScore : '--';
+        // Format scores (show as integers if whole numbers)
+        const formatScore = (score) => {
+            if (score === null || score === undefined) return '--';
+            if (Number.isInteger(score)) return score.toString();
+            return score.toFixed(1);
+        };
+        
+        const cat1Display = formatScore(assessment.cat1Score);
+        const cat2Display = formatScore(assessment.cat2Score);
+        const finalDisplay = formatScore(assessment.finalScore);
         const totalDisplay = assessment.totalPercentage !== null ? 
             `${assessment.totalPercentage.toFixed(1)}%` : '--';
+        
+        // Add exam type indicator
+        let typeBadge = '';
+        if (assessment.type === 'CAT') {
+            typeBadge = `<span class="type-badge cat">CAT</span>`;
+        } else {
+            typeBadge = `<span class="type-badge exam">Exam</span>`;
+        }
         
         return `
             <tr>
                 <td>${escapeHtml(assessment.name)}</td>
-                <td><span class="type-badge ${assessment.type.toLowerCase()}">${assessment.type}</span></td>
+                <td>${typeBadge}</td>
                 <td>${escapeHtml(assessment.unit)}</td>
                 <td class="text-center">${escapeHtml(assessment.block)}</td>
                 <td>${dueDate}</td>
@@ -429,21 +498,37 @@ function displayCompletedAssessments(assessments) {
             statusClass = 'failed';
         }
         
-        // Format scores
-        const cat1Display = assessment.cat1Score !== null ? assessment.cat1Score : '--';
-        const cat2Display = assessment.cat2Score !== null ? assessment.cat2Score : '--';
-        const finalDisplay = assessment.finalScore !== null ? assessment.finalScore : '--';
+        // Format scores (show as integers if whole numbers)
+        const formatScore = (score) => {
+            if (score === null || score === undefined) return '--';
+            if (Number.isInteger(score)) return score.toString();
+            return score.toFixed(1);
+        };
+        
+        const cat1Display = formatScore(assessment.cat1Score);
+        const cat2Display = formatScore(assessment.cat2Score);
+        const finalDisplay = formatScore(assessment.finalScore);
         const totalDisplay = assessment.totalPercentage !== null ? 
             `${assessment.totalPercentage.toFixed(1)}%` : '--';
         
-        // Grade with color coding
+        // Add exam type indicator
+        let typeBadge = '';
+        if (assessment.type === 'CAT') {
+            typeBadge = `<span class="type-badge cat">CAT</span>`;
+        } else {
+            typeBadge = `<span class="type-badge exam">Exam</span>`;
+        }
+        
+        // Grade badge
         const gradeClass = getGradeClass(assessment.grade);
+        const gradeBadge = assessment.grade !== '--' ? 
+            `<span class="grade-badge ${gradeClass}">${assessment.grade}</span>` : '--';
         
         return `
             <tr>
                 <td>${escapeHtml(assessment.name)}</td>
-                <td><span class="type-badge ${assessment.type.toLowerCase()}">${assessment.type}</span></td>
-                <td>${escapeHtml(assessment.unit)}</td>
+                <td>${typeBadge}</td>
+                <td>${escapeHtml(assessment.unit)}<br><small class="text-muted">${escapeHtml(assessment.code)}</small></td>
                 <td class="text-center">${escapeHtml(assessment.block)}</td>
                 <td>${gradedDate}</td>
                 <td><span class="status-badge ${statusClass}">${statusDisplay}</span></td>
@@ -451,7 +536,7 @@ function displayCompletedAssessments(assessments) {
                 <td class="text-center">${cat2Display}</td>
                 <td class="text-center">${finalDisplay}</td>
                 <td class="text-center"><strong>${totalDisplay}</strong></td>
-                <td class="text-center"><span class="grade-badge ${gradeClass}">${assessment.grade}</span></td>
+                <td class="text-center">${gradeBadge}</td>
             </tr>
         `;
     }).join('');
