@@ -4,7 +4,7 @@
     max-width: 1400px;
     margin: 0 auto;
     padding: var(--space-lg);
-    min-height: 500px; /* Prevent empty space */
+    min-height: 500px;
 }
 
 /* Stats Header */
@@ -48,7 +48,7 @@
     border: 1px solid #E2E8F0;
     text-align: center;
     transition: var(--transition);
-    min-height: 100px; /* Prevent collapse */
+    min-height: 100px;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -80,7 +80,7 @@
     grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
     gap: var(--space-lg);
     margin-top: var(--space-lg);
-    min-height: 300px; /* Prevent empty space */
+    min-height: 300px;
 }
 
 .course-card {
@@ -90,7 +90,7 @@
     box-shadow: var(--shadow);
     border: 1px solid #E5E7EB;
     transition: var(--transition);
-    min-height: 280px; /* Consistent height */
+    min-height: 280px;
     display: flex;
     flex-direction: column;
 }
@@ -598,7 +598,7 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-sm);
-    min-height: 280px; /* Prevent empty space */
+    min-height: 280px;
 }
 
 .option-item-improved {
@@ -609,7 +609,7 @@
     cursor: pointer;
     transition: var(--transition);
     position: relative;
-    min-height: 65px; /* Consistent height */
+    min-height: 65px;
     display: flex;
     align-items: center;
 }
@@ -778,6 +778,120 @@
     transform: none !important;
 }
 
+/* ========== COMPACT NAVIGATION STYLES ========== */
+.compact-navigation {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 20px 0 25px 0;
+    padding: 14px 18px;
+    background: white;
+    border-radius: 12px;
+    border: 1.5px solid #E5E7EB;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+}
+
+.compact-nav-btn {
+    padding: 11px 18px;
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    white-space: nowrap;
+    min-width: 100px;
+    justify-content: center;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.compact-nav-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.compact-nav-btn:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.compact-nav-prev {
+    background: linear-gradient(135deg, #FFFFFF 0%, #F9FAFB 100%);
+    color: #4B5563;
+    border: 1.5px solid #D1D5DB;
+}
+
+.compact-nav-prev:hover:not(:disabled) {
+    background: linear-gradient(135deg, #F9FAFB 0%, #F3F4F6 100%);
+    border-color: #9CA3AF;
+    color: #1F2937;
+    box-shadow: 0 4px 12px rgba(156, 163, 175, 0.15);
+}
+
+.compact-nav-next {
+    background: linear-gradient(135deg, var(--color-primary) 0%, #5B21B6 100%);
+    color: white;
+    border: 1.5px solid var(--color-primary);
+    box-shadow: 0 2px 6px rgba(79, 70, 229, 0.2);
+}
+
+.compact-nav-next:hover:not(:disabled) {
+    background: linear-gradient(135deg, #4338CA 0%, #4C1D95 100%);
+    border-color: #4338CA;
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+}
+
+.compact-nav-finish {
+    background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+    color: white;
+    border: 1.5px solid #10B981;
+    box-shadow: 0 2px 6px rgba(16, 185, 129, 0.2);
+}
+
+.compact-nav-finish:hover:not(:disabled) {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    border-color: #059669;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.compact-nav-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+.compact-progress {
+    flex: 1;
+    max-width: 200px;
+    min-width: 120px;
+    text-align: center;
+}
+
+.compact-progress-bar {
+    height: 6px;
+    background: #F3F4F6;
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 6px;
+}
+
+.compact-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--color-primary), #6D28D9);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+
+.compact-progress-text {
+    color: #6B7280;
+    font-size: 0.85rem;
+    font-weight: 600;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
 /* Answer Reveal Section */
 .answer-reveal-section {
     margin-top: var(--space-lg);
@@ -898,7 +1012,7 @@
 }
 
 .horizontal-question-grid {
-    display: grid !important; /* Force grid layout */
+    display: grid !important;
     grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
     gap: 8px;
     overflow-x: auto;
@@ -949,13 +1063,11 @@
     -webkit-font-smoothing: antialiased;
 }
 
-/* Hide empty/questionable cells */
 .grid-question-number:empty,
 .grid-question-number[data-empty="true"] {
     display: none !important;
 }
 
-/* Style for unavailable questions */
 .grid-unavailable {
     background: #F1F5F9 !important;
     border-color: #CBD5E1 !important;
@@ -1091,111 +1203,12 @@
     font-size: 0.8rem;
 }
 
-/* Progress Summary - REMOVED AS REQUESTED */
-/* .progress-summary-card removed */
-
-/* Bottom Navigation */
+/* Remove old bottom navigation */
 .bottom-navigation-bar {
-    background: white;
-    padding: var(--space-lg);
-    border-top: 1px solid #E5E7EB;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    position: sticky;
-    bottom: 0;
-    z-index: 99;
-    box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+    display: none !important;
 }
 
-.nav-left,
-.nav-right {
-    display: flex;
-    gap: var(--space-sm);
-}
-
-.nav-center {
-    flex: 1;
-    max-width: 400px;
-    margin: 0 var(--space-lg);
-}
-
-.nav-btn {
-    padding: 12px 24px;
-    border: none;
-    border-radius: var(--border-radius);
-    font-weight: 600;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: var(--space-sm);
-    transition: var(--transition);
-    font-size: 0.95rem;
-    white-space: nowrap;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-}
-
-.prev-nav-btn {
-    background: #F3F4F6;
-    color: #6B7280;
-}
-
-.prev-nav-btn:hover:not(:disabled) {
-    background: #E5E7EB;
-}
-
-.next-nav-btn {
-    background: var(--color-primary);
-    color: white;
-}
-
-.next-nav-btn:hover:not(:disabled) {
-    background: #4338CA;
-    transform: translateX(3px);
-}
-
-.finish-btn {
-    background: var(--color-success);
-    color: white;
-}
-
-.finish-btn:hover:not(:disabled) {
-    background: #059669;
-    transform: translateY(-2px);
-}
-
-.nav-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    transform: none !important;
-}
-
-.progress-indicator {
-    text-align: center;
-}
-
-.progress-bar {
-    height: 8px;
-    background: #F3F4F6;
-    border-radius: 4px;
-    overflow: hidden;
-    margin-bottom: var(--space-xs);
-}
-
-.progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--color-primary), #6D28D9);
-    border-radius: 4px;
-    transition: width 0.3s ease;
-}
-
-.progress-text {
-    color: #6B7280;
-    font-size: 0.85rem;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-}
-
-/* Fix percentage display */
+/* Progress indicator for compact nav */
 #progressPercent::after {
     content: "%";
 }
@@ -1375,26 +1388,23 @@ body, input, button, select, textarea {
         justify-content: center;
     }
     
-    .bottom-navigation-bar {
-        flex-direction: column;
-        gap: var(--space-md);
-        padding: var(--space-md);
+    .compact-navigation {
+        flex-wrap: wrap;
+        gap: 10px;
+        padding: 12px;
     }
     
-    .nav-left,
-    .nav-center,
-    .nav-right {
-        width: 100%;
+    .compact-nav-btn {
+        padding: 10px 16px;
+        font-size: 0.9rem;
+        min-width: 90px;
     }
     
-    .nav-center {
-        margin: var(--space-sm) 0;
+    .compact-progress {
         order: -1;
-    }
-    
-    .nav-btn {
-        width: 100%;
-        justify-content: center;
+        flex: 100%;
+        max-width: 100%;
+        margin-bottom: 10px;
     }
     
     .courses-grid {
@@ -1464,6 +1474,12 @@ body, input, button, select, textarea {
     .action-btn {
         padding: 10px 16px;
         font-size: 0.9rem;
+    }
+    
+    .compact-nav-btn {
+        padding: 8px 12px;
+        font-size: 0.85rem;
+        min-width: 80px;
     }
     
     .grid-question-number {
