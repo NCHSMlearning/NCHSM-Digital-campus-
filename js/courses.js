@@ -102,7 +102,7 @@ async function loadCourses() {
     console.log('📚 loadCourses called with filter:', currentFilter);
     
     // Show loading states
-    showLoadingState('current');
+    showLoadingState('active');
     showLoadingState('completed');
     
     try {
@@ -110,55 +110,43 @@ async function loadCourses() {
         cachedCourses = await loadAllCourses();
         console.log(`✅ Loaded ${cachedCourses.length} total courses`);
         
-        // DEBUG: Check what we got
-        console.log('🔍 Cached courses data:', cachedCourses);
-        console.log('🔍 First few courses:', cachedCourses.slice(0, 3));
-        
         if (cachedCourses.length === 0) {
-            console.log('⚠️ No courses found. Possible issues:');
-            console.log('1. User profile might be missing');
-            console.log('2. Supabase query might be failing');
-            console.log('3. No courses match the criteria');
-            
-            showEmptyState('current');
+            console.log('⚠️ No courses found');
+            showEmptyState('active');
             showEmptyState('completed');
             updateHeaderStats(0, 0, 0);
             return;
         }
         
-        // Split courses into current and completed
-        const currentCourses = cachedCourses.filter(course => {
+        // Split courses into active and completed
+        const activeCourses = cachedCourses.filter(course => {
             const isActive = course.status !== 'Completed' && course.status !== 'Passed';
-            console.log(`📝 Course: ${course.course_name}, Status: ${course.status}, Is Active: ${isActive}`);
             return isActive;
         });
         
         const completedCourses = cachedCourses.filter(course => {
             const isCompleted = course.status === 'Completed' || course.status === 'Passed';
-            console.log(`📝 Course: ${course.course_name}, Status: ${course.status}, Is Completed: ${isCompleted}`);
             return isCompleted;
         });
         
-        console.log(`📊 Split: ${currentCourses.length} current, ${completedCourses.length} completed`);
-        console.log('📋 Current courses:', currentCourses.map(c => ({name: c.course_name, status: c.status})));
-        console.log('📋 Completed courses:', completedCourses.map(c => ({name: c.course_name, status: c.status})));
+        console.log(`📊 Split: ${activeCourses.length} active, ${completedCourses.length} completed`);
         
         // Update header stats
-        updateHeaderStats(cachedCourses.length, currentCourses.length, completedCourses.length);
+        updateHeaderStats(cachedCourses.length, activeCourses.length, completedCourses.length);
         
         // Apply filter if needed
-        let filteredCurrent = currentCourses;
+        let filteredActive = activeCourses;
         let filteredCompleted = completedCourses;
         
         if (currentFilter === 'active') {
             filteredCompleted = [];
         } else if (currentFilter === 'completed') {
-            filteredCurrent = [];
+            filteredActive = [];
         }
         
         // Display courses
-        console.log('🎨 Displaying current courses:', filteredCurrent.length);
-        displayCurrentCourses(filteredCurrent);
+        console.log('🎨 Displaying active courses:', filteredActive.length);
+        displayActiveCourses(filteredActive);
         
         console.log('🎨 Displaying completed courses:', filteredCompleted.length);
         displayCompletedCourses(filteredCompleted);
@@ -168,31 +156,31 @@ async function loadCourses() {
         
     } catch (error) {
         console.error('❌ Error in loadCourses:', error);
-        console.error('❌ Error details:', error.message, error.stack);
-        showErrorState('current', 'Failed to load courses');
+        showErrorState('active', 'Failed to load courses');
         showErrorState('completed', 'Failed to load courses');
     }
 }
 
-// Display current courses in grid view
-function displayCurrentCourses(courses) {
-    const gridContainer = document.getElementById('current-courses-grid');
-    const emptyState = document.getElementById('current-empty');
+// Display active courses in grid view
+function displayActiveCourses(courses) {
+    const gridContainer = document.getElementById('active-courses-grid');
+    const emptyState = document.getElementById('active-empty');
     
     if (!gridContainer) {
-        console.error('❌ current-courses-grid element not found');
+        console.error('❌ active-courses-grid element not found');
         return;
     }
     
     if (courses.length === 0) {
         gridContainer.innerHTML = '';
-        showEmptyState('current');
-        document.getElementById('current-count').textContent = '0 courses';
+        showEmptyState('active');
+        const countElement = document.getElementById('active-count');
+        if (countElement) countElement.textContent = '0 courses';
         return;
     }
     
     // Update count
-    const countElement = document.getElementById('current-count');
+    const countElement = document.getElementById('active-count');
     if (countElement) {
         countElement.textContent = `${courses.length} course${courses.length !== 1 ? 's' : ''}`;
     }
@@ -231,7 +219,7 @@ function displayCurrentCourses(courses) {
         </div>
     `).join('');
     
-    hideEmptyState('current');
+    hideEmptyState('active');
 }
 
 // Display completed courses in table view (NO GRADES)
@@ -271,6 +259,14 @@ function displayCompletedCourses(courses) {
     
     // Generate table rows WITHOUT grades
     tableBody.innerHTML = courses.map(course => {
+        // Get completion date (use created_at if no completion date)
+        const completionDate = course.completed_date || course.created_at || new Date().toISOString();
+        const formattedDate = new Date(completionDate).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+        });
+        
         // Use course description if available
         const description = course.description ? 
             `<br><small class="text-muted">${escapeHtml(truncateText(course.description, 80))}</small>` : '';
@@ -284,6 +280,7 @@ function displayCompletedCourses(courses) {
                 <td><code>${escapeHtml(course.unit_code || 'N/A')}</code></td>
                 <td class="text-center">${course.credits || 3}</td>
                 <td class="text-center">${escapeHtml(course.block || 'General')}</td>
+                <td>${formattedDate}</td>
                 <td class="text-center">
                     <span class="status-badge completed">
                         <i class="fas fa-check-circle"></i> ${escapeHtml(course.status || 'Completed')}
@@ -314,10 +311,10 @@ function calculateAcademicSummary(completedCourses) {
     document.getElementById('highest-grade').textContent = '--';
     document.getElementById('average-grade').textContent = '--';
     
-    // Get completion dates from created_at if available
+    // Get completion dates
     const dates = completedCourses
-        .filter(c => c.created_at)
-        .map(c => new Date(c.created_at))
+        .filter(c => c.completed_date || c.created_at)
+        .map(c => new Date(c.completed_date || c.created_at))
         .sort((a, b) => a - b);
     
     if (dates.length > 0) {
@@ -330,35 +327,28 @@ function calculateAcademicSummary(completedCourses) {
             latestDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
     }
     
-    // Calculate simple completion rate
+    // Calculate completion rate
     const totalExpectedCourses = completedCourses.length * 2; // Simple assumption
     const completionRate = Math.round((completedCourses.length / totalExpectedCourses) * 100);
     document.getElementById('completion-rate').textContent = `${completionRate}%`;
 }
 
-// Update header statistics
+// Update header statistics - FIXED
 function updateHeaderStats(total, active, completed) {
     console.log('📊 Updating header stats:', {total, active, completed});
     
-    const totalElem = document.getElementById('total-courses');
+    // Get DOM elements - using the correct IDs from your HTML
     const activeElem = document.getElementById('active-courses-count');
     const completedElem = document.getElementById('completed-courses-count');
     const creditsElem = document.getElementById('total-credits');
     
-    console.log('🔍 DOM elements:', {
-        totalElem: totalElem?.id,
-        activeElem: activeElem?.id,
-        completedElem: completedElem?.id,
-        creditsElem: creditsElem?.id
+    console.log('🔍 DOM elements found:', {
+        activeElem: activeElem?.id || 'NOT FOUND',
+        completedElem: completedElem?.id || 'NOT FOUND',
+        creditsElem: creditsElem?.id || 'NOT FOUND'
     });
     
-    if (totalElem) {
-        totalElem.textContent = total;
-        console.log(`✅ Set total to: ${total}`);
-    } else {
-        console.error('❌ total-courses element not found');
-    }
-    
+    // Update active courses count
     if (activeElem) {
         activeElem.textContent = active;
         console.log(`✅ Set active to: ${active}`);
@@ -366,6 +356,7 @@ function updateHeaderStats(total, active, completed) {
         console.error('❌ active-courses-count element not found');
     }
     
+    // Update completed courses count
     if (completedElem) {
         completedElem.textContent = completed;
         console.log(`✅ Set completed to: ${completed}`);
@@ -373,7 +364,7 @@ function updateHeaderStats(total, active, completed) {
         console.error('❌ completed-courses-count element not found');
     }
     
-    // Calculate total credits (simplified - in real app, sum actual credits)
+    // Calculate total credits
     if (creditsElem) {
         const totalCredits = total * 3; // Assuming 3 credits per course
         creditsElem.textContent = totalCredits;
@@ -383,23 +374,40 @@ function updateHeaderStats(total, active, completed) {
     }
 }
 
-// Filter courses based on selection
+// Filter courses based on selection - FIXED
 function filterCourses(filterType) {
+    console.log('🔍 Filtering courses by:', filterType);
     currentFilter = filterType;
     
     // Update button states
-    document.querySelectorAll('.action-btn').forEach(btn => {
+    const buttons = document.querySelectorAll('.action-btn');
+    console.log(`🔍 Found ${buttons.length} action buttons`);
+    
+    buttons.forEach(btn => {
         btn.classList.remove('active');
     });
     
-    const activeBtn = document.getElementById(`view-${filterType}-only`);
+    // Find and activate the correct button
+    let activeBtn;
+    if (filterType === 'active') {
+        activeBtn = document.getElementById('view-active-only');
+    } else if (filterType === 'completed') {
+        activeBtn = document.getElementById('view-completed-only');
+    } else {
+        activeBtn = document.getElementById('view-all-courses');
+    }
+    
+    console.log('🔍 Button to activate:', activeBtn?.id);
+    
     if (activeBtn) {
         activeBtn.classList.add('active');
-    } else if (filterType === 'all') {
-        document.getElementById('view-all-courses')?.classList.add('active');
+        console.log(`✅ Activated button: ${activeBtn.id}`);
+    } else {
+        console.error('❌ Could not find button for filter:', filterType);
     }
     
     // Reload courses with new filter
+    console.log('🔄 Loading courses with filter:', currentFilter);
     loadCourses();
 }
 
@@ -453,20 +461,20 @@ function viewCourseSchedule(courseId) {
     }
 }
 
-// Show loading state
+// Show loading state - UPDATED
 function showLoadingState(section) {
     console.log(`⏳ Showing loading state for: ${section}`);
     
-    if (section === 'current') {
-        const grid = document.getElementById('current-courses-grid');
-        console.log('🔍 Current grid element:', grid);
+    if (section === 'active') {
+        const grid = document.getElementById('active-courses-grid');
+        console.log('🔍 Active grid element:', grid);
         
         if (grid) {
             grid.innerHTML = `
                 <div class="course-card loading">
                     <div class="loading-content">
                         <div class="loading-spinner"></div>
-                        <p>Loading current courses...</p>
+                        <p>Loading active courses...</p>
                     </div>
                 </div>
             `;
@@ -478,7 +486,7 @@ function showLoadingState(section) {
         if (tableBody) {
             tableBody.innerHTML = `
                 <tr class="loading">
-                    <td colspan="5">
+                    <td colspan="6">
                         <div class="loading-content">
                             <div class="loading-spinner"></div>
                             <p>Loading completed courses...</p>
@@ -490,11 +498,11 @@ function showLoadingState(section) {
     }
 }
 
-// Show empty state
+// Show empty state - UPDATED
 function showEmptyState(section) {
-    if (section === 'current') {
-        const emptyState = document.getElementById('current-empty');
-        const grid = document.getElementById('current-courses-grid');
+    if (section === 'active') {
+        const emptyState = document.getElementById('active-empty');
+        const grid = document.getElementById('active-courses-grid');
         if (emptyState) emptyState.style.display = 'block';
         if (grid) grid.innerHTML = '';
     } else if (section === 'completed') {
@@ -505,10 +513,10 @@ function showEmptyState(section) {
     }
 }
 
-// Hide empty state
+// Hide empty state - UPDATED
 function hideEmptyState(section) {
-    if (section === 'current') {
-        const emptyState = document.getElementById('current-empty');
+    if (section === 'active') {
+        const emptyState = document.getElementById('active-empty');
         if (emptyState) emptyState.style.display = 'none';
     } else if (section === 'completed') {
         const emptyState = document.getElementById('completed-empty');
@@ -516,10 +524,10 @@ function hideEmptyState(section) {
     }
 }
 
-// Show error state
+// Show error state - UPDATED
 function showErrorState(section, message) {
-    if (section === 'current') {
-        const grid = document.getElementById('current-courses-grid');
+    if (section === 'active') {
+        const grid = document.getElementById('active-courses-grid');
         if (grid) {
             grid.innerHTML = `
                 <div class="course-card error">
@@ -538,7 +546,7 @@ function showErrorState(section, message) {
         if (tableBody) {
             tableBody.innerHTML = `
                 <tr class="error">
-                    <td colspan="5">
+                    <td colspan="6">
                         <div class="error-content">
                             <i class="fas fa-exclamation-circle"></i>
                             <p>${message}</p>
@@ -590,7 +598,7 @@ function escapeHtml(str) {
 // *** INITIALIZATION ***
 // *************************************************************************
 
-// Initialize courses module with new UI
+// Initialize courses module with new UI - UPDATED
 function initializeCoursesModule() {
     console.log('📚 Initializing Courses Module with new UI...');
     
@@ -601,8 +609,6 @@ function initializeCoursesModule() {
     if (coursesTab) {
         coursesTab.addEventListener('click', () => {
             console.log('📚 Courses tab clicked');
-            console.log('👤 Current user ID:', getCurrentUserId());
-            console.log('👤 User profile:', getUserProfile());
             
             if (getCurrentUserId()) {
                 console.log('✅ User is logged in, loading courses...');
