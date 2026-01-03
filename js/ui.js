@@ -38,21 +38,20 @@ class UIModule {
         this.initializeDateTime();
         this.setupOfflineIndicator();
         this.loadLastTab();
-        this.fixInitialDisplay(); // New fix
+        this.fixInitialDisplay();
     }
     
-    // FIX: Ensure proper initial display
+    // FIXED: Ensure proper initial display WITHOUT inline styles
     fixInitialDisplay() {
-        // Hide all tabs first
+        // Remove all inline styles first
         this.tabs.forEach(tab => {
-            tab.style.display = 'none';
+            tab.style.removeProperty('display');
             tab.classList.remove('active');
         });
         
-        // Show dashboard by default
+        // Show dashboard by default - CSS will handle display via .active class
         const dashboardTab = document.getElementById('dashboard');
         if (dashboardTab) {
-            dashboardTab.style.display = 'block';
             dashboardTab.classList.add('active');
         }
         
@@ -107,7 +106,7 @@ class UIModule {
         }
     }
     
-    // FIXED: Unified tab switching with display control
+    // FIXED: Unified tab switching WITHOUT inline styles
     showTab(tabId) {
         if (!this.isValidTab(tabId)) {
             console.error(`Invalid tab ID: ${tabId}`);
@@ -119,17 +118,30 @@ class UIModule {
         
         console.log(`🔄 Switching to tab: ${tabId} (from: ${this.currentTab})`);
         
-        // FIX: First hide all tabs
+        // FIXED: Remove inline styles and use CSS classes only
         this.tabs.forEach(tab => {
-            tab.style.display = 'none';
+            // Remove any inline display style
+            tab.style.removeProperty('display');
             tab.classList.remove('active');
         });
         
-        // FIX: Then show selected tab
+        // FIXED: Show selected tab using CSS class only
         const selectedTab = document.getElementById(tabId);
         if (selectedTab) {
-            selectedTab.style.display = 'block';
             selectedTab.classList.add('active');
+            
+            // Debug: Check if CSS is working
+            setTimeout(() => {
+                const computedDisplay = window.getComputedStyle(selectedTab).display;
+                console.log(`✅ Tab ${tabId} is now active. CSS display: ${computedDisplay}, Height: ${selectedTab.offsetHeight}px`);
+                
+                // If still hidden, add temporary debug styling
+                if (computedDisplay === 'none' || selectedTab.offsetHeight === 0) {
+                    console.warn(`⚠️ Tab ${tabId} still not visible. Adding debug styling...`);
+                    selectedTab.style.border = '3px solid red';
+                    selectedTab.style.backgroundColor = '#fff0f0';
+                }
+            }, 10);
         }
         
         // Update navigation links
@@ -167,9 +179,10 @@ class UIModule {
         // Update page title based on tab
         this.updatePageTitle(tabId);
         
-        // FIX: Debug log to verify display
-        console.log(`✅ Tab ${tabId} is now active. Display:`, 
-            selectedTab ? window.getComputedStyle(selectedTab).display : 'not found');
+        // Force a reflow to ensure CSS is applied
+        if (selectedTab) {
+            void selectedTab.offsetHeight;
+        }
     }
     
     updatePageTitle(tabId) {
@@ -201,7 +214,7 @@ class UIModule {
             this.overlay.addEventListener('click', () => this.closeMenu());
         }
         
-        // Navigation links - FIXED: Use unified click handler
+        // Navigation links
         this.navLinks.forEach(link => {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -265,7 +278,7 @@ class UIModule {
             this.readerBackBtn.addEventListener('click', () => this.closeReader());
         }
         
-        // Dashboard card clicks - FIXED: Use proper this context
+        // Dashboard card clicks
         document.querySelectorAll('.card[data-tab]').forEach(card => {
             card.addEventListener('click', (e) => {
                 const tabId = card.getAttribute('data-tab');
@@ -275,7 +288,7 @@ class UIModule {
             });
         });
         
-        // Action card buttons - FIXED: Use proper this context
+        // Action card buttons
         document.querySelectorAll('.profile-button[data-tab]').forEach(button => {
             button.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -286,7 +299,7 @@ class UIModule {
             });
         });
         
-        // Footer links - FIXED: Use proper this context
+        // Footer links
         document.querySelectorAll('.footer-links a[data-tab]').forEach(link => {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -297,7 +310,7 @@ class UIModule {
             });
         });
         
-        // FIX: Prevent URL hash from scrolling
+        // Prevent URL hash from scrolling
         if (window.location.hash) {
             window.scrollTo(0, 0);
         }
@@ -591,7 +604,7 @@ class UIModule {
         updateOnlineStatus(); // Initial check
     }
     
-    // FIX: Helper function to debug tab state
+    // Helper function to debug tab state
     debugTabState() {
         console.log('🔍 Current Tab State:');
         console.log(`Current Tab: ${this.currentTab}`);
@@ -599,7 +612,9 @@ class UIModule {
         this.tabs.forEach(tab => {
             console.log(`${tab.id}:`, {
                 display: window.getComputedStyle(tab).display,
-                classList: tab.className,
+                classList: Array.from(tab.classList),
+                hasInlineStyle: tab.style.display ? true : false,
+                offsetHeight: tab.offsetHeight,
                 visible: tab.offsetParent !== null
             });
         });
@@ -609,6 +624,27 @@ class UIModule {
                 active: link.classList.contains('active')
             });
         });
+    }
+    
+    // NEW: Emergency fallback if CSS isn't working
+    forceShowTab(tabId) {
+        console.log(`🚨 Force showing tab: ${tabId}`);
+        
+        // Hide all tabs with !important
+        this.tabs.forEach(tab => {
+            tab.style.setProperty('display', 'none', 'important');
+            tab.classList.remove('active');
+        });
+        
+        // Show selected tab with !important
+        const selectedTab = document.getElementById(tabId);
+        if (selectedTab) {
+            selectedTab.style.setProperty('display', 'block', 'important');
+            selectedTab.classList.add('active');
+        }
+        
+        // Update current tab
+        this.currentTab = tabId;
     }
 }
 
@@ -621,22 +657,26 @@ window.closeMenu = () => ui.closeMenu();
 window.showTab = (tabId) => ui.showTab(tabId);
 window.showToast = (message, type, duration) => ui.showToast(message, type, duration);
 window.logout = () => ui.logout();
+window.forceShowTab = (tabId) => ui.forceShowTab(tabId); // New emergency function
 
-// FIX: Add cleanup function to remove any conflicting code
+// Add cleanup function
 window.addEventListener('DOMContentLoaded', function() {
     console.log('✅ UI Module loaded successfully');
     
-    // Remove any other tab switching code that might interfere
-    const scripts = document.querySelectorAll('script');
-    scripts.forEach(script => {
-        const src = script.src || '';
-        if (src.includes('ui.js')) {
-            console.log('Main UI script loaded from:', src);
-        }
+    // Remove any inline display styles that might have been set before
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.style.removeProperty('display');
     });
     
     // Call debug after a short delay
     setTimeout(() => {
         ui.debugTabState();
+        
+        // If dashboard isn't visible, force it
+        const dashboardTab = document.getElementById('dashboard');
+        if (dashboardTab && dashboardTab.offsetHeight === 0) {
+            console.warn('⚠️ Dashboard not visible, forcing display...');
+            ui.forceShowTab('dashboard');
+        }
     }, 100);
 });
