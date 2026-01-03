@@ -1,5 +1,4 @@
-// js/exams.js - Enhanced Exams Management Module for Student Dashboard
-// Updated to work with actual database schema
+// exams.js - Complete Exams Management Module
 
 // *************************************************************************
 // *** EXAMS & ASSESSMENTS MANAGEMENT SYSTEM ***
@@ -591,7 +590,7 @@ function calculatePerformanceSummary(assessments) {
     const passRate = (passedAssessments.length / scoredAssessments.length) * 100;
     document.getElementById('pass-rate').textContent = `${passRate.toFixed(0)}%`;
     
-    // Calculate grade distribution (Pass/Credit/Distinction/Fail)
+    // Calculate grade distribution
     const gradeCounts = {
         distinction: scoredAssessments.filter(a => a.totalPercentage >= 70).length,
         credit: scoredAssessments.filter(a => a.totalPercentage >= 60 && a.totalPercentage < 70).length,
@@ -642,12 +641,6 @@ function updateAssessmentsHeaderStats(total, current, completed, average) {
     const completedElem = document.getElementById('completed-assessments-count');
     const averageElem = document.getElementById('overall-average');
     
-    console.log('🔍 DOM elements found:', {
-        currentElem: currentElem?.id || 'NOT FOUND',
-        completedElem: completedElem?.id || 'NOT FOUND',
-        averageElem: averageElem?.id || 'NOT FOUND'
-    });
-    
     // Update counts
     if (currentElem) currentElem.textContent = current;
     if (completedElem) completedElem.textContent = completed;
@@ -663,33 +656,20 @@ function filterAssessments(filterType) {
     const currentSection = document.querySelector('.current-section');
     const completedSection = document.querySelector('.completed-section');
     
-    console.log('🔍 Sections found:', {
-        currentSection: !!currentSection,
-        completedSection: !!completedSection
-    });
-    
     // Show/hide sections based on filter
     if (filterType === 'current') {
-        // Show only current section
         if (currentSection) currentSection.style.display = 'block';
         if (completedSection) completedSection.style.display = 'none';
-        console.log('✅ Showing current section, hiding completed');
     } else if (filterType === 'completed') {
-        // Show only completed section
         if (currentSection) currentSection.style.display = 'none';
         if (completedSection) completedSection.style.display = 'block';
-        console.log('✅ Showing completed section, hiding current');
     } else {
-        // Show both sections
         if (currentSection) currentSection.style.display = 'block';
         if (completedSection) completedSection.style.display = 'block';
-        console.log('✅ Showing both sections');
     }
     
     // Update button states
     const buttons = document.querySelectorAll('.quick-actions .action-btn');
-    console.log(`🔍 Found ${buttons.length} action buttons`);
-    
     buttons.forEach(btn => {
         btn.classList.remove('active');
     });
@@ -704,24 +684,17 @@ function filterAssessments(filterType) {
         activeBtn = document.getElementById('view-all-assessments');
     }
     
-    console.log('🔍 Button to activate:', activeBtn?.id);
-    
     if (activeBtn) {
         activeBtn.classList.add('active');
-        console.log(`✅ Activated button: ${activeBtn.id}`);
-    } else {
-        console.error('❌ Could not find button for filter:', filterType);
     }
     
     // Reload assessments with new filter
-    console.log('🔄 Loading assessments with filter:', currentFilter);
     loadAssessments();
 }
 
 // Switch to current assessments
 function switchToCurrentAssessments() {
     filterAssessments('current');
-    // Scroll to current section only if visible
     const currentSection = document.querySelector('.current-section');
     if (currentSection && currentSection.style.display !== 'none') {
         currentSection.scrollIntoView({ behavior: 'smooth' });
@@ -731,7 +704,6 @@ function switchToCurrentAssessments() {
 // Switch to completed assessments
 function switchToCompletedAssessments() {
     filterAssessments('completed');
-    // Scroll to completed section only if visible
     const completedSection = document.querySelector('.completed-section');
     if (completedSection && completedSection.style.display !== 'none') {
         completedSection.scrollIntoView({ behavior: 'smooth' });
@@ -744,7 +716,6 @@ function viewTranscript() {
     if (window.AppUtils && window.AppUtils.showToast) {
         AppUtils.showToast('Transcript feature coming soon!', 'info');
     }
-    // In real app, this would open a modal or navigate to transcript page
 }
 
 // Refresh assessments
@@ -758,8 +729,6 @@ function refreshAssessments() {
 
 // Show loading state
 function showAssessmentsLoadingState(section) {
-    console.log(`⏳ Showing loading state for: ${section}`);
-    
     if (section === 'current') {
         const tableBody = document.getElementById('current-assessments-table');
         if (tableBody) {
@@ -793,8 +762,6 @@ function showAssessmentsLoadingState(section) {
 
 // Show empty state
 function showAssessmentsEmptyState(section) {
-    console.log(`📭 Showing empty state for: ${section}, filter: ${currentFilter}`);
-    
     if (section === 'current') {
         const emptyState = document.getElementById('current-empty');
         const tableBody = document.getElementById('current-assessments-table');
@@ -817,8 +784,6 @@ function showAssessmentsEmptyState(section) {
 
 // Hide empty state
 function hideAssessmentsEmptyState(section) {
-    console.log(`👁️ Hiding empty state for: ${section}`);
-    
     if (section === 'current') {
         const emptyState = document.getElementById('current-empty');
         if (emptyState) {
@@ -871,13 +836,6 @@ function showAssessmentsErrorState(section, message) {
     }
 }
 
-// Helper function to truncate text
-function truncateText(text, maxLength) {
-    if (!text) return '';
-    if (text.length <= maxLength) return text;
-    return text.substring(0, maxLength) + '...';
-}
-
 // Utility to safely escape HTML
 function escapeHtml(str) {
     if (!str) return '';
@@ -899,7 +857,6 @@ function initializeAssessmentsModule() {
     
     // Set up event listeners for assessments tab
     const assessmentsTab = document.querySelector('.nav a[data-tab="cats"]');
-    console.log('🔍 Assessments tab element:', assessmentsTab);
     
     if (assessmentsTab) {
         assessmentsTab.addEventListener('click', () => {
@@ -922,14 +879,6 @@ function initializeAssessmentsModule() {
     const viewCompletedBtn = document.getElementById('view-completed-only');
     const viewTranscriptBtn = document.getElementById('view-transcript');
     const refreshBtn = document.getElementById('refresh-assessments');
-    
-    console.log('🔍 Action buttons:', {
-        viewAllBtn: viewAllBtn?.id,
-        viewCurrentBtn: viewCurrentBtn?.id,
-        viewCompletedBtn: viewCompletedBtn?.id,
-        viewTranscriptBtn: viewTranscriptBtn?.id,
-        refreshBtn: refreshBtn?.id
-    });
     
     if (viewAllBtn) {
         viewAllBtn.addEventListener('click', () => {
