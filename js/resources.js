@@ -2,8 +2,61 @@
 // *** ENHANCED RESOURCES SYSTEM - VIEW ONLY ***
 // *************************************************************************
 
-// PDF.js Library Management
-let pdfjsLib = null;
+// PDF.js LIBRARY FIX - Ensure it's available globally
+let pdfjsLib = window.pdfjsLib || null;
+
+// Wait for PDF.js to load if not already available
+function ensurePDFJSLoaded() {
+    return new Promise((resolve, reject) => {
+        // Check if PDF.js is already loaded
+        if (typeof pdfjsLib !== 'undefined' && pdfjsLib !== null) {
+            console.log('✅ PDF.js already loaded');
+            // Set worker source
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 
+                'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+            resolve(pdfjsLib);
+            return;
+        }
+
+        // Try to load it dynamically
+        console.log('📥 Loading PDF.js dynamically...');
+        
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+        script.id = 'pdfjs-script';
+        
+        script.onload = () => {
+            console.log('✅ PDF.js loaded');
+            pdfjsLib = window.pdfjsLib;
+            
+            // Load worker
+            const workerScript = document.createElement('script');
+            workerScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+            workerScript.id = 'pdfjs-worker-script';
+            
+            workerScript.onload = () => {
+                console.log('✅ PDF.js worker loaded');
+                pdfjsLib.GlobalWorkerOptions.workerSrc = 
+                    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                resolve(pdfjsLib);
+            };
+            
+            workerScript.onerror = () => {
+                console.warn('⚠️ PDF.js worker failed to load, continuing without');
+                resolve(pdfjsLib);
+            };
+            
+            document.head.appendChild(workerScript);
+        };
+        
+        script.onerror = (error) => {
+            console.error('❌ Failed to load PDF.js:', error);
+            reject(new Error('PDF.js failed to load'));
+        };
+        
+        document.head.appendChild(script);
+    });
+}
 
 // Helper function for safe Supabase client access
 function getSupabaseClient() {
@@ -33,104 +86,17 @@ let filteredResources = [];
 let currentReaderResource = null;
 let currentPDFDoc = null;
 let currentPDFPage = 1;
-let currentPDFScale = 1.5;
-
-// Initialize PDF.js library
-async function initializePDFJS() {
-    console.log('📚 Initializing PDF.js...');
-    
-    // Check if already loaded
-    if (window.pdfjsLib) {
-        pdfjsLib = window.pdfjsLib;
-        console.log('✅ PDF.js already available globally');
-    } else if (typeof pdfjsLib !== 'undefined') {
-        console.log('✅ PDF.js already loaded');
-    } else {
-        // Try to load from CDN
-        console.log('📥 Loading PDF.js from CDN...');
-        await loadPDFJSLibrary();
-    }
-    
-    // Set worker source
-    if (pdfjsLib && !pdfjsLib.GlobalWorkerOptions.workerSrc) {
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 
-            'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-        console.log('✅ PDF.js worker source set');
-    }
-    
-    return pdfjsLib;
-}
-
-// Load PDF.js library dynamically
-function loadPDFJSLibrary() {
-    return new Promise((resolve, reject) => {
-        // Check if already loading
-        if (document.getElementById('pdfjs-script')) {
-            console.log('PDF.js script already loading');
-            resolve();
-            return;
-        }
-        
-        // Load main PDF.js library
-        const script = document.createElement('script');
-        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
-        script.id = 'pdfjs-script';
-        
-        script.onload = () => {
-            console.log('✅ PDF.js library loaded');
-            pdfjsLib = window.pdfjsLib;
-            
-            // Load worker script
-            const workerScript = document.createElement('script');
-            workerScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-            workerScript.id = 'pdfjs-worker-script';
-            
-            workerScript.onload = () => {
-                console.log('✅ PDF.js worker loaded');
-                
-                // Verify PDF.js is available
-                if (typeof pdfjsLib !== 'undefined') {
-                    pdfjsLib.GlobalWorkerOptions.workerSrc = 
-                        'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-                    console.log('✅ PDF.js fully initialized');
-                    resolve(pdfjsLib);
-                } else {
-                    console.error('❌ PDF.js not defined after loading');
-                    reject(new Error('PDF.js failed to initialize'));
-                }
-            };
-            
-            workerScript.onerror = (error) => {
-                console.error('❌ Failed to load PDF.js worker:', error);
-                // Still try to continue without worker
-                if (typeof pdfjsLib !== 'undefined') {
-                    resolve(pdfjsLib);
-                } else {
-                    reject(error);
-                }
-            };
-            
-            document.head.appendChild(workerScript);
-        };
-        
-        script.onerror = (error) => {
-            console.error('❌ Failed to load PDF.js:', error);
-            reject(error);
-        };
-        
-        document.head.appendChild(script);
-    });
-}
+let currentPDFScale = 1.8; // Increased default scale for bigger display
 
 // Enhanced loadResources function
 async function loadResources() {
     console.log('📁 Loading resources...');
     
-    // Initialize PDF.js first
+    // Ensure PDF.js is loaded
     try {
-        await initializePDFJS();
+        await ensurePDFJSLoaded();
     } catch (error) {
-        console.warn('⚠️ PDF.js initialization warning:', error.message);
+        console.warn('⚠️ PDF.js warning:', error.message);
     }
     
     const userProfile = getUserProfile();
@@ -264,8 +230,9 @@ async function openResource(resourceId) {
         return;
     }
 
-    // Show reader
+    // Show reader with full-screen style
     reader.style.display = 'block';
+    reader.style.background = '#ffffff';
     readerTitle.textContent = resource.title;
 
     // Clear previous content
@@ -281,6 +248,8 @@ async function openResource(resourceId) {
             loadOfficeInReader(resource, readerContent);
         } else if (fileType === 'video') {
             loadVideoInReader(resource, readerContent);
+        } else if (['jpg', 'jpeg', 'png', 'gif'].includes(fileType)) {
+            loadImageViewer(resource, readerContent);
         } else {
             loadFallbackView(resource, readerContent);
         }
@@ -299,8 +268,6 @@ async function openResource(resourceId) {
     }
 }
 
-window.openResource = openResource; // Make globally available
-
 // Close mobile reader
 function closeReader() {
     const reader = document.getElementById('mobile-reader');
@@ -309,6 +276,7 @@ function closeReader() {
         currentReaderResource = null;
         currentPDFDoc = null;
         currentPDFPage = 1;
+        currentPDFScale = 1.8;
     }
 }
 
@@ -354,8 +322,8 @@ function getFileType(filePath) {
     if (ext === 'pdf') return 'pdf';
     if (['doc', 'docx'].includes(ext)) return 'doc';
     if (['ppt', 'pptx'].includes(ext)) return 'slides';
-    if (['mp4', 'avi', 'mov', 'wmv'].includes(ext)) return 'video';
-    if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) return 'image';
+    if (['mp4', 'avi', 'mov', 'wmv', 'webm'].includes(ext)) return 'video';
+    if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(ext)) return 'image';
     
     return 'file';
 }
@@ -373,17 +341,15 @@ function getFileIcon(filePath) {
     }
 }
 
-// PDF loading for mobile - VIEW ONLY
+// PDF loading for mobile - VIEW ONLY - HIGH QUALITY + BIG DISPLAY
 async function loadPDFInReader(resource, container) {
     console.log('📄 Loading PDF:', resource.title);
     
     // Check if PDF.js is available
     if (!pdfjsLib) {
-        console.warn('PDF.js not loaded, attempting to initialize...');
         try {
-            await initializePDFJS();
+            await ensurePDFJSLoaded();
         } catch (error) {
-            console.error('Failed to initialize PDF.js:', error);
             container.innerHTML = `
                 <div class="error-state">
                     <i class="fas fa-exclamation-triangle"></i>
@@ -400,31 +366,60 @@ async function loadPDFInReader(resource, container) {
     
     container.innerHTML = `
         <div class="pdf-mobile-viewer">
-            <div class="view-only-notice">
-                <i class="fas fa-eye"></i>
-                <span>View Only - Content cannot be downloaded</span>
+            <div class="pdf-viewer-header">
+                <div class="view-only-notice">
+                    <i class="fas fa-eye"></i>
+                    <span>View Only - Cannot be downloaded</span>
+                </div>
+                <div class="pdf-viewer-actions">
+                    <button id="open-external-btn" class="pdf-action-btn" title="Open in New Tab">
+                        <i class="fas fa-external-link-alt"></i>
+                    </button>
+                </div>
             </div>
-            <!-- PDF CONTAINER -->
-            <div class="pdf-container-mobile">
+            
+            <!-- BIG PDF CONTAINER -->
+            <div class="pdf-container-large">
                 <canvas id="pdf-canvas-mobile"></canvas>
             </div>
-            <!-- NAVIGATION CONTROLS -->
-            <div class="pdf-controls-mobile">
-                <button id="prev-page-btn" class="pdf-nav-btn">
-                    <i class="fas fa-chevron-left"></i>
-                </button>
-                <span class="pdf-page-info">
-                    Page: <span id="current-page">1</span> of <span id="total-pages">...</span>
-                </span>
-                <button id="next-page-btn" class="pdf-nav-btn">
-                    <i class="fas fa-chevron-right"></i>
-                </button>
-                <button id="zoom-in-btn" class="pdf-nav-btn">
-                    <i class="fas fa-search-plus"></i>
-                </button>
-                <button id="zoom-out-btn" class="pdf-nav-btn">
-                    <i class="fas fa-search-minus"></i>
-                </button>
+            
+            <!-- ENHANCED NAVIGATION CONTROLS -->
+            <div class="pdf-controls-enhanced">
+                <div class="control-group">
+                    <button id="prev-page-btn" class="pdf-control-btn" title="Previous Page">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <div class="page-info">
+                        <span id="current-page">1</span> / <span id="total-pages">...</span>
+                    </div>
+                    <button id="next-page-btn" class="pdf-control-btn" title="Next Page">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+                
+                <div class="control-group">
+                    <button id="zoom-out-btn" class="pdf-control-btn" title="Zoom Out">
+                        <i class="fas fa-search-minus"></i>
+                    </button>
+                    <div class="zoom-info">
+                        <span id="zoom-level">${Math.round(currentPDFScale * 100)}%</span>
+                    </div>
+                    <button id="zoom-in-btn" class="pdf-control-btn" title="Zoom In">
+                        <i class="fas fa-search-plus"></i>
+                    </button>
+                </div>
+                
+                <div class="control-group">
+                    <button id="fit-width-btn" class="pdf-control-btn" title="Fit to Width">
+                        <i class="fas fa-arrows-alt-h"></i>
+                    </button>
+                    <button id="fit-height-btn" class="pdf-control-btn" title="Fit to Height">
+                        <i class="fas fa-arrows-alt-v"></i>
+                    </button>
+                    <button id="reset-zoom-btn" class="pdf-control-btn" title="Reset Zoom">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
             </div>
         </div>
     `;
@@ -443,14 +438,11 @@ async function loadPDFInReader(resource, container) {
         // Render first page
         await renderPDFPage(currentPDFPage);
         
-        // Set up event listeners for controls
-        document.getElementById('prev-page-btn').onclick = () => changePDFPage(-1);
-        document.getElementById('next-page-btn').onclick = () => changePDFPage(1);
-        document.getElementById('zoom-in-btn').onclick = () => zoomPDF(true);
-        document.getElementById('zoom-out-btn').onclick = () => zoomPDF(false);
+        // Set up event listeners for ALL controls
+        setupPDFControls(resource);
         
         // Keyboard navigation
-        container.addEventListener('keydown', handlePDFKeyboardNavigation);
+        document.addEventListener('keydown', handlePDFKeyboardNavigation);
         
     } catch (error) {
         console.error('PDF loading error:', error);
@@ -468,7 +460,26 @@ async function loadPDFInReader(resource, container) {
     }
 }
 
-// Render PDF page
+// Setup ALL PDF control buttons
+function setupPDFControls(resource) {
+    // Navigation buttons
+    document.getElementById('prev-page-btn').onclick = () => changePDFPage(-1);
+    document.getElementById('next-page-btn').onclick = () => changePDFPage(1);
+    
+    // Zoom buttons
+    document.getElementById('zoom-in-btn').onclick = () => zoomPDF(true);
+    document.getElementById('zoom-out-btn').onclick = () => zoomPDF(false);
+    document.getElementById('reset-zoom-btn').onclick = () => resetZoom();
+    document.getElementById('fit-width-btn').onclick = () => fitToWidth();
+    document.getElementById('fit-height-btn').onclick = () => fitToHeight();
+    
+    // External open button
+    document.getElementById('open-external-btn').onclick = () => {
+        window.open(resource.file_url, '_blank');
+    };
+}
+
+// Render PDF page with HIGH QUALITY
 async function renderPDFPage(pageNum) {
     if (!currentPDFDoc || pageNum < 1 || pageNum > currentPDFDoc.numPages) {
         return;
@@ -477,31 +488,51 @@ async function renderPDFPage(pageNum) {
     try {
         const page = await currentPDFDoc.getPage(pageNum);
         const canvas = document.getElementById('pdf-canvas-mobile');
-        const context = canvas.getContext('2d');
-        const container = document.querySelector('.pdf-container-mobile');
+        const context = canvas.getContext('2d', { alpha: false });
+        const container = document.querySelector('.pdf-container-large');
         
-        // Calculate dimensions
-        const containerWidth = container.clientWidth - 40;
-        const containerHeight = Math.min(container.clientHeight, window.innerHeight * 0.6);
+        // Get high DPI for retina displays
+        const pixelRatio = window.devicePixelRatio || 1;
         
+        // Get container dimensions
+        const containerWidth = container.clientWidth;
+        const containerHeight = container.clientHeight || window.innerHeight * 0.75;
+        
+        // Get viewport at scale 1
         const viewport = page.getViewport({ scale: 1 });
-        const scale = Math.min(containerWidth / viewport.width, containerHeight / viewport.height, currentPDFScale);
+        
+        // Calculate scale for BIG display
+        let scale = currentPDFScale;
+        
+        // Apply pixel ratio for high DPI
+        scale *= pixelRatio;
         
         const scaledViewport = page.getViewport({ scale });
         
-        // Set canvas dimensions
-        canvas.height = scaledViewport.height;
-        canvas.width = scaledViewport.width;
-        canvas.style.height = scaledViewport.height + 'px';
-        canvas.style.width = scaledViewport.width + 'px';
+        // Set canvas dimensions with high DPI
+        canvas.height = Math.floor(scaledViewport.height);
+        canvas.width = Math.floor(scaledViewport.width);
         
-        // Clear canvas
+        // Set display dimensions (CSS) - BIG DISPLAY
+        canvas.style.height = Math.floor(scaledViewport.height / pixelRatio) + 'px';
+        canvas.style.width = Math.floor(scaledViewport.width / pixelRatio) + 'px';
+        
+        // Set canvas to HIGH QUALITY rendering
+        context.imageSmoothingEnabled = true;
+        context.imageSmoothingQuality = 'high';
         context.clearRect(0, 0, canvas.width, canvas.height);
         
-        // Render page
+        // Set background to white
+        context.fillStyle = '#ffffff';
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Render page with high quality
         const renderContext = {
             canvasContext: context,
-            viewport: scaledViewport
+            viewport: scaledViewport,
+            enableWebGL: true,
+            intent: 'display',
+            renderInteractiveForms: false
         };
         
         await page.render(renderContext).promise;
@@ -509,6 +540,9 @@ async function renderPDFPage(pageNum) {
         // Update page counter
         document.getElementById('current-page').textContent = pageNum;
         currentPDFPage = pageNum;
+        
+        // Update zoom level display
+        document.getElementById('zoom-level').textContent = `${Math.round(currentPDFScale * 100)}%`;
         
     } catch (error) {
         console.error('Error rendering PDF page:', error);
@@ -529,10 +563,40 @@ function changePDFPage(delta) {
 // Zoom PDF
 function zoomPDF(zoomIn) {
     if (zoomIn) {
-        currentPDFScale = Math.min(currentPDFScale + 0.25, 3.0);
+        currentPDFScale = Math.min(currentPDFScale + 0.25, 4.0);
     } else {
         currentPDFScale = Math.max(currentPDFScale - 0.25, 0.5);
     }
+    renderPDFPage(currentPDFPage);
+}
+
+// Reset zoom to default
+function resetZoom() {
+    currentPDFScale = 1.8;
+    renderPDFPage(currentPDFPage);
+}
+
+// Fit to width
+function fitToWidth() {
+    if (!currentPDFDoc) return;
+    
+    const container = document.querySelector('.pdf-container-large');
+    if (!container) return;
+    
+    // We'll implement this in the next render
+    // For now, set a scale that fits width
+    currentPDFScale = 2.0;
+    renderPDFPage(currentPDFPage);
+}
+
+// Fit to height
+function fitToHeight() {
+    if (!currentPDFDoc) return;
+    
+    const container = document.querySelector('.pdf-container-large');
+    if (!container) return;
+    
+    currentPDFScale = 1.5;
     renderPDFPage(currentPDFPage);
 }
 
@@ -552,14 +616,46 @@ function handlePDFKeyboardNavigation(e) {
         case '+':
         case '=':
             e.preventDefault();
-            zoomPDF(true);
+            if (e.ctrlKey || e.metaKey) {
+                zoomPDF(true);
+            }
             break;
         case '-':
         case '_':
             e.preventDefault();
-            zoomPDF(false);
+            if (e.ctrlKey || e.metaKey) {
+                zoomPDF(false);
+            }
+            break;
+        case '0':
+            if (e.ctrlKey || e.metaKey) {
+                e.preventDefault();
+                resetZoom();
+            }
+            break;
+        case 'Escape':
+            closeReader();
             break;
     }
+}
+
+// Image viewer for image files
+function loadImageViewer(resource, container) {
+    container.innerHTML = `
+        <div class="image-viewer">
+            <div class="view-only-notice">
+                <i class="fas fa-eye"></i>
+                <span>View Only - Content cannot be downloaded</span>
+            </div>
+            <div class="image-container">
+                <img src="${resource.file_url}" alt="${escapeHtml(resource.title)}" 
+                     style="max-width: 100%; max-height: 70vh; border-radius: 8px;">
+            </div>
+            <p class="view-only-message" style="text-align: center; margin-top: 15px; color: #6B7280;">
+                <i class="fas fa-info-circle"></i> This image is view-only and cannot be downloaded.
+            </p>
+        </div>
+    `;
 }
 
 // Office files viewer - VIEW ONLY
@@ -593,10 +689,12 @@ function loadVideoInReader(resource, container) {
                 <i class="fas fa-eye"></i>
                 <span>View Only - Content cannot be downloaded</span>
             </div>
-            <video controls style="width: 100%; max-height: 70vh; border-radius: 8px;">
-                <source src="${resource.file_url}" type="video/mp4">
-                Your browser does not support the video tag.
-            </video>
+            <div class="video-container">
+                <video controls style="width: 100%; max-height: 70vh; border-radius: 8px;">
+                    <source src="${resource.file_url}" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+            </div>
             <p class="view-only-message" style="text-align: center; margin-top: 15px; color: #6B7280;">
                 <i class="fas fa-info-circle"></i> This video is view-only and cannot be downloaded.
             </p>
@@ -616,6 +714,11 @@ function loadFallbackView(resource, container) {
                 <i class="fas fa-file" style="font-size: 3rem; color: #6B7280; margin-bottom: 15px;"></i>
                 <h3>File Preview Not Available</h3>
                 <p>This file type cannot be previewed in the browser.</p>
+                <div class="viewer-actions">
+                    <button onclick="window.open('${resource.file_url}', '_blank')" class="profile-button">
+                        <i class="fas fa-external-link-alt"></i> Open File
+                    </button>
+                </div>
                 <p class="view-only-message">This resource is view-only and cannot be downloaded.</p>
             </div>
         </div>
@@ -656,11 +759,11 @@ document.addEventListener('DOMContentLoaded', function() {
 function initializeResourcesModule() {
     console.log('📁 Initializing Resources Module...');
     
-    // Initialize PDF.js first
-    initializePDFJS().then(() => {
+    // Ensure PDF.js is loaded
+    ensurePDFJSLoaded().then(() => {
         console.log('✅ PDF.js ready for Resources');
     }).catch(error => {
-        console.warn('⚠️ PDF.js initialization warning:', error.message);
+        console.warn('⚠️ PDF.js warning:', error.message);
     });
     
     // Set up event listeners for resources tab
@@ -678,10 +781,14 @@ function initializeResourcesModule() {
 
 // Make functions globally available
 window.loadResources = loadResources;
+window.openResource = openResource;
 window.closeReader = closeReader;
 window.filterResources = filterResources;
 window.changePDFPage = changePDFPage;
 window.zoomPDF = zoomPDF;
+window.resetZoom = resetZoom;
+window.fitToWidth = fitToWidth;
+window.fitToHeight = fitToHeight;
 window.initializeResourcesModule = initializeResourcesModule;
 
 // Auto-initialize when DOM is ready
@@ -691,13 +798,140 @@ if (document.readyState === 'loading') {
     initializeResourcesModule();
 }
 
-// Export for module support
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = {
-        loadResources,
-        openResource,
-        closeReader,
-        filterResources,
-        initializeResourcesModule
-    };
-}
+// Add CSS for enhanced PDF viewer
+const pdfViewerCSS = `
+<style>
+    .pdf-mobile-viewer {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        background: #ffffff;
+    }
+    
+    .pdf-viewer-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px;
+        background: #f8fafc;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    
+    .view-only-notice {
+        background: #fef3c7;
+        color: #92400e;
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .pdf-action-btn {
+        background: #4C1D95;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        padding: 10px;
+        cursor: pointer;
+        transition: background 0.3s;
+    }
+    
+    .pdf-action-btn:hover {
+        background: #3c1680;
+    }
+    
+    .pdf-container-large {
+        flex: 1;
+        overflow: auto;
+        padding: 20px;
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        min-height: 500px;
+        background: #f8fafc;
+    }
+    
+    #pdf-canvas-mobile {
+        max-width: 100%;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        border-radius: 8px;
+        background: white;
+    }
+    
+    .pdf-controls-enhanced {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px;
+        background: #ffffff;
+        border-top: 1px solid #e2e8f0;
+        gap: 20px;
+        flex-wrap: wrap;
+    }
+    
+    .control-group {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .pdf-control-btn {
+        background: #4C1D95;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 12px;
+        cursor: pointer;
+        transition: all 0.3s;
+        min-width: 50px;
+    }
+    
+    .pdf-control-btn:hover {
+        background: #3c1680;
+        transform: translateY(-2px);
+    }
+    
+    .page-info, .zoom-info {
+        background: #f1f5f9;
+        padding: 8px 16px;
+        border-radius: 6px;
+        font-weight: 600;
+        min-width: 80px;
+        text-align: center;
+    }
+    
+    .image-viewer, .video-viewer, .office-viewer, .fallback-viewer {
+        padding: 20px;
+        text-align: center;
+    }
+    
+    .image-container, .video-container {
+        margin: 20px 0;
+    }
+    
+    .viewer-actions {
+        margin: 20px 0;
+    }
+    
+    @media (max-width: 768px) {
+        .pdf-controls-enhanced {
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .control-group {
+            width: 100%;
+            justify-content: center;
+        }
+        
+        .pdf-container-large {
+            padding: 10px;
+        }
+    }
+</style>
+`;
+
+// Inject the CSS
+document.head.insertAdjacentHTML('beforeend', pdfViewerCSS);
