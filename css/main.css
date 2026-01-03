@@ -24,6 +24,7 @@ body {
     min-height: 100vh !important;
     margin: 0 !important;
     padding: 0 !important;
+    overflow-x: hidden !important;
 }
 
 /* Force container layout */
@@ -31,6 +32,7 @@ body {
     display: flex !important;
     min-height: 100vh !important;
     width: 100% !important;
+    position: relative !important;
 }
 
 /* Force sidebar visibility on desktop */
@@ -49,14 +51,15 @@ body {
     transform: translateX(0) !important; /* Always visible on desktop */
 }
 
-/* Force main content area */
+/* Force main content area - NO SPACING BETWEEN SIDEBAR */
 .main {
     margin-left: 280px !important;
     width: calc(100% - 280px) !important;
     min-height: 100vh !important;
     background-color: #f8fafc !important;
-    padding: 30px !important;
+    padding: 0 !important; /* Changed from 30px to 0 */
     display: block !important;
+    position: relative !important;
 }
 
 /* ========== TAB SWITCHING - FINAL PERFECT SOLUTION ========== */
@@ -65,7 +68,7 @@ body {
     display: none !important;
     width: 100% !important;
     max-width: 1400px !important;
-    margin: 0 auto !important;
+    margin: 30px auto !important; /* Margin for spacing from top */
     background: white !important;
     padding: 30px !important;
     border-radius: 16px !important;
@@ -73,6 +76,10 @@ body {
     border: 1px solid #e2e8f0 !important;
     min-height: 500px !important;
     animation: fadeIn 0.3s ease !important;
+    position: relative !important; /* NOT absolute */
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
 }
 
 /* ONLY the active tab is visible */
@@ -227,6 +234,7 @@ input:focus, select:focus, textarea:focus {
     .main {
         margin-left: 280px !important;
         width: calc(100% - 280px) !important;
+        padding: 0 !important; /* No padding on desktop */
     }
     
     .mobile-header {
@@ -235,6 +243,11 @@ input:focus, select:focus, textarea:focus {
     
     #menuToggle, .menu-toggle {
         display: none !important;
+    }
+    
+    .tab-content {
+        margin: 30px auto !important; /* Center tab content */
+        padding: 30px !important;
     }
 }
 
@@ -252,6 +265,7 @@ input:focus, select:focus, textarea:focus {
     .main {
         margin-left: 0 !important;
         width: 100% !important;
+        padding: 20px !important; /* Add padding on tablet */
     }
     
     .mobile-header {
@@ -268,7 +282,10 @@ input:focus, select:focus, textarea:focus {
     
     /* Tab content adjustments for tablet */
     .tab-content {
+        margin: 0 !important; /* No margin on tablet */
         padding: 25px !important;
+        max-width: 100% !important;
+        border-radius: 12px !important;
     }
 }
 
@@ -290,9 +307,12 @@ input:focus, select:focus, textarea:focus {
     }
     
     .tab-content {
+        margin: 0 !important; /* No margin on mobile */
         padding: 20px !important;
         border-radius: 12px !important;
         min-height: 300px !important;
+        max-width: 100% !important;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05) !important;
     }
     
     .mobile-header {
@@ -406,22 +426,83 @@ input:focus, select:focus, textarea:focus {
     animation: fadeIn 0.3s ease !important;
 }
 
-/* ========== TAB POSITIONING FIX - PREVENT STACKING ========== */
-/* Make tabs occupy the same space (don't stack vertically) */
+/* ========== CRITICAL FIX: REMOVE ABSOLUTE POSITIONING THAT CAUSES SPACING ========== */
+/* Remove all problematic absolute positioning */
 .tab-content {
-    position: absolute;
-    top: 30px;
-    left: 30px;
-    right: 30px;
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    bottom: auto !important;
 }
 
-.tab-content.active {
-    position: relative;
-    z-index: 2;
+/* Ensure tab content fits properly in main area */
+.main > .tab-content {
+    margin: 30px auto !important;
+    width: 100% !important;
 }
 
-/* Dashboard should be in flow on initial load */
+/* First tab should have consistent spacing */
 #dashboard.tab-content.active {
-    position: relative;
-    z-index: 3;
+    margin-top: 30px !important;
+}
+
+/* ========== FINAL SPACING ADJUSTMENTS ========== */
+/* Remove any residual spacing */
+.main * {
+    max-width: none !important;
+}
+
+/* Ensure smooth transition between sidebar and content */
+.sidebar + .main {
+    margin-left: 280px !important;
+    transition: margin-left 0.3s ease !important;
+}
+
+/* When sidebar is hidden on mobile/tablet */
+.sidebar.hidden + .main {
+    margin-left: 0 !important;
+}
+
+/* Fix for very large screens */
+@media (min-width: 1600px) {
+    .tab-content {
+        max-width: 1400px !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
+    }
+}
+
+/* ========== SCROLLBAR FIX ========== */
+.sidebar::-webkit-scrollbar {
+    width: 6px !important;
+}
+
+.main::-webkit-scrollbar {
+    width: 8px !important;
+}
+
+/* ========== TAB FOCUS STATE FIX ========== */
+.tab-content:focus {
+    outline: none !important;
+}
+
+/* ========== PRINT FIX ========== */
+@media print {
+    .sidebar {
+        display: none !important;
+    }
+    
+    .main {
+        margin-left: 0 !important;
+        width: 100% !important;
+        padding: 0 !important;
+    }
+    
+    .tab-content {
+        box-shadow: none !important;
+        border: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
 }
