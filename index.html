@@ -495,43 +495,279 @@
                     </div>
                 </section>
 
-                <!-- Exams Tab -->
-                <section id="cats" class="tab-content">
-                    <h2 style="color: var(--color-primary); font-size: 1.6rem; margin-bottom: 5px;">CATS / Exams & Grades</h2>
-                    <p style="color: #6B7280; margin-bottom: 20px;">Provisional results</p>
+               <!-- Exams & Assessments Tab -->
+<section id="cats" class="tab-content">
+    <!-- Header Section -->
+    <div class="exams-header">
+        <div class="header-content">
+            <h2><i class="fas fa-chart-bar"></i> Assessments & Grades</h2>
+            <p class="subtitle">Track your CATS, exams, and assessment results</p>
+        </div>
+        <div class="header-stats">
+            <div class="stat-card">
+                <i class="fas fa-spinner stat-icon active"></i>
+                <div class="stat-info">
+                    <span class="stat-value" id="current-assessments-count">0</span>
+                    <span class="stat-label">Current</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-check-circle stat-icon completed"></i>
+                <div class="stat-info">
+                    <span class="stat-value" id="completed-assessments-count">0</span>
+                    <span class="stat-label">Completed</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-percentage stat-icon average"></i>
+                <div class="stat-info">
+                    <span class="stat-value" id="overall-average">--</span>
+                    <span class="stat-label">Avg Score</span>
+                </div>
+            </div>
+        </div>
+    </div>
 
-                    <div class="exam-controls" style="margin-bottom: 20px; display:flex; align-items:center; gap:10px;">
-                        <label for="exam-type-filter" style="font-weight:600; color:#374151;">Filter by Type:</label>
-                        <select id="exam-type-filter" style="padding:6px 10px; border:1px solid #D1D5DB; border-radius:6px; background:white; color:#111827;">
-                            <option value="all">Show All (CATS & Exams)</option>
-                            <option value="CAT">Show Only CATS</option>
-                            <option value="Final">Show Only Final Exams</option>
-                        </select>
-                    </div>
+    <!-- Quick Actions -->
+    <div class="quick-actions">
+        <button id="view-all-assessments" class="action-btn active">
+            <i class="fas fa-list"></i> View All
+        </button>
+        <button id="view-current-only" class="action-btn">
+            <i class="fas fa-spinner"></i> Current Only
+        </button>
+        <button id="view-completed-only" class="action-btn">
+            <i class="fas fa-check-circle"></i> Completed Only
+        </button>
+        <button id="view-transcript" class="action-btn">
+            <i class="fas fa-file-pdf"></i> View Transcript
+        </button>
+        <button id="refresh-assessments" class="action-btn refresh">
+            <i class="fas fa-sync-alt"></i> Refresh
+        </button>
+    </div>
 
-                    <div style="overflow-x: auto; box-shadow: 0 2px 6px rgba(0,0,0,0.05); border-radius:8px;">
-                        <table id="exams-grades-table" style="width:100%; border-collapse:collapse; min-width:700px;">
-                            <thead style="background-color:#F3F4F6; color:#111827; font-weight:600;">
-                                <tr>
-                                    <th style="padding:10px 12px;">Exam Name</th>
-                                    <th style="padding:10px 12px;">Block</th>
-                                    <th style="padding:10px 12px;">Date</th>
-                                    <th style="padding:10px 12px;">Status</th>
-                                    <th style="padding:10px 12px;">CAT 1</th>
-                                    <th style="padding:10px 12px;">CAT 2</th>
-                                    <th style="padding:10px 12px;">Final Exam</th>
-                                    <th style="padding:10px 12px;">Total (%)</th>
-                                    <th style="padding:10px 12px;">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody id="exams-table" style="background:white;">
-                                <tr>
-                                    <td colspan="9" style="padding:12px; text-align:center; color:#6B7280;">Loading your exams and grades...</td>
-                                </tr>
-                            </tbody>
-                        </table>
+    <!-- Current Assessments Section -->
+    <div class="assessments-section current-section">
+        <div class="section-header">
+            <h3><i class="fas fa-spinner"></i> Current Assessments</h3>
+            <div class="section-info">
+                <span class="count-badge" id="current-count">0 pending</span>
+                <span class="info-text">Awaiting results or submission</span>
+            </div>
+        </div>
+        
+        <div class="assessments-table-container">
+            <table class="assessments-table">
+                <thead>
+                    <tr>
+                        <th>Assessment</th>
+                        <th>Type</th>
+                        <th>Unit</th>
+                        <th>Block</th>
+                        <th>Due Date</th>
+                        <th>Status</th>
+                        <th>CAT 1</th>
+                        <th>CAT 2</th>
+                        <th>Final</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+                <tbody id="current-assessments-table">
+                    <tr class="loading">
+                        <td colspan="10">
+                            <div class="loading-content">
+                                <div class="loading-spinner"></div>
+                                <p>Loading current assessments...</p>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Empty state -->
+        <div id="current-empty" class="empty-state" style="display: none;">
+            <div class="empty-icon">
+                <i class="fas fa-clipboard-list"></i>
+            </div>
+            <h3>No Current Assessments</h3>
+            <p>You don't have any pending assessments at the moment.</p>
+        </div>
+    </div>
+
+    <!-- Completed Assessments Section -->
+    <div class="assessments-section completed-section">
+        <div class="section-header">
+            <h3><i class="fas fa-check-circle"></i> Completed Assessments</h3>
+            <div class="section-info">
+                <span class="count-badge" id="completed-count">0 graded</span>
+                <span class="average-score" id="completed-average">Average: --</span>
+            </div>
+        </div>
+        
+        <div class="assessments-table-container">
+            <table class="assessments-table">
+                <thead>
+                    <tr>
+                        <th>Assessment</th>
+                        <th>Type</th>
+                        <th>Unit</th>
+                        <th>Block</th>
+                        <th>Date Graded</th>
+                        <th>Status</th>
+                        <th>CAT 1</th>
+                        <th>CAT 2</th>
+                        <th>Final Exam</th>
+                        <th>Total (%)</th>
+                        <th>Grade</th>
+                    </tr>
+                </thead>
+                <tbody id="completed-assessments-table">
+                    <tr class="loading">
+                        <td colspan="11">
+                            <div class="loading-content">
+                                <div class="loading-spinner"></div>
+                                <p>Loading completed assessments...</p>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Performance Summary -->
+        <div class="performance-summary">
+            <div class="summary-card">
+                <div class="card-header">
+                    <i class="fas fa-trophy"></i>
+                    <h4>Performance Overview</h4>
+                </div>
+                <div class="card-body">
+                    <div class="summary-item">
+                        <span class="label">Best Score</span>
+                        <span class="value best-score" id="best-score">--</span>
                     </div>
-                </section>
+                    <div class="summary-item">
+                        <span class="label">Lowest Score</span>
+                        <span class="value lowest-score" id="lowest-score">--</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="label">Pass Rate</span>
+                        <span class="value" id="pass-rate">--</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="summary-card">
+                <div class="card-header">
+                    <i class="fas fa-chart-pie"></i>
+                    <h4>Grade Distribution</h4>
+                </div>
+                <div class="card-body">
+                    <div class="distribution-item">
+                        <span class="label">A (80-100%)</span>
+                        <div class="distribution-bar">
+                            <div class="bar-fill" id="grade-a-bar" style="width: 0%"></div>
+                        </div>
+                        <span class="value" id="grade-a-count">0</span>
+                    </div>
+                    <div class="distribution-item">
+                        <span class="label">B (70-79%)</span>
+                        <div class="distribution-bar">
+                            <div class="bar-fill" id="grade-b-bar" style="width: 0%"></div>
+                        </div>
+                        <span class="value" id="grade-b-count">0</span>
+                    </div>
+                    <div class="distribution-item">
+                        <span class="label">C (60-69%)</span>
+                        <div class="distribution-bar">
+                            <div class="bar-fill" id="grade-c-bar" style="width: 0%"></div>
+                        </div>
+                        <span class="value" id="grade-c-count">0</span>
+                    </div>
+                    <div class="distribution-item">
+                        <span class="label">F (<60%)</span>
+                        <div class="distribution-bar">
+                            <div class="bar-fill" id="grade-f-bar" style="width: 0%"></div>
+                        </div>
+                        <span class="value" id="grade-f-count">0</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="summary-card">
+                <div class="card-header">
+                    <i class="fas fa-calendar-alt"></i>
+                    <h4>Assessment Timeline</h4>
+                </div>
+                <div class="card-body">
+                    <div class="timeline-item">
+                        <span class="label">First Assessment</span>
+                        <span class="value" id="first-assessment-date">--</span>
+                    </div>
+                    <div class="timeline-item">
+                        <span class="label">Latest Assessment</span>
+                        <span class="value" id="latest-assessment-date">--</span>
+                    </div>
+                    <div class="timeline-item">
+                        <span class="label">Total Submitted</span>
+                        <span class="value" id="total-submitted">0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Empty state -->
+        <div id="completed-empty" class="empty-state" style="display: none;">
+            <div class="empty-icon">
+                <i class="fas fa-graduation-cap"></i>
+            </div>
+            <h3>No Completed Assessments</h3>
+            <p>Your assessment results will appear here once graded.</p>
+            <button onclick="switchToCurrentAssessments()" class="btn btn-primary">
+                <i class="fas fa-eye"></i> View Current Assessments
+            </button>
+        </div>
+    </div>
+
+    <!-- Grading Notes -->
+    <div class="notes-section">
+        <div class="notes-header">
+            <i class="fas fa-info-circle"></i>
+            <h4>Grading Information (Pass Mark: 60%)</h4>
+        </div>
+        <div class="notes-content">
+            <div class="grading-breakdown">
+                <h5>Grade Distribution:</h5>
+                <ul>
+                    <li><strong>A:</strong> 80% - 100% (Excellent)</li>
+                    <li><strong>B:</strong> 70% - 79% (Very Good)</li>
+                    <li><strong>C:</strong> 60% - 69% (Good - PASS)</li>
+                    <li><strong>F:</strong> 0% - 59% (Fail)</li>
+                </ul>
+            </div>
+            <div class="weighting-info">
+                <h5>Assessment Weighting:</h5>
+                <ul>
+                    <li><strong>CAT 1:</strong> 15% of final grade</li>
+                    <li><strong>CAT 2:</strong> 15% of final grade</li>
+                    <li><strong>Final Exam:</strong> 70% of final grade</li>
+                    <li><strong>Total Score:</strong> CAT 1 + CAT 2 + Final = 100%</li>
+                </ul>
+            </div>
+            <div class="important-notes">
+                <h5>Important Notes:</h5>
+                <ul>
+                    <li>Minimum pass mark is <strong>60%</strong></li>
+                    <li>Grades are provisional until officially confirmed</li>
+                    <li>Contact your lecturer for grade inquiries</li>
+                    <li>Official transcripts can be requested from administration</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</section>
 
                 <!-- Enhanced Resources Tab - VIEW ONLY -->
                 <section id="resources" class="tab-content">
