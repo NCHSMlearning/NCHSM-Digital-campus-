@@ -59,9 +59,10 @@ body {
     display: block !important;
 }
 
-/* Force tab content to be visible */
+/* ========== TAB SWITCHING FIX ========== */
+/* Tab content should be HIDDEN by default */
 .tab-content {
-    display: block !important;
+    display: none !important;  /* CHANGED FROM 'block' to 'none' */
     width: 100% !important;
     max-width: 1400px !important;
     margin: 0 auto !important;
@@ -71,9 +72,16 @@ body {
     box-shadow: 0 4px 20px rgba(0,0,0,0.08) !important;
     border: 1px solid #e2e8f0 !important;
     min-height: 500px !important;
+    animation: fadeIn 0.3s ease !important;
 }
 
+/* Only active tab should be visible */
 .tab-content.active {
+    display: block !important;
+}
+
+/* Make sure dashboard is visible by default when active */
+#dashboard.tab-content.active {
     display: block !important;
 }
 
@@ -190,6 +198,29 @@ input:focus, select:focus, textarea:focus {
 /* Overlay fix */
 .overlay {
     display: none !important;
+}
+
+/* ========== NAVIGATION FIX ========== */
+.nav a.active {
+    background-color: #4C1D95 !important;
+    color: white !important;
+    font-weight: 600 !important;
+}
+
+.nav a {
+    color: #4a5568 !important;
+    text-decoration: none !important;
+    padding: 12px 16px !important;
+    border-radius: 8px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    transition: all 0.3s ease !important;
+    margin-bottom: 8px !important;
+}
+
+.nav a:hover {
+    background-color: #f7fafc !important;
 }
 
 /* ========== DESKTOP MEDIA QUERY ========== */
@@ -369,6 +400,16 @@ input:focus, select:focus, textarea:focus {
     }
 }
 
-.tab-content {
+.tab-content.active {
     animation: fadeIn 0.3s ease !important;
+}
+
+/* ========== INITIAL STATE FIX ========== */
+/* Make sure only dashboard is visible on page load */
+#dashboard {
+    display: block !important;
+}
+
+.tab-content:not(#dashboard) {
+    display: none !important;
 }
