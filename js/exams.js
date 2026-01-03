@@ -1,333 +1,651 @@
-// js/exams.js - FINAL WORKING VERSION WITH MANUAL FIX
+// js/exams.js - PROFESSIONAL VERSION
 (function() {
     'use strict';
     
-    console.log('✅ exams.js loaded - FINAL VERSION');
+    console.log('📚 Exams Module - Professional Version');
     
-    // MANUAL FIX: Direct data access - no guessing
-    function getUserProfile() {
-        // DIRECT ACCESS to window.db where your data actually is
-        const rawProfile = window.db?.currentUserProfile || {};
+    // UTILITY FUNCTIONS
+    const Utils = {
+        // Get user ID from all possible sources
+        getUserId() {
+            const sources = [
+                window.db?.currentUserId,
+                window.currentUserId,
+                window.userId,
+                window.user?.id,
+                window.auth?.user?.id,
+                window.db?.currentUserProfile?.user_id,
+                window.db?.currentUserProfile?.id
+            ];
+            
+            for (const source of sources) {
+                if (source) {
+                    console.log('✅ Found user ID:', source);
+                    return String(source);
+                }
+            }
+            
+            console.warn('⚠️ No user ID found, checking localStorage...');
+            const storedId = localStorage.getItem('userId') || 
+                            localStorage.getItem('user_id') ||
+                            localStorage.getItem('currentUserId');
+            
+            return storedId ? String(storedId) : null;
+        },
         
-        // MANUAL FIX: Extract and convert to strings
-        return {
-            program: String(rawProfile.program || 'KRCHN'),      // Your actual program
-            intake_year: String(rawProfile.intake_year || '2025'), // Your actual intake year
-            block: String(rawProfile.block || 'A'),              // Your actual block
-            department: String(rawProfile.department || ''),
-            // Include everything else
-            ...rawProfile
-        };
-    }
+        // Get profile from all possible sources
+        getProfile() {
+            let profile = {};
+            
+            // Check all possible profile locations
+            const profileSources = [
+                window.db?.currentUserProfile,
+                window.currentUserProfile,
+                window.userProfile,
+                window.user?.profile,
+                window.auth?.user
+            ];
+            
+            for (const source of profileSources) {
+                if (source && typeof source === 'object') {
+                    console.log('✅ Found profile in source');
+                    profile = { ...profile, ...source };
+                    break;
+                }
+            }
+            
+            // Try localStorage as fallback
+            if (!profile.program || !profile.intake_year) {
+                try {
+                    const stored = localStorage.getItem('userProfile');
+                    if (stored) {
+                        const storedProfile = JSON.parse(stored);
+                        profile = { ...profile, ...storedProfile };
+                    }
+                } catch (e) {
+                    console.log('No valid profile in localStorage');
+                }
+            }
+            
+            console.log('📋 Profile data found:', {
+                program: profile.program,
+                intake_year: profile.intake_year,
+                block: profile.block
+            });
+            
+            return profile;
+        },
+        
+        // Extract and validate profile fields
+        extractProfileFields(profile) {
+            return {
+                program: this.ensureString(profile.program || profile.department || profile.program_type),
+                intake_year: this.ensureString(profile.intake_year || profile.intakeYear || profile.year),
+                block: this.ensureString(profile.block || profile.term || profile.semester),
+                department: this.ensureString(profile.department || profile.program),
+                // Include all original data
+                ...profile
+            };
+        },
+        
+        ensureString(value) {
+            if (value === null || value === undefined) return '';
+            return String(value).trim();
+        },
+        
+        getSupabase() {
+            return window.db?.supabase || null;
+        },
+        
+        showToast(message, type = 'info') {
+            if (window.AppUtils?.showToast) {
+                window.AppUtils.showToast(message, type);
+            } else {
+                console.log(`[${type.toUpperCase()}] ${message}`);
+            }
+        }
+    };
     
-    function getCurrentUserId() {
-        // DIRECT ACCESS to user ID
-        return window.db?.currentUserId || window.currentUserId || null;
-    }
-    
-    function getSupabaseClient() {
-        return window.db?.supabase || null;
-    }
-    
-    class ExamsModule {
+    class ExamsManager {
         constructor() {
-            console.log('🔧 ExamsModule created');
+            console.log('🎓 Exams Manager Initializing...');
             
-            // Initialize with HARDCODED values first
-            this.userId = getCurrentUserId();
-            this.userProfile = getUserProfile(); // Uses manual fix above
+            this.userId = null;
+            this.userProfile = null;
+            this.exams = [];
+            this.currentFilter = 'all';
             
-            console.log('👤 User data:', {
+            // Cache DOM elements
+            this.elements = this.cacheElements();
+            
+            // Initialize
+            this.init();
+        }
+        
+        cacheElements() {
+            return {
+                currentTable: document.getElementById('current-assessments-table'),
+                completedTable: document.getElementById('completed-assessments-table'),
+                currentEmpty: document.getElementById('current-empty'),
+                completedEmpty: document.getElementById('completed-empty'),
+                currentCount: document.getElementById('current-count'),
+                completedCount: document.getElementById('completed-count'),
+                averageScore: document.getElementById('completed-average'),
+                
+                // Header stats
+                currentHeader: document.getElementById('current-assessments-count'),
+                completedHeader: document.getElementById('completed-assessments-count'),
+                overallAverage: document.getElementById('overall-average'),
+                
+                // Performance summary
+                bestScore: document.getElementById('best-score'),
+                lowestScore: document.getElementById('lowest-score'),
+                passRate: document.getElementById('pass-rate'),
+                distinctionCount: document.getElementById('distinction-count'),
+                creditCount: document.getElementById('credit-count'),
+                passCount: document.getElementById('pass-count'),
+                failCount: document.getElementById('fail-count')
+            };
+        }
+        
+        async init() {
+            console.log('🔄 Initializing exams manager...');
+            
+            // 1. Load user data
+            await this.loadUserData();
+            
+            // 2. Setup event listeners
+            this.setupEventListeners();
+            
+            // 3. Load exams
+            if (this.validateUserData()) {
+                await this.loadExams();
+            } else {
+                this.showDataError();
+            }
+        }
+        
+        async loadUserData() {
+            console.log('👤 Loading user data...');
+            
+            // Get user ID
+            this.userId = Utils.getUserId();
+            
+            // Get profile
+            const rawProfile = Utils.getProfile();
+            this.userProfile = Utils.extractProfileFields(rawProfile);
+            
+            console.log('📊 User data loaded:', {
                 userId: this.userId,
                 program: this.userProfile.program,
-                intake_year: this.userProfile.intake_year,
+                intakeYear: this.userProfile.intake_year,
                 block: this.userProfile.block
             });
             
-            // Get DOM elements
-            this.currentAssessmentsTable = document.getElementById('current-assessments-table');
-            this.completedAssessmentsTable = document.getElementById('completed-assessments-table');
-            this.currentEmptyState = document.getElementById('current-empty');
-            this.completedEmptyState = document.getElementById('completed-empty');
+            // Save to localStorage for future use
+            this.saveUserData();
+        }
+        
+        saveUserData() {
+            try {
+                if (this.userId) {
+                    localStorage.setItem('exams_userId', this.userId);
+                }
+                if (this.userProfile.program || this.userProfile.intake_year) {
+                    localStorage.setItem('exams_userProfile', JSON.stringify({
+                        program: this.userProfile.program,
+                        intake_year: this.userProfile.intake_year,
+                        block: this.userProfile.block,
+                        timestamp: new Date().toISOString()
+                    }));
+                }
+            } catch (e) {
+                console.warn('Could not save user data to localStorage');
+            }
+        }
+        
+        validateUserData() {
+            const isValid = this.userId && 
+                          this.userProfile.program && 
+                          this.userProfile.intake_year;
             
-            // Load immediately
-            this.loadExams();
+            console.log('✅ User data validation:', {
+                isValid,
+                hasUserId: !!this.userId,
+                hasProgram: !!this.userProfile.program,
+                hasIntakeYear: !!this.userProfile.intake_year
+            });
+            
+            return isValid;
+        }
+        
+        showDataError() {
+            const message = !this.userId ? 'User not logged in' :
+                          !this.userProfile.program ? 'Program not set in profile' :
+                          !this.userProfile.intake_year ? 'Intake year not set in profile' :
+                          'Profile data incomplete';
+            
+            console.error('❌ Profile error:', message);
+            
+            this.showError(message);
+            Utils.showToast('Please complete your profile to view assessments', 'warning');
         }
         
         async loadExams() {
-            console.log('📥 Loading exams with:', {
-                program: this.userProfile.program,
-                intakeYear: this.userProfile.intake_year,
-                block: this.userProfile.block,
-                studentId: this.userId
-            });
+            console.log('📥 Loading assessments...');
             
-            // Show loading
-            if (this.currentAssessmentsTable) {
-                this.currentAssessmentsTable.innerHTML = '<tr><td colspan="10">Loading...</td></tr>';
-            }
-            if (this.completedAssessmentsTable) {
-                this.completedAssessmentsTable.innerHTML = '<tr><td colspan="11">Loading...</td></tr>';
-            }
-            
-            if (!this.userProfile.program || !this.userProfile.intake_year || !this.userId) {
-                console.error('❌ Missing data');
-                this.showError('Please ensure your profile is complete');
-                return;
-            }
+            this.showLoading();
             
             try {
-                const supabase = getSupabaseClient();
-                if (!supabase) throw new Error('No database connection');
+                const supabase = Utils.getSupabase();
+                if (!supabase) throw new Error('Database connection unavailable');
                 
-                // 1. Get exams
+                const { program, intake_year, block } = this.userProfile;
+                
+                console.log('🔍 Querying for:', { program, intake_year, block, userId: this.userId });
+                
+                // Fetch exams
                 const { data: exams, error: examsError } = await supabase
                     .from('exams_with_courses')
                     .select('*')
-                    .or(`program_type.eq.${this.userProfile.program},program_type.eq.General`)
-                    .or(`block_term.eq.${this.userProfile.block},block_term.is.null,block_term.eq.General`)
-                    .eq('intake_year', this.userProfile.intake_year)
+                    .or(`program_type.eq.${program},program_type.eq.General`)
+                    .or(`block_term.eq.${block},block_term.is.null,block_term.eq.General`)
+                    .eq('intake_year', intake_year)
                     .order('exam_date', { ascending: true });
                 
                 if (examsError) throw examsError;
                 
-                // 2. Get grades
+                // Fetch grades
                 const { data: grades, error: gradesError } = await supabase
                     .from('exam_grades')
                     .select('*')
                     .eq('student_id', this.userId)
-                    .eq('question_id', '00000000-0000-0000-0000-000000000000');
+                    .eq('question_id', '00000000-0000-0000-0000-000000000000')
+                    .order('graded_at', { ascending: false });
                 
                 if (gradesError) throw gradesError;
                 
-                // 3. Combine and display
-                this.displayExams(exams || [], grades || []);
+                console.log(`📊 Found ${exams?.length || 0} exams, ${grades?.length || 0} grades`);
+                
+                // Process data
+                this.processExams(exams || [], grades || []);
                 
             } catch (error) {
-                console.error('❌ Error loading exams:', error);
-                this.showError('Failed to load assessments: ' + error.message);
+                console.error('❌ Failed to load exams:', error);
+                this.showError(`Error loading assessments: ${error.message}`);
+                Utils.showToast('Failed to load assessments', 'error');
             }
         }
         
-        displayExams(exams, grades) {
-            // Process each exam
-            const examData = exams.map(exam => {
+        processExams(exams, grades) {
+            this.exams = exams.map(exam => {
                 const grade = grades.find(g => String(g.exam_id) === String(exam.id));
-                const examType = exam.exam_type || '';
                 
-                // Calculate percentage
-                let percentage = null;
-                if (grade) {
-                    if (grade.total_score !== null) {
-                        percentage = Number(grade.total_score);
-                    } else if (examType.includes('CAT_1') && grade.cat_1_score !== null) {
-                        percentage = (grade.cat_1_score / 30) * 100;
-                    } else if (examType.includes('CAT_2') && grade.cat_2_score !== null) {
-                        percentage = (grade.cat_2_score / 30) * 100;
-                    }
-                }
+                // Calculate score
+                const score = this.calculateScore(exam, grade);
                 
-                // Determine grade
-                let gradeText = '--';
-                let gradeClass = '';
-                if (percentage !== null) {
-                    if (percentage >= 85) {
-                        gradeText = 'Distinction';
-                        gradeClass = 'distinction';
-                    } else if (percentage >= 70) {
-                        gradeText = 'Credit';
-                        gradeClass = 'credit';
-                    } else if (percentage >= 60) {
-                        gradeText = 'Pass';
-                        gradeClass = 'pass';
-                    } else {
-                        gradeText = 'Fail';
-                        gradeClass = 'fail';
-                    }
-                }
+                // Determine status
+                const isCompleted = !!grade;
+                const hasScore = score !== null;
+                const passed = hasScore && score >= 60;
+                
+                // Get grade classification
+                const gradeInfo = this.calculateGrade(score);
                 
                 return {
                     ...exam,
                     grade,
-                    percentage,
-                    gradeText,
-                    gradeClass,
-                    status: grade ? 'completed' : 'current',
-                    displayStatus: percentage !== null ? (percentage >= 60 ? 'PASS' : 'FAIL') : 'Pending'
+                    score,
+                    isCompleted,
+                    passed,
+                    gradeText: gradeInfo.grade,
+                    gradeClass: gradeInfo.class,
+                    dateGraded: grade?.graded_at,
+                    cat1Score: grade?.cat_1_score,
+                    cat2Score: grade?.cat_2_score,
+                    examScore: grade?.exam_score
                 };
             });
             
-            // Split into current and completed
-            const current = examData.filter(e => !e.grade);
-            const completed = examData.filter(e => e.grade);
+            // Display results
+            this.displayResults();
+            this.updateStatistics();
             
-            console.log(`📊 Found ${current.length} current, ${completed.length} completed assessments`);
+            console.log('✅ Assessments processed successfully');
+            Utils.showToast('Assessments loaded', 'success');
+        }
+        
+        calculateScore(exam, grade) {
+            if (!grade) return null;
             
-            // Display
-            this.displayCurrentTable(current);
-            this.displayCompletedTable(completed);
+            const examType = exam.exam_type || '';
+            
+            // Use total_score if available
+            if (grade.total_score !== null && grade.total_score !== undefined) {
+                return Number(grade.total_score);
+            }
+            
+            // Calculate based on exam type
+            if (examType.includes('CAT_1') && grade.cat_1_score !== null) {
+                return (grade.cat_1_score / 30) * 100;
+            }
+            
+            if (examType.includes('CAT_2') && grade.cat_2_score !== null) {
+                return (grade.cat_2_score / 30) * 100;
+            }
+            
+            // For exams, calculate from all scores
+            if ((examType.includes('EXAM') || examType.includes('Final')) &&
+                grade.cat_1_score !== null && grade.cat_2_score !== null && grade.exam_score !== null) {
+                const totalMarks = grade.cat_1_score + grade.cat_2_score + grade.exam_score;
+                return (totalMarks / 100) * 100;
+            }
+            
+            return null;
+        }
+        
+        calculateGrade(score) {
+            if (score === null) return { grade: '--', class: '' };
+            
+            if (score >= 85) return { grade: 'Distinction', class: 'distinction' };
+            if (score >= 70) return { grade: 'Credit', class: 'credit' };
+            if (score >= 60) return { grade: 'Pass', class: 'pass' };
+            return { grade: 'Fail', class: 'fail' };
+        }
+        
+        displayResults() {
+            const current = this.exams.filter(e => !e.isCompleted);
+            const completed = this.exams.filter(e => e.isCompleted);
+            
+            // Display current assessments
+            this.displayTable(this.elements.currentTable, current, false);
+            this.toggleEmptyState('current', current.length === 0);
+            
+            // Display completed assessments
+            this.displayTable(this.elements.completedTable, completed, true);
+            this.toggleEmptyState('completed', completed.length === 0);
             
             // Update counts
             this.updateCounts(current.length, completed.length);
         }
         
-        displayCurrentTable(exams) {
-            if (!this.currentAssessmentsTable) return;
+        displayTable(tableElement, exams, isCompleted) {
+            if (!tableElement) return;
             
             if (exams.length === 0) {
-                if (this.currentEmptyState) {
-                    this.currentEmptyState.style.display = 'block';
-                }
-                this.currentAssessmentsTable.innerHTML = '';
+                tableElement.innerHTML = '';
                 return;
             }
             
-            if (this.currentEmptyState) {
-                this.currentEmptyState.style.display = 'none';
-            }
-            
             let html = '';
+            
             exams.forEach(exam => {
-                const date = exam.exam_date ? new Date(exam.exam_date).toLocaleDateString('en-US', {
-                    year: 'numeric', month: 'short', day: 'numeric'
-                }) : '--';
+                const date = isCompleted && exam.dateGraded 
+                    ? new Date(exam.dateGraded).toLocaleDateString('en-US', { 
+                        year: 'numeric', month: 'short', day: 'numeric' 
+                    })
+                    : (exam.exam_date 
+                        ? new Date(exam.exam_date).toLocaleDateString('en-US', { 
+                            year: 'numeric', month: 'short', day: 'numeric' 
+                        })
+                        : '--');
+                
+                const typeBadge = exam.exam_type?.includes('CAT') ? 'cat' : 'exam';
+                const typeText = exam.exam_type?.includes('CAT') ? 'CAT' : 'Exam';
+                
+                const scoreDisplay = exam.score !== null ? `${exam.score.toFixed(1)}%` : '--';
+                
+                const statusClass = isCompleted 
+                    ? (exam.passed ? exam.gradeClass : 'failed')
+                    : 'pending';
+                
+                const statusText = isCompleted 
+                    ? (exam.passed ? exam.gradeText : 'Failed')
+                    : 'Pending';
+                
+                const statusIcon = isCompleted 
+                    ? (exam.passed ? 'fa-check-circle' : 'fa-times-circle')
+                    : 'fa-clock';
+                
+                const gradeColumn = isCompleted 
+                    ? `<td class="text-center"><span class="grade-badge ${exam.gradeClass}">${exam.gradeText}</span></td>`
+                    : '';
                 
                 html += `
                     <tr>
-                        <td>${this.escape(exam.exam_name)}</td>
-                        <td><span class="type-badge ${exam.exam_type?.includes('CAT') ? 'cat' : 'exam'}">${exam.exam_type?.includes('CAT') ? 'CAT' : 'Exam'}</span></td>
-                        <td>${this.escape(exam.course_name || 'General')}</td>
-                        <td class="text-center">${this.escape(exam.block_term || 'General')}</td>
+                        <td>${this.escapeHtml(exam.exam_name || 'N/A')}</td>
+                        <td><span class="type-badge ${typeBadge}">${typeText}</span></td>
+                        <td>${this.escapeHtml(exam.course_name || 'General')}</td>
+                        <td class="text-center">${this.escapeHtml(exam.block_term || 'General')}</td>
                         <td>${date}</td>
-                        <td><span class="status-badge pending">Pending</span></td>
-                        <td class="text-center">--</td>
-                        <td class="text-center">--</td>
-                        <td class="text-center">--</td>
-                        <td class="text-center"><strong>--</strong></td>
+                        <td><span class="status-badge ${statusClass}"><i class="fas ${statusIcon}"></i> ${statusText}</span></td>
+                        <td class="text-center">${exam.cat1Score || '--'}</td>
+                        <td class="text-center">${exam.cat2Score || '--'}</td>
+                        <td class="text-center">${exam.examScore || '--'}</td>
+                        <td class="text-center"><strong>${scoreDisplay}</strong></td>
+                        ${gradeColumn}
                     </tr>
                 `;
             });
             
-            this.currentAssessmentsTable.innerHTML = html;
+            tableElement.innerHTML = html;
         }
         
-        displayCompletedTable(exams) {
-            if (!this.completedAssessmentsTable) return;
-            
-            if (exams.length === 0) {
-                if (this.completedEmptyState) {
-                    this.completedEmptyState.style.display = 'block';
-                }
-                this.completedAssessmentsTable.innerHTML = '';
-                return;
+        toggleEmptyState(section, show) {
+            const element = section === 'current' ? this.elements.currentEmpty : this.elements.completedEmpty;
+            if (element) {
+                element.style.display = show ? 'block' : 'none';
             }
-            
-            if (this.completedEmptyState) {
-                this.completedEmptyState.style.display = 'none';
-            }
-            
-            // Calculate average
-            const withPercentage = exams.filter(e => e.percentage !== null);
-            let average = '--';
-            if (withPercentage.length > 0) {
-                const total = withPercentage.reduce((sum, e) => sum + e.percentage, 0);
-                average = (total / withPercentage.length).toFixed(1) + '%';
-            }
-            
-            // Update average display
-            if (this.completedAverageElement) {
-                this.completedAverageElement.textContent = `Average: ${average}`;
-            }
-            
-            let html = '';
-            exams.forEach(exam => {
-                const date = exam.grade?.graded_at ? new Date(exam.grade.graded_at).toLocaleDateString('en-US', {
-                    year: 'numeric', month: 'short', day: 'numeric'
-                }) : '--';
-                
-                const statusClass = exam.displayStatus === 'PASS' ? exam.gradeClass : 'failed';
-                const statusIcon = exam.displayStatus === 'PASS' ? 'fa-check-circle' : 'fa-times-circle';
-                
-                html += `
-                    <tr>
-                        <td>${this.escape(exam.exam_name)}</td>
-                        <td><span class="type-badge ${exam.exam_type?.includes('CAT') ? 'cat' : 'exam'}">${exam.exam_type?.includes('CAT') ? 'CAT' : 'Exam'}</span></td>
-                        <td>${this.escape(exam.course_name || 'General')}</td>
-                        <td class="text-center">${this.escape(exam.block_term || 'General')}</td>
-                        <td>${date}</td>
-                        <td><span class="status-badge ${statusClass}"><i class="fas ${statusIcon}"></i> ${exam.gradeText}</span></td>
-                        <td class="text-center">${exam.grade?.cat_1_score || '--'}</td>
-                        <td class="text-center">${exam.grade?.cat_2_score || '--'}</td>
-                        <td class="text-center">${exam.grade?.exam_score || '--'}</td>
-                        <td class="text-center"><strong>${exam.percentage !== null ? exam.percentage.toFixed(1) + '%' : '--'}</strong></td>
-                        <td class="text-center"><span class="grade-badge ${exam.gradeClass}">${exam.gradeText}</span></td>
-                    </tr>
-                `;
-            });
-            
-            this.completedAssessmentsTable.innerHTML = html;
         }
         
         updateCounts(current, completed) {
-            // Update header counts
-            if (this.currentCountHeader) this.currentCountHeader.textContent = current;
-            if (this.completedCountHeader) this.completedCountHeader.textContent = completed;
-            
             // Update section counts
-            if (this.currentCountElement) {
-                this.currentCountElement.textContent = `${current} pending`;
+            if (this.elements.currentCount) {
+                this.elements.currentCount.textContent = `${current} pending`;
             }
-            if (this.completedCountElement) {
-                this.completedCountElement.textContent = `${completed} graded`;
+            if (this.elements.completedCount) {
+                this.elements.completedCount.textContent = `${completed} graded`;
             }
             
-            // Calculate overall average
-            const averageElement = document.getElementById('overall-average');
-            if (averageElement) {
-                // This would need to be calculated from completed exams with percentages
-                averageElement.textContent = '--'; // Placeholder
+            // Update header counts
+            if (this.elements.currentHeader) {
+                this.elements.currentHeader.textContent = current;
+            }
+            if (this.elements.completedHeader) {
+                this.elements.completedHeader.textContent = completed;
+            }
+        }
+        
+        updateStatistics() {
+            const completed = this.exams.filter(e => e.isCompleted && e.score !== null);
+            
+            if (completed.length === 0) {
+                // Reset all stats
+                this.resetStatistics();
+                return;
+            }
+            
+            // Calculate average
+            const totalScore = completed.reduce((sum, exam) => sum + exam.score, 0);
+            const averageScore = totalScore / completed.length;
+            
+            // Update average displays
+            if (this.elements.averageScore) {
+                this.elements.averageScore.textContent = `Average: ${averageScore.toFixed(1)}%`;
+            }
+            if (this.elements.overallAverage) {
+                this.elements.overallAverage.textContent = `${averageScore.toFixed(1)}%`;
+            }
+            
+            // Calculate best and worst scores
+            const scores = completed.map(e => e.score);
+            const bestScore = Math.max(...scores);
+            const worstScore = Math.min(...scores);
+            
+            if (this.elements.bestScore) this.elements.bestScore.textContent = `${bestScore.toFixed(1)}%`;
+            if (this.elements.lowestScore) this.elements.lowestScore.textContent = `${worstScore.toFixed(1)}%`;
+            
+            // Calculate pass rate
+            const passed = completed.filter(e => e.passed).length;
+            const passRate = (passed / completed.length) * 100;
+            if (this.elements.passRate) this.elements.passRate.textContent = `${passRate.toFixed(0)}%`;
+            
+            // Calculate grade distribution
+            const gradeCounts = {
+                distinction: completed.filter(e => e.score >= 85).length,
+                credit: completed.filter(e => e.score >= 70 && e.score < 85).length,
+                pass: completed.filter(e => e.score >= 60 && e.score < 70).length,
+                fail: completed.filter(e => e.score < 60).length
+            };
+            
+            if (this.elements.distinctionCount) this.elements.distinctionCount.textContent = gradeCounts.distinction;
+            if (this.elements.creditCount) this.elements.creditCount.textContent = gradeCounts.credit;
+            if (this.elements.passCount) this.elements.passCount.textContent = gradeCounts.pass;
+            if (this.elements.failCount) this.elements.failCount.textContent = gradeCounts.fail;
+        }
+        
+        resetStatistics() {
+            const elements = [
+                this.elements.averageScore,
+                this.elements.overallAverage,
+                this.elements.bestScore,
+                this.elements.lowestScore,
+                this.elements.passRate,
+                this.elements.distinctionCount,
+                this.elements.creditCount,
+                this.elements.passCount,
+                this.elements.failCount
+            ];
+            
+            elements.forEach(el => {
+                if (el) el.textContent = '--';
+            });
+        }
+        
+        showLoading() {
+            const loadingHTML = (colspan) => `
+                <tr class="loading">
+                    <td colspan="${colspan}">
+                        <div class="loading-content">
+                            <div class="loading-spinner"></div>
+                            <p>Loading assessments...</p>
+                        </div>
+                    </td>
+                </tr>`;
+            
+            if (this.elements.currentTable) {
+                this.elements.currentTable.innerHTML = loadingHTML(10);
+            }
+            if (this.elements.completedTable) {
+                this.elements.completedTable.innerHTML = loadingHTML(11);
             }
         }
         
         showError(message) {
-            const errorHTML = `
+            const errorHTML = (colspan) => `
                 <tr class="error">
-                    <td colspan="10">
+                    <td colspan="${colspan}">
                         <div class="error-content">
                             <i class="fas fa-exclamation-circle"></i>
                             <p>${message}</p>
-                            <button onclick="window.examsModule?.loadExams()" class="btn btn-sm btn-primary">
+                            <button onclick="window.examsManager?.loadExams()" class="btn btn-sm btn-primary">
                                 <i class="fas fa-redo"></i> Retry
                             </button>
                         </div>
                     </td>
                 </tr>`;
             
-            if (this.currentAssessmentsTable) {
-                this.currentAssessmentsTable.innerHTML = errorHTML;
+            if (this.elements.currentTable) {
+                this.elements.currentTable.innerHTML = errorHTML(10);
             }
-            if (this.completedAssessmentsTable) {
-                this.completedAssessmentsTable.innerHTML = errorHTML.replace('colspan="10"', 'colspan="11"');
+            if (this.elements.completedTable) {
+                this.elements.completedTable.innerHTML = errorHTML(11);
             }
         }
         
-        escape(str) {
+        setupEventListeners() {
+            // Refresh button
+            const refreshBtn = document.getElementById('refresh-assessments');
+            if (refreshBtn) {
+                refreshBtn.addEventListener('click', () => this.loadExams());
+            }
+            
+            // Filter buttons
+            const filterButtons = {
+                'view-all-assessments': 'all',
+                'view-current-only': 'current',
+                'view-completed-only': 'completed'
+            };
+            
+            Object.entries(filterButtons).forEach(([id, filter]) => {
+                const button = document.getElementById(id);
+                if (button) {
+                    button.addEventListener('click', () => this.applyFilter(filter));
+                }
+            });
+        }
+        
+        applyFilter(filter) {
+            this.currentFilter = filter;
+            
+            // Update button states
+            document.querySelectorAll('.quick-actions .action-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            const activeButton = document.getElementById(
+                filter === 'current' ? 'view-current-only' :
+                filter === 'completed' ? 'view-completed-only' :
+                'view-all-assessments'
+            );
+            
+            if (activeButton) {
+                activeButton.classList.add('active');
+            }
+            
+            // Show/hide sections
+            const currentSection = document.querySelector('.current-section');
+            const completedSection = document.querySelector('.completed-section');
+            
+            if (currentSection && completedSection) {
+                switch(filter) {
+                    case 'current':
+                        currentSection.style.display = 'block';
+                        completedSection.style.display = 'none';
+                        break;
+                    case 'completed':
+                        currentSection.style.display = 'none';
+                        completedSection.style.display = 'block';
+                        break;
+                    default:
+                        currentSection.style.display = 'block';
+                        completedSection.style.display = 'block';
+                }
+            }
+            
+            // Re-display results with filter
+            this.displayResults();
+        }
+        
+        escapeHtml(str) {
             if (!str) return '';
             const div = document.createElement('div');
             div.textContent = str;
             return div.innerHTML;
         }
         
-        // Simple refresh
-        refreshAssessments() {
+        // Public methods
+        refresh() {
             this.loadExams();
         }
     }
     
-    // Create and expose
-    window.examsModule = new ExamsModule();
-    window.loadExams = () => window.examsModule?.loadExams();
-    window.refreshAssessments = () => window.examsModule?.refreshAssessments();
+    // Initialize and expose
+    window.examsManager = new ExamsManager();
     
-    console.log('✅ Exams module ready');
+    // Global functions for backward compatibility
+    window.loadExams = () => window.examsManager?.refresh();
+    window.refreshAssessments = () => window.examsManager?.refresh();
+    
+    console.log('✅ Exams Manager Ready');
 })();
