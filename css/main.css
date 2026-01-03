@@ -59,8 +59,8 @@ body {
     display: block !important;
 }
 
-/* ========== TAB SWITCHING FIX - FINAL CORRECTION ========== */
-/* All tabs hidden by default */
+/* ========== TAB SWITCHING - FINAL PERFECT SOLUTION ========== */
+/* ALL tabs are hidden by default */
 .tab-content {
     display: none !important;
     width: 100% !important;
@@ -75,13 +75,8 @@ body {
     animation: fadeIn 0.3s ease !important;
 }
 
-/* Active tab is visible */
+/* ONLY the active tab is visible */
 .tab-content.active {
-    display: block !important;
-}
-
-/* Make sure dashboard has active class on page load */
-#dashboard.tab-content.active {
     display: block !important;
 }
 
@@ -411,47 +406,22 @@ input:focus, select:focus, textarea:focus {
     animation: fadeIn 0.3s ease !important;
 }
 
-/* ========== FALLBACK FOR JAVASCRIPT INITIALIZATION ========== */
-/* This ensures tabs work even if JS fails initially */
-body.tabs-initialized .tab-content {
-    display: none;
-}
-
-body.tabs-initialized .tab-content.active {
-    display: block !important;
-}
-
-/* ========== DEBUG HELPER ========== */
-/* Uncomment to debug tab visibility */
-/*
+/* ========== TAB POSITIONING FIX - PREVENT STACKING ========== */
+/* Make tabs occupy the same space (don't stack vertically) */
 .tab-content {
-    border: 2px solid red !important;
+    position: absolute;
+    top: 30px;
+    left: 30px;
+    right: 30px;
 }
 
 .tab-content.active {
-    border: 2px solid green !important;
-}
-*/
-
-/* ========== TAB POSITIONING FIX ========== */
-/* Ensure tabs don't stack vertically */
-.main > .tab-content {
-    position: relative !important;
-    top: 0 !important;
-    left: 0 !important;
+    position: relative;
+    z-index: 2;
 }
 
-/* Make sure only one tab is visible at a time */
-.tab-content:not(.active) {
-    height: 0 !important;
-    overflow: hidden !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    border: none !important;
-    min-height: 0 !important;
-}
-
-.tab-content.active {
-    height: auto !important;
-    overflow: visible !important;
+/* Dashboard should be in flow on initial load */
+#dashboard.tab-content.active {
+    position: relative;
+    z-index: 3;
 }
