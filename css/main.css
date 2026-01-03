@@ -27,20 +27,20 @@ body {
     overflow-x: hidden !important;
 }
 
-/* Force container layout - FIXED: Remove display:flex */
+/* Force container layout */
 .container {
+    display: flex !important;
     min-height: 100vh !important;
     width: 100% !important;
     position: relative !important;
-    display: block !important; /* Changed from flex to block */
 }
 
-/* Force sidebar visibility on desktop - FIXED: Remove position:fixed from here */
+/* Force sidebar visibility on desktop */
 .sidebar {
     width: 280px !important;
     min-height: 100vh !important;
     background: white !important;
-    position: fixed !important; /* Desktop: fixed positioning */
+    position: fixed !important;
     left: 0 !important;
     top: 0 !important;
     bottom: 0 !important;
@@ -48,19 +48,18 @@ body {
     box-shadow: 2px 0 10px rgba(0,0,0,0.1) !important;
     border-right: 1px solid #e2e8f0 !important;
     overflow-y: auto !important;
-    transform: translateX(0) !important;
-    transition: transform 0.3s ease-in-out !important;
+    transform: translateX(0) !important; /* Always visible on desktop */
 }
 
-/* Force main content area - FIXED: Add proper positioning */
+/* Force main content area - NO SPACING BETWEEN SIDEBAR */
 .main {
+    margin-left: 280px !important;
+    width: calc(100% - 280px) !important;
     min-height: 100vh !important;
     background-color: #f8fafc !important;
-    padding: 0 !important;
+    padding: 0 !important; /* Changed from 30px to 0 */
     display: block !important;
     position: relative !important;
-    transition: margin-left 0.3s ease-in-out !important;
-    width: 100% !important; /* Default to full width */
 }
 
 /* ========== TAB SWITCHING - FINAL PERFECT SOLUTION ========== */
@@ -69,7 +68,7 @@ body {
     display: none !important;
     width: 100% !important;
     max-width: 1400px !important;
-    margin: 30px auto !important;
+    margin: 30px auto !important; /* Margin for spacing from top */
     background: white !important;
     padding: 30px !important;
     border-radius: 16px !important;
@@ -77,7 +76,7 @@ body {
     border: 1px solid #e2e8f0 !important;
     min-height: 500px !important;
     animation: fadeIn 0.3s ease !important;
-    position: relative !important;
+    position: relative !important; /* NOT absolute */
     top: auto !important;
     left: auto !important;
     right: auto !important;
@@ -196,32 +195,11 @@ input:focus, select:focus, textarea:focus {
 /* Mobile header fix */
 .mobile-header {
     display: none !important; /* Hidden on desktop */
-    position: sticky !important;
-    top: 0 !important;
-    z-index: 999 !important;
-    background: white !important;
-    padding: 15px !important;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1) !important;
-    border-bottom: 1px solid #e2e8f0 !important;
 }
 
 /* Overlay fix */
 .overlay {
     display: none !important;
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
-    bottom: 0 !important;
-    background: rgba(0,0,0,0.5) !important;
-    z-index: 999 !important;
-    opacity: 0 !important;
-    transition: opacity 0.3s ease !important;
-}
-
-.overlay.active {
-    display: block !important;
-    opacity: 1 !important;
 }
 
 /* ========== NAVIGATION FIX ========== */
@@ -247,20 +225,16 @@ input:focus, select:focus, textarea:focus {
     background-color: #f7fafc !important;
 }
 
-/* ========== DESKTOP MEDIA QUERY - CRITICAL FIXES ========== */
+/* ========== DESKTOP MEDIA QUERY ========== */
 @media (min-width: 1024px) {
     .sidebar {
-        position: fixed !important; /* Desktop: fixed */
         transform: translateX(0) !important;
-        z-index: 1000 !important;
     }
     
     .main {
-        margin-left: 280px !important; /* Push main content right */
-        width: calc(100% - 280px) !important; /* Calculate remaining width */
-        padding: 0 !important;
-        margin-top: 0 !important;
-        position: relative !important;
+        margin-left: 280px !important;
+        width: calc(100% - 280px) !important;
+        padding: 0 !important; /* No padding on desktop */
     }
     
     .mobile-header {
@@ -271,69 +245,44 @@ input:focus, select:focus, textarea:focus {
         display: none !important;
     }
     
-    .overlay {
-        display: none !important;
-    }
-    
     .tab-content {
-        margin: 30px auto !important;
+        margin: 30px auto !important; /* Center tab content */
         padding: 30px !important;
-        max-width: calc(1400px - 280px) !important; /* Account for sidebar */
-    }
-    
-    /* Ensure content is above sidebar z-index */
-    .main > * {
-        position: relative !important;
-        z-index: 1 !important;
     }
 }
 
 /* ========== TABLET MEDIA QUERY ========== */
 @media (max-width: 1023px) and (min-width: 768px) {
     .sidebar {
-        position: fixed !important; /* Mobile/Tablet: fixed but hidden */
         transform: translateX(-100%) !important;
         width: 280px !important;
-        z-index: 1001 !important; /* Above overlay */
     }
     
     .sidebar.active {
         transform: translateX(0) !important;
     }
     
-    /* No sidebar margin when sidebar is hidden */
     .main {
         margin-left: 0 !important;
         width: 100% !important;
-        padding: 20px !important;
+        padding: 20px !important; /* Add padding on tablet */
     }
     
     .mobile-header {
         display: flex !important;
-        align-items: center !important;
-        justify-content: space-between !important;
     }
     
     #menuToggle, .menu-toggle {
         display: flex !important;
-        align-items: center !important;
-        gap: 10px !important;
-        background: none !important;
-        border: none !important;
-        font-size: 1rem !important;
-        cursor: pointer !important;
-        padding: 10px !important;
-        border-radius: 8px !important;
     }
     
     .overlay.active {
         display: block !important;
-        z-index: 1000 !important;
     }
     
     /* Tab content adjustments for tablet */
     .tab-content {
-        margin: 0 !important;
+        margin: 0 !important; /* No margin on tablet */
         padding: 25px !important;
         max-width: 100% !important;
         border-radius: 12px !important;
@@ -343,54 +292,22 @@ input:focus, select:focus, textarea:focus {
 /* ========== MOBILE MEDIA QUERY ========== */
 @media (max-width: 767px) {
     .sidebar {
-        position: fixed !important;
         transform: translateX(-100%) !important;
         width: 280px !important;
-        top: 0 !important;
-        left: 0 !important;
-        height: 100vh !important;
-        z-index: 1001 !important;
     }
     
     .sidebar.active {
         transform: translateX(0) !important;
     }
     
-    /* No sidebar margin when sidebar is hidden */
     .main {
         margin-left: 0 !important;
         width: 100% !important;
         padding: 15px !important;
     }
     
-    .mobile-header {
-        display: flex !important;
-        align-items: center !important;
-        justify-content: space-between !important;
-        position: sticky !important;
-        top: 0 !important;
-        z-index: 1000 !important;
-    }
-    
-    #menuToggle, .menu-toggle {
-        display: flex !important;
-        align-items: center !important;
-        gap: 8px !important;
-        background: none !important;
-        border: none !important;
-        font-size: 1rem !important;
-        cursor: pointer !important;
-        padding: 8px 12px !important;
-        border-radius: 8px !important;
-    }
-    
-    .overlay.active {
-        display: block !important;
-        z-index: 1000 !important;
-    }
-    
     .tab-content {
-        margin: 0 !important;
+        margin: 0 !important; /* No margin on mobile */
         padding: 20px !important;
         border-radius: 12px !important;
         min-height: 300px !important;
@@ -398,68 +315,24 @@ input:focus, select:focus, textarea:focus {
         box-shadow: 0 2px 10px rgba(0,0,0,0.05) !important;
     }
     
+    .mobile-header {
+        display: flex !important;
+    }
+    
+    #menuToggle, .menu-toggle {
+        display: flex !important;
+    }
+    
+    .overlay.active {
+        display: block !important;
+    }
+    
     .card {
         padding: 20px !important;
     }
     
     .welcome-card {
-        padding: 25px 20px !important;
-        margin-bottom: 20px !important;
-    }
-    
-    h1 {
-        font-size: 1.75rem !important;
-    }
-    
-    h2 {
-        font-size: 1.5rem !important;
-    }
-}
-
-/* ========== OVERLAY FIXES ========== */
-/* When sidebar is active on mobile/tablet */
-body.sidebar-active .main,
-body.menu-open .main {
-    margin-left: 0 !important;
-    width: 100% !important;
-    position: relative !important;
-}
-
-/* Prevent body scrolling when sidebar is open */
-body.sidebar-active,
-body.menu-open {
-    overflow: hidden !important;
-    height: 100vh !important;
-}
-
-/* ========== CRITICAL FIX: SIDEBAR & MAIN RELATIONSHIP ========== */
-/* On desktop, ensure main content flows correctly */
-@media (min-width: 1024px) {
-    .container {
-        display: flex !important;
-        min-height: 100vh !important;
-    }
-    
-    .sidebar {
-        position: fixed !important;
-        width: 280px !important;
-        height: 100vh !important;
-        flex-shrink: 0 !important;
-    }
-    
-    .main {
-        flex: 1 !important;
-        margin-left: 280px !important;
-        width: calc(100% - 280px) !important;
-        min-width: 0 !important; /* Allow shrinking */
-        overflow-x: hidden !important;
-    }
-    
-    /* Ensure tab content doesn't extend under sidebar */
-    .tab-content {
-        position: relative !important;
-        left: 0 !important;
-        right: 0 !important;
+        padding: 30px !important;
     }
 }
 
@@ -488,23 +361,6 @@ body.menu-open {
     display: flex !important;
     flex-direction: column !important;
     gap: 20px !important;
-}
-
-@media (max-width: 1023px) {
-    .questions-main-container {
-        flex-direction: column !important;
-        padding: 15px !important;
-    }
-    
-    .stats-panel {
-        min-width: 100% !important;
-        order: 1 !important;
-    }
-    
-    .question-panel {
-        order: 2 !important;
-        padding: 20px !important;
-    }
 }
 
 /* ========== PDF VIEWER FIX ========== */
@@ -570,7 +426,8 @@ body.menu-open {
     animation: fadeIn 0.3s ease !important;
 }
 
-/* ========== CRITICAL FIX: REMOVE ABSOLUTE POSITIONING ========== */
+/* ========== CRITICAL FIX: REMOVE ABSOLUTE POSITIONING THAT CAUSES SPACING ========== */
+/* Remove all problematic absolute positioning */
 .tab-content {
     position: relative !important;
     top: auto !important;
@@ -598,14 +455,13 @@ body.menu-open {
 
 /* Ensure smooth transition between sidebar and content */
 .sidebar + .main {
+    margin-left: 280px !important;
     transition: margin-left 0.3s ease !important;
 }
 
 /* When sidebar is hidden on mobile/tablet */
-.sidebar.hidden + .main,
-.sidebar:not(.active) + .main {
+.sidebar.hidden + .main {
     margin-left: 0 !important;
-    width: 100% !important;
 }
 
 /* Fix for very large screens */
@@ -622,26 +478,8 @@ body.menu-open {
     width: 6px !important;
 }
 
-.sidebar::-webkit-scrollbar-track {
-    background: #f1f1f1 !important;
-}
-
-.sidebar::-webkit-scrollbar-thumb {
-    background: #cbd5e0 !important;
-    border-radius: 3px !important;
-}
-
 .main::-webkit-scrollbar {
     width: 8px !important;
-}
-
-.main::-webkit-scrollbar-track {
-    background: #f1f1f1 !important;
-}
-
-.main::-webkit-scrollbar-thumb {
-    background: #a0aec0 !important;
-    border-radius: 4px !important;
 }
 
 /* ========== TAB FOCUS STATE FIX ========== */
@@ -652,10 +490,6 @@ body.menu-open {
 /* ========== PRINT FIX ========== */
 @media print {
     .sidebar {
-        display: none !important;
-    }
-    
-    .mobile-header {
         display: none !important;
     }
     
@@ -670,75 +504,5 @@ body.menu-open {
         border: none !important;
         margin: 0 !important;
         padding: 0 !important;
-    }
-}
-
-/* ========== UTILITY CLASSES ========== */
-.text-center {
-    text-align: center !important;
-}
-
-.mt-0 { margin-top: 0 !important; }
-.mb-0 { margin-bottom: 0 !important; }
-.mt-20 { margin-top: 20px !important; }
-.mb-20 { margin-bottom: 20px !important; }
-
-.hidden {
-    display: none !important;
-}
-
-/* ========== ACCESSIBILITY ========== */
-.visually-hidden {
-    position: absolute !important;
-    width: 1px !important;
-    height: 1px !important;
-    padding: 0 !important;
-    margin: -1px !important;
-    overflow: hidden !important;
-    clip: rect(0, 0, 0, 0) !important;
-    white-space: nowrap !important;
-    border: 0 !important;
-}
-
-/* ========== SIDEBAR TOGGLE FIXES ========== */
-/* Fix for sidebar toggle button visibility */
-.menu-toggle {
-    background: #4C1D95 !important;
-    color: white !important;
-    border: none !important;
-    border-radius: 8px !important;
-    padding: 10px 16px !important;
-    font-size: 0.9rem !important;
-    font-weight: 600 !important;
-    cursor: pointer !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    gap: 8px !important;
-    transition: all 0.3s ease !important;
-}
-
-.menu-toggle:hover {
-    background: #5B21B6 !important;
-    transform: translateY(-1px) !important;
-}
-
-.menu-toggle i {
-    font-size: 1.1rem !important;
-}
-
-/* ========== Z-INDEX FIX FOR OVERLAP ========== */
-@media (min-width: 1024px) {
-    .sidebar {
-        z-index: 100 !important; /* Lower z-index on desktop */
-    }
-    
-    .main {
-        z-index: 1 !important; /* Ensure main is below sidebar if needed */
-        position: relative !important;
-    }
-    
-    .tab-content {
-        z-index: 1 !important;
-        position: relative !important;
     }
 }
