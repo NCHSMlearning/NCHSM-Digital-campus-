@@ -1,4 +1,4 @@
-// courses.js - Courses Management for NCHSM Digital Student Dashboard (Updated for new UI)
+// courses.js - Courses Management for NCHSM Digital Student Dashboard (Updated for new UI - No Grading)
 
 // *************************************************************************
 // *** COURSES MANAGEMENT SYSTEM ***
@@ -173,12 +173,16 @@ async function loadCourses() {
         showErrorState('completed', 'Failed to load courses');
     }
 }
+
 // Display current courses in grid view
 function displayCurrentCourses(courses) {
     const gridContainer = document.getElementById('current-courses-grid');
     const emptyState = document.getElementById('current-empty');
     
-    if (!gridContainer) return;
+    if (!gridContainer) {
+        console.error('❌ current-courses-grid element not found');
+        return;
+    }
     
     if (courses.length === 0) {
         gridContainer.innerHTML = '';
@@ -188,10 +192,13 @@ function displayCurrentCourses(courses) {
     }
     
     // Update count
-    document.getElementById('current-count').textContent = `${courses.length} course${courses.length !== 1 ? 's' : ''}`;
+    const countElement = document.getElementById('current-count');
+    if (countElement) {
+        countElement.textContent = `${courses.length} course${courses.length !== 1 ? 's' : ''}`;
+    }
     
     // Clear loading/empty states
-    emptyState.style.display = 'none';
+    if (emptyState) emptyState.style.display = 'none';
     
     // Generate course cards
     gridContainer.innerHTML = courses.map(course => `
@@ -227,18 +234,25 @@ function displayCurrentCourses(courses) {
     hideEmptyState('current');
 }
 
-// Display completed courses in table view
+// Display completed courses in table view (NO GRADES)
 function displayCompletedCourses(courses) {
     const tableBody = document.getElementById('completed-courses-table');
     const emptyState = document.getElementById('completed-empty');
     
-    if (!tableBody) return;
+    if (!tableBody) {
+        console.error('❌ completed-courses-table element not found');
+        return;
+    }
     
     if (courses.length === 0) {
         tableBody.innerHTML = '';
         showEmptyState('completed');
-        document.getElementById('completed-total-count').textContent = '0 courses';
-        document.getElementById('completed-credits-total').textContent = '0 credits earned';
+        
+        const countElement = document.getElementById('completed-total-count');
+        const creditsElement = document.getElementById('completed-credits-total');
+        
+        if (countElement) countElement.textContent = '0 courses';
+        if (creditsElement) creditsElement.textContent = '0 credits earned';
         return;
     }
     
@@ -246,28 +260,33 @@ function displayCompletedCourses(courses) {
     const totalCredits = courses.reduce((sum, course) => sum + (course.credits || 0), 0);
     
     // Update counts
-    document.getElementById('completed-total-count').textContent = `${courses.length} course${courses.length !== 1 ? 's' : ''}`;
-    document.getElementById('completed-credits-total').textContent = `${totalCredits} credit${totalCredits !== 1 ? 's' : ''} earned`;
+    const countElement = document.getElementById('completed-total-count');
+    const creditsElement = document.getElementById('completed-credits-total');
+    
+    if (countElement) countElement.textContent = `${courses.length} course${courses.length !== 1 ? 's' : ''}`;
+    if (creditsElement) creditsElement.textContent = `${totalCredits} credit${totalCredits !== 1 ? 's' : ''} earned`;
     
     // Clear loading/empty states
-    emptyState.style.display = 'none';
+    if (emptyState) emptyState.style.display = 'none';
     
-    // Generate table rows
+    // Generate table rows WITHOUT grades
     tableBody.innerHTML = courses.map(course => {
-        // Simulate grade (in real app, this would come from grades table)
-        const grade = getRandomGrade();
-        const completionDate = getRandomCompletionDate();
+        // Use course description if available
+        const description = course.description ? 
+            `<br><small class="text-muted">${escapeHtml(truncateText(course.description, 80))}</small>` : '';
         
         return `
             <tr>
-                <td>${escapeHtml(course.course_name || 'Unnamed Course')}</td>
-                <td><code>${escapeHtml(course.unit_code || 'N/A')}</code></td>
-                <td class="grade-${grade}">${grade}</td>
-                <td>${course.credits || 3}</td>
-                <td>${escapeHtml(course.block || 'General')}</td>
                 <td>
+                    <strong>${escapeHtml(course.course_name || 'Unnamed Course')}</strong>
+                    ${description}
+                </td>
+                <td><code>${escapeHtml(course.unit_code || 'N/A')}</code></td>
+                <td class="text-center">${course.credits || 3}</td>
+                <td class="text-center">${escapeHtml(course.block || 'General')}</td>
+                <td class="text-center">
                     <span class="status-badge completed">
-                        <i class="fas fa-check-circle"></i> Completed
+                        <i class="fas fa-check-circle"></i> ${escapeHtml(course.status || 'Completed')}
                     </span>
                 </td>
             </tr>
@@ -277,11 +296,11 @@ function displayCompletedCourses(courses) {
     hideEmptyState('completed');
 }
 
-// Calculate and display academic summary
+// Calculate and display academic summary (NO GRADES)
 function calculateAcademicSummary(completedCourses) {
     if (completedCourses.length === 0) {
         // Reset all summary values
-        document.getElementById('completed-gpa').textContent = '0.00';
+        document.getElementById('completed-gpa').textContent = '--';
         document.getElementById('highest-grade').textContent = '--';
         document.getElementById('average-grade').textContent = '--';
         document.getElementById('first-course-date').textContent = '--';
@@ -290,20 +309,15 @@ function calculateAcademicSummary(completedCourses) {
         return;
     }
     
-    // Simulate GPA calculation (in real app, this would come from grades table)
-    const gpa = (3.0 + Math.random() * 1.5).toFixed(2);
-    document.getElementById('completed-gpa').textContent = gpa;
+    // Since we don't have grades, show dashes
+    document.getElementById('completed-gpa').textContent = '--';
+    document.getElementById('highest-grade').textContent = '--';
+    document.getElementById('average-grade').textContent = '--';
     
-    // Get random grades for display
-    const grades = ['A', 'B+', 'B', 'C+', 'C'];
-    const randomGrade = grades[Math.floor(Math.random() * grades.length)];
-    document.getElementById('highest-grade').textContent = randomGrade;
-    document.getElementById('average-grade').textContent = randomGrade;
-    
-    // Get completion dates
+    // Get completion dates from created_at if available
     const dates = completedCourses
-        .filter(c => c.completed_date)
-        .map(c => new Date(c.completed_date))
+        .filter(c => c.created_at)
+        .map(c => new Date(c.created_at))
         .sort((a, b) => a - b);
     
     if (dates.length > 0) {
@@ -316,8 +330,8 @@ function calculateAcademicSummary(completedCourses) {
             latestDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
     }
     
-    // Calculate completion rate
-    const totalExpectedCourses = completedCourses.length + Math.floor(Math.random() * 5) + 3;
+    // Calculate simple completion rate
+    const totalExpectedCourses = completedCourses.length * 2; // Simple assumption
     const completionRate = Math.round((completedCourses.length / totalExpectedCourses) * 100);
     document.getElementById('completion-rate').textContent = `${completionRate}%`;
 }
@@ -368,6 +382,7 @@ function updateHeaderStats(total, active, completed) {
         console.error('❌ total-credits element not found');
     }
 }
+
 // Filter courses based on selection
 function filterCourses(filterType) {
     currentFilter = filterType;
@@ -411,14 +426,18 @@ function switchToAllCourses() {
 function refreshCourses() {
     console.log('🔄 Refreshing courses...');
     loadCourses();
-    AppUtils.showToast('Courses refreshed successfully', 'success');
+    if (window.AppUtils && window.AppUtils.showToast) {
+        AppUtils.showToast('Courses refreshed successfully', 'success');
+    }
 }
 
 // View course materials (placeholder)
 function viewCourseMaterials(courseId) {
     const course = cachedCourses.find(c => c.id === courseId);
     if (course) {
-        AppUtils.showToast(`Opening materials for ${course.course_name}`, 'info');
+        if (window.AppUtils && window.AppUtils.showToast) {
+            AppUtils.showToast(`Opening materials for ${course.course_name}`, 'info');
+        }
         // In real app, this would open a modal or navigate to materials page
     }
 }
@@ -427,10 +446,13 @@ function viewCourseMaterials(courseId) {
 function viewCourseSchedule(courseId) {
     const course = cachedCourses.find(c => c.id === courseId);
     if (course) {
-        AppUtils.showToast(`Viewing schedule for ${course.course_name}`, 'info');
+        if (window.AppUtils && window.AppUtils.showToast) {
+            AppUtils.showToast(`Viewing schedule for ${course.course_name}`, 'info');
+        }
         // In real app, this would open a modal with schedule
     }
 }
+
 // Show loading state
 function showLoadingState(section) {
     console.log(`⏳ Showing loading state for: ${section}`);
@@ -456,7 +478,7 @@ function showLoadingState(section) {
         if (tableBody) {
             tableBody.innerHTML = `
                 <tr class="loading">
-                    <td colspan="6">
+                    <td colspan="5">
                         <div class="loading-content">
                             <div class="loading-spinner"></div>
                             <p>Loading completed courses...</p>
@@ -516,7 +538,7 @@ function showErrorState(section, message) {
         if (tableBody) {
             tableBody.innerHTML = `
                 <tr class="error">
-                    <td colspan="6">
+                    <td colspan="5">
                         <div class="error-content">
                             <i class="fas fa-exclamation-circle"></i>
                             <p>${message}</p>
@@ -548,22 +570,9 @@ function getStatusClass(status) {
 
 // Helper function to truncate text
 function truncateText(text, maxLength) {
+    if (!text) return '';
     if (text.length <= maxLength) return text;
     return text.substring(0, maxLength) + '...';
-}
-
-// Helper function for random grade (for demo)
-function getRandomGrade() {
-    const grades = ['A', 'B+', 'B', 'C+', 'C', 'D+', 'D'];
-    return grades[Math.floor(Math.random() * grades.length)];
-}
-
-// Helper function for random completion date (for demo)
-function getRandomCompletionDate() {
-    const now = new Date();
-    const pastDate = new Date(now);
-    pastDate.setMonth(pastDate.getMonth() - Math.floor(Math.random() * 12));
-    return pastDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
 }
 
 // Utility to safely escape HTML
@@ -646,6 +655,12 @@ function initializeCoursesModule() {
             console.log('🔄 Refresh button clicked');
             refreshCourses();
         });
+    }
+    
+    // Set up empty state buttons
+    const emptyViewActiveBtn = document.querySelector('#completed-empty .btn');
+    if (emptyViewActiveBtn) {
+        emptyViewActiveBtn.addEventListener('click', switchToActiveCourses);
     }
     
     console.log('✅ Courses Module initialized');
