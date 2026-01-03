@@ -380,10 +380,37 @@ function updateHeaderStats(total, active, completed) {
     }
 }
 
-// Filter courses based on selection - FIXED
+// Filter courses based on selection - UPDATED to hide/show sections
 function filterCourses(filterType) {
     console.log('🔍 Filtering courses by:', filterType);
     currentFilter = filterType;
+    
+    // Get section elements
+    const activeSection = document.querySelector('.courses-section:not(.completed-section)');
+    const completedSection = document.querySelector('.completed-section');
+    
+    console.log('🔍 Sections found:', {
+        activeSection: !!activeSection,
+        completedSection: !!completedSection
+    });
+    
+    // Show/hide sections based on filter
+    if (filterType === 'active') {
+        // Show only active section
+        if (activeSection) activeSection.style.display = 'block';
+        if (completedSection) completedSection.style.display = 'none';
+        console.log('✅ Showing active section, hiding completed');
+    } else if (filterType === 'completed') {
+        // Show only completed section
+        if (activeSection) activeSection.style.display = 'none';
+        if (completedSection) completedSection.style.display = 'block';
+        console.log('✅ Showing completed section, hiding active');
+    } else {
+        // Show both sections
+        if (activeSection) activeSection.style.display = 'block';
+        if (completedSection) completedSection.style.display = 'block';
+        console.log('✅ Showing both sections');
+    }
     
     // Update button states
     const buttons = document.querySelectorAll('.action-btn');
@@ -417,18 +444,24 @@ function filterCourses(filterType) {
     loadCourses();
 }
 
-// Switch to view only active courses
+// Switch to view only active courses - UPDATED
 function switchToActiveCourses() {
     filterCourses('active');
-    // Scroll to active section
-    document.querySelector('.courses-section:first-child')?.scrollIntoView({ behavior: 'smooth' });
+    // Scroll to active section only if it's visible
+    const activeSection = document.querySelector('.courses-section:not(.completed-section)');
+    if (activeSection && activeSection.style.display !== 'none') {
+        activeSection.scrollIntoView({ behavior: 'smooth' });
+    }
 }
 
-// Switch to view only completed courses
+// Switch to view only completed courses - UPDATED
 function switchToCompletedCourses() {
     filterCourses('completed');
-    // Scroll to completed section
-    document.querySelector('.completed-section')?.scrollIntoView({ behavior: 'smooth' });
+    // Scroll to completed section only if it's visible
+    const completedSection = document.querySelector('.completed-section');
+    if (completedSection && completedSection.style.display !== 'none') {
+        completedSection.scrollIntoView({ behavior: 'smooth' });
+    }
 }
 
 // Switch to view all courses
@@ -504,7 +537,7 @@ function showLoadingState(section) {
     }
 }
 
-// Show empty state - FIXED
+// Show empty state - UPDATED with better messages
 function showEmptyState(section) {
     console.log(`📭 Showing empty state for: ${section}, filter: ${currentFilter}`);
     
@@ -519,11 +552,10 @@ function showEmptyState(section) {
             const emptyMessage = emptyState.querySelector('p');
             if (emptyMessage) {
                 if (currentFilter === 'completed') {
-                    emptyMessage.textContent = 'You are viewing completed courses only.';
-                } else if (cachedCourses.some(c => c.status === 'Completed' || c.status === 'Passed')) {
-                    emptyMessage.textContent = 'No active courses at this time. Check completed courses below.';
+                    // This shouldn't normally show since section is hidden
+                    emptyMessage.textContent = 'Active courses are hidden. Switch to "View All" or "Active Only" to see active courses.';
                 } else {
-                    emptyMessage.textContent = 'No courses available at this time.';
+                    emptyMessage.textContent = 'You don\'t have any active courses at the moment.';
                 }
             }
         }
@@ -540,11 +572,10 @@ function showEmptyState(section) {
             const emptyMessage = emptyState.querySelector('p');
             if (emptyMessage) {
                 if (currentFilter === 'active') {
-                    emptyMessage.textContent = 'You are viewing active courses only.';
-                } else if (cachedCourses.some(c => c.status !== 'Completed' && c.status !== 'Passed')) {
-                    emptyMessage.textContent = 'No completed courses yet. Check active courses above.';
+                    // This shouldn't normally show since section is hidden
+                    emptyMessage.textContent = 'Completed courses are hidden. Switch to "View All" or "Completed Only" to see completed courses.';
                 } else {
-                    emptyMessage.textContent = 'No courses available at this time.';
+                    emptyMessage.textContent = 'You haven\'t completed any courses yet.';
                 }
             }
         }
