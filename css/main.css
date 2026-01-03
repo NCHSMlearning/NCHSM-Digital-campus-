@@ -1,4 +1,3 @@
-
 /* ========== MAIN CSS FILE - IMPORTS EVERYTHING ========== */
 
 /* Import order is IMPORTANT */
@@ -48,6 +47,7 @@ body {
     margin: 0;
     display: flex;
     flex-direction: column;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 /* Fix z-index stacking */
@@ -63,8 +63,7 @@ body {
     z-index: 10000 !important;
 }
 
-/* ========== SIDEBAR TRANSPARENCY FIX ========== */
-/* ADD THIS SECTION TO FIX THE TRANSPARENT SIDEBAR */
+/* ========== SIDEBAR STYLES ========== */
 
 /* Main sidebar container - make it solid */
 #sidebar,
@@ -138,6 +137,12 @@ body {
 .mobile-header {
     background-color: #ffffff !important;
     border-bottom: 1px solid #e2e8f0 !important;
+    padding: 15px 20px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    position: sticky !important;
+    top: 0 !important;
 }
 
 /* Menu toggle button */
@@ -147,6 +152,12 @@ body {
     color: white !important;
     border-radius: 8px !important;
     padding: 10px 15px !important;
+    border: none !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    font-size: 1rem !important;
 }
 
 /* ========== EXTRA FIXES FOR SIDEBAR CONTENT ========== */
@@ -178,4 +189,326 @@ body {
 /* Remove any gradients causing transparency */
 .sidebar {
     background: linear-gradient(to bottom, #ffffff, #ffffff) !important;
+}
+
+/* ========== DESKTOP SIDEBAR FIX ========== */
+/* Sidebar always visible on desktop */
+
+@media (min-width: 1024px) {
+    /* Show sidebar always on desktop */
+    .sidebar {
+        transform: translateX(0) !important;
+        transition: none !important;
+        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.08) !important;
+        border-right: 1px solid #e2e8f0 !important;
+    }
+    
+    /* Hide mobile header on desktop */
+    .mobile-header {
+        display: none !important;
+    }
+    
+    /* Adjust main content for sidebar */
+    main {
+        margin-left: 280px !important;
+        width: calc(100% - 280px) !important;
+        min-height: 100vh;
+        padding: 30px !important;
+        background-color: #f8fafc !important;
+    }
+    
+    /* Hide overlay on desktop */
+    #overlay,
+    .overlay {
+        display: none !important;
+    }
+    
+    /* Hide menu toggle button on desktop */
+    #menuToggle,
+    .menu-toggle {
+        display: none !important;
+    }
+    
+    /* Ensure sidebar content is properly visible */
+    .sidebar-content {
+        padding: 30px 20px !important;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    /* Sidebar header */
+    .sidebar-header {
+        padding-bottom: 20px !important;
+        margin-bottom: 30px !important;
+        border-bottom: 1px solid #e2e8f0 !important;
+    }
+    
+    .sidebar-header .logo {
+        font-size: 1.5rem !important;
+        font-weight: 700 !important;
+        color: #4C1D95 !important;
+        text-decoration: none !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 10px !important;
+    }
+    
+    /* Sidebar navigation styling for desktop */
+    .sidebar-nav {
+        flex: 1;
+    }
+    
+    .sidebar-nav .nav {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+    
+    .sidebar-nav .nav-item {
+        margin-bottom: 8px;
+    }
+    
+    .sidebar-nav .nav-link {
+        display: flex !important;
+        align-items: center !important;
+        gap: 12px !important;
+        padding: 14px 16px !important;
+        color: #4a5568 !important;
+        text-decoration: none !important;
+        border-radius: 8px !important;
+        transition: all 0.3s ease !important;
+        font-weight: 500 !important;
+        cursor: pointer;
+    }
+    
+    .sidebar-nav .nav-link:hover {
+        background-color: #f7fafc !important;
+        color: #4C1D95 !important;
+    }
+    
+    .sidebar-nav .nav-link.active {
+        background-color: #4C1D95 !important;
+        color: white !important;
+    }
+    
+    .sidebar-nav .nav-link i {
+        width: 20px !important;
+        text-align: center !important;
+        font-size: 1.1rem !important;
+    }
+    
+    /* Sidebar footer */
+    .sidebar-footer {
+        padding-top: 20px !important;
+        border-top: 1px solid #e2e8f0 !important;
+        margin-top: auto !important;
+    }
+    
+    /* User info styling */
+    .user-info {
+        padding: 15px !important;
+        background-color: #f8fafc !important;
+        border-radius: 8px !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 12px !important;
+    }
+    
+    .user-avatar {
+        width: 40px !important;
+        height: 40px !important;
+        border-radius: 50% !important;
+        background-color: #4C1D95 !important;
+        color: white !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-weight: 600 !important;
+    }
+    
+    .user-details h4 {
+        margin: 0 !important;
+        font-size: 1rem !important;
+        font-weight: 600 !important;
+    }
+    
+    .user-details p {
+        margin: 4px 0 0 0 !important;
+        font-size: 0.875rem !important;
+        color: #718096 !important;
+    }
+}
+
+/* ========== TABLET ADJUSTMENTS ========== */
+@media (min-width: 768px) and (max-width: 1023px) {
+    .sidebar {
+        width: 250px !important;
+    }
+    
+    main {
+        margin-left: 250px !important;
+        width: calc(100% - 250px) !important;
+        padding: 20px !important;
+    }
+    
+    /* Show mobile header on tablet */
+    .mobile-header {
+        display: flex !important;
+    }
+    
+    /* Menu toggle visible on tablet */
+    #menuToggle,
+    .menu-toggle {
+        display: flex !important;
+    }
+}
+
+/* ========== MOBILE SIDEBAR (DEFAULT) ========== */
+@media (max-width: 767px) {
+    /* Sidebar is hidden by default on mobile */
+    .sidebar {
+        transform: translateX(-100%) !important;
+        width: 280px !important;
+    }
+    
+    .sidebar.active {
+        transform: translateX(0) !important;
+    }
+    
+    /* Show mobile header on mobile */
+    .mobile-header {
+        display: flex !important;
+    }
+    
+    /* Full width main on mobile when sidebar is hidden */
+    main {
+        margin-left: 0 !important;
+        width: 100% !important;
+        padding: 20px !important;
+    }
+    
+    /* Show menu toggle on mobile */
+    #menuToggle,
+    .menu-toggle {
+        display: flex !important;
+    }
+    
+    /* Ensure overlay works on mobile */
+    .overlay.active {
+        display: block !important;
+    }
+    
+    /* Sidebar content on mobile */
+    .sidebar-content {
+        padding: 20px !important;
+    }
+    
+    /* Mobile sidebar navigation */
+    .sidebar-nav .nav-link {
+        padding: 16px 20px !important;
+        font-size: 1.1rem !important;
+    }
+}
+
+/* ========== GLOBAL LAYOUT FIXES ========== */
+
+/* Ensure proper body layout */
+body {
+    overflow-x: hidden;
+}
+
+/* Main content area */
+main {
+    flex: 1;
+    transition: margin-left 0.3s ease;
+}
+
+/* Footer */
+footer {
+    background-color: #1a202c;
+    color: white;
+    padding: 20px;
+    text-align: center;
+    margin-left: 0;
+    transition: margin-left 0.3s ease;
+}
+
+@media (min-width: 1024px) {
+    footer {
+        margin-left: 280px;
+        width: calc(100% - 280px);
+    }
+}
+
+/* Page transitions */
+.tab-content {
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Loading states */
+.loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    color: #718096;
+}
+
+.loading-state i {
+    font-size: 3rem;
+    margin-bottom: 20px;
+    color: #4C1D95;
+}
+
+/* Error states */
+.error-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #e53e3e;
+}
+
+.error-state i {
+    font-size: 3rem;
+    margin-bottom: 20px;
+}
+
+/* Empty states */
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #718096;
+}
+
+.empty-state i {
+    font-size: 3rem;
+    margin-bottom: 20px;
+    color: #cbd5e0;
+}
+
+/* Print styles */
+@media print {
+    .sidebar,
+    .mobile-header,
+    .menu-toggle,
+    .overlay {
+        display: none !important;
+    }
+    
+    main {
+        margin-left: 0 !important;
+        width: 100% !important;
+    }
 }
