@@ -144,12 +144,22 @@ async function loadCourses() {
             filteredActive = [];
         }
         
-        // Display courses
+        // Display courses - FIXED: Only show sections if they have content for the current filter
         console.log('🎨 Displaying active courses:', filteredActive.length);
-        displayActiveCourses(filteredActive);
+        if (filteredActive.length > 0) {
+            displayActiveCourses(filteredActive);
+            hideEmptyState('active');
+        } else {
+            showEmptyState('active');
+        }
         
         console.log('🎨 Displaying completed courses:', filteredCompleted.length);
-        displayCompletedCourses(filteredCompleted);
+        if (filteredCompleted.length > 0) {
+            displayCompletedCourses(filteredCompleted);
+            hideEmptyState('completed');
+        } else {
+            showEmptyState('completed');
+        }
         
         // Calculate and display academic summary
         calculateAcademicSummary(completedCourses);
@@ -218,8 +228,6 @@ function displayActiveCourses(courses) {
             </div>
         </div>
     `).join('');
-    
-    hideEmptyState('active');
 }
 
 // Display completed courses in table view (NO GRADES)
@@ -289,8 +297,6 @@ function displayCompletedCourses(courses) {
             </tr>
         `;
     }).join('');
-    
-    hideEmptyState('completed');
 }
 
 // Calculate and display academic summary (NO GRADES)
@@ -498,29 +504,68 @@ function showLoadingState(section) {
     }
 }
 
-// Show empty state - UPDATED
+// Show empty state - FIXED
 function showEmptyState(section) {
+    console.log(`📭 Showing empty state for: ${section}, filter: ${currentFilter}`);
+    
     if (section === 'active') {
         const emptyState = document.getElementById('active-empty');
         const grid = document.getElementById('active-courses-grid');
-        if (emptyState) emptyState.style.display = 'block';
+        
+        if (emptyState) {
+            emptyState.style.display = 'block';
+            
+            // Update message based on filter
+            const emptyMessage = emptyState.querySelector('p');
+            if (emptyMessage) {
+                if (currentFilter === 'completed') {
+                    emptyMessage.textContent = 'You are viewing completed courses only.';
+                } else if (cachedCourses.some(c => c.status === 'Completed' || c.status === 'Passed')) {
+                    emptyMessage.textContent = 'No active courses at this time. Check completed courses below.';
+                } else {
+                    emptyMessage.textContent = 'No courses available at this time.';
+                }
+            }
+        }
         if (grid) grid.innerHTML = '';
+        
     } else if (section === 'completed') {
         const emptyState = document.getElementById('completed-empty');
         const tableBody = document.getElementById('completed-courses-table');
-        if (emptyState) emptyState.style.display = 'block';
+        
+        if (emptyState) {
+            emptyState.style.display = 'block';
+            
+            // Update message based on filter
+            const emptyMessage = emptyState.querySelector('p');
+            if (emptyMessage) {
+                if (currentFilter === 'active') {
+                    emptyMessage.textContent = 'You are viewing active courses only.';
+                } else if (cachedCourses.some(c => c.status !== 'Completed' && c.status !== 'Passed')) {
+                    emptyMessage.textContent = 'No completed courses yet. Check active courses above.';
+                } else {
+                    emptyMessage.textContent = 'No courses available at this time.';
+                }
+            }
+        }
         if (tableBody) tableBody.innerHTML = '';
     }
 }
 
 // Hide empty state - UPDATED
 function hideEmptyState(section) {
+    console.log(`👁️ Hiding empty state for: ${section}`);
+    
     if (section === 'active') {
         const emptyState = document.getElementById('active-empty');
-        if (emptyState) emptyState.style.display = 'none';
+        if (emptyState) {
+            emptyState.style.display = 'none';
+        }
     } else if (section === 'completed') {
         const emptyState = document.getElementById('completed-empty');
-        if (emptyState) emptyState.style.display = 'none';
+        if (emptyState) {
+            emptyState.style.display = 'none';
+        }
     }
 }
 
