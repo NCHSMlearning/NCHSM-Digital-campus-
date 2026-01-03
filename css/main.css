@@ -59,10 +59,9 @@ body {
     display: block !important;
 }
 
-/* ========== TAB SWITCHING FIX ========== */
-/* Tab content should be HIDDEN by default */
+/* ========== TAB SWITCHING FIX - CORRECTED ========== */
+/* Tab content base styles - NO display property here! */
 .tab-content {
-    display: none !important;  /* CHANGED FROM 'block' to 'none' */
     width: 100% !important;
     max-width: 1400px !important;
     margin: 0 auto !important;
@@ -75,13 +74,18 @@ body {
     animation: fadeIn 0.3s ease !important;
 }
 
-/* Only active tab should be visible */
-.tab-content.active {
+/* Dashboard visible by default - only this gets !important */
+#dashboard.tab-content {
     display: block !important;
 }
 
-/* Make sure dashboard is visible by default when active */
-#dashboard.tab-content.active {
+/* All other tabs hidden by default */
+.tab-content:not(#dashboard) {
+    display: none;
+}
+
+/* Active tab overrides the display property */
+.tab-content.active {
     display: block !important;
 }
 
@@ -270,6 +274,11 @@ input:focus, select:focus, textarea:focus {
     .overlay.active {
         display: block !important;
     }
+    
+    /* Tab content adjustments for tablet */
+    .tab-content {
+        padding: 25px !important;
+    }
 }
 
 /* ========== MOBILE MEDIA QUERY ========== */
@@ -291,6 +300,8 @@ input:focus, select:focus, textarea:focus {
     
     .tab-content {
         padding: 20px !important;
+        border-radius: 12px !important;
+        min-height: 300px !important;
     }
     
     .mobile-header {
@@ -404,12 +415,24 @@ input:focus, select:focus, textarea:focus {
     animation: fadeIn 0.3s ease !important;
 }
 
-/* ========== INITIAL STATE FIX ========== */
-/* Make sure only dashboard is visible on page load */
-#dashboard {
+/* ========== FALLBACK FOR JAVASCRIPT INITIALIZATION ========== */
+/* This ensures tabs work even if JS fails initially */
+body.tabs-initialized .tab-content {
+    display: none;
+}
+
+body.tabs-initialized .tab-content.active {
     display: block !important;
 }
 
-.tab-content:not(#dashboard) {
-    display: none !important;
+/* ========== DEBUG HELPER ========== */
+/* Uncomment to debug tab visibility */
+/*
+.tab-content {
+    border: 2px solid red !important;
 }
+
+.tab-content.active {
+    border: 2px solid green !important;
+}
+*/
