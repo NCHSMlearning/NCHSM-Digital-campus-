@@ -823,17 +823,104 @@
                     </div>
                 </section>
 
-                <!-- Messages Tab -->
-                <section id="messages" class="tab-content">
-                    <h2 style="color: var(--color-primary);">Message Admin / Instructor</h2>
-                    <form id="message-form">
-                        <textarea id="student-message-body" placeholder="Write your message to the administration..." required></textarea>
-                        <button type="submit">Send Message</button>
-                        <p id="message-status"></p>
-                    </form>
-
-                    <div id="messages-list"></div>
-                </section>
+               <!-- Messages Tab - Enhanced -->
+<section id="messages" class="tab-content">
+    <div class="messages-container">
+        <!-- Send Message Section -->
+        <div class="message-send-section">
+            <h2 style="color: var(--color-primary); margin-bottom: 20px;">
+                <i class="fas fa-comments"></i> Message Center
+            </h2>
+            
+            <div class="message-controls">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="message-recipient">To:</label>
+                        <select id="message-recipient" class="form-select">
+                            <option value="admin">📋 Administration Office</option>
+                            <option value="academic">👨‍🏫 Academic Department</option>
+                            <option value="finance">💰 Finance Office</option>
+                            <option value="instructor">👨‍🏫 Course Instructor</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="message-priority">Priority:</label>
+                        <select id="message-priority" class="form-select">
+                            <option value="normal">📄 Normal</option>
+                            <option value="urgent">⚠️ Urgent</option>
+                            <option value="emergency">🚨 Emergency</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="message-subject">Subject:</label>
+                    <input type="text" id="message-subject" 
+                           placeholder="Enter message subject..." 
+                           class="form-input">
+                </div>
+                
+                <div class="form-group">
+                    <label for="student-message-body">Message:</label>
+                    <textarea id="student-message-body" 
+                              placeholder="Write your message here..." 
+                              required
+                              class="form-textarea"
+                              maxlength="1000"></textarea>
+                    <div class="char-counter">
+                        <span id="char-count">0</span>/1000 characters
+                    </div>
+                </div>
+                
+                <div class="message-actions">
+                    <button type="submit" id="send-message-btn" class="btn-primary">
+                        <i class="fas fa-paper-plane"></i>
+                        <span id="send-text">Send Message</span>
+                        <span id="sending-text" style="display: none;">
+                            <i class="fas fa-spinner fa-spin"></i> Sending...
+                        </span>
+                    </button>
+                    
+                    <button type="button" id="preview-btn" class="btn-secondary">
+                        <i class="fas fa-eye"></i> Preview
+                    </button>
+                </div>
+                
+                <p id="message-status" class="status-message"></p>
+                
+                <div class="message-info">
+                    <p><i class="fas fa-info-circle"></i> 
+                       Messages are typically responded to within 24-48 hours.
+                    </p>
+                    <p><i class="fas fa-clock"></i> 
+                       Office hours: Monday-Friday, 8:00 AM - 5:00 PM
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Message History Section -->
+        <div class="message-history-section">
+            <h3><i class="fas fa-history"></i> Message History</h3>
+            
+            <div class="message-filters">
+                <button class="filter-btn active">All</button>
+                <button class="filter-btn">Unread</button>
+                <button class="filter-btn">Sent</button>
+                <button class="filter-btn">Archived</button>
+            </div>
+            
+            <div id="messages-list" class="messages-list">
+                <!-- Messages will be loaded here -->
+                <div class="empty-state">
+                    <i class="fas fa-inbox"></i>
+                    <p>No messages yet. Send your first message!</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
                 
                 <div style="font-size: 13px; color: #6b7280;">Total Questions</div>
                          <!-- NurseIQ Tab -->
