@@ -4,1037 +4,904 @@
 // *** MESSAGES SYSTEM ***
 // *************************************************************************
 
-// Helper function for safe Supabase client access
-function getSupabaseClient() {
-    const client = window.db?.supabase;
-    if (!client || typeof client.from !== 'function') {
-        console.error('❌ No valid Supabase client available');
-        return null;
-    }
-    return client;
-}
-
-// Helper function for safe user profile access
-function getUserProfile() {
-    return window.db?.currentUserProfile || 
-           window.currentUserProfile || 
-           window.userProfile || 
-           {};
-}
-
-// Helper function for safe user ID access
-function getCurrentUserId() {
-    return window.db?.currentUserId || window.currentUserId;
-}
-
-let currentMessages = [];
-let currentAnnouncements = [];
-let messageTemplates = [];
-
-// Initialize messages system
-function initializeMessagesSystem() {
-    console.log('💬 Initializing Messages System...');
-    
-    // Set up message form submission
-    const messageForm = document.getElementById('message-form');
-    if (messageForm) {
-        messageForm.addEventListener('submit', handleMessageSubmit);
-    }
-    
-    // Set up event listeners for messages tab
-    const messagesTab = document.querySelector('.nav a[data-tab="messages"]');
-    if (messagesTab) {
-        messagesTab.addEventListener('click', () => {
-            if (getCurrentUserId()) {
-                loadStudentMessagesAndAnnouncements();
-                loadMessageTemplates();
-            }
-        });
-    }
-    
-    // Set up refresh button (if exists)
-    const refreshBtn = document.getElementById('refresh-messages-btn');
-    if (refreshBtn) {
-        refreshBtn.addEventListener('click', () => {
-            loadStudentMessagesAndAnnouncements();
-            loadMessageTemplates();
-        });
-    }
-    
-    // Set up message filters (if exist)
-    const filterButtons = document.querySelectorAll('.message-filter-btn');
-    filterButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            const filterType = this.getAttribute('data-filter');
-            filterMessages(filterType);
-        });
-    });
-    
-    // Set up search functionality (if exists)
-    const searchInput = document.getElementById('message-search');
-    if (searchInput) {
-        let searchTimeout;
-        searchInput.addEventListener('input', function() {
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => {
-                searchMessages(this.value);
-            }, 300);
-        });
-    }
-    
-    console.log('✅ Messages System initialized');
-}
-
-// Load student messages and announcements
-async function loadStudentMessagesAndAnnouncements() {
-    const userProfile = getUserProfile();
-    const userId = getCurrentUserId();
-    const supabaseClient = getSupabaseClient();
-    
-    if (!supabaseClient) {
-        const messageContainer = document.getElementById('messages-list');
-        if (messageContainer) {
-            AppUtils.showError(messageContainer, 'Database connection error');
-        }
-        return;
-    }
-    
-    const program = userProfile?.program || userProfile?.department;
-    const messageContainer = document.getElementById('messages-list');
-    if (!messageContainer) return;
-    
-    AppUtils.showLoading(messageContainer, 'Loading messages...');
-    
-    try {
-        // Load personal messages
-        const { data: personalMessages, error: personalError } = await supabaseClient
-            .from('student_messages')
-            .select('*')
-            .or(`recipient_id.eq.${userId},recipient_program.eq.${program}`)
-            .order('created_at', { ascending: false });
+class MessagesSystem {
+    constructor() {
+        this.currentMessages = [];
+        this.currentAnnouncements = [];
+        this.messageTemplates = [];
+        this.isInitialized = false;
+        this.currentFilter = 'all';
         
-        if (personalError) throw personalError;
+        // DOM Elements cache
+        this.elements = {};
         
-        // Load official announcements
-        const { data: notifications, error: notifError } = await supabaseClient
-            .from('notifications')
-            .select('*')
-            .or(`target_program.eq.${program},target_program.is.null`)
-            .order('created_at', { ascending: false });
-        
-        if (notifError) throw notifError;
-        
-        // Store messages
-        currentMessages = personalMessages || [];
-        currentAnnouncements = notifications || [];
-        
-        // Combine messages, with personal messages first
-        const allMessages = [
-            ...currentMessages.map(m => ({ ...m, type: 'Personal' })),
-            ...currentAnnouncements.map(n => ({ ...n, type: 'Announcement' }))
-        ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-        
-        // Render messages
-        renderMessages(allMessages);
-        
-        // Update unread count
-        updateUnreadCount(allMessages);
-        
-        // Update dashboard with latest announcement
-        updateDashboardAnnouncement();
-        
-    } catch (error) {
-        console.error("Failed to load student messages and announcements:", error);
-        AppUtils.showError(messageContainer, 'Error loading messages and announcements.');
-    }
-}
-
-// Render messages in the messages list
-function renderMessages(messages) {
-    const messageContainer = document.getElementById('messages-list');
-    if (!messageContainer) return;
-    
-    if (!messages || messages.length === 0) {
-        messageContainer.innerHTML = `
-            <div class="empty-state">
-                <i class="fas fa-comment-slash"></i>
-                <h3>No Messages Found</h3>
-                <p>You have no messages or announcements at this time.</p>
-            </div>
-        `;
-        return;
+        this.initialize();
     }
     
-    messageContainer.innerHTML = messages.map(msg => createMessageCard(msg)).join('');
-    
-    // Add click handlers for message actions
-    addMessageEventListeners();
-}
-
-// Create message card HTML
-function createMessageCard(msg) {
-    const title = msg.subject || msg.title || 'Message';
-    const body = msg.body || msg.message || msg.message_content || '';
-    const isRead = msg.is_read ? 'read' : 'unread';
-    const createdAt = msg.created_at ? formatMessageDate(msg.created_at) : '';
-    const borderColor = msg.type === 'Personal' ? '#4C1D95' : '#F97316';
-    const statusColor = msg.is_read ? '#10B981' : '#F59E0B';
-    const typeIcon = msg.type === 'Personal' ? 'fa-user' : 'fa-bullhorn';
-    const priority = msg.priority || 'normal';
-    
-    // Truncate long messages
-    const truncatedBody = body.length > 300 ? body.substring(0, 300) + '...' : body;
-    
-    // Create priority badge
-    const priorityBadge = createPriorityBadge(priority);
-    
-    // Create actions menu
-    const actionsMenu = createMessageActionsMenu(msg.id, msg.type, isRead);
-    
-    return `
-        <div class="message-item ${isRead}" 
-             data-id="${msg.id}" 
-             data-type="${msg.type}"
-             data-priority="${priority}"
-             style="border-left: 4px solid ${borderColor};">
-            
-            <div class="message-header">
-                <div class="message-title-section">
-                    <i class="fas ${typeIcon} message-type-icon" style="color: ${borderColor};"></i>
-                    <div class="message-title-wrapper">
-                        <h4 class="message-title">${escapeHtml(title)}</h4>
-                        <div class="message-meta">
-                            <span class="message-date">${createdAt}</span>
-                            ${priorityBadge}
-                            <span class="message-type">${msg.type}</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="message-actions">
-                    ${actionsMenu}
-                </div>
-            </div>
-            
-            <div class="message-body">
-                <p>${escapeHtml(truncatedBody)}</p>
-                ${body.length > 300 ? 
-                    `<button class="read-more-btn" data-id="${msg.id}">Read More</button>` : ''}
-            </div>
-            
-            <div class="message-footer">
-                <span class="message-status" style="color: ${statusColor};">
-                    <i class="fas ${isRead === 'read' ? 'fa-check-circle' : 'fa-circle'}"></i>
-                    ${isRead.toUpperCase()}
-                </span>
-                ${msg.sender_name ? 
-                    `<span class="message-sender">
-                        <i class="fas fa-user-tag"></i>
-                        From: ${escapeHtml(msg.sender_name)}
-                    </span>` : ''}
-            </div>
-        </div>
-    `;
-}
-
-// Create priority badge
-function createPriorityBadge(priority) {
-    const priorityColors = {
-        high: '#EF4444',
-        medium: '#F59E0B',
-        low: '#3B82F6',
-        normal: '#6B7280'
-    };
-    
-    const priorityText = priority.charAt(0).toUpperCase() + priority.slice(1);
-    const color = priorityColors[priority] || priorityColors.normal;
-    
-    return `<span class="priority-badge" style="background: ${color};">${priorityText}</span>`;
-}
-
-// Create message actions menu
-function createMessageActionsMenu(messageId, messageType, isRead) {
-    return `
-        <div class="dropdown">
-            <button class="dropdown-btn">
-                <i class="fas fa-ellipsis-v"></i>
-            </button>
-            <div class="dropdown-content">
-                ${isRead === 'unread' ? 
-                    `<a href="#" class="mark-read-btn" data-id="${messageId}" data-type="${messageType}">
-                        <i class="fas fa-check"></i> Mark as Read
-                    </a>` : 
-                    `<a href="#" class="mark-unread-btn" data-id="${messageId}" data-type="${messageType}">
-                        <i class="fas fa-eye-slash"></i> Mark as Unread
-                    </a>`}
-                <a href="#" class="reply-btn" data-id="${messageId}" data-type="${messageType}">
-                    <i class="fas fa-reply"></i> Reply
-                </a>
-                <a href="#" class="forward-btn" data-id="${messageId}" data-type="${messageType}">
-                    <i class="fas fa-share"></i> Forward
-                </a>
-                <div class="dropdown-divider"></div>
-                <a href="#" class="delete-btn" data-id="${messageId}" data-type="${messageType}">
-                    <i class="fas fa-trash"></i> Delete
-                </a>
-            </div>
-        </div>
-    `;
-}
-
-// Add event listeners to message actions
-function addMessageEventListeners() {
-    // Read more buttons
-    document.querySelectorAll('.read-more-btn').forEach(button => {
-        button.addEventListener('click', function() {
-            const messageId = this.getAttribute('data-id');
-            showFullMessage(messageId);
-        });
-    });
-    
-    // Mark as read/unread buttons
-    document.querySelectorAll('.mark-read-btn, .mark-unread-btn').forEach(button => {
-        button.addEventListener('click', async function(e) {
-            e.preventDefault();
-            const messageId = this.getAttribute('data-id');
-            const messageType = this.getAttribute('data-type');
-            const action = this.classList.contains('mark-read-btn') ? 'read' : 'unread';
-            await toggleMessageReadStatus(messageId, messageType, action);
-        });
-    });
-    
-    // Reply buttons
-    document.querySelectorAll('.reply-btn').forEach(button => {
-        button.addEventListener('click', function(e) {
-            e.preventDefault();
-            const messageId = this.getAttribute('data-id');
-            const messageType = this.getAttribute('data-type');
-            replyToMessage(messageId, messageType);
-        });
-    });
-    
-    // Forward buttons
-    document.querySelectorAll('.forward-btn').forEach(button => {
-        button.addEventListener('click', function(e) {
-            e.preventDefault();
-            const messageId = this.getAttribute('data-id');
-            const messageType = this.getAttribute('data-type');
-            forwardMessage(messageId, messageType);
-        });
-    });
-    
-    // Delete buttons
-    document.querySelectorAll('.delete-btn').forEach(button => {
-        button.addEventListener('click', async function(e) {
-            e.preventDefault();
-            const messageId = this.getAttribute('data-id');
-            const messageType = this.getAttribute('data-type');
-            await deleteMessage(messageId, messageType);
-        });
-    });
-    
-    // Message item click (for viewing)
-    document.querySelectorAll('.message-item').forEach(item => {
-        item.addEventListener('click', function(e) {
-            // Don't trigger if clicking on action buttons
-            if (!e.target.closest('.dropdown') && !e.target.closest('.read-more-btn')) {
-                const messageId = this.getAttribute('data-id');
-                showFullMessage(messageId);
-            }
-        });
-    });
-}
-
-// Show full message in modal
-async function showFullMessage(messageId) {
-    // Find message in either messages or announcements
-    let message = currentMessages.find(m => m.id == messageId);
-    let messageType = 'Personal';
-    
-    if (!message) {
-        message = currentAnnouncements.find(a => a.id == messageId);
-        messageType = 'Announcement';
-    }
-    
-    if (!message) {
-        AppUtils.showToast('Message not found', 'error');
-        return;
-    }
-    
-    // Mark as read if unread
-    if (message.is_read === false) {
-        await toggleMessageReadStatus(messageId, messageType, 'read');
-    }
-    
-    // Create modal content
-    const modalContent = createMessageModalContent(message, messageType);
-    
-    // Show modal
-    showMessageModal(modalContent);
-}
-
-// Create message modal content
-function createMessageModalContent(message, messageType) {
-    const title = message.subject || message.title || 'Message';
-    const body = message.body || message.message || message.message_content || '';
-    const createdAt = formatMessageDate(message.created_at, true);
-    const senderName = message.sender_name || message.sent_by_name || 'Administration';
-    
-    return `
-        <div class="message-modal-content">
-            <div class="message-modal-header">
-                <div class="message-modal-title">
-                    <h3>${escapeHtml(title)}</h3>
-                    <span class="message-modal-type">${messageType}</span>
-                </div>
-                <button class="close-modal-btn" onclick="closeMessageModal()">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            
-            <div class="message-modal-body">
-                <div class="message-meta-info">
-                    <div class="meta-item">
-                        <i class="fas fa-user"></i>
-                        <span><strong>From:</strong> ${escapeHtml(senderName)}</span>
-                    </div>
-                    <div class="meta-item">
-                        <i class="fas fa-calendar"></i>
-                        <span><strong>Date:</strong> ${createdAt}</span>
-                    </div>
-                    ${message.priority ? `
-                        <div class="meta-item">
-                            <i class="fas fa-flag"></i>
-                            <span><strong>Priority:</strong> ${createPriorityBadge(message.priority)}</span>
-                        </div>
-                    ` : ''}
-                </div>
-                
-                <div class="message-content">
-                    ${escapeHtml(body).replace(/\n/g, '<br>')}
-                </div>
-                
-                ${message.attachments ? `
-                    <div class="message-attachments">
-                        <h4><i class="fas fa-paperclip"></i> Attachments</h4>
-                        <div class="attachment-list">
-                            ${renderAttachments(message.attachments)}
-                        </div>
-                    </div>
-                ` : ''}
-            </div>
-            
-            <div class="message-modal-footer">
-                <button class="btn btn-secondary" onclick="closeMessageModal()">
-                    <i class="fas fa-times"></i> Close
-                </button>
-                ${messageType === 'Personal' ? `
-                    <button class="btn btn-primary" onclick="replyToMessage('${message.id}', '${messageType}')">
-                        <i class="fas fa-reply"></i> Reply
-                    </button>
-                ` : ''}
-                <button class="btn btn-outline" onclick="forwardMessage('${message.id}', '${messageType}')">
-                    <i class="fas fa-share"></i> Forward
-                </button>
-            </div>
-        </div>
-    `;
-}
-
-// Render attachments
-function renderAttachments(attachments) {
-    if (typeof attachments === 'string') {
-        try {
-            attachments = JSON.parse(attachments);
-        } catch (e) {
-            attachments = [attachments];
-        }
-    }
-    
-    if (!Array.isArray(attachments)) {
-        attachments = [attachments];
-    }
-    
-    return attachments.map((attachment, index) => {
-        const fileName = typeof attachment === 'string' ? attachment : attachment.name || `Attachment ${index + 1}`;
-        const fileUrl = typeof attachment === 'string' ? attachment : attachment.url;
+    initialize() {
+        if (this.isInitialized) return;
         
-        return `
-            <div class="attachment-item">
-                <i class="fas fa-file"></i>
-                <span class="attachment-name">${escapeHtml(fileName)}</span>
-                <a href="${fileUrl}" target="_blank" class="attachment-download">
-                    <i class="fas fa-download"></i>
-                </a>
-            </div>
-        `;
-    }).join('');
-}
-
-// Show message modal
-function showMessageModal(content) {
-    // Remove existing modal if any
-    const existingModal = document.getElementById('message-modal');
-    if (existingModal) {
-        existingModal.remove();
-    }
-    
-    // Create modal
-    const modal = document.createElement('div');
-    modal.id = 'message-modal';
-    modal.className = 'modal-overlay';
-    modal.innerHTML = content;
-    
-    // Add styles
-    modal.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0,0,0,0.5);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 1000;
-        padding: 20px;
-        animation: fadeIn 0.3s ease;
-    `;
-    
-    // Add modal content styles
-    const modalContent = modal.querySelector('.message-modal-content');
-    if (modalContent) {
-        modalContent.style.cssText = `
-            background: white;
-            border-radius: 12px;
-            width: 100%;
-            max-width: 600px;
-            max-height: 80vh;
-            overflow-y: auto;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            animation: slideInUp 0.3s ease;
-        `;
-    }
-    
-    document.body.appendChild(modal);
-    
-    // Close on ESC key
-    document.addEventListener('keydown', function escHandler(e) {
-        if (e.key === 'Escape') {
-            closeMessageModal();
-            document.removeEventListener('keydown', escHandler);
-        }
-    });
-    
-    // Close on overlay click
-    modal.addEventListener('click', function(e) {
-        if (e.target === modal) {
-            closeMessageModal();
-        }
-    });
-}
-
-// Close message modal
-function closeMessageModal() {
-    const modal = document.getElementById('message-modal');
-    if (modal) {
-        modal.style.animation = 'fadeOut 0.3s ease';
-        setTimeout(() => {
-            if (modal.parentNode) {
-                modal.parentNode.removeChild(modal);
-            }
-        }, 300);
-    }
-}
-
-// Toggle message read status
-async function toggleMessageReadStatus(messageId, messageType, action) {
-    const supabaseClient = getSupabaseClient();
-    if (!supabaseClient) {
-        AppUtils.showToast('Database connection error', 'error');
-        return;
-    }
-    
-    try {
-        const tableName = messageType === 'Personal' ? 'student_messages' : 'notifications';
-        const isRead = action === 'read';
+        console.log('💬 Initializing Messages System...');
+        this.cacheElements();
+        this.setupEventListeners();
+        this.setupMessagePolling();
+        this.isInitialized = true;
         
-        const { error } = await supabaseClient
-            .from(tableName)
-            .update({ is_read: isRead, read_at: new Date().toISOString() })
-            .eq('id', messageId);
-        
-        if (error) throw error;
-        
-        // Update local state
-        if (messageType === 'Personal') {
-            const message = currentMessages.find(m => m.id == messageId);
-            if (message) message.is_read = isRead;
-        } else {
-            const announcement = currentAnnouncements.find(a => a.id == messageId);
-            if (announcement) announcement.is_read = isRead;
-        }
-        
-        // Re-render messages
-        loadStudentMessagesAndAnnouncements();
-        
-        AppUtils.showToast(`Message marked as ${action}`, 'success');
-        
-    } catch (error) {
-        console.error('Error toggling message read status:', error);
-        AppUtils.showToast('Failed to update message status', 'error');
-    }
-}
-
-// Reply to message
-function replyToMessage(messageId, messageType) {
-    closeMessageModal();
-    
-    // Find the original message
-    let originalMessage;
-    if (messageType === 'Personal') {
-        originalMessage = currentMessages.find(m => m.id == messageId);
-    } else {
-        originalMessage = currentAnnouncements.find(a => a.id == messageId);
+        console.log('✅ Messages System initialized');
     }
     
-    if (!originalMessage) {
-        AppUtils.showToast('Original message not found', 'error');
-        return;
-    }
-    
-    // Pre-fill the message form
-    const messageBody = document.getElementById('student-message-body');
-    if (messageBody) {
-        const subject = originalMessage.subject || originalMessage.title || '';
-        const quotedBody = originalMessage.body || originalMessage.message || originalMessage.message_content || '';
-        
-        messageBody.value = `\n\n--- Original Message ---\nSubject: ${subject}\nDate: ${formatMessageDate(originalMessage.created_at)}\n\n${quotedBody}\n\n--- Your Reply ---\n`;
-        messageBody.focus();
-        messageBody.scrollTop = messageBody.scrollHeight;
-        
-        // Scroll to message form
-        messageBody.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        
-        AppUtils.showToast('Message form pre-filled for reply', 'info');
-    }
-}
-
-// Forward message
-function forwardMessage(messageId, messageType) {
-    // For now, just copy message to clipboard
-    let message;
-    if (messageType === 'Personal') {
-        message = currentMessages.find(m => m.id == messageId);
-    } else {
-        message = currentAnnouncements.find(a => a.id == messageId);
-    }
-    
-    if (!message) {
-        AppUtils.showToast('Message not found', 'error');
-        return;
-    }
-    
-    const title = message.subject || message.title || 'Message';
-    const body = message.body || message.message || message.message_content || '';
-    const date = formatMessageDate(message.created_at);
-    
-    const forwardText = `
-Subject: ${title}
-Date: ${date}
-Message: ${body}
----
-Forwarded from NCHSM Student Portal
-    `.trim();
-    
-    navigator.clipboard.writeText(forwardText).then(() => {
-        AppUtils.showToast('Message copied to clipboard. You can now paste it elsewhere.', 'success');
-    }).catch(() => {
-        AppUtils.showToast('Failed to copy message', 'error');
-    });
-}
-
-// Delete message
-async function deleteMessage(messageId, messageType) {
-    if (!confirm('Are you sure you want to delete this message? This action cannot be undone.')) {
-        return;
-    }
-    
-    const supabaseClient = getSupabaseClient();
-    if (!supabaseClient) {
-        AppUtils.showToast('Database connection error', 'error');
-        return;
-    }
-    
-    try {
-        const tableName = messageType === 'Personal' ? 'student_messages' : 'notifications';
-        
-        const { error } = await supabaseClient
-            .from(tableName)
-            .delete()
-            .eq('id', messageId);
-        
-        if (error) throw error;
-        
-        // Remove from local state
-        if (messageType === 'Personal') {
-            currentMessages = currentMessages.filter(m => m.id != messageId);
-        } else {
-            currentAnnouncements = currentAnnouncements.filter(a => a.id != messageId);
-        }
-        
-        // Re-render messages
-        loadStudentMessagesAndAnnouncements();
-        
-        AppUtils.showToast('Message deleted successfully', 'success');
-        
-    } catch (error) {
-        console.error('Error deleting message:', error);
-        AppUtils.showToast('Failed to delete message', 'error');
-    }
-}
-
-// Handle message form submission
-async function handleMessageSubmit(e) {
-    e.preventDefault();
-    
-    const messageBody = document.getElementById('student-message-body');
-    const statusElement = document.getElementById('message-status');
-    
-    if (!messageBody || !messageBody.value.trim()) {
-        AppUtils.showToast('Please write a message', 'warning');
-        return;
-    }
-    
-    const userProfile = getUserProfile();
-    const userId = getCurrentUserId();
-    const supabaseClient = getSupabaseClient();
-    
-    if (!userProfile || !supabaseClient) {
-        AppUtils.showToast('System error: User profile or database not available', 'error');
-        return;
-    }
-    
-    // Disable form during submission
-    const submitBtn = e.target.querySelector('button[type="submit"]');
-    const originalBtnText = submitBtn.innerHTML;
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
-    
-    if (statusElement) {
-        statusElement.textContent = 'Sending message...';
-        statusElement.style.color = '#F59E0B';
-    }
-    
-    try {
-        const messageData = {
-            subject: 'Message from Student',
-            body: messageBody.value.trim(),
-            recipient_id: 'admin', // Default admin recipient
-            recipient_program: userProfile.program || userProfile.department,
-            sender_id: userId,
-            sender_name: userProfile.full_name || userProfile.name || 'Student',
-            sender_email: userProfile.email || '',
-            sender_program: userProfile.program || userProfile.department,
-            sender_block: userProfile.block,
-            sender_intake_year: userProfile.intake_year,
-            is_read: false,
-            priority: 'normal',
-            created_at: new Date().toISOString()
+    cacheElements() {
+        this.elements = {
+            messageForm: document.getElementById('message-form'),
+            messageBody: document.getElementById('student-message-body'),
+            messageStatus: document.getElementById('message-status'),
+            messagesList: document.getElementById('messages-list'),
+            messagesTab: document.querySelector('.nav a[data-tab="messages"]'),
+            messagesBadge: document.getElementById('messages-badge'),
+            refreshBtn: document.getElementById('refresh-messages-btn'),
+            searchInput: document.getElementById('message-search'),
+            templateSelect: document.getElementById('message-template-select')
         };
-        
-        const { error } = await supabaseClient
-            .from('student_messages')
-            .insert([messageData]);
-        
-        if (error) throw error;
-        
-        // Clear form
-        messageBody.value = '';
-        
-        // Show success message
-        if (statusElement) {
-            statusElement.textContent = '✓ Message sent successfully!';
-            statusElement.style.color = '#10B981';
+    }
+    
+    setupEventListeners() {
+        // Message form submission
+        if (this.elements.messageForm) {
+            this.elements.messageForm.addEventListener('submit', (e) => this.handleMessageSubmit(e));
         }
         
-        AppUtils.showToast('Message sent successfully!', 'success');
-        
-        // Reload messages to show the new one
-        setTimeout(() => {
-            loadStudentMessagesAndAnnouncements();
-        }, 1000);
-        
-    } catch (error) {
-        console.error('Error sending message:', error);
-        
-        if (statusElement) {
-            statusElement.textContent = `✗ Failed to send: ${error.message}`;
-            statusElement.style.color = '#EF4444';
-        }
-        
-        AppUtils.showToast('Failed to send message', 'error');
-        
-    } finally {
-        // Re-enable form
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = originalBtnText;
-        
-        // Clear status after 5 seconds
-        if (statusElement) {
-            setTimeout(() => {
-                statusElement.textContent = '';
-            }, 5000);
-        }
-    }
-}
-
-// Filter messages by type
-function filterMessages(filterType) {
-    let filteredMessages = [];
-    
-    const allMessages = [
-        ...currentMessages.map(m => ({ ...m, type: 'Personal' })),
-        ...currentAnnouncements.map(n => ({ ...n, type: 'Announcement' }))
-    ];
-    
-    switch(filterType) {
-        case 'all':
-            filteredMessages = allMessages;
-            break;
-        case 'unread':
-            filteredMessages = allMessages.filter(m => !m.is_read);
-            break;
-        case 'personal':
-            filteredMessages = currentMessages.map(m => ({ ...m, type: 'Personal' }));
-            break;
-        case 'announcements':
-            filteredMessages = currentAnnouncements.map(n => ({ ...n, type: 'Announcement' }));
-            break;
-        case 'high-priority':
-            filteredMessages = allMessages.filter(m => m.priority === 'high');
-            break;
-        default:
-            filteredMessages = allMessages;
-    }
-    
-    // Sort by date
-    filteredMessages.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-    
-    // Render filtered messages
-    renderMessages(filteredMessages);
-    
-    // Update filter button states
-    updateFilterButtonStates(filterType);
-}
-
-// Update filter button states
-function updateFilterButtonStates(activeFilter) {
-    document.querySelectorAll('.message-filter-btn').forEach(button => {
-        const filterType = button.getAttribute('data-filter');
-        if (filterType === activeFilter) {
-            button.classList.add('active');
-        } else {
-            button.classList.remove('active');
-        }
-    });
-}
-
-// Search messages
-function searchMessages(searchTerm) {
-    if (!searchTerm.trim()) {
-        renderMessages([
-            ...currentMessages.map(m => ({ ...m, type: 'Personal' })),
-            ...currentAnnouncements.map(n => ({ ...n, type: 'Announcement' }))
-        ]);
-        return;
-    }
-    
-    const allMessages = [
-        ...currentMessages.map(m => ({ ...m, type: 'Personal' })),
-        ...currentAnnouncements.map(n => ({ ...n, type: 'Announcement' }))
-    ];
-    
-    const searchLower = searchTerm.toLowerCase();
-    const filteredMessages = allMessages.filter(msg => {
-        const title = (msg.subject || msg.title || '').toLowerCase();
-        const body = (msg.body || msg.message || msg.message_content || '').toLowerCase();
-        const sender = (msg.sender_name || '').toLowerCase();
-        
-        return title.includes(searchLower) || 
-               body.includes(searchLower) || 
-               sender.includes(searchLower);
-    });
-    
-    renderMessages(filteredMessages);
-}
-
-// Update unread message count
-function updateUnreadCount(messages) {
-    const unreadCount = messages.filter(m => !m.is_read).length;
-    
-    // Update badge in navigation
-    const messagesBadge = document.getElementById('messages-badge');
-    if (messagesBadge) {
-        if (unreadCount > 0) {
-            messagesBadge.textContent = unreadCount;
-            messagesBadge.style.display = 'inline-block';
-        } else {
-            messagesBadge.style.display = 'none';
-        }
-    }
-    
-    // Update tab title
-    const messagesTab = document.querySelector('.nav a[data-tab="messages"]');
-    if (messagesTab) {
-        const tabText = messagesTab.querySelector('.nav-text') || messagesTab;
-        const baseText = tabText.textContent.replace(/\(\d+\)\s*/, '');
-        if (unreadCount > 0) {
-            tabText.textContent = `(${unreadCount}) ${baseText}`;
-        } else {
-            tabText.textContent = baseText;
-        }
-    }
-    
-    return unreadCount;
-}
-
-// Update dashboard announcement
-function updateDashboardAnnouncement() {
-    if (currentAnnouncements.length === 0) return;
-    
-    const latestAnnouncement = currentAnnouncements[0];
-    const announcementElement = document.getElementById('student-announcement');
-    
-    if (announcementElement && latestAnnouncement.message) {
-        announcementElement.textContent = latestAnnouncement.message;
-    }
-}
-
-// Load message templates
-async function loadMessageTemplates() {
-    const userProfile = getUserProfile();
-    const supabaseClient = getSupabaseClient();
-    
-    if (!supabaseClient) {
-        console.error('❌ No Supabase client for loading templates');
-        return;
-    }
-    
-    try {
-        const { data: templates, error } = await supabaseClient
-            .from('message_templates')
-            .select('*')
-            .eq('is_active', true)
-            .or(`target_program.eq.${userProfile?.program || 'General'},target_program.is.null`)
-            .order('name', { ascending: true });
-        
-        if (error) throw error;
-        
-        messageTemplates = templates || [];
-        
-        // Populate template dropdown if exists
-        const templateSelect = document.getElementById('message-template-select');
-        if (templateSelect) {
-            templateSelect.innerHTML = '<option value="">Select a template...</option>';
-            messageTemplates.forEach(template => {
-                const option = document.createElement('option');
-                option.value = template.id;
-                option.textContent = template.name;
-                templateSelect.appendChild(option);
+        // Auto-load when messages tab is clicked
+        if (this.elements.messagesTab) {
+            this.elements.messagesTab.addEventListener('click', () => {
+                this.loadMessages();
             });
-            
-            // Add change event
-            templateSelect.addEventListener('change', function() {
-                const templateId = this.value;
-                if (templateId) {
-                    applyMessageTemplate(templateId);
+        }
+        
+        // Refresh button
+        if (this.elements.refreshBtn) {
+            this.elements.refreshBtn.addEventListener('click', () => {
+                this.loadMessages();
+            });
+        }
+        
+        // Search functionality
+        if (this.elements.searchInput) {
+            let searchTimeout;
+            this.elements.searchInput.addEventListener('input', (e) => {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    this.searchMessages(e.target.value);
+                }, 300);
+            });
+        }
+        
+        // Template selection
+        if (this.elements.templateSelect) {
+            this.elements.templateSelect.addEventListener('change', (e) => {
+                if (e.target.value) {
+                    this.applyMessageTemplate(e.target.value);
                 }
             });
         }
         
-    } catch (error) {
-        console.error('Error loading message templates:', error);
-    }
-}
-
-// Apply message template
-function applyMessageTemplate(templateId) {
-    const template = messageTemplates.find(t => t.id == templateId);
-    if (!template) return;
-    
-    const messageBody = document.getElementById('student-message-body');
-    if (messageBody) {
-        messageBody.value = template.content;
-        AppUtils.showToast(`Template "${template.name}" applied`, 'success');
-    }
-}
-
-// Format message date
-function formatMessageDate(dateString, full = false) {
-    if (!dateString) return 'N/A';
-    
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now - date;
-    const diffMins = Math.floor(diffMs / (1000 * 60));
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    
-    if (full) {
-        return date.toLocaleString('en-US', {
-            weekday: 'short',
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
+        // Listen for tab changes from UI module
+        document.addEventListener('tabChanged', (e) => {
+            if (e.detail.tabId === 'messages') {
+                this.loadMessages();
+            }
         });
     }
     
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
-    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
-    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    setupMessagePolling() {
+        // Poll for new messages every 2 minutes if user is active
+        setInterval(() => {
+            if (document.visibilityState === 'visible' && this.isMessagesTabActive()) {
+                this.checkForNewMessages();
+            }
+        }, 120000); // 2 minutes
+    }
     
-    return date.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
-    });
-}
-
-// Utility to safely escape HTML
-function escapeHtml(str) {
-    if (!str) return '';
-    return String(str)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
+    isMessagesTabActive() {
+        const messagesTab = document.getElementById('messages');
+        return messagesTab && messagesTab.classList.contains('active');
+    }
+    
+    // Helper function for safe Supabase client access
+    getSupabaseClient() {
+        const client = window.db?.supabase;
+        if (!client || typeof client.from !== 'function') {
+            console.error('❌ No valid Supabase client available');
+            return null;
+        }
+        return client;
+    }
+    
+    // Helper function for safe user profile access
+    getUserProfile() {
+        return window.db?.currentUserProfile || 
+               window.currentUserProfile || 
+               window.userProfile || 
+               {};
+    }
+    
+    // Helper function for safe user ID access
+    getCurrentUserId() {
+        return window.db?.currentUserId || window.currentUserId;
+    }
+    
+    // Load messages and announcements
+    async loadMessages() {
+        console.log('📨 Loading messages...');
+        
+        const userProfile = this.getUserProfile();
+        const userId = this.getCurrentUserId();
+        const supabaseClient = this.getSupabaseClient();
+        
+        if (!supabaseClient) {
+            this.showMessage('Database connection error', 'error');
+            return;
+        }
+        
+        const program = userProfile?.program || userProfile?.department;
+        
+        // Show loading state
+        if (this.elements.messagesList) {
+            this.showLoading();
+        }
+        
+        try {
+            // Load personal messages
+            const { data: personalMessages, error: personalError } = await supabaseClient
+                .from('student_messages')
+                .select('*')
+                .or(`recipient_id.eq.${userId},recipient_program.eq.${program}`)
+                .order('created_at', { ascending: false })
+                .limit(50);
+            
+            if (personalError) throw personalError;
+            
+            // Load official announcements
+            const { data: notifications, error: notifError } = await supabaseClient
+                .from('notifications')
+                .select('*')
+                .or(`target_program.eq.${program},target_program.is.null`)
+                .order('created_at', { ascending: false })
+                .limit(20);
+            
+            if (notifError) throw notifError;
+            
+            // Store messages
+            this.currentMessages = personalMessages || [];
+            this.currentAnnouncements = notifications || [];
+            
+            // Update UI
+            this.renderMessages();
+            this.updateUnreadCount();
+            
+            // Update dashboard announcement
+            this.updateDashboardAnnouncement();
+            
+            // Load templates if needed
+            this.loadMessageTemplates();
+            
+            console.log(`✅ Loaded ${this.currentMessages.length} messages and ${this.currentAnnouncements.length} announcements`);
+            
+        } catch (error) {
+            console.error("Failed to load messages:", error);
+            this.showMessage('Error loading messages', 'error');
+        }
+    }
+    
+    // Check for new messages (lightweight check)
+    async checkForNewMessages() {
+        try {
+            const userId = this.getCurrentUserId();
+            const supabaseClient = this.getSupabaseClient();
+            if (!supabaseClient) return;
+            
+            // Get latest message timestamp
+            const latestMessage = [...this.currentMessages, ...this.currentAnnouncements]
+                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+            
+            const lastTimestamp = latestMessage?.created_at;
+            
+            // Check for new unread messages
+            const { data: newMessages, error } = await supabaseClient
+                .from('student_messages')
+                .select('id, is_read')
+                .eq('recipient_id', userId)
+                .eq('is_read', false)
+                .gt('created_at', lastTimestamp || new Date(0).toISOString())
+                .limit(1);
+            
+            if (!error && newMessages?.length > 0) {
+                this.loadMessages(); // Reload if new messages found
+            }
+            
+        } catch (error) {
+            console.error('Error checking for new messages:', error);
+        }
+    }
+    
+    // Render messages in the list
+    renderMessages() {
+        if (!this.elements.messagesList) return;
+        
+        const messages = this.getFilteredMessages();
+        
+        if (!messages || messages.length === 0) {
+            this.elements.messagesList.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-comment-slash"></i>
+                    <h3>No Messages Found</h3>
+                    <p>You have no messages or announcements at this time.</p>
+                </div>
+            `;
+            return;
+        }
+        
+        this.elements.messagesList.innerHTML = messages
+            .map(msg => this.createMessageCard(msg))
+            .join('');
+        
+        this.attachMessageEventListeners();
+    }
+    
+    // Get filtered messages based on current filter
+    getFilteredMessages() {
+        const allMessages = [
+            ...this.currentMessages.map(m => ({ ...m, type: 'Personal' })),
+            ...this.currentAnnouncements.map(n => ({ ...n, type: 'Announcement' }))
+        ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        
+        switch(this.currentFilter) {
+            case 'unread':
+                return allMessages.filter(m => !m.is_read);
+            case 'personal':
+                return this.currentMessages.map(m => ({ ...m, type: 'Personal' }));
+            case 'announcements':
+                return this.currentAnnouncements.map(n => ({ ...n, type: 'Announcement' }));
+            case 'high-priority':
+                return allMessages.filter(m => m.priority === 'high');
+            default:
+                return allMessages;
+        }
+    }
+    
+    // Create message card HTML
+    createMessageCard(msg) {
+        const title = msg.subject || msg.title || 'Message';
+        const body = msg.body || msg.message || msg.message_content || '';
+        const isRead = msg.is_read ? 'read' : 'unread';
+        const createdAt = this.formatMessageDate(msg.created_at);
+        const borderColor = msg.type === 'Personal' ? '#4C1D95' : '#F97316';
+        const priority = msg.priority || 'normal';
+        
+        // Truncate long messages
+        const truncatedBody = body.length > 300 ? body.substring(0, 300) + '...' : body;
+        
+        return `
+            <div class="message-item ${isRead}" 
+                 data-id="${msg.id}" 
+                 data-type="${msg.type}"
+                 data-priority="${priority}"
+                 style="border-left: 4px solid ${borderColor};">
+                
+                <div class="message-header">
+                    <div class="message-title-section">
+                        <i class="fas ${msg.type === 'Personal' ? 'fa-user' : 'fa-bullhorn'}" 
+                           style="color: ${borderColor};"></i>
+                        <div class="message-title-wrapper">
+                            <h4 class="message-title">${this.escapeHtml(title)}</h4>
+                            <div class="message-meta">
+                                <span class="message-date">${createdAt}</span>
+                                <span class="priority-badge ${priority}">${priority}</span>
+                                <span class="message-type">${msg.type}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="message-actions">
+                        ${!msg.is_read ? `
+                            <button class="mark-read-btn" data-id="${msg.id}" data-type="${msg.type}">
+                                <i class="fas fa-check"></i>
+                            </button>
+                        ` : ''}
+                        <button class="view-btn" data-id="${msg.id}">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="message-body">
+                    <p>${this.escapeHtml(truncatedBody)}</p>
+                    ${body.length > 300 ? `
+                        <button class="read-more-btn" data-id="${msg.id}">
+                            Read More
+                        </button>
+                    ` : ''}
+                </div>
+                
+                <div class="message-footer">
+                    <span class="message-status ${isRead}">
+                        <i class="fas ${msg.is_read ? 'fa-check-circle' : 'fa-circle'}"></i>
+                        ${isRead.toUpperCase()}
+                    </span>
+                    ${msg.sender_name ? `
+                        <span class="message-sender">
+                            <i class="fas fa-user-tag"></i>
+                            From: ${this.escapeHtml(msg.sender_name)}
+                        </span>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    }
+    
+    // Attach event listeners to message cards
+    attachMessageEventListeners() {
+        // View message buttons
+        document.querySelectorAll('.view-btn, .read-more-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const messageId = btn.getAttribute('data-id');
+                this.showMessageModal(messageId);
+            });
+        });
+        
+        // Mark as read buttons
+        document.querySelectorAll('.mark-read-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const messageId = btn.getAttribute('data-id');
+                const messageType = btn.getAttribute('data-type');
+                await this.markMessageAsRead(messageId, messageType);
+            });
+        });
+        
+        // Message item click
+        document.querySelectorAll('.message-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                if (!e.target.closest('.message-actions')) {
+                    const messageId = item.getAttribute('data-id');
+                    this.showMessageModal(messageId);
+                }
+            });
+        });
+    }
+    
+    // Show message modal
+    async showMessageModal(messageId) {
+        // Find message
+        let message = this.currentMessages.find(m => m.id == messageId);
+        let messageType = 'Personal';
+        
+        if (!message) {
+            message = this.currentAnnouncements.find(a => a.id == messageId);
+            messageType = 'Announcement';
+        }
+        
+        if (!message) return;
+        
+        // Mark as read if unread
+        if (!message.is_read) {
+            await this.markMessageAsRead(messageId, messageType);
+        }
+        
+        // Create modal content
+        const modalContent = this.createModalContent(message, messageType);
+        
+        // Show modal using UI module if available, or create custom
+        if (window.ui && window.ui.showToast) {
+            // Use existing UI modal system
+            this.showCustomModal(modalContent);
+        } else {
+            // Simple alert for now
+            alert(`${message.title || 'Message'}\n\n${message.body || message.message || ''}`);
+        }
+    }
+    
+    // Create modal content
+    createModalContent(message, messageType) {
+        const title = message.subject || message.title || 'Message';
+        const body = message.body || message.message || message.message_content || '';
+        const createdAt = this.formatMessageDate(message.created_at, true);
+        
+        return `
+            <div class="message-modal">
+                <div class="modal-header">
+                    <h3>${this.escapeHtml(title)}</h3>
+                    <span class="message-type-badge">${messageType}</span>
+                    <button class="close-modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="message-meta">
+                        <div><strong>Date:</strong> ${createdAt}</div>
+                        ${message.sender_name ? `<div><strong>From:</strong> ${this.escapeHtml(message.sender_name)}</div>` : ''}
+                        ${message.priority ? `<div><strong>Priority:</strong> <span class="priority-badge ${message.priority}">${message.priority}</span></div>` : ''}
+                    </div>
+                    <div class="message-content">
+                        ${this.escapeHtml(body).replace(/\n/g, '<br>')}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    ${messageType === 'Personal' ? `
+                        <button class="btn btn-reply" data-id="${message.id}">
+                            <i class="fas fa-reply"></i> Reply
+                        </button>
+                    ` : ''}
+                    <button class="btn btn-close">Close</button>
+                </div>
+            </div>
+        `;
+    }
+    
+    // Show custom modal
+    showCustomModal(content) {
+        // Remove existing modal
+        const existingModal = document.getElementById('message-detail-modal');
+        if (existingModal) existingModal.remove();
+        
+        // Create modal
+        const modal = document.createElement('div');
+        modal.id = 'message-detail-modal';
+        modal.className = 'modal-overlay';
+        modal.innerHTML = content;
+        
+        // Add styles
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            padding: 20px;
+        `;
+        
+        // Add modal styles
+        const messageModal = modal.querySelector('.message-modal');
+        if (messageModal) {
+            messageModal.style.cssText = `
+                background: white;
+                border-radius: 12px;
+                width: 100%;
+                max-width: 600px;
+                max-height: 80vh;
+                overflow: hidden;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            `;
+        }
+        
+        document.body.appendChild(modal);
+        
+        // Add event listeners
+        modal.querySelector('.close-modal')?.addEventListener('click', () => {
+            modal.remove();
+        });
+        
+        modal.querySelector('.btn-close')?.addEventListener('click', () => {
+            modal.remove();
+        });
+        
+        modal.querySelector('.btn-reply')?.addEventListener('click', (e) => {
+            const messageId = e.target.closest('.btn-reply').getAttribute('data-id');
+            modal.remove();
+            this.replyToMessage(messageId);
+        });
+        
+        // Close on overlay click
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.remove();
+            }
+        });
+    }
+    
+    // Mark message as read
+    async markMessageAsRead(messageId, messageType) {
+        const supabaseClient = this.getSupabaseClient();
+        if (!supabaseClient) return false;
+        
+        try {
+            const tableName = messageType === 'Personal' ? 'student_messages' : 'notifications';
+            
+            const { error } = await supabaseClient
+                .from(tableName)
+                .update({ 
+                    is_read: true, 
+                    read_at: new Date().toISOString() 
+                })
+                .eq('id', messageId);
+            
+            if (error) throw error;
+            
+            // Update local state
+            if (messageType === 'Personal') {
+                const message = this.currentMessages.find(m => m.id == messageId);
+                if (message) message.is_read = true;
+            } else {
+                const announcement = this.currentAnnouncements.find(a => a.id == messageId);
+                if (announcement) announcement.is_read = true;
+            }
+            
+            // Update UI
+            this.renderMessages();
+            this.updateUnreadCount();
+            
+            this.showMessage('Marked as read', 'success');
+            return true;
+            
+        } catch (error) {
+            console.error('Error marking message as read:', error);
+            this.showMessage('Failed to mark as read', 'error');
+            return false;
+        }
+    }
+    
+    // Reply to message
+    replyToMessage(messageId) {
+        let message = this.currentMessages.find(m => m.id == messageId);
+        if (!message) return;
+        
+        if (this.elements.messageBody) {
+            const subject = message.subject || message.title || '';
+            const quotedBody = message.body || message.message || '';
+            
+            this.elements.messageBody.value = `Re: ${subject}\n\n--- Original Message ---\n${quotedBody}\n\n--- Your Reply ---\n`;
+            this.elements.messageBody.focus();
+            
+            // Switch to messages tab
+            if (window.ui && window.ui.showTab) {
+                window.ui.showTab('messages');
+            }
+            
+            this.showMessage('Message form pre-filled for reply', 'info');
+        }
+    }
+    
+    // Handle message form submission
+    async handleMessageSubmit(e) {
+        e.preventDefault();
+        
+        if (!this.elements.messageBody || !this.elements.messageBody.value.trim()) {
+            this.showMessage('Please write a message', 'warning');
+            return;
+        }
+        
+        const userProfile = this.getUserProfile();
+        const userId = this.getCurrentUserId();
+        const supabaseClient = this.getSupabaseClient();
+        
+        if (!userProfile || !supabaseClient) {
+            this.showMessage('System error: User profile or database not available', 'error');
+            return;
+        }
+        
+        // Disable form during submission
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+        const originalBtnText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+        
+        // Show status
+        if (this.elements.messageStatus) {
+            this.elements.messageStatus.textContent = 'Sending message...';
+            this.elements.messageStatus.className = 'status-sending';
+        }
+        
+        try {
+            const messageData = {
+                subject: 'Message from Student',
+                body: this.elements.messageBody.value.trim(),
+                recipient_id: 'admin',
+                recipient_program: userProfile.program || userProfile.department,
+                sender_id: userId,
+                sender_name: userProfile.full_name || userProfile.name || 'Student',
+                sender_email: userProfile.email || '',
+                is_read: false,
+                priority: 'normal',
+                created_at: new Date().toISOString()
+            };
+            
+            const { error } = await supabaseClient
+                .from('student_messages')
+                .insert([messageData]);
+            
+            if (error) throw error;
+            
+            // Clear form
+            this.elements.messageBody.value = '';
+            
+            // Show success
+            this.showMessage('Message sent successfully!', 'success');
+            
+            // Reload messages after a delay
+            setTimeout(() => {
+                this.loadMessages();
+            }, 1500);
+            
+        } catch (error) {
+            console.error('Error sending message:', error);
+            this.showMessage('Failed to send message: ' + error.message, 'error');
+            
+        } finally {
+            // Re-enable form
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalBtnText;
+            
+            // Clear status after 3 seconds
+            if (this.elements.messageStatus) {
+                setTimeout(() => {
+                    this.elements.messageStatus.textContent = '';
+                    this.elements.messageStatus.className = '';
+                }, 3000);
+            }
+        }
+    }
+    
+    // Search messages
+    searchMessages(searchTerm) {
+        const messages = this.getFilteredMessages();
+        
+        if (!searchTerm.trim()) {
+            this.renderMessages();
+            return;
+        }
+        
+        const searchLower = searchTerm.toLowerCase();
+        const filteredMessages = messages.filter(msg => {
+            const title = (msg.subject || msg.title || '').toLowerCase();
+            const body = (msg.body || msg.message || msg.message_content || '').toLowerCase();
+            const sender = (msg.sender_name || '').toLowerCase();
+            
+            return title.includes(searchLower) || 
+                   body.includes(searchLower) || 
+                   sender.includes(searchLower);
+        });
+        
+        this.displaySearchResults(filteredMessages, searchTerm);
+    }
+    
+    // Display search results
+    displaySearchResults(messages, searchTerm) {
+        if (!this.elements.messagesList) return;
+        
+        if (messages.length === 0) {
+            this.elements.messagesList.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-search"></i>
+                    <h3>No Results Found</h3>
+                    <p>No messages found for "${searchTerm}"</p>
+                </div>
+            `;
+            return;
+        }
+        
+        this.elements.messagesList.innerHTML = messages
+            .map(msg => this.createMessageCard(msg))
+            .join('');
+        
+        this.attachMessageEventListeners();
+    }
+    
+    // Load message templates
+    async loadMessageTemplates() {
+        const userProfile = this.getUserProfile();
+        const supabaseClient = this.getSupabaseClient();
+        
+        if (!supabaseClient || !this.elements.templateSelect) return;
+        
+        try {
+            const { data: templates, error } = await supabaseClient
+                .from('message_templates')
+                .select('*')
+                .eq('is_active', true)
+                .or(`target_program.eq.${userProfile?.program || 'General'},target_program.is.null`)
+                .order('name', { ascending: true });
+            
+            if (error) throw error;
+            
+            this.messageTemplates = templates || [];
+            this.populateTemplateDropdown();
+            
+        } catch (error) {
+            console.error('Error loading message templates:', error);
+        }
+    }
+    
+    // Populate template dropdown
+    populateTemplateDropdown() {
+        if (!this.elements.templateSelect) return;
+        
+        this.elements.templateSelect.innerHTML = '<option value="">Select a template...</option>';
+        
+        this.messageTemplates.forEach(template => {
+            const option = document.createElement('option');
+            option.value = template.id;
+            option.textContent = template.name;
+            this.elements.templateSelect.appendChild(option);
+        });
+    }
+    
+    // Apply message template
+    applyMessageTemplate(templateId) {
+        const template = this.messageTemplates.find(t => t.id == templateId);
+        if (!template || !this.elements.messageBody) return;
+        
+        this.elements.messageBody.value = template.content;
+        this.showMessage(`Template "${template.name}" applied`, 'success');
+    }
+    
+    // Update unread message count
+    updateUnreadCount() {
+        const allMessages = [
+            ...this.currentMessages,
+            ...this.currentAnnouncements
+        ];
+        
+        const unreadCount = allMessages.filter(m => !m.is_read).length;
+        
+        // Update badge
+        if (this.elements.messagesBadge) {
+            if (unreadCount > 0) {
+                this.elements.messagesBadge.textContent = unreadCount;
+                this.elements.messagesBadge.style.display = 'inline-block';
+            } else {
+                this.elements.messagesBadge.style.display = 'none';
+            }
+        }
+        
+        // Update tab title
+        if (this.elements.messagesTab) {
+            const baseText = this.elements.messagesTab.textContent.replace(/\(\d+\)\s*/, '');
+            this.elements.messagesTab.textContent = unreadCount > 0 ? 
+                `(${unreadCount}) ${baseText}` : baseText;
+        }
+        
+        return unreadCount;
+    }
+    
+    // Update dashboard announcement
+    updateDashboardAnnouncement() {
+        if (this.currentAnnouncements.length === 0) return;
+        
+        const latestAnnouncement = this.currentAnnouncements[0];
+        const announcementElement = document.getElementById('student-announcement');
+        
+        if (announcementElement && latestAnnouncement.message) {
+            announcementElement.textContent = latestAnnouncement.message;
+        }
+    }
+    
+    // Filter messages
+    filterMessages(filterType) {
+        this.currentFilter = filterType;
+        this.renderMessages();
+        this.updateFilterButtonStates();
+    }
+    
+    // Update filter button states
+    updateFilterButtonStates() {
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            const filter = btn.getAttribute('data-filter');
+            if (filter === this.currentFilter) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+    }
+    
+    // Show loading state
+    showLoading() {
+        if (!this.elements.messagesList) return;
+        
+        this.elements.messagesList.innerHTML = `
+            <div class="loading-state">
+                <div class="loading-spinner"></div>
+                <p>Loading messages...</p>
+            </div>
+        `;
+    }
+    
+    // Show message (toast/status)
+    showMessage(text, type = 'info') {
+        // Use UI module if available
+        if (window.ui && window.ui.showToast) {
+            window.ui.showToast(text, type);
+            return;
+        }
+        
+        // Fallback to status element
+        if (this.elements.messageStatus) {
+            this.elements.messageStatus.textContent = text;
+            this.elements.messageStatus.className = `status-${type}`;
+            
+            // Auto-hide after 3 seconds
+            setTimeout(() => {
+                this.elements.messageStatus.textContent = '';
+                this.elements.messageStatus.className = '';
+            }, 3000);
+        }
+    }
+    
+    // Format message date
+    formatMessageDate(dateString, full = false) {
+        if (!dateString) return 'N/A';
+        
+        const date = new Date(dateString);
+        const now = new Date();
+        const diffMs = now - date;
+        const diffMins = Math.floor(diffMs / (1000 * 60));
+        const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        
+        if (full) {
+            return date.toLocaleString('en-US', {
+                weekday: 'short',
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+        
+        if (diffMins < 1) return 'Just now';
+        if (diffMins < 60) return `${diffMins}m ago`;
+        if (diffHours < 24) return `${diffHours}h ago`;
+        if (diffDays < 7) return `${diffDays}d ago`;
+        
+        return date.toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+        });
+    }
+    
+    // Utility to safely escape HTML
+    escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
 }
 
 // *************************************************************************
 // *** GLOBAL EXPORTS ***
 // *************************************************************************
 
-// Make functions globally available
-window.loadStudentMessagesAndAnnouncements = loadStudentMessagesAndAnnouncements;
-window.handleMessageSubmit = handleMessageSubmit;
-window.replyToMessage = replyToMessage;
-window.forwardMessage = forwardMessage;
-window.deleteMessage = deleteMessage;
-window.toggleMessageReadStatus = toggleMessageReadStatus;
-window.showFullMessage = showFullMessage;
-window.closeMessageModal = closeMessageModal;
-window.filterMessages = filterMessages;
-window.searchMessages = searchMessages;
-window.applyMessageTemplate = applyMessageTemplate;
-window.initializeMessagesSystem = initializeMessagesSystem;
+// Create and export singleton instance
+window.messagesSystem = new MessagesSystem();
 
-// Auto-initialize when DOM is ready
+// Export individual functions for backward compatibility
+window.loadStudentMessagesAndAnnouncements = () => window.messagesSystem.loadMessages();
+window.handleMessageSubmit = (e) => window.messagesSystem.handleMessageSubmit(e);
+window.replyToMessage = (id) => window.messagesSystem.replyToMessage(id);
+window.filterMessages = (type) => window.messagesSystem.filterMessages(type);
+window.searchMessages = (term) => window.messagesSystem.searchMessages(term);
+window.applyMessageTemplate = (id) => window.messagesSystem.applyMessageTemplate(id);
+window.initializeMessagesSystem = () => window.messagesSystem.initialize();
+
+// Auto-initialize when app is ready
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeMessagesSystem);
+    document.addEventListener('DOMContentLoaded', () => {
+        window.messagesSystem.initialize();
+    });
 } else {
-    initializeMessagesSystem();
+    window.messagesSystem.initialize();
 }
+
+// Listen for app ready event
+document.addEventListener('appReady', () => {
+    console.log('📱 App ready, initializing messages system...');
+    window.messagesSystem.initialize();
+});
