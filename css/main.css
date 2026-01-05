@@ -4,12 +4,14 @@
 @import url('base.css');
 @import url('layout.css');
 @import url('components.css');
+@import url('messages.css'); /* Add this line */
 @import url('exams.css');
 @import url('courses.css');
 @import url('dashboard.css');
 @import url('resources.css');
 @import url('reader.css');
 @import url('nurseiq.css');
+@import url('loading.css'); /* Add this line */
 @import url('responsive.css');
 
 /* ========== BASE SAFETY NET ========== */
@@ -22,6 +24,199 @@ body {
     margin: 0;
     padding: 0;
     overflow-x: hidden;
+}
+
+/* ========== LOADING SCREEN STYLES ========== */
+#loading-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #4C1D95 0%, #7C3AED 100%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    color: white;
+    transition: opacity 0.5s ease;
+}
+
+.loading-content {
+    text-align: center;
+    max-width: 600px;
+    padding: 40px;
+}
+
+.loading-logo {
+    width: 120px;
+    height: 120px;
+    background: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 30px;
+    font-size: 48px;
+    color: #4C1D95;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    animation: logoFloat 3s ease-in-out infinite;
+}
+
+@keyframes logoFloat {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+}
+
+.loading-content h1 {
+    font-size: 2.5rem;
+    font-weight: 800;
+    margin-bottom: 10px;
+    background: linear-gradient(135deg, #fff 0%, #e2e8f0 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.loading-content p {
+    font-size: 1.1rem;
+    opacity: 0.9;
+    margin-bottom: 30px;
+    font-weight: 300;
+}
+
+.loading-status {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 20px;
+    margin-top: 30px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.status-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 10px;
+}
+
+.status-item i {
+    font-size: 1.2rem;
+    color: #A78BFA;
+}
+
+#status-text {
+    font-weight: 500;
+    font-size: 1rem;
+}
+
+.config-details {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    font-size: 0.9rem;
+    opacity: 0.8;
+    text-align: left;
+}
+
+.config-details small {
+    display: block;
+    margin-bottom: 5px;
+}
+
+/* Progress bar for loading */
+.loading-progress {
+    width: 100%;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+    margin: 20px 0;
+    overflow: hidden;
+}
+
+.loading-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #8B5CF6, #4F46E5);
+    border-radius: 2px;
+    width: 0%;
+    transition: width 0.3s ease;
+}
+
+/* Loading dots animation */
+.loading-dots {
+    display: inline-flex;
+    gap: 6px;
+    margin-left: 10px;
+}
+
+.loading-dots span {
+    width: 8px;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.5);
+    border-radius: 50%;
+    animation: dotPulse 1.4s ease-in-out infinite;
+}
+
+.loading-dots span:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.loading-dots span:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+@keyframes dotPulse {
+    0%, 60%, 100% { transform: scale(1); opacity: 0.5; }
+    30% { transform: scale(1.3); opacity: 1; }
+}
+
+/* Error state */
+.error-container {
+    text-align: center;
+    padding: 40px;
+}
+
+.error-icon {
+    width: 80px;
+    height: 80px;
+    background: #EF4444;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+    font-size: 32px;
+    color: white;
+}
+
+.error-container h2 {
+    color: white;
+    margin-bottom: 10px;
+}
+
+.error-container p {
+    color: rgba(255, 255, 255, 0.8);
+    margin-bottom: 30px;
+}
+
+.retry-btn {
+    background: white;
+    color: #4C1D95;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+}
+
+.retry-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
 }
 
 /* ========== CORE LAYOUT ========== */
@@ -222,10 +417,192 @@ textarea {
     .mobile-header {
         display: flex;
     }
+    
+    /* Loading screen mobile adjustments */
+    .loading-content {
+        padding: 20px;
+        margin: 20px;
+    }
+    
+    .loading-content h1 {
+        font-size: 2rem;
+    }
+    
+    .loading-logo {
+        width: 100px;
+        height: 100px;
+        font-size: 36px;
+    }
 }
 
 /* ========== ANIMATION ======= */
 @keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ========== ENHANCED LOADING SCREEN ========== */
+.loading-container {
+    text-align: center;
+    max-width: 600px;
+    padding: 40px;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border-radius: 24px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.logo-animation {
+    position: relative;
+    width: 120px;
+    height: 120px;
+    margin: 0 auto 30px;
+}
+
+.logo-circle {
+    width: 100%;
+    height: 100%;
+    background: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 48px;
+    color: #4C1D95;
+    position: relative;
+    z-index: 2;
+    animation: logoFloat 3s ease-in-out infinite;
+}
+
+.logo-ring {
+    position: absolute;
+    top: -10px;
+    left: -10px;
+    right: -10px;
+    bottom: -10px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    animation: ringPulse 2s ease-in-out infinite;
+}
+
+.logo-pulse {
+    position: absolute;
+    top: -20px;
+    left: -20px;
+    right: -20px;
+    bottom: -20px;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    animation: ringPulse 3s ease-in-out infinite;
+}
+
+@keyframes ringPulse {
+    0%, 100% { opacity: 0.3; transform: scale(1); }
+    50% { opacity: 0.1; transform: scale(1.05); }
+}
+
+.welcome-text .subtitle {
+    font-size: 1.1rem;
+    opacity: 0.9;
+    margin-bottom: 40px;
+    font-weight: 300;
+}
+
+.progress-container {
+    margin: 40px 0;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 15px;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #8B5CF6, #4F46E5);
+    border-radius: 4px;
+    width: 0%;
+    transition: width 0.5s ease;
+}
+
+.status-steps {
+    margin: 30px 0;
+    text-align: left;
+}
+
+.status-step {
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    opacity: 0.5;
+    transition: all 0.3s ease;
+}
+
+.status-step.active {
+    opacity: 1;
+}
+
+.status-step.completed {
+    opacity: 1;
+    color: #A78BFA;
+}
+
+.status-step .step-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+}
+
+.status-step.active .step-icon {
+    background: #4F46E5;
+    animation: iconPulse 1.5s infinite;
+}
+
+@keyframes iconPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.4); }
+    50% { box-shadow: 0 0 0 10px rgba(79, 70, 229, 0); }
+}
+
+.status-step.completed .step-icon {
+    background: #10B981;
+}
+
+.fun-fact {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 15px;
+    margin: 25px 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 0.9rem;
+    animation: fadeInUp 0.5s ease;
+}
+
+.fun-fact i {
+    color: #FBBF24;
+    font-size: 1.2rem;
+}
+
+@keyframes fadeInUp {
     from {
         opacity: 0;
         transform: translateY(10px);
