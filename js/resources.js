@@ -1,4 +1,4 @@
-// resources.js - Enhanced Resources System with PDF Viewer Fix
+// resources.js - Enhanced Resources System with Bottom Controls PDF Viewer
 
 // *************************************************************************
 // *** ENHANCED RESOURCES SYSTEM - VIEW ONLY ***
@@ -227,7 +227,7 @@ async function openPDF(resource) {
         // Initialize PDF.js if not already loaded
         await initializePDFJS();
         
-        // Create PDF viewer modal
+        // Create PDF viewer modal with bottom controls
         createPDFViewerModal(resource);
         
         // Load the PDF
@@ -236,12 +236,10 @@ async function openPDF(resource) {
     } catch (error) {
         console.error('PDF error:', error);
         showToast('Failed to load PDF: ' + error.message, 'error');
-        // Fallback to external link
-        window.open(resource.file_url, '_blank');
     }
 }
 
-// Create PDF viewer modal
+// Create PDF viewer modal with bottom controls
 function createPDFViewerModal(resource) {
     // Remove existing modal if any
     const existingModal = document.getElementById('pdf-viewer-modal');
@@ -255,18 +253,17 @@ function createPDFViewerModal(resource) {
     modal.className = 'pdf-modal';
     modal.innerHTML = `
         <div class="pdf-modal-content">
+            <!-- Header (only title and close button) -->
             <div class="pdf-modal-header">
                 <div class="pdf-title">
                     <h3>${escapeHtml(resource.title)}</h3>
-                    <div class="view-only-badge">
-                        <i class="fas fa-eye"></i> View Only
-                    </div>
                 </div>
-                <button class="close-pdf-btn" id="close-pdf-btn">
+                <button class="close-pdf-btn" id="close-pdf-btn" title="Close">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
             
+            <!-- Main viewer body -->
             <div class="pdf-viewer-body">
                 <!-- Loading -->
                 <div id="pdf-loading" class="pdf-loading">
@@ -284,61 +281,55 @@ function createPDFViewerModal(resource) {
                     </button>
                 </div>
                 
-                <!-- Viewer -->
+                <!-- PDF Viewer -->
                 <div id="pdf-viewer" class="pdf-viewer" style="display: none;">
-                    <!-- Navigation -->
-                    <div class="pdf-navigation">
-                        <button id="pdf-first" class="nav-btn" title="First Page">
-                            <i class="fas fa-fast-backward"></i>
-                        </button>
-                        <button id="pdf-prev" class="nav-btn" title="Previous Page">
-                            <i class="fas fa-chevron-left"></i>
-                        </button>
-                        
-                        <div class="page-counter">
-                            <input type="number" id="pdf-page-num" min="1" value="1">
-                            <span>of</span>
-                            <span id="pdf-total-pages">1</span>
-                        </div>
-                        
-                        <button id="pdf-next" class="nav-btn" title="Next Page">
-                            <i class="fas fa-chevron-right"></i>
-                        </button>
-                        <button id="pdf-last" class="nav-btn" title="Last Page">
-                            <i class="fas fa-fast-forward"></i>
-                        </button>
-                    </div>
-                    
-                    <!-- Zoom Controls -->
-                    <div class="pdf-zoom">
-                        <button id="pdf-zoom-out" class="zoom-btn" title="Zoom Out">
-                            <i class="fas fa-search-minus"></i>
-                        </button>
-                        <span id="pdf-zoom-level">100%</span>
-                        <button id="pdf-zoom-in" class="zoom-btn" title="Zoom In">
-                            <i class="fas fa-search-plus"></i>
-                        </button>
-                        <button id="pdf-zoom-fit" class="zoom-btn" title="Fit to Width">
-                            <i class="fas fa-expand-arrows-alt"></i>
-                        </button>
-                        <button id="pdf-zoom-reset" class="zoom-btn" title="Reset Zoom">
-                            <i class="fas fa-sync-alt"></i>
-                        </button>
-                    </div>
-                    
-                    <!-- Canvas Container -->
+                    <!-- PDF Canvas Container -->
                     <div class="pdf-canvas-container">
                         <canvas id="pdf-canvas"></canvas>
                     </div>
                     
-                    <!-- Additional Actions -->
-                    <div class="pdf-actions">
-                        <button id="pdf-open-external" class="action-btn">
-                            <i class="fas fa-external-link-alt"></i> Open in New Tab
-                        </button>
-                        <button id="pdf-print" class="action-btn" style="display: none;">
-                            <i class="fas fa-print"></i> Print
-                        </button>
+                    <!-- CONTROLS AT BOTTOM -->
+                    <div class="pdf-controls-bottom">
+                        <!-- Page Navigation -->
+                        <div class="page-navigation">
+                            <button id="pdf-first" class="control-btn" title="First Page">
+                                <i class="fas fa-fast-backward"></i>
+                            </button>
+                            <button id="pdf-prev" class="control-btn" title="Previous Page">
+                                <i class="fas fa-chevron-left"></i>
+                            </button>
+                            
+                            <div class="page-info">
+                                <input type="number" id="pdf-page-num" min="1" value="1" 
+                                       title="Page number">
+                                <span class="page-separator">/</span>
+                                <span id="pdf-total-pages">1</span>
+                            </div>
+                            
+                            <button id="pdf-next" class="control-btn" title="Next Page">
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                            <button id="pdf-last" class="control-btn" title="Last Page">
+                                <i class="fas fa-fast-forward"></i>
+                            </button>
+                        </div>
+                        
+                        <!-- Zoom Controls -->
+                        <div class="zoom-controls">
+                            <button id="pdf-zoom-out" class="control-btn" title="Zoom Out">
+                                <i class="fas fa-search-minus"></i>
+                            </button>
+                            <span class="zoom-display" id="pdf-zoom-level">100%</span>
+                            <button id="pdf-zoom-in" class="control-btn" title="Zoom In">
+                                <i class="fas fa-search-plus"></i>
+                            </button>
+                            <button id="pdf-zoom-fit" class="control-btn" title="Fit to Width">
+                                <i class="fas fa-expand-arrows-alt"></i>
+                            </button>
+                            <button id="pdf-zoom-reset" class="control-btn" title="Reset Zoom">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -347,8 +338,8 @@ function createPDFViewerModal(resource) {
     
     document.body.appendChild(modal);
     
-    // Add CSS for PDF viewer
-    addPDFViewerCSS();
+    // Add CSS for PDF viewer with bottom controls
+    addPDFViewerCSSBottom();
     
     // Set up event listeners
     setupPDFViewerEvents(resource);
@@ -357,9 +348,9 @@ function createPDFViewerModal(resource) {
     modal.style.display = 'flex';
 }
 
-// Add PDF viewer CSS
-function addPDFViewerCSS() {
-    const styleId = 'pdf-viewer-styles';
+// Add PDF viewer CSS with bottom controls
+function addPDFViewerCSSBottom() {
+    const styleId = 'pdf-viewer-bottom-styles';
     if (document.getElementById(styleId)) return;
     
     const styles = `
@@ -369,64 +360,53 @@ function addPDFViewerCSS() {
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0, 0, 0, 0.8);
+            background: rgba(0, 0, 0, 0.9);
             display: none;
             justify-content: center;
             align-items: center;
             z-index: 2000;
-            padding: 20px;
+            padding: 10px;
         }
         
         .pdf-modal-content {
             background: white;
-            border-radius: 12px;
+            border-radius: 8px;
             width: 100%;
-            max-width: 1200px;
-            max-height: 90vh;
+            max-width: 1000px;
+            max-height: 95vh;
             display: flex;
             flex-direction: column;
             overflow: hidden;
         }
         
         .pdf-modal-header {
-            padding: 20px;
-            background: #f8fafc;
-            border-bottom: 1px solid #e2e8f0;
+            padding: 12px 20px;
+            background: #2d3748;
+            color: white;
             display: flex;
             justify-content: space-between;
             align-items: center;
-        }
-        
-        .pdf-title {
-            display: flex;
-            align-items: center;
-            gap: 15px;
+            border-bottom: 1px solid #4a5568;
         }
         
         .pdf-title h3 {
             margin: 0;
-            font-size: 1.2rem;
-            color: #1e293b;
-        }
-        
-        .view-only-badge {
-            background: #fef3c7;
-            color: #92400e;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            display: flex;
-            align-items: center;
-            gap: 6px;
+            font-size: 1rem;
+            color: white;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 80%;
         }
         
         .close-pdf-btn {
-            background: #ef4444;
+            background: #4a5568;
             color: white;
             border: none;
-            width: 40px;
-            height: 40px;
-            border-radius: 8px;
+            width: 36px;
+            height: 36px;
+            border-radius: 6px;
             cursor: pointer;
             display: flex;
             align-items: center;
@@ -436,28 +416,34 @@ function addPDFViewerCSS() {
         }
         
         .close-pdf-btn:hover {
-            background: #dc2626;
+            background: #718096;
         }
         
         .pdf-viewer-body {
             flex: 1;
-            overflow: auto;
-            padding: 20px;
-            background: #f1f5f9;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background: #f7fafc;
         }
         
         .pdf-loading, .pdf-error {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 40px 20px;
             text-align: center;
-            padding: 60px 20px;
         }
         
         .loading-spinner {
-            width: 50px;
-            height: 50px;
-            border: 4px solid #e2e8f0;
+            width: 40px;
+            height: 40px;
+            border: 3px solid #e2e8f0;
             border-top-color: #4C1D95;
             border-radius: 50%;
-            margin: 0 auto 20px;
+            margin: 0 auto 15px;
             animation: spin 1s linear infinite;
         }
         
@@ -466,66 +452,131 @@ function addPDFViewerCSS() {
         }
         
         .pdf-error i {
-            font-size: 3rem;
-            color: #ef4444;
-            margin-bottom: 20px;
+            font-size: 2.5rem;
+            color: #e53e3e;
+            margin-bottom: 15px;
         }
         
         .pdf-error h3 {
-            color: #dc2626;
+            color: #c53030;
             margin-bottom: 10px;
+            font-size: 1.2rem;
         }
         
-        .pdf-navigation {
+        .pdf-error p {
+            color: #718096;
+            margin-bottom: 20px;
+            max-width: 400px;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        
+        .btn-primary {
+            background: #4C1D95;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #3c1680;
+        }
+        
+        /* PDF Viewer */
+        .pdf-viewer {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .pdf-canvas-container {
+            flex: 1;
+            overflow: auto;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 20px;
+            background: #f7fafc;
+        }
+        
+        #pdf-canvas {
+            max-width: 100%;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-radius: 4px;
+            background: white;
+        }
+        
+        /* BOTTOM CONTROLS */
+        .pdf-controls-bottom {
+            background: white;
+            border-top: 1px solid #e2e8f0;
+            padding: 15px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+        }
+        
+        .page-navigation {
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 15px;
-            margin-bottom: 20px;
-            padding: 15px;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            gap: 10px;
         }
         
-        .nav-btn {
+        .zoom-controls {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .control-btn {
             background: #4C1D95;
             color: white;
             border: none;
             width: 40px;
             height: 40px;
-            border-radius: 8px;
+            border-radius: 6px;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: background 0.3s;
+            transition: all 0.2s;
         }
         
-        .nav-btn:hover {
+        .control-btn:hover {
             background: #3c1680;
+            transform: translateY(-1px);
         }
         
-        .nav-btn:disabled {
+        .control-btn:disabled {
             background: #cbd5e1;
             cursor: not-allowed;
+            transform: none;
         }
         
-        .page-counter {
+        .page-info {
             display: flex;
             align-items: center;
-            gap: 10px;
-            font-weight: 600;
-            color: #475569;
+            gap: 5px;
+            margin: 0 15px;
         }
         
         #pdf-page-num {
-            width: 60px;
+            width: 50px;
             padding: 8px;
             border: 2px solid #cbd5e1;
-            border-radius: 6px;
+            border-radius: 4px;
             text-align: center;
             font-weight: 600;
+            font-size: 0.9rem;
         }
         
         #pdf-page-num:focus {
@@ -533,109 +584,88 @@ function addPDFViewerCSS() {
             border-color: #4C1D95;
         }
         
-        .pdf-zoom {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 15px;
-            margin-bottom: 20px;
-            padding: 15px;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        .page-separator {
+            color: #718096;
+            font-weight: 600;
         }
         
-        .zoom-btn {
-            background: #64748b;
-            color: white;
-            border: none;
-            width: 40px;
-            height: 40px;
-            border-radius: 8px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: background 0.3s;
+        #pdf-total-pages {
+            font-weight: 600;
+            color: #2d3748;
+            min-width: 30px;
         }
         
-        .zoom-btn:hover {
-            background: #475569;
-        }
-        
-        #pdf-zoom-level {
-            min-width: 60px;
+        .zoom-display {
+            min-width: 50px;
             text-align: center;
             font-weight: 600;
-            color: #475569;
-        }
-        
-        .pdf-canvas-container {
-            text-align: center;
-            margin-bottom: 20px;
-            padding: 20px;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            overflow: auto;
-        }
-        
-        #pdf-canvas {
-            max-width: 100%;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            border-radius: 4px;
-            background: white;
-        }
-        
-        .pdf-actions {
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            padding: 20px;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-        
-        .action-btn {
-            background: #4C1D95;
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 8px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-weight: 600;
-            transition: background 0.3s;
-        }
-        
-        .action-btn:hover {
-            background: #3c1680;
+            color: #2d3748;
+            margin: 0 10px;
         }
         
         @media (max-width: 768px) {
             .pdf-modal {
-                padding: 10px;
+                padding: 5px;
             }
             
             .pdf-modal-content {
-                max-height: 95vh;
+                max-height: 98vh;
+                border-radius: 4px;
             }
             
-            .pdf-navigation, .pdf-zoom {
-                flex-wrap: wrap;
+            .pdf-modal-header {
+                padding: 10px 15px;
             }
             
-            .nav-btn, .zoom-btn {
+            .pdf-title h3 {
+                font-size: 0.9rem;
+            }
+            
+            .close-pdf-btn {
+                width: 32px;
+                height: 32px;
+                font-size: 1rem;
+            }
+            
+            .pdf-canvas-container {
+                padding: 10px;
+            }
+            
+            .pdf-controls-bottom {
+                padding: 12px 15px;
+                gap: 12px;
+            }
+            
+            .control-btn {
                 width: 36px;
                 height: 36px;
             }
             
-            .action-btn {
-                padding: 10px 16px;
-                font-size: 0.9rem;
+            #pdf-page-num {
+                width: 45px;
+                padding: 6px;
+                font-size: 0.85rem;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .pdf-controls-bottom {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .page-navigation, .zoom-controls {
+                gap: 8px;
+            }
+            
+            .control-btn {
+                width: 32px;
+                height: 32px;
+            }
+            
+            #pdf-page-num {
+                width: 40px;
+                padding: 5px;
             }
         }
     `;
@@ -650,7 +680,6 @@ function addPDFViewerCSS() {
 function setupPDFViewerEvents(resource) {
     const modal = document.getElementById('pdf-viewer-modal');
     const closeBtn = document.getElementById('close-pdf-btn');
-    const openExternalBtn = document.getElementById('pdf-open-external');
     
     // Close modal
     closeBtn.addEventListener('click', () => {
@@ -664,11 +693,6 @@ function setupPDFViewerEvents(resource) {
             modal.style.display = 'none';
             cleanupPDF();
         }
-    });
-    
-    // Open in new tab
-    openExternalBtn.addEventListener('click', () => {
-        window.open(resource.file_url, '_blank');
     });
     
     // Setup PDF controls
@@ -747,7 +771,7 @@ async function loadPDFDocument(pdfUrl) {
 
 // Show loading state
 function showLoadingState() {
-    document.getElementById('pdf-loading').style.display = 'block';
+    document.getElementById('pdf-loading').style.display = 'flex';
     document.getElementById('pdf-error').style.display = 'none';
     document.getElementById('pdf-viewer').style.display = 'none';
 }
@@ -755,7 +779,7 @@ function showLoadingState() {
 // Show error state
 function showErrorState(message) {
     document.getElementById('pdf-loading').style.display = 'none';
-    document.getElementById('pdf-error').style.display = 'block';
+    document.getElementById('pdf-error').style.display = 'flex';
     document.getElementById('pdf-error-message').textContent = message;
     document.getElementById('pdf-viewer').style.display = 'none';
     
@@ -764,7 +788,12 @@ function showErrorState(message) {
         const modal = document.getElementById('pdf-viewer-modal');
         if (modal) {
             modal.style.display = 'none';
-            setTimeout(() => openPDF(currentPDFDoc), 100);
+            setTimeout(() => {
+                if (currentResources) {
+                    const resource = currentResources.find(r => r.file_url === pdfUrl);
+                    if (resource) openPDF(resource);
+                }
+            }, 100);
         }
     };
 }
@@ -776,7 +805,7 @@ function hideLoadingState() {
 }
 
 function showViewer() {
-    document.getElementById('pdf-viewer').style.display = 'block';
+    document.getElementById('pdf-viewer').style.display = 'flex';
 }
 
 // Render PDF page
@@ -796,23 +825,35 @@ async function renderPage(pageNum) {
         const page = await currentPDFDoc.getPage(pageNum);
         const canvas = document.getElementById('pdf-canvas');
         const ctx = canvas.getContext('2d');
-        const container = canvas.parentElement;
+        const container = document.querySelector('.pdf-canvas-container');
         
-        // Get viewport
-        const viewport = page.getViewport({ scale: pdfScale });
+        // Calculate scale to fit container
+        const containerWidth = container.clientWidth - 40; // Account for padding
+        const viewport = page.getViewport({ scale: 1 });
+        
+        // Auto-fit to width on first render
+        if (pdfScale === 1.0) {
+            pdfScale = Math.min(containerWidth / viewport.width, 2.0);
+        }
+        
+        // Apply scale
+        const scaledViewport = page.getViewport({ scale: pdfScale });
         
         // Set canvas dimensions
-        canvas.height = viewport.height;
-        canvas.width = viewport.width;
+        canvas.height = scaledViewport.height;
+        canvas.width = scaledViewport.width;
         
-        // Set CSS dimensions
-        canvas.style.height = viewport.height + 'px';
-        canvas.style.width = viewport.width + 'px';
+        // Clear canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Set white background
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
         
         // Render page
         const renderContext = {
             canvasContext: ctx,
-            viewport: viewport
+            viewport: scaledViewport
         };
         
         await page.render(renderContext).promise;
@@ -823,6 +864,12 @@ async function renderPage(pageNum) {
         
         // Update navigation buttons
         updateNavigationButtons();
+        
+        // Update zoom display
+        updateZoomDisplay();
+        
+        // Scroll to top of canvas container
+        container.scrollTop = 0;
         
     } catch (error) {
         console.error('Page render error:', error);
@@ -875,16 +922,22 @@ function updateZoomDisplay() {
 // Fit to width
 function fitToWidth() {
     const canvas = document.getElementById('pdf-canvas');
-    const container = canvas.parentElement;
+    const container = document.querySelector('.pdf-canvas-container');
     
     if (!currentPDFDoc || !container) return;
     
-    // This is a simplified fit-to-width calculation
-    pdfScale = container.clientWidth / 595; // A4 width at 72 DPI
-    pdfScale = Math.max(0.5, Math.min(pdfScale, 3.0));
-    
-    updateZoomDisplay();
-    renderPage(currentPDFPage);
+    // Get current page to calculate width
+    const page = currentPDFDoc.getPage(currentPDFPage);
+    page.then(p => {
+        const viewport = p.getViewport({ scale: 1 });
+        const containerWidth = container.clientWidth - 40; // Account for padding
+        
+        pdfScale = containerWidth / viewport.width;
+        pdfScale = Math.max(0.5, Math.min(pdfScale, 3.0));
+        
+        updateZoomDisplay();
+        renderPage(currentPDFPage);
+    });
 }
 
 // Handle keyboard navigation
@@ -950,18 +1003,10 @@ function openOtherResource(resource) {
                 <div class="image-viewer">
                     <div class="viewer-header">
                         <h3>${escapeHtml(resource.title)}</h3>
-                        <span class="view-only-badge">
-                            <i class="fas fa-eye"></i> View Only
-                        </span>
                     </div>
                     <div class="image-container">
                         <img src="${resource.file_url}" alt="${escapeHtml(resource.title)}" 
                              style="max-width: 100%; max-height: 70vh;">
-                    </div>
-                    <div class="viewer-actions">
-                        <button onclick="window.open('${resource.file_url}', '_blank')" class="btn btn-primary">
-                            <i class="fas fa-external-link-alt"></i> Open in New Tab
-                        </button>
                     </div>
                 </div>
             `;
@@ -971,9 +1016,6 @@ function openOtherResource(resource) {
                 <div class="video-viewer">
                     <div class="viewer-header">
                         <h3>${escapeHtml(resource.title)}</h3>
-                        <span class="view-only-badge">
-                            <i class="fas fa-eye"></i> View Only
-                        </span>
                     </div>
                     <div class="video-container">
                         <video controls style="width: 100%; max-height: 70vh;">
@@ -989,17 +1031,9 @@ function openOtherResource(resource) {
                 <div class="generic-viewer">
                     <div class="viewer-header">
                         <h3>${escapeHtml(resource.title)}</h3>
-                        <span class="view-only-badge">
-                            <i class="fas fa-eye"></i> View Only
-                        </span>
                     </div>
                     <div class="viewer-content">
                         <p>This file type cannot be previewed in the browser.</p>
-                        <div class="viewer-actions">
-                            <button onclick="window.open('${resource.file_url}', '_blank')" class="btn btn-primary">
-                                <i class="fas fa-external-link-alt"></i> Open File
-                            </button>
-                        </div>
                     </div>
                 </div>
             `;
@@ -1026,93 +1060,6 @@ function createGenericModal(title, content) {
     `;
     
     document.body.appendChild(modal);
-    
-    // Add styles if not already present
-    if (!document.getElementById('resource-modal-styles')) {
-        const styles = `
-            .resource-modal {
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background: rgba(0,0,0,0.7);
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                z-index: 2000;
-                padding: 20px;
-            }
-            
-            .resource-modal-content {
-                background: white;
-                border-radius: 12px;
-                padding: 30px;
-                max-width: 800px;
-                max-height: 90vh;
-                overflow: auto;
-                position: relative;
-            }
-            
-            .close-modal-btn {
-                position: absolute;
-                top: 15px;
-                right: 15px;
-                background: #ef4444;
-                color: white;
-                border: none;
-                width: 36px;
-                height: 36px;
-                border-radius: 8px;
-                cursor: pointer;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-            }
-            
-            .viewer-header {
-                margin-bottom: 20px;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-            }
-            
-            .image-container, .video-container {
-                margin: 20px 0;
-                text-align: center;
-            }
-            
-            .viewer-actions {
-                margin-top: 20px;
-                text-align: center;
-            }
-            
-            .btn {
-                padding: 12px 24px;
-                border-radius: 8px;
-                border: none;
-                cursor: pointer;
-                font-weight: 600;
-                display: inline-flex;
-                align-items: center;
-                gap: 8px;
-            }
-            
-            .btn-primary {
-                background: #4C1D95;
-                color: white;
-            }
-            
-            .btn-primary:hover {
-                background: #3c1680;
-            }
-        `;
-        
-        const styleElement = document.createElement('style');
-        styleElement.id = 'resource-modal-styles';
-        styleElement.textContent = styles;
-        document.head.appendChild(styleElement);
-    }
 }
 
 // Filter resources
