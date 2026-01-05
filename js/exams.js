@@ -1,70 +1,112 @@
-// js/exams.js - COMPLETE FINAL VERSION (Based on Working Simple Module)
+// js/exams.js - FINAL WORKING VERSION (Matches HTML exactly)
 (function() {
     'use strict';
     
-    console.log('✅ exams.js - Complete Final Version');
+    console.log('✅ exams.js - Final Working Version');
     
     class ExamsModule {
         constructor() {
             console.log('🔧 ExamsModule initialized');
             
-            // Get DOM elements
+            // Store exam data
+            this.allExams = [];
+            this.currentExams = [];
+            this.completedExams = [];
+            this.currentFilter = 'all';
+            
+            // Cache DOM elements
+            this.cacheElements();
+            
+            // Initialize
+            this.initializeEventListeners();
+            this.updateFilterButtons();
+            this.loadExams();
+        }
+        
+        cacheElements() {
+            // Tables
             this.currentTable = document.getElementById('current-assessments-table');
             this.completedTable = document.getElementById('completed-assessments-table');
+            
+            // Empty states
             this.currentEmpty = document.getElementById('current-empty');
             this.completedEmpty = document.getElementById('completed-empty');
-            this.currentCountElement = document.getElementById('current-count');
-            this.completedCountElement = document.getElementById('completed-count');
-            this.completedAverageElement = document.getElementById('completed-average');
             
-            // Initialize event listeners
-            this.initializeEventListeners();
+            // Count elements
+            this.currentCount = document.getElementById('current-count');
+            this.completedCount = document.getElementById('completed-count');
+            this.completedAverage = document.getElementById('completed-average');
             
-            // Set default filter
-            this.currentFilter = 'all';
-            this.updateFilterButtons();
+            // Header stats
+            this.currentHeaderCount = document.getElementById('current-assessments-count');
+            this.completedHeaderCount = document.getElementById('completed-assessments-count');
+            this.overallAverage = document.getElementById('overall-average');
             
-            // Load exams immediately
-            this.loadExams();
+            // Performance summary elements
+            this.bestScore = document.getElementById('best-score');
+            this.lowestScore = document.getElementById('lowest-score');
+            this.passRate = document.getElementById('pass-rate');
+            this.distinctionCount = document.getElementById('distinction-count');
+            this.creditCount = document.getElementById('credit-count');
+            this.passCount = document.getElementById('pass-count');
+            this.failCount = document.getElementById('fail-count');
+            
+            // Distribution bars
+            this.distinctionBar = document.getElementById('distinction-bar');
+            this.creditBar = document.getElementById('credit-bar');
+            this.passBar = document.getElementById('pass-bar');
+            this.failBar = document.getElementById('fail-bar');
+            
+            // Timeline elements
+            this.firstAssessmentDate = document.getElementById('first-assessment-date');
+            this.latestAssessmentDate = document.getElementById('latest-assessment-date');
+            this.totalSubmitted = document.getElementById('total-submitted');
+            
+            console.log('✅ Cached all DOM elements');
         }
         
         initializeEventListeners() {
             console.log('🔌 Setting up event listeners...');
             
-            // 1. Refresh button
+            // 1. Filter buttons
+            const filterButtons = [
+                { id: 'view-all-assessments', filter: 'all' },
+                { id: 'view-current-only', filter: 'current' },
+                { id: 'view-completed-only', filter: 'completed' }
+            ];
+            
+            filterButtons.forEach(({ id, filter }) => {
+                const button = document.getElementById(id);
+                if (button) {
+                    button.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        console.log(`🔍 ${id} clicked, filter: ${filter}`);
+                        this.applyFilter(filter);
+                    });
+                }
+            });
+            
+            // 2. Refresh button
             const refreshBtn = document.getElementById('refresh-assessments');
             if (refreshBtn) {
-                refreshBtn.addEventListener('click', () => this.refresh());
+                refreshBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    console.log('🔄 Refresh button clicked');
+                    this.loadExams();
+                });
             }
-            
-            // 2. Filter buttons
-            this.setupFilterButton('view-all-assessments', 'all');
-            this.setupFilterButton('view-current-only', 'current');
-            this.setupFilterButton('view-completed-only', 'completed');
             
             // 3. Transcript button
             const transcriptBtn = document.getElementById('view-transcript');
             if (transcriptBtn) {
-                transcriptBtn.addEventListener('click', () => this.showTranscript());
-            }
-            
-            // 4. Print button
-            const printBtn = document.getElementById('print-assessments');
-            if (printBtn) {
-                printBtn.addEventListener('click', () => this.printAssessments());
-            }
-            
-            console.log('✅ Event listeners initialized');
-        }
-        
-        setupFilterButton(buttonId, filterType) {
-            const button = document.getElementById(buttonId);
-            if (button) {
-                button.addEventListener('click', () => {
-                    console.log(`🔍 ${buttonId} clicked, filtering: ${filterType}`);
-                    this.applyFilter(filterType);
+                transcriptBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    console.log('📋 Transcript button clicked');
+                    this.showTranscriptModal();
                 });
             }
+            
+            console.log('✅ All event listeners initialized');
         }
         
         applyFilter(filterType) {
@@ -77,27 +119,27 @@
             // Show/hide sections
             this.showFilteredSections();
             
-            // Reload data
-            this.loadExams();
+            // Apply filter to data and display
+            this.applyDataFilter();
         }
         
         updateFilterButtons() {
-            // Remove active class from all filter buttons
-            document.querySelectorAll('.quick-actions .action-btn').forEach(btn => {
-                btn.classList.remove('active');
+            // Get all filter buttons
+            const buttons = {
+                'all': document.getElementById('view-all-assessments'),
+                'current': document.getElementById('view-current-only'),
+                'completed': document.getElementById('view-completed-only')
+            };
+            
+            // Remove active class from all
+            Object.values(buttons).forEach(button => {
+                if (button) button.classList.remove('active');
             });
             
             // Add active class to current filter button
-            let activeButtonId = 'view-all-assessments';
-            if (this.currentFilter === 'current') {
-                activeButtonId = 'view-current-only';
-            } else if (this.currentFilter === 'completed') {
-                activeButtonId = 'view-completed-only';
-            }
-            
-            const activeButton = document.getElementById(activeButtonId);
-            if (activeButton) {
-                activeButton.classList.add('active');
+            const currentButton = buttons[this.currentFilter];
+            if (currentButton) {
+                currentButton.classList.add('active');
             }
         }
         
@@ -122,95 +164,118 @@
             }
         }
         
+        applyDataFilter() {
+            // Filter the data based on current filter
+            this.currentExams = this.allExams.filter(exam => !exam.isCompleted);
+            this.completedExams = this.allExams.filter(exam => exam.isCompleted);
+            
+            // Apply additional filter if needed
+            if (this.currentFilter === 'current') {
+                this.completedExams = [];
+            } else if (this.currentFilter === 'completed') {
+                this.currentExams = [];
+            }
+            
+            // Display the filtered data
+            this.displayTables();
+        }
+        
         async loadExams() {
             console.log('📥 Loading exams...');
             
+            // Show loading state
             this.showLoading();
             
             try {
-                // DIRECT ACCESS to data - no complex extraction
-                const program = window.db?.currentUserProfile?.program || 'KRCHN';
-                const intakeYear = window.db?.currentUserProfile?.intake_year ? 
-                    parseInt(window.db.currentUserProfile.intake_year, 10) : 2025;
-                const block = window.db?.currentUserProfile?.block || 'A';
-                const userId = window.db?.currentUserId || '322a2ee6-989a-4ba8-b58f-b21374869467';
+                // Check for required data
+                if (!window.db?.currentUserProfile) {
+                    throw new Error('User profile not available. Please log in again.');
+                }
                 
-                console.log('🎯 Using:', { program, intakeYear, block, userId });
+                if (!window.db?.supabase) {
+                    throw new Error('Database connection not available.');
+                }
                 
-                const supabase = window.db?.supabase;
-                if (!supabase) throw new Error('No database connection');
+                const userProfile = window.db.currentUserProfile;
+                const program = userProfile.program || 'KRCHN';
+                const intakeYear = userProfile.intake_year || 2025;
+                const block = userProfile.block || 'A';
+                const userId = window.db.currentUserId;
                 
-                // 1. Get exams
+                console.log('🎯 Loading exams for:', { program, intakeYear, block });
+                
+                const supabase = window.db.supabase;
+                
+                // 1. Fetch exams
                 const { data: exams, error: examsError } = await supabase
                     .from('exams_with_courses')
                     .select('*')
+                    .eq('intake_year', intakeYear)
                     .or(`program_type.eq.${program},program_type.eq.General`)
                     .or(`block_term.eq.${block},block_term.is.null,block_term.eq.General`)
-                    .eq('intake_year', intakeYear)
                     .order('exam_date', { ascending: true });
                 
                 if (examsError) throw examsError;
                 
-                // 2. Get grades
+                // 2. Fetch grades for this student
                 const { data: grades, error: gradesError } = await supabase
                     .from('exam_grades')
                     .select('*')
                     .eq('student_id', userId)
-                    .eq('question_id', '00000000-0000-0000-0000-000000000000')
                     .order('graded_at', { ascending: false });
                 
                 if (gradesError) throw gradesError;
                 
-                console.log(`✅ Found ${exams?.length || 0} exams and ${grades?.length || 0} grades`);
+                console.log(`📊 Found ${exams?.length || 0} exams and ${grades?.length || 0} grades`);
                 
-                // Process and display
-                this.processAndDisplay(exams || [], grades || []);
+                // 3. Process and combine data
+                this.processExamsData(exams || [], grades || []);
                 
-                // Show success toast
-                if (window.AppUtils && window.AppUtils.showToast) {
+                // 4. Apply current filter and display
+                this.applyDataFilter();
+                
+                // 5. Show success message
+                if (window.AppUtils?.showToast) {
                     window.AppUtils.showToast('Assessments loaded successfully', 'success');
                 }
                 
             } catch (error) {
                 console.error('❌ Error loading exams:', error);
-                this.showError('Failed to load assessments: ' + error.message);
+                this.showError(error.message);
                 
-                // Show error toast
-                if (window.AppUtils && window.AppUtils.showToast) {
-                    window.AppUtils.showToast('Failed to load assessments', 'error');
+                if (window.AppUtils?.showToast) {
+                    window.AppUtils.showToast('Failed to load assessments: ' + error.message, 'error');
                 }
             }
         }
         
-        processAndDisplay(exams, grades) {
-            // Process each exam
-            const examData = exams.map(exam => {
+        processExamsData(exams, grades) {
+            this.allExams = exams.map(exam => {
+                // Find grade for this exam
                 const grade = grades.find(g => String(g.exam_id) === String(exam.id));
-                const examType = exam.exam_type || '';
                 
-                // Calculate percentage
-                let percentage = null;
+                // Calculate total percentage
+                let totalPercentage = null;
                 if (grade) {
-                    if (grade.total_score !== null) {
-                        percentage = Number(grade.total_score);
-                    } else if (examType.includes('CAT_1') && grade.cat_1_score !== null) {
-                        percentage = (grade.cat_1_score / 30) * 100;
-                    } else if (examType.includes('CAT_2') && grade.cat_2_score !== null) {
-                        percentage = (grade.cat_2_score / 30) * 100;
+                    if (grade.total_score !== null && grade.total_score !== undefined) {
+                        totalPercentage = Number(grade.total_score);
+                    } else if (grade.cat_1_score !== null && grade.cat_2_score !== null && grade.exam_score !== null) {
+                        // Calculate weighted total: CAT1 (15%) + CAT2 (15%) + Final (70%)
+                        totalPercentage = (grade.cat_1_score * 0.15) + (grade.cat_2_score * 0.15) + (grade.exam_score * 0.7);
                     }
                 }
                 
-                // Determine grade
+                // Determine grade text and class
                 let gradeText = '--';
                 let gradeClass = '';
-                if (percentage !== null) {
-                    if (percentage >= 85) {
+                if (totalPercentage !== null) {
+                    if (totalPercentage >= 85) {
                         gradeText = 'Distinction';
                         gradeClass = 'distinction';
-                    } else if (percentage >= 70) {
+                    } else if (totalPercentage >= 75) {
                         gradeText = 'Credit';
                         gradeClass = 'credit';
-                    } else if (percentage >= 60) {
+                    } else if (totalPercentage >= 60) {
                         gradeText = 'Pass';
                         gradeClass = 'pass';
                     } else {
@@ -219,290 +284,425 @@
                     }
                 }
                 
+                // Format dates
+                const examDate = exam.exam_date ? new Date(exam.exam_date) : null;
+                const gradedDate = grade?.graded_at ? new Date(grade.graded_at) : null;
+                
                 return {
                     ...exam,
                     grade,
-                    percentage,
+                    totalPercentage,
                     gradeText,
                     gradeClass,
                     isCompleted: !!grade,
-                    dateGraded: grade?.graded_at,
-                    cat1Score: grade?.cat_1_score,
-                    cat2Score: grade?.cat_2_score,
-                    examScore: grade?.exam_score
+                    examDate,
+                    gradedDate,
+                    cat1Score: grade?.cat_1_score || '--',
+                    cat2Score: grade?.cat_2_score || '--',
+                    finalScore: grade?.exam_score || '--',
+                    formattedExamDate: examDate ? examDate.toLocaleDateString('en-US', { 
+                        year: 'numeric', month: 'short', day: 'numeric' 
+                    }) : '--',
+                    formattedGradedDate: gradedDate ? gradedDate.toLocaleDateString('en-US', { 
+                        year: 'numeric', month: 'short', day: 'numeric' 
+                    }) : '--'
                 };
             });
             
-            // Apply filter
-            let current = examData.filter(e => !e.isCompleted);
-            let completed = examData.filter(e => e.isCompleted);
-            
-            if (this.currentFilter === 'current') {
-                completed = [];
-            } else if (this.currentFilter === 'completed') {
-                current = [];
-            }
-            
-            console.log(`📊 Displaying: ${current.length} current, ${completed.length} completed`);
-            
-            // Display
-            this.displayTable(this.currentTable, current, false);
-            this.displayTable(this.completedTable, completed, true);
-            
-            // Update empty states
-            this.toggleEmptyState('current', current.length === 0);
-            this.toggleEmptyState('completed', completed.length === 0);
-            
-            // Update counts
-            this.updateCounts(current.length, completed.length);
-            
-            // Update performance summary
-            this.updatePerformanceSummary(completed);
+            console.log(`✅ Processed ${this.allExams.length} exams`);
         }
         
-        displayTable(tableElement, exams, isCompleted) {
-            if (!tableElement) return;
+        displayTables() {
+            // Display current assessments
+            this.displayCurrentTable();
             
-            if (exams.length === 0) {
-                tableElement.innerHTML = '';
+            // Display completed assessments
+            this.displayCompletedTable();
+            
+            // Update counts
+            this.updateCounts();
+            
+            // Update empty states
+            this.updateEmptyStates();
+            
+            // Update performance summary for completed exams
+            this.updatePerformanceSummary();
+        }
+        
+        displayCurrentTable() {
+            if (!this.currentTable) return;
+            
+            if (this.currentExams.length === 0) {
+                this.currentTable.innerHTML = '';
                 return;
             }
             
-            let html = '';
+            const html = this.currentExams.map(exam => `
+                <tr>
+                    <td>${this.escapeHtml(exam.exam_name || 'N/A')}</td>
+                    <td>
+                        <span class="type-badge ${exam.exam_type?.includes('CAT') ? 'cat' : 'exam'}">
+                            ${exam.exam_type?.includes('CAT') ? 'CAT' : 'Exam'}
+                        </span>
+                    </td>
+                    <td>${this.escapeHtml(exam.course_name || 'General')}</td>
+                    <td class="text-center">${this.escapeHtml(exam.block_term || 'General')}</td>
+                    <td>${exam.formattedExamDate}</td>
+                    <td>
+                        <span class="status-badge pending">
+                            <i class="fas fa-clock"></i> Pending
+                        </span>
+                    </td>
+                    <td class="text-center">--</td>
+                    <td class="text-center">--</td>
+                    <td class="text-center">--</td>
+                    <td class="text-center"><strong>--</strong></td>
+                </tr>
+            `).join('');
             
-            exams.forEach(exam => {
-                const date = isCompleted && exam.dateGraded 
-                    ? new Date(exam.dateGraded).toLocaleDateString('en-US', { 
-                        year: 'numeric', month: 'short', day: 'numeric' 
-                    })
-                    : (exam.exam_date 
-                        ? new Date(exam.exam_date).toLocaleDateString('en-US', { 
-                            year: 'numeric', month: 'short', day: 'numeric' 
-                        })
-                        : '--');
+            this.currentTable.innerHTML = html;
+        }
+        
+        displayCompletedTable() {
+            if (!this.completedTable) return;
+            
+            if (this.completedExams.length === 0) {
+                this.completedTable.innerHTML = '';
+                return;
+            }
+            
+            const html = this.completedExams.map(exam => {
+                const totalDisplay = exam.totalPercentage !== null 
+                    ? `${exam.totalPercentage.toFixed(1)}%` 
+                    : '--';
                 
-                const typeBadge = exam.exam_type?.includes('CAT') ? 'cat' : 'exam';
-                const typeText = exam.exam_type?.includes('CAT') ? 'CAT' : 'Exam';
-                
-                const scoreDisplay = exam.percentage !== null ? `${exam.percentage.toFixed(1)}%` : '--';
-                
-                let statusClass = 'pending';
-                let statusText = 'Pending';
-                let statusIcon = 'fa-clock';
-                
-                if (isCompleted) {
-                    if (exam.percentage !== null) {
-                        statusClass = exam.percentage >= 60 ? exam.gradeClass : 'failed';
-                        statusText = exam.percentage >= 60 ? exam.gradeText : 'Failed';
-                        statusIcon = exam.percentage >= 60 ? 'fa-check-circle' : 'fa-times-circle';
-                    } else {
-                        statusClass = 'graded';
-                        statusText = 'Graded';
-                        statusIcon = 'fa-clipboard-check';
-                    }
-                }
-                
-                const gradeColumn = isCompleted 
-                    ? `<td class="text-center"><span class="grade-badge ${exam.gradeClass}">${exam.gradeText}</span></td>`
-                    : '';
-                
-                html += `
+                return `
                     <tr>
                         <td>${this.escapeHtml(exam.exam_name || 'N/A')}</td>
-                        <td><span class="type-badge ${typeBadge}">${typeText}</span></td>
+                        <td>
+                            <span class="type-badge ${exam.exam_type?.includes('CAT') ? 'cat' : 'exam'}">
+                                ${exam.exam_type?.includes('CAT') ? 'CAT' : 'Exam'}
+                            </span>
+                        </td>
                         <td>${this.escapeHtml(exam.course_name || 'General')}</td>
                         <td class="text-center">${this.escapeHtml(exam.block_term || 'General')}</td>
-                        <td>${date}</td>
-                        <td><span class="status-badge ${statusClass}"><i class="fas ${statusIcon}"></i> ${statusText}</span></td>
-                        <td class="text-center">${exam.cat1Score || '--'}</td>
-                        <td class="text-center">${exam.cat2Score || '--'}</td>
-                        <td class="text-center">${exam.examScore || '--'}</td>
-                        <td class="text-center"><strong>${scoreDisplay}</strong></td>
-                        ${gradeColumn}
+                        <td>${exam.formattedGradedDate}</td>
+                        <td>
+                            <span class="status-badge ${exam.gradeClass}">
+                                <i class="fas ${exam.gradeClass === 'fail' ? 'fa-times-circle' : 'fa-check-circle'}"></i> 
+                                ${exam.gradeText}
+                            </span>
+                        </td>
+                        <td class="text-center">${exam.cat1Score}</td>
+                        <td class="text-center">${exam.cat2Score}</td>
+                        <td class="text-center">${exam.finalScore}</td>
+                        <td class="text-center"><strong>${totalDisplay}</strong></td>
+                        <td class="text-center">
+                            <span class="grade-badge ${exam.gradeClass}">${exam.gradeText}</span>
+                        </td>
                     </tr>
                 `;
-            });
+            }).join('');
             
-            tableElement.innerHTML = html;
+            this.completedTable.innerHTML = html;
         }
         
-        toggleEmptyState(section, show) {
-            const element = section === 'current' ? this.currentEmpty : this.completedEmpty;
-            if (element) {
-                element.style.display = show ? 'block' : 'none';
-            }
-        }
-        
-        updateCounts(current, completed) {
+        updateCounts() {
             // Update section counts
-            if (this.currentCountElement) {
-                this.currentCountElement.textContent = `${current} pending`;
+            if (this.currentCount) {
+                this.currentCount.textContent = `${this.currentExams.length} pending`;
             }
-            if (this.completedCountElement) {
-                this.completedCountElement.textContent = `${completed} graded`;
+            
+            if (this.completedCount) {
+                this.completedCount.textContent = `${this.completedExams.length} graded`;
             }
             
             // Update header counts
-            const currentHeader = document.getElementById('current-assessments-count');
-            const completedHeader = document.getElementById('completed-assessments-count');
-            const overallAverage = document.getElementById('overall-average');
+            if (this.currentHeaderCount) {
+                this.currentHeaderCount.textContent = this.currentExams.length;
+            }
             
-            if (currentHeader) currentHeader.textContent = current;
-            if (completedHeader) completedHeader.textContent = completed;
+            if (this.completedHeaderCount) {
+                this.completedHeaderCount.textContent = this.completedExams.length;
+            }
             
             // Calculate and update average
-            if (this.completedAverageElement) {
-                // This would need actual completed exams with percentages
-                // For now, just show placeholder
-                this.completedAverageElement.textContent = 'Average: --';
+            const scoredExams = this.completedExams.filter(exam => exam.totalPercentage !== null);
+            if (scoredExams.length > 0) {
+                const total = scoredExams.reduce((sum, exam) => sum + exam.totalPercentage, 0);
+                const average = total / scoredExams.length;
+                
+                if (this.completedAverage) {
+                    this.completedAverage.textContent = `Average: ${average.toFixed(1)}%`;
+                }
+                
+                if (this.overallAverage) {
+                    this.overallAverage.textContent = `${average.toFixed(1)}%`;
+                }
+            } else {
+                if (this.completedAverage) {
+                    this.completedAverage.textContent = 'Average: --';
+                }
+                if (this.overallAverage) {
+                    this.overallAverage.textContent = '--';
+                }
             }
-            if (overallAverage) overallAverage.textContent = '--';
         }
         
-        updatePerformanceSummary(completedExams) {
-            const scoredExams = completedExams.filter(e => e.percentage !== null);
+        updateEmptyStates() {
+            if (this.currentEmpty) {
+                this.currentEmpty.style.display = this.currentExams.length === 0 ? 'block' : 'none';
+            }
+            
+            if (this.completedEmpty) {
+                this.completedEmpty.style.display = this.completedExams.length === 0 ? 'block' : 'none';
+            }
+        }
+        
+        updatePerformanceSummary() {
+            const scoredExams = this.completedExams.filter(exam => exam.totalPercentage !== null);
             
             if (scoredExams.length === 0) {
                 this.resetPerformanceSummary();
                 return;
             }
             
-            // Calculate scores
-            const scores = scoredExams.map(e => e.percentage);
+            // Calculate performance metrics
+            const scores = scoredExams.map(exam => exam.totalPercentage);
             const bestScore = Math.max(...scores);
             const worstScore = Math.min(...scores);
-            
-            // Calculate pass rate
-            const passed = scoredExams.filter(e => e.percentage >= 60).length;
+            const passed = scoredExams.filter(exam => exam.totalPercentage >= 60).length;
             const passRate = (passed / scoredExams.length) * 100;
             
-            // Calculate grade distribution
+            // Calculate grade distribution based on your grading scale
             const gradeCounts = {
-                distinction: scoredExams.filter(e => e.percentage >= 85).length,
-                credit: scoredExams.filter(e => e.percentage >= 70 && e.percentage < 85).length,
-                pass: scoredExams.filter(e => e.percentage >= 60 && e.percentage < 70).length,
-                fail: scoredExams.filter(e => e.percentage < 60).length
+                distinction: scoredExams.filter(exam => exam.totalPercentage >= 85).length,
+                credit: scoredExams.filter(exam => exam.totalPercentage >= 75 && exam.totalPercentage < 85).length,
+                pass: scoredExams.filter(exam => exam.totalPercentage >= 60 && exam.totalPercentage < 75).length,
+                fail: scoredExams.filter(exam => exam.totalPercentage < 60).length
             };
             
-            // Update DOM elements
-            this.updateElement('best-score', `${bestScore.toFixed(1)}%`);
-            this.updateElement('lowest-score', `${worstScore.toFixed(1)}%`);
-            this.updateElement('pass-rate', `${passRate.toFixed(0)}%`);
-            this.updateElement('distinction-count', gradeCounts.distinction);
-            this.updateElement('credit-count', gradeCounts.credit);
-            this.updateElement('pass-count', gradeCounts.pass);
-            this.updateElement('fail-count', gradeCounts.fail);
+            // Update performance overview
+            if (this.bestScore) this.bestScore.textContent = `${bestScore.toFixed(1)}%`;
+            if (this.lowestScore) this.lowestScore.textContent = `${worstScore.toFixed(1)}%`;
+            if (this.passRate) this.passRate.textContent = `${passRate.toFixed(0)}%`;
+            
+            // Update grade distribution
+            if (this.distinctionCount) this.distinctionCount.textContent = gradeCounts.distinction;
+            if (this.creditCount) this.creditCount.textContent = gradeCounts.credit;
+            if (this.passCount) this.passCount.textContent = gradeCounts.pass;
+            if (this.failCount) this.failCount.textContent = gradeCounts.fail;
             
             // Update distribution bars
             this.updateDistributionBars(gradeCounts, scoredExams.length);
-        }
-        
-        updateElement(id, value) {
-            const element = document.getElementById(id);
-            if (element) element.textContent = value;
+            
+            // Update timeline
+            this.updateTimeline(scoredExams);
         }
         
         updateDistributionBars(counts, total) {
             if (total === 0) return;
             
-            const bars = {
-                'distinction-bar': (counts.distinction / total) * 100,
-                'credit-bar': (counts.credit / total) * 100,
-                'pass-bar': (counts.pass / total) * 100,
-                'fail-bar': (counts.fail / total) * 100
+            const updateBar = (barElement, percentage) => {
+                if (barElement) {
+                    barElement.style.width = `${percentage}%`;
+                }
             };
             
-            Object.entries(bars).forEach(([id, percentage]) => {
-                const bar = document.getElementById(id);
-                if (bar) bar.style.width = `${percentage}%`;
+            updateBar(this.distinctionBar, (counts.distinction / total) * 100);
+            updateBar(this.creditBar, (counts.credit / total) * 100);
+            updateBar(this.passBar, (counts.pass / total) * 100);
+            updateBar(this.failBar, (counts.fail / total) * 100);
+        }
+        
+        updateTimeline(scoredExams) {
+            if (scoredExams.length === 0) return;
+            
+            // Sort by date
+            const sortedExams = [...scoredExams].sort((a, b) => {
+                const dateA = a.gradedDate || a.examDate || new Date(0);
+                const dateB = b.gradedDate || b.examDate || new Date(0);
+                return dateA - dateB;
             });
+            
+            const firstExam = sortedExams[0];
+            const latestExam = sortedExams[sortedExams.length - 1];
+            
+            if (this.firstAssessmentDate && firstExam.gradedDate) {
+                this.firstAssessmentDate.textContent = firstExam.formattedGradedDate;
+            }
+            
+            if (this.latestAssessmentDate && latestExam.gradedDate) {
+                this.latestAssessmentDate.textContent = latestExam.formattedGradedDate;
+            }
+            
+            if (this.totalSubmitted) {
+                this.totalSubmitted.textContent = scoredExams.length;
+            }
         }
         
         resetPerformanceSummary() {
-            const elements = [
-                'best-score', 'lowest-score', 'pass-rate',
-                'distinction-count', 'credit-count', 'pass-count', 'fail-count'
-            ];
+            const resetElement = (element, value = '--') => {
+                if (element) element.textContent = value;
+            };
             
-            elements.forEach(id => {
-                this.updateElement(id, '--');
-            });
+            resetElement(this.bestScore);
+            resetElement(this.lowestScore);
+            resetElement(this.passRate);
+            resetElement(this.distinctionCount, '0');
+            resetElement(this.creditCount, '0');
+            resetElement(this.passCount, '0');
+            resetElement(this.failCount, '0');
+            resetElement(this.firstAssessmentDate);
+            resetElement(this.latestAssessmentDate);
+            resetElement(this.totalSubmitted, '0');
             
-            ['distinction-bar', 'credit-bar', 'pass-bar', 'fail-bar'].forEach(id => {
-                const bar = document.getElementById(id);
+            // Reset bars
+            const resetBar = (bar) => {
                 if (bar) bar.style.width = '0%';
-            });
+            };
+            
+            resetBar(this.distinctionBar);
+            resetBar(this.creditBar);
+            resetBar(this.passBar);
+            resetBar(this.failBar);
         }
         
-        showTranscript() {
-            console.log('📋 Showing transcript...');
-            if (window.AppUtils && window.AppUtils.showToast) {
-                window.AppUtils.showToast('Transcript feature coming soon!', 'info');
-            }
-        }
-        
-        printAssessments() {
-            console.log('🖨️ Printing assessments...');
-            
-            // Create a print-friendly version
-            const printContent = document.getElementById('assessments-content');
-            if (!printContent) {
-                console.log('❌ Assessments content not found');
-                return;
-            }
-            
-            const printWindow = window.open('', '_blank');
-            
-            printWindow.document.write(`
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <title>Assessments Report</title>
-                    <style>
-                        body { font-family: Arial, sans-serif; margin: 20px; }
-                        h1 { color: #2c3e50; }
-                        .print-header { margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #3498db; }
-                        .print-info { margin-bottom: 20px; }
-                        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-                        th { background-color: #f8f9fa; padding: 10px; text-align: left; border: 1px solid #dee2e6; }
-                        td { padding: 8px; border: 1px solid #dee2e6; }
-                        .status-badge { padding: 4px 8px; border-radius: 4px; font-weight: bold; }
-                        .completed { background-color: #d4edda; color: #155724; }
-                        .failed { background-color: #f8d7da; color: #721c24; }
-                        .pending { background-color: #fff3cd; color: #856404; }
-                        .print-footer { margin-top: 30px; text-align: center; color: #6c757d; }
-                        @media print {
-                            .no-print { display: none; }
-                        }
-                    </style>
-                </head>
-                <body>
-                    <div class="print-header">
-                        <h1>Academic Assessments Report</h1>
-                        <div class="print-info">
+        showTranscriptModal() {
+            // Create transcript modal
+            const modal = document.createElement('div');
+            modal.id = 'transcript-modal';
+            modal.className = 'modal-overlay';
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3><i class="fas fa-file-pdf"></i> Academic Transcript</h3>
+                        <button class="close-modal-btn" onclick="this.closest('.modal-overlay').remove()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="transcript-info">
                             <p><strong>Student:</strong> ${window.db?.currentUserProfile?.full_name || 'N/A'}</p>
+                            <p><strong>Student ID:</strong> ${window.db?.currentUserProfile?.student_id || 'N/A'}</p>
                             <p><strong>Program:</strong> ${window.db?.currentUserProfile?.program || 'N/A'}</p>
                             <p><strong>Intake Year:</strong> ${window.db?.currentUserProfile?.intake_year || 'N/A'}</p>
-                            <p><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
+                        </div>
+                        <div class="transcript-message">
+                            <i class="fas fa-info-circle" style="color: #4C1D95; font-size: 2rem; margin-bottom: 15px;"></i>
+                            <h4>Transcript Generation</h4>
+                            <p>Official transcripts can be requested from the administration office.</p>
+                            <p>This feature will be available soon for online transcript generation.</p>
                         </div>
                     </div>
-                    ${printContent.innerHTML}
-                    <div class="print-footer">
-                        <p>Generated by NCHSM Digital Campus • ${new Date().toLocaleString()}</p>
+                    <div class="modal-footer">
+                        <button class="btn btn-primary" onclick="window.open('#', '_blank')">
+                            <i class="fas fa-download"></i> Download Sample
+                        </button>
+                        <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">
+                            Close
+                        </button>
                     </div>
-                    <script>
-                        window.onload = function() {
-                            window.print();
-                            window.onafterprint = function() {
-                                window.close();
-                            };
-                        };
-                    </script>
-                </body>
-                </html>
-            `);
+                </div>
+            `;
             
-            printWindow.document.close();
+            document.body.appendChild(modal);
+            
+            // Add modal styles if not present
+            if (!document.getElementById('transcript-modal-styles')) {
+                const styles = `
+                    .modal-overlay {
+                        position: fixed;
+                        top: 0;
+                        left: 0;
+                        right: 0;
+                        bottom: 0;
+                        background: rgba(0,0,0,0.7);
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        z-index: 2000;
+                        padding: 20px;
+                    }
+                    
+                    .modal-content {
+                        background: white;
+                        border-radius: 12px;
+                        width: 100%;
+                        max-width: 500px;
+                        overflow: hidden;
+                    }
+                    
+                    .modal-header {
+                        background: #4C1D95;
+                        color: white;
+                        padding: 20px;
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                    }
+                    
+                    .modal-header h3 {
+                        margin: 0;
+                        font-size: 1.2rem;
+                    }
+                    
+                    .close-modal-btn {
+                        background: transparent;
+                        border: none;
+                        color: white;
+                        font-size: 1.5rem;
+                        cursor: pointer;
+                    }
+                    
+                    .modal-body {
+                        padding: 20px;
+                    }
+                    
+                    .transcript-info {
+                        background: #f8fafc;
+                        padding: 15px;
+                        border-radius: 8px;
+                        margin-bottom: 20px;
+                    }
+                    
+                    .transcript-message {
+                        text-align: center;
+                        padding: 20px;
+                    }
+                    
+                    .modal-footer {
+                        padding: 20px;
+                        border-top: 1px solid #e2e8f0;
+                        display: flex;
+                        gap: 10px;
+                        justify-content: flex-end;
+                    }
+                    
+                    .btn {
+                        padding: 10px 20px;
+                        border-radius: 6px;
+                        border: none;
+                        cursor: pointer;
+                        font-weight: 600;
+                    }
+                    
+                    .btn-primary {
+                        background: #4C1D95;
+                        color: white;
+                    }
+                    
+                    .btn-secondary {
+                        background: #e2e8f0;
+                        color: #4a5568;
+                    }
+                `;
+                
+                const styleElement = document.createElement('style');
+                styleElement.id = 'transcript-modal-styles';
+                styleElement.textContent = styles;
+                document.head.appendChild(styleElement);
+            }
         }
         
         showLoading() {
@@ -531,7 +731,7 @@
                         <div class="error-content">
                             <i class="fas fa-exclamation-circle"></i>
                             <p>${message}</p>
-                            <button onclick="window.examsModule?.refresh()" class="btn btn-sm btn-primary">
+                            <button onclick="window.examsModule.loadExams()" class="btn btn-sm btn-primary">
                                 <i class="fas fa-redo"></i> Retry
                             </button>
                         </div>
@@ -553,14 +753,14 @@
             return div.innerHTML;
         }
         
-        // Public refresh method
+        // Public methods
         refresh() {
             console.log('🔄 Manual refresh requested');
             this.loadExams();
         }
     }
     
-    // Create and expose
+    // Create global instance
     window.examsModule = new ExamsModule();
     
     // Global functions for backward compatibility
@@ -599,5 +799,5 @@
         }
     };
     
-    console.log('✅ Complete exams module ready with all features');
+    console.log('✅ Exams module ready with all buttons working!');
 })();
