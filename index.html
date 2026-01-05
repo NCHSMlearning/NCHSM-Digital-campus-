@@ -1105,6 +1105,7 @@
 
      <!-- Initialize App -->
 <!-- Initialize App -->
+// Initialize App - UPDATED VERSION (Fixes refresh issue)
 <script>
 // Global app state
 window.app = {
@@ -1126,28 +1127,7 @@ function updateLoadingStatus(status, details) {
     }
 }
 
-// Show error screen
-function showErrorScreen(title, message, details) {
-    const loadingScreen = document.getElementById('loading-screen');
-    const errorHTML = 
-        '<div class="loading-content">' +
-        '<div class="loading-logo" style="background: #ef4444;">' +
-        '<i class="fas fa-exclamation-triangle"></i>' +
-        '</div>' +
-        '<h1>' + title + '</h1>' +
-        '<p>' + message + '</p>' +
-        (details ? '<div class="error-details">' + details + '</div>' : '') +
-        '<div style="margin-top: 30px;">' +
-        '<button onclick="window.location.reload()" class="retry-btn">' +
-        '<i class="fas fa-redo"></i> Try Again' +
-        '</button>' +
-        '</div>' +
-        '</div>';
-    
-    loadingScreen.innerHTML = errorHTML;
-}
-
-// Initialize application - WORKING VERSION
+// Initialize application - FIXED VERSION
 async function initializeApp() {
     try {
         console.log('🚀 Starting app initialization...');
@@ -1299,38 +1279,57 @@ async function initializeApp() {
             initUI();
         }
         
-        // 10. Ensure dashboard is active - USING CSS CLASSES ONLY (NO INLINE STYLES)
-        document.querySelectorAll('.tab-content').forEach(tab => {
-            // REMOVED: tab.style.display = 'none'; - This was causing conflicts
-            tab.classList.remove('active');
-        });
-        
-        const dashboard = document.getElementById('dashboard');
-        if (dashboard) {
-            // REMOVED: inline styles that were breaking CSS
-            dashboard.classList.add('active');
+        // 10. CRITICAL FIX: Don't force dashboard - respect existing tab state
+        // Check if ui module is loaded
+        if (window.ui && typeof window.ui.showTab === 'function') {
+            console.log('✅ UI module loaded, checking current tab state...');
+            
+            // Check URL hash first
+            const hash = window.location.hash.substring(1);
+            
+            // Check localStorage for last tab
+            const lastTab = localStorage.getItem('nchsm_last_tab');
+            
+            // Determine which tab to show
+            let targetTab = 'dashboard'; // Default
+            
+            if (hash && window.ui.isValidTab(hash)) {
+                targetTab = hash;
+                console.log(`🔗 Using URL hash: ${hash}`);
+            } else if (lastTab && window.ui.isValidTab(lastTab)) {
+                targetTab = lastTab;
+                console.log(`💾 Using saved tab: ${lastTab}`);
+            }
+            
+            console.log(`🎯 Showing tab: ${targetTab}`);
+            
+            // Use UI module to show the tab
+            window.ui.showTab(targetTab);
+            
+            // Update URL to match
+            if (hash !== targetTab) {
+                history.replaceState(null, null, `#${targetTab}`);
+            }
+        } else {
+            console.warn('⚠️ UI module not available, using fallback');
+            // Fallback - show dashboard
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            const dashboard = document.getElementById('dashboard');
+            if (dashboard) {
+                dashboard.classList.add('active');
+            }
         }
         
-        // 11. Activate navigation
-        document.querySelectorAll('.nav a').forEach(link => {
-            link.classList.remove('active');
-        });
-        const dashboardNav = document.querySelector('[data-tab="dashboard"]');
-        if (dashboardNav) dashboardNav.classList.add('active');
-        
-        // 12. Load dashboard data
-        if (typeof loadDashboard === 'function') {
-            setTimeout(() => loadDashboard(), 100);
-        }
-        
-        // 13. Mark as initialized
+        // 11. Mark as initialized
         window.app.isInitialized = true;
         window.app.supabase = window.db.supabase;
         window.app.user = window.db.currentUserProfile;
         
         console.log('✅ Application initialized successfully');
         
-        // 14. Dispatch app ready event
+        // 12. Dispatch app ready event
         document.dispatchEvent(new CustomEvent('appReady', {
             detail: {
                 userId: window.currentUserId,
@@ -1347,10 +1346,14 @@ async function initializeApp() {
             document.getElementById('loading-screen').style.display = 'none';
             document.getElementById('app-content').style.display = 'block';
             
-            const dashboard = document.getElementById('dashboard');
-            if (dashboard) {
-                // USE CLASSES ONLY - NO INLINE STYLES
-                dashboard.classList.add('active');
+            // Try to use UI module if available
+            if (window.ui && typeof window.ui.showTab === 'function') {
+                window.ui.showTab('dashboard');
+            } else {
+                const dashboard = document.getElementById('dashboard');
+                if (dashboard) {
+                    dashboard.classList.add('active');
+                }
             }
             
             const welcomeSection = document.getElementById('welcome-section');
@@ -1368,22 +1371,21 @@ async function initializeApp() {
     }
 }
 
-// Tab switching - Use the UIModule instance (UPDATED)
+// Tab switching function - UPDATED
 window.showTab = function(tabId) {
+    // Use UI module if available
     if (window.ui && typeof window.ui.showTab === 'function') {
-        console.log('📱 Using UIModule for tab switching');
+        console.log('📱 Using UI module for tab switching');
         window.ui.showTab(tabId);
     } else {
-        // Fallback - USING CSS CLASSES ONLY
-        console.warn('UIModule not available, using CSS-only fallback');
+        // Fallback
+        console.warn('UI module not available, using fallback');
         document.querySelectorAll('.tab-content').forEach(tab => {
-            // NO inline styles - use classes only
             tab.classList.remove('active');
         });
         const selectedTab = document.getElementById(tabId);
         if (selectedTab) {
             selectedTab.classList.add('active');
-            console.log(`✅ Tab ${tabId} activated via CSS classes`);
         }
     }
 };
@@ -1463,42 +1465,33 @@ async function loadTabData(tabId) {
 
 // Basic UI functions
 window.toggleMenu = function() {
-    const sidebar = document.getElementById('sidebar');
-    const overlay = document.getElementById('overlay');
-    sidebar.classList.toggle('active');
-    overlay.classList.toggle('active');
+    if (window.ui && typeof window.ui.toggleMenu === 'function') {
+        window.ui.toggleMenu();
+    } else {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('overlay');
+        sidebar.classList.toggle('active');
+        overlay.classList.toggle('active');
+    }
 };
 
 window.closeMenu = function() {
-    const sidebar = document.getElementById('sidebar');
-    const overlay = document.getElementById('overlay');
-    sidebar.classList.remove('active');
-    overlay.classList.remove('active');
-};
-
-// Restore last active tab on page load
-function restoreLastTab() {
-    try {
-        const lastTab = localStorage.getItem('last_active_tab');
-        if (lastTab && document.getElementById(lastTab)) {
-            console.log('Restoring last tab:', lastTab);
-            setTimeout(() => {
-                showTab(lastTab);
-            }, 100);
-        } else {
-            // Default to dashboard
-            console.log('Defaulting to dashboard tab');
-            showTab('dashboard');
-        }
-    } catch (e) {
-        console.warn('Could not restore last tab:', e);
-        showTab('dashboard');
+    if (window.ui && typeof window.ui.closeMenu === 'function') {
+        window.ui.closeMenu();
+    } else {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('overlay');
+        sidebar.classList.remove('active');
+        overlay.classList.remove('active');
     }
-}
+};
 
 // Logout function
 window.logout = async function() {
     try {
+        // Clear tab state first
+        localStorage.removeItem('nchsm_last_tab');
+        
         if (window.db && window.db.logout) {
             await window.db.logout();
         } else if (window.app.supabase) {
@@ -1530,29 +1523,27 @@ window.refreshApp = function() {
         tab.style.removeProperty('visibility');
     });
     
-    // Reload current tab
-    const currentTab = document.querySelector('.tab-content.active').id || 'dashboard';
-    if (currentTab && window.showTab) {
-        window.showTab(currentTab);
-    }
-};
-
-// Global function to check if app is ready
-window.isAppReady = function() {
-    return window.app.isInitialized;
-};
-
-// Listen for app ready event
-document.addEventListener('appReady', function(e) {
-    console.log('🎉 App is ready!', e.detail);
+    // Get current tab before reload
+    const currentTab = window.ui ? window.ui.currentTab : 'dashboard';
+    localStorage.setItem('refresh_tab', currentTab);
     
-    // Initialize modules that need app to be ready
-    if (typeof initAttendanceModule === 'function' && document.getElementById('session-type')) {
+    // Reload page
+    location.reload();
+};
+
+// Check for refresh tab state on load
+function checkRefreshState() {
+    const refreshTab = localStorage.getItem('refresh_tab');
+    if (refreshTab && window.ui && window.ui.isValidTab(refreshTab)) {
+        console.log(`🔄 Refreshing back to: ${refreshTab}`);
+        localStorage.removeItem('refresh_tab');
         setTimeout(() => {
-            initAttendanceModule();
-        }, 300);
+            if (window.ui.showTab) {
+                window.ui.showTab(refreshTab);
+            }
+        }, 100);
     }
-});
+}
 
 // Start initialization when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
@@ -1561,9 +1552,10 @@ document.addEventListener('DOMContentLoaded', function() {
     // First, clear any existing inline styles
     document.querySelectorAll('.tab-content').forEach(tab => {
         tab.style.removeProperty('display');
-        tab.style.removeProperty('opacity');
-        tab.style.removeProperty('visibility');
     });
+    
+    // Check refresh state
+    checkRefreshState();
     
     // Check if initializeApp exists
     if (typeof initializeApp === 'function') {
@@ -1576,18 +1568,17 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('loading-screen').style.display = 'none';
             document.getElementById('app-content').style.display = 'block';
             
-            // Use CSS classes only
-            const dashboard = document.getElementById('dashboard');
-            if (dashboard) dashboard.classList.add('active');
+            // Use UI module if available
+            if (window.ui && window.ui.showTab) {
+                window.ui.showTab('dashboard');
+            } else {
+                const dashboard = document.getElementById('dashboard');
+                if (dashboard) dashboard.classList.add('active');
+            }
             
             console.log('⚠️ Manual fallback activated');
         }, 1000);
     }
-    
-    // Restore last tab after app is initialized
-    setTimeout(() => {
-        restoreLastTab();
-    }, 1500);
 });
 </script>
 </body>
