@@ -36,23 +36,52 @@
 </head>
 <body>
     <!-- Loading Screen -->
-    <div id="loading-screen">
-        <div class="loading-content">
-            <div class="loading-logo">
+<div id="loading-screen">
+    <div class="loading-container">
+        <!-- Animated Logo -->
+        <div class="logo-animation">
+            <div class="logo-circle">
                 <i class="fas fa-graduation-cap"></i>
             </div>
-            <h1>NCHSM Student Portal</h1>
-            <p>Initializing application...</p>
-            
-            <div class="loading-status">
-                <div class="status-item">
-                    <i class="fas fa-cog fa-spin"></i>
-                    <span id="status-text">Loading configuration...</span>
-                </div>
-                <div id="config-details" class="config-details"></div>
+            <div class="logo-ring"></div>
+            <div class="logo-pulse"></div>
+        </div>
+        
+        <!-- Welcome Message -->
+        <div class="welcome-text">
+            <h1>Welcome to NCHSM Student Portal</h1>
+            <p class="subtitle">Your gateway to academic excellence</p>
+        </div>
+        
+        <!-- Progress Indicator -->
+        <div class="progress-container">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill"></div>
+            </div>
+            <div class="progress-text" id="progress-text">Preparing your portal...</div>
+        </div>
+        
+        <!-- Status Steps -->
+        <div class="status-steps" id="status-steps">
+            <!-- Steps will be added dynamically -->
+        </div>
+        
+        <!-- Fun Fact / Tip -->
+        <div class="fun-fact" id="fun-fact">
+            <i class="fas fa-lightbulb"></i>
+            <span>Did you know? You can access your course materials offline!</span>
+        </div>
+        
+        <!-- Loading Animation -->
+        <div class="loading-animation">
+            <div class="loading-dots">
+                <span></span>
+                <span></span>
+                <span></span>
             </div>
         </div>
     </div>
+</div>
 
     <!-- Offline Indicator -->
     <div class="offline-indicator" id="offlineIndicator" style="display: none;">
