@@ -1,21 +1,17 @@
-/* ========== MAIN CSS FILE - IMPORTS EVERYTHING ========== */
-
-/* Import order is IMPORTANT */
 @import url('base.css');
 @import url('layout.css');
 @import url('components.css');
-@import url('profile.csss');
-@import url('messages.css'); /* Add this line */
+@import url('messages.css'); 
 @import url('exams.css');
 @import url('courses.css');
 @import url('dashboard.css');
 @import url('resources.css');
 @import url('reader.css');
 @import url('nurseiq.css');
-@import url('loading.css'); /* Add this line */
+@import url('loading.css'); 
+@import url('profile.css');
 @import url('responsive.css');
 
-/* ========== BASE SAFETY NET ========== */
 body {
     font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background-color: #f8fafc;
