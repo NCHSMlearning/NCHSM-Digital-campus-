@@ -1,0 +1,649 @@
+/* profile.css - Profile Management Styles */
+:root {
+    /* Profile specific colors */
+    --profile-primary: #5B21B6;
+    --profile-primary-light: #7C3AED;
+    --profile-primary-dark: #4C1D95;
+    --profile-secondary: #1E40AF;
+    --profile-success: #10B981;
+    --profile-error: #EF4444;
+    --profile-warning: #F59E0B;
+    --profile-info: #3B82F6;
+    
+    /* Neutral colors */
+    --profile-bg: #F8FAFC;
+    --profile-card-bg: #FFFFFF;
+    --profile-border: #E2E8F0;
+    --profile-text: #1F2937;
+    --profile-text-light: #6B7280;
+    --profile-text-lighter: #9CA3AF;
+    
+    /* Spacing */
+    --profile-spacing-xs: 0.5rem;
+    --profile-spacing-sm: 1rem;
+    --profile-spacing-md: 1.5rem;
+    --profile-spacing-lg: 2rem;
+    --profile-spacing-xl: 3rem;
+    
+    /* Border radius */
+    --profile-radius-sm: 0.375rem;
+    --profile-radius-md: 0.5rem;
+    --profile-radius-lg: 0.75rem;
+    --profile-radius-full: 9999px;
+    
+    /* Shadows */
+    --profile-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --profile-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    --profile-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    
+    /* Transitions */
+    --profile-transition-fast: 150ms ease;
+    --profile-transition-normal: 250ms ease;
+    --profile-transition-slow: 350ms ease;
+}
+
+/* ===== Profile Container ===== */
+#profile.tab-content {
+    animation: fadeIn 0.3s ease;
+}
+
+.profile-header {
+    margin-bottom: var(--profile-spacing-lg);
+    padding-bottom: var(--profile-spacing-md);
+    border-bottom: 2px solid var(--profile-border);
+}
+
+.profile-header h2 {
+    color: var(--profile-primary);
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: var(--profile-spacing-xs);
+}
+
+.profile-subtitle {
+    color: var(--profile-text-light);
+    font-size: 1rem;
+    line-height: 1.5;
+}
+
+/* ===== Profile Form ===== */
+.profile-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--profile-spacing-xl);
+}
+
+.profile-form.editing {
+    animation: pulse-glow 2s infinite;
+}
+
+/* ===== Profile Sections ===== */
+.profile-section {
+    background: var(--profile-card-bg);
+    border-radius: var(--profile-radius-lg);
+    padding: var(--profile-spacing-lg);
+    box-shadow: var(--profile-shadow-md);
+    border: 1px solid var(--profile-border);
+    transition: all var(--profile-transition-normal);
+}
+
+.profile-section:hover {
+    box-shadow: var(--profile-shadow-lg);
+    transform: translateY(-2px);
+}
+
+.section-title {
+    color: var(--profile-primary);
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: var(--profile-spacing-md);
+    display: flex;
+    align-items: center;
+    gap: var(--profile-spacing-xs);
+}
+
+.section-title::before {
+    content: '';
+    width: 4px;
+    height: 1.25rem;
+    background: var(--profile-primary);
+    border-radius: var(--profile-radius-full);
+}
+
+/* ===== Profile Media (Photo Section) ===== */
+.profile-media {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: var(--profile-spacing-md);
+}
+
+.passport-photo-container {
+    position: relative;
+    margin: 0;
+}
+
+#passport-preview {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid var(--profile-border);
+    box-shadow: var(--profile-shadow-lg);
+    cursor: pointer;
+    transition: all var(--profile-transition-normal);
+    background: linear-gradient(135deg, #f3f4f6, #e5e7eb);
+}
+
+#passport-preview:hover {
+    transform: scale(1.05);
+    border-color: var(--profile-primary-light);
+    box-shadow: 0 0 0 4px rgba(91, 33, 182, 0.1);
+}
+
+.photo-caption {
+    font-size: 0.875rem;
+    color: var(--profile-text-light);
+    margin-top: var(--profile-spacing-xs);
+    font-style: italic;
+}
+
+.photo-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--profile-spacing-sm);
+    width: 100%;
+    max-width: 300px;
+}
+
+/* Hide the default file input */
+#passport-file-input {
+    display: none;
+}
+
+/* ===== Form Fields Grid ===== */
+.profile-details.grid-layout {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: var(--profile-spacing-md);
+    margin-top: var(--profile-spacing-md);
+}
+
+.form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+}
+
+.form-field.full-width {
+    grid-column: 1 / -1;
+}
+
+.form-field label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--profile-text);
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.form-field label.required::after {
+    content: '*';
+    color: var(--profile-error);
+    font-size: 1.25em;
+    line-height: 1;
+}
+
+.form-field input {
+    padding: 0.75rem 1rem;
+    border: 2px solid var(--profile-border);
+    border-radius: var(--profile-radius-md);
+    font-size: 0.95rem;
+    color: var(--profile-text);
+    background: var(--profile-bg);
+    transition: all var(--profile-transition-fast);
+    width: 100%;
+}
+
+.form-field input:focus {
+    outline: none;
+    border-color: var(--profile-primary);
+    box-shadow: 0 0 0 3px rgba(91, 33, 182, 0.1);
+    background: var(--profile-card-bg);
+}
+
+.form-field input:read-only {
+    background: #f8fafc;
+    border-color: #e2e8f0;
+    color: var(--profile-text-light);
+    cursor: not-allowed;
+}
+
+.form-field input:read-only:focus {
+    border-color: #e2e8f0;
+    box-shadow: none;
+}
+
+.form-field input.error {
+    border-color: var(--profile-error);
+    background: rgba(239, 68, 68, 0.05);
+}
+
+.form-field input.error:focus {
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+/* Help text styling */
+.help-text {
+    font-size: 0.75rem;
+    color: var(--profile-text-lighter);
+    line-height: 1.4;
+    margin-top: 0.125rem;
+}
+
+.field-error {
+    font-size: 0.75rem;
+    color: var(--profile-error) !important;
+    margin-top: 0.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.field-error::before {
+    content: '⚠️';
+    font-size: 0.875rem;
+}
+
+/* ===== Buttons ===== */
+.button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: var(--profile-radius-md);
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--profile-transition-normal);
+    border: 2px solid transparent;
+    text-align: center;
+    min-width: 140px;
+}
+
+.button:hover {
+    transform: translateY(-1px);
+}
+
+.button:active {
+    transform: translateY(0);
+}
+
+.button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.button-primary {
+    background: var(--profile-primary);
+    color: white;
+}
+
+.button-primary:hover {
+    background: var(--profile-primary-light);
+    box-shadow: 0 4px 12px rgba(91, 33, 182, 0.25);
+}
+
+.button-primary:active {
+    background: var(--profile-primary-dark);
+}
+
+.button-secondary {
+    background: var(--profile-card-bg);
+    color: var(--profile-primary);
+    border-color: var(--profile-primary);
+}
+
+.button-secondary:hover {
+    background: var(--profile-primary);
+    color: white;
+    box-shadow: 0 4px 12px rgba(91, 33, 182, 0.15);
+}
+
+.button-success {
+    background: var(--profile-success);
+    color: white;
+}
+
+.button-success:hover {
+    background: #0da271;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+}
+
+.button-text {
+    background: transparent;
+    color: var(--profile-text-light);
+    border-color: transparent;
+}
+
+.button-text:hover {
+    background: var(--profile-bg);
+    color: var(--profile-text);
+}
+
+.button-icon {
+    font-size: 1.1em;
+    line-height: 1;
+}
+
+.form-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--profile-spacing-sm);
+    margin-top: var(--profile-spacing-lg);
+    padding-top: var(--profile-spacing-md);
+    border-top: 1px solid var(--profile-border);
+}
+
+/* ===== Status Messages ===== */
+.form-status {
+    padding: 0.75rem 1rem;
+    border-radius: var(--profile-radius-md);
+    font-size: 0.95rem;
+    margin-top: var(--profile-spacing-sm);
+    animation: slideIn 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.form-status::before {
+    font-size: 1.1em;
+    line-height: 1;
+}
+
+.form-status-info {
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--profile-info);
+    border-left: 4px solid var(--profile-info);
+}
+
+.form-status-info::before {
+    content: 'ℹ️';
+}
+
+.form-status-success {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--profile-success);
+    border-left: 4px solid var(--profile-success);
+}
+
+.form-status-success::before {
+    content: '✅';
+}
+
+.form-status-error {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--profile-error);
+    border-left: 4px solid var(--profile-error);
+}
+
+.form-status-error::before {
+    content: '❌';
+}
+
+/* ===== Notifications ===== */
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 0.875rem 1.5rem;
+    border-radius: var(--profile-radius-md);
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: white;
+    z-index: 9999;
+    box-shadow: var(--profile-shadow-lg);
+    animation: slideIn 0.3s ease-out, slideOut 0.3s ease-out 2.7s;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    max-width: 400px;
+}
+
+.notification::before {
+    font-size: 1.2em;
+}
+
+.notification-success {
+    background: var(--profile-success);
+}
+
+.notification-success::before {
+    content: '✅';
+}
+
+.notification-error {
+    background: var(--profile-error);
+}
+
+.notification-error::before {
+    content: '❌';
+}
+
+.notification-info {
+    background: var(--profile-info);
+}
+
+.notification-info::before {
+    content: 'ℹ️';
+}
+
+/* ===== Loading States ===== */
+@keyframes pulse-glow {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(91, 33, 182, 0);
+    }
+    50% {
+        box-shadow: 0 0 0 4px rgba(91, 33, 182, 0.1);
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes slideOut {
+    from {
+        opacity: 1;
+        transform: translateX(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+}
+
+/* ===== Responsive Design ===== */
+@media (max-width: 768px) {
+    .profile-details.grid-layout {
+        grid-template-columns: 1fr;
+        gap: var(--profile-spacing-sm);
+    }
+    
+    .profile-section {
+        padding: var(--profile-spacing-md);
+    }
+    
+    .form-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .button {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .photo-controls {
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .profile-header h2 {
+        font-size: 1.75rem;
+    }
+    
+    .section-title {
+        font-size: 1.125rem;
+    }
+    
+    #passport-preview {
+        width: 120px;
+        height: 120px;
+    }
+    
+    .notification {
+        left: 20px;
+        right: 20px;
+        max-width: none;
+    }
+}
+
+/* ===== Dark Mode Support ===== */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --profile-bg: #1F2937;
+        --profile-card-bg: #111827;
+        --profile-border: #374151;
+        --profile-text: #F9FAFB;
+        --profile-text-light: #D1D5DB;
+        --profile-text-lighter: #9CA3AF;
+    }
+    
+    .profile-section {
+        background: var(--profile-card-bg);
+    }
+    
+    .form-field input {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: var(--profile-border);
+        color: var(--profile-text);
+    }
+    
+    .form-field input:read-only {
+        background: rgba(255, 255, 255, 0.02);
+    }
+    
+    .button-secondary {
+        background: var(--profile-card-bg);
+        color: var(--profile-primary-light);
+        border-color: var(--profile-primary-light);
+    }
+    
+    .button-secondary:hover {
+        background: var(--profile-primary);
+        color: var(--profile-text);
+    }
+    
+    .button-text:hover {
+        background: rgba(255, 255, 255, 0.05);
+    }
+    
+    #passport-preview {
+        background: linear-gradient(135deg, #374151, #4B5563);
+    }
+}
+
+/* ===== Print Styles ===== */
+@media print {
+    .profile-section {
+        box-shadow: none;
+        border: 1px solid #ddd;
+        break-inside: avoid;
+    }
+    
+    .form-actions,
+    .photo-controls,
+    #passport-file-input,
+    .button {
+        display: none !important;
+    }
+    
+    #passport-preview {
+        width: 100px;
+        height: 100px;
+        border: 1px solid #000;
+    }
+    
+    .form-field input:read-only {
+        background: transparent;
+        border: none;
+        padding: 0.25rem 0;
+    }
+}
+
+/* ===== Accessibility Improvements ===== */
+@media (prefers-reduced-motion: reduce) {
+    .button,
+    .profile-section,
+    #passport-preview,
+    .form-status,
+    .notification {
+        transition: none !important;
+        animation: none !important;
+    }
+}
+
+/* Focus styles for accessibility */
+.button:focus-visible,
+.form-field input:focus-visible,
+#passport-preview:focus-visible {
+    outline: 3px solid var(--profile-primary);
+    outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    :root {
+        --profile-border: #000000;
+        --profile-text: #000000;
+        --profile-text-light: #000000;
+    }
+    
+    .profile-section {
+        border: 2px solid var(--profile-border);
+    }
+    
+    .form-field input {
+        border: 2px solid var(--profile-border);
+    }
+    
+    .button {
+        border: 2px solid var(--profile-border);
+    }
+}
