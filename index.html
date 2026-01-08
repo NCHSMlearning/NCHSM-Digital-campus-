@@ -229,54 +229,186 @@
                     </div>
                 </section>
 
-                <!-- Profile Tab -->
-                <section id="profile" class="tab-content">
-                    <h2 style="color: var(--color-primary);">My Profile & Account</h2>
-                    <form id="profile-form">
-                        <div class="profile-media">
-                            <img id="passport-preview" src="https://dummyimage.com/150x150/cccccc/000000.png&text=NO+PHOTO" alt="Passport Photo">
-                            <input type="file" id="passport-file-input" accept="image/jpeg,image/png" style="display: none;">
-                            <label for="passport-file-input" class="file-upload-label" id="upload-label" style="display: none; cursor: pointer; padding: 10px; background-color: #5B21B6; color: white; border-radius: 6px; margin-top: 15px; display: block; text-align: center;">Change Photo</label>
-                            <button type="button" id="upload-button" class="profile-button" style="margin-top: 15px; display: none;">Save Photo</button>
-                        </div>
+               <!-- Profile Tab -->
+<section id="profile" class="tab-content" aria-labelledby="profile-tab" hidden>
+    <header class="profile-header">
+        <h2>My Profile & Account</h2>
+        <p class="profile-subtitle">View and manage your account information</p>
+    </header>
 
-                        <div class="profile-details">
-                            <div class="form-field full-width">
-                                <label for="profile-name">Full Name</label>
-                                <input type="text" id="profile-name" readonly required>
-                            </div>
-                            <div class="form-field">
-                                <label for="profile-student-id">Student ID / Reg. No.</label>
-                                <input type="text" id="profile-student-id" readonly> 
-                            </div>
-                            <div class="form-field">
-                                <label for="profile-email">Email (Login ID)</label>
-                                <input type="email" id="profile-email" readonly>
-                            </div>
-                            <div class="form-field">
-                                <label for="profile-phone">Phone Number</label>
-                                <input type="tel" id="profile-phone" readonly>
-                            </div>
-                            <div class="form-field">
-                                <label for="profile-program">Program</label>
-                                <input type="text" id="profile-program" readonly>
-                            </div>
-                            <div class="form-field">
-                                <label for="profile-block">Block</label>
-                                <input type="text" id="profile-block" readonly>
-                            </div>
-                            <div class="form-field">
-                                <label for="profile-intake-year">Intake Year</label>
-                                <input type="text" id="profile-intake-year" readonly>
-                            </div>
-                            <div class="form-field full-width">
-                                <button type="button" id="edit-profile-button" class="profile-button">Edit Profile Details</button>
-                                <button type="submit" id="save-profile-button" class="profile-button" style="display: none;">Save Changes</button>
-                            </div>
-                            <p id="profile-status" class="full-width"></p>
-                        </div>
-                    </form>
-                </section>
+    <form id="profile-form" class="profile-form" novalidate>
+        <div class="profile-section">
+            <h3 class="section-title">Profile Photo</h3>
+            <div class="profile-media">
+                <figure class="passport-photo-container">
+                    <img 
+                        id="passport-preview" 
+                        src="https://dummyimage.com/150x150/cccccc/000000.png&text=Upload+Photo" 
+                        alt="Your passport photo"
+                        width="150"
+                        height="150"
+                    >
+                    <figcaption class="photo-caption">Passport-style photo</figcaption>
+                </figure>
+                
+                <div class="photo-controls">
+                    <input 
+                        type="file" 
+                        id="passport-file-input" 
+                        name="passport-photo"
+                        accept="image/jpeg,image/png,image/webp" 
+                        aria-describedby="photo-help"
+                    >
+                    <label for="passport-file-input" class="button button-secondary">
+                        <span class="button-icon">📷</span>
+                        Change Photo
+                    </label>
+                    
+                    <div id="photo-help" class="help-text">
+                        Accepted formats: JPG, PNG, WebP. Max size: 2MB
+                    </div>
+                    
+                    <button 
+                        type="button" 
+                        id="upload-button" 
+                        class="button button-primary"
+                        style="display: none;"
+                    >
+                        Save Photo
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="profile-section">
+            <h3 class="section-title">Personal Information</h3>
+            <div class="profile-details grid-layout">
+                <div class="form-field full-width">
+                    <label for="profile-name" class="required">Full Name</label>
+                    <input 
+                        type="text" 
+                        id="profile-name" 
+                        name="full-name"
+                        readonly 
+                        required
+                        aria-describedby="name-help"
+                    >
+                    <div id="name-help" class="help-text">Your legal name as on official documents</div>
+                </div>
+                
+                <div class="form-field">
+                    <label for="profile-student-id" class="required">Student ID</label>
+                    <input 
+                        type="text" 
+                        id="profile-student-id" 
+                        name="student-id"
+                        readonly 
+                        aria-describedby="id-help"
+                    >
+                    <div id="id-help" class="help-text">Your registration number</div>
+                </div>
+                
+                <div class="form-field">
+                    <label for="profile-email" class="required">Email Address</label>
+                    <input 
+                        type="email" 
+                        id="profile-email" 
+                        name="email"
+                        readonly 
+                        required
+                        inputmode="email"
+                        aria-describedby="email-help"
+                    >
+                    <div id="email-help" class="help-text">Used for login and notifications</div>
+                </div>
+                
+                <div class="form-field">
+                    <label for="profile-phone">Phone Number</label>
+                    <input 
+                        type="tel" 
+                        id="profile-phone" 
+                        name="phone"
+                        readonly 
+                        inputmode="tel"
+                        pattern="[0-9\s\-\(\)\+]+"
+                        aria-describedby="phone-help"
+                    >
+                    <div id="phone-help" class="help-text">Include country code if international</div>
+                </div>
+                
+                <div class="form-field">
+                    <label for="profile-program">Program</label>
+                    <input 
+                        type="text" 
+                        id="profile-program" 
+                        name="program"
+                        readonly 
+                    >
+                </div>
+                
+                <div class="form-field">
+                    <label for="profile-block">Block</label>
+                    <input 
+                        type="text" 
+                        id="profile-block" 
+                        name="block"
+                        readonly 
+                    >
+                </div>
+                
+                <div class="form-field">
+                    <label for="profile-intake-year">Intake Year</label>
+                    <input 
+                        type="text" 
+                        id="profile-intake-year" 
+                        name="intake-year"
+                        readonly 
+                        inputmode="numeric"
+                        pattern="\d{4}"
+                    >
+                </div>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button 
+                type="button" 
+                id="edit-profile-button" 
+                class="button button-primary"
+            >
+                <span class="button-icon">✏️</span>
+                Edit Profile
+            </button>
+            
+            <button 
+                type="submit" 
+                id="save-profile-button" 
+                class="button button-success"
+                style="display: none;"
+            >
+                <span class="button-icon">💾</span>
+                Save Changes
+            </button>
+            
+            <button 
+                type="button" 
+                id="cancel-edit-button" 
+                class="button button-text"
+                style="display: none;"
+            >
+                Cancel
+            </button>
+        </div>
+        
+        <div class="form-status">
+            <p 
+                id="profile-status" 
+                role="alert" 
+                aria-live="polite"
+            ></p>
+        </div>
+    </form>
+</section>
 
                 <!-- Calendar Tab -->
                 <section id="calendar" class="tab-content">
