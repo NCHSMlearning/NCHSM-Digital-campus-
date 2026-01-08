@@ -613,48 +613,181 @@
         </div>
     </div>
 </section>
-                <!-- Attendance Tab -->
-                <section id="attendance" class="tab-content">
-                    <h2 style="color: var(--color-primary);">Daily Attendance Check-in</h2>
+               <!-- Attendance Tab - COMPLETE WORKING VERSION -->
+<section id="attendance" class="tab-content">
+    <div class="attendance-header">
+        <div class="header-content">
+            <h2><i class="fas fa-calendar-check"></i> Daily Attendance Check-in</h2>
+            <p class="subtitle">Mark your attendance with GPS verification</p>
+        </div>
+        <div class="attendance-stats">
+            <div class="stat-card">
+                <div class="stat-icon present">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="stat-content">
+                    <span class="stat-label">Present Today</span>
+                    <span class="stat-value" id="present-today">0</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon time">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div class="stat-content">
+                    <span class="stat-label">Current Time</span>
+                    <span class="stat-value" id="current-time">--:--</span>
+                </div>
+            </div>
+        </div>
+    </div>
 
-                    <div class="check-in-controls">
-                        <div class="control-group">
-                            <label for="session-type">Session Type:</label>
-                            <select id="session-type">
-                                <option value="Clinical">Clinical Session</option>
-                                <option value="Class">On Class Session</option>
-                            </select>
-                        </div>
-
-                        <div class="control-group" id="target-control-group">
-                            <label for="attendance-target" id="target-label">Department/Course:</label>
-                            <select id="attendance-target">
-                                <option value="">Select Session Type first...</option>
-                            </select>
-                        </div>
-
-                        <button id="check-in-button">Check In Now</button>
-
-                        <p id="geo-message">Select a <strong>Session Type</strong> and then a specific <strong>Department or Course</strong> to check in at your current GPS location and time.</p>
+    <!-- Check-in Card -->
+    <div class="check-in-card">
+        <div class="card-header">
+            <h3><i class="fas fa-map-marker-alt"></i> Check-in Now</h3>
+            <div class="gps-status" id="gps-status">
+                <i class="fas fa-spinner fa-spin"></i> <span>Getting location...</span>
+            </div>
+        </div>
+        
+        <div class="card-body">
+            <div class="check-in-controls">
+                <!-- Session Type -->
+                <div class="control-group">
+                    <label for="session-type">
+                        <i class="fas fa-graduation-cap"></i>
+                        Session Type
+                    </label>
+                    <div class="select-wrapper">
+                        <select id="session-type" class="modern-select">
+                            <option value="">Select session type...</option>
+                            <option value="clinical">Clinical Session</option>
+                            <option value="class">Classroom Session</option>
+                            <option value="lab">Laboratory Session</option>
+                            <option value="tutorial">Tutorial Session</option>
+                        </select>
+                        <i class="fas fa-chevron-down select-arrow"></i>
                     </div>
+                </div>
 
-                    <h3 style="color: var(--color-primary);">Past Attendance History (Check-in Logs)</h3>
-                    <div style="overflow-x: auto;">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Time</th>
-                                    <th>Session Type</th>
-                                    <th>Target</th>
-                                    <th>Verified</th>
-                                </tr>
-                            </thead>
-                            <tbody id="geo-attendance-history">
-                                <tr><td colspan="4">Loading geo check-in history...</td></tr>
-                            </tbody>
-                        </table>
+                <!-- Target Selection (Will be populated dynamically) -->
+                <div class="control-group" id="target-control-group" style="display: none;">
+                    <label for="attendance-target" id="target-label">
+                        <i class="fas fa-bullseye"></i>
+                        <span id="target-text">Select Target:</span>
+                    </label>
+                    <div class="select-wrapper">
+                        <select id="attendance-target" class="modern-select" disabled>
+                            <option value="">Loading options...</option>
+                        </select>
+                        <i class="fas fa-chevron-down select-arrow"></i>
                     </div>
-                </section>
+                </div>
+
+                <!-- Location Display -->
+                <div class="control-group location-display">
+                    <label>
+                        <i class="fas fa-location-dot"></i>
+                        Your Location
+                    </label>
+                    <div class="location-info" id="location-info">
+                        <div class="location-coordinates">
+                            <span class="coord-label">Lat:</span> <span id="latitude">Fetching...</span>
+                            <span class="coord-label">Long:</span> <span id="longitude">Fetching...</span>
+                        </div>
+                        <div class="location-accuracy" id="accuracy-status">
+                            <span class="accuracy-dot"></span>
+                            Accuracy: <span id="accuracy-value">--</span> meters
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Check-in Button -->
+                <div class="check-in-action">
+                    <button id="check-in-button" class="btn-checkin" disabled>
+                        <i class="fas fa-fingerprint"></i>
+                        <span class="btn-text">Check In Now</span>
+                        <span class="btn-subtext">GPS verification required</span>
+                    </button>
+                    
+                    <div class="check-in-requirements">
+                        <p><i class="fas fa-info-circle"></i> Requirements:</p>
+                        <ul>
+                            <li id="req-session"><i class="fas fa-times req-icon"></i> Select session type</li>
+                            <li id="req-target"><i class="fas fa-times req-icon"></i> Select target</li>
+                            <li id="req-location"><i class="fas fa-times req-icon"></i> GPS location acquired</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Status Messages -->
+                <div class="status-messages">
+                    <div class="info-message" id="geo-message">
+                        <i class="fas fa-lightbulb"></i>
+                        <p>Select a <strong>Session Type</strong> and then a specific <strong>Department or Course</strong> to check in at your current GPS location and time.</p>
+                    </div>
+                    
+                    <div class="error-message" id="error-message" style="display: none;">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <p id="error-text"></p>
+                    </div>
+                    
+                    <div class="success-message" id="success-message" style="display: none;">
+                        <i class="fas fa-check-circle"></i>
+                        <p id="success-text"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Attendance History -->
+    <div class="history-section">
+        <div class="section-header">
+            <h3><i class="fas fa-history"></i> Attendance History</h3>
+            <div class="filter-controls">
+                <div class="date-filter">
+                    <label><i class="fas fa-calendar"></i> Filter by:</label>
+                    <select id="history-filter">
+                        <option value="today">Today</option>
+                        <option value="week">This Week</option>
+                        <option value="month">This Month</option>
+                        <option value="all">All Time</option>
+                    </select>
+                </div>
+                <button id="refresh-history" class="btn-refresh">
+                    <i class="fas fa-redo"></i> Refresh
+                </button>
+            </div>
+        </div>
+        
+        <div class="table-container">
+            <table class="attendance-table">
+                <thead>
+                    <tr>
+                        <th><i class="fas fa-clock"></i> Date & Time</th>
+                        <th><i class="fas fa-graduation-cap"></i> Session Type</th>
+                        <th><i class="fas fa-bullseye"></i> Target</th>
+                        <th><i class="fas fa-check-circle"></i> Status</th>
+                        <th><i class="fas fa-map-marker-alt"></i> Location</th>
+                        <th><i class="fas fa-info-circle"></i> Details</th>
+                    </tr>
+                </thead>
+                <tbody id="geo-attendance-history">
+                    <tr class="loading-row">
+                        <td colspan="6">
+                            <div class="loading-content">
+                                <div class="loading-spinner"></div>
+                                <p>Loading attendance history...</p>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
 
                <!-- Exams & Assessments Tab -->
 <section id="cats" class="tab-content">
