@@ -4,6 +4,7 @@
 @import url('base.css');
 @import url('layout.css');
 @import url('components.css');
+@import url('profile.csss');
 @import url('messages.css'); /* Add this line */
 @import url('exams.css');
 @import url('courses.css');
