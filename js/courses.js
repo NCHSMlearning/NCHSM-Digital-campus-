@@ -1,797 +1,619 @@
-// courses.js - Courses Management for NCHSM Digital Student Dashboard (Updated for new UI - No Grading)
-
-// *************************************************************************
-// *** COURSES MANAGEMENT SYSTEM ***
-// *************************************************************************
-
-// Helper function for safe Supabase client access
-function getSupabaseClient() {
-    const client = window.db?.supabase;
-    if (!client || typeof client.from !== 'function') {
-        console.error('❌ No valid Supabase client available');
-        return null;
-    }
-    return client;
-}
-
-// Helper function for safe user profile access
-function getUserProfile() {
-    return window.db?.currentUserProfile || 
-           window.currentUserProfile || 
-           window.userProfile || 
-           {};
-}
-
-// Helper function for safe user ID access
-function getCurrentUserId() {
-    return window.db?.currentUserId || window.currentUserId;
-}
-
-let cachedCourses = [];
-let currentFilter = 'all';
-
-// Load all courses for the current student
-async function loadAllCourses() {
-    const userProfile = getUserProfile();
-    const userId = getCurrentUserId();
+// courses.js - COMPLETE FIXED VERSION
+(function() {
+    'use strict';
     
-    // Get Supabase client safely
-    const supabaseClient = getSupabaseClient();
-    if (!supabaseClient) {
-        console.error('❌ No Supabase client');
-        return [];
-    }
+    console.log('✅ courses.js - Loading...');
     
-    const program = userProfile?.program;
-    const department = userProfile?.department;
-    const block = userProfile?.block;
-    const intakeYear = userProfile?.intake_year;
-
-    if ((!program && !department) || !intakeYear) {
-        console.error('❌ Missing program/department or intake year info');
-        return [];
-    }
-
-    try {
-        const blockFilter = `block.eq.${block},block.is.null,block.eq.General`;
-
-        let programFilter;
-        
-        if (program === 'TVET' || department === 'TVET') {
-            programFilter = `target_program.eq.TVET`;
-        } else if (program === 'KRCHN') {
-            programFilter = `target_program.eq.KRCHN`;
-        } else if (department === 'Nursing') {
-            programFilter = `target_program.eq.Nursing`;
-        } else if (department === 'Clinical Medicine') {
-            programFilter = `target_program.eq.Clinical Medicine`;
-        } else if (department === 'Management') {
-            programFilter = `target_program.eq.Management`;
-        } else {
-            programFilter = `target_program.eq.${program}`;
-        }
-
-        console.log('📚 Loading courses with:', {
-            program,
-            department,
-            block,
-            intakeYear,
-            programFilter,
-            blockFilter
-        });
-
-        const { data: courses, error } = await supabaseClient
-            .from('courses')
-            .select('*')
-            .or(programFilter)
-            .eq('intake_year', intakeYear)
-            .or(blockFilter)
-            .order('course_name', { ascending: true });
-
-        if (error) throw error;
-
-        return courses || [];
-    } catch (error) {
-        console.error("❌ Failed to load courses:", error);
-        return [];
-    }
-}
-
-// Load and display courses based on filter
-async function loadCourses() {
-    console.log('📚 loadCourses called with filter:', currentFilter);
-    
-    // Show loading states
-    showLoadingState('active');
-    showLoadingState('completed');
-    
-    try {
-        // Load all courses
-        cachedCourses = await loadAllCourses();
-        console.log(`✅ Loaded ${cachedCourses.length} total courses`);
-        
-        if (cachedCourses.length === 0) {
-            console.log('⚠️ No courses found');
-            showEmptyState('active');
-            showEmptyState('completed');
-            updateHeaderStats(0, 0, 0);
-            return;
+    class CoursesModule {
+        constructor() {
+            console.log('📚 CoursesModule initialized');
+            
+            // Store course data
+            this.allCourses = [];
+            this.activeCourses = [];
+            this.completedCourses = [];
+            this.currentFilter = 'all';
+            
+            // Cache DOM elements
+            this.cacheElements();
+            
+            // Initialize
+            this.initializeEventListeners();
+            this.updateFilterButtons();
+            this.loadCourses();
         }
         
-        // Split courses into active and completed
-        const activeCourses = cachedCourses.filter(course => {
-            const isActive = course.status !== 'Completed' && course.status !== 'Passed';
-            return isActive;
-        });
-        
-        const completedCourses = cachedCourses.filter(course => {
-            const isCompleted = course.status === 'Completed' || course.status === 'Passed';
-            return isCompleted;
-        });
-        
-        console.log(`📊 Split: ${activeCourses.length} active, ${completedCourses.length} completed`);
-        
-        // Update header stats
-        updateHeaderStats(cachedCourses.length, activeCourses.length, completedCourses.length);
-        
-        // Apply filter if needed
-        let filteredActive = activeCourses;
-        let filteredCompleted = completedCourses;
-        
-        if (currentFilter === 'active') {
-            filteredCompleted = [];
-        } else if (currentFilter === 'completed') {
-            filteredActive = [];
+        cacheElements() {
+            console.log('🔍 Caching DOM elements...');
+            
+            // Grid and table containers
+            this.activeGrid = document.getElementById('active-courses-grid');
+            this.completedTable = document.getElementById('completed-courses-table');
+            
+            // Empty states
+            this.activeEmpty = document.getElementById('active-empty');
+            this.completedEmpty = document.getElementById('completed-empty');
+            
+            // Count elements
+            this.activeCount = document.getElementById('active-count');
+            this.completedCount = document.getElementById('completed-count');
+            this.completedCredits = document.getElementById('completed-credits-total');
+            
+            // Header stats
+            this.activeHeaderCount = document.getElementById('active-courses-count');
+            this.completedHeaderCount = document.getElementById('completed-courses-count');
+            this.totalCreditsHeader = document.getElementById('total-credits');
+            
+            // Summary elements
+            this.completedGPA = document.getElementById('completed-gpa');
+            this.highestGrade = document.getElementById('highest-grade');
+            this.averageGrade = document.getElementById('average-grade');
+            this.firstCourseDate = document.getElementById('first-course-date');
+            this.latestCourseDate = document.getElementById('latest-course-date');
+            this.completionRate = document.getElementById('completion-rate');
+            
+            console.log('✅ Cached all DOM elements');
+            
+            // Log what we found
+            console.log({
+                activeGrid: !!this.activeGrid,
+                completedTable: !!this.completedTable,
+                activeEmpty: !!this.activeEmpty,
+                completedEmpty: !!this.completedEmpty
+            });
         }
         
-        // Display courses - FIXED: Only show sections if they have content for the current filter
-        console.log('🎨 Displaying active courses:', filteredActive.length);
-        if (filteredActive.length > 0) {
-            displayActiveCourses(filteredActive);
-            hideEmptyState('active');
-        } else {
-            showEmptyState('active');
+        initializeEventListeners() {
+            console.log('🔌 Setting up event listeners...');
+            
+            // Filter buttons
+            const filterButtons = [
+                { id: 'view-all-courses', filter: 'all' },
+                { id: 'view-active-only', filter: 'active' },
+                { id: 'view-completed-only', filter: 'completed' }
+            ];
+            
+            filterButtons.forEach(({ id, filter }) => {
+                const button = document.getElementById(id);
+                if (button) {
+                    button.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        console.log(`🔍 ${id} clicked, filter: ${filter}`);
+                        this.applyFilter(filter);
+                    });
+                }
+            });
+            
+            // Refresh button
+            const refreshBtn = document.getElementById('refresh-courses-btn');
+            if (refreshBtn) {
+                refreshBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    console.log('🔄 Refresh button clicked');
+                    this.loadCourses();
+                });
+            }
+            
+            console.log('✅ All event listeners initialized');
         }
         
-        console.log('🎨 Displaying completed courses:', filteredCompleted.length);
-        if (filteredCompleted.length > 0) {
-            displayCompletedCourses(filteredCompleted);
-            hideEmptyState('completed');
-        } else {
-            showEmptyState('completed');
+        applyFilter(filterType) {
+            console.log(`🔍 Applying filter: ${filterType}`);
+            this.currentFilter = filterType;
+            
+            // Update button states
+            this.updateFilterButtons();
+            
+            // Show/hide sections
+            this.showFilteredSections();
+            
+            // Apply filter to data and display
+            this.applyDataFilter();
         }
         
-        // Calculate and display academic summary
-        calculateAcademicSummary(completedCourses);
-        
-    } catch (error) {
-        console.error('❌ Error in loadCourses:', error);
-        showErrorState('active', 'Failed to load courses');
-        showErrorState('completed', 'Failed to load courses');
-    }
-}
-
-// Display active courses in grid view
-function displayActiveCourses(courses) {
-    const gridContainer = document.getElementById('active-courses-grid');
-    const emptyState = document.getElementById('active-empty');
-    
-    if (!gridContainer) {
-        console.error('❌ active-courses-grid element not found');
-        return;
-    }
-    
-    if (courses.length === 0) {
-        gridContainer.innerHTML = '';
-        showEmptyState('active');
-        const countElement = document.getElementById('active-count');
-        if (countElement) countElement.textContent = '0 courses';
-        return;
-    }
-    
-    // Update count
-    const countElement = document.getElementById('active-count');
-    if (countElement) {
-        countElement.textContent = `${courses.length} course${courses.length !== 1 ? 's' : ''}`;
-    }
-    
-    // Clear loading/empty states
-    if (emptyState) emptyState.style.display = 'none';
-    
-    // Generate course cards
-    gridContainer.innerHTML = courses.map(course => `
-        <div class="course-card" data-course-id="${course.id}">
-            <div class="course-header">
-                <span class="course-code">${escapeHtml(course.unit_code || 'N/A')}</span>
-                <span class="status-badge ${getStatusClass(course.status)}">
-                    ${escapeHtml(course.status || 'Active')}
-                </span>
-            </div>
-            <h4 class="course-title">${escapeHtml(course.course_name || 'Unnamed Course')}</h4>
-            <p class="course-description">${escapeHtml(truncateText(course.description || 'No description available', 120))}</p>
-            <div class="course-footer">
-                <div class="course-credits">
-                    <i class="fas fa-star"></i>
-                    <span>${course.credits || 3} Credits</span>
-                </div>
-                <div class="course-meta">
-                    <span class="course-block">${escapeHtml(course.block || 'General')}</span>
-                </div>
-            </div>
-            <div class="course-actions">
-                <button class="btn btn-sm btn-outline view-materials" onclick="viewCourseMaterials('${course.id}')">
-                    <i class="fas fa-file-alt"></i> Materials
-                </button>
-                <button class="btn btn-sm btn-primary view-schedule" onclick="viewCourseSchedule('${course.id}')">
-                    <i class="fas fa-calendar"></i> Schedule
-                </button>
-            </div>
-        </div>
-    `).join('');
-}
-
-// Display completed courses in table view (NO GRADES)
-function displayCompletedCourses(courses) {
-    const tableBody = document.getElementById('completed-courses-table');
-    const emptyState = document.getElementById('completed-empty');
-    
-    if (!tableBody) {
-        console.error('❌ completed-courses-table element not found');
-        return;
-    }
-    
-    if (courses.length === 0) {
-        tableBody.innerHTML = '';
-        showEmptyState('completed');
-        
-        const countElement = document.getElementById('completed-total-count');
-        const creditsElement = document.getElementById('completed-credits-total');
-        
-        if (countElement) countElement.textContent = '0 courses';
-        if (creditsElement) creditsElement.textContent = '0 credits earned';
-        return;
-    }
-    
-    // Calculate total credits
-    const totalCredits = courses.reduce((sum, course) => sum + (course.credits || 0), 0);
-    
-    // Update counts
-    const countElement = document.getElementById('completed-total-count');
-    const creditsElement = document.getElementById('completed-credits-total');
-    
-    if (countElement) countElement.textContent = `${courses.length} course${courses.length !== 1 ? 's' : ''}`;
-    if (creditsElement) creditsElement.textContent = `${totalCredits} credit${totalCredits !== 1 ? 's' : ''} earned`;
-    
-    // Clear loading/empty states
-    if (emptyState) emptyState.style.display = 'none';
-    
-    // Generate table rows WITHOUT grades
-    tableBody.innerHTML = courses.map(course => {
-        // Get completion date (use created_at if no completion date)
-        const completionDate = course.completed_date || course.created_at || new Date().toISOString();
-        const formattedDate = new Date(completionDate).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric'
-        });
-        
-        // Use course description if available
-        const description = course.description ? 
-            `<br><small class="text-muted">${escapeHtml(truncateText(course.description, 80))}</small>` : '';
-        
-        return `
-            <tr>
-                <td>
-                    <strong>${escapeHtml(course.course_name || 'Unnamed Course')}</strong>
-                    ${description}
-                </td>
-                <td><code>${escapeHtml(course.unit_code || 'N/A')}</code></td>
-                <td class="text-center">${course.credits || 3}</td>
-                <td class="text-center">${escapeHtml(course.block || 'General')}</td>
-                <td>${formattedDate}</td>
-                <td class="text-center">
-                    <span class="status-badge completed">
-                        <i class="fas fa-check-circle"></i> ${escapeHtml(course.status || 'Completed')}
-                    </span>
-                </td>
-            </tr>
-        `;
-    }).join('');
-}
-
-// Calculate and display academic summary (NO GRADES)
-function calculateAcademicSummary(completedCourses) {
-    if (completedCourses.length === 0) {
-        // Reset all summary values
-        document.getElementById('completed-gpa').textContent = '--';
-        document.getElementById('highest-grade').textContent = '--';
-        document.getElementById('average-grade').textContent = '--';
-        document.getElementById('first-course-date').textContent = '--';
-        document.getElementById('latest-course-date').textContent = '--';
-        document.getElementById('completion-rate').textContent = '0%';
-        return;
-    }
-    
-    // Since we don't have grades, show dashes
-    document.getElementById('completed-gpa').textContent = '--';
-    document.getElementById('highest-grade').textContent = '--';
-    document.getElementById('average-grade').textContent = '--';
-    
-    // Get completion dates
-    const dates = completedCourses
-        .filter(c => c.completed_date || c.created_at)
-        .map(c => new Date(c.completed_date || c.created_at))
-        .sort((a, b) => a - b);
-    
-    if (dates.length > 0) {
-        const firstDate = dates[0];
-        const latestDate = dates[dates.length - 1];
-        
-        document.getElementById('first-course-date').textContent = 
-            firstDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-        document.getElementById('latest-course-date').textContent = 
-            latestDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-    }
-    
-    // Calculate completion rate
-    const totalExpectedCourses = completedCourses.length * 2; // Simple assumption
-    const completionRate = Math.round((completedCourses.length / totalExpectedCourses) * 100);
-    document.getElementById('completion-rate').textContent = `${completionRate}%`;
-}
-
-// Update header statistics - FIXED
-function updateHeaderStats(total, active, completed) {
-    console.log('📊 Updating header stats:', {total, active, completed});
-    
-    // Get DOM elements - using the correct IDs from your HTML
-    const activeElem = document.getElementById('active-courses-count');
-    const completedElem = document.getElementById('completed-courses-count');
-    const creditsElem = document.getElementById('total-credits');
-    
-    console.log('🔍 DOM elements found:', {
-        activeElem: activeElem?.id || 'NOT FOUND',
-        completedElem: completedElem?.id || 'NOT FOUND',
-        creditsElem: creditsElem?.id || 'NOT FOUND'
-    });
-    
-    // Update active courses count
-    if (activeElem) {
-        activeElem.textContent = active;
-        console.log(`✅ Set active to: ${active}`);
-    } else {
-        console.error('❌ active-courses-count element not found');
-    }
-    
-    // Update completed courses count
-    if (completedElem) {
-        completedElem.textContent = completed;
-        console.log(`✅ Set completed to: ${completed}`);
-    } else {
-        console.error('❌ completed-courses-count element not found');
-    }
-    
-    // Calculate total credits
-    if (creditsElem) {
-        const totalCredits = total * 3; // Assuming 3 credits per course
-        creditsElem.textContent = totalCredits;
-        console.log(`✅ Set credits to: ${totalCredits}`);
-    } else {
-        console.error('❌ total-credits element not found');
-    }
-}
-
-// Filter courses based on selection - UPDATED to hide/show sections
-function filterCourses(filterType) {
-    console.log('🔍 Filtering courses by:', filterType);
-    currentFilter = filterType;
-    
-    // Get section elements
-    const activeSection = document.querySelector('.courses-section:not(.completed-section)');
-    const completedSection = document.querySelector('.completed-section');
-    
-    console.log('🔍 Sections found:', {
-        activeSection: !!activeSection,
-        completedSection: !!completedSection
-    });
-    
-    // Show/hide sections based on filter
-    if (filterType === 'active') {
-        // Show only active section
-        if (activeSection) activeSection.style.display = 'block';
-        if (completedSection) completedSection.style.display = 'none';
-        console.log('✅ Showing active section, hiding completed');
-    } else if (filterType === 'completed') {
-        // Show only completed section
-        if (activeSection) activeSection.style.display = 'none';
-        if (completedSection) completedSection.style.display = 'block';
-        console.log('✅ Showing completed section, hiding active');
-    } else {
-        // Show both sections
-        if (activeSection) activeSection.style.display = 'block';
-        if (completedSection) completedSection.style.display = 'block';
-        console.log('✅ Showing both sections');
-    }
-    
-    // Update button states
-    const buttons = document.querySelectorAll('.action-btn');
-    console.log(`🔍 Found ${buttons.length} action buttons`);
-    
-    buttons.forEach(btn => {
-        btn.classList.remove('active');
-    });
-    
-    // Find and activate the correct button
-    let activeBtn;
-    if (filterType === 'active') {
-        activeBtn = document.getElementById('view-active-only');
-    } else if (filterType === 'completed') {
-        activeBtn = document.getElementById('view-completed-only');
-    } else {
-        activeBtn = document.getElementById('view-all-courses');
-    }
-    
-    console.log('🔍 Button to activate:', activeBtn?.id);
-    
-    if (activeBtn) {
-        activeBtn.classList.add('active');
-        console.log(`✅ Activated button: ${activeBtn.id}`);
-    } else {
-        console.error('❌ Could not find button for filter:', filterType);
-    }
-    
-    // Reload courses with new filter
-    console.log('🔄 Loading courses with filter:', currentFilter);
-    loadCourses();
-}
-
-// Switch to view only active courses - UPDATED
-function switchToActiveCourses() {
-    filterCourses('active');
-    // Scroll to active section only if it's visible
-    const activeSection = document.querySelector('.courses-section:not(.completed-section)');
-    if (activeSection && activeSection.style.display !== 'none') {
-        activeSection.scrollIntoView({ behavior: 'smooth' });
-    }
-}
-
-// Switch to view only completed courses - UPDATED
-function switchToCompletedCourses() {
-    filterCourses('completed');
-    // Scroll to completed section only if it's visible
-    const completedSection = document.querySelector('.completed-section');
-    if (completedSection && completedSection.style.display !== 'none') {
-        completedSection.scrollIntoView({ behavior: 'smooth' });
-    }
-}
-
-// Switch to view all courses
-function switchToAllCourses() {
-    filterCourses('all');
-}
-
-// Refresh courses
-function refreshCourses() {
-    console.log('🔄 Refreshing courses...');
-    loadCourses();
-    if (window.AppUtils && window.AppUtils.showToast) {
-        AppUtils.showToast('Courses refreshed successfully', 'success');
-    }
-}
-
-// View course materials (placeholder)
-function viewCourseMaterials(courseId) {
-    const course = cachedCourses.find(c => c.id === courseId);
-    if (course) {
-        if (window.AppUtils && window.AppUtils.showToast) {
-            AppUtils.showToast(`Opening materials for ${course.course_name}`, 'info');
+        updateFilterButtons() {
+            // Get all filter buttons
+            const buttons = {
+                'all': document.getElementById('view-all-courses'),
+                'active': document.getElementById('view-active-only'),
+                'completed': document.getElementById('view-completed-only')
+            };
+            
+            // Remove active class from all
+            Object.values(buttons).forEach(button => {
+                if (button) button.classList.remove('active');
+            });
+            
+            // Add active class to current filter button
+            const currentButton = buttons[this.currentFilter];
+            if (currentButton) {
+                currentButton.classList.add('active');
+            }
         }
-        // In real app, this would open a modal or navigate to materials page
-    }
-}
-
-// View course schedule (placeholder)
-function viewCourseSchedule(courseId) {
-    const course = cachedCourses.find(c => c.id === courseId);
-    if (course) {
-        if (window.AppUtils && window.AppUtils.showToast) {
-            AppUtils.showToast(`Viewing schedule for ${course.course_name}`, 'info');
-        }
-        // In real app, this would open a modal with schedule
-    }
-}
-
-// Show loading state - UPDATED
-function showLoadingState(section) {
-    console.log(`⏳ Showing loading state for: ${section}`);
-    
-    if (section === 'active') {
-        const grid = document.getElementById('active-courses-grid');
-        console.log('🔍 Active grid element:', grid);
         
-        if (grid) {
-            grid.innerHTML = `
-                <div class="course-card loading">
-                    <div class="loading-content">
-                        <div class="loading-spinner"></div>
-                        <p>Loading active courses...</p>
+        showFilteredSections() {
+            const activeSection = document.querySelector('.courses-section:not(.completed-section)');
+            const completedSection = document.querySelector('.completed-section');
+            
+            console.log('🔍 Sections:', {
+                activeSection: !!activeSection,
+                completedSection: !!completedSection
+            });
+            
+            if (!activeSection || !completedSection) return;
+            
+            switch(this.currentFilter) {
+                case 'active':
+                    activeSection.style.display = 'block';
+                    completedSection.style.display = 'none';
+                    break;
+                case 'completed':
+                    activeSection.style.display = 'none';
+                    completedSection.style.display = 'block';
+                    break;
+                default: // 'all'
+                    activeSection.style.display = 'block';
+                    completedSection.style.display = 'block';
+            }
+        }
+        
+        applyDataFilter() {
+            // Filter the data based on current filter
+            this.activeCourses = this.allCourses.filter(course => 
+                !course.isCompleted && course.status !== 'Completed'
+            );
+            this.completedCourses = this.allCourses.filter(course => 
+                course.isCompleted || course.status === 'Completed'
+            );
+            
+            // Apply additional filter if needed
+            if (this.currentFilter === 'active') {
+                this.completedCourses = [];
+            } else if (this.currentFilter === 'completed') {
+                this.activeCourses = [];
+            }
+            
+            // Display the filtered data
+            this.displayTables();
+        }
+        
+        async loadCourses() {
+            console.log('📥 Loading courses...');
+            
+            // Show loading state
+            this.showLoading();
+            
+            try {
+                // Check for required data
+                if (!window.db?.currentUserProfile) {
+                    throw new Error('User profile not available. Please log in again.');
+                }
+                
+                if (!window.db?.supabase) {
+                    throw new Error('Database connection not available.');
+                }
+                
+                const userProfile = window.db.currentUserProfile;
+                const program = userProfile.program || 'KRCHN';
+                const intakeYear = userProfile.intake_year || 2025;
+                const block = userProfile.block || 'A';
+                const term = userProfile.term || 'Term 1';
+                const userId = window.db.currentUserId;
+                
+                console.log('🎯 Loading courses for:', { program, intakeYear, block, term });
+                
+                const supabase = window.db.supabase;
+                
+                // Build query based on program type
+                let query = supabase
+                    .from('courses')
+                    .select('*')
+                    .eq('intake_year', intakeYear)
+                    .order('course_name', { ascending: true });
+                
+                const isTVET = this.isTVETProgram(program);
+                
+                if (isTVET) {
+                    // TVET filtering: match program AND (term OR General)
+                    query = query
+                        .eq('target_program', program)
+                        .or(`block.eq.${term},block.eq.General,block.is.null`);
+                } else {
+                    // KRCHN filtering: match program OR General, AND block OR General
+                    query = query
+                        .or(`target_program.eq.${program},target_program.eq.General`)
+                        .or(`block.eq.${block},block.is.null,block.eq.General`);
+                }
+                
+                // Fetch courses
+                const { data: courses, error } = await query;
+                
+                if (error) throw error;
+                
+                console.log(`📊 Found ${courses?.length || 0} courses`);
+                
+                // Process course data
+                this.processCoursesData(courses || []);
+                
+                // Apply current filter and display
+                this.applyDataFilter();
+                
+                // Show success message
+                if (window.AppUtils?.showToast) {
+                    window.AppUtils.showToast('Courses loaded successfully', 'success');
+                }
+                
+            } catch (error) {
+                console.error('❌ Error loading courses:', error);
+                this.showError(error.message);
+                
+                if (window.AppUtils?.showToast) {
+                    window.AppUtils.showToast('Failed to load courses: ' + error.message, 'error');
+                }
+            }
+        }
+        
+        isTVETProgram(program) {
+            const tvetPrograms = ['TVET', 'TVET NURSING', 'TVET NURSING(A)', 'TVET NURSING(B)', 
+                                'CRAFT CERTIFICATE', 'ARTISAN', 'DIPLOMA IN TVET'];
+            return tvetPrograms.some(tvet => program?.toUpperCase().includes(tvet));
+        }
+        
+        processCoursesData(courses) {
+            this.allCourses = courses.map(course => {
+                // Check if course is completed
+                const isCompleted = course.status === 'Completed' || course.status === 'Passed';
+                
+                // Format dates
+                const createdAt = course.created_at ? new Date(course.created_at) : null;
+                const completedDate = course.completed_date ? new Date(course.completed_date) : null;
+                
+                return {
+                    ...course,
+                    isCompleted,
+                    createdAt,
+                    completedDate,
+                    formattedCreatedAt: createdAt ? createdAt.toLocaleDateString('en-US', { 
+                        year: 'numeric', month: 'short', day: 'numeric' 
+                    }) : '--',
+                    formattedCompletedDate: completedDate ? completedDate.toLocaleDateString('en-US', { 
+                        year: 'numeric', month: 'short', day: 'numeric' 
+                    }) : '--'
+                };
+            });
+            
+            console.log(`✅ Processed ${this.allCourses.length} courses`);
+            console.log(`📊 Active courses: ${this.allCourses.filter(c => !c.isCompleted).length}`);
+            console.log(`📊 Completed courses: ${this.allCourses.filter(c => c.isCompleted).length}`);
+        }
+        
+        displayTables() {
+            // Display active courses
+            this.displayActiveCourses();
+            
+            // Display completed courses
+            this.displayCompletedCourses();
+            
+            // Update counts
+            this.updateCounts();
+            
+            // Update empty states
+            this.updateEmptyStates();
+            
+            // Update summary
+            this.updateSummary();
+        }
+        
+        displayActiveCourses() {
+            if (!this.activeGrid) {
+                console.error('❌ active-courses-grid element not found');
+                return;
+            }
+            
+            if (this.activeCourses.length === 0) {
+                this.activeGrid.innerHTML = '';
+                return;
+            }
+            
+            const html = this.activeCourses.map(course => `
+                <div class="course-card" data-course-id="${course.id}">
+                    <div class="course-header">
+                        <span class="course-code">${this.escapeHtml(course.unit_code || 'N/A')}</span>
+                        <span class="status-badge ${course.isCompleted ? 'completed' : 'active'}">
+                            ${this.escapeHtml(course.status || 'Active')}
+                        </span>
                     </div>
-                </div>
-            `;
-        }
-    } else if (section === 'completed') {
-        const tableBody = document.getElementById('completed-courses-table');
-        console.log('🔍 Completed table body element:', tableBody);
-        
-        if (tableBody) {
-            tableBody.innerHTML = `
-                <tr class="loading">
-                    <td colspan="6">
-                        <div class="loading-content">
-                            <div class="loading-spinner"></div>
-                            <p>Loading completed courses...</p>
+                    <h4 class="course-title">${this.escapeHtml(course.course_name || 'Unnamed Course')}</h4>
+                    <p class="course-description">${this.escapeHtml(this.truncateText(course.description || 'No description available', 120))}</p>
+                    <div class="course-footer">
+                        <div class="course-credits">
+                            <i class="fas fa-star"></i>
+                            <span>${course.credits || 3} Credits</span>
                         </div>
-                    </td>
-                </tr>
-            `;
-        }
-    }
-}
-
-// Show empty state - UPDATED with better messages
-function showEmptyState(section) {
-    console.log(`📭 Showing empty state for: ${section}, filter: ${currentFilter}`);
-    
-    if (section === 'active') {
-        const emptyState = document.getElementById('active-empty');
-        const grid = document.getElementById('active-courses-grid');
-        
-        if (emptyState) {
-            emptyState.style.display = 'block';
-            
-            // Update message based on filter
-            const emptyMessage = emptyState.querySelector('p');
-            if (emptyMessage) {
-                if (currentFilter === 'completed') {
-                    // This shouldn't normally show since section is hidden
-                    emptyMessage.textContent = 'Active courses are hidden. Switch to "View All" or "Active Only" to see active courses.';
-                } else {
-                    emptyMessage.textContent = 'You don\'t have any active courses at the moment.';
-                }
-            }
-        }
-        if (grid) grid.innerHTML = '';
-        
-    } else if (section === 'completed') {
-        const emptyState = document.getElementById('completed-empty');
-        const tableBody = document.getElementById('completed-courses-table');
-        
-        if (emptyState) {
-            emptyState.style.display = 'block';
-            
-            // Update message based on filter
-            const emptyMessage = emptyState.querySelector('p');
-            if (emptyMessage) {
-                if (currentFilter === 'active') {
-                    // This shouldn't normally show since section is hidden
-                    emptyMessage.textContent = 'Completed courses are hidden. Switch to "View All" or "Completed Only" to see completed courses.';
-                } else {
-                    emptyMessage.textContent = 'You haven\'t completed any courses yet.';
-                }
-            }
-        }
-        if (tableBody) tableBody.innerHTML = '';
-    }
-}
-
-// Hide empty state - UPDATED
-function hideEmptyState(section) {
-    console.log(`👁️ Hiding empty state for: ${section}`);
-    
-    if (section === 'active') {
-        const emptyState = document.getElementById('active-empty');
-        if (emptyState) {
-            emptyState.style.display = 'none';
-        }
-    } else if (section === 'completed') {
-        const emptyState = document.getElementById('completed-empty');
-        if (emptyState) {
-            emptyState.style.display = 'none';
-        }
-    }
-}
-
-// Show error state - UPDATED
-function showErrorState(section, message) {
-    if (section === 'active') {
-        const grid = document.getElementById('active-courses-grid');
-        if (grid) {
-            grid.innerHTML = `
-                <div class="course-card error">
-                    <div class="error-content">
-                        <i class="fas fa-exclamation-circle"></i>
-                        <p>${message}</p>
-                        <button onclick="refreshCourses()" class="btn btn-sm btn-primary">
-                            <i class="fas fa-redo"></i> Retry
+                        <div class="course-meta">
+                            <span class="course-block">${this.escapeHtml(course.block || 'General')}</span>
+                        </div>
+                    </div>
+                    <div class="course-actions">
+                        <button class="btn btn-sm btn-outline view-materials" onclick="window.coursesModule.viewCourseMaterials('${course.id}')">
+                            <i class="fas fa-file-alt"></i> Materials
+                        </button>
+                        <button class="btn btn-sm btn-primary view-schedule" onclick="window.coursesModule.viewCourseSchedule('${course.id}')">
+                            <i class="fas fa-calendar"></i> Schedule
                         </button>
                     </div>
                 </div>
-            `;
+            `).join('');
+            
+            this.activeGrid.innerHTML = html;
         }
-    } else if (section === 'completed') {
-        const tableBody = document.getElementById('completed-courses-table');
-        if (tableBody) {
-            tableBody.innerHTML = `
-                <tr class="error">
-                    <td colspan="6">
+        
+        displayCompletedCourses() {
+            if (!this.completedTable) {
+                console.error('❌ completed-courses-table element not found');
+                return;
+            }
+            
+            if (this.completedCourses.length === 0) {
+                this.completedTable.innerHTML = '';
+                return;
+            }
+            
+            const html = this.completedCourses.map(course => {
+                return `
+                    <tr>
+                        <td>
+                            <strong>${this.escapeHtml(course.course_name || 'Unnamed Course')}</strong>
+                            ${course.description ? `<br><small class="text-muted">${this.escapeHtml(this.truncateText(course.description, 80))}</small>` : ''}
+                        </td>
+                        <td><code>${this.escapeHtml(course.unit_code || 'N/A')}</code></td>
+                        <td class="text-center">${course.credits || 3}</td>
+                        <td class="text-center">${this.escapeHtml(course.block || 'General')}</td>
+                        <td>${course.formattedCompletedDate}</td>
+                        <td class="text-center">
+                            <span class="status-badge completed">
+                                <i class="fas fa-check-circle"></i> ${this.escapeHtml(course.status || 'Completed')}
+                            </span>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+            
+            this.completedTable.innerHTML = html;
+        }
+        
+        updateCounts() {
+            // Update section counts
+            if (this.activeCount) {
+                this.activeCount.textContent = `${this.activeCourses.length} course${this.activeCourses.length !== 1 ? 's' : ''}`;
+            }
+            
+            if (this.completedCount) {
+                this.completedCount.textContent = `${this.completedCourses.length} course${this.completedCourses.length !== 1 ? 's' : ''}`;
+            }
+            
+            // Update header counts
+            if (this.activeHeaderCount) {
+                this.activeHeaderCount.textContent = this.activeCourses.length;
+            }
+            
+            if (this.completedHeaderCount) {
+                this.completedHeaderCount.textContent = this.completedCourses.length;
+            }
+            
+            // Calculate and update credits
+            const totalCredits = this.allCourses.reduce((sum, course) => sum + (course.credits || 0), 0);
+            const completedCredits = this.completedCourses.reduce((sum, course) => sum + (course.credits || 0), 0);
+            
+            if (this.totalCreditsHeader) {
+                this.totalCreditsHeader.textContent = totalCredits;
+            }
+            
+            if (this.completedCredits) {
+                this.completedCredits.textContent = `${completedCredits} credit${completedCredits !== 1 ? 's' : ''} earned`;
+            }
+        }
+        
+        updateEmptyStates() {
+            if (this.activeEmpty) {
+                this.activeEmpty.style.display = this.activeCourses.length === 0 ? 'block' : 'none';
+            }
+            
+            if (this.completedEmpty) {
+                this.completedEmpty.style.display = this.completedCourses.length === 0 ? 'block' : 'none';
+            }
+        }
+        
+        updateSummary() {
+            if (this.completedCourses.length === 0) {
+                // Reset all summary values
+                if (this.completedGPA) this.completedGPA.textContent = '--';
+                if (this.highestGrade) this.highestGrade.textContent = '--';
+                if (this.averageGrade) this.averageGrade.textContent = '--';
+                if (this.firstCourseDate) this.firstCourseDate.textContent = '--';
+                if (this.latestCourseDate) this.latestCourseDate.textContent = '--';
+                if (this.completionRate) this.completionRate.textContent = '0%';
+                return;
+            }
+            
+            // Get completion dates
+            const dates = this.completedCourses
+                .filter(c => c.completedDate || c.createdAt)
+                .map(c => c.completedDate || c.createdAt)
+                .sort((a, b) => a - b);
+            
+            if (dates.length > 0) {
+                const firstDate = dates[0];
+                const latestDate = dates[dates.length - 1];
+                
+                if (this.firstCourseDate) {
+                    this.firstCourseDate.textContent = firstDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+                }
+                
+                if (this.latestCourseDate) {
+                    this.latestCourseDate.textContent = latestDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+                }
+            }
+            
+            // Since we don't have grades
+            if (this.completedGPA) this.completedGPA.textContent = '--';
+            if (this.highestGrade) this.highestGrade.textContent = '--';
+            if (this.averageGrade) this.averageGrade.textContent = '--';
+            
+            // Calculate completion rate
+            if (this.completionRate) {
+                const totalExpectedCourses = this.allCourses.length || 1;
+                const completionRate = Math.round((this.completedCourses.length / totalExpectedCourses) * 100);
+                this.completionRate.textContent = `${completionRate}%`;
+            }
+        }
+        
+        viewCourseMaterials(courseId) {
+            const course = this.allCourses.find(c => c.id === courseId);
+            if (course) {
+                if (window.AppUtils?.showToast) {
+                    window.AppUtils.showToast(`Opening materials for ${course.course_name}`, 'info');
+                }
+                // In real app, this would open a modal or navigate to materials page
+            }
+        }
+        
+        viewCourseSchedule(courseId) {
+            const course = this.allCourses.find(c => c.id === courseId);
+            if (course) {
+                if (window.AppUtils?.showToast) {
+                    window.AppUtils.showToast(`Viewing schedule for ${course.course_name}`, 'info');
+                }
+                // In real app, this would open a modal with schedule
+            }
+        }
+        
+        showLoading() {
+            // Show loading in active grid
+            if (this.activeGrid) {
+                this.activeGrid.innerHTML = `
+                    <div class="course-card loading">
+                        <div class="loading-content">
+                            <div class="loading-spinner"></div>
+                            <p>Loading courses...</p>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // Show loading in completed table
+            if (this.completedTable) {
+                this.completedTable.innerHTML = `
+                    <tr class="loading">
+                        <td colspan="6">
+                            <div class="loading-content">
+                                <div class="loading-spinner"></div>
+                                <p>Loading courses...</p>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+        
+        showError(message) {
+            // Show error in active grid
+            if (this.activeGrid) {
+                this.activeGrid.innerHTML = `
+                    <div class="course-card error">
                         <div class="error-content">
                             <i class="fas fa-exclamation-circle"></i>
                             <p>${message}</p>
-                            <button onclick="refreshCourses()" class="btn btn-sm btn-primary">
+                            <button onclick="window.coursesModule.loadCourses()" class="btn btn-sm btn-primary">
                                 <i class="fas fa-redo"></i> Retry
                             </button>
                         </div>
-                    </td>
-                </tr>
-            `;
-        }
-    }
-}
-
-// Helper function to get status CSS class
-function getStatusClass(status) {
-    const statusMap = {
-        'active': 'active',
-        'Active': 'active',
-        'in progress': 'active',
-        'upcoming': 'upcoming',
-        'completed': 'completed',
-        'Completed': 'completed',
-        'passed': 'completed',
-        'Passed': 'completed'
-    };
-    return statusMap[status?.toLowerCase()] || 'active';
-}
-
-// Helper function to truncate text
-function truncateText(text, maxLength) {
-    if (!text) return '';
-    if (text.length <= maxLength) return text;
-    return text.substring(0, maxLength) + '...';
-}
-
-// Utility to safely escape HTML
-function escapeHtml(str) {
-    if (!str) return '';
-    return String(str)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-}
-
-// *************************************************************************
-// *** INITIALIZATION ***
-// *************************************************************************
-
-// Initialize courses module with new UI - UPDATED
-function initializeCoursesModule() {
-    console.log('📚 Initializing Courses Module with new UI...');
-    
-    // Set up event listeners for courses tab
-    const coursesTab = document.querySelector('.nav a[data-tab="courses"]');
-    console.log('🔍 Courses tab element:', coursesTab);
-    
-    if (coursesTab) {
-        coursesTab.addEventListener('click', () => {
-            console.log('📚 Courses tab clicked');
-            
-            if (getCurrentUserId()) {
-                console.log('✅ User is logged in, loading courses...');
-                loadCourses();
-            } else {
-                console.log('⚠️ No user ID, waiting for login...');
+                    </div>
+                `;
             }
-        });
-    } else {
-        console.error('❌ Courses tab not found! Check HTML structure.');
-    }
-    
-    // Set up quick action buttons
-    const viewAllBtn = document.getElementById('view-all-courses');
-    const viewActiveBtn = document.getElementById('view-active-only');
-    const viewCompletedBtn = document.getElementById('view-completed-only');
-    const refreshBtn = document.getElementById('refresh-courses-btn');
-    
-    console.log('🔍 Action buttons:', {
-        viewAllBtn: viewAllBtn?.id,
-        viewActiveBtn: viewActiveBtn?.id,
-        viewCompletedBtn: viewCompletedBtn?.id,
-        refreshBtn: refreshBtn?.id
-    });
-    
-    if (viewAllBtn) {
-        viewAllBtn.addEventListener('click', () => {
-            console.log('🔄 View All button clicked');
-            filterCourses('all');
-        });
-        viewAllBtn.classList.add('active'); // Default active
-    }
-    
-    if (viewActiveBtn) {
-        viewActiveBtn.addEventListener('click', () => {
-            console.log('🔄 Active Only button clicked');
-            filterCourses('active');
-        });
-    }
-    
-    if (viewCompletedBtn) {
-        viewCompletedBtn.addEventListener('click', () => {
-            console.log('🔄 Completed Only button clicked');
-            filterCourses('completed');
-        });
-    }
-    
-    if (refreshBtn) {
-        refreshBtn.addEventListener('click', () => {
-            console.log('🔄 Refresh button clicked');
-            refreshCourses();
-        });
-    }
-    
-    // Set up empty state buttons
-    const emptyViewActiveBtn = document.querySelector('#completed-empty .btn');
-    if (emptyViewActiveBtn) {
-        emptyViewActiveBtn.addEventListener('click', switchToActiveCourses);
-    }
-    
-    console.log('✅ Courses Module initialized');
-    
-    // Try to load courses immediately if user is logged in
-    setTimeout(() => {
-        if (getCurrentUserId()) {
-            console.log('👤 User already logged in, loading courses immediately...');
-            loadCourses();
-        } else {
-            console.log('⏳ Waiting for user login...');
+            
+            // Show error in completed table
+            if (this.completedTable) {
+                this.completedTable.innerHTML = `
+                    <tr class="error">
+                        <td colspan="6">
+                            <div class="error-content">
+                                <i class="fas fa-exclamation-circle"></i>
+                                <p>${message}</p>
+                                <button onclick="window.coursesModule.loadCourses()" class="btn btn-sm btn-primary">
+                                    <i class="fas fa-redo"></i> Retry
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }
         }
-    }, 1000);
-}
-
-// *************************************************************************
-// *** GLOBAL EXPORTS ***
-// *************************************************************************
-
-// Make functions globally available
-window.loadCourses = loadCourses;
-window.refreshCourses = refreshCourses;
-window.switchToActiveCourses = switchToActiveCourses;
-window.switchToCompletedCourses = switchToCompletedCourses;
-window.switchToAllCourses = switchToAllCourses;
-window.filterCourses = filterCourses;
-window.viewCourseMaterials = viewCourseMaterials;
-window.viewCourseSchedule = viewCourseSchedule;
-window.initializeCoursesModule = initializeCoursesModule;
-
-// Keep original functions for backward compatibility
-window.loadClassTargets = async function() {
-    console.log('⚠️ loadClassTargets called - using new courses system');
-    await loadCourses();
-    return cachedCourses;
-};
-
-window.loadCoursesMetrics = async function() {
-    await loadCourses();
-    return { 
-        count: cachedCourses.length,
-        active: cachedCourses.filter(c => c.status !== 'Completed' && c.status !== 'Passed').length,
-        completed: cachedCourses.filter(c => c.status === 'Completed' || c.status === 'Passed').length
+        
+        truncateText(text, maxLength) {
+            if (!text) return '';
+            if (text.length <= maxLength) return text;
+            return text.substring(0, maxLength) + '...';
+        }
+        
+        escapeHtml(str) {
+            if (!str) return '';
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+        
+        // Public methods
+        refresh() {
+            console.log('🔄 Manual refresh requested');
+            this.loadCourses();
+        }
+    }
+    
+    // Create global instance
+    window.coursesModule = new CoursesModule();
+    
+    // Global functions for backward compatibility
+    window.loadCourses = () => {
+        console.log('🌍 Global loadCourses() called');
+        if (window.coursesModule) {
+            window.coursesModule.refresh();
+        }
     };
-};
-
-// Auto-initialize when DOM is ready
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeCoursesModule);
-} else {
-    initializeCoursesModule();
-}
+    
+    window.refreshCourses = () => {
+        console.log('🌍 Global refreshCourses() called');
+        if (window.coursesModule) {
+            window.coursesModule.refresh();
+        }
+    };
+    
+    window.switchToActiveCourses = () => {
+        console.log('🌍 Global switchToActiveCourses() called');
+        if (window.coursesModule) {
+            window.coursesModule.applyFilter('active');
+        }
+    };
+    
+    window.switchToCompletedCourses = () => {
+        console.log('🌍 Global switchToCompletedCourses() called');
+        if (window.coursesModule) {
+            window.coursesModule.applyFilter('completed');
+        }
+    };
+    
+    window.switchToAllCourses = () => {
+        console.log('🌍 Global switchToAllCourses() called');
+        if (window.coursesModule) {
+            window.coursesModule.applyFilter('all');
+        }
+    };
+    
+    window.filterCourses = (filterType) => {
+        if (window.coursesModule) {
+            window.coursesModule.applyFilter(filterType);
+        }
+    };
+    
+    console.log('✅ Courses module ready!');
+})();
