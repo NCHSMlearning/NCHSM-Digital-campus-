@@ -568,141 +568,498 @@
             resetBar(this.failBar);
         }
         
-        showTranscriptModal() {
-            // Create transcript modal
-            const modal = document.createElement('div');
-            modal.id = 'transcript-modal';
-            modal.className = 'modal-overlay';
-            modal.innerHTML = `
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h3><i class="fas fa-file-pdf"></i> Academic Transcript</h3>
-                        <button class="close-modal-btn" onclick="this.closest('.modal-overlay').remove()">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="transcript-info">
-                            <p><strong>Student:</strong> ${window.db?.currentUserProfile?.full_name || 'N/A'}</p>
-                            <p><strong>Student ID:</strong> ${window.db?.currentUserProfile?.student_id || 'N/A'}</p>
-                            <p><strong>Program:</strong> ${window.db?.currentUserProfile?.program || 'N/A'}</p>
-                            <p><strong>Intake Year:</strong> ${window.db?.currentUserProfile?.intake_year || 'N/A'}</p>
-                        </div>
-                        <div class="transcript-message">
-                            <i class="fas fa-info-circle" style="color: #4C1D95; font-size: 2rem; margin-bottom: 15px;"></i>
-                            <h4>Transcript Generation</h4>
-                            <p>Official transcripts can be requested from the administration office.</p>
-                            <p>This feature will be available soon for online transcript generation.</p>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button class="btn btn-primary" onclick="window.open('#', '_blank')">
-                            <i class="fas fa-download"></i> Download Sample
-                        </button>
-                        <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">
-                            Close
-                        </button>
+      showTranscriptModal() {
+    // Filter only completed (graded) exams
+    const gradedExams = this.allExams.filter(exam => exam.isCompleted && exam.totalPercentage !== null);
+    
+    // Group by month/assessment period
+    const examsByMonth = this.groupExamsByMonth(gradedExams);
+    
+    // Create transcript modal
+    const modal = document.createElement('div');
+    modal.id = 'transcript-modal';
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 900px;">
+            <div class="modal-header">
+                <h3><i class="fas fa-scroll"></i> Academic Transcript</h3>
+                <button class="close-modal-btn" onclick="this.closest('.modal-overlay').remove()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <!-- Student Information -->
+                <div class="transcript-info">
+                    <h4>Student Information</h4>
+                    <div class="info-grid">
+                        <div><strong>Student:</strong> ${window.db?.currentUserProfile?.full_name || 'N/A'}</div>
+                        <div><strong>Student ID:</strong> ${window.db?.currentUserProfile?.student_id || 'N/A'}</div>
+                        <div><strong>Program:</strong> ${window.db?.currentUserProfile?.program || 'N/A'}</div>
+                        <div><strong>Intake Year:</strong> ${window.db?.currentUserProfile?.intake_year || 'N/A'}</div>
                     </div>
                 </div>
-            `;
-            
-            document.body.appendChild(modal);
-            
-            // Add modal styles if not present
-            if (!document.getElementById('transcript-modal-styles')) {
-                const styles = `
-                    .modal-overlay {
-                        position: fixed;
-                        top: 0;
-                        left: 0;
-                        right: 0;
-                        bottom: 0;
-                        background: rgba(0,0,0,0.7);
-                        display: flex;
-                        justify-content: center;
-                        align-items: center;
-                        z-index: 2000;
-                        padding: 20px;
-                    }
-                    
-                    .modal-content {
-                        background: white;
-                        border-radius: 12px;
-                        width: 100%;
-                        max-width: 500px;
-                        overflow: hidden;
-                    }
-                    
-                    .modal-header {
-                        background: #4C1D95;
-                        color: white;
-                        padding: 20px;
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: center;
-                    }
-                    
-                    .modal-header h3 {
-                        margin: 0;
-                        font-size: 1.2rem;
-                    }
-                    
-                    .close-modal-btn {
-                        background: transparent;
-                        border: none;
-                        color: white;
-                        font-size: 1.5rem;
-                        cursor: pointer;
-                    }
-                    
-                    .modal-body {
-                        padding: 20px;
-                    }
-                    
-                    .transcript-info {
-                        background: #f8fafc;
-                        padding: 15px;
-                        border-radius: 8px;
-                        margin-bottom: 20px;
-                    }
-                    
-                    .transcript-message {
-                        text-align: center;
-                        padding: 20px;
-                    }
-                    
-                    .modal-footer {
-                        padding: 20px;
-                        border-top: 1px solid #e2e8f0;
-                        display: flex;
-                        gap: 10px;
-                        justify-content: flex-end;
-                    }
-                    
-                    .btn {
-                        padding: 10px 20px;
-                        border-radius: 6px;
-                        border: none;
-                        cursor: pointer;
-                        font-weight: 600;
-                    }
-                    
-                    .btn-primary {
-                        background: #4C1D95;
-                        color: white;
-                    }
-                    
-                    .btn-secondary {
-                        background: #e2e8f0;
-                        color: #4a5568;
-                    }
-                `;
                 
-                const styleElement = document.createElement('style');
-                styleElement.id = 'transcript-modal-styles';
-                styleElement.textContent = styles;
-                document.head.appendChild(styleElement);
-            }
+                <!-- Month/Assessment Filter -->
+                <div class="transcript-controls">
+                    <h4>Filter by Assessment Period</h4>
+                    <div class="filter-options">
+                        <button class="filter-btn active" data-month="all">All Assessments</button>
+                        ${Object.keys(examsByMonth).map(month => `
+                            <button class="filter-btn" data-month="${month}">${month}</button>
+                        `).join('')}
+                    </div>
+                </div>
+                
+                <!-- Graded Units Table -->
+                <div class="transcript-table-section">
+                    <h4>Graded Assessment Units</h4>
+                    ${gradedExams.length === 0 ? 
+                        `<div class="empty-state">
+                            <i class="fas fa-clipboard-list" style="font-size: 3rem; color: #cbd5e1; margin-bottom: 15px;"></i>
+                            <h5>No Graded Assessments Yet</h5>
+                            <p>Your graded assessments will appear here once they are marked.</p>
+                        </div>` : 
+                        `<div class="table-responsive">
+                            <table class="transcript-table">
+                                <thead>
+                                    <tr>
+                                        <th>Assessment</th>
+                                        <th>Course</th>
+                                        <th>Type</th>
+                                        <th>Assessment Date</th>
+                                        <th>Graded Date</th>
+                                        <th>CAT 1</th>
+                                        <th>CAT 2</th>
+                                        <th>Final</th>
+                                        <th>Total (%)</th>
+                                        <th>Grade</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="transcript-exams-list">
+                                    ${gradedExams.map(exam => `
+                                        <tr data-month="${this.getMonthKey(exam.gradedDate || exam.examDate)}">
+                                            <td>${this.escapeHtml(exam.exam_name || 'N/A')}</td>
+                                            <td>${this.escapeHtml(exam.course_name || 'General')}</td>
+                                            <td><span class="type-badge ${exam.exam_type?.includes('CAT') ? 'cat' : 'exam'}">
+                                                ${exam.exam_type?.includes('CAT') ? 'CAT' : 'Exam'}
+                                            </span></td>
+                                            <td>${exam.formattedExamDate}</td>
+                                            <td>${exam.formattedGradedDate}</td>
+                                            <td class="text-center">${exam.cat1Score}</td>
+                                            <td class="text-center">${exam.cat2Score}</td>
+                                            <td class="text-center">${exam.finalScore}</td>
+                                            <td class="text-center"><strong>${exam.totalPercentage?.toFixed(1)}%</strong></td>
+                                            <td class="text-center">
+                                                <span class="grade-badge ${exam.gradeClass}">${exam.gradeText}</span>
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>`
+                    }
+                </div>
+                
+                <!-- Summary Statistics -->
+                ${gradedExams.length > 0 ? `
+                    <div class="transcript-summary">
+                        <h4>Summary Statistics</h4>
+                        <div class="summary-grid">
+                            <div class="summary-item">
+                                <div class="summary-label">Total Graded</div>
+                                <div class="summary-value">${gradedExams.length}</div>
+                            </div>
+                            <div class="summary-item">
+                                <div class="summary-label">Overall Average</div>
+                                <div class="summary-value">
+                                    ${(gradedExams.reduce((sum, exam) => sum + exam.totalPercentage, 0) / gradedExams.length).toFixed(1)}%
+                                </div>
+                            </div>
+                            <div class="summary-item">
+                                <div class="summary-label">Highest Grade</div>
+                                <div class="summary-value distinction">
+                                    ${Math.max(...gradedExams.map(e => e.totalPercentage)).toFixed(1)}%
+                                </div>
+                            </div>
+                            <div class="summary-item">
+                                <div class="summary-label">Pass Rate</div>
+                                <div class="summary-value">
+                                    ${((gradedExams.filter(e => e.totalPercentage >= 60).length / gradedExams.length) * 100).toFixed(0)}%
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                ` : ''}
+            </div>
+            <!-- REMOVED DOWNLOAD BUTTON AS REQUESTED -->
+            <div class="modal-footer">
+                <div class="footer-info">
+                    <i class="fas fa-info-circle"></i>
+                    <span>This is your official academic record. For certified copies, contact the administration office.</span>
+                </div>
+                <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">
+                    <i class="fas fa-times"></i> Close Transcript
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Add event listeners for month filtering
+    setTimeout(() => {
+        const filterButtons = modal.querySelectorAll('.filter-btn');
+        const examRows = modal.querySelectorAll('#transcript-exams-list tr');
+        
+        filterButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                // Update active button
+                filterButtons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                
+                const month = btn.dataset.month;
+                
+                // Show/hide rows based on month filter
+                examRows.forEach(row => {
+                    if (month === 'all' || row.dataset.month === month) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+            });
+        });
+    }, 100);
+    
+    // Add transcript-specific styles
+    this.addTranscriptStyles();
+}
+
+// Add these helper methods to the class:
+
+groupExamsByMonth(exams) {
+    const groups = {};
+    
+    exams.forEach(exam => {
+        const date = exam.gradedDate || exam.examDate;
+        if (!date) return;
+        
+        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        const monthName = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        
+        if (!groups[monthKey]) {
+            groups[monthKey] = {
+                name: monthName,
+                exams: []
+            };
+        }
+        
+        groups[monthKey].exams.push(exam);
+    });
+    
+    return groups;
+}
+
+getMonthKey(date) {
+    if (!date) return 'unknown';
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+addTranscriptStyles() {
+    if (document.getElementById('transcript-styles')) return;
+    
+    const styles = `
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            padding: 20px;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            background: #4C1D95;
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        .modal-header h3 {
+            margin: 0;
+            font-size: 1.3rem;
+        }
+        
+        .close-modal-btn {
+            background: transparent;
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+        
+        .modal-body {
+            padding: 25px;
+        }
+        
+        .transcript-info {
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .transcript-info h4 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: #4C1D95;
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .transcript-controls {
+            margin-bottom: 25px;
+        }
+        
+        .transcript-controls h4 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: #4C1D95;
+        }
+        
+        .filter-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .filter-btn {
+            padding: 8px 16px;
+            background: #e2e8f0;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+        
+        .filter-btn:hover {
+            background: #cbd5e1;
+        }
+        
+        .filter-btn.active {
+            background: #4C1D95;
+            color: white;
+        }
+        
+        .transcript-table-section {
+            margin-bottom: 25px;
+        }
+        
+        .transcript-table-section h4 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: #4C1D95;
+        }
+        
+        .transcript-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .transcript-table th {
+            background: #f1f5f9;
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 2px solid #e2e8f0;
+            font-weight: 600;
+            color: #475569;
+        }
+        
+        .transcript-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .transcript-table tr:hover {
+            background: #f8fafc;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #64748b;
+        }
+        
+        .empty-state h5 {
+            margin: 10px 0;
+            color: #475569;
+        }
+        
+        .transcript-summary {
+            background: #f0f9ff;
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #bae6fd;
+        }
+        
+        .transcript-summary h4 {
+            margin-top: 0;
+            margin-bottom: 20px;
+            color: #0369a1;
+        }
+        
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+        }
+        
+        .summary-item {
+            text-align: center;
+        }
+        
+        .summary-label {
+            font-size: 0.9rem;
+            color: #64748b;
+            margin-bottom: 5px;
+        }
+        
+        .summary-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #1e293b;
+        }
+        
+        .summary-value.distinction {
+            color: #10b981;
+        }
+        
+        .modal-footer {
+            padding: 20px;
+            border-top: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            bottom: 0;
+            background: white;
+        }
+        
+        .footer-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+        
+        .footer-info i {
+            color: #4C1D95;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #475569;
+        }
+        
+        .btn-secondary:hover {
+            background: #cbd5e1;
+        }
+        
+        .table-responsive {
+            overflow-x: auto;
+        }
+        
+        .text-center {
+            text-align: center;
+        }
+        
+        .type-badge {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        
+        .type-badge.cat {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        
+        .type-badge.exam {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+        
+        .grade-badge {
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: inline-block;
+        }
+        
+        .grade-badge.distinction {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        
+        .grade-badge.credit {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+        
+        .grade-badge.pass {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        
+        .grade-badge.fail {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+    `;
+    
+    const styleElement = document.createElement('style');
+    styleElement.id = 'transcript-styles';
+    styleElement.textContent = styles;
+    document.head.appendChild(styleElement);
+}
         }
         
         showLoading() {
