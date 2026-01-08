@@ -1060,7 +1060,6 @@ addTranscriptStyles() {
     styleElement.textContent = styles;
     document.head.appendChild(styleElement);
 }
-        }
         
         showLoading() {
             const loadingHTML = (colspan) => `
