@@ -1,4 +1,4 @@
-// attendance.js - IMPROVED ACCURACY VERSION
+// attendance.js - FIXED FOR IMMEDIATE BUTTON ENABLEMENT
 (function() {
     'use strict';
     
@@ -132,7 +132,7 @@
         updateCheckInButton();
     }
     
-    // Populate target options - IMPROVED ACCURACY
+    // Populate target options
     async function populateTargetOptions(sessionType) {
         const targetSelect = document.getElementById('attendance-target');
         if (!targetSelect) return;
@@ -157,7 +157,7 @@
                 }
             } else if (['class', 'lab', 'tutorial'].includes(sessionType)) {
                 // Get courses with better accuracy
-                options = await getActiveCoursesWithRetry(3); // Try 3 times
+                options = await getActiveCoursesWithRetry(2); // Reduced retries for speed
                 
                 if (options.length === 0) {
                     errorMessage = 'No active courses found. Please refresh or contact support.';
@@ -212,11 +212,17 @@
         });
         
         targetSelect.disabled = false;
-        updateRequirement('target', false); // Reset to not selected
+        updateRequirement('target', false);
+        
+        // IMPORTANT: Trigger change event to update button state immediately
+        targetSelect.addEventListener('change', () => {
+            updateRequirement('target', targetSelect.value && targetSelect.value !== '');
+            updateCheckInButton();
+        });
     }
     
     // Get active courses with retry mechanism
-    async function getActiveCoursesWithRetry(maxRetries = 3) {
+    async function getActiveCoursesWithRetry(maxRetries = 2) {
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
             try {
                 let courses = [];
@@ -240,13 +246,13 @@
                 
                 // If no courses found and we're not on the last attempt, wait and try again
                 if (attempt < maxRetries) {
-                    console.log(`Attempt ${attempt} failed, retrying in 1 second...`);
-                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    console.log(`Attempt ${attempt} failed, retrying in 500ms...`);
+                    await new Promise(resolve => setTimeout(resolve, 500)); // Faster retry
                 }
             } catch (error) {
                 console.error(`Attempt ${attempt} failed:`, error);
                 if (attempt < maxRetries) {
-                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    await new Promise(resolve => setTimeout(resolve, 500));
                 }
             }
         }
@@ -267,7 +273,7 @@
         }
     }
     
-    // Update check-in button state
+    // Update check-in button state - FIXED VERSION
     function updateCheckInButton() {
         const checkInButton = document.getElementById('check-in-button');
         const sessionTypeSelect = document.getElementById('session-type');
@@ -277,7 +283,7 @@
         
         const hasSession = sessionTypeSelect?.value;
         const hasTarget = targetSelect?.value && targetSelect.value !== '';
-        const hasLocation = currentLocation !== null && currentLocation.accuracy < 50; // Require better accuracy
+        const hasLocation = currentLocation !== null; // Removed accuracy requirement
         
         const allRequirementsMet = hasSession && hasTarget && hasLocation;
         
@@ -287,21 +293,34 @@
         const btnSubtext = checkInButton.querySelector('.btn-subtext');
         if (btnSubtext) {
             if (!hasLocation) {
-                btnSubtext.textContent = currentLocation ? 
-                    `Improve accuracy (${currentLocation.accuracy.toFixed(0)}m)` : 
-                    'GPS verification required';
+                btnSubtext.textContent = 'Waiting for GPS...';
             } else if (!hasSession || !hasTarget) {
-                btnSubtext.textContent = 'Complete all fields above';
+                btnSubtext.textContent = 'Select session type and target';
             } else {
-                btnSubtext.textContent = `Ready to check in (${currentLocation.accuracy.toFixed(0)}m accuracy)`;
+                // Show accuracy info but don't block check-in
+                if (currentLocation.accuracy < 20) {
+                    btnSubtext.textContent = `High accuracy (${currentLocation.accuracy.toFixed(0)}m)`;
+                } else if (currentLocation.accuracy < 50) {
+                    btnSubtext.textContent = `Good accuracy (${currentLocation.accuracy.toFixed(0)}m)`;
+                } else if (currentLocation.accuracy < 100) {
+                    btnSubtext.textContent = `Fair accuracy (${currentLocation.accuracy.toFixed(0)}m)`;
+                } else {
+                    btnSubtext.textContent = `Low accuracy (${currentLocation.accuracy.toFixed(0)}m) - may affect verification`;
+                }
             }
         }
         
         // Update button style
         if (allRequirementsMet) {
-            checkInButton.classList.add('ready');
+            if (currentLocation && currentLocation.accuracy < 50) {
+                checkInButton.className = 'btn-checkin ready';
+            } else if (currentLocation && currentLocation.accuracy <= 100) {
+                checkInButton.className = 'btn-checkin warning';
+            } else {
+                checkInButton.className = 'btn-checkin';
+            }
         } else {
-            checkInButton.classList.remove('ready');
+            checkInButton.className = 'btn-checkin';
         }
         
         // Update requirements list
@@ -323,44 +342,41 @@
             navigator.geolocation.clearWatch(locationWatchId);
         }
         
-        updateGPSStatus('loading', 'Getting high-accuracy location...');
+        updateGPSStatus('loading', 'Getting location...');
         locationRetryCount = 0;
         
+        // Use less strict options for faster acquisition
         const options = {
             enableHighAccuracy: true,
-            timeout: 15000,
-            maximumAge: 0
+            timeout: 10000, // Reduced timeout
+            maximumAge: 30000 // Accept location up to 30 seconds old
         };
         
         // Get initial position with retry on failure
         navigator.geolocation.getCurrentPosition(
-            (position) => handleLocationSuccess(position),
+            (position) => {
+                handleLocationSuccess(position);
+                // Start watching after initial success
+                locationWatchId = navigator.geolocation.watchPosition(
+                    (pos) => handleLocationSuccess(pos),
+                    handleLocationError,
+                    options
+                );
+            },
             (error) => {
                 handleLocationError(error);
-                // Retry if first attempt fails
-                if (locationRetryCount < MAX_LOCATION_RETRIES) {
-                    locationRetryCount++;
-                    console.log(`Retrying location acquisition (${locationRetryCount}/${MAX_LOCATION_RETRIES})...`);
-                    setTimeout(() => navigator.geolocation.getCurrentPosition(
-                        handleLocationSuccess,
-                        handleLocationError,
-                        options
-                    ), 2000);
-                }
+                // Still try to watch even if initial fails
+                locationWatchId = navigator.geolocation.watchPosition(
+                    (pos) => handleLocationSuccess(pos),
+                    handleLocationError,
+                    { enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 }
+                );
             },
-            options
-        );
-        
-        // Watch for updates
-        locationWatchId = navigator.geolocation.watchPosition(
-            (position) => handleLocationSuccess(position),
-            (error) => handleLocationError(error),
             options
         );
     }
     
     function handleLocationSuccess(position) {
-        // Validate position data
         if (!position || !position.coords) {
             console.error('Invalid position data received');
             return;
@@ -377,31 +393,35 @@
             timestamp: new Date(position.timestamp)
         };
         
-        // Validate coordinates are reasonable
+        // Validate coordinates
         if (!isValidCoordinates(newLocation.latitude, newLocation.longitude)) {
             console.warn('Invalid coordinates received');
             return;
         }
         
-        // Only update if accuracy improved or location changed significantly
-        if (!currentLocation || 
-            newLocation.accuracy < currentLocation.accuracy ||
-            calculateDistance(currentLocation, newLocation) > 10) {
-            
+        // Always update on first location or if accuracy improved
+        if (!currentLocation || newLocation.accuracy < currentLocation.accuracy) {
             currentLocation = newLocation;
             
             console.log('📍 Location updated:', {
                 lat: currentLocation.latitude.toFixed(6),
                 lon: currentLocation.longitude.toFixed(6),
-                accuracy: currentLocation.accuracy.toFixed(1) + 'm',
-                age: Math.round((Date.now() - currentLocation.timestamp.getTime()) / 1000) + 's ago'
+                accuracy: currentLocation.accuracy.toFixed(1) + 'm'
             });
             
-            updateGPSStatus('success', 
-                currentLocation.accuracy < 20 ? 'High accuracy' : 
-                currentLocation.accuracy < 50 ? 'Good accuracy' : 'Fair accuracy');
+            // Update GPS status
+            if (currentLocation.accuracy < 20) {
+                updateGPSStatus('success', 'High accuracy GPS');
+            } else if (currentLocation.accuracy < 50) {
+                updateGPSStatus('success', 'Good accuracy GPS');
+            } else if (currentLocation.accuracy < 100) {
+                updateGPSStatus('success', 'Fair accuracy GPS');
+            } else {
+                updateGPSStatus('success', 'GPS active (low accuracy)');
+            }
+            
             updateLocationDisplay();
-            updateCheckInButton();
+            updateCheckInButton(); // IMPORTANT: Update button immediately
         }
     }
     
@@ -410,7 +430,7 @@
     }
     
     function calculateDistance(loc1, loc2) {
-        const R = 6371000; // Earth radius in meters
+        const R = 6371000;
         const toRad = (x) => (x * Math.PI) / 180;
         
         const dLat = toRad(loc2.latitude - loc1.latitude);
@@ -431,16 +451,16 @@
         let message = '';
         switch(error.code) {
             case error.PERMISSION_DENIED:
-                message = 'GPS permission denied. Please enable location services.';
+                message = 'GPS permission denied';
                 break;
             case error.POSITION_UNAVAILABLE:
-                message = 'Location unavailable. Check your connection.';
+                message = 'Location unavailable';
                 break;
             case error.TIMEOUT:
-                message = 'Location request timeout. Retrying...';
+                message = 'Location request timeout';
                 break;
             default:
-                message = 'GPS error. Please try again.';
+                message = 'GPS error';
         }
         
         updateGPSStatus('error', message);
@@ -482,7 +502,7 @@
         if (lonElement) lonElement.textContent = currentLocation.longitude.toFixed(6);
         if (accuracyElement) accuracyElement.textContent = currentLocation.accuracy.toFixed(1);
         
-        // Update accuracy dot color with better thresholds
+        // Update accuracy dot color
         if (accuracyDot) {
             accuracyDot.className = 'accuracy-dot';
             if (currentLocation.accuracy <= 15) {
@@ -513,9 +533,6 @@
             // Load clinical areas
             await loadClinicalTargets();
             
-            // Preload courses cache
-            await getActiveCoursesWithRetry(1);
-            
             // Load today's attendance count
             await loadTodayAttendanceCount();
             
@@ -529,7 +546,7 @@
         }
     }
     
-    // Load clinical targets - IMPROVED
+    // Load clinical targets
     async function loadClinicalTargets() {
         try {
             const supabaseClient = window.db?.supabase;
@@ -541,7 +558,7 @@
             
             if (!program || !intakeYear) return;
             
-            // Build query with proper filtering
+            // Build query matching your schema
             let query = supabaseClient
                 .from('clinical_areas')
                 .select('id, name, latitude, longitude, radius_m')
@@ -565,7 +582,7 @@
                     name: area.name,
                     latitude: area.latitude,
                     longitude: area.longitude,
-                    radius: area.radius_m || 100 // Default radius
+                    radius: area.radius_m || 100
                 }));
                 console.log(`✅ Loaded ${attendanceCachedClinicalAreas.length} clinical areas`);
             } else if (error) {
@@ -607,7 +624,7 @@
         }
     }
     
-    // Load attendance history - OPTION 3 IMPLEMENTATION
+    // Load attendance history
     async function loadGeoAttendanceHistory(filter = 'today') {
         const tableBody = document.getElementById('geo-attendance-history');
         if (!tableBody || !attendanceUserId) {
@@ -615,7 +632,7 @@
             return;
         }
         
-        // Show loading state that matches your HTML structure
+        // Show loading state
         tableBody.innerHTML = `
             <tr class="loading-row">
                 <td colspan="6">
@@ -652,7 +669,6 @@
                 const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
                 query = query.gte('check_in_time', monthAgo.toISOString());
             }
-            // "all" filter doesn't need date constraint
             
             const { data: logs, error } = await query;
             
@@ -681,7 +697,7 @@
                     minute: '2-digit'
                 });
                 
-                // Format session type with better display
+                // Format session type
                 let sessionTypeDisplay = log.session_type || 'N/A';
                 if (sessionTypeDisplay === 'Class') {
                     sessionTypeDisplay = '📚 Class';
@@ -699,7 +715,7 @@
                 const statusColor = isVerified ? 'text-green-600' : 'text-yellow-600';
                 const statusText = isVerified ? 'Verified' : 'Pending';
                 
-                // Location column - Option 3: On-site indicator
+                // Location column
                 const locationIcon = isVerified ? 'fa-check-circle' : 'fa-exclamation-triangle';
                 const locationColor = isVerified ? 'text-green-600' : 'text-yellow-600';
                 const locationText = isVerified ? 'On-site' : 'Remote';
@@ -709,13 +725,10 @@
                 if (log.accuracy_m) {
                     detailsText += `Accuracy: ${parseFloat(log.accuracy_m).toFixed(0)}m`;
                 }
+                
                 if (log.distance_meters && !isVerified) {
                     if (detailsText) detailsText += '<br>';
                     detailsText += `Distance: ${parseFloat(log.distance_meters).toFixed(0)}m`;
-                }
-                if (log.device_id && log.device_id.startsWith('web-')) {
-                    if (detailsText) detailsText += '<br>';
-                    detailsText += '📱 Web app';
                 }
                 
                 const row = document.createElement('tr');
@@ -750,21 +763,17 @@
     function getAttendanceDeviceId() {
         let deviceId = localStorage.getItem('attendance_device_id');
         if (!deviceId) {
-            // Generate a more unique device ID
-            const userAgent = navigator.userAgent || '';
-            const platform = navigator.platform || '';
             const time = Date.now();
             const random = Math.random().toString(36).substr(2, 9);
-            deviceId = `web-${platform.substr(0, 3)}-${time}-${random}`;
+            deviceId = `web-${time}-${random}`;
             localStorage.setItem('attendance_device_id', deviceId);
         }
         return deviceId;
     }
     
-    // Calculate distance between two points with improved accuracy
+    // Calculate distance between two points
     function calculateAttendanceDistance(lat1, lon1, lat2, lon2) {
-        // Use more accurate Haversine formula
-        const R = 6371000; // Earth radius in meters
+        const R = 6371000;
         
         const toRad = (x) => (x * Math.PI) / 180;
         const φ1 = toRad(lat1);
@@ -779,17 +788,14 @@
         
         const distance = R * c;
         
-        console.log(`📏 Distance calculation: ${distance.toFixed(2)} meters`, {
-            from: { lat: lat1.toFixed(6), lon: lon1.toFixed(6) },
-            to: { lat: lat2.toFixed(6), lon: lon2.toFixed(6) }
-        });
+        console.log(`📏 Distance: ${distance.toFixed(2)} meters`);
         
         return distance;
     }
     
-    // Check-in function - IMPROVED ACCURACY
+    // Check-in function - WITH WARNING FOR LOW ACCURACY
     async function attendanceGeoCheckIn() {
-        console.log('📍 Starting accurate check-in...');
+        console.log('📍 Starting check-in...');
         
         const button = document.getElementById('check-in-button');
         const sessionTypeSelect = document.getElementById('session-type');
@@ -797,12 +803,12 @@
         
         if (!button || !sessionTypeSelect || !targetSelect) return;
         
-        // Validate location accuracy before proceeding
+        // Warn about low accuracy but don't block
         if (currentLocation && currentLocation.accuracy > 100) {
-            if (window.AppUtils?.showToast) {
-                window.AppUtils.showToast('Location accuracy too low. Please wait for better GPS signal.', 'warning');
+            const proceed = confirm(`Warning: GPS accuracy is low (${currentLocation.accuracy.toFixed(0)}m). This may affect verification. Proceed anyway?`);
+            if (!proceed) {
+                return;
             }
-            return;
         }
         
         // Disable button
@@ -821,19 +827,18 @@
             }
             
             if (!currentLocation) {
-                throw new Error('Location not available. Please enable GPS.');
-            }
-            
-            if (currentLocation.accuracy > 50) {
-                throw new Error(`Location accuracy too low (${currentLocation.accuracy.toFixed(0)}m). Please move to a better signal area.`);
+                throw new Error('Location not available');
             }
             
             // Parse target
             const [targetId, targetName] = targetSelect.value.split('|');
             
-            // Find target coordinates with better validation
+            // Find target coordinates
             const sessionType = sessionTypeSelect.value;
-            let targetLat, targetLon, targetRadius = 100;
+            let targetLat = -1.2921;
+            let targetLon = 36.8219;
+            let targetRadius = 100;
+            let courseId = null;
             
             if (sessionType === 'clinical') {
                 const target = attendanceCachedClinicalAreas.find(t => t.id === targetId);
@@ -841,25 +846,17 @@
                     targetLat = target.latitude;
                     targetLon = target.longitude;
                     targetRadius = target.radius || 100;
-                } else {
-                    throw new Error('Selected clinical area not found. Please refresh the page.');
                 }
             } else {
-                // For courses, we need actual coordinates
-                // For now, use default campus coordinates or implement course coordinates
-                targetLat = -1.2921; // Default Nairobi coordinates
-                targetLon = 36.8219;
+                // Try to find course
+                const targetCourse = attendanceCachedCourses.find(c => c.id === targetId);
+                if (targetCourse) {
+                    courseId = targetCourse.id;
+                }
                 targetRadius = 150; // Larger radius for campus areas
-                
-                console.warn('⚠️ Using default coordinates for course. Consider adding course-specific coordinates.');
             }
             
-            // Validate target coordinates
-            if (!isValidCoordinates(targetLat, targetLon)) {
-                throw new Error('Invalid target location data');
-            }
-            
-            // Calculate distance with validation
+            // Calculate distance
             const distance = calculateAttendanceDistance(
                 currentLocation.latitude,
                 currentLocation.longitude,
@@ -867,10 +864,9 @@
                 targetLon
             );
             
-            // Verify if within target radius
-            const isVerified = distance <= targetRadius;
+            // Verify if within target radius (with leniency for poor accuracy)
+            const isVerified = distance <= (targetRadius + Math.min(currentLocation.accuracy, 50));
             
-            // Show distance info to user
             console.log(`📍 Check-in details:`, {
                 distance: `${distance.toFixed(0)}m`,
                 radius: `${targetRadius}m`,
@@ -878,7 +874,7 @@
                 accuracy: `${currentLocation.accuracy.toFixed(0)}m`
             });
             
-            // Save check-in to database
+            // Prepare data
             const supabaseClient = window.db?.supabase;
             if (!supabaseClient) {
                 throw new Error('Database connection error');
@@ -886,19 +882,30 @@
             
             const checkInData = {
                 student_id: attendanceUserId,
-                check_in_time: new Date().toISOString(),
                 session_type: sessionType.charAt(0).toUpperCase() + sessionType.slice(1),
-                target_id: targetId,
-                target_name: targetName,
+                check_in_time: new Date().toISOString(),
                 latitude: currentLocation.latitude,
                 longitude: currentLocation.longitude,
                 accuracy_m: currentLocation.accuracy,
+                accuracy_meters: currentLocation.accuracy,
                 is_verified: isVerified,
                 device_id: getAttendanceDeviceId(),
-                student_name: attendanceUserProfile?.full_name || 'Unknown',
+                target_id: targetId,
+                target_name: targetName,
+                target_latitude: targetLat,
+                target_longitude: targetLon,
                 distance_meters: distance,
-                target_radius: targetRadius,
-                location_age_seconds: Math.round((Date.now() - currentLocation.timestamp.getTime()) / 1000)
+                location_age_seconds: Math.round((Date.now() - currentLocation.timestamp.getTime()) / 1000),
+                student_name: attendanceUserProfile?.full_name || 'Unknown',
+                student_email: attendanceUserProfile?.email || '',
+                program: attendanceUserProfile?.program || '',
+                intake_year: attendanceUserProfile?.intake_year || '',
+                block: attendanceUserProfile?.block || '',
+                role: 'student',
+                user_role: 'student',
+                status: isVerified ? 'verified' : 'pending',
+                course_id: courseId,
+                is_manual_entry: false
             };
             
             const { error } = await supabaseClient
@@ -914,9 +921,9 @@
             if (window.AppUtils?.showToast) {
                 let message = '';
                 if (isVerified) {
-                    message = `✅ Checked in to ${targetName} successfully! (On-site)`;
+                    message = `✅ Checked in to ${targetName} successfully!`;
                 } else {
-                    message = `📍 Checked in to ${targetName} (Remote - ${distance.toFixed(0)}m away)`;
+                    message = `📍 Checked in to ${targetName} (${distance.toFixed(0)}m away)`;
                 }
                 window.AppUtils.showToast(message, isVerified ? 'success' : 'warning');
             }
@@ -980,6 +987,10 @@
             background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
         }
         
+        #check-in-button.warning {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        }
+        
         .loading-spinner {
             width: 30px;
             height: 30px;
@@ -1037,7 +1048,6 @@
     window.attendanceGeoCheckIn = attendanceGeoCheckIn;
     window.loadAttendanceData = loadAttendanceData;
     window.loadGeoAttendanceHistory = loadGeoAttendanceHistory;
-    window.getActiveCoursesWithRetry = getActiveCoursesWithRetry;
     
-    console.log('✅ IMPROVED ACCURACY Attendance module loaded');
+    console.log('✅ FAST BUTTON ENABLEMENT Attendance module loaded');
 })();
