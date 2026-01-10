@@ -1,4 +1,4 @@
-// attendance.js - COMPLETELY INDEPENDENT VERSION
+// attendance.js - UPDATED WITH DASHBOARD EVENT DISPATCHING
 (function() {
     'use strict';
     
@@ -16,9 +16,9 @@
         radius: 100
     };
     
-    // Initialize attendance system - COMPLETELY INDEPENDENT
+    // Initialize attendance system - WITH DASHBOARD INTEGRATION
     function initializeAttendanceSystem() {
-        console.log('📱 Initializing INDEPENDENT Attendance System...');
+        console.log('📱 Initializing Attendance System with Dashboard Integration...');
         
         // Cache DOM elements
         const sessionTypeSelect = document.getElementById('session-type');
@@ -31,12 +31,12 @@
         if (attendanceTab) {
             attendanceTab.addEventListener('click', async (e) => {
                 e.preventDefault();
-                console.log('📊 Attendance tab clicked - loading independently...');
+                console.log('📊 Attendance tab clicked...');
                 
                 // Switch to attendance tab
                 switchToTab('attendance');
                 
-                // Load attendance data (does NOT depend on courses tab)
+                // Load attendance data
                 await loadAttendanceData();
                 startLocationMonitoring();
             });
@@ -75,7 +75,41 @@
             loadAttendanceData();
         }
         
-        console.log('✅ INDEPENDENT Attendance System initialized');
+        // Listen for dashboard ready event
+        document.addEventListener('dashboardReady', () => {
+            console.log('📊 Dashboard ready, syncing attendance metrics...');
+            setTimeout(() => {
+                triggerDashboardAttendanceUpdate();
+            }, 1000);
+        });
+        
+        console.log('✅ Attendance System initialized with Dashboard Integration');
+    }
+    
+    // Helper: Trigger dashboard attendance update
+    function triggerDashboardAttendanceUpdate() {
+        console.log('🎯 Triggering dashboard attendance update...');
+        
+        // Method 1: Use global helper function
+        if (window.triggerDashboardUpdate) {
+            window.triggerDashboardUpdate('attendance');
+            return;
+        }
+        
+        // Method 2: Dispatch custom event
+        const event = new CustomEvent('attendanceCheckedIn', {
+            detail: {
+                timestamp: new Date().toISOString(),
+                userId: attendanceUserId,
+                action: 'check-in'
+            }
+        });
+        
+        // Try multiple dispatch methods
+        window.dispatchEvent(event);
+        document.dispatchEvent(event);
+        
+        console.log('✅ Attendance update event dispatched');
     }
     
     // Helper: Check if on attendance tab
@@ -729,9 +763,9 @@
         return distanceMeters;
     }
     
-    // CHECK-IN FUNCTION - INDEPENDENT
+    // CHECK-IN FUNCTION - UPDATED WITH DASHBOARD INTEGRATION
     async function attendanceGeoCheckIn() {
-        console.log('📍 Starting independent check-in...');
+        console.log('📍 Starting check-in with dashboard integration...');
         
         const button = document.getElementById('check-in-button');
         const sessionTypeSelect = document.getElementById('session-type');
@@ -847,6 +881,9 @@
             // Update today's count
             await loadTodayAttendanceCount();
             
+            // 🔥 CRITICAL: TRIGGER DASHBOARD UPDATE
+            triggerDashboardAttendanceUpdate();
+            
             // Reset form
             sessionTypeSelect.value = '';
             targetSelect.value = '';
@@ -936,11 +973,12 @@
         initializeAttendanceSystem();
     }
     
-    // Make functions available globally - INDEPENDENTLY
+    // Make functions available globally
     window.initializeAttendanceSystem = initializeAttendanceSystem;
     window.attendanceGeoCheckIn = attendanceGeoCheckIn;
     window.loadAttendanceData = loadAttendanceData;
     window.loadGeoAttendanceHistory = loadGeoAttendanceHistory;
+    window.triggerDashboardAttendanceUpdate = triggerDashboardAttendanceUpdate; // NEW: Export for other modules
     
-    console.log('✅ COMPLETELY INDEPENDENT Attendance module loaded');
+    console.log('✅ Attendance module loaded with Dashboard Integration');
 })();
