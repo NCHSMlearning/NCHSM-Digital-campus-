@@ -1,4 +1,4 @@
-// js/dashboard.js - Dashboard Management Module (Complete Working Version)
+// dashboard.js - COMPLETE FIXED VERSION
 class DashboardModule {
     constructor(supabaseClient) {
         console.log('🚀 Initializing DashboardModule...');
@@ -11,7 +11,7 @@ class DashboardModule {
         this.cachedExams = [];
         this.cachedResources = [];
         
-        // Dashboard elements - Check if they exist
+        // Dashboard elements
         this.welcomeHeader = this.getElement('welcome-header');
         this.welcomeMessage = this.getElement('student-welcome-message');
         this.studentAnnouncement = this.getElement('student-announcement');
@@ -25,11 +25,18 @@ class DashboardModule {
         this.dashboardActiveCourses = this.getElement('dashboard-active-courses');
         this.dashboardNewResources = this.getElement('dashboard-new-resources');
         
+        // NurseIQ elements
+        this.dashboardNurseiqProgress = this.getElement('dashboard-nurseiq-progress');
+        this.dashboardNurseiqAccuracy = this.getElement('dashboard-nurseiq-accuracy');
+        this.dashboardNurseiqQuestions = this.getElement('dashboard-nurseiq-questions');
+        
         // Action cards
         this.actionPassport = this.getElement('action-passport');
+        this.nurseiqActionCard = this.getElement('nurseiq-action-card');
+        this.nurseiqActionMessage = this.getElement('nurseiq-action-message');
         
-        // Live clock
-        this.currentDateTime = this.getElement('currentDateTime');
+        // Badge
+        this.nurseiqBadge = this.getElement('nurseiqBadge');
         
         // Initialize
         this.setupEventListeners();
@@ -81,19 +88,16 @@ class DashboardModule {
     
     // Listen for data updates from other modules
     setupDataUpdateListeners() {
-        // Listen for attendance check-in
         document.addEventListener('attendanceCheckedIn', () => {
             console.log('🔄 Dashboard: Attendance check-in detected');
             this.loadAttendanceMetrics();
         });
         
-        // Listen for profile updates
         document.addEventListener('profileUpdated', () => {
             console.log('🔄 Dashboard: Profile updated');
             this.loadProfilePhoto();
         });
         
-        // Listen for course data updates
         document.addEventListener('coursesUpdated', (e) => {
             if (e.detail && e.detail.courses) {
                 this.cachedCourses = e.detail.courses;
@@ -101,7 +105,6 @@ class DashboardModule {
             }
         });
         
-        // Listen for exam data updates
         document.addEventListener('examsUpdated', (e) => {
             if (e.detail && e.detail.exams) {
                 this.cachedExams = e.detail.exams;
@@ -109,12 +112,17 @@ class DashboardModule {
             }
         });
         
-        // Listen for resource data updates
         document.addEventListener('resourcesUpdated', (e) => {
             if (e.detail && e.detail.resources) {
                 this.cachedResources = e.detail.resources;
                 this.loadResourceMetrics();
             }
+        });
+        
+        // Listen for NurseIQ updates
+        document.addEventListener('nurseiqUpdated', () => {
+            console.log('🔄 Dashboard: NurseIQ updated');
+            this.loadNurseIQMetrics();
         });
     }
     
@@ -153,6 +161,7 @@ class DashboardModule {
                 this.loadCourseMetrics(),
                 this.loadExamMetrics(),
                 this.loadResourceMetrics(),
+                this.loadNurseIQMetrics(), // Added NurseIQ
                 this.loadProfilePhoto(),
                 this.loadSystemMessages()
             ];
@@ -176,6 +185,11 @@ class DashboardModule {
         this.setText(this.dashboardUpcomingExam, 'Loading...');
         this.setText(this.dashboardActiveCourses, '...');
         this.setText(this.dashboardNewResources, '...');
+        
+        // NurseIQ loading states
+        this.setText(this.dashboardNurseiqProgress, '--%');
+        this.setText(this.dashboardNurseiqAccuracy, '--%');
+        this.setText(this.dashboardNurseiqQuestions, '0');
     }
     
     // Show error states
@@ -184,6 +198,11 @@ class DashboardModule {
         this.setText(this.dashboardUpcomingExam, 'Error');
         this.setText(this.dashboardActiveCourses, '0');
         this.setText(this.dashboardNewResources, '0');
+        
+        // NurseIQ error states
+        this.setText(this.dashboardNurseiqProgress, '--%');
+        this.setText(this.dashboardNurseiqAccuracy, '--%');
+        this.setText(this.dashboardNurseiqQuestions, '0');
     }
     
     // Helper to set text safely
@@ -218,7 +237,8 @@ class DashboardModule {
     
     // Start live clock for current time display
     startLiveClock() {
-        if (!this.currentDateTime) return;
+        const currentDateTime = this.getElement('currentDateTime');
+        if (!currentDateTime) return;
         
         const updateTime = () => {
             const now = new Date();
@@ -232,11 +252,11 @@ class DashboardModule {
                 hour12: true
             };
             
-            this.currentDateTime.textContent = now.toLocaleDateString('en-US', options);
+            currentDateTime.textContent = now.toLocaleDateString('en-US', options);
         };
         
         updateTime();
-        setInterval(updateTime, 60000); // Update every minute
+        setInterval(updateTime, 60000);
     }
     
     // Load student welcome message
@@ -263,7 +283,7 @@ class DashboardModule {
         }
     }
     
-    // Load latest official announcement
+    // Load latest official announcement - FIXED: Public notifications
     async loadLatestOfficialAnnouncement() {
         if (!this.studentAnnouncement) return;
         
@@ -298,7 +318,6 @@ class DashboardModule {
         }
         
         try {
-            // Fetch attendance logs
             const { data: logs, error } = await this.sb
                 .from('geo_attendance_logs')
                 .select('is_verified')
@@ -317,13 +336,6 @@ class DashboardModule {
             const pendingCount = logs?.filter(l => !l.is_verified).length || 0;
             const attendanceRate = totalLogs > 0 ? Math.round((verifiedCount / totalLogs) * 100) : 0;
             
-            console.log('📈 Attendance stats:', { 
-                totalLogs, 
-                verifiedCount, 
-                pendingCount, 
-                attendanceRate 
-            });
-            
             // Update UI
             this.setText(this.dashboardAttendanceRate, `${attendanceRate}%`);
             this.setText(this.dashboardVerifiedCount, verifiedCount);
@@ -333,11 +345,11 @@ class DashboardModule {
             // Color code attendance rate
             if (this.dashboardAttendanceRate) {
                 if (attendanceRate >= 80) {
-                    this.dashboardAttendanceRate.style.color = '#10B981'; // Green
+                    this.dashboardAttendanceRate.style.color = '#10B981';
                 } else if (attendanceRate >= 60) {
-                    this.dashboardAttendanceRate.style.color = '#F59E0B'; // Orange
+                    this.dashboardAttendanceRate.style.color = '#F59E0B';
                 } else {
-                    this.dashboardAttendanceRate.style.color = '#EF4444'; // Red
+                    this.dashboardAttendanceRate.style.color = '#EF4444';
                 }
             }
             
@@ -346,7 +358,7 @@ class DashboardModule {
         }
     }
     
-    // Load course metrics
+    // Load course metrics - FIXED: Uses actual intake year (2024-2028)
     async loadCourseMetrics() {
         console.log('📚 Loading course metrics...');
         
@@ -360,8 +372,9 @@ class DashboardModule {
                 const { data, error } = await this.sb
                     .from('courses')
                     .select('id, course_name, status, target_program, intake_year')
-                    .or(`target_program.eq.${this.userProfile?.program || this.userProfile?.department},target_program.eq.General`)
-                    .eq('intake_year', this.userProfile?.intake_year || '2024');
+                    .or(`target_program.eq.${this.userProfile?.program},target_program.is.null`)
+                    .eq('intake_year', this.userProfile?.intake_year) // FIXED: Removed hardcoded 2025
+                    .eq('status', 'Active');
                 
                 if (error) {
                     console.error('❌ Database error loading courses:', error);
@@ -371,13 +384,12 @@ class DashboardModule {
                 courses = data || [];
                 this.cachedCourses = courses;
                 
-                // Dispatch event for other modules
                 document.dispatchEvent(new CustomEvent('coursesUpdated', {
                     detail: { courses }
                 }));
             }
             
-            console.log(`📋 Found ${courses.length} courses`);
+            console.log(`📋 Found ${courses.length} courses for intake ${this.userProfile?.intake_year}`);
             
             // Count active courses
             const activeCourses = courses.filter(course => 
@@ -395,7 +407,7 @@ class DashboardModule {
         }
     }
     
-    // Load exam metrics
+    // Load exam metrics - FIXED: Uses actual intake year (2024-2028)
     async loadExamMetrics() {
         console.log('📝 Loading exam metrics...');
         
@@ -409,9 +421,9 @@ class DashboardModule {
                 const { data, error } = await this.sb
                     .from('exams_with_courses')
                     .select('exam_name, exam_date, program_type, block_term, intake_year')
-                    .or(`program_type.eq.${this.userProfile?.program || this.userProfile?.department},program_type.eq.General`)
-                    .or(`block_term.eq.${this.userProfile?.block},block_term.is.null,block_term.eq.General`)
-                    .eq('intake_year', this.userProfile?.intake_year || '2024')
+                    .or(`program_type.eq.${this.userProfile?.program},program_type.is.null`)
+                    .or(`block_term.eq.${this.userProfile?.block},block_term.is.null`)
+                    .eq('intake_year', this.userProfile?.intake_year) // FIXED: Removed hardcoded 2025
                     .gte('exam_date', new Date().toISOString().split('T')[0])
                     .order('exam_date', { ascending: true });
                 
@@ -423,13 +435,12 @@ class DashboardModule {
                 exams = data || [];
                 this.cachedExams = exams;
                 
-                // Dispatch event for other modules
                 document.dispatchEvent(new CustomEvent('examsUpdated', {
                     detail: { exams }
                 }));
             }
             
-            console.log(`📋 Found ${exams.length} upcoming exams`);
+            console.log(`📋 Found ${exams.length} upcoming exams for intake ${this.userProfile?.intake_year}`);
             
             // Find next exam
             const upcomingExams = exams.filter(exam => new Date(exam.exam_date) > new Date());
@@ -471,7 +482,7 @@ class DashboardModule {
         }
     }
     
-    // Load resource metrics (last 7 days)
+    // Load resource metrics - FIXED: Uses actual intake year (2024-2028)
     async loadResourceMetrics() {
         console.log('📁 Loading resource metrics...');
         
@@ -487,10 +498,10 @@ class DashboardModule {
                 
                 const { data, error } = await this.sb
                     .from('resources')
-                    .select('created_at, program_type, block, intake')
-                    .eq('program_type', this.userProfile?.program || this.userProfile?.department)
+                    .select('created_at, target_program, block, intake_year')
+                    .eq('target_program', this.userProfile?.program)
                     .eq('block', this.userProfile?.block)
-                    .eq('intake', this.userProfile?.intake_year || '2024')
+                    .eq('intake_year', this.userProfile?.intake_year) // FIXED: Removed hardcoded 2025
                     .gte('created_at', oneWeekAgo.toISOString());
                 
                 if (error) {
@@ -501,7 +512,6 @@ class DashboardModule {
                 resources = data || [];
                 this.cachedResources = resources;
                 
-                // Dispatch event for other modules
                 document.dispatchEvent(new CustomEvent('resourcesUpdated', {
                     detail: { resources }
                 }));
@@ -523,7 +533,79 @@ class DashboardModule {
         }
     }
     
-    // Load system messages
+    // Load NurseIQ metrics - NEW
+    async loadNurseIQMetrics() {
+        console.log('🧠 Loading NurseIQ metrics...');
+        
+        if (!this.userId) {
+            console.warn('⚠️ No user ID for NurseIQ metrics');
+            return;
+        }
+        
+        try {
+            // Get user's assessment progress
+            const { data: assessments, error } = await this.sb
+                .from('user_assessment_progress')
+                .select('is_correct, time_spent, created_at')
+                .eq('user_id', this.userId)
+                .order('created_at', { ascending: false });
+            
+            if (error) {
+                console.error('❌ Database error loading NurseIQ:', error);
+                return;
+            }
+            
+            console.log(`📋 Found ${assessments?.length || 0} NurseIQ assessments`);
+            
+            // Calculate metrics
+            const totalQuestions = assessments?.length || 0;
+            const correctAnswers = assessments?.filter(a => a.is_correct === true).length || 0;
+            const accuracy = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
+            
+            // Calculate progress (based on questions answered vs target)
+            const targetQuestions = 100; // Target: complete 100 questions
+            const progress = totalQuestions > 0 ? Math.round((totalQuestions / targetQuestions) * 100) : 0;
+            const progressPercent = Math.min(progress, 100); // Cap at 100%
+            
+            // Update dashboard metrics
+            this.setText(this.dashboardNurseiqProgress, `${progressPercent}%`);
+            this.setText(this.dashboardNurseiqAccuracy, `${accuracy}%`);
+            this.setText(this.dashboardNurseiqQuestions, totalQuestions);
+            
+            // Update badge
+            if (this.nurseiqBadge) {
+                this.nurseiqBadge.textContent = totalQuestions > 0 ? totalQuestions : '0';
+            }
+            
+            // Update action card
+            if (this.nurseiqActionCard && this.nurseiqActionMessage) {
+                if (totalQuestions === 0) {
+                    this.nurseiqActionCard.style.display = 'block';
+                    this.nurseiqActionMessage.textContent = 'Start practicing NurseIQ assessments to improve your clinical knowledge!';
+                } else if (progressPercent < 50) {
+                    this.nurseiqActionCard.style.display = 'block';
+                    this.nurseiqActionMessage.textContent = `Continue practicing! You've completed ${totalQuestions} questions (${progressPercent}% progress).`;
+                } else {
+                    this.nurseiqActionCard.style.display = 'none';
+                }
+            }
+            
+            console.log('📊 NurseIQ stats:', {
+                questions: totalQuestions,
+                correct: correctAnswers,
+                accuracy: `${accuracy}%`,
+                progress: `${progressPercent}%`
+            });
+            
+        } catch (error) {
+            console.error('❌ Error loading NurseIQ metrics:', error);
+            this.setText(this.dashboardNurseiqProgress, '--%');
+            this.setText(this.dashboardNurseiqAccuracy, '--%');
+            this.setText(this.dashboardNurseiqQuestions, '0');
+        }
+    }
+    
+    // Load system messages - FIXED: Public announcements
     async loadSystemMessages() {
         const card = document.getElementById('latest-announcement-card');
         const titleElement = document.getElementById('announcement-title');
@@ -531,15 +613,16 @@ class DashboardModule {
         const dateElement = document.getElementById('announcement-date');
         const statusElement = document.getElementById('announcement-status');
         
-        if (!card || !this.userProfile?.program) return;
+        if (!card) return;
         
         card.style.display = 'none';
         
         try {
+            // Get latest notification (public or for user's program)
             const { data: messages, error } = await this.sb
                 .from('notifications')
                 .select('created_at, subject, message, is_read, target_program')
-                .or(`target_program.eq.${this.userProfile.program},target_program.is.null`)
+                .or(`target_program.eq.${this.userProfile?.program},target_program.is.null,target_program.eq.Public`) // FIXED: Added Public
                 .order('created_at', { ascending: false })
                 .limit(1);
             
@@ -595,7 +678,6 @@ class DashboardModule {
         let finalPhotoSrc = 'https://dummyimage.com/150x150/cccccc/000000.png&text=NO+PHOTO';
         
         if (photoUrl) {
-            // Construct proper Supabase URL
             const supabaseUrl = window.APP_CONFIG?.SUPABASE_URL || 'https://api.supabase.co';
             finalPhotoSrc = `${supabaseUrl}/storage/v1/object/public/passports/${photoUrl}?t=${new Date().getTime()}`;
             console.log('📸 Profile photo URL:', finalPhotoSrc);
@@ -653,6 +735,7 @@ class DashboardModule {
         // Refresh relevant sections
         this.loadWelcomeDetails();
         this.loadProfilePhoto();
+        this.loadNurseIQMetrics(); // Refresh NurseIQ too
         
         // If user ID changed, reload attendance metrics
         if (userProfile.id && userProfile.id !== this.userId) {
@@ -677,6 +760,9 @@ class DashboardModule {
             case 'resources':
                 this.cachedResources = data;
                 this.loadResourceMetrics();
+                break;
+            case 'nurseiq':
+                this.loadNurseIQMetrics();
                 break;
         }
     }
