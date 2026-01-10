@@ -1,12 +1,12 @@
-// courses.js - COMPLETE FIXED VERSION
+// courses.js - ENHANCED WITH DASHBOARD INTEGRATION
 (function() {
     'use strict';
     
-    console.log('✅ courses.js - Loading...');
+    console.log('✅ courses.js - Loading with Dashboard Integration...');
     
     class CoursesModule {
         constructor() {
-            console.log('📚 CoursesModule initialized');
+            console.log('📚 CoursesModule initialized with Dashboard Integration');
             
             // Store course data
             this.allCourses = [];
@@ -93,6 +93,12 @@
                     this.loadCourses();
                 });
             }
+            
+            // Listen for dashboard events
+            document.addEventListener('refreshCourses', () => {
+                console.log('📊 Dashboard requested courses refresh');
+                this.loadCourses();
+            });
             
             console.log('✅ All event listeners initialized');
         }
@@ -238,6 +244,9 @@
                 // Apply current filter and display
                 this.applyDataFilter();
                 
+                // 🔥 CRITICAL: TRIGGER DASHBOARD UPDATE
+                this.triggerDashboardUpdate();
+                
                 // Show success message
                 if (window.AppUtils?.showToast) {
                     window.AppUtils.showToast('Courses loaded successfully', 'success');
@@ -251,6 +260,32 @@
                     window.AppUtils.showToast('Failed to load courses: ' + error.message, 'error');
                 }
             }
+        }
+        
+        // 🔥 NEW: Trigger dashboard update
+        triggerDashboardUpdate() {
+            console.log('🎯 Triggering dashboard courses update...');
+            
+            // Dispatch event to update dashboard
+            const event = new CustomEvent('coursesUpdated', {
+                detail: {
+                    courses: this.allCourses,
+                    activeCount: this.activeCourses.length,
+                    completedCount: this.completedCourses.length,
+                    timestamp: new Date().toISOString()
+                }
+            });
+            
+            // Dispatch on both document and window for maximum compatibility
+            document.dispatchEvent(event);
+            window.dispatchEvent(event);
+            
+            // Also try the global helper function if available
+            if (window.triggerDashboardUpdate) {
+                window.triggerDashboardUpdate('courses');
+            }
+            
+            console.log('✅ Dashboard courses update triggered');
         }
         
         isTVETProgram(program) {
@@ -568,6 +603,21 @@
             console.log('🔄 Manual refresh requested');
             this.loadCourses();
         }
+        
+        // 🔥 NEW: Get course count for dashboard
+        getActiveCourseCount() {
+            return this.activeCourses.length;
+        }
+        
+        // 🔥 NEW: Get all courses for other modules
+        getAllCourses() {
+            return this.allCourses;
+        }
+        
+        // 🔥 NEW: Manual trigger for dashboard update
+        updateDashboard() {
+            this.triggerDashboardUpdate();
+        }
     }
     
     // Create global instance
@@ -615,5 +665,21 @@
         }
     };
     
-    console.log('✅ Courses module ready!');
+    // 🔥 NEW: Global function for dashboard integration
+    window.updateCoursesDashboard = () => {
+        console.log('🌍 Global updateCoursesDashboard() called');
+        if (window.coursesModule) {
+            window.coursesModule.triggerDashboardUpdate();
+        }
+    };
+    
+    // 🔥 NEW: Get course count for dashboard
+    window.getDashboardCourseCount = () => {
+        if (window.coursesModule) {
+            return window.coursesModule.getActiveCourseCount();
+        }
+        return 0;
+    };
+    
+    console.log('✅ Courses module ready with Dashboard Integration!');
 })();
