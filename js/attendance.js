@@ -1,4 +1,4 @@
-// attendance.js - UPDATED WITH CORRECT COORDINATES
+// attendance.js - COMPLETELY INDEPENDENT VERSION
 (function() {
     'use strict';
     
@@ -8,18 +8,17 @@
     let attendanceUserProfile = null;
     let currentLocation = null;
     let locationWatchId = null;
-    let coursesLoaded = false;
     
     // College coordinates - NAKURU COLLEGE
     const NAKURU_COLLEGE = {
         latitude: -0.2610284,
         longitude: 36.0116283,
-        radius: 100  // Students must be within 100m of college
+        radius: 100
     };
     
-    // Initialize attendance system
+    // Initialize attendance system - COMPLETELY INDEPENDENT
     function initializeAttendanceSystem() {
-        console.log('📱 Initializing Attendance System...');
+        console.log('📱 Initializing INDEPENDENT Attendance System...');
         
         // Cache DOM elements
         const sessionTypeSelect = document.getElementById('session-type');
@@ -30,8 +29,14 @@
         
         // Set up event listeners
         if (attendanceTab) {
-            attendanceTab.addEventListener('click', async () => {
-                console.log('📊 Attendance tab clicked');
+            attendanceTab.addEventListener('click', async (e) => {
+                e.preventDefault();
+                console.log('📊 Attendance tab clicked - loading independently...');
+                
+                // Switch to attendance tab
+                switchToTab('attendance');
+                
+                // Load attendance data (does NOT depend on courses tab)
                 await loadAttendanceData();
                 startLocationMonitoring();
             });
@@ -64,14 +69,48 @@
         // Start location monitoring immediately
         startLocationMonitoring();
         
-        // Load data if already on attendance tab
-        if (window.location.hash === '#attendance' || 
-            document.querySelector('.tab-content#attendance').style.display === 'block') {
-            console.log('📊 Already on attendance tab, loading data...');
+        // Check if we're already on attendance tab
+        if (isOnAttendanceTab()) {
+            console.log('📊 Currently on attendance tab, loading data...');
             loadAttendanceData();
         }
         
-        console.log('✅ Attendance System initialized');
+        console.log('✅ INDEPENDENT Attendance System initialized');
+    }
+    
+    // Helper: Check if on attendance tab
+    function isOnAttendanceTab() {
+        return window.location.hash === '#attendance' || 
+               (document.querySelector('.tab-content#attendance') && 
+                document.querySelector('.tab-content#attendance').style.display === 'block');
+    }
+    
+    // Helper: Switch to tab (independent of other modules)
+    function switchToTab(tabName) {
+        // Hide all tab contents
+        document.querySelectorAll('.tab-content').forEach(tab => {
+            tab.style.display = 'none';
+        });
+        
+        // Remove active class from all nav items
+        document.querySelectorAll('.nav a').forEach(navItem => {
+            navItem.classList.remove('active');
+        });
+        
+        // Show selected tab
+        const selectedTab = document.getElementById(tabName);
+        if (selectedTab) {
+            selectedTab.style.display = 'block';
+        }
+        
+        // Set active nav item
+        const activeNav = document.querySelector(`.nav a[data-tab="${tabName}"]`);
+        if (activeNav) {
+            activeNav.classList.add('active');
+        }
+        
+        // Update URL hash
+        window.location.hash = tabName;
     }
     
     // Update current time display
@@ -104,30 +143,19 @@
             targetControlGroup.style.display = 'flex';
             targetSelect.disabled = false;
             
-            // Update label based on session type
+            // Update label
             let label = 'Select:';
             switch(sessionType) {
-                case 'clinical':
-                    label = 'Clinical Department:';
-                    break;
-                case 'class':
-                    label = 'Course:';
-                    break;
-                case 'lab':
-                    label = 'Laboratory:';
-                    break;
-                case 'tutorial':
-                    label = 'Tutorial Room:';
-                    break;
-                default:
-                    label = 'Target:';
+                case 'clinical': label = 'Clinical Department:'; break;
+                case 'class': label = 'Course:'; break;
+                case 'lab': label = 'Laboratory:'; break;
+                case 'tutorial': label = 'Tutorial Room:'; break;
+                default: label = 'Target:';
             }
             
-            if (targetText) {
-                targetText.textContent = label;
-            }
+            if (targetText) targetText.textContent = label;
             
-            // Populate options based on session type
+            // Populate options - INDEPENDENTLY
             populateTargetOptions(sessionType);
             updateRequirement('session', true);
         } else {
@@ -140,9 +168,9 @@
         updateCheckInButton();
     }
     
-    // Populate target options
+    // Populate target options - INDEPENDENT VERSION
     async function populateTargetOptions(sessionType) {
-        console.log('🎯 Populating target options for:', sessionType);
+        console.log('🎯 Populating target options INDEPENDENTLY for:', sessionType);
         
         const targetSelect = document.getElementById('attendance-target');
         if (!targetSelect) return;
@@ -151,34 +179,53 @@
         targetSelect.innerHTML = '<option value="">Loading options...</option>';
         targetSelect.disabled = true;
         
-        let options = [];
-        
         try {
             if (sessionType === 'clinical') {
-                // Load clinical areas if not cached
-                if (attendanceCachedClinicalAreas.length === 0) {
-                    await loadClinicalTargets();
-                }
-                options = attendanceCachedClinicalAreas;
+                // Load clinical areas independently
+                await loadClinicalTargets();
                 
-                if (options.length === 0) {
+                if (attendanceCachedClinicalAreas.length === 0) {
                     targetSelect.innerHTML = '<option value="">No clinical areas available</option>';
                     return;
                 }
-            } else if (['class', 'lab', 'tutorial'].includes(sessionType)) {
-                // Load courses if not already loaded
-                if (!coursesLoaded || attendanceCachedCourses.length === 0) {
-                    console.log('📚 Loading courses for attendance...');
-                    options = await loadCoursesForAttendance();
-                    coursesLoaded = true;
-                } else {
-                    options = attendanceCachedCourses;
-                }
                 
-                if (options.length === 0) {
-                    targetSelect.innerHTML = '<option value="">No active courses found</option>';
+                // Populate clinical areas
+                targetSelect.innerHTML = '<option value="">Select clinical department...</option>';
+                attendanceCachedClinicalAreas.forEach(area => {
+                    const opt = document.createElement('option');
+                    opt.value = `${area.id}|${area.name}`;
+                    opt.textContent = area.name;
+                    targetSelect.appendChild(opt);
+                });
+                
+            } else if (['class', 'lab', 'tutorial'].includes(sessionType)) {
+                // Load courses INDEPENDENTLY - don't wait for courses tab
+                console.log('📚 Loading courses independently...');
+                
+                const courses = await loadCoursesForAttendance();
+                
+                if (!courses || courses.length === 0) {
+                    targetSelect.innerHTML = '<option value="">No courses found. Please refresh.</option>';
                     return;
                 }
+                
+                // Populate courses
+                targetSelect.innerHTML = '<option value="">Select course...</option>';
+                
+                courses.forEach(course => {
+                    const opt = document.createElement('option');
+                    const courseName = course.course_name || course.name || 'Unknown Course';
+                    const unitCode = course.unit_code || course.code || '';
+                    
+                    let displayText = courseName;
+                    if (unitCode) {
+                        displayText = `${unitCode} - ${courseName}`;
+                    }
+                    
+                    opt.value = `${course.id}|${displayText}`;
+                    opt.textContent = displayText;
+                    targetSelect.appendChild(opt);
+                });
             }
         } catch (error) {
             console.error('❌ Error loading targets:', error);
@@ -186,77 +233,41 @@
             return;
         }
         
-        // Populate options
-        targetSelect.innerHTML = '<option value="">Select target...</option>';
-        
-        options.forEach(option => {
-            const opt = document.createElement('option');
-            
-            if (sessionType === 'clinical') {
-                // Clinical areas
-                opt.value = `${option.id}|${option.name}`;
-                opt.textContent = option.name || 'Unknown Department';
-            } else {
-                // Courses - use proper naming
-                const courseName = option.course_name || option.name || 'Unknown Course';
-                const unitCode = option.unit_code || option.code || '';
-                
-                let displayText = courseName;
-                if (unitCode) {
-                    displayText = `${unitCode} - ${courseName}`;
-                }
-                
-                opt.value = `${option.id}|${displayText}`;
-                opt.textContent = displayText;
-            }
-            
-            targetSelect.appendChild(opt);
-        });
-        
         targetSelect.disabled = false;
         updateRequirement('target', false);
         
-        // Add change listener to update button state
+        // Update button when selection changes
         targetSelect.addEventListener('change', () => {
             updateRequirement('target', targetSelect.value && targetSelect.value !== '');
             updateCheckInButton();
         });
     }
     
-    // Load courses specifically for attendance
+    // Load courses INDEPENDENTLY from database
     async function loadCoursesForAttendance() {
-        console.log('📖 Loading courses for attendance system...');
+        console.log('📖 Loading courses INDEPENDENTLY from database...');
         
-        if (!attendanceUserProfile) {
-            console.error('❌ No user profile available');
+        // Don't depend on coursesModule or cachedCourses
+        // Query database directly
+        
+        if (!attendanceUserProfile || !window.db?.supabase) {
+            console.log('⚠️ Waiting for user authentication...');
             return [];
         }
         
-        const supabaseClient = window.db?.supabase;
-        if (!supabaseClient) {
-            console.error('❌ No Supabase client');
-            return [];
-        }
-        
+        const supabaseClient = window.db.supabase;
         const yourProgram = attendanceUserProfile.program;
         const yourIntakeYear = attendanceUserProfile.intake_year;
         const yourBlock = attendanceUserProfile.block;
         
-        console.log('🔍 Searching courses for:', {
-            program: yourProgram,
-            intake_year: yourIntakeYear,
-            block: yourBlock
-        });
-        
         try {
-            // Build query
             let query = supabaseClient
                 .from('courses')
                 .select('id, course_name, name, unit_code, code, status, target_program, intake_year, block, latitude, longitude, radius_m')
                 .eq('status', 'Active')
                 .order('course_name');
             
-            // Add filters if available
+            // Filter by user's program if available
             if (yourProgram) {
                 query = query.or(`target_program.ilike.%${yourProgram}%,target_program.is.null`);
             }
@@ -272,8 +283,8 @@
             const { data: courses, error } = await query;
             
             if (error) {
-                console.error('❌ Database error:', error);
-                throw error;
+                console.error('❌ Database error loading courses:', error);
+                return [];
             }
             
             if (!courses || courses.length === 0) {
@@ -281,20 +292,15 @@
                 return [];
             }
             
-            console.log(`✅ Found ${courses.length} courses from database`);
+            console.log(`✅ Loaded ${courses.length} courses INDEPENDENTLY`);
             
-            // Cache the courses
+            // Cache for this session
             attendanceCachedCourses = courses;
-            
-            // Also update global cache for other modules
-            if (!window.cachedCourses) {
-                window.cachedCourses = courses;
-            }
             
             return courses;
             
         } catch (error) {
-            console.error('❌ Failed to load courses:', error);
+            console.error('❌ Failed to load courses independently:', error);
             return [];
         }
     }
@@ -477,17 +483,18 @@
         }
     }
     
-    // Load attendance data
+    // Load attendance data INDEPENDENTLY
     async function loadAttendanceData() {
-        console.log('📱 Loading attendance data...');
+        console.log('📱 Loading attendance data INDEPENDENTLY...');
         
         try {
-            // Get user profile
+            // Get user profile from global db object
             attendanceUserProfile = window.db?.currentUserProfile;
             attendanceUserId = window.db?.currentUserId;
             
             if (!attendanceUserProfile || !attendanceUserId) {
-                throw new Error('User not logged in');
+                console.log('⏳ Waiting for user login...');
+                return;
             }
             
             console.log('👤 User profile loaded:', {
@@ -500,9 +507,9 @@
             // Load clinical areas
             await loadClinicalTargets();
             
-            // Load courses for attendance
+            // Load courses INDEPENDENTLY (don't wait for courses tab)
+            console.log('📚 Loading courses for attendance tab...');
             await loadCoursesForAttendance();
-            coursesLoaded = true;
             
             // Load today's attendance count
             await loadTodayAttendanceCount();
@@ -510,7 +517,7 @@
             // Load attendance history
             await loadGeoAttendanceHistory('today');
             
-            console.log('✅ Attendance data loaded successfully');
+            console.log('✅ Attendance data loaded INDEPENDENTLY');
             
         } catch (error) {
             console.error('❌ Failed to load attendance data:', error);
@@ -722,9 +729,9 @@
         return distanceMeters;
     }
     
-    // CHECK-IN FUNCTION - UPDATED WITH CORRECT COORDINATES
+    // CHECK-IN FUNCTION - INDEPENDENT
     async function attendanceGeoCheckIn() {
-        console.log('📍 Starting check-in...');
+        console.log('📍 Starting independent check-in...');
         
         const button = document.getElementById('check-in-button');
         const sessionTypeSelect = document.getElementById('session-type');
@@ -754,43 +761,28 @@
             // Parse target
             const [targetId, targetName] = targetSelect.value.split('|');
             
-            // Find target coordinates - THIS IS THE FIXED PART
+            // Find target coordinates
             const sessionType = sessionTypeSelect.value;
             let targetLat, targetLon, targetRadius;
             
             if (sessionType === 'clinical') {
-                // CLINICAL AREAS: Use specific hospital coordinates
+                // Clinical areas: Use specific hospital coordinates
                 const target = attendanceCachedClinicalAreas.find(t => t.id === targetId);
                 if (target) {
                     targetLat = target.latitude;
                     targetLon = target.longitude;
                     targetRadius = target.radius || 100;
-                    
-                    console.log('🏥 Clinical area coordinates:', {
-                        name: target.name,
-                        lat: targetLat,
-                        lon: targetLon,
-                        radius: targetRadius
-                    });
                 } else {
-                    // Fallback to Nakuru College if clinical area not found
+                    // Fallback to Nakuru College
                     targetLat = NAKURU_COLLEGE.latitude;
                     targetLon = NAKURU_COLLEGE.longitude;
                     targetRadius = NAKURU_COLLEGE.radius;
-                    console.warn('⚠️ Clinical area not found, using college coordinates');
                 }
             } else {
-                // COURSES (Class/Lab/Tutorial): Use Nakuru College coordinates
+                // Courses: Use Nakuru College coordinates
                 targetLat = NAKURU_COLLEGE.latitude;
                 targetLon = NAKURU_COLLEGE.longitude;
                 targetRadius = NAKURU_COLLEGE.radius;
-                
-                console.log('🎓 Course at Nakuru College:', {
-                    course: targetName,
-                    lat: targetLat,
-                    lon: targetLon,
-                    radius: targetRadius
-                });
             }
             
             // Calculate distance
@@ -803,16 +795,6 @@
             
             // Verify if within range
             const isVerified = distance <= targetRadius;
-            
-            console.log('📍 Check-in details:', {
-                sessionType: sessionType,
-                target: targetName,
-                studentLocation: `(${currentLocation.latitude.toFixed(6)}, ${currentLocation.longitude.toFixed(6)})`,
-                targetLocation: `(${targetLat.toFixed(6)}, ${targetLon.toFixed(6)})`,
-                distance: `${distance.toFixed(0)}m`,
-                radius: `${targetRadius}m`,
-                verified: isVerified
-            });
             
             // Save check-in to database
             const supabaseClient = window.db?.supabase;
@@ -954,12 +936,11 @@
         initializeAttendanceSystem();
     }
     
-    // Make functions available globally
+    // Make functions available globally - INDEPENDENTLY
     window.initializeAttendanceSystem = initializeAttendanceSystem;
     window.attendanceGeoCheckIn = attendanceGeoCheckIn;
     window.loadAttendanceData = loadAttendanceData;
     window.loadGeoAttendanceHistory = loadGeoAttendanceHistory;
-    window.loadCoursesForAttendance = loadCoursesForAttendance;
     
-    console.log('✅ UPDATED Attendance module loaded with Nakuru College coordinates');
+    console.log('✅ COMPLETELY INDEPENDENT Attendance module loaded');
 })();
