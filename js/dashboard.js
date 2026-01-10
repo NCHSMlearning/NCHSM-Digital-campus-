@@ -1,4 +1,4 @@
-// dashboard.js - COMPLETE FIXED VERSION
+// dashboard.js - ENHANCED WITH COMPREHENSIVE EVENT LISTENERS
 class DashboardModule {
     constructor(supabaseClient) {
         console.log('🚀 Initializing DashboardModule...');
@@ -40,9 +40,10 @@ class DashboardModule {
         
         // Initialize
         this.setupEventListeners();
+        this.setupComprehensiveUpdateListeners(); // ENHANCED: Comprehensive listeners
         this.startLiveClock();
         
-        console.log('✅ DashboardModule initialized');
+        console.log('✅ DashboardModule initialized with comprehensive event listening');
     }
     
     // Helper to safely get elements
@@ -54,7 +55,7 @@ class DashboardModule {
         return element;
     }
     
-    // Setup event listeners
+    // Setup event listeners for UI interactions
     setupEventListeners() {
         // Dashboard card clicks
         document.querySelectorAll('.card[data-tab]').forEach(card => {
@@ -81,49 +82,140 @@ class DashboardModule {
         if (refreshBtn) {
             refreshBtn.addEventListener('click', () => this.refreshDashboard());
         }
-        
-        // Listen for data updates from other modules
-        this.setupDataUpdateListeners();
     }
     
-    // Listen for data updates from other modules
-    setupDataUpdateListeners() {
+    // ENHANCED: Setup COMPREHENSIVE event listeners for ALL metrics
+    setupComprehensiveUpdateListeners() {
+        console.log('🔔 Setting up comprehensive event listeners for ALL metrics...');
+        
+        // 1. ATTENDANCE EVENTS
         document.addEventListener('attendanceCheckedIn', () => {
             console.log('🔄 Dashboard: Attendance check-in detected');
             this.loadAttendanceMetrics();
         });
         
+        document.addEventListener('attendanceUpdated', () => {
+            console.log('📊 Dashboard: Attendance update requested');
+            this.loadAttendanceMetrics();
+        });
+        
+        // 2. COURSES EVENTS
+        document.addEventListener('coursesUpdated', (e) => {
+            console.log('📚 Dashboard: Courses updated event');
+            if (e.detail && e.detail.courses) {
+                this.cachedCourses = e.detail.courses;
+            }
+            this.loadCourseMetrics();
+        });
+        
+        document.addEventListener('courseAdded', () => {
+            console.log('➕ Dashboard: New course added');
+            this.cachedCourses = []; // Clear cache to force reload
+            this.loadCourseMetrics();
+        });
+        
+        document.addEventListener('courseCompleted', () => {
+            console.log('✅ Dashboard: Course completed');
+            this.loadCourseMetrics();
+        });
+        
+        // 3. EXAMS EVENTS
+        document.addEventListener('examsUpdated', (e) => {
+            console.log('📝 Dashboard: Exams updated event');
+            if (e.detail && e.detail.exams) {
+                this.cachedExams = e.detail.exams;
+            }
+            this.loadExamMetrics();
+        });
+        
+        document.addEventListener('examScheduled', () => {
+            console.log('📅 Dashboard: New exam scheduled');
+            this.cachedExams = []; // Clear cache
+            this.loadExamMetrics();
+        });
+        
+        document.addEventListener('examCompleted', () => {
+            console.log('🎯 Dashboard: Exam completed');
+            this.loadExamMetrics();
+        });
+        
+        // 4. RESOURCES EVENTS
+        document.addEventListener('resourcesUpdated', (e) => {
+            console.log('📁 Dashboard: Resources updated event');
+            if (e.detail && e.detail.resources) {
+                this.cachedResources = e.detail.resources;
+            }
+            this.loadResourceMetrics();
+        });
+        
+        document.addEventListener('resourceAdded', () => {
+            console.log('📥 Dashboard: New resource added');
+            this.cachedResources = []; // Clear cache
+            this.loadResourceMetrics();
+        });
+        
+        // 5. NURSEIQ EVENTS
+        document.addEventListener('nurseiqUpdated', () => {
+            console.log('🧠 Dashboard: NurseIQ updated');
+            this.loadNurseIQMetrics();
+        });
+        
+        document.addEventListener('assessmentCompleted', () => {
+            console.log('📊 Dashboard: Assessment completed');
+            this.loadNurseIQMetrics();
+        });
+        
+        // 6. PROFILE EVENTS
         document.addEventListener('profileUpdated', () => {
-            console.log('🔄 Dashboard: Profile updated');
+            console.log('👤 Dashboard: Profile updated');
             this.loadProfilePhoto();
         });
         
-        document.addEventListener('coursesUpdated', (e) => {
-            if (e.detail && e.detail.courses) {
-                this.cachedCourses = e.detail.courses;
-                this.loadCourseMetrics();
-            }
+        document.addEventListener('passportUploaded', () => {
+            console.log('📸 Dashboard: Passport uploaded');
+            this.loadProfilePhoto();
         });
         
-        document.addEventListener('examsUpdated', (e) => {
-            if (e.detail && e.detail.exams) {
-                this.cachedExams = e.detail.exams;
-                this.loadExamMetrics();
-            }
+        // 7. SYSTEM EVENTS
+        document.addEventListener('announcementPosted', () => {
+            console.log('📢 Dashboard: New announcement');
+            this.loadLatestOfficialAnnouncement();
+            this.loadSystemMessages();
         });
         
-        document.addEventListener('resourcesUpdated', (e) => {
-            if (e.detail && e.detail.resources) {
-                this.cachedResources = e.detail.resources;
-                this.loadResourceMetrics();
-            }
+        // 8. UNIVERSAL REFRESH EVENT
+        document.addEventListener('refreshDashboard', () => {
+            console.log('🔄 Dashboard: Universal refresh requested');
+            this.refreshDashboard();
         });
         
-        // Listen for NurseIQ updates
-        document.addEventListener('nurseiqUpdated', () => {
-            console.log('🔄 Dashboard: NurseIQ updated');
+        // 9. SPECIFIC METRIC REFRESH EVENTS
+        document.addEventListener('refreshAttendance', () => {
+            console.log('📊 Dashboard: Refresh attendance only');
+            this.loadAttendanceMetrics();
+        });
+        
+        document.addEventListener('refreshCourses', () => {
+            console.log('📚 Dashboard: Refresh courses only');
+            this.loadCourseMetrics();
+        });
+        
+        document.addEventListener('refreshExams', () => {
+            console.log('📝 Dashboard: Refresh exams only');
+            this.loadExamMetrics();
+        });
+        
+        document.addEventListener('refreshResources', () => {
+            console.log('📁 Dashboard: Refresh resources only');
+            this.loadResourceMetrics();
+        });
+        
+        document.addEventListener('refreshNurseIQ', () => {
+            console.log('🧠 Dashboard: Refresh NurseIQ only');
             this.loadNurseIQMetrics();
         });
+        
+        console.log('✅ Comprehensive event listeners setup complete');
     }
     
     // Main function to initialize with user data
@@ -144,7 +236,23 @@ class DashboardModule {
         // Load all dashboard data
         await this.loadDashboard();
         
+        // Dispatch event that dashboard is ready
+        this.dispatchDashboardReadyEvent();
+        
         return true;
+    }
+    
+    // Dispatch event when dashboard is ready
+    dispatchDashboardReadyEvent() {
+        const event = new CustomEvent('dashboardReady', {
+            detail: {
+                userId: this.userId,
+                timestamp: new Date().toISOString(),
+                metrics: ['attendance', 'courses', 'exams', 'resources', 'nurseiq']
+            }
+        });
+        document.dispatchEvent(event);
+        console.log('🚀 Dashboard ready event dispatched');
     }
     
     // Main dashboard loading function
@@ -152,6 +260,9 @@ class DashboardModule {
         console.log('📊 Loading dashboard data...');
         
         try {
+            // Dispatch loading start event
+            document.dispatchEvent(new CustomEvent('dashboardLoadingStart'));
+            
             // Load all metrics in parallel
             const loadPromises = [
                 this.loadWelcomeDetails(),
@@ -161,18 +272,28 @@ class DashboardModule {
                 this.loadCourseMetrics(),
                 this.loadExamMetrics(),
                 this.loadResourceMetrics(),
-                this.loadNurseIQMetrics(), // Added NurseIQ
+                this.loadNurseIQMetrics(),
                 this.loadProfilePhoto(),
                 this.loadSystemMessages()
             ];
             
             await Promise.allSettled(loadPromises);
             
+            // Dispatch loading complete event
+            document.dispatchEvent(new CustomEvent('dashboardLoadingComplete', {
+                detail: { timestamp: new Date().toISOString() }
+            }));
+            
             console.log('✅ Dashboard loaded successfully');
             
         } catch (error) {
             console.error('❌ Error loading dashboard:', error);
             this.showErrorStates();
+            
+            // Dispatch error event
+            document.dispatchEvent(new CustomEvent('dashboardLoadingError', {
+                detail: { error: error.message }
+            }));
         }
     }
     
@@ -353,6 +474,16 @@ class DashboardModule {
                 }
             }
             
+            // Dispatch metric updated event
+            document.dispatchEvent(new CustomEvent('attendanceMetricsUpdated', {
+                detail: {
+                    rate: attendanceRate,
+                    verified: verifiedCount,
+                    total: totalLogs,
+                    pending: pendingCount
+                }
+            }));
+            
         } catch (error) {
             console.error('❌ Error loading attendance stats:', error);
         }
@@ -384,8 +515,9 @@ class DashboardModule {
                 courses = data || [];
                 this.cachedCourses = courses;
                 
-                document.dispatchEvent(new CustomEvent('coursesUpdated', {
-                    detail: { courses }
+                // Dispatch detailed event
+                document.dispatchEvent(new CustomEvent('coursesMetricsUpdated', {
+                    detail: { courses: courses }
                 }));
             }
             
@@ -435,8 +567,9 @@ class DashboardModule {
                 exams = data || [];
                 this.cachedExams = exams;
                 
-                document.dispatchEvent(new CustomEvent('examsUpdated', {
-                    detail: { exams }
+                // Dispatch detailed event
+                document.dispatchEvent(new CustomEvent('examsMetricsUpdated', {
+                    detail: { exams: exams }
                 }));
             }
             
@@ -512,8 +645,9 @@ class DashboardModule {
                 resources = data || [];
                 this.cachedResources = resources;
                 
-                document.dispatchEvent(new CustomEvent('resourcesUpdated', {
-                    detail: { resources }
+                // Dispatch detailed event
+                document.dispatchEvent(new CustomEvent('resourcesMetricsUpdated', {
+                    detail: { resources: resources }
                 }));
             }
             
@@ -533,7 +667,7 @@ class DashboardModule {
         }
     }
     
-    // Load NurseIQ metrics - NEW
+    // Load NurseIQ metrics
     async loadNurseIQMetrics() {
         console.log('🧠 Loading NurseIQ metrics...');
         
@@ -589,6 +723,16 @@ class DashboardModule {
                     this.nurseiqActionCard.style.display = 'none';
                 }
             }
+            
+            // Dispatch metrics event
+            document.dispatchEvent(new CustomEvent('nurseiqMetricsUpdated', {
+                detail: {
+                    questions: totalQuestions,
+                    correct: correctAnswers,
+                    accuracy: accuracy,
+                    progress: progressPercent
+                }
+            }));
             
             console.log('📊 NurseIQ stats:', {
                 questions: totalQuestions,
@@ -716,8 +860,16 @@ class DashboardModule {
         // Show loading states
         this.showLoadingStates();
         
+        // Dispatch refresh start event
+        document.dispatchEvent(new CustomEvent('dashboardRefreshStart'));
+        
         // Reload all metrics
         await this.loadDashboard();
+        
+        // Dispatch refresh complete event
+        document.dispatchEvent(new CustomEvent('dashboardRefreshComplete', {
+            detail: { timestamp: new Date().toISOString() }
+        }));
         
         // Show success message
         if (window.showToast) {
@@ -764,6 +916,34 @@ class DashboardModule {
             case 'nurseiq':
                 this.loadNurseIQMetrics();
                 break;
+        }
+    }
+    
+    // Helper function to refresh specific metric
+    refreshMetric(metricName) {
+        console.log(`🔄 Refreshing specific metric: ${metricName}`);
+        
+        switch (metricName) {
+            case 'attendance':
+                this.loadAttendanceMetrics();
+                break;
+            case 'courses':
+                this.loadCourseMetrics();
+                break;
+            case 'exams':
+                this.loadExamMetrics();
+                break;
+            case 'resources':
+                this.loadResourceMetrics();
+                break;
+            case 'nurseiq':
+                this.loadNurseIQMetrics();
+                break;
+            case 'all':
+                this.refreshDashboard();
+                break;
+            default:
+                console.warn(`Unknown metric: ${metricName}`);
         }
     }
 }
@@ -814,6 +994,36 @@ function updateDashboardProfile(userProfile) {
 function updateDashboardCache(type, data) {
     if (dashboardModule) {
         dashboardModule.updateCachedData(type, data);
+    }
+}
+
+// Function to refresh specific metric
+function refreshDashboardMetric(metricName) {
+    if (dashboardModule && dashboardModule.refreshMetric) {
+        dashboardModule.refreshMetric(metricName);
+    } else if (dashboardModule) {
+        // Fallback to full refresh
+        dashboardModule.refreshDashboard();
+    }
+}
+
+// Helper function for other modules to trigger dashboard updates
+function triggerDashboardUpdate(metric = 'all') {
+    console.log(`🎯 Triggering dashboard update for: ${metric}`);
+    
+    if (metric === 'attendance') {
+        document.dispatchEvent(new CustomEvent('attendanceCheckedIn'));
+    } else if (metric === 'courses') {
+        document.dispatchEvent(new CustomEvent('coursesUpdated'));
+    } else if (metric === 'exams') {
+        document.dispatchEvent(new CustomEvent('examsUpdated'));
+    } else if (metric === 'resources') {
+        document.dispatchEvent(new CustomEvent('resourcesUpdated'));
+    } else if (metric === 'nurseiq') {
+        document.dispatchEvent(new CustomEvent('nurseiqUpdated'));
+    } else {
+        // Refresh all metrics
+        document.dispatchEvent(new CustomEvent('refreshDashboard'));
     }
 }
 
@@ -883,5 +1093,7 @@ window.loadDashboardWithUser = loadDashboardWithUser;
 window.refreshDashboard = refreshDashboard;
 window.updateDashboardProfile = updateDashboardProfile;
 window.updateDashboardCache = updateDashboardCache;
+window.refreshDashboardMetric = refreshDashboardMetric;
+window.triggerDashboardUpdate = triggerDashboardUpdate; // NEW: Easy way for other modules to update dashboard
 
-console.log('🏁 Dashboard module loaded');
+console.log('🏁 Dashboard module loaded with comprehensive event listening');
