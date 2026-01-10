@@ -1,4 +1,4 @@
-// attendance.js - COMPLETE FIXED VERSION WITH AUTO COURSE LOADING
+// attendance.js - UPDATED WITH CORRECT COORDINATES
 (function() {
     'use strict';
     
@@ -8,7 +8,14 @@
     let attendanceUserProfile = null;
     let currentLocation = null;
     let locationWatchId = null;
-    let coursesLoaded = false; // Track if courses have been loaded
+    let coursesLoaded = false;
+    
+    // College coordinates - NAKURU COLLEGE
+    const NAKURU_COLLEGE = {
+        latitude: -0.2610284,
+        longitude: 36.0116283,
+        radius: 100  // Students must be within 100m of college
+    };
     
     // Initialize attendance system
     function initializeAttendanceSystem() {
@@ -25,7 +32,7 @@
         if (attendanceTab) {
             attendanceTab.addEventListener('click', async () => {
                 console.log('📊 Attendance tab clicked');
-                await loadAttendanceData(); // Load everything
+                await loadAttendanceData();
                 startLocationMonitoring();
             });
         }
@@ -133,7 +140,7 @@
         updateCheckInButton();
     }
     
-    // Populate target options - FIXED
+    // Populate target options
     async function populateTargetOptions(sessionType) {
         console.log('🎯 Populating target options for:', sessionType);
         
@@ -216,7 +223,7 @@
         });
     }
     
-    // NEW FUNCTION: Load courses specifically for attendance
+    // Load courses specifically for attendance
     async function loadCoursesForAttendance() {
         console.log('📖 Loading courses for attendance system...');
         
@@ -245,8 +252,8 @@
             // Build query
             let query = supabaseClient
                 .from('courses')
-                .select('id, course_name, name, unit_code, code, status, target_program, intake_year, block')
-                .eq('status', 'Active') // Only active courses
+                .select('id, course_name, name, unit_code, code, status, target_program, intake_year, block, latitude, longitude, radius_m')
+                .eq('status', 'Active')
                 .order('course_name');
             
             // Add filters if available
@@ -470,7 +477,7 @@
         }
     }
     
-    // Load attendance data - FIXED
+    // Load attendance data
     async function loadAttendanceData() {
         console.log('📱 Loading attendance data...');
         
@@ -493,7 +500,7 @@
             // Load clinical areas
             await loadClinicalTargets();
             
-            // Load courses for attendance (DOES NOT wait for courses tab)
+            // Load courses for attendance
             await loadCoursesForAttendance();
             coursesLoaded = true;
             
@@ -524,7 +531,7 @@
             
             const { data, error } = await supabaseClient
                 .from('clinical_areas')
-                .select('id, name, latitude, longitude')
+                .select('id, name, latitude, longitude, radius_m')
                 .ilike('program', program)
                 .ilike('intake_year', intakeYear)
                 .or(block ? `block.ilike.${block},block.is.null` : 'block.is.null')
@@ -534,8 +541,9 @@
                 attendanceCachedClinicalAreas = data.map(area => ({
                     id: area.id,
                     name: area.name,
-                    latitude: area.latitude || -1.2921,
-                    longitude: area.longitude || 36.8219
+                    latitude: area.latitude,
+                    longitude: area.longitude,
+                    radius: area.radius_m || 100
                 }));
                 console.log(`✅ Loaded ${attendanceCachedClinicalAreas.length} clinical areas`);
             }
@@ -714,7 +722,7 @@
         return distanceMeters;
     }
     
-    // Check-in function
+    // CHECK-IN FUNCTION - UPDATED WITH CORRECT COORDINATES
     async function attendanceGeoCheckIn() {
         console.log('📍 Starting check-in...');
         
@@ -746,17 +754,43 @@
             // Parse target
             const [targetId, targetName] = targetSelect.value.split('|');
             
-            // Find target coordinates
+            // Find target coordinates - THIS IS THE FIXED PART
             const sessionType = sessionTypeSelect.value;
-            let targetLat = -1.2921;
-            let targetLon = 36.8219;
+            let targetLat, targetLon, targetRadius;
             
             if (sessionType === 'clinical') {
+                // CLINICAL AREAS: Use specific hospital coordinates
                 const target = attendanceCachedClinicalAreas.find(t => t.id === targetId);
                 if (target) {
                     targetLat = target.latitude;
                     targetLon = target.longitude;
+                    targetRadius = target.radius || 100;
+                    
+                    console.log('🏥 Clinical area coordinates:', {
+                        name: target.name,
+                        lat: targetLat,
+                        lon: targetLon,
+                        radius: targetRadius
+                    });
+                } else {
+                    // Fallback to Nakuru College if clinical area not found
+                    targetLat = NAKURU_COLLEGE.latitude;
+                    targetLon = NAKURU_COLLEGE.longitude;
+                    targetRadius = NAKURU_COLLEGE.radius;
+                    console.warn('⚠️ Clinical area not found, using college coordinates');
                 }
+            } else {
+                // COURSES (Class/Lab/Tutorial): Use Nakuru College coordinates
+                targetLat = NAKURU_COLLEGE.latitude;
+                targetLon = NAKURU_COLLEGE.longitude;
+                targetRadius = NAKURU_COLLEGE.radius;
+                
+                console.log('🎓 Course at Nakuru College:', {
+                    course: targetName,
+                    lat: targetLat,
+                    lon: targetLon,
+                    radius: targetRadius
+                });
             }
             
             // Calculate distance
@@ -767,8 +801,18 @@
                 targetLon
             );
             
-            // Verify if within range (100 meters)
-            const isVerified = distance <= 100;
+            // Verify if within range
+            const isVerified = distance <= targetRadius;
+            
+            console.log('📍 Check-in details:', {
+                sessionType: sessionType,
+                target: targetName,
+                studentLocation: `(${currentLocation.latitude.toFixed(6)}, ${currentLocation.longitude.toFixed(6)})`,
+                targetLocation: `(${targetLat.toFixed(6)}, ${targetLon.toFixed(6)})`,
+                distance: `${distance.toFixed(0)}m`,
+                radius: `${targetRadius}m`,
+                verified: isVerified
+            });
             
             // Save check-in to database
             const supabaseClient = window.db?.supabase;
@@ -788,7 +832,9 @@
                 is_verified: isVerified,
                 device_id: getAttendanceDeviceId(),
                 student_name: attendanceUserProfile?.full_name || 'Unknown',
-                distance_meters: distance
+                distance_meters: distance,
+                target_latitude: targetLat,
+                target_longitude: targetLon
             };
             
             const { error } = await supabaseClient
@@ -802,10 +848,18 @@
             
             // Show success message
             if (window.AppUtils?.showToast) {
-                const message = isVerified 
-                    ? `Checked in to ${targetName} successfully (Verified)`
-                    : `Checked in to ${targetName} (Pending verification)`;
-                window.AppUtils.showToast(message, 'success');
+                let message;
+                if (isVerified) {
+                    if (sessionType === 'clinical') {
+                        message = `✅ Checked in at ${targetName} successfully!`;
+                    } else {
+                        message = `✅ Checked into ${targetName} at college successfully!`;
+                    }
+                    window.AppUtils.showToast(message, 'success');
+                } else {
+                    message = `📍 Checked into ${targetName} (${distance.toFixed(0)}m away)`;
+                    window.AppUtils.showToast(message, 'warning');
+                }
             }
             
             // Update today's count
@@ -905,7 +959,7 @@
     window.attendanceGeoCheckIn = attendanceGeoCheckIn;
     window.loadAttendanceData = loadAttendanceData;
     window.loadGeoAttendanceHistory = loadGeoAttendanceHistory;
-    window.loadCoursesForAttendance = loadCoursesForAttendance; // NEW: Export this function
+    window.loadCoursesForAttendance = loadCoursesForAttendance;
     
-    console.log('✅ AUTO-LOADING Attendance module loaded');
+    console.log('✅ UPDATED Attendance module loaded with Nakuru College coordinates');
 })();
