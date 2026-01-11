@@ -579,36 +579,120 @@
     </form>
 </section>
 
-                <!-- Calendar Tab -->
-                <section id="calendar" class="tab-content">
-                    <h2 style="color: var(--color-primary);">Academic Calendar</h2>
-                    <p class="subtitle">A unified view of your scheduled sessions, clinical rotations, and exams.</p>
+               <!-- Calendar Tab - IMPROVED -->
+<section id="calendar" class="tab-content" role="region" aria-label="Academic Calendar">
+    <!-- Calendar Header -->
+    <div class="calendar-header">
+        <div class="header-content">
+            <h2><i class="fas fa-calendar-alt"></i> Academic Calendar</h2>
+            <p class="calendar-subtitle">A unified view of your scheduled sessions, clinical rotations, and exams.</p>
+        </div>
+        <div class="current-date">
+            <i class="fas fa-clock"></i>
+            <span id="current-date-display">Today: Loading...</span>
+        </div>
+    </div>
 
-                    <div class="calendar-controls" style="margin-bottom: 20px;">
-                        <label for="calendar-filter">Filter by Type:</label>
-                        <select id="calendar-filter">
-                            <option value="all">Show All</option>
-                            <option value="Clinical">Clinical Rotations</option>
-                            <option value="Class">Scheduled Sessions</option>
-                            <option value="Exam">Exams/CATS</option>
-                        </select>
-                    </div>
+    <!-- Calendar Controls -->
+    <div class="calendar-controls">
+        <div class="filter-group">
+            <label for="calendar-filter">
+                <i class="fas fa-filter"></i>
+                Filter by Type:
+            </label>
+            <div class="select-wrapper">
+                <select id="calendar-filter" class="calendar-select">
+                    <option value="all">Show All</option>
+                    <option value="Clinical">Clinical Rotations</option>
+                    <option value="Class">Scheduled Sessions</option>
+                    <option value="Exam">Exams/CATS</option>
+                </select>
+                <i class="fas fa-chevron-down"></i>
+            </div>
+        </div>
+        
+        <div class="calendar-actions">
+            <button id="refresh-calendar" class="btn-icon" title="Refresh Calendar">
+                <i class="fas fa-redo"></i>
+            </button>
+            <button id="export-calendar" class="btn-icon" title="Export to PDF">
+                <i class="fas fa-download"></i>
+            </button>
+            <button id="calendar-view-toggle" class="btn-secondary">
+                <i class="fas fa-list"></i>
+                <span>List View</span>
+            </button>
+        </div>
+    </div>
 
-                    <div style="overflow-x: auto;"> 
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th class="date-col">Date & Time</th>
-                                    <th>Event / Details</th>
-                                    <th class="session-type-col">Type</th>
-                                </tr>
-                            </thead>
-                            <tbody id="calendar-table">
-                                <tr><td colspan="3">Loading academic schedule...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
+    <!-- Calendar Table Container -->
+    <div class="table-container">
+        <!-- Loading State -->
+        <div id="calendar-loading" class="loading-state">
+            <div class="loading-spinner"></div>
+            <p>Loading academic schedule...</p>
+        </div>
+
+        <!-- Empty State -->
+        <div id="calendar-empty" class="empty-state" style="display: none;">
+            <i class="fas fa-calendar-times"></i>
+            <h3>No Calendar Events</h3>
+            <p>No scheduled events found for the selected period.</p>
+            <button id="refresh-calendar-empty" class="btn-primary">
+                <i class="fas fa-redo"></i> Refresh
+            </button>
+        </div>
+
+        <!-- Calendar Table -->
+        <div id="calendar-table-container" style="display: none;">
+            <table class="calendar-table" aria-label="Academic Calendar Events">
+                <thead>
+                    <tr>
+                        <th scope="col" class="date-col">
+                            <i class="fas fa-calendar-day"></i>
+                            Date & Time
+                        </th>
+                        <th scope="col">
+                            <i class="fas fa-info-circle"></i>
+                            Event / Details
+                        </th>
+                        <th scope="col" class="type-col">
+                            <i class="fas fa-tag"></i>
+                            Type
+                        </th>
+                        <th scope="col" class="status-col">
+                            <i class="fas fa-check-circle"></i>
+                            Status
+                        </th>
+                    </tr>
+                </thead>
+                <tbody id="calendar-table">
+                    <!-- Events will be loaded here dynamically -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Calendar Summary -->
+    <div id="calendar-summary" class="calendar-summary" style="display: none;">
+        <div class="summary-item">
+            <span class="summary-label">Total Events:</span>
+            <span class="summary-value" id="total-events">0</span>
+        </div>
+        <div class="summary-item">
+            <span class="summary-label">Upcoming:</span>
+            <span class="summary-value" id="upcoming-events">0</span>
+        </div>
+        <div class="summary-item">
+            <span class="summary-label">This Week:</span>
+            <span class="summary-value" id="week-events">0</span>
+        </div>
+        <div class="summary-item">
+            <span class="summary-label">Exams:</span>
+            <span class="summary-value exam-count" id="exam-events">0</span>
+        </div>
+    </div>
+</section>
 
               <!-- Courses Tab -->
 <section id="courses" class="tab-content">
