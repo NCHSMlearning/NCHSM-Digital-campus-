@@ -1,48 +1,34 @@
-// dashboard.js - ULTRA FAST VERSION (INSTANT UPDATES)
+// dashboard.js - FIXED VERSION (WITH PENDING UPDATES)
 class DashboardModule {
     constructor(supabaseClient) {
-        console.log('🚀 Initializing ULTRA-FAST DashboardModule...');
+        console.log('🚀 Initializing FIXED DashboardModule...');
         this.sb = supabaseClient;
         this.userId = null;
         this.userProfile = null;
         
-        // 🔥 INSTANT UPDATE CACHE
+        // 🔥 FIXED CACHE with pending updates
         this.attendanceCache = {
             data: null,
             lastUpdated: 0,
-            ttl: 60000 // 60 seconds
+            ttl: 60000,
+            pendingUpdates: 0 // 🔥 NEW: Track optimistic updates
         };
         
-        this.coursesCache = {
-            data: null,
-            lastUpdated: 0,
-            ttl: 30000 // 30 seconds
-        };
-        
-        this.examsCache = {
-            data: null,
-            lastUpdated: 0,
-            ttl: 60000 // 60 seconds
-        };
-        
-        this.resourcesCache = {
-            data: null,
-            lastUpdated: 0,
-            ttl: 30000 // 30 seconds
-        };
+        this.coursesCache = { data: null, lastUpdated: 0, ttl: 30000 };
+        this.examsCache = { data: null, lastUpdated: 0, ttl: 60000 };
+        this.resourcesCache = { data: null, lastUpdated: 0, ttl: 30000 };
         
         // Dashboard elements
         this.cacheElements();
         
-        // Initialize with OPTIMIZED listeners
-        this.setupUltraFastListeners();
+        // Initialize with FIXED listeners
+        this.setupFixedListeners();
         this.startLiveClock();
         
-        console.log('✅ ULTRA-FAST DashboardModule initialized');
+        console.log('✅ FIXED DashboardModule initialized');
     }
     
     cacheElements() {
-        // Store ALL elements for fastest access
         this.elements = {
             attendanceRate: document.getElementById('dashboard-attendance-rate'),
             verifiedCount: document.getElementById('dashboard-verified-count'),
@@ -57,43 +43,99 @@ class DashboardModule {
         };
     }
     
-    // 🔥 ULTRA-FAST: Direct DOM updates without queries
-    setupUltraFastListeners() {
-        console.log('⚡ Setting up ULTRA-FAST listeners...');
+    // 🔥 FIXED: Better event handling
+    setupFixedListeners() {
+        console.log('🔧 Setting up FIXED listeners...');
         
-        // ATTENDANCE: Direct instant update
+        // ATTENDANCE: Handle with pending updates
         document.addEventListener('attendanceCheckedIn', (e) => {
-            console.log('⚡ INSTANT attendance update');
+            console.log('🎯 Attendance check-in event received:', e.detail);
             
-            // Update UI INSTANTLY (optimistic update)
-            this.updateAttendanceUIInstantly();
+            // 🔥 CRITICAL FIX: Increment pending updates
+            this.attendanceCache.pendingUpdates = (this.attendanceCache.pendingUpdates || 0) + 1;
             
-            // Then refresh data in background
-            setTimeout(() => this.loadAttendanceMetricsFast(), 100);
+            // Update UI INSTANTLY with pending consideration
+            this.updateAttendanceUIWithPending();
+            
+            // Refresh data but respect pending updates
+            setTimeout(() => this.loadAttendanceMetricsWithPending(), 500);
         });
         
-        // COURSES: Direct instant update
+        // COURSES: Direct update
         document.addEventListener('coursesUpdated', (e) => {
-            console.log('⚡ INSTANT courses update');
-            
-            // Update from event data if available
-            if (e.detail && e.detail.courses) {
+            console.log('📚 Courses updated event');
+            if (e.detail?.courses) {
                 this.updateCoursesUIFromEvent(e.detail);
-            } else {
-                setTimeout(() => this.loadCourseMetricsFast(), 100);
             }
         });
         
-        // UNIVERSAL: Fast refresh
-        document.addEventListener('fastDashboardUpdate', (e) => {
-            console.log('⚡ FAST universal dashboard update');
-            this.refreshDashboardFast();
-        });
-        
-        // Refresh button with instant feedback
+        // Refresh button
         const refreshBtn = document.getElementById('refreshDashboardBtn');
         if (refreshBtn) {
-            refreshBtn.addEventListener('click', () => this.refreshDashboardFast());
+            refreshBtn.addEventListener('click', () => this.refreshDashboard());
+        }
+    }
+    
+    // 🔥 NEW: Update UI considering pending check-ins
+    updateAttendanceUIWithPending() {
+        if (!this.attendanceCache.data) return;
+        
+        const baseData = this.attendanceCache.data;
+        const pendingUpdates = this.attendanceCache.pendingUpdates || 0;
+        
+        // Calculate new values with pending updates
+        const newVerified = baseData.verified + pendingUpdates; // Assuming all pending become verified
+        const newTotal = baseData.total + pendingUpdates;
+        const newRate = newTotal > 0 ? Math.round((newVerified / newTotal) * 100) : 0;
+        const newPending = baseData.pending; // Keep pending count (these are old pending, not new check-ins)
+        
+        console.log(`📊 UI Update with ${pendingUpdates} pending:`, {
+            base: `${baseData.rate}% (${baseData.verified}/${baseData.total})`,
+            withPending: `${newRate}% (${newVerified}/${newTotal})`
+        });
+        
+        // Update UI
+        this.updateAttendanceUI(newRate, newVerified, newTotal, newPending);
+    }
+    
+    // 🔥 FIXED: Load attendance with pending consideration
+    async loadAttendanceMetricsWithPending() {
+        if (!this.userId) return;
+        
+        try {
+            // Fetch fresh data
+            const { data: logs, error } = await this.sb
+                .from('geo_attendance_logs')
+                .select('is_verified')
+                .eq('student_id', this.userId);
+            
+            if (error) throw error;
+            
+            // Process data
+            const totalLogs = logs?.length || 0;
+            const verifiedCount = logs?.filter(l => l.is_verified === true).length || 0;
+            const pendingCount = logs?.filter(l => !l.is_verified).length || 0;
+            const attendanceRate = totalLogs > 0 ? Math.round((verifiedCount / totalLogs) * 100) : 0;
+            
+            // 🔥 CRITICAL: Reset pending updates when we get fresh data
+            this.attendanceCache.pendingUpdates = 0;
+            
+            // Update cache
+            this.attendanceCache.data = {
+                rate: attendanceRate,
+                verified: verifiedCount,
+                total: totalLogs,
+                pending: pendingCount
+            };
+            this.attendanceCache.lastUpdated = Date.now();
+            
+            // Update UI with REAL data
+            this.updateAttendanceUI(attendanceRate, verifiedCount, totalLogs, pendingCount);
+            
+            console.log(`✅ Attendance data refreshed: ${attendanceRate}%`);
+            
+        } catch (error) {
+            console.error('❌ Error loading attendance:', error);
         }
     }
     
@@ -121,14 +163,9 @@ class DashboardModule {
         console.log('⚡ Loading dashboard FAST...');
         
         try {
-            // Start loading animation
-            if (this.elements.attendanceRate) {
-                this.elements.attendanceRate.textContent = '...';
-            }
-            
             // Load ALL metrics in parallel (no waiting)
             const promises = [
-                this.loadAttendanceMetricsFast(),
+                this.loadAttendanceMetricsWithPending(), // 🔥 Use fixed version
                 this.loadCourseMetricsFast(),
                 this.loadExamMetricsFast(),
                 this.loadResourceMetricsFast(),
@@ -145,58 +182,6 @@ class DashboardModule {
         }
     }
     
-    // 🔥 ULTRA-FAST: Attendance metrics with caching
-    async loadAttendanceMetricsFast() {
-        if (!this.userId) return;
-        
-        // Check cache first
-        if (this.attendanceCache.data && 
-            Date.now() - this.attendanceCache.lastUpdated < this.attendanceCache.ttl) {
-            console.log('⚡ Using cached attendance data');
-            this.updateAttendanceUIFromCache();
-            return;
-        }
-        
-        try {
-            // Fetch fresh data
-            const { data: logs, error } = await this.sb
-                .from('geo_attendance_logs')
-                .select('is_verified')
-                .eq('student_id', this.userId);
-            
-            if (error) throw error;
-            
-            // Process data
-            const totalLogs = logs?.length || 0;
-            const verifiedCount = logs?.filter(l => l.is_verified === true).length || 0;
-            const pendingCount = logs?.filter(l => !l.is_verified).length || 0;
-            const attendanceRate = totalLogs > 0 ? Math.round((verifiedCount / totalLogs) * 100) : 0;
-            
-            // Update cache
-            this.attendanceCache.data = {
-                rate: attendanceRate,
-                verified: verifiedCount,
-                total: totalLogs,
-                pending: pendingCount
-            };
-            this.attendanceCache.lastUpdated = Date.now();
-            
-            // Update UI INSTANTLY
-            this.updateAttendanceUI(attendanceRate, verifiedCount, totalLogs, pendingCount);
-            
-        } catch (error) {
-            console.error('❌ Error loading attendance:', error);
-        }
-    }
-    
-    // 🔥 INSTANT: Update UI from cache (no delay)
-    updateAttendanceUIFromCache() {
-        const cache = this.attendanceCache.data;
-        if (cache) {
-            this.updateAttendanceUI(cache.rate, cache.verified, cache.total, cache.pending);
-        }
-    }
-    
     // 🔥 INSTANT: Update UI immediately
     updateAttendanceUI(rate, verified, total, pending) {
         // Update ALL elements in one synchronous operation
@@ -210,23 +195,7 @@ class DashboardModule {
         if (this.elements.totalCount) this.elements.totalCount.textContent = total;
         if (this.elements.pendingCount) this.elements.pendingCount.textContent = pending;
         
-        console.log(`⚡ Attendance UI updated: ${rate}%`);
-    }
-    
-    // 🔥 OPTIMISTIC: Update UI instantly (before data loads)
-    updateAttendanceUIInstantly() {
-        // Optimistic update: increase counts by 1
-        const currentVerified = parseInt(this.elements.verifiedCount?.textContent || 0);
-        const currentTotal = parseInt(this.elements.totalCount?.textContent || 0);
-        const currentPending = parseInt(this.elements.pendingCount?.textContent || 0);
-        
-        // Calculate new rate optimistically
-        const newVerified = currentVerified + 1;
-        const newTotal = currentTotal + 1;
-        const newRate = Math.round((newVerified / newTotal) * 100);
-        
-        // Update instantly
-        this.updateAttendanceUI(newRate, newVerified, newTotal, currentPending);
+        console.log(`⚡ Attendance UI updated: ${rate}% (${verified}/${total})`);
     }
     
     // 🔥 ULTRA-FAST: Course metrics
@@ -431,14 +400,11 @@ class DashboardModule {
     }
     
     // 🔥 ULTRA-FAST: Refresh dashboard
-    refreshDashboardFast() {
-        console.log('⚡ FAST dashboard refresh');
+    refreshDashboard() {
+        console.log('🔄 Dashboard refresh');
         
-        // Show instant feedback
-        const originalText = this.elements.attendanceRate?.textContent;
-        if (this.elements.attendanceRate) {
-            this.elements.attendanceRate.textContent = '...';
-        }
+        // Clear pending updates
+        this.attendanceCache.pendingUpdates = 0;
         
         // Clear all caches for fresh data
         this.attendanceCache.lastUpdated = 0;
@@ -446,21 +412,23 @@ class DashboardModule {
         this.examsCache.lastUpdated = 0;
         this.resourcesCache.lastUpdated = 0;
         
-        // Load all metrics in background (non-blocking)
-        setTimeout(() => {
-            this.loadAttendanceMetricsFast();
-            this.loadCourseMetricsFast();
-            this.loadExamMetricsFast();
-            this.loadResourceMetricsFast();
-            this.loadNurseIQMetricsFast();
-        }, 50);
-        
-        // Restore original text after 300ms (visual feedback)
-        if (originalText && this.elements.attendanceRate) {
+        // Show loading states briefly
+        if (this.elements.attendanceRate) {
+            const originalText = this.elements.attendanceRate.textContent;
+            this.elements.attendanceRate.textContent = '...';
             setTimeout(() => {
                 this.elements.attendanceRate.textContent = originalText;
             }, 300);
         }
+        
+        // Load all metrics in background
+        setTimeout(() => {
+            this.loadAttendanceMetricsWithPending();
+            this.loadCourseMetricsFast();
+            this.loadExamMetricsFast();
+            this.loadResourceMetricsFast();
+            this.loadNurseIQMetricsFast();
+        }, 100);
         
         // Show toast if available
         if (window.AppUtils?.showToast) {
@@ -529,29 +497,8 @@ function initDashboardModule(supabaseClient) {
     return dashboardModule;
 }
 
-// 🔥 ULTRA-FAST: Global function for instant updates
-function updateDashboardInstantly(metric, value) {
-    if (dashboardModule && dashboardModule.updateMetricInstantly) {
-        dashboardModule.updateMetricInstantly(metric, value);
-        return true;
-    }
-    return false;
-}
-
-// 🔥 ULTRA-FAST: Global function to trigger fast refresh
-function triggerFastDashboardUpdate() {
-    if (dashboardModule) {
-        dashboardModule.refreshDashboardFast();
-    } else {
-        // Fallback: dispatch fast update event
-        document.dispatchEvent(new CustomEvent('fastDashboardUpdate'));
-    }
-}
-
 // Make functions globally available
 window.DashboardModule = DashboardModule;
 window.initDashboardModule = initDashboardModule;
-window.updateDashboardInstantly = updateDashboardInstantly;
-window.triggerFastDashboardUpdate = triggerFastDashboardUpdate;
 
-console.log('⚡ ULTRA-FAST Dashboard module loaded');
+console.log('✅ FIXED Dashboard module loaded');
