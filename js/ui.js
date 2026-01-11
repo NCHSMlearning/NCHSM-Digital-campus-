@@ -3,12 +3,12 @@ class UIModule {
     constructor() {
         this.sidebar = document.getElementById('sidebar');
         this.overlay = document.getElementById('overlay');
-        this.mobileMenuToggle = document.getElementById('mobile-menu-toggle'); // FIXED: Changed from menuToggle
+        this.mobileMenuToggle = document.getElementById('mobile-menu-toggle');
         this.navLinks = document.querySelectorAll('.nav a');
         this.tabs = document.querySelectorAll('.tab-content');
         this.toast = document.getElementById('toast');
         this.logoutBtn = document.getElementById('logoutBtn');
-        this.headerLogout = document.getElementById('header-logout'); // NEW: Header logout button
+        this.headerLogout = document.getElementById('header-logout');
         this.currentTab = 'dashboard';
         
         // Store tab state in localStorage for persistence
@@ -44,12 +44,11 @@ class UIModule {
         this.setupTabChangeListener();
         this.initializeDateTime();
         this.setupOfflineIndicator();
-        this.setupMobileMenuVisibility(); // NEW: Control mobile menu visibility
+        this.setupMobileMenuVisibility();
         this.loadLastTab();
         this.fixInitialDisplay();
     }
     
-    // FIXED: Ensure proper initial display WITHOUT inline styles
     fixInitialDisplay() {
         // Remove all inline styles first
         this.tabs.forEach(tab => {
@@ -57,7 +56,7 @@ class UIModule {
             tab.classList.remove('active');
         });
         
-        // Show dashboard by default - CSS will handle display via .active class
+        // Show dashboard by default
         const dashboardTab = document.getElementById('dashboard');
         if (dashboardTab) {
             dashboardTab.classList.add('active');
@@ -72,7 +71,6 @@ class UIModule {
         });
     }
     
-    // NEW: Setup mobile menu toggle visibility
     setupMobileMenuVisibility() {
         if (!this.mobileMenuToggle) return;
         
@@ -81,33 +79,25 @@ class UIModule {
                 this.mobileMenuToggle.style.display = 'flex';
             } else {
                 this.mobileMenuToggle.style.display = 'none';
-                this.closeMenu(); // Ensure menu is closed on desktop
+                this.closeMenu();
             }
         };
         
-        // Initial check
         updateVisibility();
-        
-        // Update on resize
         window.addEventListener('resize', updateVisibility);
     }
     
     setupHashNavigation() {
         // Handle initial page load
         window.addEventListener('load', () => {
-            // First check URL hash
             const hash = window.location.hash.substring(1);
             
-            // If hash exists and is valid, use it
             if (hash && this.isValidTab(hash)) {
                 this.showTab(hash);
-            } 
-            // Otherwise check localStorage for last tab
-            else {
+            } else {
                 const lastTab = localStorage.getItem(this.storageKey);
                 if (lastTab && this.isValidTab(lastTab)) {
                     this.showTab(lastTab);
-                    // Update URL hash to match
                     window.location.hash = lastTab;
                 } else {
                     this.showTab('dashboard');
@@ -120,59 +110,38 @@ class UIModule {
             const hash = window.location.hash.substring(1);
             if (hash && this.isValidTab(hash)) {
                 this.showTab(hash);
-                // Save to localStorage
                 localStorage.setItem(this.storageKey, hash);
             }
         });
     }
     
     loadLastTab() {
-        // Load last active tab from localStorage on init
         const lastTab = localStorage.getItem(this.storageKey);
         if (lastTab && this.isValidTab(lastTab)) {
             this.currentTab = lastTab;
         }
     }
     
-    // FIXED: Unified tab switching WITHOUT inline styles
     showTab(tabId) {
         if (!this.isValidTab(tabId)) {
             console.error(`Invalid tab ID: ${tabId}`);
             tabId = 'dashboard';
         }
         
-        // Don't do anything if we're already on this tab
         if (this.currentTab === tabId) return;
         
         console.log(`🔄 Switching to tab: ${tabId} (from: ${this.currentTab})`);
         
-        // FIXED: Remove inline styles and use CSS classes only
         this.tabs.forEach(tab => {
-            // Remove any inline display style
             tab.style.removeProperty('display');
             tab.classList.remove('active');
         });
         
-        // FIXED: Show selected tab using CSS class only
         const selectedTab = document.getElementById(tabId);
         if (selectedTab) {
             selectedTab.classList.add('active');
-            
-            // Debug: Check if CSS is working
-            setTimeout(() => {
-                const computedDisplay = window.getComputedStyle(selectedTab).display;
-                console.log(`✅ Tab ${tabId} is now active. CSS display: ${computedDisplay}, Height: ${selectedTab.offsetHeight}px`);
-                
-                // If still hidden, add temporary debug styling
-                if (computedDisplay === 'none' || selectedTab.offsetHeight === 0) {
-                    console.warn(`⚠️ Tab ${tabId} still not visible. Adding debug styling...`);
-                    selectedTab.style.border = '3px solid red';
-                    selectedTab.style.backgroundColor = '#fff0f0';
-                }
-            }, 10);
         }
         
-        // Update navigation links
         this.navLinks.forEach(link => {
             link.classList.remove('active');
             if (link.getAttribute('data-tab') === tabId) {
@@ -180,22 +149,16 @@ class UIModule {
             }
         });
         
-        // Update URL hash WITHOUT triggering hashchange
         if (window.location.hash.substring(1) !== tabId) {
             history.replaceState(null, null, `#${tabId}`);
         }
         
-        // Save to localStorage
         localStorage.setItem(this.storageKey, tabId);
-        
-        // Close mobile menu if open
         this.closeMenu();
         
-        // Store previous tab for reference
         const previousTab = this.currentTab;
         this.currentTab = tabId;
         
-        // Dispatch custom event
         window.dispatchEvent(new CustomEvent('tabChanged', { 
             detail: { 
                 tabId, 
@@ -204,10 +167,8 @@ class UIModule {
             }
         }));
         
-        // Update page title based on tab
         this.updatePageTitle(tabId);
         
-        // Force a reflow to ensure CSS is applied
         if (selectedTab) {
             void selectedTab.offsetHeight;
         }
@@ -231,7 +192,7 @@ class UIModule {
     }
     
     setupEventListeners() {
-        // Mobile menu toggle - FIXED: Using correct ID
+        // Mobile menu toggle
         if (this.mobileMenuToggle) {
             this.mobileMenuToggle.addEventListener('click', () => this.toggleMenu());
         }
@@ -358,7 +319,6 @@ class UIModule {
         }
     }
     
-    // NEW: Setup profile dropdown functionality
     setupProfileDropdown() {
         const profileTrigger = document.querySelector('.profile-trigger');
         const dropdownMenu = document.querySelector('.dropdown-menu');
@@ -407,10 +367,8 @@ class UIModule {
     loadTabModule(tabId) {
         console.log(`📂 Loading module for tab: ${tabId}`);
         
-        // Dispatch event for modules to listen to
         window.dispatchEvent(new CustomEvent('loadModule', { detail: { tabId } }));
         
-        // Also call specific functions for backward compatibility
         switch(tabId) {
             case 'dashboard':
                 if (typeof loadDashboard === 'function') {
@@ -489,7 +447,6 @@ class UIModule {
         document.body.style.overflow = 'auto';
     }
     
-    // NEW: Refresh dashboard function
     refreshDashboard() {
         this.showToast('Refreshing dashboard...', 'info', 1500);
         
@@ -502,78 +459,99 @@ class UIModule {
         if (this.currentTab === 'dashboard') {
             this.loadTabModule('dashboard');
         } else {
-            // If not on dashboard, switch to it
             this.showTab('dashboard');
         }
     }
     
-    // Toast notifications
+    // FIXED: Toast notifications with proper sizing
     showToast(message, type = 'info', duration = 3000) {
-        if (!this.toast) {
-            // Create toast dynamically
-            const toast = document.createElement('div');
-            toast.id = 'toast';
-            toast.className = 'toast';
-            toast.style.cssText = `
-                position: fixed;
-                bottom: 20px;
-                right: 20px;
-                background: #4C1D95;
-                color: white;
-                padding: 12px 24px;
-                border-radius: 6px;
-                z-index: 9999;
-                display: none;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-                max-width: 400px;
-                word-wrap: break-word;
-            `;
-            document.body.appendChild(toast);
-            this.toast = toast;
-        }
+        // Remove existing toasts
+        const existingToasts = document.querySelectorAll('.custom-toast');
+        existingToasts.forEach(toast => toast.remove());
         
-        this.toast.textContent = message;
-        this.toast.className = `toast ${type}`;
+        // Create toast
+        const toast = document.createElement('div');
+        toast.className = `custom-toast toast-${type}`;
         
-        // Set colors based on type
+        // Truncate long messages
+        const maxLength = 100;
+        const displayMessage = message.length > maxLength 
+            ? message.substring(0, maxLength) + '...' 
+            : message;
+        
+        toast.textContent = displayMessage;
+        
+        // Apply styling
+        toast.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: ${this.getToastColor(type)};
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            z-index: 9999;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            max-width: 350px;
+            width: auto;
+            min-width: 200px;
+            max-height: 120px;
+            overflow: hidden;
+            word-wrap: break-word;
+            word-break: break-word;
+            font-size: 14px;
+            line-height: 1.4;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        `;
+        
+        document.body.appendChild(toast);
+        
+        // Animate in
+        setTimeout(() => {
+            toast.style.opacity = '1';
+            toast.style.transform = 'translateY(0)';
+        }, 10);
+        
+        // Remove after duration
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(20px)';
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.parentNode.removeChild(toast);
+                }
+            }, 300);
+        }, duration);
+    }
+    
+    getToastColor(type) {
         const colors = {
             'info': '#4C1D95',
             'success': '#10B981',
             'warning': '#F59E0B',
             'error': '#EF4444'
         };
-        
-        this.toast.style.background = colors[type] || colors.info;
-        this.toast.style.display = 'block';
-        
-        setTimeout(() => {
-            this.toast.style.display = 'none';
-        }, duration);
+        return colors[type] || colors.info;
     }
     
-    // NEW: Update header information
     updateHeaderInfo(userProfile) {
         if (userProfile) {
-            // Update header name
             if (this.headerUserName && userProfile.full_name) {
                 this.headerUserName.textContent = userProfile.full_name;
             }
-            
-            // Update header profile photo
             this.updateHeaderProfilePhoto(userProfile);
         }
     }
     
-    // NEW: Update header profile photo
     updateHeaderProfilePhoto(userProfile) {
         if (!this.headerProfilePhoto) return;
         
-        // Check if user has a saved photo in localStorage
         const savedPhoto = localStorage.getItem('userProfilePhoto');
         if (savedPhoto) {
             this.headerProfilePhoto.src = savedPhoto;
         } else {
-            // Fallback to avatar based on name
             const nameForAvatar = userProfile.full_name ? 
                 userProfile.full_name.replace(/\s+/g, '') : 
                 'Student';
@@ -581,18 +559,15 @@ class UIModule {
         }
     }
     
-    // Modal functions
     showTranscriptModal(examData) {
         if (!this.transcriptModal) return;
         
-        // Populate modal with exam data
         document.getElementById('transcript-exam-name').textContent = examData.name || 'Exam Transcript';
         document.getElementById('transcript-cat1').textContent = examData.cat1 !== null ? `${examData.cat1}/30` : '--';
         document.getElementById('transcript-cat2').textContent = examData.cat2 !== null ? `${examData.cat2}/30` : '--';
         document.getElementById('transcript-final').textContent = examData.final !== null ? `${examData.final}/40` : '--';
         document.getElementById('transcript-total').textContent = examData.total ? `${examData.total}/100` : '--';
         
-        // Determine status
         const status = examData.total >= 50 ? 'PASS' : 'FAIL';
         const statusElement = document.getElementById('transcript-status');
         statusElement.textContent = status;
@@ -607,7 +582,6 @@ class UIModule {
         }
     }
     
-    // Reader functions
     openReader(resource) {
         if (!this.mobileReader) return;
         
@@ -636,36 +610,48 @@ class UIModule {
         }
     }
     
-    // Utility functions
+    // FIXED: Logout method without GitHub errors
     async logout() {
         try {
-            // Confirm logout
-            const confirmLogout = confirm('Are you sure you want to logout?');
+            // Clean logout confirmation
+            const confirmLogout = confirm('Are you sure you want to logout?\n\nYou will need to sign in again to access the portal.');
             if (!confirmLogout) return;
             
-            this.showToast('Logging out...', 'info');
+            this.showToast('Logging out...', 'info', 1500);
             
-            // Clear tab state
-            localStorage.removeItem(this.storageKey);
+            // Clear local storage items
+            const itemsToKeep = ['nchsm_last_tab', 'userProfilePhoto'];
+            Object.keys(localStorage).forEach(key => {
+                if (!itemsToKeep.includes(key)) {
+                    localStorage.removeItem(key);
+                }
+            });
             
-            if (typeof db !== 'undefined' && db.logout) {
-                await db.logout();
-            } else {
-                // Fallback logout
-                localStorage.clear();
-                sessionStorage.clear();
-            }
+            // Clear session storage
+            sessionStorage.clear();
             
-            // Redirect to login
+            // Clear cookies
+            document.cookie.split(";").forEach(c => {
+                document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+            });
+            
+            // Wait for toast to show
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // Redirect to login page
             window.location.href = 'login.html';
+            
         } catch (error) {
             console.error('Logout error:', error);
-            this.showToast('Logout failed. Please try again.', 'error');
+            // Fallback redirect if something fails
+            setTimeout(() => {
+                window.location.href = 'login.html';
+            }, 500);
         }
     }
     
     clearCache() {
-        if (confirm('Clear all cached data? This will not delete your account.')) {
+        if (confirm('Clear all cached data?\n\nThis will not delete your account or personal data.')) {
             if ('caches' in window) {
                 caches.keys().then(cacheNames => {
                     cacheNames.forEach(cacheName => {
@@ -680,8 +666,7 @@ class UIModule {
                 this.showToast('Cache API not supported', 'warning');
             }
             
-            // Clear localStorage except auth data
-            const keepKeys = ['nchsm_last_tab', 'userProfilePhoto', 'nchsm_user_profile'];
+            const keepKeys = ['nchsm_last_tab', 'userProfilePhoto'];
             const keysToRemove = [];
             
             for (let i = 0; i < localStorage.length; i++) {
@@ -692,11 +677,11 @@ class UIModule {
             }
             
             keysToRemove.forEach(key => localStorage.removeItem(key));
+            this.showToast('Local storage cleared', 'success');
         }
     }
     
     exportData() {
-        // Implementation for data export
         this.showToast('Export feature coming soon', 'info');
     }
     
@@ -727,9 +712,7 @@ class UIModule {
         alert(infoText);
     }
     
-    // NEW: Header time update
     initializeDateTime() {
-        // Update header time
         const updateHeaderTime = () => {
             if (this.headerTime) {
                 const now = new Date();
@@ -742,13 +725,9 @@ class UIModule {
             }
         };
         
-        // Initial update
         updateHeaderTime();
-        
-        // Update every minute
         setInterval(updateHeaderTime, 60000);
         
-        // Also update general date/time if element exists
         const updateFullDateTime = () => {
             const dateTimeElement = document.getElementById('currentDateTime');
             if (dateTimeElement) {
@@ -786,10 +765,9 @@ class UIModule {
         
         window.addEventListener('online', updateOnlineStatus);
         window.addEventListener('offline', updateOnlineStatus);
-        updateOnlineStatus(); // Initial check
+        updateOnlineStatus();
     }
     
-    // Helper function to debug tab state
     debugTabState() {
         console.log('🔍 Current Tab State:');
         console.log(`Current Tab: ${this.currentTab}`);
@@ -811,24 +789,20 @@ class UIModule {
         });
     }
     
-    // NEW: Emergency fallback if CSS isn't working
     forceShowTab(tabId) {
         console.log(`🚨 Force showing tab: ${tabId}`);
         
-        // Hide all tabs with !important
         this.tabs.forEach(tab => {
             tab.style.setProperty('display', 'none', 'important');
             tab.classList.remove('active');
         });
         
-        // Show selected tab with !important
         const selectedTab = document.getElementById(tabId);
         if (selectedTab) {
             selectedTab.style.setProperty('display', 'block', 'important');
             selectedTab.classList.add('active');
         }
         
-        // Update navigation links
         this.navLinks.forEach(link => {
             link.classList.remove('active');
             if (link.getAttribute('data-tab') === tabId) {
@@ -836,7 +810,6 @@ class UIModule {
             }
         });
         
-        // Update current tab
         this.currentTab = tabId;
     }
 }
@@ -844,7 +817,7 @@ class UIModule {
 // Create global instance
 window.ui = new UIModule();
 
-// Also export functions to window for backward compatibility
+// Export functions to window for backward compatibility
 window.toggleMenu = () => ui.toggleMenu();
 window.closeMenu = () => ui.closeMenu();
 window.showTab = (tabId) => ui.showTab(tabId);
@@ -866,7 +839,6 @@ window.addEventListener('DOMContentLoaded', function() {
     setTimeout(() => {
         ui.debugTabState();
         
-        // If dashboard isn't visible, force it
         const dashboardTab = document.getElementById('dashboard');
         if (dashboardTab && dashboardTab.offsetHeight === 0) {
             console.warn('⚠️ Dashboard not visible, forcing display...');
