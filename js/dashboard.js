@@ -1,4 +1,3 @@
-// dashboard.js - UPDATED FOR NEW HEADER WITH PROFILE PHOTO INTEGRATION
 class DashboardModule {
     constructor(supabaseClient) {
         console.log('🚀 Initializing DashboardModule (with Header & Profile Photo Integration)...');
@@ -142,13 +141,15 @@ class DashboardModule {
             refreshBtn.addEventListener('click', () => this.refreshDashboard());
         }
         
-        // Auto-refresh every 30 seconds
-        setInterval(() => {
-            if (this.userId) {
-                console.log('⏰ Auto-refreshing dashboard...');
-                this.refreshDashboard();
-            }
-        }, 30000);
+        // ⚠️ REMOVED: Auto-refresh every 30 seconds
+        // setInterval(() => {
+        //     if (this.userId) {
+        //         console.log('⏰ Auto-refreshing dashboard...');
+        //         this.refreshDashboard();
+        //     }
+        // }, 30000);
+        
+        console.log('✅ Event listeners setup complete. Auto-refresh DISABLED.');
     }
     
     async initialize(userId, userProfile) {
@@ -978,4 +979,4 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-console.log('✅ UPDATED Dashboard module loaded (with Profile Photo Integration)');
+console.log('✅ UPDATED Dashboard module loaded (with Profile Photo Integration) - AUTO-REFRESH DISABLED');
