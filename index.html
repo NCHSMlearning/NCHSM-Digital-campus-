@@ -91,65 +91,65 @@
   <!-- Main App Content (Initially hidden) -->
 <div id="app-content" style="display: none;">
     <!-- CLEAN HEADER WITHOUT QUICK STATS -->
-    <header class="main-header">
-        <!-- Left: Logo & Title -->
-        <div class="header-left">
-            <div class="logo-container">
-                <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" 
-                     alt="NCHSM Logo" class="header-logo">
-                <div class="header-titles">
-                    <h1 class="main-title">NCHSM</h1>
-                    <h2 class="subtitle">Digital Student Portal</h2>
+   <header class="main-header">
+    <!-- Left: Logo & Title -->
+    <div class="header-left">
+        <div class="logo-container">
+            <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" 
+                 alt="NCHSM Logo" class="header-logo">
+            <div class="header-titles">
+                <h1 class="main-title">NCHSM</h1>
+                <h2 class="subtitle">Digital Student Portal</h2>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Right: User Profile & Logout -->
+    <div class="header-right">
+        <!-- MOBILE MENU TOGGLE -->
+        <button class="mobile-menu-toggle icon-btn" id="mobile-menu-toggle" style="display: none;">
+            <i class="fas fa-bars"></i>
+        </button>
+        
+        <div class="user-profile-dropdown">
+            <!-- Profile with round photo -->
+            <div class="profile-trigger">
+                <img id="header-profile-photo" 
+                     src="https://ui-avatars.com/api/?name=Student&background=667eea&color=fff&size=100" 
+                     alt="Profile" class="profile-avatar round">
+                <div class="profile-info">
+                    <span class="profile-name" id="header-user-name">Student</span>
+                    <span class="profile-role">Student</span>
                 </div>
+                <i class="fas fa-chevron-down dropdown-icon"></i>
+            </div>
+            
+            <!-- Dropdown Menu (contains logout) -->
+            <div class="dropdown-menu">
+                <a href="#" data-tab="profile">
+                    <i class="fas fa-user"></i> My Profile
+                </a>
+                <div class="dropdown-divider"></div>
+                <a href="#" id="header-logout">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
             </div>
         </div>
         
-        <!-- REMOVED: Quick Stats Section -->
-        
-        <!-- Right: User Profile & Logout -->
-        <div class="header-right">
-            <div class="user-profile-dropdown">
-                <!-- Profile with round photo -->
-                <div class="profile-trigger">
-                    <img id="header-profile-photo" 
-                         src="https://ui-avatars.com/api/?name=Student&background=667eea&color=fff&size=100" 
-                         alt="Profile" class="profile-avatar round">
-                    <div class="profile-info">
-                        <span class="profile-name" id="header-user-name">Student</span>
-                        <span class="profile-role">Student</span>
-                    </div>
-                    <i class="fas fa-chevron-down dropdown-icon"></i>
-                </div>
-                
-                <!-- Dropdown Menu (contains logout) -->
-                <div class="dropdown-menu">
-                    <a href="#" data-tab="profile">
-                        <i class="fas fa-user"></i> My Profile
-                    </a>
-                    <div class="dropdown-divider"></div>
-                    <a href="#" id="header-logout">
-                        <i class="fas fa-sign-out-alt"></i> Logout
-                    </a>
-                </div>
-            </div>
-            
-            <!-- Current Time Display -->
-            <div class="current-time">
-                <i class="fas fa-clock"></i>
-                <span id="header-time">Loading...</span>
-            </div>
-            
-            <!-- Quick Actions -->
-            <div class="header-actions">
-                <button class="icon-btn" id="header-refresh" title="Refresh Dashboard">
-                    <i class="fas fa-redo"></i>
-                </button>
-                <button class="menu-toggle icon-btn" id="mobile-menu-toggle" style="display: none;">
-                    <i class="fas fa-bars"></i>
-                </button>
-            </div>
+        <!-- Current Time Display -->
+        <div class="current-time">
+            <i class="fas fa-clock"></i>
+            <span id="header-time">Loading...</span>
         </div>
-    </header>
+        
+        <!-- Quick Actions -->
+        <div class="header-actions">
+            <button class="icon-btn" id="header-refresh" title="Refresh Dashboard">
+                <i class="fas fa-redo"></i>
+            </button>
+        </div>
+    </div>
+</header>
         <!-- Mobile Overlay -->
         <div class="overlay" id="overlay"></div>
 
