@@ -1,4 +1,4 @@
-// attendance.js - UPDATED WITH DASHBOARD EVENT DISPATCHING
+// attendance.js - UPDATED WITH DASHBOARD EVENT DISPATCHING AND KM DISTANCE
 (function() {
     'use strict';
     
@@ -702,7 +702,14 @@
                 }
                 if (log.distance_meters && !isVerified) {
                     if (detailsText) detailsText += '<br>';
-                    detailsText += `Distance: ${parseFloat(log.distance_meters).toFixed(0)}m`;
+                    const distanceM = parseFloat(log.distance_meters);
+                    let distanceText;
+                    if (distanceM >= 1000) {
+                        distanceText = `${(distanceM / 1000).toFixed(2)} km`;
+                    } else {
+                        distanceText = `${distanceM.toFixed(0)} m`;
+                    }
+                    detailsText += `Distance: ${distanceText}`;
                 }
                 
                 const row = document.createElement('tr');
@@ -763,7 +770,7 @@
         return distanceMeters;
     }
     
-    // CHECK-IN FUNCTION - UPDATED WITH DASHBOARD INTEGRATION
+    // CHECK-IN FUNCTION - UPDATED WITH DASHBOARD INTEGRATION AND KM DISPLAY
     async function attendanceGeoCheckIn() {
         console.log('📍 Starting check-in with dashboard integration...');
         
@@ -862,9 +869,19 @@
             // Success
             console.log('✅ Check-in successful');
             
-            // Show success message
+            // Show success message with distance in km if applicable
             if (window.AppUtils?.showToast) {
                 let message;
+                let distanceText = '';
+                
+                // Add distance in kilometers if > 1000 meters
+                if (distance >= 1000) {
+                    const distanceKm = (distance / 1000).toFixed(2);
+                    distanceText = ` (${distanceKm} km away)`;
+                } else {
+                    distanceText = ` (${distance.toFixed(0)} m away)`;
+                }
+                
                 if (isVerified) {
                     if (sessionType === 'clinical') {
                         message = `✅ Checked in at ${targetName} successfully!`;
@@ -873,7 +890,7 @@
                     }
                     window.AppUtils.showToast(message, 'success');
                 } else {
-                    message = `📍 Checked into ${targetName} (${distance.toFixed(0)}m away)`;
+                    message = `📍 Checked into ${targetName}${distanceText} - Outside range`;
                     window.AppUtils.showToast(message, 'warning');
                 }
             }
@@ -978,7 +995,7 @@
     window.attendanceGeoCheckIn = attendanceGeoCheckIn;
     window.loadAttendanceData = loadAttendanceData;
     window.loadGeoAttendanceHistory = loadGeoAttendanceHistory;
-    window.triggerDashboardAttendanceUpdate = triggerDashboardAttendanceUpdate; // NEW: Export for other modules
+    window.triggerDashboardAttendanceUpdate = triggerDashboardAttendanceUpdate;
     
-    console.log('✅ Attendance module loaded with Dashboard Integration');
+    console.log('✅ Attendance module loaded with Dashboard Integration and KM distance display');
 })();
