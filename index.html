@@ -7,10 +7,10 @@
     
     <!-- External Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <!-- Add these lines to your HTML <head> section -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf_viewer.min.css">
+    <!-- PDF.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf_viewer.min.css">
     
     <!-- CONFIG WILL BE INJECTED BY GITHUB ACTIONS -->
     <script src="./config.js"></script>
@@ -90,19 +90,85 @@
 
     <!-- Main App Content (Initially hidden) -->
     <div id="app-content" style="display: none;">
-        <!-- Mobile Header -->
-        <div class="mobile-header">
-            <button class="menu-toggle" id="menuToggle">☰</button>
-            <div class="header-title-container">
-                <span>NCHSM Digital Student Portal</span>
-                <img 
-                    id="header-passport-preview" 
-                    src="https://dummyimage.com/150x150/cccccc/000000.png&text=NO+PHOTO" 
-                    alt="Profile Photo" 
-                    class="header-profile-photo"
-                />
+        <!-- NEW IMPROVED HEADER -->
+        <header class="main-header">
+            <!-- Left: Logo & Title -->
+            <div class="header-left">
+                <div class="logo-container">
+                    <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" 
+                         alt="NCHSM Logo" class="header-logo">
+                    <div class="header-titles">
+                        <h1 class="main-title">NCHSM</h1>
+                        <h2 class="subtitle">Digital Student Portal</h2>
+                    </div>
+                </div>
             </div>
-        </div>
+            
+            <!-- Center: Quick Stats -->
+            <div class="header-center">
+                <div class="quick-stats">
+                    <div class="stat-item">
+                        <i class="fas fa-calendar-check"></i>
+                        <span id="header-attendance">--%</span>
+                        <small>Attendance</small>
+                    </div>
+                    <div class="stat-item">
+                        <i class="fas fa-book"></i>
+                        <span id="header-courses">0</span>
+                        <small>Courses</small>
+                    </div>
+                    <div class="stat-item">
+                        <i class="fas fa-clock"></i>
+                        <span id="header-exam">--</span>
+                        <small>Next Exam</small>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Right: User Profile & Logout -->
+            <div class="header-right">
+                <div class="user-profile-dropdown">
+                    <!-- Profile with round photo -->
+                    <div class="profile-trigger">
+                        <img id="header-profile-photo" 
+                             src="https://ui-avatars.com/api/?name=Student&background=667eea&color=fff&size=100" 
+                             alt="Profile" class="profile-avatar round">
+                        <div class="profile-info">
+                            <span class="profile-name" id="header-user-name">Student</span>
+                            <span class="profile-role">Student</span>
+                        </div>
+                        <i class="fas fa-chevron-down dropdown-icon"></i>
+                    </div>
+                    
+                    <!-- Dropdown Menu (contains logout) -->
+                    <div class="dropdown-menu">
+                        <a href="#" data-tab="profile">
+                            <i class="fas fa-user"></i> My Profile
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        <a href="#" id="header-logout">
+                            <i class="fas fa-sign-out-alt"></i> Logout
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Current Time Display -->
+                <div class="current-time">
+                    <i class="fas fa-clock"></i>
+                    <span id="header-time">Loading...</span>
+                </div>
+                
+                <!-- Quick Actions -->
+                <div class="header-actions">
+                    <button class="icon-btn" id="header-refresh" title="Refresh Dashboard">
+                        <i class="fas fa-redo"></i>
+                    </button>
+                    <button class="menu-toggle icon-btn" id="mobile-menu-toggle" style="display: none;">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
 
         <!-- Mobile Overlay -->
         <div class="overlay" id="overlay"></div>
@@ -115,6 +181,7 @@
                     <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo">
                     <h2>STUDENT PORTAL</h2>
                 </div>
+                
                 <ul class="nav">
                     <li><a href="#" data-tab="dashboard" class="active">🏠 Dashboard</a></li>
                     <li><a href="#" data-tab="profile">👤 Profile</a></li>
@@ -133,7 +200,7 @@
                         <span class="nav-subtitle">Assessment Center</span>
                         <span class="nav-badge" id="nurseiqBadge">0</span>
                     </a></li>
-                    <li><a href="#" data-tab="coming-soon-quizlets">📝 Coming Soon: Quizlets</a></li>
+                    <!-- REMOVED: Coming Soon: Quizlets -->
                 </ul>
                 <div class="logout"><a href="#" id="logoutBtn">Logout</a></div>
             </aside>
@@ -1216,7 +1283,6 @@
     </div>
 </section>
                 
-                <div style="font-size: 13px; color: #6b7280;">Total Questions</div>
                          <!-- NurseIQ Tab -->
 <section id="nurseiq" class="tab-content">
     <h1>NurseIQ Question Bank</h1>
@@ -1318,22 +1384,6 @@
         100% { transform: rotate(360deg); }
     }
 </style>               
-
-                <!-- Coming Soon Quizlets Tab -->
-                <section id="coming-soon-quizlets" class="tab-content">
-                    <div style="text-align: center; padding: 60px 20px;">
-                        <i class="fas fa-tools" style="font-size: 4rem; color: #9CA3AF; margin-bottom: 20px;"></i>
-                        <h2 style="color: #4C1D95;">Coming Soon: Quizlets</h2>
-                        <p style="color: #6B7280; max-width: 500px; margin: 0 auto 30px;">
-                            We're working on interactive quizlets to help you study better. 
-                            This feature will be available soon!
-                        </p>
-                        <div class="progress-bar" style="width: 300px; height: 10px; background: #E5E7EB; border-radius: 5px; margin: 30px auto;">
-                            <div class="progress-fill" style="width: 65%; height: 100%; background: linear-gradient(135deg, #4C1D95, #7C3AED); border-radius: 5px;"></div>
-                        </div>
-                        <p style="color: #9CA3AF; font-size: 0.9rem;">Development in progress - 65% complete</p>
-                    </div>
-                </section>
 
                 <!-- Toast Notification -->
                 <div class="toast" id="toast" style="display: none;"></div>
@@ -1648,10 +1698,23 @@ async function initializeApp() {
         window.currentUserId = window.db.currentUserId;
         window.currentUserProfile = window.db.currentUserProfile;
         
-        // 8. Update welcome message
+        // 8. Update welcome message and header
         const welcomeHeader = document.getElementById('welcome-header');
         if (welcomeHeader && window.db.currentUserProfile.full_name) {
             welcomeHeader.textContent = 'Welcome back, ' + window.db.currentUserProfile.full_name + '!';
+        }
+        
+        // Update header name and photo
+        const headerName = document.getElementById('header-user-name');
+        if (headerName && window.db.currentUserProfile.full_name) {
+            headerName.textContent = window.db.currentUserProfile.full_name;
+        }
+        
+        // Update header profile photo
+        const headerPhoto = document.getElementById('header-profile-photo');
+        if (headerPhoto && window.db.currentUserProfile.full_name) {
+            const nameForAvatar = window.db.currentUserProfile.full_name.replace(/\s+/g, '');
+            headerPhoto.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(nameForAvatar)}&background=667eea&color=fff&size=100`;
         }
         
         // 9. Initialize UI if function exists
