@@ -609,4 +609,26 @@ textarea {
         opacity: 1;
         transform: translateY(0);
     }
+
+/* TEMPORARY FIX - Add to bottom of main.css */
+.main-header {
+    display: flex !important;
+    justify-content: space-between !important;
+    padding: 0.75rem 2rem !important;
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%) !important;
+    color: white !important;
+    height: 70px !important;
+}
+
+.header-left {
+    flex: 1 !important;
+    max-width: 400px !important;
+}
+
+/* Hide quick stats if they exist */
+.header-center,
+.quick-stats,
+.stat-item {
+    display: none !important;
+}
 }
