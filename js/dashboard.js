@@ -1,7 +1,7 @@
-// dashboard.js - UPDATED FOR NEW HEADER
+// dashboard.js - UPDATED FOR NEW HEADER WITH PROFILE PHOTO INTEGRATION
 class DashboardModule {
     constructor(supabaseClient) {
-        console.log('🚀 Initializing DashboardModule (with Header Integration)...');
+        console.log('🚀 Initializing DashboardModule (with Header & Profile Photo Integration)...');
         
         // Get Supabase from window.db.supabase
         this.sb = supabaseClient || window.sb || window.db?.supabase;
@@ -60,7 +60,7 @@ class DashboardModule {
             // Time (in footer)
             currentDateTime: document.getElementById('currentDateTime'),
             
-            // 🔥 NEW: Header elements
+            // 🔥 HEADER elements
             headerTime: document.getElementById('header-time'),
             headerUserName: document.getElementById('header-user-name'),
             headerProfilePhoto: document.getElementById('header-profile-photo'),
@@ -108,6 +108,22 @@ class DashboardModule {
             // Sync with courses module
             if (window.coursesModule) {
                 this.syncWithCoursesModule();
+            }
+        });
+        
+        // 🔥 LISTEN FOR PROFILE PHOTO UPDATES from profile.js
+        document.addEventListener('profilePhotoUpdated', (e) => {
+            console.log('📸 Dashboard: profilePhotoUpdated event received', e.detail);
+            this.updateProfilePhoto(e.detail?.photoUrl);
+        });
+        
+        // Listen for profile updates
+        document.addEventListener('profileUpdated', () => {
+            console.log('👤 Dashboard: profileUpdated event received');
+            // Refresh user data including profile photo
+            if (window.currentUserProfile) {
+                this.userProfile = window.currentUserProfile;
+                this.updateHeaderWithUserData();
             }
         });
         
@@ -187,7 +203,7 @@ class DashboardModule {
         }
     }
     
-    // 🔥 NEW: Update header with user data
+    // 🔥 UPDATED: Update header with user data using actual profile photo
     updateHeaderWithUserData() {
         console.log('👤 Updating header with user data...');
         
@@ -198,11 +214,9 @@ class DashboardModule {
             this.elements.headerUserName.textContent = this.userProfile.full_name;
         }
         
-        // Update header profile photo
-        if (this.elements.headerProfilePhoto && this.userProfile.full_name) {
-            const nameForAvatar = this.userProfile.full_name.replace(/\s+/g, '');
-            this.elements.headerProfilePhoto.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(nameForAvatar)}&background=667eea&color=fff&size=100`;
-            this.elements.headerProfilePhoto.alt = this.userProfile.full_name;
+        // Update header profile photo - USE ACTUAL PROFILE PHOTO
+        if (this.elements.headerProfilePhoto) {
+            this.updateProfilePhoto();
         }
         
         // Update welcome message
@@ -217,6 +231,112 @@ class DashboardModule {
             const now = new Date();
             const hour = now.getHours();
             this.elements.welcomeHeader.textContent = `${getGreeting(hour)}, ${this.userProfile.full_name}!`;
+        }
+    }
+    
+    // 🔥 NEW: Update profile photo with proper fallback chain
+    updateProfilePhoto(photoUrl = null) {
+        if (!this.elements.headerProfilePhoto) return;
+        
+        console.log('📸 Updating header profile photo...');
+        
+        // Priority 1: Use provided photoUrl (from event)
+        if (photoUrl) {
+            this.elements.headerProfilePhoto.src = photoUrl;
+            console.log('✅ Using photo from event:', photoUrl);
+            return;
+        }
+        
+        // Priority 2: Check userProfile for profile_photo_url
+        if (this.userProfile?.profile_photo_url) {
+            this.elements.headerProfilePhoto.src = this.userProfile.profile_photo_url;
+            console.log('✅ Using profile_photo_url from userProfile:', this.userProfile.profile_photo_url);
+            return;
+        }
+        
+        // Priority 3: Check localStorage for cached photo
+        const cachedPhoto = localStorage.getItem('userProfilePhoto');
+        if (cachedPhoto) {
+            this.elements.headerProfilePhoto.src = cachedPhoto;
+            console.log('✅ Using cached profile photo from localStorage');
+            return;
+        }
+        
+        // Priority 4: Check window.currentUserProfile
+        if (window.currentUserProfile?.profile_photo_url) {
+            this.elements.headerProfilePhoto.src = window.currentUserProfile.profile_photo_url;
+            console.log('✅ Using profile photo from window.currentUserProfile');
+            return;
+        }
+        
+        // Priority 5: Try to fetch from profiles table
+        if (this.userId && this.sb) {
+            this.fetchProfilePhotoFromDB();
+            return;
+        }
+        
+        // Final fallback: Generate avatar from name
+        if (this.userProfile?.full_name) {
+            const nameForAvatar = this.userProfile.full_name.replace(/\s+/g, '+');
+            this.elements.headerProfilePhoto.src = `https://ui-avatars.com/api/?name=${nameForAvatar}&background=667eea&color=fff&size=100`;
+            console.log('🔄 Using generated avatar for:', this.userProfile.full_name);
+        } else {
+            // Default avatar
+            this.elements.headerProfilePhoto.src = 'https://ui-avatars.com/api/?name=Student&background=667eea&color=fff&size=100';
+            console.log('🔄 Using default avatar');
+        }
+    }
+    
+    // 🔥 NEW: Fetch profile photo from database
+    async fetchProfilePhotoFromDB() {
+        if (!this.userId || !this.sb) return;
+        
+        try {
+            console.log('🔍 Fetching profile photo from database...');
+            
+            const { data, error } = await this.sb
+                .from('profiles')
+                .select('profile_photo_url')
+                .eq('id', this.userId)
+                .maybeSingle();
+            
+            if (error) {
+                console.error('❌ Error fetching profile photo:', error);
+                this.useGeneratedAvatar();
+                return;
+            }
+            
+            if (data?.profile_photo_url) {
+                this.elements.headerProfilePhoto.src = data.profile_photo_url;
+                console.log('✅ Loaded profile photo from DB:', data.profile_photo_url);
+                
+                // Update local cache
+                this.userProfile.profile_photo_url = data.profile_photo_url;
+                localStorage.setItem('userProfilePhoto', data.profile_photo_url);
+                
+                // Update window object
+                if (window.currentUserProfile) {
+                    window.currentUserProfile.profile_photo_url = data.profile_photo_url;
+                }
+            } else {
+                console.log('ℹ️ No profile photo in database');
+                this.useGeneratedAvatar();
+            }
+        } catch (error) {
+            console.error('❌ Error in fetchProfilePhotoFromDB:', error);
+            this.useGeneratedAvatar();
+        }
+    }
+    
+    // Helper: Use generated avatar
+    useGeneratedAvatar() {
+        if (!this.elements.headerProfilePhoto) return;
+        
+        if (this.userProfile?.full_name) {
+            const nameForAvatar = this.userProfile.full_name.replace(/\s+/g, '+');
+            this.elements.headerProfilePhoto.src = `https://ui-avatars.com/api/?name=${nameForAvatar}&background=667eea&color=fff&size=100`;
+        } else {
+            this.elements.headerProfilePhoto.src = 'https://ui-avatars.com/api/?name=Student&background=667eea&color=fff&size=100';
         }
     }
     
@@ -846,7 +966,16 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Also sync when courses module is ready
         document.addEventListener('coursesModuleReady', tryInit);
+        
+        // Listen for profile photo updates even if dashboard not initialized yet
+        document.addEventListener('profilePhotoUpdated', (e) => {
+            console.log('📸 Profile photo updated globally', e.detail);
+            // Update header photo if dashboard exists
+            if (dashboardModule?.elements?.headerProfilePhoto) {
+                dashboardModule.updateProfilePhoto(e.detail?.photoUrl);
+            }
+        });
     }
 });
 
-console.log('✅ UPDATED Dashboard module loaded (with Header Integration)');
+console.log('✅ UPDATED Dashboard module loaded (with Profile Photo Integration)');
