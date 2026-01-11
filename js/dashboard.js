@@ -1,205 +1,149 @@
-// dashboard.js - FINAL VERSION WITH ALL FIXES
+// dashboard.js - REAL FINAL VERSION (BASED ON OUR CONSOLE FIXES)
 class DashboardModule {
     constructor(supabaseClient) {
-        console.log('🚀 Initializing FINAL DashboardModule...');
-        this.sb = supabaseClient;
+        console.log('🚀 Initializing DashboardModule (Real Final)...');
+        
+        // 🔥 ACTUAL FIX FROM CONSOLE: Get Supabase from window.db.supabase
+        this.sb = supabaseClient || window.sb || window.db?.supabase;
+        
+        if (!this.sb) {
+            console.error('❌ Dashboard: No Supabase client!');
+            console.log('   Available: window.db.supabase =', !!window.db?.supabase);
+            console.log('   Available: window.sb =', !!window.sb);
+            
+            // 🔥 ACTUAL FIX FROM CONSOLE: Try to auto-fix
+            if (window.db?.supabase && !window.sb) {
+                console.log('🔧 Auto-fixing: Setting window.sb = window.db.supabase');
+                window.sb = window.db.supabase;
+                this.sb = window.db.supabase;
+            }
+        } else {
+            console.log('✅ Dashboard: Supabase client ready');
+        }
+        
         this.userId = null;
         this.userProfile = null;
         
-        // Cache for ALL metrics
-        this.cache = {
-            attendance: { data: null, lastUpdated: 0, ttl: 60000 },
-            courses: { data: null, lastUpdated: 0, ttl: 30000 },
-            exams: { data: null, lastUpdated: 0, ttl: 60000 },
-            resources: { data: null, lastUpdated: 0, ttl: 30000 },
-            nurseiq: { data: null, lastUpdated: 0, ttl: 30000 }
-        };
-        
-        // Dashboard elements
+        // Cache elements
         this.cacheElements();
         
-        // Initialize listeners for ALL metrics
-        this.setupCompleteListeners();
+        // Setup
+        this.setupEventListeners();
         this.startLiveClock();
         
-        console.log('✅ FINAL DashboardModule initialized');
+        console.log('✅ DashboardModule initialized');
     }
     
     cacheElements() {
+        // Get ALL dashboard elements
         this.elements = {
-            // Attendance
+            // Welcome section
+            welcomeHeader: document.getElementById('welcome-header'),
+            welcomeMessage: document.getElementById('student-welcome-message'),
+            studentAnnouncement: document.getElementById('student-announcement'),
+            
+            // Stats (THESE ARE THE ONES SHOWING --%)
             attendanceRate: document.getElementById('dashboard-attendance-rate'),
             verifiedCount: document.getElementById('dashboard-verified-count'),
             totalCount: document.getElementById('dashboard-total-count'),
             pendingCount: document.getElementById('dashboard-pending-count'),
-            
-            // Courses
-            activeCourses: document.getElementById('dashboard-active-courses'),
-            
-            // Exams
             upcomingExam: document.getElementById('dashboard-upcoming-exam'),
-            
-            // Resources
+            activeCourses: document.getElementById('dashboard-active-courses'),
             newResources: document.getElementById('dashboard-new-resources'),
             
             // NurseIQ
             nurseiqProgress: document.getElementById('dashboard-nurseiq-progress'),
             nurseiqAccuracy: document.getElementById('dashboard-nurseiq-accuracy'),
-            nurseiqQuestions: document.getElementById('dashboard-nurseiq-questions')
+            nurseiqQuestions: document.getElementById('dashboard-nurseiq-questions'),
+            
+            // Time
+            currentDateTime: document.getElementById('currentDateTime')
         };
+        
+        console.log('🔍 Cached dashboard elements:', Object.keys(this.elements).filter(k => this.elements[k]));
     }
     
-    // 🔥 COMPLETE: Listeners for ALL metrics
-    setupCompleteListeners() {
-        console.log('🔧 Setting up COMPLETE listeners...');
+    setupEventListeners() {
+        console.log('🔧 Setting up dashboard event listeners...');
         
-        // 1. ATTENDANCE - Support BOTH old and new events
-        document.addEventListener('attendanceCheckedIn', (e) => {
-            console.log('📊 Attendance check-in detected (legacy event)');
+        // 🔥 FROM CONSOLE: This event updates attendance
+        document.addEventListener('attendanceCheckedIn', () => {
+            console.log('📊 Dashboard: attendanceCheckedIn event received');
             this.loadAttendanceMetrics();
         });
         
-        document.addEventListener('refreshAttendance', () => {
-            console.log('🔄 Manual attendance refresh requested');
-            this.loadAttendanceMetrics();
-        });
-        
-        document.addEventListener('updateDashboardAttendance', () => {
-            console.log('📡 Attendance update requested');
-            this.loadAttendanceMetrics();
-        });
-        
-        // 2. COURSES - Support BOTH old and new events
+        // 🔥 FROM CONSOLE: This event updates courses
         document.addEventListener('coursesUpdated', (e) => {
-            console.log('📚 Courses update detected (legacy event)');
-            if (e.detail && e.detail.courses) {
-                this.updateCoursesFromEvent(e.detail.courses);
-            } else {
-                this.loadCourseMetrics();
-            }
-        });
-        
-        document.addEventListener('refreshCourses', () => {
-            console.log('🔄 Manual courses refresh requested');
+            console.log('📚 Dashboard: coursesUpdated event received');
             this.loadCourseMetrics();
-        });
-        
-        // 3. EXAMS
-        document.addEventListener('examsUpdated', (e) => {
-            console.log('📝 Exams update detected');
-            this.loadExamMetrics();
-        });
-        
-        document.addEventListener('refreshExams', () => {
-            console.log('🔄 Manual exams refresh requested');
-            this.loadExamMetrics();
-        });
-        
-        // 4. RESOURCES
-        document.addEventListener('resourcesUpdated', (e) => {
-            console.log('📁 Resources update detected');
-            this.loadResourceMetrics();
-        });
-        
-        document.addEventListener('refreshResources', () => {
-            console.log('🔄 Manual resources refresh requested');
-            this.loadResourceMetrics();
-        });
-        
-        // 5. NURSEIQ
-        document.addEventListener('nurseiqUpdated', (e) => {
-            console.log('🧠 NurseIQ update detected');
-            this.loadNurseIQMetrics();
-        });
-        
-        document.addEventListener('refreshNurseIQ', () => {
-            console.log('🔄 Manual NurseIQ refresh requested');
-            this.loadNurseIQMetrics();
-        });
-        
-        // UNIVERSAL REFRESH - Support multiple event names
-        document.addEventListener('refreshDashboard', () => {
-            console.log('🔄 Universal dashboard refresh requested');
-            this.refreshAllMetrics();
-        });
-        
-        document.addEventListener('fastDashboardUpdate', () => {
-            console.log('⚡ Fast dashboard update requested');
-            this.refreshAllMetrics();
-        });
-        
-        document.addEventListener('dashboardRefresh', () => {
-            console.log('📡 Dashboard refresh event');
-            this.refreshAllMetrics();
         });
         
         // Refresh button
         const refreshBtn = document.getElementById('refreshDashboardBtn');
         if (refreshBtn) {
-            refreshBtn.addEventListener('click', () => this.refreshAllMetrics());
+            refreshBtn.addEventListener('click', () => this.refreshDashboard());
         }
         
-        // Auto-refresh every 30 seconds
+        // Auto-refresh every 30 seconds (like we set in console)
         setInterval(() => {
             if (this.userId) {
                 console.log('⏰ Auto-refreshing dashboard...');
-                this.refreshAllMetrics();
+                this.refreshDashboard();
             }
         }, 30000);
     }
     
-    // 🔥 COMPLETE: Initialize with user data
     async initialize(userId, userProfile) {
+        console.log('👤 Dashboard initializing with user:', userId);
+        
         this.userId = userId;
         this.userProfile = userProfile;
         
         if (!userId || !userProfile) {
-            console.error('❌ Missing user data');
+            console.error('❌ Dashboard: Missing user data');
             return false;
         }
         
-        // Show loading states
+        // Show loading states (shows ... instead of --%)
         this.showLoadingStates();
         
-        // Load ALL metrics
-        await this.refreshAllMetrics();
-        
-        // Dispatch event that dashboard is ready
-        document.dispatchEvent(new CustomEvent('dashboardReady', {
-            detail: { userId, timestamp: new Date().toISOString() }
-        }));
+        // Load all dashboard data
+        await this.loadDashboard();
         
         return true;
     }
     
-    // 🔥 COMPLETE: Refresh ALL metrics
-    async refreshAllMetrics() {
-        console.log('🔄 Refreshing ALL dashboard metrics...');
+    async loadDashboard() {
+        console.log('📊 Loading complete dashboard data...');
         
-        // Show loading indicator
-        this.showLoadingStates();
-        
-        // Load ALL metrics in parallel
-        await Promise.allSettled([
-            this.loadAttendanceMetrics(),
-            this.loadCourseMetrics(),
-            this.loadExamMetrics(),
-            this.loadResourceMetrics(),
-            this.loadNurseIQMetrics()
-        ]);
-        
-        console.log('✅ ALL metrics refreshed');
-        
-        // Update timestamp
-        this.lastRefreshTime = Date.now();
+        try {
+            // Load in parallel (like we tested in console)
+            await Promise.allSettled([
+                this.loadWelcomeDetails(),
+                this.loadStudentMessage(),
+                this.loadLatestOfficialAnnouncement(),
+                this.loadAttendanceMetrics(),
+                this.loadCourseMetrics(),
+                this.loadExamMetrics(),
+                this.loadResourceMetrics(),
+                this.loadNurseIQMetrics()
+            ]);
+            
+            console.log('✅ Dashboard loaded successfully');
+            
+        } catch (error) {
+            console.error('❌ Error loading dashboard:', error);
+            this.showErrorStates();
+        }
     }
     
-    // 1. ATTENDANCE METRICS
+    // 🔥 FROM CONSOLE: This fixed attendance showing 36%
     async loadAttendanceMetrics() {
         console.log('📊 Loading attendance metrics...');
         
-        if (!this.userId) {
-            console.warn('⚠️ No user ID for attendance');
+        if (!this.userId || !this.sb) {
+            console.warn('⚠️ Cannot load attendance: No user ID or Supabase');
+            this.showErrorState('attendance');
             return;
         }
         
@@ -211,52 +155,43 @@ class DashboardModule {
             
             if (error) {
                 console.error('❌ Attendance query error:', error);
+                this.showErrorState('attendance');
                 return;
             }
             
+            // 🔥 THIS IS WHAT WE SAW IN CONSOLE: 4 verified out of 11 = 36%
             const totalLogs = logs?.length || 0;
             const verifiedCount = logs?.filter(l => l.is_verified === true).length || 0;
             const pendingCount = logs?.filter(l => !l.is_verified).length || 0;
             const attendanceRate = totalLogs > 0 ? Math.round((verifiedCount / totalLogs) * 100) : 0;
             
-            // Update cache
-            this.cache.attendance.data = {
-                rate: attendanceRate,
-                verified: verifiedCount,
-                total: totalLogs,
-                pending: pendingCount
-            };
-            this.cache.attendance.lastUpdated = Date.now();
-            
             // Update UI
-            this.updateAttendanceUI(attendanceRate, verifiedCount, totalLogs, pendingCount);
+            if (this.elements.attendanceRate) {
+                this.elements.attendanceRate.textContent = `${attendanceRate}%`;
+                this.elements.attendanceRate.style.color = 
+                    attendanceRate >= 80 ? '#10B981' : 
+                    attendanceRate >= 60 ? '#F59E0B' : '#EF4444';
+            }
+            
+            if (this.elements.verifiedCount) this.elements.verifiedCount.textContent = verifiedCount;
+            if (this.elements.totalCount) this.elements.totalCount.textContent = totalLogs;
+            if (this.elements.pendingCount) this.elements.pendingCount.textContent = pendingCount;
             
             console.log(`✅ Attendance: ${attendanceRate}% (${verifiedCount}/${totalLogs})`);
             
         } catch (error) {
             console.error('❌ Error loading attendance:', error);
+            this.showErrorState('attendance');
         }
     }
     
-    updateAttendanceUI(rate, verified, total, pending) {
-        if (this.elements.attendanceRate) {
-            this.elements.attendanceRate.textContent = `${rate}%`;
-            this.elements.attendanceRate.style.color = 
-                rate >= 80 ? '#10B981' : 
-                rate >= 60 ? '#F59E0B' : '#EF4444';
-        }
-        
-        if (this.elements.verifiedCount) this.elements.verifiedCount.textContent = verified;
-        if (this.elements.totalCount) this.elements.totalCount.textContent = total;
-        if (this.elements.pendingCount) this.elements.pendingCount.textContent = pending;
-    }
-    
-    // 2. COURSES METRICS
+    // 🔥 FROM CONSOLE: This fixed courses showing 12
     async loadCourseMetrics() {
         console.log('📚 Loading course metrics...');
         
-        if (!this.userProfile) {
-            console.warn('⚠️ No user profile for courses');
+        if (!this.userProfile || !this.sb) {
+            console.warn('⚠️ Cannot load courses: No user profile or Supabase');
+            this.showErrorState('courses');
             return;
         }
         
@@ -270,16 +205,12 @@ class DashboardModule {
             
             if (error) {
                 console.error('❌ Courses query error:', error);
+                this.showErrorState('courses');
                 return;
             }
             
             const activeCount = courses?.length || 0;
             
-            // Update cache
-            this.cache.courses.data = { activeCount };
-            this.cache.courses.lastUpdated = Date.now();
-            
-            // Update UI
             if (this.elements.activeCourses) {
                 this.elements.activeCourses.textContent = activeCount;
             }
@@ -288,30 +219,16 @@ class DashboardModule {
             
         } catch (error) {
             console.error('❌ Error loading courses:', error);
+            this.showErrorState('courses');
         }
     }
     
-    // Helper for legacy events
-    updateCoursesFromEvent(courses) {
-        const activeCount = courses.filter(c => 
-            c.status === 'Active' || !c.status
-        ).length;
-        
-        if (this.elements.activeCourses) {
-            this.elements.activeCourses.textContent = activeCount;
-        }
-        
-        // Update cache
-        this.cache.courses.data = { activeCount };
-        this.cache.courses.lastUpdated = Date.now();
-    }
-    
-    // 3. EXAMS METRICS
     async loadExamMetrics() {
         console.log('📝 Loading exam metrics...');
         
-        if (!this.userProfile) {
-            console.warn('⚠️ No user profile for exams');
+        if (!this.userProfile || !this.sb) {
+            console.warn('⚠️ Cannot load exams: No user profile or Supabase');
+            this.showErrorState('exams');
             return;
         }
         
@@ -329,6 +246,7 @@ class DashboardModule {
             
             if (error) {
                 console.error('❌ Exams query error:', error);
+                this.showErrorState('exams');
                 return;
             }
             
@@ -351,11 +269,6 @@ class DashboardModule {
                 }
             }
             
-            // Update cache
-            this.cache.exams.data = { text: examText, color: examColor };
-            this.cache.exams.lastUpdated = Date.now();
-            
-            // Update UI
             if (this.elements.upcomingExam) {
                 this.elements.upcomingExam.textContent = examText;
                 this.elements.upcomingExam.style.color = examColor;
@@ -365,15 +278,16 @@ class DashboardModule {
             
         } catch (error) {
             console.error('❌ Error loading exams:', error);
+            this.showErrorState('exams');
         }
     }
     
-    // 4. RESOURCES METRICS
     async loadResourceMetrics() {
         console.log('📁 Loading resource metrics...');
         
-        if (!this.userProfile) {
-            console.warn('⚠️ No user profile for resources');
+        if (!this.userProfile || !this.sb) {
+            console.warn('⚠️ Cannot load resources: No user profile or Supabase');
+            this.showErrorState('resources');
             return;
         }
         
@@ -391,16 +305,12 @@ class DashboardModule {
             
             if (error) {
                 console.error('❌ Resources query error:', error);
+                this.showErrorState('resources');
                 return;
             }
             
             const newCount = resources?.length || 0;
             
-            // Update cache
-            this.cache.resources.data = { newCount };
-            this.cache.resources.lastUpdated = Date.now();
-            
-            // Update UI
             if (this.elements.newResources) {
                 this.elements.newResources.textContent = newCount;
             }
@@ -409,15 +319,16 @@ class DashboardModule {
             
         } catch (error) {
             console.error('❌ Error loading resources:', error);
+            this.showErrorState('resources');
         }
     }
     
-    // 5. NURSEIQ METRICS
     async loadNurseIQMetrics() {
         console.log('🧠 Loading NurseIQ metrics...');
         
-        if (!this.userId) {
-            console.warn('⚠️ No user ID for NurseIQ');
+        if (!this.userId || !this.sb) {
+            console.warn('⚠️ Cannot load NurseIQ: No user ID or Supabase');
+            this.showErrorState('nurseiq');
             return;
         }
         
@@ -429,6 +340,7 @@ class DashboardModule {
             
             if (error) {
                 console.error('❌ NurseIQ query error:', error);
+                this.showErrorState('nurseiq');
                 return;
             }
             
@@ -438,11 +350,6 @@ class DashboardModule {
             const targetQuestions = 100;
             const progress = Math.min(Math.round((totalQuestions / targetQuestions) * 100), 100);
             
-            // Update cache
-            this.cache.nurseiq.data = { progress, accuracy, totalQuestions };
-            this.cache.nurseiq.lastUpdated = Date.now();
-            
-            // Update UI
             if (this.elements.nurseiqProgress) this.elements.nurseiqProgress.textContent = `${progress}%`;
             if (this.elements.nurseiqAccuracy) this.elements.nurseiqAccuracy.textContent = `${accuracy}%`;
             if (this.elements.nurseiqQuestions) this.elements.nurseiqQuestions.textContent = totalQuestions;
@@ -451,23 +358,133 @@ class DashboardModule {
             
         } catch (error) {
             console.error('❌ Error loading NurseIQ:', error);
+            this.showErrorState('nurseiq');
+        }
+    }
+    
+    async loadLatestOfficialAnnouncement() {
+        if (!this.elements.studentAnnouncement || !this.sb) return;
+        
+        try {
+            const { data, error } = await this.sb
+                .from('notifications')
+                .select('*')
+                .eq('subject', 'Official Announcement')
+                .order('created_at', { ascending: false })
+                .limit(1);
+            
+            if (error) throw error;
+            
+            if (data && data.length > 0) {
+                this.elements.studentAnnouncement.textContent = data[0].message;
+            } else {
+                this.elements.studentAnnouncement.textContent = 'No official announcements at this time.';
+            }
+        } catch (error) {
+            console.error('❌ Failed to load announcement:', error);
+            this.elements.studentAnnouncement.textContent = 'No announcements available.';
+        }
+    }
+    
+    loadWelcomeDetails() {
+        if (!this.userProfile || !this.elements.welcomeHeader) return;
+        
+        const studentName = this.userProfile.full_name || 'Student';
+        
+        const getGreeting = (hour) => {
+            if (hour >= 5 && hour < 12) return "Good Morning";
+            if (hour >= 12 && hour < 17) return "Good Afternoon";
+            if (hour >= 17 && hour < 21) return "Good Evening";
+            return "Good Night";
+        };
+        
+        const updateHeader = () => {
+            const now = new Date();
+            const hour = now.getHours();
+            this.elements.welcomeHeader.textContent = `${getGreeting(hour)}, ${studentName}!`;
+        };
+        
+        updateHeader();
+        setInterval(updateHeader, 60000);
+    }
+    
+    async loadStudentMessage() {
+        if (!this.elements.welcomeMessage || !this.sb) return;
+        
+        try {
+            const { data, error } = await this.sb
+                .from('app_settings')
+                .select('value')
+                .eq('key', 'student_welcome')
+                .maybeSingle();
+            
+            if (error) throw error;
+            
+            if (data && data.value) {
+                this.elements.welcomeMessage.innerHTML = data.value;
+            } else {
+                this.elements.welcomeMessage.textContent = 'Welcome to your student dashboard! Access your courses, schedule, and check your attendance status.';
+            }
+        } catch (error) {
+            console.error('❌ Failed to load student message:', error);
+            this.elements.welcomeMessage.textContent = 'Welcome back! Check your courses and attendance.';
         }
     }
     
     showLoadingStates() {
-        // Show loading for ALL metrics
+        // Show loading for all stats
         if (this.elements.attendanceRate) this.elements.attendanceRate.textContent = '...';
-        if (this.elements.activeCourses) this.elements.activeCourses.textContent = '...';
+        if (this.elements.verifiedCount) this.elements.verifiedCount.textContent = '...';
+        if (this.elements.totalCount) this.elements.totalCount.textContent = '...';
+        if (this.elements.pendingCount) this.elements.pendingCount.textContent = '...';
         if (this.elements.upcomingExam) this.elements.upcomingExam.textContent = '...';
+        if (this.elements.activeCourses) this.elements.activeCourses.textContent = '...';
         if (this.elements.newResources) this.elements.newResources.textContent = '...';
         if (this.elements.nurseiqProgress) this.elements.nurseiqProgress.textContent = '...';
         if (this.elements.nurseiqAccuracy) this.elements.nurseiqAccuracy.textContent = '...';
         if (this.elements.nurseiqQuestions) this.elements.nurseiqQuestions.textContent = '...';
+        
+        // Announcement
+        if (this.elements.studentAnnouncement) {
+            this.elements.studentAnnouncement.textContent = 'Loading latest announcement...';
+        }
+    }
+    
+    showErrorStates() {
+        // Show error states
+        if (this.elements.attendanceRate) this.elements.attendanceRate.textContent = '--%';
+        if (this.elements.upcomingExam) this.elements.upcomingExam.textContent = 'Error';
+        if (this.elements.activeCourses) this.elements.activeCourses.textContent = '0';
+        if (this.elements.newResources) this.elements.newResources.textContent = '0';
+        if (this.elements.nurseiqProgress) this.elements.nurseiqProgress.textContent = '--%';
+        if (this.elements.nurseiqAccuracy) this.elements.nurseiqAccuracy.textContent = '--%';
+        if (this.elements.nurseiqQuestions) this.elements.nurseiqQuestions.textContent = '0';
+    }
+    
+    showErrorState(metric) {
+        switch(metric) {
+            case 'attendance':
+                if (this.elements.attendanceRate) this.elements.attendanceRate.textContent = '--%';
+                break;
+            case 'courses':
+                if (this.elements.activeCourses) this.elements.activeCourses.textContent = '0';
+                break;
+            case 'exams':
+                if (this.elements.upcomingExam) this.elements.upcomingExam.textContent = 'Error';
+                break;
+            case 'resources':
+                if (this.elements.newResources) this.elements.newResources.textContent = '0';
+                break;
+            case 'nurseiq':
+                if (this.elements.nurseiqProgress) this.elements.nurseiqProgress.textContent = '--%';
+                if (this.elements.nurseiqAccuracy) this.elements.nurseiqAccuracy.textContent = '--%';
+                if (this.elements.nurseiqQuestions) this.elements.nurseiqQuestions.textContent = '0';
+                break;
+        }
     }
     
     startLiveClock() {
-        const currentDateTime = document.getElementById('currentDateTime');
-        if (!currentDateTime) return;
+        if (!this.elements.currentDateTime) return;
         
         const updateTime = () => {
             const now = new Date();
@@ -481,47 +498,27 @@ class DashboardModule {
                 hour12: true
             };
             
-            currentDateTime.textContent = now.toLocaleDateString('en-US', options);
+            this.elements.currentDateTime.textContent = now.toLocaleDateString('en-US', options);
         };
         
         updateTime();
         setInterval(updateTime, 60000);
     }
     
-    // Helper to refresh specific metric
-    refreshMetric(metricName) {
-        console.log(`🔄 Refreshing ${metricName}...`);
+    async refreshDashboard() {
+        console.log('🔄 Manually refreshing dashboard...');
         
-        switch(metricName) {
-            case 'attendance':
-                this.loadAttendanceMetrics();
-                break;
-            case 'courses':
-                this.loadCourseMetrics();
-                break;
-            case 'exams':
-                this.loadExamMetrics();
-                break;
-            case 'resources':
-                this.loadResourceMetrics();
-                break;
-            case 'nurseiq':
-                this.loadNurseIQMetrics();
-                break;
-            default:
-                this.refreshAllMetrics();
-        }
-    }
-    
-    // Update user profile
-    updateUserProfile(userProfile) {
-        console.log('👤 Updating user profile in dashboard');
-        this.userProfile = userProfile;
+        this.showLoadingStates();
         
-        // Refresh metrics that depend on user profile
-        this.loadCourseMetrics();
-        this.loadExamMetrics();
-        this.loadResourceMetrics();
+        await Promise.allSettled([
+            this.loadAttendanceMetrics(),
+            this.loadCourseMetrics(),
+            this.loadExamMetrics(),
+            this.loadResourceMetrics(),
+            this.loadNurseIQMetrics()
+        ]);
+        
+        console.log('✅ Dashboard refreshed');
     }
 }
 
@@ -530,82 +527,74 @@ let dashboardModule = null;
 
 // Initialize dashboard module
 function initDashboardModule(supabaseClient) {
-    if (!supabaseClient) {
-        console.error('❌ No Supabase client provided to dashboard');
-        return null;
+    console.log('🎯 initDashboardModule called');
+    
+    // Use provided client or find it
+    const client = supabaseClient || window.sb || window.db?.supabase;
+    
+    if (!client) {
+        console.error('❌ initDashboardModule: No Supabase client found!');
+        console.log('   Trying to auto-fix...');
+        
+        if (window.db?.supabase && !window.sb) {
+            console.log('🔧 Auto-fixing: window.sb = window.db.supabase');
+            window.sb = window.db.supabase;
+            dashboardModule = new DashboardModule(window.db.supabase);
+        } else {
+            console.error('❌ Cannot create dashboard: No Supabase available');
+            return null;
+        }
+    } else {
+        dashboardModule = new DashboardModule(client);
     }
     
-    dashboardModule = new DashboardModule(supabaseClient);
     return dashboardModule;
 }
 
-// Global functions for ALL metrics
+// Global functions
 window.DashboardModule = DashboardModule;
 window.initDashboardModule = initDashboardModule;
-
-// Helper functions for other modules
 window.refreshDashboard = () => {
     if (dashboardModule) {
-        dashboardModule.refreshAllMetrics();
-    } else {
-        console.warn('⚠️ Dashboard module not initialized');
-        document.dispatchEvent(new CustomEvent('refreshDashboard'));
-    }
-};
-
-window.refreshDashboardMetric = (metric) => {
-    if (dashboardModule) {
-        dashboardModule.refreshMetric(metric);
+        dashboardModule.refreshDashboard();
     } else {
         console.warn('⚠️ Dashboard module not initialized');
     }
 };
 
-window.updateDashboardProfile = (userProfile) => {
-    if (dashboardModule) {
-        dashboardModule.updateUserProfile(userProfile);
-    }
-};
-
-// Auto-initialize when page loads
+// Auto-initialize when ready
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('📱 DOM ready, checking dashboard initialization...');
+    console.log('📱 Dashboard auto-init checking...');
     
-    // Check if dashboard elements exist
-    const hasDashboardElements = document.getElementById('dashboard-attendance-rate') || 
-                                 document.getElementById('dashboard');
+    const hasDashboard = document.getElementById('dashboard-attendance-rate');
     
-    if (hasDashboardElements) {
+    if (hasDashboard) {
         console.log('✅ Dashboard elements found');
         
-        // Initialize when Supabase is available
-        const initDashboard = () => {
-            if (window.sb && !dashboardModule) {
-                console.log('🎯 Initializing dashboard module...');
-                initDashboardModule(window.sb);
+        const tryInit = () => {
+            if ((window.sb || window.db?.supabase) && 
+                window.currentUserId && 
+                window.currentUserProfile && 
+                !dashboardModule) {
                 
-                // If user data is already available, load it
-                if (window.currentUserProfile && window.currentUserId) {
-                    console.log('👤 Found existing user data, loading dashboard...');
-                    setTimeout(() => {
-                        if (dashboardModule) {
-                            dashboardModule.initialize(
-                                window.currentUserId, 
-                                window.currentUserProfile
-                            );
-                        }
-                    }, 1000);
+                console.log('🎯 Auto-initializing dashboard...');
+                const client = window.sb || window.db.supabase;
+                dashboardModule = initDashboardModule(client);
+                
+                if (dashboardModule) {
+                    dashboardModule.initialize(
+                        window.currentUserId,
+                        window.currentUserProfile
+                    );
                 }
             }
         };
         
-        // Try immediately
-        initDashboard();
-        
-        // Also try after delays
-        setTimeout(initDashboard, 2000);
-        setTimeout(initDashboard, 5000);
+        // Try multiple times (like we did in console)
+        tryInit();
+        setTimeout(tryInit, 1000);
+        setTimeout(tryInit, 3000);
     }
 });
 
-console.log('✅ FINAL Dashboard module loaded - Ready for all metrics!');
+console.log('✅ REAL FINAL Dashboard module loaded (based on console fixes)');
