@@ -1,7 +1,7 @@
-// dashboard.js - COMPLETE FIXED VERSION
+// dashboard.js - UPDATED FOR NEW HEADER
 class DashboardModule {
     constructor(supabaseClient) {
-        console.log('🚀 Initializing DashboardModule (Fixed Version)...');
+        console.log('🚀 Initializing DashboardModule (with Header Integration)...');
         
         // Get Supabase from window.db.supabase
         this.sb = supabaseClient || window.sb || window.db?.supabase;
@@ -23,7 +23,7 @@ class DashboardModule {
         
         this.userId = null;
         this.userProfile = null;
-        this.cachedCourses = []; // 🔥 NEW: Cache courses data
+        this.cachedCourses = []; // Cache courses data
         
         // Cache elements
         this.cacheElements();
@@ -43,7 +43,7 @@ class DashboardModule {
             welcomeMessage: document.getElementById('student-welcome-message'),
             studentAnnouncement: document.getElementById('student-announcement'),
             
-            // Stats (THESE ARE THE ONES SHOWING --%)
+            // Stats (dashboard cards)
             attendanceRate: document.getElementById('dashboard-attendance-rate'),
             verifiedCount: document.getElementById('dashboard-verified-count'),
             totalCount: document.getElementById('dashboard-total-count'),
@@ -57,8 +57,14 @@ class DashboardModule {
             nurseiqAccuracy: document.getElementById('dashboard-nurseiq-accuracy'),
             nurseiqQuestions: document.getElementById('dashboard-nurseiq-questions'),
             
-            // Time
-            currentDateTime: document.getElementById('currentDateTime')
+            // Time (in footer)
+            currentDateTime: document.getElementById('currentDateTime'),
+            
+            // 🔥 NEW: Header elements
+            headerTime: document.getElementById('header-time'),
+            headerUserName: document.getElementById('header-user-name'),
+            headerProfilePhoto: document.getElementById('header-profile-photo'),
+            headerRefresh: document.getElementById('header-refresh')
         };
         
         console.log('🔍 Cached dashboard elements:', Object.keys(this.elements).filter(k => this.elements[k]));
@@ -67,17 +73,16 @@ class DashboardModule {
     setupEventListeners() {
         console.log('🔧 Setting up dashboard event listeners...');
         
-        // 🔥 ENHANCED: Listen for attendance events
+        // Listen for attendance events
         document.addEventListener('attendanceCheckedIn', () => {
             console.log('📊 Dashboard: attendanceCheckedIn event received');
             this.loadAttendanceMetrics();
         });
         
-        // 🔥 CRITICAL FIX: Enhanced coursesUpdated listener
+        // Listen for courses events
         document.addEventListener('coursesUpdated', (e) => {
             console.log('📚 Dashboard: coursesUpdated event received with data:', e.detail);
             
-            // 🔥 USE THE COURSES DATA FROM COURSES.JS
             if (e.detail && e.detail.activeCount !== undefined) {
                 this.cachedCourses = e.detail.courses || [];
                 
@@ -86,9 +91,9 @@ class DashboardModule {
                     this.elements.activeCourses.textContent = e.detail.activeCount;
                 }
                 
-                console.log(`✅ Courses updated from event: ${e.detail.activeCount} active (matches courses.js)`);
+                console.log(`✅ Courses updated from event: ${e.detail.activeCount} active`);
                 
-                // 🔥 ALSO UPDATE OTHER COURSE-RELATED METRICS
+                // Update any other course-based metrics
                 this.updateCourseBasedMetrics();
             } else {
                 // Fallback to query
@@ -97,28 +102,28 @@ class DashboardModule {
             }
         });
         
-        // 🔥 NEW: Listen for courses module initialization
+        // Listen for courses module initialization
         document.addEventListener('coursesModuleReady', () => {
             console.log('📚 Dashboard: coursesModuleReady event received');
-            // Force a sync with courses module
+            // Sync with courses module
             if (window.coursesModule) {
                 this.syncWithCoursesModule();
             }
         });
         
-        // Refresh button
+        // Header refresh button
+        if (this.elements.headerRefresh) {
+            this.elements.headerRefresh.addEventListener('click', (e) => {
+                e.preventDefault();
+                console.log('🔄 Header refresh button clicked');
+                this.refreshDashboard();
+            });
+        }
+        
+        // Dashboard refresh button
         const refreshBtn = document.getElementById('refreshDashboardBtn');
         if (refreshBtn) {
             refreshBtn.addEventListener('click', () => this.refreshDashboard());
-        }
-        
-        // Manual refresh for debugging
-        const debugBtn = document.getElementById('debugDashboardBtn');
-        if (debugBtn) {
-            debugBtn.addEventListener('click', () => {
-                console.log('🔍 DEBUG: Manual dashboard refresh');
-                this.debugMetrics();
-            });
         }
         
         // Auto-refresh every 30 seconds
@@ -141,13 +146,16 @@ class DashboardModule {
             return false;
         }
         
+        // 🔥 UPDATE HEADER FIRST (immediate visual feedback)
+        this.updateHeaderWithUserData();
+        
         // Show loading states
         this.showLoadingStates();
         
         // Load all dashboard data
         await this.loadDashboard();
         
-        // 🔥 NEW: Try to sync with courses module if available
+        // Try to sync with courses module if available
         setTimeout(() => {
             this.syncWithCoursesModule();
         }, 1000);
@@ -179,7 +187,39 @@ class DashboardModule {
         }
     }
     
-    // 🔥 UPDATED: This fixed attendance showing 36%
+    // 🔥 NEW: Update header with user data
+    updateHeaderWithUserData() {
+        console.log('👤 Updating header with user data...');
+        
+        if (!this.userProfile) return;
+        
+        // Update user name in header
+        if (this.elements.headerUserName && this.userProfile.full_name) {
+            this.elements.headerUserName.textContent = this.userProfile.full_name;
+        }
+        
+        // Update header profile photo
+        if (this.elements.headerProfilePhoto && this.userProfile.full_name) {
+            const nameForAvatar = this.userProfile.full_name.replace(/\s+/g, '');
+            this.elements.headerProfilePhoto.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(nameForAvatar)}&background=667eea&color=fff&size=100`;
+            this.elements.headerProfilePhoto.alt = this.userProfile.full_name;
+        }
+        
+        // Update welcome message
+        if (this.elements.welcomeHeader && this.userProfile.full_name) {
+            const getGreeting = (hour) => {
+                if (hour >= 5 && hour < 12) return "Good Morning";
+                if (hour >= 12 && hour < 17) return "Good Afternoon";
+                if (hour >= 17 && hour < 21) return "Good Evening";
+                return "Good Night";
+            };
+            
+            const now = new Date();
+            const hour = now.getHours();
+            this.elements.welcomeHeader.textContent = `${getGreeting(hour)}, ${this.userProfile.full_name}!`;
+        }
+    }
+    
     async loadAttendanceMetrics() {
         console.log('📊 Loading attendance metrics...');
         
@@ -226,11 +266,10 @@ class DashboardModule {
         }
     }
     
-    // 🔥 COMPLETELY REWRITTEN: This now matches courses.js logic exactly
     async loadCourseMetrics() {
         console.log('📚 Loading course metrics...');
         
-        // 🔥 FIRST: Try to get data from courses.js module
+        // FIRST: Try to get data from courses.js module
         if (window.coursesModule && window.coursesModule.getActiveCourseCount) {
             const activeCount = window.coursesModule.getActiveCourseCount();
             console.log(`📚 Got active courses from coursesModule: ${activeCount}`);
@@ -241,7 +280,7 @@ class DashboardModule {
             return;
         }
         
-        // 🔥 SECOND: Try to use cached data from coursesUpdated event
+        // SECOND: Try to use cached data from coursesUpdated event
         if (this.cachedCourses.length > 0) {
             const activeCount = this.cachedCourses.filter(course => {
                 const isCompleted = course.status === 'Completed' || course.status === 'Passed';
@@ -256,7 +295,7 @@ class DashboardModule {
             return;
         }
         
-        // 🔥 THIRD: Fallback to query (using EXACT same logic as courses.js)
+        // THIRD: Fallback to query
         if (!this.userProfile || !this.sb) {
             console.warn('⚠️ Cannot load courses: No user profile or Supabase');
             this.showErrorState('courses');
@@ -271,7 +310,7 @@ class DashboardModule {
             
             console.log('🎯 Loading courses for:', { program, intakeYear, block, term });
             
-            // 🔥 EXACT SAME QUERY LOGIC AS COURSES.JS
+            // EXACT SAME QUERY LOGIC AS COURSES.JS
             let query = this.sb
                 .from('courses')
                 .select('*')
@@ -300,7 +339,7 @@ class DashboardModule {
                 return;
             }
             
-            // 🔥 EXACT SAME FILTERING LOGIC AS COURSES.JS
+            // EXACT SAME FILTERING LOGIC AS COURSES.JS
             const activeCourses = courses?.filter(course => {
                 const isCompleted = course.status === 'Completed' || course.status === 'Passed';
                 return !isCompleted && course.status !== 'Completed';
@@ -314,16 +353,12 @@ class DashboardModule {
             
             console.log(`✅ Courses: ${activeCount} active (using courses.js logic)`);
             
-            // 🔥 DEBUG: Show what courses are being counted
-            this.debugCourseCounts(courses, activeCourses);
-            
         } catch (error) {
             console.error('❌ Error loading courses:', error);
             this.showErrorState('courses');
         }
     }
     
-    // 🔥 NEW: Helper method matching courses.js
     isTVETProgram(program) {
         if (!program) return false;
         const tvetPrograms = ['TVET', 'TVET NURSING', 'TVET NURSING(A)', 'TVET NURSING(B)', 
@@ -539,7 +574,7 @@ class DashboardModule {
         }
     }
     
-    // 🔥 NEW: Sync directly with courses module
+    // Sync directly with courses module
     syncWithCoursesModule() {
         console.log('🔄 Syncing dashboard with courses module...');
         
@@ -569,7 +604,7 @@ class DashboardModule {
         }
     }
     
-    // 🔥 NEW: Update other metrics that depend on courses
+    // Update other metrics that depend on courses
     updateCourseBasedMetrics() {
         if (this.cachedCourses.length > 0) {
             // Update any other metrics that might use course data
@@ -577,40 +612,7 @@ class DashboardModule {
         }
     }
     
-    // 🔥 NEW: Debug function to see what's happening
-    debugMetrics() {
-        console.group('🔍 DASHBOARD METRICS DEBUG');
-        console.log('User Profile:', this.userProfile);
-        console.log('Cached Courses:', this.cachedCourses.length);
-        console.log('Active Courses Element:', this.elements.activeCourses?.textContent);
-        
-        if (window.coursesModule) {
-            console.log('coursesModule active count:', window.coursesModule.getActiveCourseCount ? window.coursesModule.getActiveCourseCount() : 'N/A');
-            console.log('coursesModule all courses:', window.coursesModule.getAllCourses ? window.coursesModule.getAllCourses().length : 'N/A');
-        }
-        
-        console.groupEnd();
-    }
-    
-    // 🔥 NEW: Debug course counts
-    debugCourseCounts(allCourses, activeCourses) {
-        console.group('🔍 COURSE COUNT DEBUG');
-        console.log('Total courses found:', allCourses?.length || 0);
-        console.log('Active courses filtered:', activeCourses?.length || 0);
-        
-        if (allCourses && allCourses.length > 0) {
-            console.log('Course status breakdown:');
-            allCourses.forEach(course => {
-                const isCompleted = course.status === 'Completed' || course.status === 'Passed';
-                const isActive = !isCompleted && course.status !== 'Completed';
-                console.log(`  ${course.unit_code || course.id}: status="${course.status}", completed=${isCompleted}, active=${isActive}`);
-            });
-        }
-        
-        console.groupEnd();
-    }
-    
-    // 🔥 NEW: Trigger metrics update
+    // Trigger metrics update
     triggerMetricsUpdate() {
         const event = new CustomEvent('dashboardMetricsUpdated', {
             detail: {
@@ -637,6 +639,11 @@ class DashboardModule {
         // Announcement
         if (this.elements.studentAnnouncement) {
             this.elements.studentAnnouncement.textContent = 'Loading latest announcement...';
+        }
+        
+        // Header time
+        if (this.elements.headerTime) {
+            this.elements.headerTime.textContent = 'Loading...';
         }
     }
     
@@ -680,25 +687,42 @@ class DashboardModule {
     }
     
     startLiveClock() {
-        if (!this.elements.currentDateTime) return;
-        
-        const updateTime = () => {
-            const now = new Date();
-            const options = { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: true
+        // Update header time
+        if (this.elements.headerTime) {
+            const updateHeaderTime = () => {
+                const now = new Date();
+                const timeString = now.toLocaleTimeString('en-US', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: true
+                });
+                this.elements.headerTime.textContent = timeString;
             };
             
-            this.elements.currentDateTime.textContent = now.toLocaleDateString('en-US', options);
-        };
+            updateHeaderTime();
+            setInterval(updateHeaderTime, 60000);
+        }
         
-        updateTime();
-        setInterval(updateTime, 60000);
+        // Update footer time (if exists)
+        if (this.elements.currentDateTime) {
+            const updateFooterTime = () => {
+                const now = new Date();
+                const options = { 
+                    weekday: 'long', 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: true
+                };
+                
+                this.elements.currentDateTime.textContent = now.toLocaleDateString('en-US', options);
+            };
+            
+            updateFooterTime();
+            setInterval(updateFooterTime, 60000);
+        }
     }
     
     async refreshDashboard() {
@@ -747,7 +771,7 @@ function initDashboardModule(supabaseClient) {
     return dashboardModule;
 }
 
-// 🔥 NEW: Global sync function
+// Global sync function
 window.syncDashboardCourses = () => {
     if (dashboardModule) {
         dashboardModule.syncWithCoursesModule();
@@ -801,7 +825,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         window.currentUserProfile
                     );
                     
-                    // 🔥 NEW: Dispatch ready event
+                    // Dispatch ready event
                     setTimeout(() => {
                         const event = new CustomEvent('dashboardReady');
                         document.dispatchEvent(event);
@@ -820,9 +844,9 @@ document.addEventListener('DOMContentLoaded', function() {
         setTimeout(tryInit, 1000);
         setTimeout(tryInit, 3000);
         
-        // 🔥 NEW: Also sync when courses module is ready
+        // Also sync when courses module is ready
         document.addEventListener('coursesModuleReady', tryInit);
     }
 });
 
-console.log('✅ COMPLETE FIXED Dashboard module loaded (synchronized with courses.js)');
+console.log('✅ UPDATED Dashboard module loaded (with Header Integration)');
