@@ -3,11 +3,12 @@ class UIModule {
     constructor() {
         this.sidebar = document.getElementById('sidebar');
         this.overlay = document.getElementById('overlay');
-        this.menuToggle = document.getElementById('menuToggle');
+        this.mobileMenuToggle = document.getElementById('mobile-menu-toggle'); // FIXED: Changed from menuToggle
         this.navLinks = document.querySelectorAll('.nav a');
         this.tabs = document.querySelectorAll('.tab-content');
         this.toast = document.getElementById('toast');
         this.logoutBtn = document.getElementById('logoutBtn');
+        this.headerLogout = document.getElementById('header-logout'); // NEW: Header logout button
         this.currentTab = 'dashboard';
         
         // Store tab state in localStorage for persistence
@@ -17,6 +18,12 @@ class UIModule {
         this.clearCacheBtn = document.getElementById('clearCacheBtn');
         this.exportDataBtn = document.getElementById('exportDataBtn');
         this.systemInfoBtn = document.getElementById('systemInfoBtn');
+        
+        // Header elements
+        this.headerRefresh = document.getElementById('header-refresh');
+        this.headerUserName = document.getElementById('header-user-name');
+        this.headerProfilePhoto = document.getElementById('header-profile-photo');
+        this.headerTime = document.getElementById('header-time');
         
         // Modal elements
         this.transcriptModal = document.getElementById('transcript-modal');
@@ -37,6 +44,7 @@ class UIModule {
         this.setupTabChangeListener();
         this.initializeDateTime();
         this.setupOfflineIndicator();
+        this.setupMobileMenuVisibility(); // NEW: Control mobile menu visibility
         this.loadLastTab();
         this.fixInitialDisplay();
     }
@@ -62,6 +70,26 @@ class UIModule {
                 link.classList.add('active');
             }
         });
+    }
+    
+    // NEW: Setup mobile menu toggle visibility
+    setupMobileMenuVisibility() {
+        if (!this.mobileMenuToggle) return;
+        
+        const updateVisibility = () => {
+            if (window.innerWidth <= 768) {
+                this.mobileMenuToggle.style.display = 'flex';
+            } else {
+                this.mobileMenuToggle.style.display = 'none';
+                this.closeMenu(); // Ensure menu is closed on desktop
+            }
+        };
+        
+        // Initial check
+        updateVisibility();
+        
+        // Update on resize
+        window.addEventListener('resize', updateVisibility);
     }
     
     setupHashNavigation() {
@@ -195,8 +223,7 @@ class UIModule {
             'cats': 'CATS/Exams',
             'resources': 'Resources',
             'messages': 'Messages',
-            'nurseiq': 'NurseIQ',
-            'coming-soon-quizlets': 'Quizlets'
+            'nurseiq': 'NurseIQ'
         };
         
         const tabName = tabNames[tabId] || 'Dashboard';
@@ -204,9 +231,9 @@ class UIModule {
     }
     
     setupEventListeners() {
-        // Menu toggle
-        if (this.menuToggle) {
-            this.menuToggle.addEventListener('click', () => this.toggleMenu());
+        // Mobile menu toggle - FIXED: Using correct ID
+        if (this.mobileMenuToggle) {
+            this.mobileMenuToggle.addEventListener('click', () => this.toggleMenu());
         }
         
         // Overlay click to close menu
@@ -226,12 +253,24 @@ class UIModule {
             });
         });
         
-        // Logout
+        // Logout - Both sidebar and header logout buttons
         if (this.logoutBtn) {
             this.logoutBtn.addEventListener('click', (e) => {
                 e.preventDefault();
                 this.logout();
             });
+        }
+        
+        if (this.headerLogout) {
+            this.headerLogout.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.logout();
+            });
+        }
+        
+        // Header refresh button
+        if (this.headerRefresh) {
+            this.headerRefresh.addEventListener('click', () => this.refreshDashboard());
         }
         
         // Footer buttons
@@ -310,9 +349,42 @@ class UIModule {
             });
         });
         
+        // Profile dropdown in header
+        this.setupProfileDropdown();
+        
         // Prevent URL hash from scrolling
         if (window.location.hash) {
             window.scrollTo(0, 0);
+        }
+    }
+    
+    // NEW: Setup profile dropdown functionality
+    setupProfileDropdown() {
+        const profileTrigger = document.querySelector('.profile-trigger');
+        const dropdownMenu = document.querySelector('.dropdown-menu');
+        
+        if (profileTrigger && dropdownMenu) {
+            profileTrigger.addEventListener('click', (e) => {
+                e.stopPropagation();
+                dropdownMenu.classList.toggle('show');
+            });
+            
+            // Close dropdown when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!profileTrigger.contains(e.target) && !dropdownMenu.contains(e.target)) {
+                    dropdownMenu.classList.remove('show');
+                }
+            });
+            
+            // Profile link in dropdown
+            const profileLink = dropdownMenu.querySelector('a[data-tab="profile"]');
+            if (profileLink) {
+                profileLink.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.showTab('profile');
+                    dropdownMenu.classList.remove('show');
+                });
+            }
         }
     }
     
@@ -327,7 +399,7 @@ class UIModule {
         const validTabs = [
             'dashboard', 'profile', 'calendar', 'courses', 
             'attendance', 'cats', 'resources', 'messages', 
-            'nurseiq', 'coming-soon-quizlets'
+            'nurseiq'
         ];
         return validTabs.includes(tabId);
     }
@@ -335,6 +407,10 @@ class UIModule {
     loadTabModule(tabId) {
         console.log(`📂 Loading module for tab: ${tabId}`);
         
+        // Dispatch event for modules to listen to
+        window.dispatchEvent(new CustomEvent('loadModule', { detail: { tabId } }));
+        
+        // Also call specific functions for backward compatibility
         switch(tabId) {
             case 'dashboard':
                 if (typeof loadDashboard === 'function') {
@@ -413,6 +489,24 @@ class UIModule {
         document.body.style.overflow = 'auto';
     }
     
+    // NEW: Refresh dashboard function
+    refreshDashboard() {
+        this.showToast('Refreshing dashboard...', 'info', 1500);
+        
+        // Clear dashboard cache
+        if (window.db && window.db.clearCache) {
+            window.db.clearCache('dashboard');
+        }
+        
+        // Reload dashboard data
+        if (this.currentTab === 'dashboard') {
+            this.loadTabModule('dashboard');
+        } else {
+            // If not on dashboard, switch to it
+            this.showTab('dashboard');
+        }
+    }
+    
     // Toast notifications
     showToast(message, type = 'info', duration = 3000) {
         if (!this.toast) {
@@ -440,11 +534,51 @@ class UIModule {
         
         this.toast.textContent = message;
         this.toast.className = `toast ${type}`;
+        
+        // Set colors based on type
+        const colors = {
+            'info': '#4C1D95',
+            'success': '#10B981',
+            'warning': '#F59E0B',
+            'error': '#EF4444'
+        };
+        
+        this.toast.style.background = colors[type] || colors.info;
         this.toast.style.display = 'block';
         
         setTimeout(() => {
             this.toast.style.display = 'none';
         }, duration);
+    }
+    
+    // NEW: Update header information
+    updateHeaderInfo(userProfile) {
+        if (userProfile) {
+            // Update header name
+            if (this.headerUserName && userProfile.full_name) {
+                this.headerUserName.textContent = userProfile.full_name;
+            }
+            
+            // Update header profile photo
+            this.updateHeaderProfilePhoto(userProfile);
+        }
+    }
+    
+    // NEW: Update header profile photo
+    updateHeaderProfilePhoto(userProfile) {
+        if (!this.headerProfilePhoto) return;
+        
+        // Check if user has a saved photo in localStorage
+        const savedPhoto = localStorage.getItem('userProfilePhoto');
+        if (savedPhoto) {
+            this.headerProfilePhoto.src = savedPhoto;
+        } else {
+            // Fallback to avatar based on name
+            const nameForAvatar = userProfile.full_name ? 
+                userProfile.full_name.replace(/\s+/g, '') : 
+                'Student';
+            this.headerProfilePhoto.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(nameForAvatar)}&background=667eea&color=fff&size=100`;
+        }
     }
     
     // Modal functions
@@ -505,11 +639,23 @@ class UIModule {
     // Utility functions
     async logout() {
         try {
+            // Confirm logout
+            const confirmLogout = confirm('Are you sure you want to logout?');
+            if (!confirmLogout) return;
+            
+            this.showToast('Logging out...', 'info');
+            
+            // Clear tab state
+            localStorage.removeItem(this.storageKey);
+            
             if (typeof db !== 'undefined' && db.logout) {
                 await db.logout();
+            } else {
+                // Fallback logout
+                localStorage.clear();
+                sessionStorage.clear();
             }
-            // Clear localStorage
-            localStorage.removeItem(this.storageKey);
+            
             // Redirect to login
             window.location.href = 'login.html';
         } catch (error) {
@@ -519,18 +665,33 @@ class UIModule {
     }
     
     clearCache() {
-        if ('caches' in window) {
-            caches.keys().then(cacheNames => {
-                cacheNames.forEach(cacheName => {
-                    caches.delete(cacheName);
+        if (confirm('Clear all cached data? This will not delete your account.')) {
+            if ('caches' in window) {
+                caches.keys().then(cacheNames => {
+                    cacheNames.forEach(cacheName => {
+                        caches.delete(cacheName);
+                    });
+                    this.showToast('Cache cleared successfully!', 'success');
+                }).catch(error => {
+                    console.error('Error clearing cache:', error);
+                    this.showToast('Error clearing cache', 'error');
                 });
-                this.showToast('Cache cleared successfully!', 'success');
-            }).catch(error => {
-                console.error('Error clearing cache:', error);
-                this.showToast('Error clearing cache', 'error');
-            });
-        } else {
-            this.showToast('Cache API not supported', 'warning');
+            } else {
+                this.showToast('Cache API not supported', 'warning');
+            }
+            
+            // Clear localStorage except auth data
+            const keepKeys = ['nchsm_last_tab', 'userProfilePhoto', 'nchsm_user_profile'];
+            const keysToRemove = [];
+            
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (!keepKeys.includes(key)) {
+                    keysToRemove.push(key);
+                }
+            }
+            
+            keysToRemove.forEach(key => localStorage.removeItem(key));
         }
     }
     
@@ -546,17 +707,19 @@ class UIModule {
             online: navigator.onLine,
             screenSize: `${window.innerWidth} x ${window.innerHeight}`,
             currentTab: this.currentTab,
-            lastLogin: localStorage.getItem('last_login') || 'Not available'
+            lastLogin: localStorage.getItem('last_login') || 'Not available',
+            localStorageSize: `${JSON.stringify(localStorage).length} bytes`
         };
         
         const infoText = `
             NCHSM Student Portal ${info.appVersion}
             
-            Browser: ${info.userAgent.split(') ')[0].split('(')[1]}
+            Browser: ${info.userAgent}
             Online: ${info.online ? 'Yes' : 'No'}
             Screen: ${info.screenSize}
             Current Tab: ${info.currentTab}
             Last Login: ${info.lastLogin}
+            Storage: ${info.localStorageSize}
             
             © 2025 Nakuru College of Health Sciences and Management
         `;
@@ -564,11 +727,32 @@ class UIModule {
         alert(infoText);
     }
     
+    // NEW: Header time update
     initializeDateTime() {
-        const updateTime = () => {
-            const now = new Date();
+        // Update header time
+        const updateHeaderTime = () => {
+            if (this.headerTime) {
+                const now = new Date();
+                const timeString = now.toLocaleTimeString('en-US', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: true
+                });
+                this.headerTime.textContent = timeString;
+            }
+        };
+        
+        // Initial update
+        updateHeaderTime();
+        
+        // Update every minute
+        setInterval(updateHeaderTime, 60000);
+        
+        // Also update general date/time if element exists
+        const updateFullDateTime = () => {
             const dateTimeElement = document.getElementById('currentDateTime');
             if (dateTimeElement) {
+                const now = new Date();
                 dateTimeElement.textContent = now.toLocaleDateString('en-US', {
                     weekday: 'long',
                     year: 'numeric',
@@ -582,8 +766,8 @@ class UIModule {
             }
         };
         
-        updateTime();
-        setInterval(updateTime, 1000);
+        updateFullDateTime();
+        setInterval(updateFullDateTime, 1000);
     }
     
     setupOfflineIndicator() {
@@ -593,6 +777,7 @@ class UIModule {
         const updateOnlineStatus = () => {
             if (navigator.onLine) {
                 indicator.style.display = 'none';
+                this.showToast('You are back online!', 'success', 2000);
             } else {
                 indicator.style.display = 'block';
                 this.showToast('You are offline. Some features may be limited.', 'warning');
@@ -643,6 +828,14 @@ class UIModule {
             selectedTab.classList.add('active');
         }
         
+        // Update navigation links
+        this.navLinks.forEach(link => {
+            link.classList.remove('active');
+            if (link.getAttribute('data-tab') === tabId) {
+                link.classList.add('active');
+            }
+        });
+        
         // Update current tab
         this.currentTab = tabId;
     }
@@ -657,7 +850,8 @@ window.closeMenu = () => ui.closeMenu();
 window.showTab = (tabId) => ui.showTab(tabId);
 window.showToast = (message, type, duration) => ui.showToast(message, type, duration);
 window.logout = () => ui.logout();
-window.forceShowTab = (tabId) => ui.forceShowTab(tabId); // New emergency function
+window.forceShowTab = (tabId) => ui.forceShowTab(tabId);
+window.refreshDashboard = () => ui.refreshDashboard();
 
 // Add cleanup function
 window.addEventListener('DOMContentLoaded', function() {
@@ -679,4 +873,18 @@ window.addEventListener('DOMContentLoaded', function() {
             ui.forceShowTab('dashboard');
         }
     }, 100);
+});
+
+// Event listener for profile photo updates
+window.addEventListener('profilePhotoUpdated', function(e) {
+    if (ui && ui.headerProfilePhoto && e.detail && e.detail.photoUrl) {
+        ui.headerProfilePhoto.src = e.detail.photoUrl;
+    }
+});
+
+// Event listener for user profile updates
+window.addEventListener('userProfileUpdated', function(e) {
+    if (ui && e.detail && e.detail.userProfile) {
+        ui.updateHeaderInfo(e.detail.userProfile);
+    }
 });
