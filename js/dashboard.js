@@ -1,7 +1,7 @@
-// dashboard.js - COMPLETE FIX FOR ALL METRICS
+// dashboard.js - FINAL VERSION WITH ALL FIXES
 class DashboardModule {
     constructor(supabaseClient) {
-        console.log('🚀 Initializing COMPLETE DashboardModule...');
+        console.log('🚀 Initializing FINAL DashboardModule...');
         this.sb = supabaseClient;
         this.userId = null;
         this.userProfile = null;
@@ -22,7 +22,7 @@ class DashboardModule {
         this.setupCompleteListeners();
         this.startLiveClock();
         
-        console.log('✅ COMPLETE DashboardModule initialized');
+        console.log('✅ FINAL DashboardModule initialized');
     }
     
     cacheElements() {
@@ -53,9 +53,9 @@ class DashboardModule {
     setupCompleteListeners() {
         console.log('🔧 Setting up COMPLETE listeners...');
         
-        // 1. ATTENDANCE
+        // 1. ATTENDANCE - Support BOTH old and new events
         document.addEventListener('attendanceCheckedIn', (e) => {
-            console.log('📊 Attendance check-in detected');
+            console.log('📊 Attendance check-in detected (legacy event)');
             this.loadAttendanceMetrics();
         });
         
@@ -64,10 +64,19 @@ class DashboardModule {
             this.loadAttendanceMetrics();
         });
         
-        // 2. COURSES
+        document.addEventListener('updateDashboardAttendance', () => {
+            console.log('📡 Attendance update requested');
+            this.loadAttendanceMetrics();
+        });
+        
+        // 2. COURSES - Support BOTH old and new events
         document.addEventListener('coursesUpdated', (e) => {
-            console.log('📚 Courses update detected');
-            this.loadCourseMetrics();
+            console.log('📚 Courses update detected (legacy event)');
+            if (e.detail && e.detail.courses) {
+                this.updateCoursesFromEvent(e.detail.courses);
+            } else {
+                this.loadCourseMetrics();
+            }
         });
         
         document.addEventListener('refreshCourses', () => {
@@ -108,9 +117,19 @@ class DashboardModule {
             this.loadNurseIQMetrics();
         });
         
-        // UNIVERSAL REFRESH
+        // UNIVERSAL REFRESH - Support multiple event names
         document.addEventListener('refreshDashboard', () => {
             console.log('🔄 Universal dashboard refresh requested');
+            this.refreshAllMetrics();
+        });
+        
+        document.addEventListener('fastDashboardUpdate', () => {
+            console.log('⚡ Fast dashboard update requested');
+            this.refreshAllMetrics();
+        });
+        
+        document.addEventListener('dashboardRefresh', () => {
+            console.log('📡 Dashboard refresh event');
             this.refreshAllMetrics();
         });
         
@@ -119,6 +138,14 @@ class DashboardModule {
         if (refreshBtn) {
             refreshBtn.addEventListener('click', () => this.refreshAllMetrics());
         }
+        
+        // Auto-refresh every 30 seconds
+        setInterval(() => {
+            if (this.userId) {
+                console.log('⏰ Auto-refreshing dashboard...');
+                this.refreshAllMetrics();
+            }
+        }, 30000);
     }
     
     // 🔥 COMPLETE: Initialize with user data
@@ -137,6 +164,11 @@ class DashboardModule {
         // Load ALL metrics
         await this.refreshAllMetrics();
         
+        // Dispatch event that dashboard is ready
+        document.dispatchEvent(new CustomEvent('dashboardReady', {
+            detail: { userId, timestamp: new Date().toISOString() }
+        }));
+        
         return true;
     }
     
@@ -145,9 +177,7 @@ class DashboardModule {
         console.log('🔄 Refreshing ALL dashboard metrics...');
         
         // Show loading indicator
-        if (this.elements.attendanceRate) {
-            this.elements.attendanceRate.textContent = '...';
-        }
+        this.showLoadingStates();
         
         // Load ALL metrics in parallel
         await Promise.allSettled([
@@ -199,22 +229,26 @@ class DashboardModule {
             this.cache.attendance.lastUpdated = Date.now();
             
             // Update UI
-            if (this.elements.attendanceRate) {
-                this.elements.attendanceRate.textContent = `${attendanceRate}%`;
-                this.elements.attendanceRate.style.color = 
-                    attendanceRate >= 80 ? '#10B981' : 
-                    attendanceRate >= 60 ? '#F59E0B' : '#EF4444';
-            }
-            
-            if (this.elements.verifiedCount) this.elements.verifiedCount.textContent = verifiedCount;
-            if (this.elements.totalCount) this.elements.totalCount.textContent = totalLogs;
-            if (this.elements.pendingCount) this.elements.pendingCount.textContent = pendingCount;
+            this.updateAttendanceUI(attendanceRate, verifiedCount, totalLogs, pendingCount);
             
             console.log(`✅ Attendance: ${attendanceRate}% (${verifiedCount}/${totalLogs})`);
             
         } catch (error) {
             console.error('❌ Error loading attendance:', error);
         }
+    }
+    
+    updateAttendanceUI(rate, verified, total, pending) {
+        if (this.elements.attendanceRate) {
+            this.elements.attendanceRate.textContent = `${rate}%`;
+            this.elements.attendanceRate.style.color = 
+                rate >= 80 ? '#10B981' : 
+                rate >= 60 ? '#F59E0B' : '#EF4444';
+        }
+        
+        if (this.elements.verifiedCount) this.elements.verifiedCount.textContent = verified;
+        if (this.elements.totalCount) this.elements.totalCount.textContent = total;
+        if (this.elements.pendingCount) this.elements.pendingCount.textContent = pending;
     }
     
     // 2. COURSES METRICS
@@ -255,6 +289,21 @@ class DashboardModule {
         } catch (error) {
             console.error('❌ Error loading courses:', error);
         }
+    }
+    
+    // Helper for legacy events
+    updateCoursesFromEvent(courses) {
+        const activeCount = courses.filter(c => 
+            c.status === 'Active' || !c.status
+        ).length;
+        
+        if (this.elements.activeCourses) {
+            this.elements.activeCourses.textContent = activeCount;
+        }
+        
+        // Update cache
+        this.cache.courses.data = { activeCount };
+        this.cache.courses.lastUpdated = Date.now();
     }
     
     // 3. EXAMS METRICS
@@ -463,6 +512,17 @@ class DashboardModule {
                 this.refreshAllMetrics();
         }
     }
+    
+    // Update user profile
+    updateUserProfile(userProfile) {
+        console.log('👤 Updating user profile in dashboard');
+        this.userProfile = userProfile;
+        
+        // Refresh metrics that depend on user profile
+        this.loadCourseMetrics();
+        this.loadExamMetrics();
+        this.loadResourceMetrics();
+    }
 }
 
 // Create global instance
@@ -470,7 +530,10 @@ let dashboardModule = null;
 
 // Initialize dashboard module
 function initDashboardModule(supabaseClient) {
-    if (!supabaseClient) return null;
+    if (!supabaseClient) {
+        console.error('❌ No Supabase client provided to dashboard');
+        return null;
+    }
     
     dashboardModule = new DashboardModule(supabaseClient);
     return dashboardModule;
@@ -484,13 +547,65 @@ window.initDashboardModule = initDashboardModule;
 window.refreshDashboard = () => {
     if (dashboardModule) {
         dashboardModule.refreshAllMetrics();
+    } else {
+        console.warn('⚠️ Dashboard module not initialized');
+        document.dispatchEvent(new CustomEvent('refreshDashboard'));
     }
 };
 
 window.refreshDashboardMetric = (metric) => {
     if (dashboardModule) {
         dashboardModule.refreshMetric(metric);
+    } else {
+        console.warn('⚠️ Dashboard module not initialized');
     }
 };
 
-console.log('✅ COMPLETE Dashboard module loaded for ALL metrics');
+window.updateDashboardProfile = (userProfile) => {
+    if (dashboardModule) {
+        dashboardModule.updateUserProfile(userProfile);
+    }
+};
+
+// Auto-initialize when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('📱 DOM ready, checking dashboard initialization...');
+    
+    // Check if dashboard elements exist
+    const hasDashboardElements = document.getElementById('dashboard-attendance-rate') || 
+                                 document.getElementById('dashboard');
+    
+    if (hasDashboardElements) {
+        console.log('✅ Dashboard elements found');
+        
+        // Initialize when Supabase is available
+        const initDashboard = () => {
+            if (window.sb && !dashboardModule) {
+                console.log('🎯 Initializing dashboard module...');
+                initDashboardModule(window.sb);
+                
+                // If user data is already available, load it
+                if (window.currentUserProfile && window.currentUserId) {
+                    console.log('👤 Found existing user data, loading dashboard...');
+                    setTimeout(() => {
+                        if (dashboardModule) {
+                            dashboardModule.initialize(
+                                window.currentUserId, 
+                                window.currentUserProfile
+                            );
+                        }
+                    }, 1000);
+                }
+            }
+        };
+        
+        // Try immediately
+        initDashboard();
+        
+        // Also try after delays
+        setTimeout(initDashboard, 2000);
+        setTimeout(initDashboard, 5000);
+    }
+});
+
+console.log('✅ FINAL Dashboard module loaded - Ready for all metrics!');
