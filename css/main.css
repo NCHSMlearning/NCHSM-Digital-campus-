@@ -609,26 +609,169 @@ textarea {
         opacity: 1;
         transform: translateY(0);
     }
+}
+/* ========== NEW HEADER STYLES ========== */
+/* Add this to css/main.css */
 
-/* TEMPORARY FIX - Add to bottom of main.css */
 .main-header {
-    display: flex !important;
-    justify-content: space-between !important;
-    padding: 0.75rem 2rem !important;
-    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%) !important;
-    color: white !important;
-    height: 70px !important;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 2rem;
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    height: 70px;
 }
 
+/* Logo section */
 .header-left {
-    flex: 1 !important;
-    max-width: 400px !important;
+    flex: 1;
 }
 
-/* Hide quick stats if they exist */
-.header-center,
-.quick-stats,
-.stat-item {
+.logo-container {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.header-logo {
+    height: 50px;
+    width: auto;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+}
+
+.header-titles {
+    display: flex;
+    flex-direction: column;
+}
+
+.main-title {
+    font-size: 1.8rem;
+    font-weight: 800;
+    margin: 0;
+    letter-spacing: 1px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.subtitle {
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin: 0;
+    opacity: 0.9;
+    letter-spacing: 0.5px;
+}
+
+/* User profile section */
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+/* Profile dropdown */
+.user-profile-dropdown {
+    position: relative;
+}
+
+.profile-trigger {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 15px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.profile-avatar.round {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    object-fit: cover;
+}
+
+.profile-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.profile-name {
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.profile-role {
+    font-size: 0.8rem;
+    opacity: 0.8;
+}
+
+/* Time display */
+.current-time {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 8px 15px;
+    border-radius: 25px;
+    font-size: 0.9rem;
+}
+
+/* Header buttons */
+.header-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.icon-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: white;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.icon-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+}
+
+/* Remove mobile header since we have a proper header now */
+.mobile-header {
     display: none !important;
 }
+
+/* Adjust main container to account for fixed header */
+.container {
+    min-height: calc(100vh - 70px);
+    margin-top: 70px;
+}
+
+/* Fix sidebar position */
+.sidebar {
+    top: 70px !important;
+    height: calc(100vh - 70px) !important;
+}
+
+/* Make sure main content doesn't overlap header */
+.main {
+    margin-top: 0;
+    padding-top: 20px;
+}
+
+/* Hide any old mobile header elements */
+.header-title-container,
+.header-profile-photo {
+    display: none !important;
 }
