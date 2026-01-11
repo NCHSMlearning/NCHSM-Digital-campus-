@@ -1,9 +1,9 @@
-// dashboard.js - REAL FINAL VERSION (BASED ON OUR CONSOLE FIXES)
+// dashboard.js - COMPLETE FIXED VERSION
 class DashboardModule {
     constructor(supabaseClient) {
-        console.log('🚀 Initializing DashboardModule (Real Final)...');
+        console.log('🚀 Initializing DashboardModule (Fixed Version)...');
         
-        // 🔥 ACTUAL FIX FROM CONSOLE: Get Supabase from window.db.supabase
+        // Get Supabase from window.db.supabase
         this.sb = supabaseClient || window.sb || window.db?.supabase;
         
         if (!this.sb) {
@@ -11,7 +11,7 @@ class DashboardModule {
             console.log('   Available: window.db.supabase =', !!window.db?.supabase);
             console.log('   Available: window.sb =', !!window.sb);
             
-            // 🔥 ACTUAL FIX FROM CONSOLE: Try to auto-fix
+            // Try to auto-fix
             if (window.db?.supabase && !window.sb) {
                 console.log('🔧 Auto-fixing: Setting window.sb = window.db.supabase');
                 window.sb = window.db.supabase;
@@ -23,6 +23,7 @@ class DashboardModule {
         
         this.userId = null;
         this.userProfile = null;
+        this.cachedCourses = []; // 🔥 NEW: Cache courses data
         
         // Cache elements
         this.cacheElements();
@@ -66,16 +67,43 @@ class DashboardModule {
     setupEventListeners() {
         console.log('🔧 Setting up dashboard event listeners...');
         
-        // 🔥 FROM CONSOLE: This event updates attendance
+        // 🔥 ENHANCED: Listen for attendance events
         document.addEventListener('attendanceCheckedIn', () => {
             console.log('📊 Dashboard: attendanceCheckedIn event received');
             this.loadAttendanceMetrics();
         });
         
-        // 🔥 FROM CONSOLE: This event updates courses
+        // 🔥 CRITICAL FIX: Enhanced coursesUpdated listener
         document.addEventListener('coursesUpdated', (e) => {
-            console.log('📚 Dashboard: coursesUpdated event received');
-            this.loadCourseMetrics();
+            console.log('📚 Dashboard: coursesUpdated event received with data:', e.detail);
+            
+            // 🔥 USE THE COURSES DATA FROM COURSES.JS
+            if (e.detail && e.detail.activeCount !== undefined) {
+                this.cachedCourses = e.detail.courses || [];
+                
+                // Update dashboard count directly from courses.js data
+                if (this.elements.activeCourses) {
+                    this.elements.activeCourses.textContent = e.detail.activeCount;
+                }
+                
+                console.log(`✅ Courses updated from event: ${e.detail.activeCount} active (matches courses.js)`);
+                
+                // 🔥 ALSO UPDATE OTHER COURSE-RELATED METRICS
+                this.updateCourseBasedMetrics();
+            } else {
+                // Fallback to query
+                console.log('⚠️ No detail in event, falling back to query');
+                this.loadCourseMetrics();
+            }
+        });
+        
+        // 🔥 NEW: Listen for courses module initialization
+        document.addEventListener('coursesModuleReady', () => {
+            console.log('📚 Dashboard: coursesModuleReady event received');
+            // Force a sync with courses module
+            if (window.coursesModule) {
+                this.syncWithCoursesModule();
+            }
         });
         
         // Refresh button
@@ -84,7 +112,16 @@ class DashboardModule {
             refreshBtn.addEventListener('click', () => this.refreshDashboard());
         }
         
-        // Auto-refresh every 30 seconds (like we set in console)
+        // Manual refresh for debugging
+        const debugBtn = document.getElementById('debugDashboardBtn');
+        if (debugBtn) {
+            debugBtn.addEventListener('click', () => {
+                console.log('🔍 DEBUG: Manual dashboard refresh');
+                this.debugMetrics();
+            });
+        }
+        
+        // Auto-refresh every 30 seconds
         setInterval(() => {
             if (this.userId) {
                 console.log('⏰ Auto-refreshing dashboard...');
@@ -104,11 +141,16 @@ class DashboardModule {
             return false;
         }
         
-        // Show loading states (shows ... instead of --%)
+        // Show loading states
         this.showLoadingStates();
         
         // Load all dashboard data
         await this.loadDashboard();
+        
+        // 🔥 NEW: Try to sync with courses module if available
+        setTimeout(() => {
+            this.syncWithCoursesModule();
+        }, 1000);
         
         return true;
     }
@@ -117,13 +159,13 @@ class DashboardModule {
         console.log('📊 Loading complete dashboard data...');
         
         try {
-            // Load in parallel (like we tested in console)
+            // Load in parallel
             await Promise.allSettled([
                 this.loadWelcomeDetails(),
                 this.loadStudentMessage(),
                 this.loadLatestOfficialAnnouncement(),
                 this.loadAttendanceMetrics(),
-                this.loadCourseMetrics(),
+                this.loadCourseMetrics(), // Will use cached data if available
                 this.loadExamMetrics(),
                 this.loadResourceMetrics(),
                 this.loadNurseIQMetrics()
@@ -137,7 +179,7 @@ class DashboardModule {
         }
     }
     
-    // 🔥 FROM CONSOLE: This fixed attendance showing 36%
+    // 🔥 UPDATED: This fixed attendance showing 36%
     async loadAttendanceMetrics() {
         console.log('📊 Loading attendance metrics...');
         
@@ -159,7 +201,6 @@ class DashboardModule {
                 return;
             }
             
-            // 🔥 THIS IS WHAT WE SAW IN CONSOLE: 4 verified out of 11 = 36%
             const totalLogs = logs?.length || 0;
             const verifiedCount = logs?.filter(l => l.is_verified === true).length || 0;
             const pendingCount = logs?.filter(l => !l.is_verified).length || 0;
@@ -185,10 +226,37 @@ class DashboardModule {
         }
     }
     
-    // 🔥 FROM CONSOLE: This fixed courses showing 12
+    // 🔥 COMPLETELY REWRITTEN: This now matches courses.js logic exactly
     async loadCourseMetrics() {
         console.log('📚 Loading course metrics...');
         
+        // 🔥 FIRST: Try to get data from courses.js module
+        if (window.coursesModule && window.coursesModule.getActiveCourseCount) {
+            const activeCount = window.coursesModule.getActiveCourseCount();
+            console.log(`📚 Got active courses from coursesModule: ${activeCount}`);
+            
+            if (this.elements.activeCourses) {
+                this.elements.activeCourses.textContent = activeCount;
+            }
+            return;
+        }
+        
+        // 🔥 SECOND: Try to use cached data from coursesUpdated event
+        if (this.cachedCourses.length > 0) {
+            const activeCount = this.cachedCourses.filter(course => {
+                const isCompleted = course.status === 'Completed' || course.status === 'Passed';
+                return !isCompleted && course.status !== 'Completed';
+            }).length;
+            
+            console.log(`📚 Using cached courses: ${activeCount} active`);
+            
+            if (this.elements.activeCourses) {
+                this.elements.activeCourses.textContent = activeCount;
+            }
+            return;
+        }
+        
+        // 🔥 THIRD: Fallback to query (using EXACT same logic as courses.js)
         if (!this.userProfile || !this.sb) {
             console.warn('⚠️ Cannot load courses: No user profile or Supabase');
             this.showErrorState('courses');
@@ -196,12 +264,35 @@ class DashboardModule {
         }
         
         try {
-            const { data: courses, error } = await this.sb
+            const program = this.userProfile.program || 'KRCHN';
+            const intakeYear = this.userProfile.intake_year || 2025;
+            const block = this.userProfile.block || 'A';
+            const term = this.userProfile.term || 'Term 1';
+            
+            console.log('🎯 Loading courses for:', { program, intakeYear, block, term });
+            
+            // 🔥 EXACT SAME QUERY LOGIC AS COURSES.JS
+            let query = this.sb
                 .from('courses')
-                .select('id, status')
-                .or(`target_program.eq.${this.userProfile.program},target_program.is.null`)
-                .eq('intake_year', this.userProfile.intake_year)
-                .eq('status', 'Active');
+                .select('*')
+                .eq('intake_year', intakeYear)
+                .order('course_name', { ascending: true });
+            
+            const isTVET = this.isTVETProgram(program);
+            
+            if (isTVET) {
+                // TVET filtering
+                query = query
+                    .eq('target_program', program)
+                    .or(`block.eq.${term},block.eq.General,block.is.null`);
+            } else {
+                // KRCHN filtering
+                query = query
+                    .or(`target_program.eq.${program},target_program.eq.General`)
+                    .or(`block.eq.${block},block.is.null,block.eq.General`);
+            }
+            
+            const { data: courses, error } = await query;
             
             if (error) {
                 console.error('❌ Courses query error:', error);
@@ -209,18 +300,35 @@ class DashboardModule {
                 return;
             }
             
-            const activeCount = courses?.length || 0;
+            // 🔥 EXACT SAME FILTERING LOGIC AS COURSES.JS
+            const activeCourses = courses?.filter(course => {
+                const isCompleted = course.status === 'Completed' || course.status === 'Passed';
+                return !isCompleted && course.status !== 'Completed';
+            }) || [];
+            
+            const activeCount = activeCourses.length;
             
             if (this.elements.activeCourses) {
                 this.elements.activeCourses.textContent = activeCount;
             }
             
-            console.log(`✅ Courses: ${activeCount} active`);
+            console.log(`✅ Courses: ${activeCount} active (using courses.js logic)`);
+            
+            // 🔥 DEBUG: Show what courses are being counted
+            this.debugCourseCounts(courses, activeCourses);
             
         } catch (error) {
             console.error('❌ Error loading courses:', error);
             this.showErrorState('courses');
         }
+    }
+    
+    // 🔥 NEW: Helper method matching courses.js
+    isTVETProgram(program) {
+        if (!program) return false;
+        const tvetPrograms = ['TVET', 'TVET NURSING', 'TVET NURSING(A)', 'TVET NURSING(B)', 
+                            'CRAFT CERTIFICATE', 'ARTISAN', 'DIPLOMA IN TVET'];
+        return tvetPrograms.some(tvet => program.toUpperCase().includes(tvet));
     }
     
     async loadExamMetrics() {
@@ -431,6 +539,88 @@ class DashboardModule {
         }
     }
     
+    // 🔥 NEW: Sync directly with courses module
+    syncWithCoursesModule() {
+        console.log('🔄 Syncing dashboard with courses module...');
+        
+        if (window.coursesModule) {
+            // Get the active course count directly from courses module
+            const activeCount = window.coursesModule.getActiveCourseCount 
+                ? window.coursesModule.getActiveCourseCount() 
+                : 0;
+            
+            if (this.elements.activeCourses) {
+                this.elements.activeCourses.textContent = activeCount;
+            }
+            
+            console.log(`✅ Synced: ${activeCount} active courses from coursesModule`);
+            
+            // If courses module has all courses, cache them
+            if (window.coursesModule.getAllCourses) {
+                this.cachedCourses = window.coursesModule.getAllCourses();
+            }
+            
+            // Trigger an update to ensure consistency
+            this.triggerMetricsUpdate();
+            
+        } else {
+            console.log('⚠️ coursesModule not available yet, will retry...');
+            setTimeout(() => this.syncWithCoursesModule(), 2000);
+        }
+    }
+    
+    // 🔥 NEW: Update other metrics that depend on courses
+    updateCourseBasedMetrics() {
+        if (this.cachedCourses.length > 0) {
+            // Update any other metrics that might use course data
+            console.log(`📊 Course-based metrics updated with ${this.cachedCourses.length} courses`);
+        }
+    }
+    
+    // 🔥 NEW: Debug function to see what's happening
+    debugMetrics() {
+        console.group('🔍 DASHBOARD METRICS DEBUG');
+        console.log('User Profile:', this.userProfile);
+        console.log('Cached Courses:', this.cachedCourses.length);
+        console.log('Active Courses Element:', this.elements.activeCourses?.textContent);
+        
+        if (window.coursesModule) {
+            console.log('coursesModule active count:', window.coursesModule.getActiveCourseCount ? window.coursesModule.getActiveCourseCount() : 'N/A');
+            console.log('coursesModule all courses:', window.coursesModule.getAllCourses ? window.coursesModule.getAllCourses().length : 'N/A');
+        }
+        
+        console.groupEnd();
+    }
+    
+    // 🔥 NEW: Debug course counts
+    debugCourseCounts(allCourses, activeCourses) {
+        console.group('🔍 COURSE COUNT DEBUG');
+        console.log('Total courses found:', allCourses?.length || 0);
+        console.log('Active courses filtered:', activeCourses?.length || 0);
+        
+        if (allCourses && allCourses.length > 0) {
+            console.log('Course status breakdown:');
+            allCourses.forEach(course => {
+                const isCompleted = course.status === 'Completed' || course.status === 'Passed';
+                const isActive = !isCompleted && course.status !== 'Completed';
+                console.log(`  ${course.unit_code || course.id}: status="${course.status}", completed=${isCompleted}, active=${isActive}`);
+            });
+        }
+        
+        console.groupEnd();
+    }
+    
+    // 🔥 NEW: Trigger metrics update
+    triggerMetricsUpdate() {
+        const event = new CustomEvent('dashboardMetricsUpdated', {
+            detail: {
+                activeCourses: this.elements.activeCourses?.textContent,
+                timestamp: new Date().toISOString()
+            }
+        });
+        document.dispatchEvent(event);
+    }
+    
     showLoadingStates() {
         // Show loading for all stats
         if (this.elements.attendanceRate) this.elements.attendanceRate.textContent = '...';
@@ -453,6 +643,9 @@ class DashboardModule {
     showErrorStates() {
         // Show error states
         if (this.elements.attendanceRate) this.elements.attendanceRate.textContent = '--%';
+        if (this.elements.verifiedCount) this.elements.verifiedCount.textContent = '--';
+        if (this.elements.totalCount) this.elements.totalCount.textContent = '--';
+        if (this.elements.pendingCount) this.elements.pendingCount.textContent = '--';
         if (this.elements.upcomingExam) this.elements.upcomingExam.textContent = 'Error';
         if (this.elements.activeCourses) this.elements.activeCourses.textContent = '0';
         if (this.elements.newResources) this.elements.newResources.textContent = '0';
@@ -465,6 +658,9 @@ class DashboardModule {
         switch(metric) {
             case 'attendance':
                 if (this.elements.attendanceRate) this.elements.attendanceRate.textContent = '--%';
+                if (this.elements.verifiedCount) this.elements.verifiedCount.textContent = '--';
+                if (this.elements.totalCount) this.elements.totalCount.textContent = '--';
+                if (this.elements.pendingCount) this.elements.pendingCount.textContent = '--';
                 break;
             case 'courses':
                 if (this.elements.activeCourses) this.elements.activeCourses.textContent = '0';
@@ -512,7 +708,7 @@ class DashboardModule {
         
         await Promise.allSettled([
             this.loadAttendanceMetrics(),
-            this.loadCourseMetrics(),
+            this.loadCourseMetrics(), // Will use cached/synced data first
             this.loadExamMetrics(),
             this.loadResourceMetrics(),
             this.loadNurseIQMetrics()
@@ -551,6 +747,24 @@ function initDashboardModule(supabaseClient) {
     return dashboardModule;
 }
 
+// 🔥 NEW: Global sync function
+window.syncDashboardCourses = () => {
+    if (dashboardModule) {
+        dashboardModule.syncWithCoursesModule();
+    } else if (window.coursesModule) {
+        // Force dashboard to match courses module
+        const activeCount = window.coursesModule.getActiveCourseCount 
+            ? window.coursesModule.getActiveCourseCount() 
+            : 0;
+        
+        const activeElement = document.getElementById('dashboard-active-courses');
+        if (activeElement) {
+            activeElement.textContent = activeCount;
+        }
+        console.log(`✅ Manual sync: Dashboard courses = ${activeCount}`);
+    }
+};
+
 // Global functions
 window.DashboardModule = DashboardModule;
 window.initDashboardModule = initDashboardModule;
@@ -586,15 +800,29 @@ document.addEventListener('DOMContentLoaded', function() {
                         window.currentUserId,
                         window.currentUserProfile
                     );
+                    
+                    // 🔥 NEW: Dispatch ready event
+                    setTimeout(() => {
+                        const event = new CustomEvent('dashboardReady');
+                        document.dispatchEvent(event);
+                    }, 500);
+                }
+            } else {
+                // If courses module loads first, sync with it
+                if (window.coursesModule && !dashboardModule) {
+                    console.log('📚 Courses module loaded first, syncing when dashboard ready');
                 }
             }
         };
         
-        // Try multiple times (like we did in console)
+        // Try multiple times
         tryInit();
         setTimeout(tryInit, 1000);
         setTimeout(tryInit, 3000);
+        
+        // 🔥 NEW: Also sync when courses module is ready
+        document.addEventListener('coursesModuleReady', tryInit);
     }
 });
 
-console.log('✅ REAL FINAL Dashboard module loaded (based on console fixes)');
+console.log('✅ COMPLETE FIXED Dashboard module loaded (synchronized with courses.js)');
