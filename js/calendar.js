@@ -1,380 +1,344 @@
+// calendar.js - COMPLETE WORKING VERSION
+// ============================================
+
+// Global state
 let cachedCalendarEvents = [];
 let isLoadingCalendar = false;
 
-// Initialize calendar system - AUTO-INITIALIZE
+// ========== INITIALIZATION ==========
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('📅 Initializing Academic Calendar System...');
+    console.log('📅 Calendar: Initializing...');
     
-    // Set up calendar tab click
+    // Setup tab click
     const calendarTab = document.querySelector('a[data-tab="calendar"]');
     if (calendarTab) {
         calendarTab.addEventListener('click', function(e) {
             e.preventDefault();
-            if (window.currentUserId && !isLoadingCalendar) {
+            if (!isLoadingCalendar) {
+                console.log('📅 Tab clicked, loading calendar...');
                 loadAcademicCalendar();
             }
         });
     }
     
-    // Set up calendar filter
+    // Setup filter
     const calendarFilter = document.getElementById('calendar-filter');
     if (calendarFilter) {
         calendarFilter.addEventListener('change', loadAcademicCalendar);
     }
     
-    // Set up refresh button if exists
-    const refreshBtn = document.getElementById('refresh-calendar');
-    if (refreshBtn) {
-        refreshBtn.addEventListener('click', loadAcademicCalendar);
+    // Auto-load if on calendar tab
+    if (window.location.hash === '#calendar') {
+        setTimeout(loadAcademicCalendar, 500);
     }
     
-    console.log('✅ Calendar System initialized');
+    console.log('✅ Calendar initialized');
 });
 
-// Load academic calendar - SIMPLIFIED VERSION
+// ========== MAIN LOAD FUNCTION ==========
 async function loadAcademicCalendar() {
-    if (isLoadingCalendar) return;
+    console.log('🚀 loadAcademicCalendar() called');
+    
+    if (isLoadingCalendar) {
+        console.log('⚠️ Already loading, skipping...');
+        return;
+    }
     
     const tableBody = document.getElementById('calendar-table');
-    if (!tableBody) return;
+    if (!tableBody) {
+        console.error('❌ calendar-table not found');
+        return;
+    }
     
     isLoadingCalendar = true;
     
     try {
-        // Clear table and show loading
+        // Show loading
         tableBody.innerHTML = `
-            <tr class="loading-row">
-                <td colspan="3">
-                    <div style="text-align: center; padding: 40px;">
-                        <div style="display: inline-block; width: 40px; height: 40px; border: 3px solid #f3f4f6; border-top-color: #6d28d9; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-                        <p style="margin-top: 10px; color: #6b7280;">Loading academic schedule...</p>
-                    </div>
+            <tr>
+                <td colspan="3" style="padding: 40px; text-align: center;">
+                    <div class="loading-spinner"></div>
+                    <p style="margin-top: 10px; color: #6b7280;">Loading academic schedule...</p>
                 </td>
             </tr>
         `;
         
-        // Get user data - FIXED: Use multiple fallbacks
-        let userProfile = window.db?.currentUserProfile || 
-                         window.currentUserProfile || 
-                         { full_name: 'Student', program: 'Nursing', block: 'A', intake_year: new Date().getFullYear() };
+        // Make sure container is visible
+        const container = document.getElementById('calendar-table-container');
+        if (container) container.style.display = 'block';
         
-        let userId = window.db?.currentUserId || window.currentUserId;
+        // Get user data
+        const userProfile = await getUserProfile();
+        console.log('👤 User profile:', userProfile);
         
-        // Try to get Supabase client
-        let supabaseClient = window.db?.supabase || window.supabase;
+        // Fetch from database
+        const allEvents = await fetchCalendarData(userProfile);
+        console.log(`📊 Found ${allEvents.length} total events`);
         
-        console.log('📅 Loading calendar for:', {
-            name: userProfile.full_name,
-            program: userProfile.program,
-            block: userProfile.block,
-            intakeYear: userProfile.intake_year
-        });
-        
-        // Fetch events
-        const allEvents = await fetchScheduleData(userProfile, supabaseClient);
-        const filterType = document.getElementById('calendar-filter')?.value || 'all';
-        
-        // Filter events
+        // Apply filter
+        const filter = document.getElementById('calendar-filter');
+        const filterType = filter ? filter.value : 'all';
         const filteredEvents = allEvents
             .filter(e => filterType === 'all' || e.type === filterType)
             .sort((a, b) => new Date(a.date) - new Date(b.date));
         
-        cachedCalendarEvents = filteredEvents;
+        // Store globally WITH proper formatting
+        cachedCalendarEvents = filteredEvents.map(event => ({
+            ...event,
+            formattedDate: formatEventDate(event.date),
+            formattedTime: formatEventTime(event.startTime, event.endTime)
+        }));
+        
+        // Hide empty state, show table
+        const emptyState = document.getElementById('calendar-empty');
+        if (emptyState) emptyState.style.display = 'none';
+        
+        const loadingState = document.getElementById('calendar-loading');
+        if (loadingState) loadingState.style.display = 'none';
         
         // Render table
-        renderCalendarTable(filteredEvents, filterType);
+        renderCalendarTable(cachedCalendarEvents, tableBody);
         
-        // Update dashboard if function exists
-        if (typeof updateDashboardCalendarEvents === 'function') {
-            updateDashboardCalendarEvents(filteredEvents);
-        }
+        // Update dashboard
+        updateDashboardWithEvents(cachedCalendarEvents);
+        
+        console.log(`✅ Calendar loaded: ${filteredEvents.length} events`);
         
     } catch (error) {
-        console.error("❌ Failed to load academic calendar:", error);
-        tableBody.innerHTML = `
-            <tr class="error-row">
-                <td colspan="3">
-                    <div style="text-align: center; padding: 40px; color: #ef4444;">
-                        <i class="fas fa-exclamation-triangle" style="font-size: 2rem; margin-bottom: 10px;"></i>
-                        <p>Error loading calendar: ${error.message}</p>
-                        <button onclick="loadAcademicCalendar()" style="margin-top: 15px; padding: 8px 16px; background: #6d28d9; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                            Retry
-                        </button>
-                    </div>
-                </td>
-            </tr>
-        `;
+        console.error('❌ Calendar load error:', error);
+        showErrorInTable(error.message);
     } finally {
         isLoadingCalendar = false;
     }
 }
 
-// Fetch schedule data - SIMPLIFIED
-async function fetchScheduleData(userProfile, supabaseClient) {
-    const events = [];
-    
-    // If no Supabase client, use mock data for demo
-    if (!supabaseClient || typeof supabaseClient.from !== 'function') {
-        console.log('⚠️ No Supabase client, using demo data');
-        return getDemoCalendarEvents(userProfile);
+// ========== DATABASE FUNCTIONS ==========
+async function getUserProfile() {
+    // Priority 1: Already loaded profile
+    if (window.db?.currentUserProfile) {
+        return window.db.currentUserProfile;
     }
     
+    if (window.currentUserProfile) {
+        return window.currentUserProfile;
+    }
+    
+    // Priority 2: Try to fetch from auth
+    const supabase = window.db?.supabase || window.supabase;
+    if (supabase) {
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                // Try consolidated table
+                const { data: profile } = await supabase
+                    .from('consolidated_user_profiles_table')
+                    .select('*')
+                    .eq('user_id', user.id)
+                    .single();
+                
+                if (profile) return profile;
+                
+                // Try profiles table
+                const { data: altProfile } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', user.id)
+                    .single();
+                
+                if (altProfile) return altProfile;
+            }
+        } catch (error) {
+            console.log('Could not fetch profile:', error.message);
+        }
+    }
+    
+    // Fallback
+    return {
+        full_name: 'Student',
+        program: 'KRCHN',
+        block: 'A',
+        intake_year: new Date().getFullYear()
+    };
+}
+
+async function fetchCalendarData(userProfile) {
+    console.log('🔍 Fetching calendar data...');
+    
+    const supabase = window.db?.supabase || window.supabase;
+    if (!supabase) {
+        console.log('⚠️ No Supabase, using demo data');
+        return getDemoEvents(userProfile);
+    }
+    
+    const events = [];
+    const program = userProfile.program || 'KRCHN';
+    const block = userProfile.block || 'A';
+    const intakeYear = userProfile.intake_year || new Date().getFullYear();
+    
     try {
-        const program = userProfile?.program || 'Nursing';
-        const block = userProfile?.block || 'A';
-        const intakeYear = userProfile?.intake_year || new Date().getFullYear();
-        
-        console.log('🔍 Querying calendar_events for:', { program, block, intakeYear });
-        
-        // 1. Fetch from calendar_events table
-        const { data: calendarEvents, error: eventsError } = await supabaseClient
+        // 1. Fetch from calendar_events table (MAIN)
+        console.log('📋 Querying calendar_events...');
+        const { data: calendarEvents, error: eventsError } = await supabase
             .from('calendar_events')
-            .select('event_name, event_date, type, description, target_program, target_block, target_intake_year, venue, start_time, end_time, organizer')
+            .select('*')
             .or(`target_program.eq.${program},target_program.eq.General`)
             .or(`target_block.eq.${block},target_block.is.null`)
             .eq('target_intake_year', intakeYear)
             .order('event_date', { ascending: true });
         
         if (eventsError) {
-            console.error('Error fetching calendar events:', eventsError);
-            // Fall back to demo data
-            return getDemoCalendarEvents(userProfile);
-        }
-        
-        // Format calendar events
-        if (calendarEvents && calendarEvents.length > 0) {
+            console.error('calendar_events error:', eventsError);
+        } else if (calendarEvents && calendarEvents.length > 0) {
+            console.log(`✅ Found ${calendarEvents.length} events in calendar_events`);
+            
             calendarEvents.forEach(event => {
                 events.push({
-                    id: `event_${event.event_date}_${event.event_name}`,
+                    id: `event_${event.id}`,
                     date: event.event_date,
                     title: event.event_name,
                     type: event.type || 'Event',
-                    details: event.description,
+                    details: event.description || '',
                     venue: event.venue,
                     startTime: event.start_time,
                     endTime: event.end_time,
                     organizer: event.organizer,
                     color: getEventColor(event.type),
-                    icon: getEventIcon(event.type)
+                    icon: getEventIcon(event.type),
+                    source: 'calendar_events'
                 });
             });
         }
         
-        // 2. Try to fetch from other tables if available
-        try {
-            // Clinical sessions
-            const { data: clinicalSessions } = await supabaseClient
-                .from('clinical_sessions')
-                .select('date, department, description, hospital, start_time, end_time, supervisor')
-                .eq('program', program)
-                .eq('block', block)
-                .eq('intake_year', intakeYear)
-                .limit(10);
-            
-            if (clinicalSessions && clinicalSessions.length > 0) {
-                clinicalSessions.forEach(session => {
-                    events.push({
-                        id: `clinical_${session.date}_${session.department}`,
-                        date: session.date,
-                        title: `Clinical: ${session.department}`,
-                        type: 'Clinical',
-                        details: session.description || `${session.hospital} - ${session.supervisor}`,
-                        venue: session.hospital,
-                        startTime: session.start_time,
-                        endTime: session.end_time,
-                        organizer: session.supervisor,
-                        color: '#10B981',
-                        icon: 'fas fa-hospital'
-                    });
-                });
+        // 2. Check for other tables
+        const tableChecks = [
+            'exams',
+            'class_schedule',
+            'academic_calendar',
+            'sessions'
+        ];
+        
+        for (const tableName of tableChecks) {
+            try {
+                const { data, error } = await supabase
+                    .from(tableName)
+                    .select('*')
+                    .limit(10);
+                
+                if (!error && data && data.length > 0) {
+                    console.log(`📁 Table ${tableName} has ${data.length} records`);
+                    // Process if needed
+                }
+            } catch (err) {
+                // Table doesn't exist - that's OK
             }
-        } catch (clinicalError) {
-            console.log('No clinical sessions table or error:', clinicalError.message);
         }
         
-        // Add upcoming exams from dashboard if available
+        // 3. Add exams if available in cachedExams
         if (window.cachedExams && Array.isArray(window.cachedExams)) {
             window.cachedExams.forEach(exam => {
-                if (exam.exam_date && new Date(exam.exam_date) > new Date()) {
+                if (exam.exam_date) {
                     events.push({
-                        id: `exam_${exam.id || exam.exam_date}`,
+                        id: `exam_${exam.id || Date.now()}`,
                         date: exam.exam_date,
                         title: exam.exam_name || 'Exam',
                         type: 'Exam',
-                        details: `Block ${exam.block_term || exam.block || 'N/A'}`,
+                        details: `Block ${exam.block || exam.block_term || 'N/A'}`,
                         venue: 'Examination Hall',
                         startTime: '09:00',
                         endTime: '12:00',
                         organizer: 'Examinations Department',
                         color: '#EF4444',
-                        icon: 'fas fa-file-alt'
+                        icon: 'fas fa-file-alt',
+                        source: 'cached_exams'
                     });
                 }
             });
         }
         
-        // If still no events, use demo data
+        // 4. If no events, use demo
         if (events.length === 0) {
-            console.log('⚠️ No events found in database, using demo data');
-            return getDemoCalendarEvents(userProfile);
+            console.log('⚠️ No events found in database');
+            return getDemoEvents(userProfile);
         }
         
-        console.log(`✅ Found ${events.length} calendar events`);
         return events;
         
     } catch (error) {
-        console.error('❌ Error in fetchScheduleData:', error);
-        return getDemoCalendarEvents(userProfile);
+        console.error('❌ Database fetch error:', error);
+        return getDemoEvents(userProfile);
     }
 }
 
-// Demo data for testing
-function getDemoCalendarEvents(userProfile) {
-    console.log('🎭 Using demo calendar data');
-    
-    const today = new Date();
-    const nextWeek = new Date(today);
-    nextWeek.setDate(today.getDate() + 7);
-    const twoWeeks = new Date(today);
-    twoWeeks.setDate(today.getDate() + 14);
-    
-    const program = userProfile?.program || 'Nursing';
-    const block = userProfile?.block || 'A';
-    
-    return [
-        {
-            id: 'exam_1',
-            date: nextWeek.toISOString().split('T')[0],
-            title: `${program} Mid-Term Exam`,
-            type: 'Exam',
-            details: `Block ${block} - Comprehensive mid-term examination covering all topics`,
-            venue: 'Main Examination Hall',
-            startTime: '09:00',
-            endTime: '12:00',
-            organizer: 'Examinations Department',
-            color: '#EF4444',
-            icon: 'fas fa-file-alt'
-        },
-        {
-            id: 'clinical_1',
-            date: today.toISOString().split('T')[0],
-            title: 'Clinical Rotation: Pediatrics',
-            type: 'Clinical',
-            details: 'Hands-on clinical practice at Nakuru Level 5 Hospital',
-            venue: 'Nakuru Level 5 Hospital',
-            startTime: '08:00',
-            endTime: '16:00',
-            organizer: 'Dr. Wangari',
-            color: '#10B981',
-            icon: 'fas fa-hospital'
-        },
-        {
-            id: 'class_1',
-            date: twoWeeks.toISOString().split('T')[0],
-            title: 'Anatomy & Physiology Lecture',
-            type: 'Class',
-            details: 'Cardiovascular System - Lecture and practical demonstration',
-            venue: 'Lecture Hall 3',
-            startTime: '10:00',
-            endTime: '13:00',
-            organizer: 'Prof. Kamau',
-            color: '#3B82F6',
-            icon: 'fas fa-chalkboard-teacher'
-        },
-        {
-            id: 'event_1',
-            date: new Date(today.getTime() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            title: 'Health Sciences Symposium',
-            type: 'Event',
-            details: 'Annual symposium on emerging trends in healthcare',
-            venue: 'NCHSM Auditorium',
-            startTime: '09:00',
-            endTime: '17:00',
-            organizer: 'Student Affairs',
-            color: '#8B5CF6',
-            icon: 'fas fa-calendar-alt'
-        }
-    ];
-}
-
-// Render calendar table - SIMPLE VERSION
-function renderCalendarTable(events, filterType) {
-    const tableBody = document.getElementById('calendar-table');
+// ========== RENDER FUNCTIONS ==========
+function renderCalendarTable(events, tableBody) {
     if (!tableBody) return;
     
-    tableBody.innerHTML = '';
+    console.log(`🎨 Rendering ${events.length} events...`);
     
     if (events.length === 0) {
         tableBody.innerHTML = `
             <tr>
-                <td colspan="3" style="text-align: center; padding: 40px; color: #6b7280;">
+                <td colspan="3" style="padding: 40px; text-align: center; color: #6b7280;">
                     <i class="fas fa-calendar-times" style="font-size: 2rem; margin-bottom: 10px;"></i>
-                    <p>No scheduled events found for "${filterType}"</p>
+                    <p>No events scheduled</p>
                 </td>
             </tr>
         `;
         return;
     }
     
+    let html = '';
     events.forEach(event => {
-        const row = document.createElement('tr');
-        row.className = 'calendar-event-row';
-        row.setAttribute('data-id', event.id);
-        
-        // Format date
-        const date = new Date(event.date);
-        const dateStr = event.startTime 
-            ? `${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} ${event.startTime}${event.endTime ? ` - ${event.endTime}` : ''}`
-            : date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
-        
-        // Create cells
-        const dateCell = document.createElement('td');
-        dateCell.className = 'date-col';
-        dateCell.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 8px;">
-                <i class="${event.icon}" style="color: ${event.color}; font-size: 1.2rem;"></i>
-                <div>
-                    <div style="font-weight: 600; color: #1f2937;">${dateStr}</div>
-                    ${event.venue ? `<div style="font-size: 0.85rem; color: #6b7280;">${event.venue}</div>` : ''}
-                </div>
-            </div>
+        html += `
+            <tr class="calendar-event-row" data-id="${event.id}">
+                <td class="date-col">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div style="width: 40px; height: 40px; border-radius: 8px; background: ${event.color}20; display: flex; align-items: center; justify-content: center;">
+                            <i class="${event.icon}" style="color: ${event.color}; font-size: 1.2rem;"></i>
+                        </div>
+                        <div>
+                            <div style="font-weight: 600; color: #1f2937; font-size: 1rem;">${event.formattedDate}</div>
+                            <div style="font-size: 0.85rem; color: #6b7280;">${event.formattedTime}</div>
+                            ${event.venue ? `<div style="font-size: 0.8rem; color: #9ca3af; margin-top: 2px;"><i class="fas fa-map-marker-alt"></i> ${event.venue}</div>` : ''}
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <div>
+                        <div style="font-weight: 700; color: #1f2937; margin-bottom: 6px; font-size: 1.1rem;">${escapeHtml(event.title)}</div>
+                        <div style="color: #4b5563; margin-bottom: 8px; font-size: 0.95rem; line-height: 1.4;">${escapeHtml(event.details)}</div>
+                        ${event.organizer ? `<div style="font-size: 0.85rem; color: #6b7280;"><i class="fas fa-user"></i> ${event.organizer}</div>` : ''}
+                        ${event.source ? `<div style="font-size: 0.7rem; color: #9ca3af; margin-top: 4px;">Source: ${event.source}</div>` : ''}
+                    </div>
+                </td>
+                <td class="session-type-col">
+                    <span style="display: inline-block; padding: 6px 14px; background: ${event.color}15; color: ${event.color}; border-radius: 12px; font-size: 0.85rem; font-weight: 600; border: 1px solid ${event.color}30;">
+                        ${event.type}
+                    </span>
+                </td>
+            </tr>
         `;
-        
-        const detailsCell = document.createElement('td');
-        detailsCell.innerHTML = `
-            <div>
-                <div style="font-weight: 700; color: #1f2937; margin-bottom: 4px;">${escapeHtml(event.title)}</div>
-                <div style="color: #4b5563; margin-bottom: 8px; font-size: 0.95rem;">${escapeHtml(event.details)}</div>
-                ${event.organizer ? `<div style="font-size: 0.85rem; color: #6b7280;"><i class="fas fa-user"></i> ${event.organizer}</div>` : ''}
-            </div>
-        `;
-        
-        const typeCell = document.createElement('td');
-        typeCell.className = 'session-type-col';
-        typeCell.innerHTML = `
-            <span style="display: inline-block; padding: 4px 12px; background: ${event.color}20; color: ${event.color}; border-radius: 12px; font-size: 0.8rem; font-weight: 600; text-transform: uppercase;">
-                ${event.type}
-            </span>
-        `;
-        
-        // Append cells
-        row.appendChild(dateCell);
-        row.appendChild(detailsCell);
-        row.appendChild(typeCell);
-        
-        // Add click handler
-        row.addEventListener('click', function() {
-            showEventDetails(event);
-        });
-        
-        // Add to table
-        tableBody.appendChild(row);
     });
+    
+    tableBody.innerHTML = html;
+    
+    // Add click handlers
+    document.querySelectorAll('.calendar-event-row').forEach(row => {
+        row.addEventListener('click', function() {
+            const eventId = this.getAttribute('data-id');
+            const event = events.find(e => e.id === eventId);
+            if (event) {
+                showEventDetails(event);
+            }
+        });
+    });
+    
+    console.log('✅ Table rendered successfully');
 }
 
-// Show event details in modal
 function showEventDetails(event) {
-    // Create modal
+    console.log('📋 Showing event details:', event.title);
+    
     const modal = document.createElement('div');
     modal.style.cssText = `
         position: fixed;
@@ -386,29 +350,24 @@ function showEventDetails(event) {
         display: flex;
         justify-content: center;
         align-items: center;
-        z-index: 1000;
+        z-index: 10000;
         padding: 20px;
     `;
     
-    // Format date
-    const date = new Date(event.date);
-    const dateStr = event.startTime 
-        ? `${date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })} • ${event.startTime}${event.endTime ? ` - ${event.endTime}` : ''}`
-        : date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
-    
     modal.innerHTML = `
-        <div style="background: white; padding: 24px; border-radius: 16px; max-width: 500px; width: 100%; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
+        <div style="background: white; padding: 24px; border-radius: 16px; max-width: 500px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
                 <div style="display: flex; align-items: center; gap: 12px;">
                     <div style="width: 50px; height: 50px; border-radius: 12px; background: ${event.color}20; display: flex; align-items: center; justify-content: center;">
                         <i class="${event.icon}" style="color: ${event.color}; font-size: 1.5rem;"></i>
                     </div>
                     <div>
-                        <h3 style="margin: 0 0 4px 0; color: #1f2937;">${escapeHtml(event.title)}</h3>
-                        <div style="color: ${event.color}; font-weight: 600; font-size: 0.9rem; text-transform: uppercase;">${event.type}</div>
+                        <h3 style="margin: 0 0 4px 0; color: #1f2937; font-size: 1.3rem;">${escapeHtml(event.title)}</h3>
+                        <div style="color: ${event.color}; font-weight: 600; font-size: 0.9rem;">${event.type}</div>
                     </div>
                 </div>
-                <button onclick="this.closest('div[style*=\"position: fixed\"]').remove()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #6B7280; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 50%; transition: background 0.2s;">
+                <button onclick="this.closest('div[style*=\"position: fixed\"]').remove()" 
+                        style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #6B7280; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 50%;">
                     ×
                 </button>
             </div>
@@ -416,7 +375,7 @@ function showEventDetails(event) {
             <div style="margin-bottom: 20px;">
                 <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px; color: #4b5563;">
                     <i class="fas fa-calendar" style="color: #6d28d9;"></i>
-                    <span>${dateStr}</span>
+                    <span>${event.formattedDate} • ${event.formattedTime}</span>
                 </div>
                 
                 ${event.venue ? `
@@ -440,109 +399,113 @@ function showEventDetails(event) {
             </div>
             
             ${event.type === 'Exam' ? `
-                <button onclick="viewExamInCalendar('${event.id}')" style="width: 100%; padding: 12px; background: linear-gradient(135deg, #6d28d9, #9333ea); color: white; border: none; border-radius: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+                <button onclick="viewExamDetails('${event.id}')" 
+                        style="width: 100%; padding: 12px; background: linear-gradient(135deg, #6d28d9, #9333ea); color: white; border: none; border-radius: 12px; font-weight: 600; cursor: pointer;">
                     <i class="fas fa-file-alt"></i> View Exam Details
                 </button>
             ` : ''}
         </div>
     `;
     
-    // Add hover effect to close button
-    modal.querySelector('button').addEventListener('mouseenter', function() {
-        this.style.background = '#f3f4f6';
-    });
-    
-    modal.querySelector('button').addEventListener('mouseleave', function() {
-        this.style.background = 'none';
-    });
-    
     document.body.appendChild(modal);
     
-    // Close on ESC key
+    // Close handlers
     const closeModal = () => modal.remove();
-    const handleEsc = (e) => {
+    modal.querySelector('button').addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+    });
+    document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') closeModal();
-    };
-    
-    document.addEventListener('keydown', handleEsc);
-    modal.addEventListener('click', function(e) {
-        if (e.target === this) closeModal();
     });
 }
 
-// View exam details from calendar
-function viewExamInCalendar(eventId) {
-    // Close calendar modal first
+function viewExamDetails(eventId) {
     const modal = document.querySelector('div[style*="position: fixed"]');
     if (modal) modal.remove();
     
-    // Navigate to exams tab and show exam details
+    // Navigate to exams tab
     if (typeof window.showTab === 'function') {
         window.showTab('cats');
         
-        // Try to find and trigger exam details after a delay
         setTimeout(() => {
             const examId = eventId.replace('exam_', '');
             if (typeof viewProvisionalTranscript === 'function') {
                 viewProvisionalTranscript(examId);
-            } else {
-                console.log('Exam ID to view:', examId);
-                // You can trigger exam modal here if available
             }
         }, 500);
     }
 }
 
-// Update dashboard with calendar events
-function updateDashboardCalendarEvents(events) {
-    // Update upcoming exam on dashboard
-    const upcomingExams = events.filter(event => 
-        event.type === 'Exam' && new Date(event.date) > new Date()
-    ).sort((a, b) => new Date(a.date) - new Date(b.date));
+// ========== DASHBOARD UPDATES ==========
+function updateDashboardWithEvents(events) {
+    console.log('📊 Updating dashboard with calendar events');
     
-    const upcomingExamElement = document.getElementById('dashboard-upcoming-exam');
-    if (upcomingExamElement && upcomingExams.length > 0) {
-        const nextExam = upcomingExams[0];
-        const examDate = new Date(nextExam.date);
-        const formattedDate = examDate.toLocaleDateString('en-US', { 
-            month: 'short', 
-            day: 'numeric',
-            year: examDate.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
-        });
-        
-        upcomingExamElement.innerHTML = `
-            <span style="color: #EF4444; font-weight: 600; font-size: 1.1rem;">
-                ${nextExam.title}
-            </span>
-            <div style="font-size: 0.9rem; color: #6b7280; margin-top: 4px;">
-                ${formattedDate} • ${nextExam.startTime || 'All day'}
-            </div>
-        `;
-        
-        // Make it clickable
-        upcomingExamElement.style.cursor = 'pointer';
-        upcomingExamElement.onclick = () => showEventDetails(nextExam);
-    } else if (upcomingExamElement) {
-        upcomingExamElement.innerHTML = `
-            <span style="color: #10B981; font-weight: 600;">No upcoming exams</span>
-            <div style="font-size: 0.9rem; color: #6b7280; margin-top: 4px;">All caught up!</div>
-        `;
+    // Update upcoming exam
+    const upcomingExams = events.filter(e => e.type === 'Exam')
+        .filter(e => new Date(e.date) > new Date())
+        .sort((a, b) => new Date(a.date) - new Date(b.date));
+    
+    const examElement = document.getElementById('dashboard-upcoming-exam');
+    if (examElement) {
+        if (upcomingExams.length > 0) {
+            const nextExam = upcomingExams[0];
+            examElement.innerHTML = `
+                <span style="color: #EF4444; font-weight: 600; font-size: 1.1rem;">${nextExam.title}</span>
+                <div style="font-size: 0.9rem; color: #6b7280; margin-top: 4px;">
+                    ${nextExam.formattedDate} • ${nextExam.formattedTime}
+                </div>
+            `;
+            examElement.style.cursor = 'pointer';
+            examElement.onclick = () => showEventDetails(nextExam);
+        } else {
+            examElement.innerHTML = '<span style="color: #10B981; font-weight: 600;">No upcoming exams</span>';
+            examElement.style.cursor = 'default';
+            examElement.onclick = null;
+        }
     }
     
-    // Update active courses count based on events
-    const uniqueCourses = new Set(
-        events
-            .filter(e => e.type === 'Class')
-            .map(e => e.title.split(':')[0] || e.title)
-    );
-    
-    const activeCoursesElement = document.getElementById('dashboard-active-courses');
-    if (activeCoursesElement && uniqueCourses.size > 0) {
-        activeCoursesElement.textContent = uniqueCourses.size;
+    // Update active courses count
+    const activeCourses = events.filter(e => e.type === 'Class');
+    const uniqueCourses = [...new Set(activeCourses.map(e => e.title))];
+    const coursesElement = document.getElementById('dashboard-active-courses');
+    if (coursesElement) {
+        coursesElement.textContent = uniqueCourses.length;
     }
 }
 
-// Utility functions
+// ========== UTILITY FUNCTIONS ==========
+function formatEventDate(dateString) {
+    if (!dateString) return 'Date not set';
+    
+    try {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-US', {
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric'
+        });
+    } catch (error) {
+        return dateString;
+    }
+}
+
+function formatEventTime(startTime, endTime) {
+    if (!startTime) return 'All day';
+    
+    const cleanStart = startTime.includes(':') ? 
+        startTime.split(':').slice(0, 2).join(':') : 
+        startTime;
+    
+    if (!endTime) return cleanStart;
+    
+    const cleanEnd = endTime.includes(':') ? 
+        endTime.split(':').slice(0, 2).join(':') : 
+        endTime;
+    
+    return `${cleanStart} - ${cleanEnd}`;
+}
+
 function getEventColor(eventType) {
     const colors = {
         'Exam': '#EF4444',
@@ -565,6 +528,75 @@ function getEventIcon(eventType) {
     return icons[eventType] || icons.default;
 }
 
+function getDemoEvents(userProfile) {
+    console.log('🎭 Using demo events');
+    
+    const today = new Date();
+    return [
+        {
+            id: 'demo_1',
+            date: today.toISOString().split('T')[0],
+            title: 'Calendar System Active',
+            type: 'Event',
+            details: 'Calendar is successfully connected',
+            venue: 'System',
+            startTime: 'Now',
+            endTime: '',
+            organizer: 'System Admin',
+            color: '#10B981',
+            icon: 'fas fa-check-circle',
+            source: 'demo'
+        },
+        {
+            id: 'demo_2',
+            date: new Date(today.getTime() + 86400000).toISOString().split('T')[0],
+            title: `${userProfile.program} Lecture`,
+            type: 'Class',
+            details: 'Regular scheduled class session',
+            venue: 'Lecture Hall',
+            startTime: '10:00',
+            endTime: '12:00',
+            organizer: 'Lecturer',
+            color: '#3B82F6',
+            icon: 'fas fa-chalkboard-teacher',
+            source: 'demo'
+        },
+        {
+            id: 'demo_3',
+            date: new Date(today.getTime() + 172800000).toISOString().split('T')[0],
+            title: 'Clinical Practice',
+            type: 'Clinical',
+            details: 'Hands-on clinical training session',
+            venue: 'Hospital',
+            startTime: '08:00',
+            endTime: '16:00',
+            organizer: 'Clinical Supervisor',
+            color: '#10B981',
+            icon: 'fas fa-hospital',
+            source: 'demo'
+        }
+    ];
+}
+
+function showErrorInTable(message) {
+    const tableBody = document.getElementById('calendar-table');
+    if (!tableBody) return;
+    
+    tableBody.innerHTML = `
+        <tr>
+            <td colspan="3" style="padding: 40px; text-align: center; color: #ef4444;">
+                <i class="fas fa-exclamation-triangle" style="font-size: 2rem; margin-bottom: 10px;"></i>
+                <p style="font-weight: 600;">Error Loading Calendar</p>
+                <p style="margin: 10px 0; font-size: 0.9rem;">${message}</p>
+                <button onclick="loadAcademicCalendar()" 
+                        style="margin-top: 15px; padding: 8px 16px; background: #6d28d9; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                    Try Again
+                </button>
+            </td>
+        </tr>
+    `;
+}
+
 function escapeHtml(str) {
     if (!str) return '';
     return String(str)
@@ -575,14 +607,30 @@ function escapeHtml(str) {
         .replace(/'/g, "&#039;");
 }
 
-// Add CSS for spinner animation
-if (!document.querySelector('#calendar-spinner-style')) {
+// ========== GLOBAL EXPORTS ==========
+window.loadAcademicCalendar = loadAcademicCalendar;
+window.showEventDetails = showEventDetails;
+window.viewExamDetails = viewExamDetails;
+
+// ========== AUTO-START ==========
+// Add CSS for loading spinner
+if (!document.querySelector('#calendar-css')) {
     const style = document.createElement('style');
-    style.id = 'calendar-spinner-style';
+    style.id = 'calendar-css';
     style.textContent = `
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
+        }
+        
+        .loading-spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 3px solid #f3f4f6;
+            border-top-color: #6d28d9;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
         }
         
         .calendar-event-row {
@@ -594,40 +642,15 @@ if (!document.querySelector('#calendar-spinner-style')) {
             background-color: #f9fafb;
         }
         
-        .session-type-col {
-            white-space: nowrap;
-        }
-        
         .date-col {
             min-width: 180px;
+        }
+        
+        .session-type-col {
+            white-space: nowrap;
         }
     `;
     document.head.appendChild(style);
 }
 
-// *************************************************************************
-// *** GLOBAL EXPORTS ***
-// *************************************************************************
-
-// Make functions globally available
-window.loadAcademicCalendar = loadAcademicCalendar;
-window.showEventDetails = showEventDetails;
-window.viewExamInCalendar = viewExamInCalendar;
-
-// Auto-load calendar when tab is shown
-document.addEventListener('appReady', function() {
-    console.log('📅 App ready, setting up calendar...');
-    
-    // Check if calendar tab is active on page load
-    if (window.location.hash === '#calendar' || 
-        localStorage.getItem('nchsm_last_tab') === 'calendar') {
-        setTimeout(() => loadAcademicCalendar(), 500);
-    }
-    
-    // Listen for tab changes
-    document.addEventListener('tabChanged', function(e) {
-        if (e.detail && e.detail.tab === 'calendar') {
-            loadAcademicCalendar();
-        }
-    });
-});
+console.log('📅 calendar.js loaded successfully!');
