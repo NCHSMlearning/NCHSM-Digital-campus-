@@ -1,4 +1,4 @@
-// attendance.js - UPDATED WITH DASHBOARD EVENT DISPATCHING AND KM DISTANCE
+// attendance.js - FIXED LOCATION TIMEOUT ISSUE
 (function() {
     'use strict';
     
@@ -392,7 +392,7 @@
         updateRequirement('location', hasLocation);
     }
     
-    // Start location monitoring
+    // Start location monitoring - FIXED VERSION with better timeout handling
     function startLocationMonitoring() {
         if (!navigator.geolocation) {
             console.warn('Geolocation not supported');
@@ -407,25 +407,56 @@
         
         updateGPSStatus('loading', 'Getting location...');
         
-        const options = {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 0
+        // Try different timeouts for different scenarios
+        const getLocationWithRetry = (retryCount = 0) => {
+            const options = {
+                enableHighAccuracy: true,
+                timeout: retryCount === 0 ? 10000 : 15000, // 10s first, 15s on retry
+                maximumAge: 60000 // Accept cached location up to 1 minute old
+            };
+            
+            console.log(`📍 Attempt ${retryCount + 1}: Getting location with ${options.timeout}ms timeout`);
+            
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    console.log('✅ Location obtained successfully');
+                    handleLocationSuccess(position);
+                },
+                (error) => {
+                    console.warn(`⚠️ Location attempt ${retryCount + 1} failed:`, error.message);
+                    
+                    // Retry logic - only retry timeout errors
+                    if (error.code === error.TIMEOUT && retryCount < 2) {
+                        console.log(`🔄 Retrying location... (${retryCount + 1}/2)`);
+                        updateGPSStatus('loading', `Getting location... Retry ${retryCount + 1}/2`);
+                        setTimeout(() => getLocationWithRetry(retryCount + 1), 1000);
+                    } else {
+                        handleLocationError(error);
+                    }
+                },
+                options
+            );
+            
+            // Start watch position for continuous updates
+            locationWatchId = navigator.geolocation.watchPosition(
+                (position) => {
+                    console.log('📍 Location updated (watch)');
+                    handleLocationSuccess(position);
+                },
+                (error) => {
+                    console.warn('⚠️ Location watch error:', error.message);
+                    // Don't show error for watch, just for initial get
+                },
+                {
+                    enableHighAccuracy: false, // Less battery for continuous
+                    timeout: 30000,
+                    maximumAge: 10000 // Update every 10s
+                }
+            );
         };
         
-        // Get initial position
-        navigator.geolocation.getCurrentPosition(
-            (position) => handleLocationSuccess(position),
-            (error) => handleLocationError(error),
-            options
-        );
-        
-        // Watch for updates
-        locationWatchId = navigator.geolocation.watchPosition(
-            (position) => handleLocationSuccess(position),
-            (error) => handleLocationError(error),
-            options
-        );
+        // Start first attempt
+        getLocationWithRetry(0);
     }
     
     function handleLocationSuccess(position) {
@@ -453,21 +484,46 @@
         let message = '';
         switch(error.code) {
             case error.PERMISSION_DENIED:
-                message = 'GPS permission denied';
+                message = 'GPS permission denied. Enable location in browser settings.';
                 break;
             case error.POSITION_UNAVAILABLE:
-                message = 'Location unavailable';
+                message = 'Location unavailable. Check your GPS/network connection.';
                 break;
             case error.TIMEOUT:
-                message = 'Location request timeout';
+                message = 'Location timeout. Ensure GPS is enabled and try again.';
                 break;
             default:
-                message = 'Unknown GPS error';
+                message = 'Location error. Try refreshing the page.';
         }
         
         updateGPSStatus('error', message);
         updateRequirement('location', false);
         updateCheckInButton();
+        
+        // Add retry button functionality
+        const gpsStatus = document.getElementById('gps-status');
+        if (gpsStatus && error.code !== error.PERMISSION_DENIED) {
+            const retryBtn = document.createElement('button');
+            retryBtn.innerHTML = '<i class="fas fa-redo"></i> Retry';
+            retryBtn.style.marginLeft = '10px';
+            retryBtn.style.padding = '2px 8px';
+            retryBtn.style.fontSize = '12px';
+            retryBtn.style.borderRadius = '4px';
+            retryBtn.style.backgroundColor = '#3b82f6';
+            retryBtn.style.color = 'white';
+            retryBtn.style.border = 'none';
+            retryBtn.style.cursor = 'pointer';
+            retryBtn.addEventListener('click', () => {
+                retryBtn.remove();
+                startLocationMonitoring();
+            });
+            
+            // Remove any existing retry button
+            const existingRetry = gpsStatus.querySelector('button');
+            if (existingRetry) existingRetry.remove();
+            
+            gpsStatus.appendChild(retryBtn);
+        }
     }
     
     function updateGPSStatus(status, message) {
@@ -796,7 +852,7 @@
             }
             
             if (!currentLocation) {
-                throw new Error('Location not available');
+                throw new Error('Location not available. Enable GPS and try again.');
             }
             
             // Parse target
