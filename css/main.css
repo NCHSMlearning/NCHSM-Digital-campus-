@@ -1,11 +1,11 @@
-/* main.css - Updated with Dark Navy + Purple Theme */
+/* main.css - COMPLETE FIXED VERSION */
 
 /* Base imports */
 @import url('base.css');
 @import url('layout.css');
 @import url('components.css');
 @import url('messages.css');
-@import url('calender.css');
+@import url('calendar.css'); /* Fixed spelling */
 @import url('exams.css');
 @import url('courses.css');
 @import url('dashboard.css');
@@ -103,9 +103,9 @@ body {
     flex-shrink: 0;
 }
 
-/* Mobile Menu Toggle */
+/* Mobile Menu Toggle - FIXED: Shows on mobile, hides on desktop */
 .mobile-menu-toggle {
-    display: none !important;
+    display: none;
     background: none;
     border: none;
     color: white;
@@ -178,7 +178,7 @@ body {
     transform: rotate(180deg);
 }
 
-/* Dropdown Menu - UPDATED: Dark Navy + Purple */
+/* Dropdown Menu - FIXED: Hidden by default, shows on click */
 .dropdown-menu {
     position: absolute;
     top: calc(100% + 5px);
@@ -188,7 +188,7 @@ body {
     border-radius: 8px;
     box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
     padding: 8px 0;
-    display: none;
+    display: none; /* HIDDEN BY DEFAULT */
     z-index: 1001;
     opacity: 0;
     transform: translateY(-10px);
@@ -197,7 +197,7 @@ body {
 }
 
 .dropdown-menu.show {
-    display: block;
+    display: block; /* Shows when .show class added */
     opacity: 1;
     transform: translateY(0);
 }
@@ -266,10 +266,10 @@ body {
     transform: translateY(-1px);
 }
 
-/* ========== SIDEBAR STYLES - UPDATED: Dark Navy + Purple ========== */
+/* ========== SIDEBAR STYLES - FIXED: Solid background, no transparency ========== */
 .sidebar {
     width: 280px;
-    background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); /* Navy to Purple */
+    background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); /* SOLID gradient */
     color: white;
     overflow-y: auto;
     position: fixed;
@@ -278,7 +278,7 @@ body {
     bottom: 0;
     transform: translateX(-100%);
     transition: transform 0.35s ease;
-    z-index: 900;
+    z-index: 1000; /* HIGHER z-index */
     box-shadow: 4px 0 25px rgba(0, 0, 0, 0.3);
 }
 
@@ -337,15 +337,15 @@ body {
 }
 
 .nav a:hover {
-    background: rgba(124, 58, 237, 0.2); /* Purple tint */
+    background: rgba(124, 58, 237, 0.2);
     color: white;
     border-left-color: rgba(139, 92, 246, 0.5);
 }
 
 .nav a.active {
-    background: rgba(124, 58, 237, 0.3); /* Stronger purple */
+    background: rgba(124, 58, 237, 0.3);
     color: white;
-    border-left-color: #8b5cf6; /* Bright purple */
+    border-left-color: #8b5cf6;
     font-weight: 600;
 }
 
@@ -355,7 +355,7 @@ body {
     text-align: center;
 }
 
-/* NurseIQ navigation item special styling */
+/* NurseIQ navigation item */
 .nurseiq-nav {
     position: relative;
     background: rgba(124, 58, 237, 0.1);
@@ -417,7 +417,7 @@ body {
     transform: translateY(-2px);
 }
 
-/* ========== LAYOUT ADJUSTMENTS FOR HEADER ========== */
+/* ========== LAYOUT ADJUSTMENTS ========== */
 .container {
     display: flex;
     min-height: 100vh;
@@ -425,25 +425,27 @@ body {
     margin-top: 70px;
 }
 
-/* Overlay */
+/* Overlay - FIXED: Covers entire screen below header */
 .overlay {
     position: fixed;
     inset: 70px 0 0 0;
-    background: rgba(0, 0, 0, 0.4);
+    background: rgba(0, 0, 0, 0.6);
     display: none;
-    z-index: 800;
+    z-index: 999;
 }
 
 .overlay.active {
     display: block;
 }
 
-/* Main Content */
+/* Main Content - FIXED: Lower z-index than sidebar */
 .main {
     flex: 1;
     width: 100%;
     padding: 20px;
     background-color: #f8fafc;
+    position: relative;
+    z-index: 1; /* Lower than sidebar */
 }
 
 /* ========== LOADING SCREEN ========== */
@@ -486,13 +488,16 @@ body {
     display: block;
 }
 
-/* ========== RESPONSIVE HEADER ========== */
+/* ========== RESPONSIVE STYLES ========== */
+
+/* Mobile styles */
 @media (max-width: 768px) {
     .main-header {
         padding: 0 1rem;
         height: 60px;
     }
     
+    /* Show mobile menu toggle */
     .mobile-menu-toggle {
         display: flex !important;
     }
@@ -510,6 +515,7 @@ body {
         font-size: 0.65rem;
     }
     
+    /* Hide some elements on mobile */
     .current-time,
     .header-actions {
         display: none !important;
@@ -519,6 +525,7 @@ body {
         max-width: 80px;
     }
     
+    /* Adjust layout for mobile */
     .container {
         margin-top: 60px;
     }
@@ -526,18 +533,27 @@ body {
     .sidebar {
         top: 60px;
         width: 250px;
+        z-index: 1000;
     }
     
     .overlay {
         top: 60px;
+        z-index: 999;
+    }
+    
+    .main {
+        margin-left: 0;
+        width: 100%;
     }
 }
 
+/* Small mobile screens */
 @media (max-width: 480px) {
     .main-header {
         padding: 0 0.75rem;
     }
     
+    /* Hide titles on very small screens */
     .header-titles {
         display: none;
     }
@@ -550,6 +566,7 @@ body {
         padding: 4px 8px;
     }
     
+    /* Hide profile info text on small screens */
     .profile-info {
         display: none;
     }
@@ -565,7 +582,7 @@ body {
     }
 }
 
-/* ========== DESKTOP LAYOUT ========== */
+/* Desktop styles */
 @media (min-width: 1024px) {
     .sidebar {
         transform: translateX(0);
@@ -576,7 +593,13 @@ body {
         width: calc(100% - 280px);
     }
     
+    /* Hide overlay on desktop */
     .overlay {
+        display: none !important;
+    }
+    
+    /* Hide mobile menu toggle on desktop */
+    .mobile-menu-toggle {
         display: none !important;
     }
 }
@@ -679,7 +702,7 @@ body {
 .app-footer {
     margin-top: 40px;
     padding: 30px 20px;
-    background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); /* Same as sidebar */
+    background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
     color: white;
     border-radius: 16px 16px 0 0;
 }
