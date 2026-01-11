@@ -1,4 +1,4 @@
-// attendance.js - UPDATED WITH DASHBOARD EVENT DISPATCHING AND KM DISTANCE
+// attendance.js - UPDATED WITH FIXED CLINICAL AREA HANDLING
 (function() {
     'use strict';
     
@@ -16,9 +16,9 @@
         radius: 100
     };
     
-    // Initialize attendance system - WITH DASHBOARD INTEGRATION
+    // Initialize attendance system
     function initializeAttendanceSystem() {
-        console.log('📱 Initializing Attendance System with Dashboard Integration...');
+        console.log('📱 Initializing Attendance System with Clinical Area Fixes...');
         
         // Cache DOM elements
         const sessionTypeSelect = document.getElementById('session-type');
@@ -83,7 +83,7 @@
             }, 1000);
         });
         
-        console.log('✅ Attendance System initialized with Dashboard Integration');
+        console.log('✅ Attendance System initialized');
     }
     
     // Helper: Trigger dashboard attendance update
@@ -189,7 +189,7 @@
             
             if (targetText) targetText.textContent = label;
             
-            // Populate options - INDEPENDENTLY
+            // Populate options
             populateTargetOptions(sessionType);
             updateRequirement('session', true);
         } else {
@@ -202,9 +202,9 @@
         updateCheckInButton();
     }
     
-    // Populate target options - INDEPENDENT VERSION
+    // Populate target options - FIXED VERSION
     async function populateTargetOptions(sessionType) {
-        console.log('🎯 Populating target options INDEPENDENTLY for:', sessionType);
+        console.log('🎯 Populating target options for:', sessionType);
         
         const targetSelect = document.getElementById('attendance-target');
         if (!targetSelect) return;
@@ -215,31 +215,56 @@
         
         try {
             if (sessionType === 'clinical') {
-                // Load clinical areas independently
+                // Load clinical areas
                 await loadClinicalTargets();
                 
                 if (attendanceCachedClinicalAreas.length === 0) {
-                    targetSelect.innerHTML = '<option value="">No clinical areas available</option>';
+                    targetSelect.innerHTML = `
+                        <option value="">No clinical areas available</option>
+                        <option value="manual|Manual Entry">Manual Entry (Contact Admin)</option>
+                    `;
+                    targetSelect.disabled = false;
+                    updateRequirement('target', false);
                     return;
                 }
                 
                 // Populate clinical areas
                 targetSelect.innerHTML = '<option value="">Select clinical department...</option>';
+                
                 attendanceCachedClinicalAreas.forEach(area => {
                     const opt = document.createElement('option');
+                    // Use UUID as string, separate with |
                     opt.value = `${area.id}|${area.name}`;
-                    opt.textContent = area.name;
+                    
+                    // Display with block info if available
+                    let displayText = area.name;
+                    if (area.block) {
+                        displayText += ` (Block ${area.block})`;
+                    }
+                    if (area.intake_year) {
+                        displayText += ` - ${area.intake_year}`;
+                    }
+                    
+                    opt.textContent = displayText;
                     targetSelect.appendChild(opt);
                 });
                 
-            } else if (['class', 'lab', 'tutorial'].includes(sessionType)) {
-                // Load courses INDEPENDENTLY - don't wait for courses tab
-                console.log('📚 Loading courses independently...');
+                // Add manual entry option
+                const manualOpt = document.createElement('option');
+                manualOpt.value = 'manual|Manual Entry';
+                manualOpt.textContent = 'Manual Entry (Contact Admin)';
+                manualOpt.style.color = '#f59e0b';
+                manualOpt.style.fontStyle = 'italic';
+                targetSelect.appendChild(manualOpt);
                 
+            } else if (['class', 'lab', 'tutorial'].includes(sessionType)) {
+                // Load courses
                 const courses = await loadCoursesForAttendance();
                 
                 if (!courses || courses.length === 0) {
-                    targetSelect.innerHTML = '<option value="">No courses found. Please refresh.</option>';
+                    targetSelect.innerHTML = '<option value="">No courses found</option>';
+                    targetSelect.disabled = false;
+                    updateRequirement('target', false);
                     return;
                 }
                 
@@ -263,7 +288,12 @@
             }
         } catch (error) {
             console.error('❌ Error loading targets:', error);
-            targetSelect.innerHTML = '<option value="">Error loading options</option>';
+            targetSelect.innerHTML = `
+                <option value="">Error loading options</option>
+                <option value="manual|Manual Entry">Manual Entry (Contact Admin)</option>
+            `;
+            targetSelect.disabled = false;
+            updateRequirement('target', false);
             return;
         }
         
@@ -277,12 +307,9 @@
         });
     }
     
-    // Load courses INDEPENDENTLY from database
+    // Load courses from database
     async function loadCoursesForAttendance() {
-        console.log('📖 Loading courses INDEPENDENTLY from database...');
-        
-        // Don't depend on coursesModule or cachedCourses
-        // Query database directly
+        console.log('📖 Loading courses from database...');
         
         if (!attendanceUserProfile || !window.db?.supabase) {
             console.log('⚠️ Waiting for user authentication...');
@@ -326,16 +353,106 @@
                 return [];
             }
             
-            console.log(`✅ Loaded ${courses.length} courses INDEPENDENTLY`);
-            
-            // Cache for this session
+            console.log(`✅ Loaded ${courses.length} courses`);
             attendanceCachedCourses = courses;
             
             return courses;
             
         } catch (error) {
-            console.error('❌ Failed to load courses independently:', error);
+            console.error('❌ Failed to load courses:', error);
             return [];
+        }
+    }
+    
+    // Load clinical targets - FIXED VERSION
+    async function loadClinicalTargets() {
+        try {
+            const supabaseClient = window.db?.supabase;
+            if (!supabaseClient || !attendanceUserProfile) {
+                console.log('⚠️ No database or user profile');
+                attendanceCachedClinicalAreas = [];
+                return;
+            }
+            
+            const program = attendanceUserProfile.program;
+            const intakeYear = attendanceUserProfile.intake_year;
+            const block = attendanceUserProfile.block;
+            
+            console.log('🔍 Loading clinical areas for:', {
+                program,
+                intakeYear,
+                block
+            });
+            
+            if (!program || !intakeYear) {
+                console.warn('⚠️ Missing program or intake year');
+                attendanceCachedClinicalAreas = [];
+                return;
+            }
+            
+            let query = supabaseClient
+                .from('clinical_areas')
+                .select('id, name, latitude, longitude, radius_m, intake_year, block')
+                .eq('program', program)
+                .eq('intake_year', intakeYear)
+                .order('name');
+            
+            // Filter by block if available
+            if (block) {
+                query = query.or(`block.eq.${block},block.is.null`);
+            }
+            
+            const { data, error } = await query;
+            
+            if (error) {
+                console.error('❌ Database error loading clinical areas:', error);
+                attendanceCachedClinicalAreas = [];
+                return;
+            }
+            
+            if (!data || data.length === 0) {
+                console.warn(`⚠️ No clinical areas found for program: ${program}, intake: ${intakeYear}, block: ${block}`);
+                
+                // Try without block filter as fallback
+                const { data: fallbackData, error: fallbackError } = await supabaseClient
+                    .from('clinical_areas')
+                    .select('id, name, latitude, longitude, radius_m')
+                    .eq('program', program)
+                    .eq('intake_year', intakeYear)
+                    .order('name');
+                
+                if (!fallbackError && fallbackData && fallbackData.length > 0) {
+                    console.log(`✅ Found ${fallbackData.length} clinical areas without block filter`);
+                    attendanceCachedClinicalAreas = fallbackData.map(area => ({
+                        id: area.id,
+                        name: area.name,
+                        latitude: area.latitude,
+                        longitude: area.longitude,
+                        radius: area.radius_m || 100
+                    }));
+                } else {
+                    console.log('⚠️ No clinical areas found even without block filter');
+                    attendanceCachedClinicalAreas = [];
+                }
+                return;
+            }
+            
+            attendanceCachedClinicalAreas = data.map(area => ({
+                id: area.id,
+                name: area.name,
+                latitude: area.latitude,
+                longitude: area.longitude,
+                radius: area.radius_m || 100,
+                intake_year: area.intake_year,
+                block: area.block
+            }));
+            
+            console.log(`✅ Loaded ${attendanceCachedClinicalAreas.length} clinical areas:`, 
+                attendanceCachedClinicalAreas.map(a => a.name));
+            
+        } catch (error) {
+            console.error('❌ Error loading clinical areas:', error);
+            attendanceCachedClinicalAreas = [];
         }
     }
     
@@ -517,9 +634,9 @@
         }
     }
     
-    // Load attendance data INDEPENDENTLY
+    // Load attendance data
     async function loadAttendanceData() {
-        console.log('📱 Loading attendance data INDEPENDENTLY...');
+        console.log('📱 Loading attendance data...');
         
         try {
             // Get user profile from global db object
@@ -541,7 +658,7 @@
             // Load clinical areas
             await loadClinicalTargets();
             
-            // Load courses INDEPENDENTLY (don't wait for courses tab)
+            // Load courses
             console.log('📚 Loading courses for attendance tab...');
             await loadCoursesForAttendance();
             
@@ -551,47 +668,10 @@
             // Load attendance history
             await loadGeoAttendanceHistory('today');
             
-            console.log('✅ Attendance data loaded INDEPENDENTLY');
+            console.log('✅ Attendance data loaded');
             
         } catch (error) {
             console.error('❌ Failed to load attendance data:', error);
-        }
-    }
-    
-    // Load clinical targets
-    async function loadClinicalTargets() {
-        try {
-            const supabaseClient = window.db?.supabase;
-            if (!supabaseClient || !attendanceUserProfile) return;
-            
-            const program = attendanceUserProfile?.program;
-            const intakeYear = attendanceUserProfile?.intake_year;
-            const block = attendanceUserProfile?.block;
-            
-            if (!program || !intakeYear) return;
-            
-            const { data, error } = await supabaseClient
-                .from('clinical_areas')
-                .select('id, name, latitude, longitude, radius_m')
-                .ilike('program', program)
-                .ilike('intake_year', intakeYear)
-                .or(block ? `block.ilike.${block},block.is.null` : 'block.is.null')
-                .order('name');
-            
-            if (!error && data) {
-                attendanceCachedClinicalAreas = data.map(area => ({
-                    id: area.id,
-                    name: area.name,
-                    latitude: area.latitude,
-                    longitude: area.longitude,
-                    radius: area.radius_m || 100
-                }));
-                console.log(`✅ Loaded ${attendanceCachedClinicalAreas.length} clinical areas`);
-            }
-            
-        } catch (error) {
-            console.error('Error loading clinical areas:', error);
-            attendanceCachedClinicalAreas = [];
         }
     }
     
@@ -770,9 +850,9 @@
         return distanceMeters;
     }
     
-    // CHECK-IN FUNCTION - UPDATED WITH DASHBOARD INTEGRATION AND KM DISPLAY
+    // CHECK-IN FUNCTION - FIXED FOR CLINICAL AREAS
     async function attendanceGeoCheckIn() {
-        console.log('📍 Starting check-in with dashboard integration...');
+        console.log('📍 Starting check-in...');
         
         const button = document.getElementById('check-in-button');
         const sessionTypeSelect = document.getElementById('session-type');
@@ -802,6 +882,51 @@
             // Parse target
             const [targetId, targetName] = targetSelect.value.split('|');
             
+            // Check for manual entry
+            if (targetId === 'manual') {
+                console.log('📝 Manual check-in requested');
+                
+                const supabaseClient = window.db?.supabase;
+                if (!supabaseClient) {
+                    throw new Error('Database connection error');
+                }
+                
+                const checkInData = {
+                    student_id: attendanceUserId,
+                    check_in_time: new Date().toISOString(),
+                    session_type: 'Clinical',
+                    target_id: 'manual',
+                    target_name: 'Manual Entry - ' + targetName,
+                    latitude: currentLocation.latitude,
+                    longitude: currentLocation.longitude,
+                    accuracy_m: currentLocation.accuracy,
+                    is_verified: false,
+                    device_id: getAttendanceDeviceId(),
+                    student_name: attendanceUserProfile?.full_name || 'Unknown',
+                    distance_meters: null,
+                    target_latitude: null,
+                    target_longitude: null
+                };
+                
+                const { error } = await supabaseClient
+                    .from('geo_attendance_logs')
+                    .insert([checkInData]);
+                
+                if (error) throw error;
+                
+                if (window.AppUtils?.showToast) {
+                    window.AppUtils.showToast('✅ Manual check-in recorded. Contact admin for verification.', 'warning');
+                }
+                
+                await loadTodayAttendanceCount();
+                triggerDashboardAttendanceUpdate();
+                sessionTypeSelect.value = '';
+                targetSelect.value = '';
+                handleSessionTypeChange();
+                await loadGeoAttendanceHistory('today');
+                return;
+            }
+            
             // Find target coordinates
             const sessionType = sessionTypeSelect.value;
             let targetLat, targetLon, targetRadius;
@@ -813,7 +938,9 @@
                     targetLat = target.latitude;
                     targetLon = target.longitude;
                     targetRadius = target.radius || 100;
+                    console.log(`🏥 Found clinical area: ${target.name}, coordinates: ${targetLat}, ${targetLon}`);
                 } else {
+                    console.warn('⚠️ Clinical area not found in cache, using default coordinates');
                     // Fallback to Nakuru College
                     targetLat = NAKURU_COLLEGE.latitude;
                     targetLon = NAKURU_COLLEGE.longitude;
@@ -898,7 +1025,7 @@
             // Update today's count
             await loadTodayAttendanceCount();
             
-            // 🔥 CRITICAL: TRIGGER DASHBOARD UPDATE
+            // Trigger dashboard update
             triggerDashboardAttendanceUpdate();
             
             // Reset form
@@ -997,5 +1124,5 @@
     window.loadGeoAttendanceHistory = loadGeoAttendanceHistory;
     window.triggerDashboardAttendanceUpdate = triggerDashboardAttendanceUpdate;
     
-    console.log('✅ Attendance module loaded with Dashboard Integration and KM distance display');
+    console.log('✅ Attendance module loaded with Clinical Area Fixes');
 })();
