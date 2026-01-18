@@ -614,43 +614,68 @@
         }
     }
     
-    // Load clinical targets
-    async function loadClinicalTargets() {
-        try {
-            const supabaseClient = window.db?.supabase;
-            if (!supabaseClient || !attendanceUserProfile) return;
-            
-            const program = attendanceUserProfile?.program;
-            const intakeYear = attendanceUserProfile?.intake_year;
-            const block = attendanceUserProfile?.block;
-            
-            if (!program || !intakeYear) return;
-            
-            const { data, error } = await supabaseClient
-                .from('clinical_areas')
-                .select('id, name, latitude, longitude, radius_m')
-                .ilike('program', program)
-                .ilike('intake_year', intakeYear)
-                .or(block ? `block.ilike.${block},block.is.null` : 'block.is.null')
-                .order('name');
-            
-            if (!error && data) {
-                attendanceCachedClinicalAreas = data.map(area => ({
-                    id: area.id,
-                    name: area.name,
-                    latitude: area.latitude,
-                    longitude: area.longitude,
-                    radius: area.radius_m || 100
-                }));
-                console.log(`✅ Loaded ${attendanceCachedClinicalAreas.length} clinical areas`);
-            }
-            
-        } catch (error) {
-            console.error('Error loading clinical areas:', error);
-            attendanceCachedClinicalAreas = [];
+  // Load clinical targets - FIXED VERSION
+async function loadClinicalTargets() {
+    try {
+        const supabaseClient = window.db?.supabase;
+        if (!supabaseClient || !attendanceUserProfile) {
+            console.log('⚠️ No supabase client or user profile');
+            return;
         }
+        
+        const program = attendanceUserProfile?.program;
+        const intakeYear = attendanceUserProfile?.intake_year;
+        const block = attendanceUserProfile?.block;
+        
+        if (!program || !intakeYear) {
+            console.log('⚠️ Missing program or intake year');
+            return;
+        }
+        
+        console.log(`🏥 Fetching clinical areas for: ${program}, ${intakeYear}, block ${block}`);
+        
+        // CORRECT TABLE NAME: clinical_names
+        const { data, error } = await supabaseClient
+            .from('clinical_names')
+            .select('id, clinical_area_name, latitude, longitude, program, intake_year, block_term')
+            .eq('program', program)
+            .eq('intake_year', intakeYear)
+            .or(block ? `block_term.eq.${block},block_term.is.null` : 'block_term.is.null')
+            .order('clinical_area_name');
+        
+        if (error) {
+            console.error('❌ Error loading clinical names:', error);
+            attendanceCachedClinicalAreas = [];
+            return;
+        }
+        
+        if (!data || data.length === 0) {
+            console.warn('⚠️ No clinical areas found for current user');
+            attendanceCachedClinicalAreas = [];
+            return;
+        }
+        
+        // CORRECT FIELD MAPPING
+        attendanceCachedClinicalAreas = data.map(area => ({
+            id: area.id,
+            name: area.clinical_area_name, // CORRECT: clinical_area_name
+            clinicalArea: area.clinical_area_name,
+            latitude: area.latitude,
+            longitude: area.longitude,
+            radius: 100, // Default radius
+            program: area.program,
+            intakeYear: area.intake_year,
+            block: area.block_term
+        }));
+        
+        console.log(`✅ Loaded ${attendanceCachedClinicalAreas.length} clinical areas`);
+        console.log('Sample clinical area:', attendanceCachedClinicalAreas[0]);
+        
+    } catch (error) {
+        console.error('❌ Error loading clinical names:', error);
+        attendanceCachedClinicalAreas = [];
     }
-    
+}
     // Load today's attendance count
     async function loadTodayAttendanceCount() {
         const presentTodayElement = document.getElementById('present-today');
@@ -863,12 +888,12 @@
             let targetLat, targetLon, targetRadius;
             
             if (sessionType === 'clinical') {
-                // Clinical areas: Use specific hospital coordinates
-                const target = attendanceCachedClinicalAreas.find(t => t.id === targetId);
-                if (target) {
-                    targetLat = target.latitude;
-                    targetLon = target.longitude;
-                    targetRadius = target.radius || 100;
+               // CORRECT - your clinical names have different structure
+const target = attendanceCachedClinicalAreas.find(t => t.id === targetId);
+if (target) {
+    targetLat = target.latitude;
+    targetLon = target.longitude;
+    targetRadius = 100; // Your database doesn't have radius_m
                 } else {
                     // Fallback to Nakuru College
                     targetLat = NAKURU_COLLEGE.latitude;
