@@ -1,10 +1,10 @@
-// js/profile.js - Profile Management Module (Aligned with enhanced HTML)
+// profile.js - Complete Profile Management Module
 class ProfileModule {
     constructor() {
         this.userId = null;
         this.userProfile = null;
         
-        // Profile elements - using IDs from the enhanced HTML
+        // Profile elements
         this.profileForm = null;
         this.passportPreview = null;
         this.passportFileInput = null;
@@ -14,7 +14,7 @@ class ProfileModule {
         this.cancelEditButton = null;
         this.profileStatus = null;
         
-        // Form fields from enhanced HTML
+        // Form fields
         this.profileName = null;
         this.profileStudentId = null;
         this.profileEmail = null;
@@ -28,7 +28,9 @@ class ProfileModule {
         
         this.isEditing = false;
         this.isInitialized = false;
-        this.photoObjectURL = null; // To track and clean up object URLs
+        this.photoObjectURL = null;
+        this.originalValues = {};
+        this.isPhotoUploading = false;
         
         this.initializeElements();
     }
@@ -40,12 +42,12 @@ class ProfileModule {
         this.profileForm = this.getElement('profile-form');
         this.profileStatus = this.getElement('profile-status');
         
-        // Profile photo section (aligned with enhanced HTML)
+        // Profile photo section
         this.passportPreview = this.getElement('passport-preview');
         this.passportFileInput = this.getElement('passport-file-input');
         this.uploadButton = this.getElement('upload-button');
         
-        // Form fields (aligned with enhanced HTML)
+        // Form fields
         this.profileName = this.getElement('profile-name');
         this.profileStudentId = this.getElement('profile-student-id');
         this.profileEmail = this.getElement('profile-email');
@@ -54,7 +56,7 @@ class ProfileModule {
         this.profileBlock = this.getElement('profile-block');
         this.profileIntakeYear = this.getElement('profile-intake-year');
         
-        // Action buttons (aligned with enhanced HTML)
+        // Action buttons
         this.editProfileButton = this.getElement('edit-profile-button');
         this.saveProfileButton = this.getElement('save-profile-button');
         this.cancelEditButton = this.getElement('cancel-edit-button');
@@ -69,11 +71,11 @@ class ProfileModule {
         
         // Setup event listeners
         this.setupEventListeners();
+        this.setupEnhancedEventListeners();
         
         console.log('✅ Profile elements initialized');
     }
     
-    // Helper to safely get elements
     getElement(id) {
         const element = document.getElementById(id);
         if (!element) {
@@ -83,7 +85,7 @@ class ProfileModule {
     }
     
     setupEventListeners() {
-        console.log('🎧 Setting up profile event listeners...');
+        console.log('🎧 Setting up event listeners...');
         
         // Edit profile button
         if (this.editProfileButton) {
@@ -136,6 +138,86 @@ class ProfileModule {
         this.setupValidationListeners();
     }
     
+    setupEnhancedEventListeners() {
+        console.log('🎬 Setting up enhanced event listeners...');
+        
+        // === Photo Section Enhancements ===
+        const photoContainer = document.querySelector('.passport-photo-container');
+        if (photoContainer) {
+            // Drag and drop support
+            photoContainer.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                photoContainer.classList.add('drag-over');
+            });
+            
+            photoContainer.addEventListener('dragleave', () => {
+                photoContainer.classList.remove('drag-over');
+            });
+            
+            photoContainer.addEventListener('drop', (e) => {
+                e.preventDefault();
+                photoContainer.classList.remove('drag-over');
+                
+                const files = e.dataTransfer.files;
+                if (files.length > 0 && this.passportFileInput) {
+                    this.passportFileInput.files = files;
+                    this.handlePassportFileSelect({ target: this.passportFileInput });
+                }
+            });
+            
+            // Keyboard support for photo upload
+            photoContainer.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    if (this.passportFileInput) {
+                        this.passportFileInput.click();
+                    }
+                }
+            });
+        }
+        
+        // === Real-time Field Validation with Visual Feedback ===
+        const fieldsToValidate = [this.profileName, this.profilePhone];
+        fieldsToValidate.forEach(field => {
+            if (field) {
+                field.addEventListener('blur', () => this.validateFieldWithFeedback(field));
+                field.addEventListener('input', () => {
+                    field.classList.remove('error', 'success');
+                    const errorElement = field.parentNode.querySelector('.field-error');
+                    if (errorElement) errorElement.remove();
+                });
+            }
+        });
+        
+        // === Form Field Focus Enhancements ===
+        const formInputs = document.querySelectorAll('#profile-form input');
+        formInputs.forEach(input => {
+            input.addEventListener('focus', () => {
+                input.parentElement.classList.add('focused');
+            });
+            
+            input.addEventListener('blur', () => {
+                input.parentElement.classList.remove('focused');
+            });
+        });
+        
+        // === Tab Switching Protection ===
+        document.addEventListener('visibilitychange', () => {
+            if (this.isEditing && document.hidden) {
+                this.showNotification('Profile changes not saved', 'warning');
+            }
+        });
+        
+        // === Before Unload Warning ===
+        window.addEventListener('beforeunload', (e) => {
+            if (this.isEditing) {
+                e.preventDefault();
+                e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+                return e.returnValue;
+            }
+        });
+    }
+    
     setupValidationListeners() {
         // Real-time validation for phone number
         if (this.profilePhone) {
@@ -152,7 +234,6 @@ class ProfileModule {
         }
     }
     
-    // Initialize with user data from database.js
     async initialize() {
         console.log('🚀 ProfileModule.initialize() called');
         
@@ -176,7 +257,6 @@ class ProfileModule {
         this.isInitialized = true;
     }
     
-    // Get user ID from database.js
     getCurrentUserId() {
         if (window.db && window.db.currentUserId) {
             return window.db.currentUserId;
@@ -184,14 +264,9 @@ class ProfileModule {
         if (window.currentUserId) {
             return window.currentUserId;
         }
-        // Try to get from auth session
-        if (window.db && window.db.getCurrentUserId) {
-            return window.db.getCurrentUserId();
-        }
         return null;
     }
     
-    // Get user profile from database.js
     getUserProfile() {
         if (window.db && window.db.currentUserProfile) {
             return window.db.currentUserProfile;
@@ -202,7 +277,6 @@ class ProfileModule {
         return null;
     }
     
-    // Get Supabase client from database.js
     getSupabaseClient() {
         if (window.db && window.db.supabase) {
             return window.db.supabase;
@@ -214,7 +288,6 @@ class ProfileModule {
         return null;
     }
     
-    // Load profile from database.js
     async loadProfile() {
         if (!this.userId) {
             console.error('❌ User ID not set');
@@ -224,15 +297,14 @@ class ProfileModule {
         console.log('👤 Loading profile data...');
         
         this.showStatus('Loading profile...', 'info');
+        this.updateUIState('loading');
         
         try {
-            // Use database.js to load profile
             let profile;
             if (window.db && window.db.loadUserProfile) {
                 console.log('📦 Using database.js to load profile');
                 profile = await window.db.loadUserProfile();
             } else {
-                // Fallback: direct database query
                 const supabase = this.getSupabaseClient();
                 if (!supabase) {
                     throw new Error('No database connection');
@@ -261,12 +333,13 @@ class ProfileModule {
             await this.loadProfilePhoto();
             
             // Set initial state
-            this.toggleProfileEdit(false);
+            this.updateUIState('view');
             
             console.log('✅ Profile loaded successfully');
             
         } catch (error) {
             console.error('❌ Error loading profile:', error);
+            this.updateUIState('error');
             this.showStatus(`Error: ${error.message}`, 'error');
         }
     }
@@ -276,7 +349,6 @@ class ProfileModule {
         
         console.log('📝 Populating profile form...');
         
-        // Populate form fields with user data
         const fieldMappings = {
             'profile-name': ['full_name'],
             'profile-student-id': ['student_id', 'reg_no'],
@@ -301,26 +373,22 @@ class ProfileModule {
             }
         });
         
-        // Update sidebar user info
         this.updateSidebarUserInfo();
     }
     
     updateSidebarUserInfo() {
         if (!this.userProfile) return;
         
-        // Update sidebar user name
         const sidebarUserName = document.getElementById('sidebar-user-name');
         if (sidebarUserName) {
             sidebarUserName.textContent = this.userProfile.full_name || 'Student';
         }
         
-        // Update sidebar user email
         const sidebarUserEmail = document.getElementById('sidebar-user-email');
         if (sidebarUserEmail) {
             sidebarUserEmail.textContent = this.userProfile.email || '';
         }
         
-        // Update dashboard welcome
         const welcomeHeader = document.getElementById('welcome-header');
         if (welcomeHeader) {
             const name = this.userProfile.full_name || 'Student';
@@ -335,7 +403,6 @@ class ProfileModule {
         
         const photoUrl = this.userProfile.passport_url;
         
-        // Clean up previous object URL if exists
         if (this.photoObjectURL) {
             URL.revokeObjectURL(this.photoObjectURL);
             this.photoObjectURL = null;
@@ -345,11 +412,9 @@ class ProfileModule {
         
         if (photoUrl) {
             try {
-                // Try to construct Supabase URL
                 const supabaseUrl = window.APP_CONFIG?.SUPABASE_URL || 'https://api.supabase.co';
                 finalPhotoSrc = `${supabaseUrl}/storage/v1/object/public/passports/${photoUrl}?t=${new Date().getTime()}`;
                 
-                // Test if image loads
                 await this.testImageLoad(finalPhotoSrc);
                 console.log('📸 Profile photo loaded successfully');
             } catch (error) {
@@ -358,13 +423,11 @@ class ProfileModule {
             }
         }
         
-        // Update profile photo
         if (this.passportPreview) {
             this.passportPreview.src = finalPhotoSrc;
             this.passportPreview.alt = photoUrl ? 'Your passport photo' : 'Upload passport photo';
         }
         
-        // Update passport card visibility
         const passportCard = document.getElementById('action-passport');
         if (passportCard) {
             passportCard.style.display = photoUrl ? 'none' : 'block';
@@ -380,18 +443,128 @@ class ProfileModule {
         });
     }
     
-    toggleProfileEdit(enable) {
-        this.isEditing = enable;
+    updateUIState(state) {
+        console.log(`🔄 Updating UI state to: ${state}`);
         
-        console.log(`🔄 Profile edit mode: ${enable ? 'ON' : 'OFF'}`);
+        switch(state) {
+            case 'view':
+                this.updateViewMode();
+                break;
+            case 'edit':
+                this.updateEditMode();
+                break;
+            case 'loading':
+                this.updateLoadingMode();
+                break;
+            case 'saving':
+                this.updateSavingMode();
+                break;
+            case 'error':
+                this.updateErrorMode();
+                break;
+        }
+    }
+    
+    updateViewMode() {
+        this.isEditing = false;
         
-        // Toggle readonly for editable fields
+        this.toggleElement(this.editProfileButton, true);
+        this.toggleElement(this.saveProfileButton, false);
+        this.toggleElement(this.cancelEditButton, false);
+        this.toggleElement(this.uploadButton, false);
+        
+        this.setFieldsReadonly(true);
+        
+        if (this.profileForm) {
+            this.profileForm.classList.remove('editing', 'loading', 'saving');
+        }
+        
+        this.clearAllErrors();
+        
+        if (this.passportFileInput && this.passportFileInput.files.length > 0) {
+            this.resetPhotoPreview();
+        }
+        
+        this.toggleHelpTexts(false);
+    }
+    
+    updateEditMode() {
+        this.isEditing = true;
+        
+        this.toggleElement(this.editProfileButton, false);
+        this.toggleElement(this.saveProfileButton, true);
+        this.toggleElement(this.cancelEditButton, true);
+        this.toggleElement(this.uploadButton, true);
+        
+        this.setFieldsReadonly(false);
+        
+        if (this.profileForm) {
+            this.profileForm.classList.add('editing');
+            this.profileForm.classList.remove('loading', 'saving');
+        }
+        
+        this.saveOriginalValues();
+        this.focusFirstEditableField();
+        this.toggleHelpTexts(true);
+        
+        this.showStatus('Edit mode enabled. Make your changes and click Save.', 'info');
+    }
+    
+    updateLoadingMode() {
+        this.showStatus('Loading...', 'info');
+        this.disableAllButtons(true);
+        
+        if (this.profileForm) {
+            this.profileForm.classList.add('loading');
+        }
+    }
+    
+    updateSavingMode() {
+        this.showStatus('Saving changes...', 'info');
+        this.disableAllButtons(true);
+        
+        if (this.saveProfileButton) {
+            this.saveProfileButton.classList.add('button-loading');
+            this.saveProfileButton.innerHTML = '<span class="spinner"></span>Saving...';
+        }
+        
+        if (this.profileForm) {
+            this.profileForm.classList.add('saving');
+        }
+    }
+    
+    updateErrorMode() {
+        this.disableAllButtons(false);
+        
+        if (this.saveProfileButton) {
+            this.saveProfileButton.classList.remove('button-loading');
+            this.saveProfileButton.innerHTML = '<span class="button-icon">💾</span><span class="button-text">Save Changes</span>';
+        }
+        
+        if (this.profileForm) {
+            this.profileForm.classList.remove('saving', 'loading');
+            this.profileForm.classList.add('error-shake');
+            setTimeout(() => {
+                this.profileForm.classList.remove('error-shake');
+            }, 500);
+        }
+    }
+    
+    toggleElement(element, show) {
+        if (element) {
+            element.style.display = show ? 'flex' : 'none';
+        }
+    }
+    
+    setFieldsReadonly(readonly) {
         const editableFields = [this.profileName, this.profilePhone];
         editableFields.forEach(field => {
-            if (field) field.readOnly = !enable;
+            if (field) {
+                field.readOnly = readonly;
+                field.classList.toggle('editable', !readonly);
+            }
         });
         
-        // Always readonly fields
         const readonlyFields = [
             this.profileStudentId,
             this.profileEmail,
@@ -399,81 +572,102 @@ class ProfileModule {
             this.profileBlock,
             this.profileIntakeYear
         ];
+        
         readonlyFields.forEach(field => {
-            if (field) field.readOnly = true;
-        });
-        
-        // Toggle buttons
-        if (this.editProfileButton) {
-            this.editProfileButton.style.display = enable ? 'none' : 'flex';
-        }
-        if (this.saveProfileButton) {
-            this.saveProfileButton.style.display = enable ? 'flex' : 'none';
-        }
-        if (this.cancelEditButton) {
-            this.cancelEditButton.style.display = enable ? 'inline-flex' : 'none';
-        }
-        
-        // Toggle upload controls
-        if (this.uploadButton) {
-            this.uploadButton.style.display = enable ? 'flex' : 'none';
-        }
-        if (this.passportFileInput && this.passportFileInput.parentNode) {
-            this.passportFileInput.parentNode.style.display = enable ? 'block' : 'none';
-        }
-        
-        // Update help text visibility
-        Object.values(this.helpTexts).forEach(helpText => {
-            if (helpText) {
-                helpText.style.display = enable ? 'block' : 'none';
+            if (field) {
+                field.readOnly = true;
+                field.classList.remove('editable');
             }
         });
+    }
+    
+    saveOriginalValues() {
+        this.originalValues = {
+            name: this.profileName ? this.profileName.value : '',
+            phone: this.profilePhone ? this.profilePhone.value : '',
+            photoUrl: this.passportPreview ? this.passportPreview.src : ''
+        };
+    }
+    
+    focusFirstEditableField() {
+        setTimeout(() => {
+            if (this.profileName && !this.profileName.readOnly) {
+                this.profileName.focus();
+                this.profileName.select();
+            }
+        }, 100);
+    }
+    
+    toggleHelpTexts(show) {
+        const helpTexts = document.querySelectorAll('.help-text');
+        helpTexts.forEach(text => {
+            text.style.display = show ? 'block' : 'none';
+        });
+    }
+    
+    disableAllButtons(disabled) {
+        const buttons = [
+            this.editProfileButton,
+            this.saveProfileButton,
+            this.cancelEditButton,
+            this.uploadButton
+        ];
         
-        // Add/remove visual editing state
-        if (this.profileForm) {
-            this.profileForm.classList.toggle('editing', enable);
+        buttons.forEach(button => {
+            if (button) {
+                button.disabled = disabled;
+            }
+        });
+    }
+    
+    clearAllErrors() {
+        const errorElements = document.querySelectorAll('.field-error');
+        errorElements.forEach(element => element.remove());
+        
+        const errorInputs = document.querySelectorAll('.form-input.error');
+        errorInputs.forEach(input => {
+            input.classList.remove('error');
+            input.classList.remove('success');
+        });
+    }
+    
+    resetPhotoPreview() {
+        if (this.passportPreview && this.originalValues.photoUrl) {
+            this.passportPreview.src = this.originalValues.photoUrl;
+            this.passportPreview.classList.remove('new-photo');
         }
-        
-        // Dispatch event for other components
-        document.dispatchEvent(new CustomEvent('profileEditModeChange', {
-            detail: { isEditing: enable }
-        }));
+        if (this.passportFileInput) {
+            this.passportFileInput.value = '';
+        }
+        if (this.uploadButton) {
+            this.uploadButton.disabled = true;
+        }
     }
     
     enableEditing() {
         console.log('✏️ Enabling profile editing...');
-        this.toggleProfileEdit(true);
-        this.showStatus('You can now edit your profile', 'info');
-        
-        // Focus on name field
-        if (this.profileName) {
-            setTimeout(() => {
-                this.profileName.focus();
-                this.profileName.select();
-            }, 100);
-        }
+        this.updateUIState('edit');
     }
     
     cancelEditing() {
         console.log('✖️ Canceling profile editing...');
         
-        // Reset form to original values
         this.populateProfileForm();
         
-        // Reset photo preview if changed
         if (this.passportFileInput && this.passportFileInput.files.length > 0) {
             this.passportFileInput.value = '';
             this.loadProfilePhoto();
         }
         
-        this.toggleProfileEdit(false);
+        this.updateUIState('view');
         this.clearStatus();
         
-        // Clean up object URL
         if (this.photoObjectURL) {
             URL.revokeObjectURL(this.photoObjectURL);
             this.photoObjectURL = null;
         }
+        
+        this.showNotification('Changes canceled', 'info');
     }
     
     async saveProfile() {
@@ -484,79 +678,209 @@ class ProfileModule {
         
         console.log('💾 Saving profile changes...');
         
-        this.showStatus('Saving changes...', 'info');
-        
         // Validate form
-        if (!this.validateForm()) {
+        if (!this.validateFormWithVisuals()) {
             return;
         }
         
-        const updates = {
-            full_name: this.profileName ? this.profileName.value.trim() : '',
-            phone: this.profilePhone ? this.profilePhone.value.trim() : '',
-            updated_at: new Date().toISOString()
-        };
+        this.updateUIState('saving');
         
         try {
-            // Use database.js if available
-            let result;
-            if (window.db && window.db.updateProfile) {
-                console.log('📦 Using database.js to update profile');
-                result = await window.db.updateProfile(updates);
+            const updates = {
+                full_name: this.profileName ? this.profileName.value.trim() : '',
+                phone: this.profilePhone ? this.profilePhone.value.trim() : '',
+                updated_at: new Date().toISOString()
+            };
+            
+            await this.saveProfileData(updates);
+            
+            if (this.passportFileInput.files.length > 0) {
+                await this.uploadPassportPhotoWithProgress();
             } else {
-                // Fallback: direct update
-                const supabase = this.getSupabaseClient();
-                if (!supabase) {
-                    throw new Error('No database connection');
-                }
-                
-                const { error } = await supabase
-                    .from('consolidated_user_profiles_table')
-                    .update(updates)
-                    .eq('user_id', this.userId);
-                
-                result = { success: !error, error };
-            }
-            
-            if (result.error) {
-                throw new Error(result.error.message);
-            }
-            
-            console.log('✅ Profile updated successfully');
-            
-            // Upload photo if selected
-            if (this.passportFileInput && this.passportFileInput.files.length > 0) {
-                await this.uploadPassportPhoto();
-            } else {
-                this.showStatus('Profile updated successfully!', 'success');
-                this.toggleProfileEdit(false);
-                
-                // Reload profile to get fresh data
-                await this.loadProfile();
-                
-                // Show success notification
-                this.showNotification('Profile updated successfully!', 'success');
+                this.onSaveSuccess();
             }
             
         } catch (error) {
-            console.error('❌ Error saving profile:', error);
-            this.showStatus(`Error: ${error.message}`, 'error');
+            this.onSaveError(error);
         }
     }
     
-    validateForm() {
+    async saveProfileData(updates) {
+        console.log('💾 Saving profile data...');
+        
+        const supabase = this.getSupabaseClient();
+        if (!supabase) {
+            throw new Error('No database connection');
+        }
+        
+        const { error } = await supabase
+            .from('consolidated_user_profiles_table')
+            .update(updates)
+            .eq('user_id', this.userId);
+        
+        if (error) throw error;
+    }
+    
+    async uploadPassportPhotoWithProgress() {
+        console.log('📤 Uploading photo with progress...');
+        
+        this.isPhotoUploading = true;
+        const file = this.passportFileInput.files[0];
+        
+        this.showUploadProgress(0);
+        
+        try {
+            const supabase = this.getSupabaseClient();
+            const fileExt = file.name.split('.').pop();
+            const filePath = `${this.userId}.${fileExt}`;
+            
+            const { error } = await supabase.storage
+                .from('passports')
+                .upload(filePath, file, {
+                    cacheControl: '3600',
+                    upsert: true,
+                    contentType: file.type
+                });
+            
+            if (error) throw error;
+            
+            await supabase
+                .from('consolidated_user_profiles_table')
+                .update({ 
+                    passport_url: filePath,
+                    updated_at: new Date().toISOString() 
+                })
+                .eq('user_id', this.userId);
+            
+            this.showUploadProgress(100);
+            setTimeout(() => this.onSaveSuccess(), 500);
+            
+        } catch (error) {
+            throw error;
+        } finally {
+            this.isPhotoUploading = false;
+        }
+    }
+    
+    showUploadProgress(percent) {
+        let progressBar = document.getElementById('upload-progress');
+        if (!progressBar) {
+            progressBar = document.createElement('div');
+            progressBar.id = 'upload-progress';
+            progressBar.className = 'progress-bar';
+            progressBar.innerHTML = `
+                <div class="progress-fill"></div>
+                <div class="progress-text">Uploading: ${percent}%</div>
+            `;
+            
+            const statusContainer = document.getElementById('profile-status-container') || 
+                                   document.querySelector('.form-status-container');
+            if (statusContainer) {
+                statusContainer.appendChild(progressBar);
+            }
+        }
+        
+        const progressFill = progressBar.querySelector('.progress-fill');
+        const progressText = progressBar.querySelector('.progress-text');
+        
+        if (progressFill) progressFill.style.width = `${percent}%`;
+        if (progressText) progressText.textContent = `Uploading: ${percent}%`;
+        
+        if (percent === 100) {
+            setTimeout(() => {
+                progressBar.remove();
+            }, 1000);
+        }
+    }
+    
+    onSaveSuccess() {
+        console.log('✅ Save successful!');
+        
+        if (this.photoObjectURL) {
+            URL.revokeObjectURL(this.photoObjectURL);
+            this.photoObjectURL = null;
+        }
+        
+        this.loadProfile();
+        
+        this.showStatus('Profile updated successfully!', 'success');
+        this.showNotification('✅ Profile saved successfully!', 'success');
+        
+        this.updateUIState('view');
+    }
+    
+    onSaveError(error) {
+        console.error('❌ Save error:', error);
+        this.updateUIState('error');
+        this.showStatus(`Error: ${error.message}`, 'error');
+        this.showNotification(`❌ ${error.message}`, 'error');
+    }
+    
+    validateFormWithVisuals() {
         let isValid = true;
         
-        // Validate name
-        if (!this.validateName()) {
+        if (!this.validateFieldWithFeedback(this.profileName, 'name')) {
+            this.addFieldAnimation(this.profileName, 'shake');
             isValid = false;
         }
         
-        // Validate phone (if provided)
         if (this.profilePhone && this.profilePhone.value.trim()) {
-            if (!this.validatePhoneNumber()) {
+            if (!this.validateFieldWithFeedback(this.profilePhone, 'phone')) {
+                this.addFieldAnimation(this.profilePhone, 'shake');
                 isValid = false;
             }
+        }
+        
+        if (isValid && this.profileForm) {
+            this.profileForm.classList.add('success-pulse');
+            setTimeout(() => {
+                this.profileForm.classList.remove('success-pulse');
+            }, 1000);
+        }
+        
+        return isValid;
+    }
+    
+    validateFieldWithFeedback(field, type) {
+        if (!field) return true;
+        
+        let isValid = true;
+        let message = '';
+        
+        switch(type) {
+            case 'name':
+                const name = field.value.trim();
+                if (!name) {
+                    isValid = false;
+                    message = 'Name is required';
+                } else if (name.length < 2) {
+                    isValid = false;
+                    message = 'Name must be at least 2 characters';
+                }
+                break;
+                
+            case 'phone':
+                const phone = field.value.trim();
+                if (phone) {
+                    const phoneRegex = /^[\d\s\-\+\(\)]{10,20}$/;
+                    if (!phoneRegex.test(phone)) {
+                        isValid = false;
+                        message = 'Please enter a valid phone number';
+                    }
+                }
+                break;
+        }
+        
+        if (!isValid) {
+            field.classList.remove('success');
+            field.classList.add('error');
+            this.showFieldError(field, message);
+        } else {
+            field.classList.remove('error');
+            field.classList.add('success');
+            setTimeout(() => {
+                field.classList.remove('success');
+            }, 2000);
         }
         
         return isValid;
@@ -584,9 +908,8 @@ class ProfileModule {
         if (!this.profilePhone) return true;
         
         const phone = this.profilePhone.value.trim();
-        if (!phone) return true; // Phone is optional
+        if (!phone) return true;
         
-        // Basic phone validation (adjust as needed)
         const phoneRegex = /^[\d\s\-\+\(\)]{10,20}$/;
         if (!phoneRegex.test(phone)) {
             this.showFieldError(this.profilePhone, 'Please enter a valid phone number');
@@ -603,9 +926,6 @@ class ProfileModule {
                             document.createElement('div');
         errorElement.className = 'field-error';
         errorElement.textContent = message;
-        errorElement.style.color = 'var(--color-error, #dc2626)';
-        errorElement.style.fontSize = '0.875rem';
-        errorElement.style.marginTop = '0.25rem';
         
         if (!field.parentNode.querySelector('.field-error')) {
             field.parentNode.appendChild(errorElement);
@@ -620,46 +940,70 @@ class ProfileModule {
         }
     }
     
+    addFieldAnimation(field, animation) {
+        if (!field) return;
+        
+        field.classList.add(animation);
+        setTimeout(() => {
+            field.classList.remove(animation);
+        }, 500);
+    }
+    
     handlePassportFileSelect(event) {
         const file = event.target.files[0];
-        if (file) {
-            console.log('📁 File selected:', file.name);
-            
-            // Clean up previous object URL
-            if (this.photoObjectURL) {
-                URL.revokeObjectURL(this.photoObjectURL);
-            }
-            
-            // Validate file
-            const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-            const maxSize = 2 * 1024 * 1024; // 2MB (as per help text)
-            
-            if (!validTypes.includes(file.type)) {
-                this.showStatus('Please select a valid image file (JPEG, PNG, WebP)', 'error');
-                event.target.value = '';
-                return;
-            }
-            
-            if (file.size > maxSize) {
-                this.showStatus('File size must be less than 2MB', 'error');
-                event.target.value = '';
-                return;
-            }
-            
-            // Create and display object URL for preview
-            this.photoObjectURL = URL.createObjectURL(file);
-            
-            if (this.passportPreview) {
-                this.passportPreview.src = this.photoObjectURL;
-            }
-            
-            if (this.uploadButton) {
-                this.uploadButton.disabled = false;
-                this.uploadButton.textContent = 'Upload Photo';
-            }
-            
-            this.showStatus('Ready to upload photo', 'info');
+        if (!file) return;
+        
+        console.log('📁 File selected:', file.name);
+        
+        const validation = this.validatePassportFile(file);
+        if (!validation.valid) {
+            this.showStatus(validation.message, 'error');
+            event.target.value = '';
+            return;
         }
+        
+        if (this.photoObjectURL) {
+            URL.revokeObjectURL(this.photoObjectURL);
+            this.photoObjectURL = null;
+        }
+        
+        this.photoObjectURL = URL.createObjectURL(file);
+        
+        if (this.passportPreview) {
+            this.passportPreview.src = this.photoObjectURL;
+            this.passportPreview.classList.add('new-photo');
+        }
+        
+        if (this.uploadButton) {
+            this.uploadButton.disabled = false;
+            this.uploadButton.textContent = 'Upload Photo';
+        }
+        
+        const fileSize = (file.size / 1024 / 1024).toFixed(2);
+        this.showStatus(`Ready to upload: ${file.name} (${fileSize} MB)`, 'info');
+    }
+    
+    validatePassportFile(file) {
+        const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+        const maxSize = 2 * 1024 * 1024;
+        
+        if (!validTypes.includes(file.type)) {
+            return {
+                valid: false,
+                message: 'Invalid file type. Please upload JPG, PNG, or WebP image.'
+            };
+        }
+        
+        if (file.size > maxSize) {
+            const maxSizeMB = (maxSize / 1024 / 1024).toFixed(0);
+            const fileSizeMB = (file.size / 1024 / 1024).toFixed(2);
+            return {
+                valid: false,
+                message: `File too large (${fileSizeMB} MB). Maximum size is ${maxSizeMB} MB.`
+            };
+        }
+        
+        return { valid: true };
     }
     
     async uploadPassportPhoto() {
@@ -676,7 +1020,7 @@ class ProfileModule {
         
         console.log('📤 Uploading passport photo...');
         
-        this.showStatus('Uploading photo... (This may take a few seconds)', 'info');
+        this.showStatus('Uploading photo...', 'info');
         
         if (this.uploadButton) {
             this.uploadButton.disabled = true;
@@ -684,66 +1028,47 @@ class ProfileModule {
         }
         
         try {
-            // Use database.js if available
-            let result;
-            if (window.db && window.db.uploadPassportPhoto) {
-                console.log('📦 Using database.js to upload photo');
-                result = await window.db.uploadPassportPhoto(file);
-            } else {
-                // Fallback: direct upload
-                const supabase = this.getSupabaseClient();
-                if (!supabase) {
-                    throw new Error('No database connection');
-                }
-                
-                const fileExt = file.name.split('.').pop();
-                const filePath = `${this.userId}.${fileExt}`;
-                
-                // Upload to storage
-                const { error: uploadError } = await supabase.storage
-                    .from('passports')
-                    .upload(filePath, file, { 
-                        cacheControl: '3600', 
-                        upsert: true,
-                        contentType: file.type
-                    });
-                
-                if (uploadError) throw uploadError;
-                
-                // Update profile with photo URL
-                const { error: updateError } = await supabase
-                    .from('consolidated_user_profiles_table')
-                    .update({ 
-                        passport_url: filePath,
-                        updated_at: new Date().toISOString() 
-                    })
-                    .eq('user_id', this.userId);
-                
-                if (updateError) throw updateError;
-                
-                result = { success: true, filePath };
+            const supabase = this.getSupabaseClient();
+            if (!supabase) {
+                throw new Error('No database connection');
             }
             
-            if (!result.success) {
-                throw new Error(result.error || 'Upload failed');
-            }
+            const fileExt = file.name.split('.').pop();
+            const filePath = `${this.userId}.${fileExt}`;
+            
+            const { error: uploadError } = await supabase.storage
+                .from('passports')
+                .upload(filePath, file, { 
+                    cacheControl: '3600', 
+                    upsert: true,
+                    contentType: file.type
+                });
+            
+            if (uploadError) throw uploadError;
+            
+            const { error: updateError } = await supabase
+                .from('consolidated_user_profiles_table')
+                .update({ 
+                    passport_url: filePath,
+                    updated_at: new Date().toISOString() 
+                })
+                .eq('user_id', this.userId);
+            
+            if (updateError) throw updateError;
             
             console.log('✅ Photo uploaded successfully');
             
-            // Clear file input
             this.passportFileInput.value = '';
             
-            // Clean up object URL
             if (this.photoObjectURL) {
                 URL.revokeObjectURL(this.photoObjectURL);
                 this.photoObjectURL = null;
             }
             
-            // Reload profile to reflect change
             await this.loadProfile();
             
             this.showStatus('Profile updated successfully!', 'success');
-            this.toggleProfileEdit(false);
+            this.updateUIState('view');
             
             this.showNotification('Profile photo updated successfully!', 'success');
             
@@ -759,14 +1084,12 @@ class ProfileModule {
         }
     }
     
-    // Helper methods for status messages
     showStatus(message, type = 'info') {
         if (!this.profileStatus) return;
         
         this.profileStatus.textContent = message;
         this.profileStatus.className = `form-status form-status-${type}`;
         
-        // Auto-clear success messages after 5 seconds
         if (type === 'success') {
             setTimeout(() => {
                 if (this.profileStatus && this.profileStatus.textContent === message) {
@@ -784,16 +1107,28 @@ class ProfileModule {
     }
     
     showNotification(message, type = 'success') {
-        // Use existing toast system if available
         if (window.showToast) {
             showToast(message, type);
             return;
         }
         
-        // Fallback notification
         const notification = document.createElement('div');
         notification.className = `notification notification-${type}`;
-        notification.textContent = message;
+        notification.setAttribute('role', 'alert');
+        notification.setAttribute('aria-live', 'assertive');
+        
+        const icons = {
+            success: '✅',
+            error: '❌',
+            info: 'ℹ️',
+            warning: '⚠️'
+        };
+        
+        notification.innerHTML = `
+            <span class="notification-icon">${icons[type] || icons.info}</span>
+            <span class="notification-message">${message}</span>
+        `;
+        
         notification.style.cssText = `
             position: fixed;
             top: 20px;
@@ -804,6 +1139,9 @@ class ProfileModule {
             border-radius: 8px;
             z-index: 1000;
             animation: slideIn 0.3s ease-out;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         `;
         
         document.body.appendChild(notification);
@@ -814,14 +1152,11 @@ class ProfileModule {
         }, 3000);
     }
     
-    // Get current user profile (for other modules)
     getCurrentUserProfile() {
         return this.userProfile;
     }
     
-    // Cleanup method
     cleanup() {
-        // Clean up object URL
         if (this.photoObjectURL) {
             URL.revokeObjectURL(this.photoObjectURL);
             this.photoObjectURL = null;
@@ -834,17 +1169,14 @@ class ProfileModule {
 // Create global instance
 let profileModule = null;
 
-// Initialize profile module
 function initProfileModule() {
     console.log('🚀 initProfileModule() called');
     
-    // Check if profile elements exist
     if (!document.getElementById('profile-form')) {
         console.log('📭 Profile form not found on this page');
         return null;
     }
     
-    // Clean up previous instance if exists
     if (profileModule) {
         profileModule.cleanup();
     }
@@ -852,7 +1184,6 @@ function initProfileModule() {
     try {
         profileModule = new ProfileModule();
         
-        // Wait for database to be ready
         const waitForDatabase = () => {
             if (window.db && window.db.isInitialized) {
                 profileModule.initialize();
@@ -871,7 +1202,6 @@ function initProfileModule() {
     }
 }
 
-// Global function to load profile
 async function loadProfile() {
     if (profileModule) {
         await profileModule.loadProfile();
@@ -881,23 +1211,19 @@ async function loadProfile() {
     }
 }
 
-// Auto-initialize when page loads
 document.addEventListener('DOMContentLoaded', () => {
     console.log('📱 DOM loaded, checking for profile elements...');
     
-    // Check if we're on a page with profile elements
     const hasProfileElements = document.getElementById('profile-form') || 
                               document.getElementById('profile');
     
     if (hasProfileElements) {
         console.log('✅ Profile elements found, initializing...');
         
-        // Wait a bit for other modules to initialize
         setTimeout(() => {
             initProfileModule();
         }, 1000);
         
-        // Also initialize when profile tab is activated
         document.addEventListener('click', (e) => {
             const tabLink = e.target.closest('[data-tab="profile"]');
             if (tabLink && !profileModule) {
@@ -909,7 +1235,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// Listen for app ready event
 document.addEventListener('appReady', function() {
     console.log('🎯 App is ready, checking profile...');
     if (document.getElementById('profile-form') && !profileModule) {
@@ -917,7 +1242,6 @@ document.addEventListener('appReady', function() {
     }
 });
 
-// Make functions globally available
 window.ProfileModule = ProfileModule;
 window.initProfileModule = initProfileModule;
 window.loadProfile = loadProfile;
