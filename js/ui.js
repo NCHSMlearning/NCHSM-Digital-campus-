@@ -707,7 +707,7 @@ class UIModule {
             Last Login: ${info.lastLogin}
             Storage: ${info.localStorageSize}
             
-            © 2025 Nakuru College of Health Sciences and Management
+            © 2026 Nakuru College of Health Sciences and Management
         `;
         
         alert(infoText);
