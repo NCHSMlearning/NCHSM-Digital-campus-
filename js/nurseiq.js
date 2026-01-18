@@ -1,4 +1,4 @@
-// js/nurseiq.js - ENHANCED VERSION WITH PERSISTENT PROGRESS & ANSWER VISIBILITY
+// js/nurseiq.js - COMPLETE ENHANCED VERSION WITH PERSISTENT PROGRESS & ANSWER VISIBILITY
 class NurseIQModule {
     constructor() {
         this.userId = null;
@@ -17,7 +17,8 @@ class NurseIQModule {
         this.initialized = false;
         this.storageKey = 'nurseiq_user_progress';
         this.lastCourseProgressKey = 'nurseiq_last_course';
-        this.currentSessionAnswers = {}; // Temporary for current session
+        this.currentSessionAnswers = {};
+        this.progressVersion = '1.0';
     }
     
     async initializeElements() {
@@ -93,7 +94,7 @@ class NurseIQModule {
         try {
             this.userId = getCurrentUserId();
             await this.initializeElements();
-            await this.loadUserProgress(); // Load saved progress
+            await this.loadUserProgress();
             await this.loadQuestionBankCards();
             this.initialized = true;
             console.log('✅ NurseIQ Module initialized');
@@ -108,7 +109,14 @@ class NurseIQModule {
             // Load from localStorage first
             const savedProgress = localStorage.getItem(this.storageKey);
             if (savedProgress) {
-                this.userTestAnswers = JSON.parse(savedProgress);
+                const parsed = JSON.parse(savedProgress);
+                // Check if it's the new format with question IDs
+                if (parsed.version === this.progressVersion && parsed.answers) {
+                    this.userTestAnswers = parsed.answers;
+                } else {
+                    // Old format - convert
+                    this.userTestAnswers = parsed;
+                }
                 console.log('📊 Loaded saved progress:', Object.keys(this.userTestAnswers).length, 'answered questions');
             }
             
@@ -117,7 +125,7 @@ class NurseIQModule {
                 const supabase = this.getSupabaseClient();
                 if (supabase) {
                     const { data, error } = await supabase
-                        .from('user_progress') // You'll need to create this table
+                        .from('user_progress')
                         .select('progress_data')
                         .eq('user_id', this.userId)
                         .single();
@@ -135,8 +143,13 @@ class NurseIQModule {
     
     saveUserProgress() {
         try {
-            // Save to localStorage
-            localStorage.setItem(this.storageKey, JSON.stringify(this.userTestAnswers));
+            // Save to localStorage with versioning
+            const progressData = {
+                version: this.progressVersion,
+                answers: this.userTestAnswers,
+                lastSaved: new Date().toISOString()
+            };
+            localStorage.setItem(this.storageKey, JSON.stringify(progressData));
             
             // Save last course progress for resuming
             if (this.currentCourseForTest) {
@@ -144,6 +157,7 @@ class NurseIQModule {
                     courseId: this.currentCourseForTest.id,
                     courseName: this.currentCourseForTest.name,
                     currentIndex: this.currentQuestionIndex,
+                    totalQuestions: this.currentCourseQuestions.length,
                     timestamp: new Date().toISOString()
                 };
                 localStorage.setItem(this.lastCourseProgressKey, JSON.stringify(lastProgress));
@@ -188,6 +202,53 @@ class NurseIQModule {
         }
     }
     
+    getCourseUserStats(courseId, questions) {
+        const courseQuestions = questions.filter(q => q.course_id === courseId);
+        let answered = 0;
+        let correct = 0;
+        let lastAttempt = null;
+        
+        // Count answers by question ID
+        courseQuestions.forEach(question => {
+            const questionAnswer = this.userTestAnswers[question.id];
+            if (questionAnswer && questionAnswer.answered) {
+                answered++;
+                if (questionAnswer.correct) correct++;
+                if (questionAnswer.timestamp && (!lastAttempt || new Date(questionAnswer.timestamp) > new Date(lastAttempt))) {
+                    lastAttempt = questionAnswer.timestamp;
+                }
+            }
+        });
+        
+        // Calculate stats
+        const accuracy = answered > 0 ? Math.round((correct / answered) * 100) : 0;
+        const completion = answered > 0 ? Math.round((answered / courseQuestions.length) * 100) : 0;
+        
+        // Calculate difficulty stats
+        const difficultyStats = {
+            easy: 0,
+            medium: 0,
+            hard: 0
+        };
+        
+        courseQuestions.forEach(question => {
+            const difficulty = question.difficulty?.toLowerCase() || 'medium';
+            if (difficulty === 'easy') difficultyStats.easy++;
+            else if (difficulty === 'hard') difficultyStats.hard++;
+            else difficultyStats.medium++;
+        });
+        
+        return {
+            answered,
+            correct,
+            accuracy,
+            completion,
+            lastAttempt,
+            total: courseQuestions.length,
+            difficulty: difficultyStats
+        };
+    }
+    
     async loadQuestionBankCards() {
         try {
             console.log('📚 Loading question bank...');
@@ -220,7 +281,7 @@ class NurseIQModule {
                         description: question.courses?.description || '',
                         questions: [],
                         stats: { total: 0, active: 0, hard: 0, medium: 0, easy: 0, lastUpdated: null },
-                        userStats: this.getCourseUserStats(courseId, questions)
+                        userStats: null
                     };
                 }
                 
@@ -238,6 +299,11 @@ class NurseIQModule {
                         coursesMap[courseId].stats.lastUpdated = updatedDate;
                     }
                 }
+            });
+            
+            // Calculate user stats for each course
+            Object.keys(coursesMap).forEach(courseId => {
+                coursesMap[courseId].userStats = this.getCourseUserStats(courseId, coursesMap[courseId].questions);
             });
             
             const coursesArray = Object.values(coursesMap);
@@ -258,36 +324,6 @@ class NurseIQModule {
         }
     }
     
-    getCourseUserStats(courseId, questions) {
-        const courseQuestions = questions.filter(q => q.course_id === courseId);
-        let answered = 0;
-        let correct = 0;
-        let lastAttempt = null;
-        
-        courseQuestions.forEach(question => {
-            const questionAnswer = this.userTestAnswers[question.id];
-            if (questionAnswer && questionAnswer.answered) {
-                answered++;
-                if (questionAnswer.correct) correct++;
-                if (questionAnswer.timestamp && (!lastAttempt || new Date(questionAnswer.timestamp) > new Date(lastAttempt))) {
-                    lastAttempt = questionAnswer.timestamp;
-                }
-            }
-        });
-        
-        const accuracy = answered > 0 ? Math.round((correct / answered) * 100) : 0;
-        const completion = Math.round((answered / courseQuestions.length) * 100);
-        
-        return {
-            answered,
-            correct,
-            accuracy,
-            completion,
-            lastAttempt,
-            total: courseQuestions.length
-        };
-    }
-    
     displayQuestionBankCards(courses, overallStats) {
         if (!this.studentQuestionBankContent) return;
         
@@ -304,6 +340,7 @@ class NurseIQModule {
         
         function formatDate(date) {
             if (!date) return 'Never';
+            if (typeof date === 'string') date = new Date(date);
             const now = new Date();
             const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
             if (diffDays === 0) return 'Today';
@@ -320,6 +357,7 @@ class NurseIQModule {
         if (lastProgress) {
             const lastCourse = courses.find(c => c.id === lastProgress.courseId);
             if (lastCourse) {
+                const userStats = lastCourse.userStats;
                 html += `
                     <div class="resume-card">
                         <div class="resume-header">
@@ -329,7 +367,14 @@ class NurseIQModule {
                         <div class="resume-content">
                             <div class="resume-course">
                                 <span class="resume-course-name">${lastCourse.name}</span>
-                                <span class="resume-progress">Question ${lastProgress.currentIndex + 1} of ${lastCourse.questions.length}</span>
+                                <span class="resume-progress">
+                                    <i class="fas fa-chart-line"></i> 
+                                    Question ${lastProgress.currentIndex + 1} of ${lastProgress.totalQuestions}
+                                </span>
+                                <div class="resume-stats">
+                                    <span class="resume-stat"><i class="fas fa-check-circle"></i> ${userStats.answered}/${userStats.total} answered</span>
+                                    <span class="resume-stat"><i class="fas fa-trophy"></i> ${userStats.accuracy}% accuracy</span>
+                                </div>
                             </div>
                             <div class="resume-actions">
                                 <button onclick="window.startCourseTest('${lastCourse.id}', '${lastCourse.name.replace(/'/g, "\\'")}', ${lastProgress.currentIndex})" 
@@ -387,7 +432,7 @@ class NurseIQModule {
                                 </div>
                             </div>
                             ${hasProgress ? `
-                                <div class="progress-badge" style="background: ${courseColor};">
+                                <div class="progress-badge" style="background: linear-gradient(135deg, ${courseColor}, ${this.adjustColor(courseColor, -20)});">
                                     <i class="fas fa-chart-line"></i> ${userStats.completion}% Complete
                                 </div>
                             ` : `
@@ -400,22 +445,22 @@ class NurseIQModule {
                         <div class="course-stats">
                             ${hasProgress ? `
                                 <div class="user-progress-section">
-                                    <div class="progress-title">Your Progress</div>
+                                    <div class="progress-title"><i class="fas fa-chart-bar"></i> Your Progress</div>
                                     <div class="progress-grid">
                                         <div class="progress-item">
-                                            <div class="progress-value">${userStats.answered}/${userStats.total}</div>
+                                            <div class="progress-value" style="color: ${courseColor};">${userStats.answered}/${userStats.total}</div>
                                             <div class="progress-label">Answered</div>
                                         </div>
                                         <div class="progress-item">
-                                            <div class="progress-value">${userStats.correct}</div>
+                                            <div class="progress-value" style="color: #10b981;">${userStats.correct}</div>
                                             <div class="progress-label">Correct</div>
                                         </div>
                                         <div class="progress-item">
-                                            <div class="progress-value">${userStats.accuracy}%</div>
+                                            <div class="progress-value" style="color: #f59e0b;">${userStats.accuracy}%</div>
                                             <div class="progress-label">Accuracy</div>
                                         </div>
                                         <div class="progress-item">
-                                            <div class="progress-value">${userStats.completion}%</div>
+                                            <div class="progress-value" style="color: #8b5cf6;">${userStats.completion}%</div>
                                             <div class="progress-label">Complete</div>
                                         </div>
                                     </div>
@@ -424,8 +469,8 @@ class NurseIQModule {
                             
                             <div class="stats-grid">
                                 <div class="stat-item">
-                                    <div class="stat-value text-primary">${course.stats.active}</div>
-                                    <div class="stat-label">ACTIVE</div>
+                                    <div class="stat-value text-primary">${course.stats.total}</div>
+                                    <div class="stat-label">TOTAL</div>
                                 </div>
                                 <div class="stat-item">
                                     <div class="stat-value text-danger">${course.stats.hard}</div>
@@ -443,7 +488,7 @@ class NurseIQModule {
                             
                             <button class="start-test-btn" 
                                     onclick="window.startCourseTest('${course.id}', '${course.name.replace(/'/g, "\\'")}', ${hasProgress ? -1 : 0})" 
-                                    style="background: ${courseColor}">
+                                    style="background: linear-gradient(135deg, ${courseColor}, ${this.adjustColor(courseColor, -20)});">
                                 <i class="fas fa-play-circle"></i> ${hasProgress ? 'CONTINUE PRACTICE' : 'START PRACTICE TEST'}
                             </button>
                             
@@ -472,6 +517,25 @@ class NurseIQModule {
         html += `</div>`;
         this.studentQuestionBankContent.innerHTML = html;
         console.log('✅ Question bank displayed');
+    }
+    
+    adjustColor(color, amount) {
+        let usePound = false;
+        if (color[0] === "#") {
+            color = color.slice(1);
+            usePound = true;
+        }
+        const num = parseInt(color, 16);
+        let r = (num >> 16) + amount;
+        if (r > 255) r = 255;
+        else if (r < 0) r = 0;
+        let b = ((num >> 8) & 0x00FF) + amount;
+        if (b > 255) b = 255;
+        else if (b < 0) b = 0;
+        let g = (num & 0x0000FF) + amount;
+        if (g > 255) g = 255;
+        else if (g < 0) g = 0;
+        return (usePound ? "#" : "") + (g | (b << 8) | (r << 16)).toString(16).padStart(6, '0');
     }
     
     async startCourseTest(courseId, courseName, startIndex = 0) {
@@ -504,23 +568,22 @@ class NurseIQModule {
             // Determine starting index
             let actualStartIndex = 0;
             if (startIndex === -1) {
-                // Find last answered question
-                let lastAnsweredIndex = 0;
+                // Find first unanswered question
+                let firstUnanswered = 0;
                 for (let i = 0; i < questions.length; i++) {
                     const question = questions[i];
-                    if (this.userTestAnswers[question.id]?.answered) {
-                        lastAnsweredIndex = i;
+                    const hasAnswered = this.userTestAnswers[question.id]?.answered;
+                    if (!hasAnswered) {
+                        firstUnanswered = i;
+                        break;
                     }
                 }
-                actualStartIndex = Math.min(lastAnsweredIndex, questions.length - 1);
+                actualStartIndex = firstUnanswered;
             } else if (startIndex >= 0 && startIndex < questions.length) {
                 actualStartIndex = startIndex;
             }
             
             this.currentQuestionIndex = actualStartIndex;
-            
-            // Load saved answers for this course
-            this.loadSavedAnswersForCourse(courseId, questions);
             
             this.displayInteractiveQuestions(courseName, questions);
             
@@ -533,24 +596,11 @@ class NurseIQModule {
         }
     }
     
-    loadSavedAnswersForCourse(courseId, questions) {
-        // Map question IDs to indices and load saved answers
-        this.userTestAnswers = {};
-        questions.forEach((question, index) => {
-            const savedAnswer = this.userTestAnswers[question.id];
-            if (savedAnswer) {
-                this.userTestAnswers[index] = {
-                    ...savedAnswer,
-                    questionId: question.id
-                };
-            }
-        });
-    }
-    
     displayInteractiveQuestions(courseName, questions) {
         if (!this.studentQuestionBankContent) return;
         
         const courseColor = questions[0]?.courses?.color || '#4f46e5';
+        const userStats = this.getCourseUserStats(this.currentCourseForTest.id, questions);
         
         let html = `
             <div class="interactive-questions-container">
@@ -574,15 +624,15 @@ class NurseIQModule {
                             </div>
                             <div class="progress-stat-top">
                                 <div class="progress-label-top">Answered</div>
-                                <div class="progress-value-top" id="answeredCountTop">0</div>
+                                <div class="progress-value-top" id="answeredCountTop">${userStats.answered}</div>
                             </div>
                             <div class="progress-stat-top">
                                 <div class="progress-label-top">Correct</div>
-                                <div class="progress-value-top" id="correctCountTop">0</div>
+                                <div class="progress-value-top" id="correctCountTop">${userStats.correct}</div>
                             </div>
                             <div class="progress-stat-top">
                                 <div class="progress-label-top">Accuracy</div>
-                                <div class="progress-value-top" id="accuracyTop">0%</div>
+                                <div class="progress-value-top" id="accuracyTop">${userStats.accuracy}%</div>
                             </div>
                         </div>
                     </div>
@@ -639,7 +689,6 @@ class NurseIQModule {
                             </div>
                         </div>
                         
-                        <!-- COMPACT NAVIGATION ADDED HERE -->
                         <div class="compact-navigation">
                             <button onclick="window.prevQuestion()" id="prevBtn" class="compact-nav-btn compact-nav-prev">
                                 <i class="fas fa-chevron-left"></i> Previous
@@ -665,6 +714,9 @@ class NurseIQModule {
                         <div id="answerRevealSection" class="answer-reveal-section" style="display: none;">
                             <div class="answer-header">
                                 <h3><i class="fas fa-check-double"></i> Answer & Explanation</h3>
+                                <button onclick="window.hideAnswer()" class="hide-answer-btn">
+                                    <i class="fas fa-times"></i> Hide
+                                </button>
                             </div>
                             
                             <div class="correct-answer-box">
@@ -699,6 +751,31 @@ class NurseIQModule {
                                 <button onclick="window.scrollQuestions('right')" class="grid-scroll-btn">
                                     <i class="fas fa-chevron-right"></i>
                                 </button>
+                            </div>
+                        </div>
+                        
+                        <div class="course-overview-card">
+                            <h3 class="overview-title"><i class="fas fa-chart-bar"></i> Course Progress</h3>
+                            <div class="overview-stats">
+                                <div class="overview-stat">
+                                    <div class="overview-value">${userStats.completion}%</div>
+                                    <div class="overview-label">Completion</div>
+                                </div>
+                                <div class="overview-stat">
+                                    <div class="overview-value">${userStats.accuracy}%</div>
+                                    <div class="overview-label">Accuracy</div>
+                                </div>
+                                <div class="overview-stat">
+                                    <div class="overview-value">${userStats.answered}</div>
+                                    <div class="overview-label">Answered</div>
+                                </div>
+                                <div class="overview-stat">
+                                    <div class="overview-value">${questions.length}</div>
+                                    <div class="overview-label">Total</div>
+                                </div>
+                            </div>
+                            <div class="progress-bar-container">
+                                <div class="progress-bar" style="width: ${userStats.completion}%; background: ${courseColor};"></div>
                             </div>
                         </div>
                         
@@ -756,12 +833,20 @@ class NurseIQModule {
         this.updateNavigationButtons();
         this.updateMarkButton();
         
-        // FEATURE 1: Check if we should show answer section from previous question
-        const userAnswer = this.userTestAnswers[this.currentQuestionIndex];
+        // FEATURE 1: Check if we should show answer section from saved answer
+        const savedAnswer = this.userTestAnswers[question.id];
         const answerRevealSection = document.getElementById('answerRevealSection');
         
-        if (userAnswer?.answered) {
-            this.showUserAnswer(userAnswer);
+        if (savedAnswer?.answered) {
+            // Load saved answer for display
+            this.userTestAnswers[this.currentQuestionIndex] = {
+                ...savedAnswer,
+                selectedOption: savedAnswer.selectedOption,
+                selectedOptionIndex: savedAnswer.selectedOptionIndex,
+                answered: true,
+                correct: savedAnswer.correct
+            };
+            this.showUserAnswer(this.userTestAnswers[this.currentQuestionIndex]);
             this.showAnswerRevealSection();
         } else {
             if (answerRevealSection) answerRevealSection.style.display = 'none';
@@ -796,8 +881,7 @@ class NurseIQModule {
             optionsHtml += `
                 <div class="option-item-improved" data-option-index="${index}" data-is-correct="${isCorrectAnswer}">
                     <div class="option-radio-improved">
-                        <input type="radio" id="${optionId}" name="question-${this.currentQuestionIndex}" value="${option}" class="option-input-hidden"
-                               ${this.userTestAnswers[this.currentQuestionIndex]?.selectedOption === option ? 'checked' : ''}>
+                        <input type="radio" id="${optionId}" name="question-${this.currentQuestionIndex}" value="${option}" class="option-input-hidden">
                         <label for="${optionId}" class="option-label-improved">
                             <span class="option-letter-circle">${optionLetter}</span>
                             <span class="option-text-improved">${option}</span>
@@ -813,13 +897,16 @@ class NurseIQModule {
             item.addEventListener('click', () => this.selectOption(item));
         });
         
-        if (question.id) {
-            this.userTestAnswers[this.currentQuestionIndex] = {
-                ...this.userTestAnswers[this.currentQuestionIndex],
-                questionId: question.id,
-                correctAnswer: correctAnswer,
-                timestamp: new Date().toISOString()
-            };
+        // Check for saved answer
+        const savedAnswer = this.userTestAnswers[question.id];
+        if (savedAnswer?.answered) {
+            // Find and select the saved option
+            optionsContainer.querySelectorAll('.option-item-improved').forEach(item => {
+                const optionText = item.querySelector('.option-text-improved')?.textContent || '';
+                if (optionText === savedAnswer.selectedOption) {
+                    this.selectOption(item);
+                }
+            });
         }
     }
     
@@ -835,8 +922,7 @@ class NurseIQModule {
                 ...this.userTestAnswers[this.currentQuestionIndex],
                 selectedOption: optionText,
                 selectedOptionIndex: parseInt(optionIndex),
-                answered: false,
-                timestamp: new Date().toISOString()
+                answered: false
             };
         }
     }
@@ -847,7 +933,10 @@ class NurseIQModule {
         optionsContainer.querySelectorAll('.option-item-improved').forEach(item => {
             item.classList.remove('selected-improved', 'correct-improved', 'incorrect-improved');
         });
-        if (!this.userTestAnswers[this.currentQuestionIndex]?.answered) {
+        // Only clear current session answer if not saved
+        const question = this.currentCourseQuestions[this.currentQuestionIndex];
+        const savedAnswer = this.userTestAnswers[question.id];
+        if (!savedAnswer?.answered) {
             delete this.userTestAnswers[this.currentQuestionIndex];
         }
     }
@@ -867,6 +956,7 @@ class NurseIQModule {
                         item.classList.add('correct-improved');
                     } else {
                         item.classList.add('incorrect-improved');
+                        // Show correct answer
                         optionsContainer.querySelectorAll('.option-item-improved').forEach(correctItem => {
                             const correctOptionText = correctItem.querySelector('.option-text-improved')?.textContent || '';
                             if (correctOptionText === userAnswer.correctAnswer) {
@@ -889,22 +979,25 @@ class NurseIQModule {
         const question = this.currentCourseQuestions[this.currentQuestionIndex];
         const correctAnswer = question.correct_answer || '';
         const isCorrect = userAnswer.selectedOption === correctAnswer;
+        
+        // Update current session
         userAnswer.answered = true;
         userAnswer.correct = isCorrect;
         userAnswer.timestamp = new Date().toISOString();
+        userAnswer.correctAnswer = correctAnswer;
         
-        // Save to permanent storage
-        if (question.id) {
-            this.userTestAnswers[question.id] = {
-                selectedOption: userAnswer.selectedOption,
-                selectedOptionIndex: userAnswer.selectedOptionIndex,
-                answered: true,
-                correct: isCorrect,
-                correctAnswer: correctAnswer,
-                timestamp: userAnswer.timestamp,
-                questionText: question.question_text
-            };
-        }
+        // Save to permanent storage by question ID
+        this.userTestAnswers[question.id] = {
+            selectedOption: userAnswer.selectedOption,
+            selectedOptionIndex: userAnswer.selectedOptionIndex,
+            answered: true,
+            correct: isCorrect,
+            correctAnswer: correctAnswer,
+            timestamp: userAnswer.timestamp,
+            questionText: question.question_text,
+            courseId: question.course_id,
+            difficulty: question.difficulty
+        };
         
         this.showUserAnswer(userAnswer);
         this.updateCounters();
@@ -912,7 +1005,7 @@ class NurseIQModule {
         this.showAnswerRevealSection();
         this.updateQuestionGrid();
         this.showFeedbackNotification(isCorrect);
-        this.saveUserProgress(); // Save progress
+        this.saveUserProgress();
         
         if (isCorrect && this.currentQuestionIndex < this.currentCourseQuestions.length - 1) {
             setTimeout(() => this.nextQuestion(), 2000);
@@ -933,11 +1026,16 @@ class NurseIQModule {
         }
         answerRevealSection.style.display = 'block';
         
-        // FEATURE 1: Save that user has seen the explanation
+        // Save that user has seen the explanation
         this.userTestAnswers[this.currentQuestionIndex] = {
             ...this.userTestAnswers[this.currentQuestionIndex],
             viewed: true
         };
+    }
+    
+    hideAnswer() {
+        const answerRevealSection = document.getElementById('answerRevealSection');
+        if (answerRevealSection) answerRevealSection.style.display = 'none';
     }
     
     showFeedbackNotification(isCorrect) {
@@ -962,16 +1060,17 @@ class NurseIQModule {
     }
     
     resetQuestion() {
-        const userAnswer = this.userTestAnswers[this.currentQuestionIndex];
-        if (userAnswer?.answered) {
-            // Remove from permanent storage too
-            const question = this.currentCourseQuestions[this.currentQuestionIndex];
-            if (question.id && this.userTestAnswers[question.id]) {
-                delete this.userTestAnswers[question.id];
-            }
-            delete this.userTestAnswers[this.currentQuestionIndex];
-            this.saveUserProgress();
+        const question = this.currentCourseQuestions[this.currentQuestionIndex];
+        const savedAnswer = this.userTestAnswers[question.id];
+        
+        if (savedAnswer?.answered) {
+            // Remove from permanent storage
+            delete this.userTestAnswers[question.id];
         }
+        
+        delete this.userTestAnswers[this.currentQuestionIndex];
+        this.saveUserProgress();
+        
         this.loadCurrentInteractiveQuestion();
         this.updateQuestionGrid();
         this.updateTopProgressStats();
@@ -997,8 +1096,20 @@ class NurseIQModule {
     
     markForReview() {
         const currentIndex = this.currentQuestionIndex;
-        const isMarked = this.userTestAnswers[currentIndex]?.marked || false;
-        this.userTestAnswers[currentIndex] = { ...this.userTestAnswers[currentIndex], marked: !isMarked };
+        const question = this.currentCourseQuestions[currentIndex];
+        const isMarked = this.userTestAnswers[question.id]?.marked || 
+                        this.userTestAnswers[currentIndex]?.marked || 
+                        false;
+        
+        // Save mark status by question ID
+        if (question.id) {
+            this.userTestAnswers[question.id] = {
+                ...this.userTestAnswers[question.id],
+                marked: !isMarked,
+                timestamp: new Date().toISOString()
+            };
+        }
+        
         this.updateMarkButton();
         this.updateQuestionGrid();
         this.updateMiniDots();
@@ -1012,7 +1123,12 @@ class NurseIQModule {
         const markBtn = document.getElementById('markBtn');
         const markBtnText = document.getElementById('markBtnText');
         if (!markBtn || !markBtnText) return;
-        const isMarked = this.userTestAnswers[this.currentQuestionIndex]?.marked || false;
+        
+        const question = this.currentCourseQuestions[this.currentQuestionIndex];
+        const isMarked = this.userTestAnswers[question.id]?.marked || 
+                        this.userTestAnswers[this.currentQuestionIndex]?.marked || 
+                        false;
+        
         if (isMarked) {
             markBtn.classList.add('marked');
             markBtnText.textContent = 'Unmark Review';
@@ -1067,11 +1183,16 @@ class NurseIQModule {
     }
     
     finishPractice() {
-        const answeredCount = Object.values(this.userTestAnswers).filter(a => a.answered).length;
-        const correctCount = Object.values(this.userTestAnswers).filter(a => a.answered && a.correct).length;
-        const accuracy = answeredCount > 0 ? Math.round((correctCount / answeredCount) * 100) : 0;
+        const userStats = this.getCourseUserStats(this.currentCourseForTest.id, this.currentCourseQuestions);
+        const answeredCount = userStats.answered;
+        const correctCount = userStats.correct;
+        const accuracy = userStats.accuracy;
+        
         const confirmFinish = confirm(`Finish practice session?\n\nAnswered: ${answeredCount}/${this.currentCourseQuestions.length}\nCorrect: ${correctCount}\nAccuracy: ${accuracy}%\n\nReturn to question bank?`);
-        if (confirmFinish) this.loadQuestionBankCards();
+        if (confirmFinish) {
+            this.saveUserProgress();
+            this.loadQuestionBankCards();
+        }
     }
     
     scrollQuestions(direction) {
@@ -1084,10 +1205,10 @@ class NurseIQModule {
     }
     
     updateCounters() {
-        const totalQuestions = this.currentCourseQuestions.length;
-        const answeredCount = Object.values(this.userTestAnswers).filter(a => a.answered).length;
-        const correctCount = Object.values(this.userTestAnswers).filter(a => a.answered && a.correct).length;
-        const accuracy = answeredCount > 0 ? Math.round((correctCount / answeredCount) * 100) : 0;
+        const userStats = this.getCourseUserStats(this.currentCourseForTest.id, this.currentCourseQuestions);
+        const answeredCount = userStats.answered;
+        const correctCount = userStats.correct;
+        const accuracy = userStats.accuracy;
         
         const currentQuestionCountEl = document.getElementById('currentQuestionCountTop');
         const totalQuestionsEl = document.getElementById('totalQuestionsTop');
@@ -1096,7 +1217,7 @@ class NurseIQModule {
         const accuracyEl = document.getElementById('accuracyTop');
         
         if (currentQuestionCountEl) currentQuestionCountEl.textContent = this.currentQuestionIndex + 1;
-        if (totalQuestionsEl) totalQuestionsEl.textContent = totalQuestions;
+        if (totalQuestionsEl) totalQuestionsEl.textContent = this.currentCourseQuestions.length;
         if (answeredCountEl) answeredCountEl.textContent = answeredCount;
         if (correctCountEl) correctCountEl.textContent = correctCount;
         if (accuracyEl) accuracyEl.textContent = `${accuracy}%`;
@@ -1138,22 +1259,41 @@ class NurseIQModule {
         if (!questionGridContainer) return;
         const totalQuestions = this.currentCourseQuestions.length;
         let gridHtml = '';
+        
         for (let i = 0; i < totalQuestions; i++) {
+            const question = this.currentCourseQuestions[i];
             let questionClass = 'grid-question-number';
             if (i === this.currentQuestionIndex) questionClass += ' grid-current';
-            const userAnswer = this.userTestAnswers[i];
-            if (userAnswer) {
-                if (userAnswer.answered) {
-                    questionClass += userAnswer.correct ? ' grid-correct' : ' grid-incorrect';
-                } else if (userAnswer.marked) {
+            
+            // Check saved answers by question ID first
+            const savedAnswer = this.userTestAnswers[question.id];
+            if (savedAnswer) {
+                if (savedAnswer.answered) {
+                    questionClass += savedAnswer.correct ? ' grid-correct' : ' grid-incorrect';
+                } else if (savedAnswer.marked) {
                     questionClass += ' grid-marked';
-                } else if (userAnswer.viewed) {
+                } else if (savedAnswer.viewed) {
                     questionClass += ' grid-viewed';
                 }
+            } else {
+                // Check current session answers
+                const sessionAnswer = this.userTestAnswers[i];
+                if (sessionAnswer) {
+                    if (sessionAnswer.answered) {
+                        questionClass += sessionAnswer.correct ? ' grid-correct' : ' grid-incorrect';
+                    } else if (sessionAnswer.marked) {
+                        questionClass += ' grid-marked';
+                    } else if (sessionAnswer.viewed) {
+                        questionClass += ' grid-viewed';
+                    }
+                }
             }
-            gridHtml += `<div class="${questionClass}" onclick="window.goToQuestion(${i})" title="Question ${i + 1}${userAnswer?.answered ? ` - ${userAnswer.correct ? 'Correct' : 'Incorrect'}` : ''}">
-                        ${i + 1}${userAnswer?.marked ? '<i class="fas fa-flag grid-flag"></i>' : ''}</div>`;
+            
+            const marked = savedAnswer?.marked || this.userTestAnswers[i]?.marked;
+            gridHtml += `<div class="${questionClass}" onclick="window.goToQuestion(${i})" title="Question ${i + 1}">
+                        ${i + 1}${marked ? '<i class="fas fa-flag grid-flag"></i>' : ''}</div>`;
         }
+        
         questionGridContainer.innerHTML = gridHtml;
         this.scrollToCurrentQuestion();
     }
@@ -1193,17 +1333,36 @@ class NurseIQModule {
         let start = Math.max(0, this.currentQuestionIndex - 2);
         let end = Math.min(totalQuestions - 1, start + maxDots - 1);
         if (end - start < maxDots - 1) start = Math.max(0, end - maxDots + 1);
+        
         if (start > 0) dotsHtml += '<span class="mini-dot-ellipsis">...</span>';
+        
         for (let i = start; i <= end; i++) {
             let dotClass = 'mini-dot';
             if (i === this.currentQuestionIndex) dotClass += ' mini-dot-active';
-            if (this.userTestAnswers[i]?.answered) {
-                dotClass += this.userTestAnswers[i]?.correct ? ' mini-dot-correct' : ' mini-dot-incorrect';
-            } else if (this.userTestAnswers[i]?.marked) {
-                dotClass += ' mini-dot-marked';
+            
+            const question = this.currentCourseQuestions[i];
+            const savedAnswer = this.userTestAnswers[question.id];
+            
+            if (savedAnswer) {
+                if (savedAnswer.answered) {
+                    dotClass += savedAnswer.correct ? ' mini-dot-correct' : ' mini-dot-incorrect';
+                } else if (savedAnswer.marked) {
+                    dotClass += ' mini-dot-marked';
+                }
+            } else {
+                const sessionAnswer = this.userTestAnswers[i];
+                if (sessionAnswer) {
+                    if (sessionAnswer.answered) {
+                        dotClass += sessionAnswer.correct ? ' mini-dot-correct' : ' mini-dot-incorrect';
+                    } else if (sessionAnswer.marked) {
+                        dotClass += ' mini-dot-marked';
+                    }
+                }
             }
+            
             dotsHtml += `<span class="${dotClass}" onclick="window.goToQuestion(${i})">${i + 1}</span>`;
         }
+        
         if (end < totalQuestions - 1) dotsHtml += '<span class="mini-dot-ellipsis">...</span>';
         return dotsHtml;
     }
@@ -1253,6 +1412,17 @@ class NurseIQModule {
             `;
         }
     }
+    
+    // Helper method to clear all progress (for testing)
+    clearAllProgress() {
+        if (confirm('Are you sure you want to clear all your progress? This cannot be undone.')) {
+            localStorage.removeItem(this.storageKey);
+            localStorage.removeItem(this.lastCourseProgressKey);
+            this.userTestAnswers = {};
+            this.showNotification('All progress cleared', 'success');
+            this.loadQuestionBankCards();
+        }
+    }
 }
 
 // Global functions
@@ -1277,23 +1447,66 @@ if (document.readyState === 'loading') {
     setTimeout(() => window.initNurseIQ().catch(console.error), 1000);
 }
 
+// Global helper functions
 window.loadQuestionBankCards = function() {
     if (window.nurseiqModule) window.nurseiqModule.loadQuestionBankCards();
     else window.initNurseIQ().then(() => window.nurseiqModule.loadQuestionBankCards()).catch(console.error);
 };
-window.clearQuestionBankSearch = function() { if (window.nurseiqModule) window.nurseiqModule.clearQuestionBankSearch(); };
+
+window.clearQuestionBankSearch = function() { 
+    if (window.nurseiqModule) window.nurseiqModule.clearQuestionBankSearch(); 
+};
+
 window.startCourseTest = function(courseId, courseName, startIndex = 0) { 
     if (window.nurseiqModule) window.nurseiqModule.startCourseTest(courseId, courseName, startIndex); 
 };
-window.prevQuestion = function() { if (window.nurseiqModule) window.nurseiqModule.prevQuestion(); };
-window.nextQuestion = function() { if (window.nurseiqModule) window.nurseiqModule.nextQuestion(); };
-window.goToQuestion = function(index) { if (window.nurseiqModule) window.nurseiqModule.goToQuestion(index); };
-window.jumpToQuestion = function() { if (window.nurseiqModule) window.nurseiqModule.jumpToQuestion(); };
-window.checkAnswer = function() { if (window.nurseiqModule) window.nurseiqModule.checkAnswer(); };
-window.resetQuestion = function() { if (window.nurseiqModule) window.nurseiqModule.resetQuestion(); };
-window.showAnswer = function() { if (window.nurseiqModule) window.nurseiqModule.showAnswer(); };
-window.markForReview = function() { if (window.nurseiqModule) window.nurseiqModule.markForReview(); };
-window.finishPractice = function() { if (window.nurseiqModule) window.nurseiqModule.finishPractice(); };
-window.scrollQuestions = function(direction) { if (window.nurseiqModule) window.nurseiqModule.scrollQuestions(direction); };
 
-console.log('✅ NurseIQ module loaded (Enhanced with Persistent Progress & Answer Visibility)');
+window.prevQuestion = function() { 
+    if (window.nurseiqModule) window.nurseiqModule.prevQuestion(); 
+};
+
+window.nextQuestion = function() { 
+    if (window.nurseiqModule) window.nurseiqModule.nextQuestion(); 
+};
+
+window.goToQuestion = function(index) { 
+    if (window.nurseiqModule) window.nurseiqModule.goToQuestion(index); 
+};
+
+window.jumpToQuestion = function() { 
+    if (window.nurseiqModule) window.nurseiqModule.jumpToQuestion(); 
+};
+
+window.checkAnswer = function() { 
+    if (window.nurseiqModule) window.nurseiqModule.checkAnswer(); 
+};
+
+window.resetQuestion = function() { 
+    if (window.nurseiqModule) window.nurseiqModule.resetQuestion(); 
+};
+
+window.showAnswer = function() { 
+    if (window.nurseiqModule) window.nurseiqModule.showAnswer(); 
+};
+
+window.hideAnswer = function() { 
+    if (window.nurseiqModule) window.nurseiqModule.hideAnswer(); 
+};
+
+window.markForReview = function() { 
+    if (window.nurseiqModule) window.nurseiqModule.markForReview(); 
+};
+
+window.finishPractice = function() { 
+    if (window.nurseiqModule) window.nurseiqModule.finishPractice(); 
+};
+
+window.scrollQuestions = function(direction) { 
+    if (window.nurseiqModule) window.nurseiqModule.scrollQuestions(direction); 
+};
+
+window.clearAllProgress = function() { 
+    if (window.nurseiqModule) window.nurseiqModule.clearAllProgress(); 
+};
+
+console.log('✅ NurseIQ module loaded (Complete Enhanced Version)');
