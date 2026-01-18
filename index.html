@@ -155,87 +155,93 @@
 
 <!-- Main Container -->
 <div class="container">
-    <!-- Sidebar Navigation - FIXED -->
-    <aside class="sidebar" id="sidebar" aria-label="Main navigation">
-        <div class="sidebar-header">
-            <!-- REMOVED duplicate logo - keep only in main header -->
-            <h2><i class="fas fa-graduation-cap"></i> Portal Menu</h2>
-            <p class="sidebar-subtitle">Navigate to sections</p>
-        </div>
-        
-        <nav aria-label="Primary navigation">
-            <ul class="nav" role="menubar">
-                <li role="none">
-                    <a href="#" data-tab="dashboard" class="active" role="menuitem" aria-current="page">
-                        <i class="fas fa-home"></i>
-                        <span class="nav-text">Dashboard</span>
-                    </a>
-                </li>
-                <li role="none">
-                    <a href="#" data-tab="profile" role="menuitem">
-                        <i class="fas fa-user-circle"></i>
-                        <span class="nav-text">Profile</span>
-                    </a>
-                </li>
-                <li role="none">
-                    <a href="#" data-tab="calendar" role="menuitem">
-                        <i class="fas fa-calendar-alt"></i>
-                        <span class="nav-text">Academic Calendar</span>
-                    </a>
-                </li>
-                <li role="none">
-                    <a href="#" data-tab="courses" role="menuitem">
-                        <i class="fas fa-book-open"></i>
-                        <span class="nav-text">My Courses</span>
-                    </a>
-                </li>
-                <li role="none">
-                    <a href="#" data-tab="attendance" role="menuitem">
-                        <i class="fas fa-check-double"></i>
-                        <span class="nav-text">Attendance</span>
-                        <span class="nav-badge" id="attendanceBadge" style="display: none;">0</span>
-                    </a>
-                </li>
-                <li role="none">
-                    <a href="#" data-tab="cats" role="menuitem">
-                        <i class="fas fa-chart-line"></i>
-                        <span class="nav-text">Exams & Grades</span>
-                        <span class="nav-badge" id="examsBadge" style="display: none;">0</span>
-                    </a>
-                </li>
-                <li role="none">
-                    <a href="#" data-tab="resources" role="menuitem">
-                        <i class="fas fa-folder-open"></i>
-                        <span class="nav-text">Resources</span>
-                        <span class="nav-badge" id="resourcesBadge" style="display: none;">0</span>
-                    </a>
-                </li>
-                <li role="none">
-                    <a href="#" data-tab="messages" role="menuitem">
-                        <i class="fas fa-comment-dots"></i>
-                        <span class="nav-text">Messages</span>
-                        <span class="nav-badge" id="messagesBadge" style="display: none;">0</span>
-                    </a>
-                </li>
-                <li role="none">
-                    <a href="#" data-tab="nurseiq" class="nurseiq-nav" role="menuitem">
-                        <div class="nav-icon-wrapper">
-                            <i class="fas fa-brain"></i>
-                            <span class="nav-pulse" aria-hidden="true"></span>
-                        </div>
-                        <span class="nav-text">NurseIQ</span>
-                        <span class="nav-subtitle">Practice Center</span>
-                        <span class="nav-badge" id="nurseiqBadge">0</span>
-                    </a>
-                </li>
-            </ul>
-        </nav>
-        
-        <!-- REMOVED redundant logout - use header dropdown only -->
-        <div class="sidebar-footer">
-            <p class="version-info" id="sidebarVersion">Portal v2.1</p>
-        </div>
-    </aside>
+  <!-- Sidebar Navigation - FIXED -->
+<aside class="sidebar" id="sidebar" aria-label="Main navigation">
+    <div class="sidebar-header">
+        <h2><i class="fas fa-graduation-cap"></i> Portal Menu</h2>
+        <p class="sidebar-subtitle">Navigate to sections</p>
+    </div>
+    
+    <nav aria-label="Primary navigation">
+        <ul class="nav" role="menubar">
+            <li role="none">
+                <a href="#" data-tab="dashboard" class="active" role="menuitem" aria-current="page">
+                    <i class="fas fa-home"></i>
+                    <span class="nav-text">Dashboard</span>
+                </a>
+            </li>
+            <li role="none">
+                <a href="#" data-tab="profile" role="menuitem">
+                    <i class="fas fa-user-circle"></i>
+                    <span class="nav-text">Profile</span>
+                </a>
+            </li>
+            <li role="none">
+                <a href="#" data-tab="calendar" role="menuitem">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span class="nav-text">Academic Calendar</span>
+                </a>
+            </li>
+            <li role="none">
+                <a href="#" data-tab="courses" role="menuitem">
+                    <i class="fas fa-book-open"></i>
+                    <span class="nav-text">My Courses</span>
+                </a>
+            </li>
+            <li role="none">
+                <a href="#" data-tab="attendance" role="menuitem">
+                    <i class="fas fa-check-double"></i>
+                    <span class="nav-text">Attendance</span>
+                    <span class="nav-badge" id="attendanceBadge" style="display: none;">0</span>
+                </a>
+            </li>
+            <li role="none">
+                <a href="#" data-tab="cats" role="menuitem">
+                    <i class="fas fa-chart-line"></i>
+                    <span class="nav-text">Exams & Grades</span>
+                    <span class="nav-badge" id="examsBadge" style="display: none;">0</span>
+                </a>
+            </li>
+            <li role="none">
+                <a href="#" data-tab="resources" role="menuitem">
+                    <i class="fas fa-folder-open"></i>
+                    <span class="nav-text">Resources</span>
+                    <span class="nav-badge" id="resourcesBadge" style="display: none;">0</span>
+                </a>
+            </li>
+            <li role="none">
+                <a href="#" data-tab="messages" role="menuitem">
+                    <i class="fas fa-comment-dots"></i>
+                    <span class="nav-text">Messages</span>
+                    <span class="nav-badge" id="messagesBadge" style="display: none;">0</span>
+                </a>
+            </li>
+            <!-- NEW: Support Tickets Navigation Item -->
+            <li role="none">
+                <a href="#" data-tab="support-tickets" role="menuitem">
+                    <i class="fas fa-ticket-alt"></i>
+                    <span class="nav-text">Support Tickets</span>
+                    <span class="nav-badge" id="ticketsBadge" style="display: none;">0</span>
+                </a>
+            </li>
+            <li role="none">
+                <a href="#" data-tab="nurseiq" class="nurseiq-nav" role="menuitem">
+                    <div class="nav-icon-wrapper">
+                        <i class="fas fa-brain"></i>
+                        <span class="nav-pulse" aria-hidden="true"></span>
+                    </div>
+                    <span class="nav-text">NurseIQ</span>
+                    <span class="nav-subtitle">Practice Center</span>
+                    <span class="nav-badge" id="nurseiqBadge">0</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    
+    <div class="sidebar-footer">
+        <p class="version-info" id="sidebarVersion">Portal v2.1</p>
+    </div>
+</aside>
 
  <!-- Main Content -->
 <main class="main" id="main-content">
@@ -1493,65 +1499,181 @@
                     </div>
                 </section>
 
-               <!-- Messages Tab - Support Ticket System -->
-<section id="messages" class="tab-content active">
+              !-- Messages Tab - Enhanced -->
+<section id="messages" class="tab-content">
     <div class="messages-container">
-        <!-- Ticket Status Summary -->
-        <div class="ticket-summary">
-            <div class="summary-card">
-                <div class="summary-icon open">
+        <!-- Send Message Section -->
+        <div class="message-send-section">
+            <h2 style="color: var(--color-primary); margin-bottom: 20px;">
+                <i class="fas fa-comments"></i> Message Center
+            </h2>
+            
+            <div class="message-controls">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="message-recipient">To:</label>
+                        <select id="message-recipient" class="form-select">
+                            <option value="admin">📋 Administration Office</option>
+                            <option value="academic">👨‍🏫 Academic Department</option>
+                            <option value="finance">💰 Finance Office</option>
+                            <option value="instructor">👨‍🏫 Course Instructor</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="message-priority">Priority:</label>
+                        <select id="message-priority" class="form-select">
+                            <option value="normal">📄 Normal</option>
+                            <option value="urgent">⚠️ Urgent</option>
+                            <option value="emergency">🚨 Emergency</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="message-subject">Subject:</label>
+                    <input type="text" id="message-subject" 
+                           placeholder="Enter message subject..." 
+                           class="form-input">
+                </div>
+                
+                <div class="form-group">
+                    <label for="student-message-body">Message:</label>
+                    <textarea id="student-message-body" 
+                              placeholder="Write your message here..." 
+                              required
+                              class="form-textarea"
+                              maxlength="1000"></textarea>
+                    <div class="char-counter">
+                        <span id="char-count">0</span>/1000 characters
+                    </div>
+                </div>
+                
+                <div class="message-actions">
+                    <button type="submit" id="send-message-btn" class="btn-primary">
+                        <i class="fas fa-paper-plane"></i>
+                        <span id="send-text">Send Message</span>
+                        <span id="sending-text" style="display: none;">
+                            <i class="fas fa-spinner fa-spin"></i> Sending...
+                        </span>
+                    </button>
+                    
+                    <button type="button" id="preview-btn" class="btn-secondary">
+                        <i class="fas fa-eye"></i> Preview
+                    </button>
+                </div>
+                
+                <p id="message-status" class="status-message"></p>
+                
+                <div class="message-info">
+                    <p><i class="fas fa-info-circle"></i> 
+                       Messages are typically responded to within 24-48 hours.
+                    </p>
+                    <p><i class="fas fa-clock"></i> 
+                       Office hours: Monday-Friday, 8:00 AM - 5:00 PM
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Message History Section -->
+        <div class="message-history-section">
+            <h3><i class="fas fa-history"></i> Message History</h3>
+            
+            <div class="message-filters">
+                <button class="filter-btn active">All</button>
+                <button class="filter-btn">Unread</button>
+                <button class="filter-btn">Sent</button>
+                <button class="filter-btn">Archived</button>
+            </div>
+            
+            <div id="messages-list" class="messages-list">
+                <!-- Messages will be loaded here -->
+                <div class="empty-state">
+                    <i class="fas fa-inbox"></i>
+                    <p>No messages yet. Send your first message!</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+   <!-- Support Tickets Tab -->
+<section id="support-tickets" class="tab-content">
+    <div class="tickets-container">
+        <!-- Page Header -->
+        <div class="tickets-header">
+            <div class="header-content">
+                <h1><i class="fas fa-ticket-alt"></i> Support Tickets</h1>
+                <p class="subtitle">Get help from our support team. Track and manage your support requests.</p>
+            </div>
+            <button id="new-ticket-btn" class="btn-primary">
+                <i class="fas fa-plus"></i> New Ticket
+            </button>
+        </div>
+
+        <!-- Ticket Statistics -->
+        <div class="ticket-stats">
+            <div class="stat-card">
+                <div class="stat-icon open">
                     <i class="fas fa-clock"></i>
                 </div>
-                <div class="summary-content">
+                <div class="stat-info">
                     <h3 id="open-tickets-count">0</h3>
                     <p>Open Tickets</p>
                 </div>
             </div>
-            <div class="summary-card">
-                <div class="summary-icon progress">
+            <div class="stat-card">
+                <div class="stat-icon progress">
                     <i class="fas fa-cogs"></i>
                 </div>
-                <div class="summary-content">
+                <div class="stat-info">
                     <h3 id="progress-tickets-count">0</h3>
                     <p>In Progress</p>
                 </div>
             </div>
-            <div class="summary-card">
-                <div class="summary-icon resolved">
+            <div class="stat-card">
+                <div class="stat-icon resolved">
                     <i class="fas fa-check-circle"></i>
                 </div>
-                <div class="summary-content">
+                <div class="stat-info">
                     <h3 id="resolved-tickets-count">0</h3>
                     <p>Resolved</p>
                 </div>
             </div>
-            <div class="summary-card">
-                <div class="summary-card urgent">
-                    <div class="summary-icon urgent">
-                        <i class="fas fa-exclamation-triangle"></i>
-                    </div>
-                    <div class="summary-content">
-                        <h3 id="urgent-tickets-count">0</h3>
-                        <p>Urgent</p>
-                    </div>
+            <div class="stat-card">
+                <div class="stat-icon urgent">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div class="stat-info">
+                    <h3 id="urgent-tickets-count">0</h3>
+                    <p>Urgent</p>
                 </div>
             </div>
         </div>
 
         <!-- Quick Actions -->
-        <div class="quick-actions">
-            <button id="new-ticket-btn" class="quick-action-btn primary">
-                <i class="fas fa-plus"></i> New Ticket
-            </button>
-            <button id="refresh-tickets-btn" class="quick-action-btn">
-                <i class="fas fa-sync-alt"></i> Refresh
-            </button>
-            <button id="filter-tickets-btn" class="quick-action-btn">
-                <i class="fas fa-filter"></i> Filter
-            </button>
+        <div class="tickets-actions">
             <div class="search-box">
                 <i class="fas fa-search"></i>
-                <input type="text" id="ticket-search" placeholder="Search tickets...">
+                <input type="text" id="ticket-search" placeholder="Search tickets by subject, ID, or description...">
+            </div>
+            <div class="action-buttons">
+                <button id="refresh-tickets-btn" class="btn-secondary">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+                <div class="filter-dropdown">
+                    <button class="btn-secondary">
+                        <i class="fas fa-filter"></i> Filter
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="dropdown-menu">
+                        <a href="#" data-filter="all">All Tickets</a>
+                        <a href="#" data-filter="open">Open</a>
+                        <a href="#" data-filter="progress">In Progress</a>
+                        <a href="#" data-filter="resolved">Resolved</a>
+                        <a href="#" data-filter="urgent">Urgent Priority</a>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -1567,21 +1689,21 @@
             <form id="create-ticket-form">
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="category"><i class="fas fa-folder"></i> Category *</label>
-                        <select id="category" name="category" required>
+                        <label for="ticket-category"><i class="fas fa-folder"></i> Category *</label>
+                        <select id="ticket-category" name="category" required>
                             <option value="">Select category</option>
                             <option value="technical">Technical Issues</option>
-                            <option value="academic">Academic</option>
-                            <option value="financial">Financial</option>
+                            <option value="academic">Academic Matters</option>
+                            <option value="financial">Financial Issues</option>
                             <option value="administrative">Administrative</option>
-                            <option value="resources">Resources</option>
+                            <option value="resources">Resources Access</option>
                             <option value="other">Other</option>
                         </select>
                     </div>
                     
                     <div class="form-group">
-                        <label for="priority"><i class="fas fa-exclamation-circle"></i> Priority</label>
-                        <select id="priority" name="priority">
+                        <label for="ticket-priority"><i class="fas fa-exclamation-circle"></i> Priority</label>
+                        <select id="ticket-priority" name="priority">
                             <option value="medium">Medium</option>
                             <option value="low">Low</option>
                             <option value="high">High</option>
@@ -1591,16 +1713,38 @@
                 </div>
                 
                 <div class="form-group">
-                    <label for="subject"><i class="fas fa-heading"></i> Subject *</label>
-                    <input type="text" id="subject" name="subject" 
-                           placeholder="Brief summary of your issue..." required>
+                    <label for="ticket-subject"><i class="fas fa-heading"></i> Subject *</label>
+                    <input type="text" id="ticket-subject" 
+                           placeholder="Brief summary of your issue..." 
+                           required
+                           maxlength="255">
                 </div>
                 
                 <div class="form-group">
-                    <label for="description"><i class="fas fa-align-left"></i> Description *</label>
-                    <textarea id="description" name="description" 
-                              placeholder="Describe your issue in detail..." 
-                              rows="4" required></textarea>
+                    <label for="ticket-description"><i class="fas fa-align-left"></i> Description *</label>
+                    <textarea id="ticket-description" 
+                              placeholder="Please describe your issue in detail. Include any error messages, steps to reproduce, and what you've tried so far." 
+                              required
+                              rows="4"
+                              maxlength="5000"></textarea>
+                    <div class="char-counter">
+                        <span id="desc-char-count">0</span>/5000 characters
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="ticket-attachments"><i class="fas fa-paperclip"></i> Attachments (Optional)</label>
+                    <div class="file-upload">
+                        <input type="file" id="ticket-attachments" 
+                               multiple
+                               accept=".jpg,.jpeg,.png,.pdf,.doc,.docx,.txt">
+                        <label for="ticket-attachments" class="upload-label">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <span>Choose files or drag & drop</span>
+                            <small>Max file size: 10MB each. Supported: JPG, PNG, PDF, DOC, TXT</small>
+                        </label>
+                    </div>
+                    <div id="file-preview" class="file-preview"></div>
                 </div>
                 
                 <div class="form-actions">
@@ -1616,20 +1760,15 @@
 
         <!-- Tickets List -->
         <div class="tickets-list-container">
-            <div class="tickets-header">
-                <h3><i class="fas fa-ticket-alt"></i> My Support Tickets</h3>
-                <div class="view-toggles">
-                    <button class="view-toggle active" data-view="list">
-                        <i class="fas fa-list"></i>
-                    </button>
-                    <button class="view-toggle" data-view="grid">
-                        <i class="fas fa-th-large"></i>
-                    </button>
+            <div class="list-header">
+                <h3><i class="fas fa-list"></i> My Support Tickets</h3>
+                <div class="list-summary">
+                    <span id="total-tickets-count">0 tickets</span>
+                    <span class="last-updated">Last updated: <span id="last-updated-time">Just now</span></span>
                 </div>
             </div>
             
-            <!-- Tickets Table/List -->
-            <div id="tickets-list" class="tickets-list">
+            <div class="tickets-table-container">
                 <table class="tickets-table">
                     <thead>
                         <tr>
@@ -1639,7 +1778,7 @@
                             <th>Priority</th>
                             <th>Status</th>
                             <th>Created</th>
-                            <th>Last Updated</th>
+                            <th>Last Update</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -1648,87 +1787,151 @@
                         <tr class="empty-row">
                             <td colspan="8">
                                 <div class="empty-state">
-                                    <i class="fas fa-inbox"></i>
-                                    <p>No tickets found. Create your first ticket!</p>
+                                    <i class="fas fa-ticket-alt"></i>
+                                    <h4>No tickets found</h4>
+                                    <p>You haven't created any support tickets yet.</p>
+                                    <button id="create-first-ticket" class="btn-primary">
+                                        <i class="fas fa-plus"></i> Create Your First Ticket
+                                    </button>
                                 </div>
                             </td>
                         </tr>
                     </tbody>
                 </table>
+                
+                <!-- Loading State -->
+                <div id="tickets-loading" class="loading-state" style="display: none;">
+                    <div class="spinner"></div>
+                    <p>Loading tickets...</p>
+                </div>
+            </div>
+            
+            <!-- Pagination -->
+            <div class="pagination" style="display: none;">
+                <button class="pagination-btn prev" disabled>
+                    <i class="fas fa-chevron-left"></i> Previous
+                </button>
+                <span class="page-info">Page 1 of 1</span>
+                <button class="pagination-btn next" disabled>
+                    Next <i class="fas fa-chevron-right"></i>
+                </button>
             </div>
         </div>
+    </div>
 
-        <!-- Ticket Details Modal (Hidden by default) -->
-        <div id="ticket-detail-modal" class="modal" style="display: none;">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3 id="modal-ticket-title">Ticket Details</h3>
-                    <button class="close-modal">
-                        <i class="fas fa-times"></i>
-                    </button>
+    <!-- Ticket Detail Modal -->
+    <div id="ticket-detail-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3 id="modal-ticket-title">Ticket Details</h3>
+                <button class="close-modal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="modal-body">
+                <!-- Ticket Header Info -->
+                <div class="ticket-header-info">
+                    <div class="ticket-id-status">
+                        <div class="ticket-id">
+                            <strong>Ticket ID:</strong>
+                            <span id="detail-ticket-number" class="ticket-number">-</span>
+                        </div>
+                        <div class="ticket-status">
+                            <span id="detail-status" class="status-badge">Open</span>
+                        </div>
+                    </div>
+                    
+                    <div class="ticket-meta">
+                        <div class="meta-item">
+                            <i class="fas fa-folder"></i>
+                            <span id="detail-category">-</span>
+                        </div>
+                        <div class="meta-item">
+                            <i class="fas fa-exclamation-circle"></i>
+                            <span id="detail-priority" class="priority-badge">Medium</span>
+                        </div>
+                        <div class="meta-item">
+                            <i class="fas fa-calendar"></i>
+                            <span id="detail-created-at">-</span>
+                        </div>
+                    </div>
                 </div>
-                <div class="modal-body">
-                    <div class="ticket-details">
-                        <div class="ticket-header-info">
-                            <div class="ticket-id">
-                                <strong>Ticket ID:</strong>
-                                <span id="detail-ticket-number">-</span>
-                            </div>
-                            <div class="ticket-status-badge">
-                                <span id="detail-status" class="status-badge">Open</span>
-                            </div>
+                
+                <!-- Ticket Description -->
+                <div class="ticket-description-section">
+                    <h4><i class="fas fa-align-left"></i> Description</h4>
+                    <div class="description-content">
+                        <p id="detail-description">-</p>
+                    </div>
+                </div>
+                
+                <!-- Attachments Section -->
+                <div class="attachments-section" style="display: none;">
+                    <h4><i class="fas fa-paperclip"></i> Attachments</h4>
+                    <div id="detail-attachments" class="attachments-list">
+                        <!-- Attachments will be loaded here -->
+                    </div>
+                </div>
+                
+                <!-- Conversations Section -->
+                <div class="conversations-section">
+                    <div class="section-header">
+                        <h4><i class="fas fa-comments"></i> Conversations</h4>
+                        <span class="conversation-count">(<span id="conversation-count">0</span> messages)</span>
+                    </div>
+                    
+                    <div id="conversations-list" class="conversations-list">
+                        <!-- Conversations will be loaded here -->
+                        <div class="no-conversations">
+                            <i class="fas fa-comments"></i>
+                            <p>No conversations yet. Start the conversation!</p>
                         </div>
-                        
-                        <div class="detail-row">
-                            <div class="detail-item">
-                                <strong>Category:</strong>
-                                <span id="detail-category">-</span>
-                            </div>
-                            <div class="detail-item">
-                                <strong>Priority:</strong>
-                                <span id="detail-priority" class="priority-badge">Medium</span>
-                            </div>
-                            <div class="detail-item">
-                                <strong>Created:</strong>
-                                <span id="detail-created-at">-</span>
-                            </div>
-                        </div>
-                        
-                        <div class="detail-section">
-                            <h4><i class="fas fa-align-left"></i> Description</h4>
-                            <p id="detail-description" class="description-text">-</p>
-                        </div>
-                        
-                        <!-- Conversations Section -->
-                        <div class="detail-section">
-                            <h4><i class="fas fa-comments"></i> Conversations</h4>
-                            <div id="conversations-list" class="conversations-list">
-                                <!-- Messages will be loaded here -->
-                            </div>
-                            
-                            <!-- Add New Message -->
-                            <div class="add-message">
-                                <textarea id="new-message" 
-                                          placeholder="Type your reply here..."
-                                          rows="3"></textarea>
-                                <div class="message-actions">
-                                    <button id="send-message-btn" class="btn-primary">
-                                        <i class="fas fa-paper-plane"></i> Send Reply
-                                    </button>
-                                    <label class="btn-secondary">
-                                        <i class="fas fa-paperclip"></i> Attach File
-                                        <input type="file" style="display: none;">
-                                    </label>
+                    </div>
+                    
+                    <!-- Add New Message -->
+                    <div class="new-message-section">
+                        <div class="message-input-container">
+                            <textarea id="new-message" 
+                                      placeholder="Type your reply here..."
+                                      rows="3"
+                                      maxlength="2000"></textarea>
+                            <div class="input-actions">
+                                <label class="attach-btn">
+                                    <i class="fas fa-paperclip"></i>
+                                    <input type="file" style="display: none;">
+                                </label>
+                                <div class="char-counter">
+                                    <span id="message-char-count">0</span>/2000
                                 </div>
                             </div>
+                        </div>
+                        <div class="message-actions">
+                            <button id="send-message-btn" class="btn-primary">
+                                <i class="fas fa-paper-plane"></i> Send Reply
+                            </button>
+                            <button id="cancel-message-btn" class="btn-secondary">
+                                Cancel
+                            </button>
                         </div>
                     </div>
                 </div>
             </div>
+            
+            <div class="modal-footer">
+                <button id="close-ticket-btn" class="btn-secondary" style="display: none;">
+                    <i class="fas fa-times-circle"></i> Close Ticket
+                </button>
+                <button id="reopen-ticket-btn" class="btn-secondary" style="display: none;">
+                    <i class="fas fa-redo"></i> Reopen Ticket
+                </button>
+                <button class="btn-secondary close-modal-btn">
+                    Close
+                </button>
+            </div>
         </div>
     </div>
-</section>
-                
+</section>             
                          <!-- NurseIQ Tab -->
 <section id="nurseiq" class="tab-content">
     <h1>NurseIQ Question Bank</h1>
@@ -1977,6 +2180,7 @@
 <script src="./js/resources.js"></script>
 <script src="./js/calendar.js"></script>
 <script src="./js/messages.js"></script>
+<script src="./js/student-tickets.js"></script>                       
 <script src="./js/nurseiq.js"></script>
 
 
