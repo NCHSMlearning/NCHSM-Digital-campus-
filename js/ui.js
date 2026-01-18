@@ -184,6 +184,7 @@ class UIModule {
             'cats': 'CATS/Exams',
             'resources': 'Resources',
             'messages': 'Messages',
+            'support-tickets', 
             'nurseiq': 'NurseIQ'
         };
         
