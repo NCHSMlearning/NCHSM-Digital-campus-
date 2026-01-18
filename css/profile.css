@@ -534,79 +534,6 @@
     }
 }
 
-/* ===== Dark Mode Support ===== */
-@media (prefers-color-scheme: dark) {
-    :root {
-        --profile-bg: #1F2937;
-        --profile-card-bg: #111827;
-        --profile-border: #374151;
-        --profile-text: #F9FAFB;
-        --profile-text-light: #D1D5DB;
-        --profile-text-lighter: #9CA3AF;
-    }
-    
-    .profile-section {
-        background: var(--profile-card-bg);
-    }
-    
-    .form-field input {
-        background: rgba(255, 255, 255, 0.05);
-        border-color: var(--profile-border);
-        color: var(--profile-text);
-    }
-    
-    .form-field input:read-only {
-        background: rgba(255, 255, 255, 0.02);
-    }
-    
-    .button-secondary {
-        background: var(--profile-card-bg);
-        color: var(--profile-primary-light);
-        border-color: var(--profile-primary-light);
-    }
-    
-    .button-secondary:hover {
-        background: var(--profile-primary);
-        color: var(--profile-text);
-    }
-    
-    .button-text:hover {
-        background: rgba(255, 255, 255, 0.05);
-    }
-    
-    #passport-preview {
-        background: linear-gradient(135deg, #374151, #4B5563);
-    }
-}
-
-/* ===== Print Styles ===== */
-@media print {
-    .profile-section {
-        box-shadow: none;
-        border: 1px solid #ddd;
-        break-inside: avoid;
-    }
-    
-    .form-actions,
-    .photo-controls,
-    #passport-file-input,
-    .button {
-        display: none !important;
-    }
-    
-    #passport-preview {
-        width: 100px;
-        height: 100px;
-        border: 1px solid #000;
-    }
-    
-    .form-field input:read-only {
-        background: transparent;
-        border: none;
-        padding: 0.25rem 0;
-    }
-}
-
 /* ===== Accessibility Improvements ===== */
 @media (prefers-reduced-motion: reduce) {
     .button,
@@ -625,25 +552,4 @@
 #passport-preview:focus-visible {
     outline: 3px solid var(--profile-primary);
     outline-offset: 2px;
-}
-
-/* High contrast mode support */
-@media (prefers-contrast: high) {
-    :root {
-        --profile-border: #000000;
-        --profile-text: #000000;
-        --profile-text-light: #000000;
-    }
-    
-    .profile-section {
-        border: 2px solid var(--profile-border);
-    }
-    
-    .form-field input {
-        border: 2px solid var(--profile-border);
-    }
-    
-    .button {
-        border: 2px solid var(--profile-border);
-    }
 }
