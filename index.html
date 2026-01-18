@@ -644,130 +644,63 @@
             </button>
         </div>
 
-       <!-- Calendar Tab - COMBINED HEADERS WITH STATS -->
-<section id="calendar" class="tab-content" role="region" aria-label="Academic Calendar">
-    <!-- Calendar Header -->
-    <div class="calendar-header">
-        <div class="header-content">
-            <h2><i class="fas fa-calendar-alt"></i> Academic Calendar</h2>
-            <p class="calendar-subtitle">A unified view of your scheduled sessions, clinical rotations, and exams.</p>
-        </div>
-        <div class="current-date">
-            <i class="fas fa-clock"></i>
-            <span id="current-date-display">Today: Loading...</span>
-        </div>
-    </div>
-
-    <!-- Calendar Controls -->
-    <div class="calendar-controls">
-        <div class="filter-group">
-            <label for="calendar-filter">
-                <i class="fas fa-filter"></i>
-                Filter by Type:
-            </label>
-            <div class="select-wrapper">
-                <select id="calendar-filter" class="calendar-select">
-                    <option value="all">Show All</option>
-                    <option value="Clinical">Clinical Rotations</option>
-                    <option value="Class">Scheduled Sessions</option>
-                    <option value="Exam">Exams/CATS</option>
-                </select>
-                <i class="fas fa-chevron-down"></i>
-            </div>
-        </div>
-        
-        <div class="calendar-actions">
-            <button id="refresh-calendar" class="btn-icon" title="Refresh Calendar">
-                <i class="fas fa-redo"></i>
-            </button>
-            <button id="export-calendar" class="btn-icon" title="Export to PDF">
-                <i class="fas fa-download"></i>
-            </button>
-            <button id="calendar-view-toggle" class="btn-secondary">
-                <i class="fas fa-list"></i>
-                <span>List View</span>
-            </button>
-        </div>
-    </div>
-
-    <!-- Calendar Table Container -->
-    <div class="table-container">
-        <!-- Loading State -->
-        <div id="calendar-loading" class="loading-state">
-            <div class="loading-spinner"></div>
-            <p>Loading academic schedule...</p>
-        </div>
-
-        <!-- Empty State -->
-        <div id="calendar-empty" class="empty-state" style="display: none;">
-            <i class="fas fa-calendar-times"></i>
-            <h3>No Calendar Events</h3>
-            <p>No scheduled events found for the selected period.</p>
-            <button id="refresh-calendar-empty" class="btn-primary">
-                <i class="fas fa-redo"></i> Refresh
-            </button>
-        </div>
-
         <!-- Calendar Table -->
         <div id="calendar-table-container" style="display: none;">
+            <!-- HORIZONTAL SUMMARY ROW -->
+            <div class="horizontal-summary-row">
+                <div class="summary-item">
+                    <div class="summary-icon">
+                        <i class="fas fa-calendar-day"></i>
+                    </div>
+                    <div class="summary-content">
+                        <div class="summary-value" id="total-events">0</div>
+                        <div class="summary-title">Date & Time</div>
+                        <div class="summary-label">Total Events</div>
+                    </div>
+                </div>
+                
+                <div class="summary-item">
+                    <div class="summary-icon">
+                        <i class="fas fa-info-circle"></i>
+                    </div>
+                    <div class="summary-content">
+                        <div class="summary-value" id="upcoming-events">0</div>
+                        <div class="summary-title">Event / Details</div>
+                        <div class="summary-label">Upcoming</div>
+                    </div>
+                </div>
+                
+                <div class="summary-item">
+                    <div class="summary-icon">
+                        <i class="fas fa-tag"></i>
+                    </div>
+                    <div class="summary-content">
+                        <div class="summary-value" id="week-events">0</div>
+                        <div class="summary-title">Type</div>
+                        <div class="summary-label">This Week</div>
+                    </div>
+                </div>
+                
+                <div class="summary-item">
+                    <div class="summary-icon">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div class="summary-content">
+                        <div class="summary-value exam-count" id="exam-events">0</div>
+                        <div class="summary-title">Status</div>
+                        <div class="summary-label">Exams</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Table with headers only (no summary in headers) -->
             <table class="calendar-table" aria-label="Academic Calendar Events">
                 <thead>
                     <tr>
-                        <!-- Column 1: Date & Time with stats -->
-                        <th scope="col" class="date-col">
-                            <div class="header-with-stats">
-                                <div class="header-label">
-                                    <i class="fas fa-calendar-day"></i>
-                                    Date & Time
-                                </div>
-                                <div class="header-stats">
-                                    <div class="stat-number" id="total-events">0</div>
-                                    <div class="stat-label">Total Events</div>
-                                </div>
-                            </div>
-                        </th>
-                        
-                        <!-- Column 2: Event / Details with stats -->
-                        <th scope="col">
-                            <div class="header-with-stats">
-                                <div class="header-label">
-                                    <i class="fas fa-info-circle"></i>
-                                    Event / Details
-                                </div>
-                                <div class="header-stats">
-                                    <div class="stat-number" id="upcoming-events">0</div>
-                                    <div class="stat-label">Upcoming</div>
-                                </div>
-                            </div>
-                        </th>
-                        
-                        <!-- Column 3: Type with stats -->
-                        <th scope="col" class="type-col">
-                            <div class="header-with-stats">
-                                <div class="header-label">
-                                    <i class="fas fa-tag"></i>
-                                    Type
-                                </div>
-                                <div class="header-stats">
-                                    <div class="stat-number" id="week-events">0</div>
-                                    <div class="stat-label">This Week</div>
-                                </div>
-                            </div>
-                        </th>
-                        
-                        <!-- Column 4: Status with stats -->
-                        <th scope="col" class="status-col">
-                            <div class="header-with-stats">
-                                <div class="header-label">
-                                    <i class="fas fa-check-circle"></i>
-                                    Status
-                                </div>
-                                <div class="header-stats">
-                                    <div class="stat-number exam-stat" id="exam-events">0</div>
-                                    <div class="stat-label">Exams</div>
-                                </div>
-                            </div>
-                        </th>
+                        <th scope="col" class="date-col">Date & Time</th>
+                        <th scope="col">Event / Details</th>
+                        <th scope="col" class="type-col">Type</th>
+                        <th scope="col" class="status-col">Status</th>
                     </tr>
                 </thead>
                 <tbody id="calendar-table">
@@ -777,6 +710,83 @@
         </div>
     </div>
 </section>
+
+<style>
+/* HORIZONTAL SUMMARY ROW STYLES */
+.horizontal-summary-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 15px;
+    margin-bottom: 20px;
+    padding: 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 12px;
+    color: white;
+}
+
+.summary-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    transition: transform 0.2s;
+}
+
+.summary-item:hover {
+    transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.summary-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+}
+
+.summary-content {
+    flex: 1;
+}
+
+.summary-value {
+    font-size: 2rem;
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: 4px;
+}
+
+.summary-title {
+    font-size: 0.9rem;
+    opacity: 0.9;
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+
+.summary-label {
+    font-size: 0.85rem;
+    opacity: 0.8;
+}
+
+.summary-value.exam-count {
+    color: #ff6b6b;
+}
+
+/* Table header alignment */
+.calendar-table thead th {
+    text-align: left;
+    padding: 15px;
+    background: #f8fafc;
+    border-bottom: 2px solid #e2e8f0;
+    font-weight: 600;
+    color: #374151;
+}
+</style>
         
               <!-- Courses Tab -->
 <section id="courses" class="tab-content">
