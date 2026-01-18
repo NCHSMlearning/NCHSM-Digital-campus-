@@ -579,7 +579,7 @@
     </form>
 </section>
 
-              <!-- Calendar Tab - IMPROVED -->
+              <!-- Calendar Tab - COLUMN LAYOUT -->
 <section id="calendar" class="tab-content" role="region" aria-label="Academic Calendar">
     <!-- Calendar Header -->
     <div class="calendar-header">
@@ -645,46 +645,58 @@
 
         <!-- Calendar Table -->
         <div id="calendar-table-container" style="display: none;">
-            <!-- CALENDAR SUMMARY HEADER (REPLACES TABLE HEADER) -->
-            <div class="calendar-summary-header">
-                <div class="summary-header-item">
-                    <i class="fas fa-calendar-day"></i>
-                    <div class="summary-header-content">
-                        <div class="summary-header-label">Date & Time</div>
-                        <div class="summary-header-value" id="total-events">0</div>
-                        <div class="summary-header-sublabel">Total Events</div>
-                    </div>
-                </div>
-                
-                <div class="summary-header-item">
-                    <i class="fas fa-info-circle"></i>
-                    <div class="summary-header-content">
-                        <div class="summary-header-label">Event / Details</div>
-                        <div class="summary-header-value" id="upcoming-events">0</div>
-                        <div class="summary-header-sublabel">Upcoming</div>
-                    </div>
-                </div>
-                
-                <div class="summary-header-item">
-                    <i class="fas fa-tag"></i>
-                    <div class="summary-header-content">
-                        <div class="summary-header-label">Type</div>
-                        <div class="summary-header-value" id="week-events">0</div>
-                        <div class="summary-header-sublabel">This Week</div>
-                    </div>
-                </div>
-                
-                <div class="summary-header-item">
-                    <i class="fas fa-check-circle"></i>
-                    <div class="summary-header-content">
-                        <div class="summary-header-label">Status</div>
-                        <div class="summary-header-value exam-count" id="exam-events">0</div>
-                        <div class="summary-header-sublabel">Exams</div>
-                    </div>
-                </div>
-            </div>
-          
             <table class="calendar-table" aria-label="Academic Calendar Events">
+                <thead>
+                    <tr>
+                        <!-- Column 1: Date & Time with Summary -->
+                        <th scope="col" class="date-col">
+                            <div class="column-header">
+                                <i class="fas fa-calendar-day"></i>
+                                <span class="header-title">Date & Time</span>
+                            </div>
+                            <div class="column-summary">
+                                <div class="summary-value" id="total-events">0</div>
+                                <div class="summary-label">Total Events</div>
+                            </div>
+                        </th>
+                        
+                        <!-- Column 2: Event Details with Summary -->
+                        <th scope="col">
+                            <div class="column-header">
+                                <i class="fas fa-info-circle"></i>
+                                <span class="header-title">Event / Details</span>
+                            </div>
+                            <div class="column-summary">
+                                <div class="summary-value" id="upcoming-events">0</div>
+                                <div class="summary-label">Upcoming</div>
+                            </div>
+                        </th>
+                        
+                        <!-- Column 3: Type with Summary -->
+                        <th scope="col" class="type-col">
+                            <div class="column-header">
+                                <i class="fas fa-tag"></i>
+                                <span class="header-title">Type</span>
+                            </div>
+                            <div class="column-summary">
+                                <div class="summary-value" id="week-events">0</div>
+                                <div class="summary-label">This Week</div>
+                            </div>
+                        </th>
+                        
+                        <!-- Column 4: Status with Summary -->
+                        <th scope="col" class="status-col">
+                            <div class="column-header">
+                                <i class="fas fa-check-circle"></i>
+                                <span class="header-title">Status</span>
+                            </div>
+                            <div class="column-summary">
+                                <div class="summary-value exam-count" id="exam-events">0</div>
+                                <div class="summary-label">Exams</div>
+                            </div>
+                        </th>
+                    </tr>
+                </thead>
                 <tbody id="calendar-table">
                     <!-- Events will be loaded here dynamically -->
                 </tbody>
@@ -693,6 +705,43 @@
     </div>
 </section>
 
+<!-- Add minimal CSS for column layout -->
+<style>
+.column-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.header-title {
+    font-weight: 600;
+    color: #374151;
+}
+
+.column-summary {
+    text-align: center;
+    padding-top: 8px;
+    border-top: 2px solid #e5e7eb;
+}
+
+.summary-value {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: #111827;
+    line-height: 1;
+}
+
+.summary-label {
+    font-size: 0.85rem;
+    color: #6b7280;
+    margin-top: 4px;
+}
+
+.summary-value.exam-count {
+    color: #ef4444;
+}
+</style>
               <!-- Courses Tab -->
 <section id="courses" class="tab-content">
     <!-- Header Section -->
