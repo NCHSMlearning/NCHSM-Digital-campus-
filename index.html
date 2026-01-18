@@ -237,166 +237,194 @@
         </div>
     </aside>
 
-    <!-- Main Content -->
-    <main class="main" id="main-content">
-        <!-- Dashboard Tab - IMPROVED -->
-        <section id="dashboard" class="tab-content active" role="region" aria-label="Dashboard">
-            <!-- Welcome Section -->
-            <div class="welcome-card" id="welcome-section">
-                <div class="welcome-header">
-                    <h2 id="welcome-header">Welcome back, <span id="welcome-student-name">Student</span>!</h2>
-                    <p id="student-welcome-message" class="welcome-subtitle">
-                        Access your courses, schedule, and check your attendance status.
-                    </p>
-                </div>
-                <div class="welcome-time">
-                    <i class="fas fa-clock"></i>
-                    <span id="dashboard-time"></span>
-                </div>
+  <!-- Main Content -->
+<main class="main" id="main-content">
+    <!-- Dashboard Tab - IMPROVED with GRID LAYOUT -->
+    <section id="dashboard" class="tab-content active" role="region" aria-label="Dashboard">
+        <!-- Welcome Section -->
+        <div class="welcome-card" id="welcome-section">
+            <div class="welcome-header">
+                <h2 id="welcome-header">Welcome back, Student!</h2>
+                <p id="student-welcome-message" class="welcome-subtitle">
+                    Access your courses, schedule, and check your attendance status.
+                </p>
             </div>
-
-            <!-- Announcement Banner -->
-            <div class="announcement-banner" id="announcement-banner" role="alert" aria-live="polite">
-                <div class="announcement-icon">
-                    <i class="fas fa-bullhorn"></i>
-                </div>
-                <div class="announcement-content">
-                    <h3 class="announcement-title">Official Announcement</h3>
-                    <p id="student-announcement" class="announcement-text">Loading latest announcement...</p>
-                </div>
+            <div class="welcome-time">
+                <i class="fas fa-clock"></i>
+                <span id="dashboard-time"></span>
             </div>
-
-        <!-- Quick Snapshot - IMPROVED BUT KEEPS YOUR STYLE -->
-<h2 class="dashboard-section-title">Quick Snapshot</h2>
-<div class="cards" role="group" aria-label="Quick statistics">
-    <!-- Attendance Card -->
-    <div class="card alert-card" data-tab="attendance" role="button" tabindex="0">
-        <h3 class="card-title">Attendance Rate</h3>
-        <p class="card-value" id="dashboard-attendance-rate">--%</p>
-        <div class="card-details">
-            <small>Verified Check-ins: 
-                <strong id="dashboard-verified-count">0</strong> / 
-                <strong id="dashboard-total-count">0</strong>
-            </small>
-            <small class="pending-alert">
-                Pending Review: <strong id="dashboard-pending-count">0</strong>
-            </small>
         </div>
-    </div>
 
-    <!-- Upcoming Exam Card -->
-    <div class="card" data-tab="cats" role="button" tabindex="0">
-        <h3 class="card-title">Upcoming Exam</h3>
-        <p class="card-value exam-value" id="dashboard-upcoming-exam">Loading...</p>
-        <small>Next CAT/Exam date</small>
-    </div>
-
-    <!-- Active Courses Card -->
-    <div class="card" data-tab="courses" role="button" tabindex="0">
-        <h3 class="card-title">Active Courses</h3>
-        <p class="card-value" id="dashboard-active-courses">0</p>
-        <small>Currently enrolled</small>
-    </div>
-
-    <!-- New Resources Card -->
-    <div class="card" data-tab="resources" role="button" tabindex="0">
-        <h3 class="card-title">New Resources</h3>
-        <p class="card-value" id="dashboard-new-resources">0</p>
-        <small>Last 7 days</small>
-    </div>
-
-    <!-- NurseIQ Card -->
-    <div class="card nurseiq-card" data-tab="nurseiq" role="button" tabindex="0">
-        <div class="card-header">
-            <i class="fas fa-brain nurseiq-icon"></i>
-            <h3 class="card-title">NurseIQ Progress</h3>
-        </div>
-        <p class="card-value" id="dashboard-nurseiq-progress">--%</p>
-        <div class="card-details">
-            <small>Accuracy: <strong id="dashboard-nurseiq-accuracy">--%</strong></small>
-            <small class="nurseiq-questions">
-                Questions: <strong id="dashboard-nurseiq-questions">0</strong> completed
-            </small>
-        </div>
-    </div>
-</div>
-
-            <!-- Action Required -->
-            <div class="section-header">
-                <h2><i class="fas fa-bell"></i> Action Required</h2>
-                <p class="section-subtitle">Items needing your attention</p>
+        <!-- Announcement Banner -->
+        <div class="announcement-banner" id="announcement-banner" role="alert" aria-live="polite">
+            <div class="announcement-icon">
+                <i class="fas fa-bullhorn"></i>
             </div>
+            <div class="announcement-content">
+                <h3 class="announcement-title">Official Announcement</h3>
+                <p id="student-announcement" class="announcement-text">Loading latest announcement...</p>
+            </div>
+        </div>
+
+        <!-- QUICK SNAPSHOT - GRID LAYOUT -->
+        <div class="dashboard-grid-section">
+            <h2 class="dashboard-section-title">Quick Snapshot</h2>
             
-            <div class="actions-grid" id="dashboard-actions" role="group" aria-label="Required actions">
-                <!-- Missing Passport Photo -->
-                <div class="card action-card alert" id="action-passport" style="display: none;" role="alert">
-                    <div class="action-header">
-                        <i class="fas fa-id-card"></i>
-                        <h3>Missing Passport Photo</h3>
-                    </div>
-                    <div class="action-body">
-                        <p>Your profile is incomplete. Please upload your passport photo immediately.</p>
-                    </div>
-                    <div class="action-footer">
-                        <button class="btn-action" data-tab="profile">
-                            <i class="fas fa-user-edit"></i> Go to Profile
-                        </button>
-                    </div>
-                </div>
+            <!-- Dashboard Grid Container -->
+            <div class="dashboard-grid" role="group" aria-label="Quick statistics">
                 
-                <!-- Review Materials -->
-                <div class="card action-card warning" role="region">
-                    <div class="action-header">
-                        <i class="fas fa-book-medical"></i>
-                        <h3>Review New Course Material</h3>
-                    </div>
-                    <div class="action-body">
-                        <p>New study materials have been posted for this block.</p>
-                    </div>
-                    <div class="action-footer">
-                        <button class="btn-action" data-tab="resources">
-                            <i class="fas fa-external-link-alt"></i> View Resources
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- Latest Announcement -->
-                <div class="card action-card success" id="latest-announcement-card" style="display: none;" role="region">
-                    <div class="action-header">
-                        <i class="fas fa-bullhorn"></i>
-                        <h3 id="announcement-title">Latest Announcement</h3>
-                    </div>
-                    <div class="action-body">
-                        <p id="announcement-body">Loading message body...</p>
-                        <div class="announcement-meta">
-                            <span id="announcement-date"></span> • 
-                            <span id="announcement-status"></span>
+                <!-- ATTENDANCE CARD -->
+                <div class="dashboard-card attendance" data-tab="attendance" role="button" tabindex="0">
+                    <div class="card-icon">📊</div>
+                    <h3 class="card-title">Attendance Rate</h3>
+                    <div class="card-value" id="dashboard-attendance-rate">--%</div>
+                    <div class="card-stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-value" id="dashboard-verified-count">0</span>
+                            <span class="stat-label">Verified</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value" id="dashboard-total-count">0</span>
+                            <span class="stat-label">Total</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value" id="dashboard-pending-count">0</span>
+                            <span class="stat-label">Pending</span>
                         </div>
                     </div>
-                    <div class="action-footer">
-                        <button class="btn-action" data-tab="messages">
-                            <i class="fas fa-comments"></i> Go to Messages
-                        </button>
+                    <div class="card-footer">
+                        <small>Last updated: Just now</small>
                     </div>
                 </div>
 
-                <!-- NurseIQ Action -->
-                <div class="card action-card nurseiq" id="nurseiq-action-card" style="display: none;" role="region">
-                    <div class="action-header">
-                        <i class="fas fa-brain"></i>
-                        <h3>NurseIQ Practice Needed</h3>
+                <!-- EXAMS CARD -->
+                <div class="dashboard-card exams" data-tab="cats" role="button" tabindex="0">
+                    <div class="card-icon">📝</div>
+                    <h3 class="card-title">Upcoming Exam</h3>
+                    <div class="card-value" id="dashboard-upcoming-exam">Loading...</div>
+                    <div class="card-details">
+                        <small>Next CAT/Exam date</small>
                     </div>
-                    <div class="action-body">
-                        <p id="nurseiq-action-message">Complete your NurseIQ assessments to improve your scores.</p>
+                </div>
+
+                <!-- COURSES CARD -->
+                <div class="dashboard-card courses" data-tab="courses" role="button" tabindex="0">
+                    <div class="card-icon">📚</div>
+                    <h3 class="card-title">Active Courses</h3>
+                    <div class="card-value" id="dashboard-active-courses">0</div>
+                    <div class="card-details">
+                        <small>Currently enrolled</small>
                     </div>
-                    <div class="action-footer">
-                        <button class="btn-action nurseiq-btn" data-tab="nurseiq">
-                            <i class="fas fa-play-circle"></i> Start Practicing
-                        </button>
+                </div>
+
+                <!-- RESOURCES CARD -->
+                <div class="dashboard-card resources" data-tab="resources" role="button" tabindex="0">
+                    <div class="card-icon">📁</div>
+                    <h3 class="card-title">New Resources</h3>
+                    <div class="card-value" id="dashboard-new-resources">0</div>
+                    <div class="card-details">
+                        <small>Last 7 days</small>
+                    </div>
+                </div>
+
+                <!-- NURSEIQ CARD -->
+                <div class="dashboard-card nurseiq" data-tab="nurseiq" role="button" tabindex="0">
+                    <div class="card-icon">🧠</div>
+                    <h3 class="card-title">NurseIQ Progress</h3>
+                    <div class="card-main-value">
+                        <span class="value" id="dashboard-nurseiq-progress">--%</span>
+                    </div>
+                    <div class="card-stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-value" id="dashboard-nurseiq-accuracy">--%</span>
+                            <span class="stat-label">Accuracy</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value" id="dashboard-nurseiq-questions">0</span>
+                            <span class="stat-label">Questions</span>
+                        </div>
                     </div>
                 </div>
             </div>
-        </section>
+        </div>
+
+        <!-- Action Required Section -->
+        <div class="section-header">
+            <h2><i class="fas fa-bell"></i> Action Required</h2>
+            <p class="section-subtitle">Items needing your attention</p>
+        </div>
+        
+        <div class="actions-grid" id="dashboard-actions" role="group" aria-label="Required actions">
+            <!-- Missing Passport Photo -->
+            <div class="card action-card alert" id="action-passport" style="display: none;" role="alert">
+                <div class="action-header">
+                    <i class="fas fa-id-card"></i>
+                    <h3>Missing Passport Photo</h3>
+                </div>
+                <div class="action-body">
+                    <p>Your profile is incomplete. Please upload your passport photo immediately.</p>
+                </div>
+                <div class="action-footer">
+                    <button class="btn-action" data-tab="profile">
+                        <i class="fas fa-user-edit"></i> Go to Profile
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Review Materials -->
+            <div class="card action-card warning" role="region">
+                <div class="action-header">
+                    <i class="fas fa-book-medical"></i>
+                    <h3>Review New Course Material</h3>
+                </div>
+                <div class="action-body">
+                    <p>New study materials have been posted for this block.</p>
+                </div>
+                <div class="action-footer">
+                    <button class="btn-action" data-tab="resources">
+                        <i class="fas fa-external-link-alt"></i> View Resources
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Latest Announcement -->
+            <div class="card action-card success" id="latest-announcement-card" style="display: none;" role="region">
+                <div class="action-header">
+                    <i class="fas fa-bullhorn"></i>
+                    <h3 id="announcement-title">Latest Announcement</h3>
+                </div>
+                <div class="action-body">
+                    <p id="announcement-body">Loading message body...</p>
+                    <div class="announcement-meta">
+                        <span id="announcement-date"></span> • 
+                        <span id="announcement-status"></span>
+                    </div>
+                </div>
+                <div class="action-footer">
+                    <button class="btn-action" data-tab="messages">
+                        <i class="fas fa-comments"></i> Go to Messages
+                    </button>
+                </div>
+            </div>
+
+            <!-- NurseIQ Action -->
+            <div class="card action-card nurseiq" id="nurseiq-action-card" style="display: none;" role="region">
+                <div class="action-header">
+                    <i class="fas fa-brain"></i>
+                    <h3>NurseIQ Practice Needed</h3>
+                </div>
+                <div class="action-body">
+                    <p id="nurseiq-action-message">Complete your NurseIQ assessments to improve your scores.</p>
+                </div>
+                <div class="action-footer">
+                    <button class="btn-action nurseiq-btn" data-tab="nurseiq">
+                        <i class="fas fa-play-circle"></i> Start Practicing
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+</main>
 
                <!-- Profile Tab -->
 <section id="profile" class="tab-content" aria-labelledby="profile-tab" hidden>
