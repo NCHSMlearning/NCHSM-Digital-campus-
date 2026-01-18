@@ -1,3 +1,6 @@
+// calendar.js - UPDATED FOR STATS IN HEADERS
+// ============================================
+
 let cachedCalendarEvents = [];
 let isLoadingCalendar = false;
 let eventsLastLoaded = null;
@@ -68,22 +71,6 @@ function setupCalendarEventListeners() {
         refreshEmptyBtn.addEventListener('click', loadAcademicCalendar);
     }
     
-    // Setup export button (placeholder)
-    const exportBtn = document.getElementById('export-calendar');
-    if (exportBtn) {
-        exportBtn.addEventListener('click', function() {
-            alert('Export feature coming soon!');
-        });
-    }
-    
-    // Setup view toggle
-    const viewToggle = document.getElementById('calendar-view-toggle');
-    if (viewToggle) {
-        viewToggle.addEventListener('click', function() {
-            alert('Calendar view toggle coming soon!');
-        });
-    }
-    
     console.log('✅ Calendar event listeners setup complete');
 }
 
@@ -146,12 +133,15 @@ async function loadAcademicCalendar() {
             status: getEventStatus(event.date, event.startTime)
         }));
         
-        // Hide loading, show table
-        if (loadingState) loadingState.style.display = 'none';
-        if (tableContainer) tableContainer.style.display = 'block';
+        // Update header stats (stats are IN the headers now)
+        updateHeaderStats(cachedCalendarEvents);
         
-        // Update summary header (NEW: update the summary in the header)
-        updateCalendarSummaryHeader(cachedCalendarEvents);
+        // Hide loading, show table container
+        if (loadingState) loadingState.style.display = 'none';
+        if (tableContainer) {
+            tableContainer.style.display = 'block';
+            console.log('✅ Table container shown');
+        }
         
         // Apply initial filter
         const filter = document.getElementById('calendar-filter');
@@ -166,6 +156,172 @@ async function loadAcademicCalendar() {
     } finally {
         isLoadingCalendar = false;
     }
+}
+
+// ========== HEADER STATS FUNCTION ==========
+function updateHeaderStats(events) {
+    console.log('📈 Updating header stats...');
+    
+    const now = new Date();
+    const oneWeekLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    
+    // Calculate counts
+    const totalEvents = events.length;
+    const upcomingEvents = events.filter(e => new Date(e.date) >= now).length;
+    const weekEvents = events.filter(e => {
+        const eventDate = new Date(e.date);
+        return eventDate >= now && eventDate <= oneWeekLater;
+    }).length;
+    const examEvents = events.filter(e => e.type.includes('EXAM') || e.type.includes('CAT')).length;
+    
+    // Update header stats
+    const totalEventsEl = document.getElementById('total-events');
+    const upcomingEventsEl = document.getElementById('upcoming-events');
+    const weekEventsEl = document.getElementById('week-events');
+    const examEventsEl = document.getElementById('exam-events');
+    
+    if (totalEventsEl) totalEventsEl.textContent = totalEvents;
+    if (upcomingEventsEl) upcomingEventsEl.textContent = upcomingEvents;
+    if (weekEventsEl) weekEventsEl.textContent = weekEvents;
+    if (examEventsEl) examEventsEl.textContent = examEvents;
+    
+    console.log(`📊 Stats updated: Total=${totalEvents}, Upcoming=${upcomingEvents}, Week=${weekEvents}, Exams=${examEvents}`);
+}
+
+// ========== FILTER FUNCTION ==========
+function filterCalendarEvents(filterType) {
+    const tableBody = document.getElementById('calendar-table');
+    const emptyState = document.getElementById('calendar-empty');
+    const loadingState = document.getElementById('calendar-loading');
+    const tableContainer = document.getElementById('calendar-table-container');
+    
+    if (!tableBody) return;
+    
+    // Hide empty and loading states
+    if (emptyState) emptyState.style.display = 'none';
+    if (loadingState) loadingState.style.display = 'none';
+    if (tableContainer) tableContainer.style.display = 'block';
+    
+    if (cachedCalendarEvents.length === 0) {
+        showEmptyState();
+        return;
+    }
+    
+    console.log(`🔍 Filtering events: ${filterType}`);
+    
+    let filteredEvents;
+    if (filterType === 'all') {
+        filteredEvents = cachedCalendarEvents;
+    } else {
+        filteredEvents = cachedCalendarEvents.filter(e => e.type === filterType);
+    }
+    
+    console.log(`📋 Showing ${filteredEvents.length} events for filter: ${filterType}`);
+    
+    // Update header stats for filtered events
+    updateHeaderStats(filteredEvents);
+    
+    if (filteredEvents.length === 0) {
+        showEmptyState(`No ${filterType === 'all' ? '' : filterType + ' '}events found`);
+    } else {
+        renderCalendarTable(filteredEvents, tableBody);
+    }
+}
+
+// ========== RENDER FUNCTION ==========
+function renderCalendarTable(events, tableBody) {
+    if (!tableBody) return;
+    
+    console.log(`🎨 Rendering ${events.length} events...`);
+    
+    let html = '';
+    const today = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    
+    events.forEach(event => {
+        const isToday = event.date === today;
+        const eventDate = new Date(event.date + 'T' + (event.startTime || '00:00:00'));
+        const isPast = eventDate < now;
+        const isUpcoming = !isPast;
+        
+        html += `
+            <tr class="calendar-event-row" data-id="${event.id}" ${isPast ? 'style="opacity: 0.8;"' : ''}>
+                <!-- Column 1: Date & Time -->
+                <td class="date-col">
+                    <div class="date-time-container">
+                        <div class="event-date">
+                            <strong>${event.formattedDate}</strong>
+                            ${isToday ? '<span class="today-badge">TODAY</span>' : ''}
+                        </div>
+                        <div class="event-time">
+                            <i class="fas fa-clock"></i>
+                            ${event.formattedTime}
+                        </div>
+                        ${event.venue ? `
+                            <div class="event-venue">
+                                <i class="fas fa-map-marker-alt"></i>
+                                ${event.venue}
+                            </div>
+                        ` : ''}
+                    </div>
+                </td>
+                
+                <!-- Column 2: Event Details -->
+                <td>
+                    <div class="event-details">
+                        <h3 class="event-title">
+                            ${escapeHtml(event.title)}
+                            ${event.program && event.program !== 'General' ? 
+                                `<span class="program-badge">${event.program}</span>` : ''}
+                        </h3>
+                        <p class="event-description">${escapeHtml(event.details || 'No details provided')}</p>
+                        ${event.organizer ? `
+                            <div class="event-organizer">
+                                <i class="fas fa-user"></i>
+                                ${event.organizer}
+                            </div>
+                        ` : ''}
+                        <div class="event-source">
+                            <i class="fas fa-database"></i>
+                            Source: ${event.source}
+                            ${event.courseName ? ` • Course: ${event.courseName}` : ''}
+                        </div>
+                    </div>
+                </td>
+                
+                <!-- Column 3: Type -->
+                <td class="type-col">
+                    <span class="event-type-badge" style="background-color: ${event.color}15; color: ${event.color}; border-color: ${event.color}30;">
+                        <i class="${event.icon}"></i>
+                        ${event.type}
+                    </span>
+                </td>
+                
+                <!-- Column 4: Status -->
+                <td class="status-col">
+                    ${isPast ? 
+                        '<span class="status-badge status-completed"><i class="fas fa-check-circle"></i> Completed</span>' :
+                        '<span class="status-badge status-upcoming"><i class="fas fa-clock"></i> Upcoming</span>'
+                    }
+                </td>
+            </tr>
+        `;
+    });
+    
+    tableBody.innerHTML = html;
+    
+    // Add click handlers
+    document.querySelectorAll('.calendar-event-row').forEach(row => {
+        row.addEventListener('click', function() {
+            const eventId = this.getAttribute('data-id');
+            const event = events.find(e => e.id === eventId);
+            if (event) {
+                showEventDetails(event);
+            }
+        });
+    });
+    
+    console.log('✅ Table rendered');
 }
 
 // ========== DATABASE FUNCTIONS ==========
@@ -378,170 +534,6 @@ async function fetchEventsFromDatabase() {
     return events;
 }
 
-// ========== FILTER FUNCTION ==========
-function filterCalendarEvents(filterType) {
-    const tableBody = document.getElementById('calendar-table');
-    const emptyState = document.getElementById('calendar-empty');
-    const loadingState = document.getElementById('calendar-loading');
-    const tableContainer = document.getElementById('calendar-table-container');
-    
-    if (!tableBody) return;
-    
-    // Hide empty and loading states
-    if (emptyState) emptyState.style.display = 'none';
-    if (loadingState) loadingState.style.display = 'none';
-    if (tableContainer) tableContainer.style.display = 'block';
-    
-    if (cachedCalendarEvents.length === 0) {
-        showEmptyState();
-        return;
-    }
-    
-    console.log(`🔍 Filtering events: ${filterType}`);
-    
-    let filteredEvents;
-    if (filterType === 'all') {
-        filteredEvents = cachedCalendarEvents;
-    } else {
-        filteredEvents = cachedCalendarEvents.filter(e => e.type === filterType);
-    }
-    
-    console.log(`📋 Showing ${filteredEvents.length} events for filter: ${filterType}`);
-    
-    if (filteredEvents.length === 0) {
-        showEmptyState(`No ${filterType === 'all' ? '' : filterType + ' '}events found`);
-    } else {
-        renderCalendarTable(filteredEvents, tableBody);
-    }
-    
-    // Update summary header with filtered events
-    updateCalendarSummaryHeader(filteredEvents);
-}
-
-// ========== SUMMARY HEADER FUNCTIONS ==========
-function updateCalendarSummaryHeader(events) {
-    // Make sure summary header is visible
-    const summaryHeader = document.querySelector('.calendar-summary-header');
-    if (summaryHeader) {
-        summaryHeader.style.display = 'grid'; // or 'flex' based on your CSS
-    }
-    
-    const now = new Date();
-    const oneWeekLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-    
-    // Calculate counts
-    const totalEvents = events.length;
-    const upcomingEvents = events.filter(e => new Date(e.date) >= now).length;
-    const weekEvents = events.filter(e => {
-        const eventDate = new Date(e.date);
-        return eventDate >= now && eventDate <= oneWeekLater;
-    }).length;
-    const examEvents = events.filter(e => e.type.includes('EXAM') || e.type.includes('CAT')).length;
-    
-    // Update display in the header
-    document.getElementById('total-events').textContent = totalEvents;
-    document.getElementById('upcoming-events').textContent = upcomingEvents;
-    document.getElementById('week-events').textContent = weekEvents;
-    document.getElementById('exam-events').textContent = examEvents;
-}
-
-// ========== RENDER FUNCTIONS ==========
-function renderCalendarTable(events, tableBody) {
-    if (!tableBody) return;
-    
-    console.log(`🎨 Rendering ${events.length} events...`);
-    
-    let html = '';
-    const today = new Date().toISOString().split('T')[0];
-    const now = new Date();
-    
-    events.forEach(event => {
-        const isToday = event.date === today;
-        const eventDate = new Date(event.date + 'T' + (event.startTime || '00:00:00'));
-        const isPast = eventDate < now;
-        const isUpcoming = !isPast;
-        
-        // Match the 4-column structure of the summary header
-        html += `
-            <tr class="calendar-event-row" data-id="${event.id}" ${isPast ? 'style="opacity: 0.8;"' : ''}>
-                <!-- Column 1: Date & Time -->
-                <td class="date-col">
-                    <div class="date-time-container">
-                        <div class="event-date">
-                            <strong>${event.formattedDate}</strong>
-                            ${isToday ? '<span class="today-badge">TODAY</span>' : ''}
-                        </div>
-                        <div class="event-time">
-                            <i class="fas fa-clock"></i>
-                            ${event.formattedTime}
-                        </div>
-                        ${event.venue ? `
-                            <div class="event-venue">
-                                <i class="fas fa-map-marker-alt"></i>
-                                ${event.venue}
-                            </div>
-                        ` : ''}
-                    </div>
-                </td>
-                
-                <!-- Column 2: Event Details -->
-                <td>
-                    <div class="event-details">
-                        <h3 class="event-title">
-                            ${escapeHtml(event.title)}
-                            ${event.program && event.program !== 'General' ? 
-                                `<span class="program-badge">${event.program}</span>` : ''}
-                        </h3>
-                        <p class="event-description">${escapeHtml(event.details || 'No details provided')}</p>
-                        ${event.organizer ? `
-                            <div class="event-organizer">
-                                <i class="fas fa-user"></i>
-                                ${event.organizer}
-                            </div>
-                        ` : ''}
-                        <div class="event-source">
-                            <i class="fas fa-database"></i>
-                            Source: ${event.source}
-                            ${event.courseName ? ` • Course: ${event.courseName}` : ''}
-                        </div>
-                    </div>
-                </td>
-                
-                <!-- Column 3: Type -->
-                <td class="type-col">
-                    <span class="event-type-badge" style="background-color: ${event.color}15; color: ${event.color}; border-color: ${event.color}30;">
-                        <i class="${event.icon}"></i>
-                        ${event.type}
-                    </span>
-                </td>
-                
-                <!-- Column 4: Status -->
-                <td class="status-col">
-                    ${isPast ? 
-                        '<span class="status-badge status-completed"><i class="fas fa-check-circle"></i> Completed</span>' :
-                        '<span class="status-badge status-upcoming"><i class="fas fa-clock"></i> Upcoming</span>'
-                    }
-                </td>
-            </tr>
-        `;
-    });
-    
-    tableBody.innerHTML = html;
-    
-    // Add click handlers
-    document.querySelectorAll('.calendar-event-row').forEach(row => {
-        row.addEventListener('click', function() {
-            const eventId = this.getAttribute('data-id');
-            const event = events.find(e => e.id === eventId);
-            if (event) {
-                showEventDetails(event);
-            }
-        });
-    });
-    
-    console.log('✅ Table rendered');
-}
-
 // ========== HELPER FUNCTIONS ==========
 function removeDuplicateEvents(events) {
     const uniqueMap = new Map();
@@ -607,131 +599,6 @@ function showErrorState(message) {
     }
 }
 
-// ========== EVENT DETAILS MODAL ==========
-function showEventDetails(event) {
-    const modal = document.createElement('div');
-    modal.className = 'modal-overlay';
-    modal.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0,0,0,0.5);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 10000;
-        padding: 20px;
-    `;
-    
-    const isPast = new Date(event.date + 'T' + (event.startTime || '00:00:00')) < new Date();
-    
-    modal.innerHTML = `
-        <div class="modal-content" style="background: white; padding: 24px; border-radius: 16px; max-width: 500px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.3); max-height: 90vh; overflow-y: auto;">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <div style="width: 50px; height: 50px; border-radius: 12px; background: ${event.color}20; display: flex; align-items: center; justify-content: center;">
-                        <i class="${event.icon}" style="color: ${event.color}; font-size: 1.5rem;"></i>
-                    </div>
-                    <div>
-                        <h3 style="margin: 0 0 4px 0; color: #1f2937; font-size: 1.3rem;">${escapeHtml(event.title)}</h3>
-                        <div style="color: ${event.color}; font-weight: 600; font-size: 0.9rem;">
-                            ${event.type}
-                            ${event.program && event.program !== 'General' ? ` • ${event.program}` : ''}
-                        </div>
-                    </div>
-                </div>
-                <button onclick="this.closest('.modal-overlay').remove()" 
-                        style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #6B7280; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 50%;">
-                    ×
-                </button>
-            </div>
-            
-            <div style="margin-bottom: 20px;">
-                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px; color: #4b5563;">
-                    <i class="fas fa-calendar" style="color: #6d28d9;"></i>
-                    <span>${event.formattedDate} • ${event.formattedTime}</span>
-                </div>
-                
-                ${event.venue ? `
-                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px; color: #4b5563;">
-                        <i class="fas fa-map-marker-alt" style="color: #10B981;"></i>
-                        <span>${event.venue}</span>
-                    </div>
-                ` : ''}
-                
-                ${event.organizer ? `
-                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 20px; color: #4b5563;">
-                        <i class="fas fa-user" style="color: #3B82F6;"></i>
-                        <span>${event.organizer}</span>
-                    </div>
-                ` : ''}
-            </div>
-            
-            <div style="background: #f9fafb; padding: 16px; border-radius: 12px; margin-bottom: 24px;">
-                <h4 style="margin: 0 0 8px 0; color: #1f2937; font-size: 1rem;">Details</h4>
-                <p style="margin: 0; color: #4b5563; line-height: 1.5;">${escapeHtml(event.details || 'No details provided')}</p>
-            </div>
-            
-            <div style="display: flex; gap: 10px; margin-bottom: 24px;">
-                <span style="padding: 6px 12px; background: ${isPast ? '#10B981' : '#3B82F6'}15; color: ${isPast ? '#10B981' : '#3B82F6'}; border-radius: 8px; font-size: 0.85rem; font-weight: 600;">
-                    <i class="fas ${isPast ? 'fa-check-circle' : 'fa-clock'}"></i>
-                    ${isPast ? 'Completed' : 'Upcoming'}
-                </span>
-                <span style="padding: 6px 12px; background: #f3f4f6; color: #6b7280; border-radius: 8px; font-size: 0.85rem;">
-                    <i class="fas fa-database"></i>
-                    ${event.source}
-                </span>
-            </div>
-            
-            ${event.type.includes('EXAM') || event.type.includes('CAT') ? `
-                <button onclick="viewExamDetails('${event.id}')" 
-                        style="width: 100%; padding: 12px; background: linear-gradient(135deg, #6d28d9, #9333ea); color: white; border: none; border-radius: 12px; font-weight: 600; cursor: pointer; margin-bottom: 10px;">
-                    <i class="fas fa-file-alt"></i> View Exam Details
-                </button>
-            ` : ''}
-            
-            ${event.type === 'Clinical' ? `
-                <button onclick="openClinicalLocation('${event.clinicalArea || ''}')" 
-                        style="width: 100%; padding: 12px; background: linear-gradient(135deg, #10B981, #34D399); color: white; border: none; border-radius: 12px; font-weight: 600; cursor: pointer;">
-                    <i class="fas fa-map-marked-alt"></i> View Clinical Location
-                </button>
-            ` : ''}
-        </div>
-    `;
-    
-    document.body.appendChild(modal);
-    
-    const closeModal = () => modal.remove();
-    modal.querySelector('button').addEventListener('click', closeModal);
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) closeModal();
-    });
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') closeModal();
-    });
-}
-
-function viewExamDetails(eventId) {
-    const modal = document.querySelector('.modal-overlay');
-    if (modal) modal.remove();
-    
-    if (typeof window.showTab === 'function') {
-        window.showTab('cats');
-        setTimeout(() => {
-            const examId = eventId.replace('exam_', '');
-            if (typeof window.viewProvisionalTranscript === 'function') {
-                window.viewProvisionalTranscript(examId);
-            }
-        }, 500);
-    }
-}
-
-function openClinicalLocation(clinicalArea) {
-    window.open(`https://www.google.com/maps/search/${encodeURIComponent(clinicalArea)}`, '_blank');
-}
-
 // ========== UTILITY FUNCTIONS ==========
 function formatEventDate(dateString) {
     if (!dateString) return 'Date not set';
@@ -790,8 +657,5 @@ function escapeHtml(str) {
 // ========== GLOBAL FUNCTIONS ==========
 window.loadAcademicCalendar = loadAcademicCalendar;
 window.filterCalendarEvents = filterCalendarEvents;
-window.showEventDetails = showEventDetails;
-window.viewExamDetails = viewExamDetails;
-window.openClinicalLocation = openClinicalLocation;
 
-console.log('📅 calendar.js loaded - UPDATED FOR NEW HTML STRUCTURE');
+console.log('📅 calendar.js loaded - UPDATED FOR STATS IN HEADERS');
