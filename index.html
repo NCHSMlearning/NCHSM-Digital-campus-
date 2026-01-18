@@ -1422,104 +1422,152 @@
                     </div>
                 </section>
 
-                <!-- Messages Tab - Enhanced -->
-                <section id="messages" class="tab-content">
-                    <div class="messages-container">
-                        <!-- Send Message Section -->
-                        <div class="message-send-section">
-                            <h2 style="color: var(--color-primary); margin-bottom: 20px;">
-                                <i class="fas fa-comments"></i> Message Center
-                            </h2>
-                            
-                            <div class="message-controls">
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label for="message-recipient">To:</label>
-                                        <select id="message-recipient" class="form-select">
-                                            <option value="admin">📋 Administration Office</option>
-                                            <option value="academic">👨‍🏫 Academic Department</option>
-                                            <option value="finance">💰 Finance Office</option>
-                                            <option value="instructor">👨‍🏫 Course Instructor</option>
-                                        </select>
-                                    </div>
-                                    
-                                    <div class="form-group">
-                                        <label for="message-priority">Priority:</label>
-                                        <select id="message-priority" class="form-select">
-                                            <option value="normal">📄 Normal</option>
-                                            <option value="urgent">⚠️ Urgent</option>
-                                            <option value="emergency">🚨 Emergency</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                
-                                <div class="form-group">
-                                    <label for="message-subject">Subject:</label>
-                                    <input type="text" id="message-subject" 
-                                           placeholder="Enter message subject..." 
-                                           class="form-input">
-                                </div>
-                                
-                                <div class="form-group">
-                                    <label for="student-message-body">Message:</label>
-                                    <textarea id="student-message-body" 
-                                              placeholder="Write your message here..." 
-                                              required
-                                              class="form-textarea"
-                                              maxlength="1000"></textarea>
-                                    <div class="char-counter">
-                                        <span id="char-count">0</span>/1000 characters
-                                    </div>
-                                </div>
-                                
-                                <div class="message-actions">
-                                    <button type="submit" id="send-message-btn" class="btn-primary">
-                                        <i class="fas fa-paper-plane"></i>
-                                        <span id="send-text">Send Message</span>
-                                        <span id="sending-text" style="display: none;">
-                                            <i class="fas fa-spinner fa-spin"></i> Sending...
-                                        </span>
-                                    </button>
-                                    
-                                    <button type="button" id="preview-btn" class="btn-secondary">
-                                        <i class="fas fa-eye"></i> Preview
-                                    </button>
-                                </div>
-                                
-                                <p id="message-status" class="status-message"></p>
-                                
-                                <div class="message-info">
-                                    <p><i class="fas fa-info-circle"></i> 
-                                       Messages are typically responded to within 24-48 hours.
-                                    </p>
-                                    <p><i class="fas fa-clock"></i> 
-                                       Office hours: Monday-Friday, 8:00 AM - 5:00 PM
-                                    </p>
-                                </div>
-                            </div>
+               <!-- Messages Tab - VIEW ONLY (No Sending) -->
+<section id="messages" class="tab-content">
+    <div class="messages-container">
+        <!-- Header with Info -->
+        <div class="messages-header">
+            <h2 style="color: var(--color-primary); margin-bottom: 8px;">
+                <i class="fas fa-comments"></i> Message Center
+            </h2>
+            <p class="subtitle" style="margin-bottom: 20px;">
+                View messages and announcements from administration, lecturers, and departments
+            </p>
+            
+            <!-- Info Box -->
+            <div class="message-info-card">
+                <div class="info-icon">
+                    <i class="fas fa-info-circle"></i>
+                </div>
+                <div class="info-content">
+                    <h4>Important Information</h4>
+                    <p>For support requests, technical issues, or specific inquiries, please use the <strong>Support Tickets</strong> section.</p>
+                    <div class="info-actions">
+                        <a href="#" data-tab="support-tickets" class="info-link">
+                            <i class="fas fa-ticket-alt"></i> Go to Support Tickets
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Message History Section -->
+        <div class="message-history-section">
+            <div class="section-header">
+                <h3><i class="fas fa-history"></i> Message History</h3>
+                <div class="message-summary">
+                    <span class="count-badge" id="total-messages-count">0 messages</span>
+                    <span class="unread-badge" id="unread-messages-count" style="display: none;">0 unread</span>
+                </div>
+            </div>
+            
+            <!-- Message Filters -->
+            <div class="message-filters">
+                <div class="filter-group">
+                    <button class="filter-btn active" data-filter="all">
+                        <i class="fas fa-list"></i> All Messages
+                    </button>
+                    <button class="filter-btn" data-filter="unread">
+                        <i class="fas fa-envelope"></i> Unread
+                        <span class="filter-count" id="unread-count">0</span>
+                    </button>
+                    <button class="filter-btn" data-filter="announcements">
+                        <i class="fas fa-bullhorn"></i> Announcements
+                    </button>
+                    <button class="filter-btn" data-filter="academic">
+                        <i class="fas fa-graduation-cap"></i> Academic
+                    </button>
+                </div>
+                
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="message-search" placeholder="Search messages...">
+                </div>
+            </div>
+            
+            <!-- Refresh Button -->
+            <div class="refresh-section">
+                <button id="refresh-messages-btn" class="btn-secondary">
+                    <i class="fas fa-sync-alt"></i> Refresh Messages
+                </button>
+                <div class="last-updated">
+                    Last updated: <span id="messages-last-updated">Just now</span>
+                </div>
+            </div>
+            
+            <!-- Messages List -->
+            <div id="messages-list" class="messages-list">
+                <!-- Loading State -->
+                <div class="loading-state">
+                    <div class="loading-spinner"></div>
+                    <p>Loading messages...</p>
+                </div>
+                
+                <!-- Messages will be loaded here dynamically -->
+            </div>
+            
+            <!-- Empty State (When no messages) -->
+            <div id="messages-empty" class="empty-state" style="display: none;">
+                <div class="empty-icon">
+                    <i class="fas fa-inbox"></i>
+                </div>
+                <h3>No Messages Found</h3>
+                <p>You don't have any messages at the moment.</p>
+                <div class="empty-actions">
+                    <button id="refresh-empty-btn" class="btn-primary">
+                        <i class="fas fa-redo"></i> Refresh
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Message Categories Info -->
+            <div class="categories-info">
+                <h4><i class="fas fa-tags"></i> Message Categories</h4>
+                <div class="categories-grid">
+                    <div class="category-item">
+                        <div class="category-icon announcement">
+                            <i class="fas fa-bullhorn"></i>
                         </div>
-                        
-                        <!-- Message History Section -->
-                        <div class="message-history-section">
-                            <h3><i class="fas fa-history"></i> Message History</h3>
-                            
-                            <div class="message-filters">
-                                <button class="filter-btn active">All</button>
-                                <button class="filter-btn">Unread</button>
-                                <button class="filter-btn">Sent</button>
-                                <button class="filter-btn">Archived</button>
-                            </div>
-                            
-                            <div id="messages-list" class="messages-list">
-                                <!-- Messages will be loaded here -->
-                                <div class="empty-state">
-                                    <i class="fas fa-inbox"></i>
-                                    <p>No messages yet. Send your first message!</p>
-                                </div>
-                            </div>
+                        <div class="category-content">
+                            <h5>Announcements</h5>
+                            <p>Official college announcements and notices</p>
                         </div>
                     </div>
-                </section>
+                    <div class="category-item">
+                        <div class="category-icon academic">
+                            <i class="fas fa-graduation-cap"></i>
+                        </div>
+                        <div class="category-content">
+                            <h5>Academic</h5>
+                            <p>Course updates, exam schedules, grade releases</p>
+                        </div>
+                    </div>
+                    <div class="category-item">
+                        <div class="category-icon administrative">
+                            <i class="fas fa-building"></i>
+                        </div>
+                        <div class="category-content">
+                            <h5>Administrative</h5>
+                            <p>Fee reminders, deadline extensions, policy changes</p>
+                        </div>
+                    </div>
+                    <div class="category-item">
+                        <div class="category-icon support">
+                            <i class="fas fa-ticket-alt"></i>
+                        </div>
+                        <div class="category-content">
+                            <h5>Support</h5>
+                            <p>For support requests, use the Support Tickets section</p>
+                            <a href="#" data-tab="support-tickets" class="category-link">
+                                Go to Support Tickets <i class="fas fa-arrow-right"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
 
                 <!-- Support Tickets Tab -->
                 <section id="support-tickets" class="tab-content">
@@ -2011,7 +2059,7 @@
                     
                     <div class="footer-bottom">
                         <div class="copyright">
-                            © 2025 Nakuru College of Health Sciences and Management. All rights reserved.
+                            © 2026 Nakuru College of Health Sciences and Management. All rights reserved.
                             <span id="appVersion" style="margin-left: 10px; opacity: 0.7;">v2.1</span>
                         </div>
                         <div class="footer-social">
