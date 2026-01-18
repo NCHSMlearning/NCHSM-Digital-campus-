@@ -150,13 +150,13 @@ async function loadAcademicCalendar() {
         if (loadingState) loadingState.style.display = 'none';
         if (tableContainer) tableContainer.style.display = 'block';
         
+        // Update summary header (NEW: update the summary in the header)
+        updateCalendarSummaryHeader(cachedCalendarEvents);
+        
         // Apply initial filter
         const filter = document.getElementById('calendar-filter');
         const filterType = filter ? filter.value : 'all';
         filterCalendarEvents(filterType);
-        
-        // Update summary
-        updateCalendarSummary(cachedCalendarEvents);
         
         console.log(`✅ Calendar loaded successfully: ${uniqueEvents.length} events`);
         
@@ -414,8 +414,35 @@ function filterCalendarEvents(filterType) {
         renderCalendarTable(filteredEvents, tableBody);
     }
     
-    // Update summary with filtered events
-    updateCalendarSummary(filteredEvents);
+    // Update summary header with filtered events
+    updateCalendarSummaryHeader(filteredEvents);
+}
+
+// ========== SUMMARY HEADER FUNCTIONS ==========
+function updateCalendarSummaryHeader(events) {
+    // Make sure summary header is visible
+    const summaryHeader = document.querySelector('.calendar-summary-header');
+    if (summaryHeader) {
+        summaryHeader.style.display = 'grid'; // or 'flex' based on your CSS
+    }
+    
+    const now = new Date();
+    const oneWeekLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    
+    // Calculate counts
+    const totalEvents = events.length;
+    const upcomingEvents = events.filter(e => new Date(e.date) >= now).length;
+    const weekEvents = events.filter(e => {
+        const eventDate = new Date(e.date);
+        return eventDate >= now && eventDate <= oneWeekLater;
+    }).length;
+    const examEvents = events.filter(e => e.type.includes('EXAM') || e.type.includes('CAT')).length;
+    
+    // Update display in the header
+    document.getElementById('total-events').textContent = totalEvents;
+    document.getElementById('upcoming-events').textContent = upcomingEvents;
+    document.getElementById('week-events').textContent = weekEvents;
+    document.getElementById('exam-events').textContent = examEvents;
 }
 
 // ========== RENDER FUNCTIONS ==========
@@ -434,12 +461,13 @@ function renderCalendarTable(events, tableBody) {
         const isPast = eventDate < now;
         const isUpcoming = !isPast;
         
+        // Match the 4-column structure of the summary header
         html += `
             <tr class="calendar-event-row" data-id="${event.id}" ${isPast ? 'style="opacity: 0.8;"' : ''}>
+                <!-- Column 1: Date & Time -->
                 <td class="date-col">
                     <div class="date-time-container">
                         <div class="event-date">
-                            <i class="fas fa-calendar-day"></i>
                             <strong>${event.formattedDate}</strong>
                             ${isToday ? '<span class="today-badge">TODAY</span>' : ''}
                         </div>
@@ -455,6 +483,8 @@ function renderCalendarTable(events, tableBody) {
                         ` : ''}
                     </div>
                 </td>
+                
+                <!-- Column 2: Event Details -->
                 <td>
                     <div class="event-details">
                         <h3 class="event-title">
@@ -476,12 +506,16 @@ function renderCalendarTable(events, tableBody) {
                         </div>
                     </div>
                 </td>
+                
+                <!-- Column 3: Type -->
                 <td class="type-col">
                     <span class="event-type-badge" style="background-color: ${event.color}15; color: ${event.color}; border-color: ${event.color}30;">
                         <i class="${event.icon}"></i>
                         ${event.type}
                     </span>
                 </td>
+                
+                <!-- Column 4: Status -->
                 <td class="status-col">
                     ${isPast ? 
                         '<span class="status-badge status-completed"><i class="fas fa-check-circle"></i> Completed</span>' :
@@ -506,34 +540,6 @@ function renderCalendarTable(events, tableBody) {
     });
     
     console.log('✅ Table rendered');
-}
-
-// ========== SUMMARY FUNCTIONS ==========
-function updateCalendarSummary(events) {
-    const summaryContainer = document.getElementById('calendar-summary');
-    if (!summaryContainer) return;
-    
-    const now = new Date();
-    const today = now.toISOString().split('T')[0];
-    const oneWeekLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-    
-    // Calculate counts
-    const totalEvents = events.length;
-    const upcomingEvents = events.filter(e => new Date(e.date) >= now).length;
-    const weekEvents = events.filter(e => {
-        const eventDate = new Date(e.date);
-        return eventDate >= now && eventDate <= oneWeekLater;
-    }).length;
-    const examEvents = events.filter(e => e.type.includes('EXAM') || e.type.includes('CAT')).length;
-    
-    // Update display
-    document.getElementById('total-events').textContent = totalEvents;
-    document.getElementById('upcoming-events').textContent = upcomingEvents;
-    document.getElementById('week-events').textContent = weekEvents;
-    document.getElementById('exam-events').textContent = examEvents;
-    
-    // Show summary
-    summaryContainer.style.display = 'flex';
 }
 
 // ========== HELPER FUNCTIONS ==========
@@ -574,10 +580,6 @@ function showEmptyState(message = 'No scheduled events found') {
     if (tableContainer) {
         tableContainer.style.display = 'none';
     }
-    
-    // Hide summary
-    const summary = document.getElementById('calendar-summary');
-    if (summary) summary.style.display = 'none';
 }
 
 function showErrorState(message) {
@@ -727,7 +729,6 @@ function viewExamDetails(eventId) {
 }
 
 function openClinicalLocation(clinicalArea) {
-    // Search for clinical area in Google Maps
     window.open(`https://www.google.com/maps/search/${encodeURIComponent(clinicalArea)}`, '_blank');
 }
 
@@ -792,3 +793,5 @@ window.filterCalendarEvents = filterCalendarEvents;
 window.showEventDetails = showEventDetails;
 window.viewExamDetails = viewExamDetails;
 window.openClinicalLocation = openClinicalLocation;
+
+console.log('📅 calendar.js loaded - UPDATED FOR NEW HTML STRUCTURE');
