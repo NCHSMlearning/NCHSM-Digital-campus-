@@ -1,4 +1,4 @@
-// js/nurseiq.js - OPTIMIZED & FIXED VERSION
+// js/nurseiq.js - ENHANCED VERSION WITH PERSISTENT PROGRESS & ANSWER VISIBILITY
 class NurseIQModule {
     constructor() {
         this.userId = null;
@@ -15,6 +15,9 @@ class NurseIQModule {
         this.currentCourseQuestions = [];
         this.showAnswersMode = true;
         this.initialized = false;
+        this.storageKey = 'nurseiq_user_progress';
+        this.lastCourseProgressKey = 'nurseiq_last_course';
+        this.currentSessionAnswers = {}; // Temporary for current session
     }
     
     async initializeElements() {
@@ -90,11 +93,98 @@ class NurseIQModule {
         try {
             this.userId = getCurrentUserId();
             await this.initializeElements();
+            await this.loadUserProgress(); // Load saved progress
             await this.loadQuestionBankCards();
             this.initialized = true;
             console.log('✅ NurseIQ Module initialized');
         } catch (error) {
             console.error('❌ Failed to initialize:', error);
+        }
+    }
+    
+    // FEATURE 1: Save/Load User Progress
+    async loadUserProgress() {
+        try {
+            // Load from localStorage first
+            const savedProgress = localStorage.getItem(this.storageKey);
+            if (savedProgress) {
+                this.userTestAnswers = JSON.parse(savedProgress);
+                console.log('📊 Loaded saved progress:', Object.keys(this.userTestAnswers).length, 'answered questions');
+            }
+            
+            // Try to load from database if user is logged in
+            if (this.userId) {
+                const supabase = this.getSupabaseClient();
+                if (supabase) {
+                    const { data, error } = await supabase
+                        .from('user_progress') // You'll need to create this table
+                        .select('progress_data')
+                        .eq('user_id', this.userId)
+                        .single();
+                    
+                    if (!error && data && data.progress_data) {
+                        this.userTestAnswers = { ...this.userTestAnswers, ...data.progress_data };
+                        console.log('📊 Loaded progress from database');
+                    }
+                }
+            }
+        } catch (error) {
+            console.warn('Could not load user progress:', error);
+        }
+    }
+    
+    saveUserProgress() {
+        try {
+            // Save to localStorage
+            localStorage.setItem(this.storageKey, JSON.stringify(this.userTestAnswers));
+            
+            // Save last course progress for resuming
+            if (this.currentCourseForTest) {
+                const lastProgress = {
+                    courseId: this.currentCourseForTest.id,
+                    courseName: this.currentCourseForTest.name,
+                    currentIndex: this.currentQuestionIndex,
+                    timestamp: new Date().toISOString()
+                };
+                localStorage.setItem(this.lastCourseProgressKey, JSON.stringify(lastProgress));
+            }
+            
+            // Save to database if user is logged in
+            if (this.userId) {
+                this.saveProgressToDatabase();
+            }
+            
+            console.log('💾 Progress saved');
+        } catch (error) {
+            console.warn('Could not save progress:', error);
+        }
+    }
+    
+    async saveProgressToDatabase() {
+        try {
+            const supabase = this.getSupabaseClient();
+            if (!supabase) return;
+            
+            const { error } = await supabase
+                .from('user_progress')
+                .upsert({
+                    user_id: this.userId,
+                    progress_data: this.userTestAnswers,
+                    updated_at: new Date().toISOString()
+                }, { onConflict: 'user_id' });
+            
+            if (error) throw error;
+        } catch (error) {
+            console.error('Database save error:', error);
+        }
+    }
+    
+    getLastCourseProgress() {
+        try {
+            const lastProgress = localStorage.getItem(this.lastCourseProgressKey);
+            return lastProgress ? JSON.parse(lastProgress) : null;
+        } catch (error) {
+            return null;
         }
     }
     
@@ -129,7 +219,8 @@ class NurseIQModule {
                         color: courseColor,
                         description: question.courses?.description || '',
                         questions: [],
-                        stats: { total: 0, active: 0, hard: 0, medium: 0, easy: 0, lastUpdated: null }
+                        stats: { total: 0, active: 0, hard: 0, medium: 0, easy: 0, lastUpdated: null },
+                        userStats: this.getCourseUserStats(courseId, questions)
                     };
                 }
                 
@@ -167,6 +258,36 @@ class NurseIQModule {
         }
     }
     
+    getCourseUserStats(courseId, questions) {
+        const courseQuestions = questions.filter(q => q.course_id === courseId);
+        let answered = 0;
+        let correct = 0;
+        let lastAttempt = null;
+        
+        courseQuestions.forEach(question => {
+            const questionAnswer = this.userTestAnswers[question.id];
+            if (questionAnswer && questionAnswer.answered) {
+                answered++;
+                if (questionAnswer.correct) correct++;
+                if (questionAnswer.timestamp && (!lastAttempt || new Date(questionAnswer.timestamp) > new Date(lastAttempt))) {
+                    lastAttempt = questionAnswer.timestamp;
+                }
+            }
+        });
+        
+        const accuracy = answered > 0 ? Math.round((correct / answered) * 100) : 0;
+        const completion = Math.round((answered / courseQuestions.length) * 100);
+        
+        return {
+            answered,
+            correct,
+            accuracy,
+            completion,
+            lastAttempt,
+            total: courseQuestions.length
+        };
+    }
+    
     displayQuestionBankCards(courses, overallStats) {
         if (!this.studentQuestionBankContent) return;
         
@@ -194,6 +315,38 @@ class NurseIQModule {
         
         let html = `<div class="question-bank-container">`;
         
+        // Check for last course progress
+        const lastProgress = this.getLastCourseProgress();
+        if (lastProgress) {
+            const lastCourse = courses.find(c => c.id === lastProgress.courseId);
+            if (lastCourse) {
+                html += `
+                    <div class="resume-card">
+                        <div class="resume-header">
+                            <i class="fas fa-history"></i>
+                            <h3>Continue Where You Left Off</h3>
+                        </div>
+                        <div class="resume-content">
+                            <div class="resume-course">
+                                <span class="resume-course-name">${lastCourse.name}</span>
+                                <span class="resume-progress">Question ${lastProgress.currentIndex + 1} of ${lastCourse.questions.length}</span>
+                            </div>
+                            <div class="resume-actions">
+                                <button onclick="window.startCourseTest('${lastCourse.id}', '${lastCourse.name.replace(/'/g, "\\'")}', ${lastProgress.currentIndex})" 
+                                        class="resume-btn btn-primary">
+                                    <i class="fas fa-play"></i> Resume Practice
+                                </button>
+                                <button onclick="window.startCourseTest('${lastCourse.id}', '${lastCourse.name.replace(/'/g, "\\'")}', 0)" 
+                                        class="resume-btn btn-secondary">
+                                    <i class="fas fa-redo"></i> Start Over
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+        
         if (filteredCourses.length === 0) {
             html += `
                 <div class="empty-state">
@@ -211,6 +364,8 @@ class NurseIQModule {
             filteredCourses.forEach(course => {
                 const courseColor = course.color || '#4f46e5';
                 const lastUpdated = formatDate(course.stats.lastUpdated);
+                const userStats = course.userStats;
+                const hasProgress = userStats.answered > 0;
                 
                 html += `
                     <div class="course-card">
@@ -231,12 +386,42 @@ class NurseIQModule {
                                     <i class="fas fa-book-medical"></i>
                                 </div>
                             </div>
-                            <div class="active-badge">
-                                <i class="fas fa-check-circle"></i> Active Questions
-                            </div>
+                            ${hasProgress ? `
+                                <div class="progress-badge" style="background: ${courseColor};">
+                                    <i class="fas fa-chart-line"></i> ${userStats.completion}% Complete
+                                </div>
+                            ` : `
+                                <div class="active-badge">
+                                    <i class="fas fa-check-circle"></i> Active Questions
+                                </div>
+                            `}
                         </div>
                         
                         <div class="course-stats">
+                            ${hasProgress ? `
+                                <div class="user-progress-section">
+                                    <div class="progress-title">Your Progress</div>
+                                    <div class="progress-grid">
+                                        <div class="progress-item">
+                                            <div class="progress-value">${userStats.answered}/${userStats.total}</div>
+                                            <div class="progress-label">Answered</div>
+                                        </div>
+                                        <div class="progress-item">
+                                            <div class="progress-value">${userStats.correct}</div>
+                                            <div class="progress-label">Correct</div>
+                                        </div>
+                                        <div class="progress-item">
+                                            <div class="progress-value">${userStats.accuracy}%</div>
+                                            <div class="progress-label">Accuracy</div>
+                                        </div>
+                                        <div class="progress-item">
+                                            <div class="progress-value">${userStats.completion}%</div>
+                                            <div class="progress-label">Complete</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ` : ''}
+                            
                             <div class="stats-grid">
                                 <div class="stat-item">
                                     <div class="stat-value text-primary">${course.stats.active}</div>
@@ -257,9 +442,9 @@ class NurseIQModule {
                             </div>
                             
                             <button class="start-test-btn" 
-                                    onclick="window.startCourseTest('${course.id}', '${course.name.replace(/'/g, "\\'")}')" 
+                                    onclick="window.startCourseTest('${course.id}', '${course.name.replace(/'/g, "\\'")}', ${hasProgress ? -1 : 0})" 
                                     style="background: ${courseColor}">
-                                <i class="fas fa-play-circle"></i> START PRACTICE TEST
+                                <i class="fas fa-play-circle"></i> ${hasProgress ? 'CONTINUE PRACTICE' : 'START PRACTICE TEST'}
                             </button>
                             
                             <div class="quick-stats">
@@ -289,7 +474,7 @@ class NurseIQModule {
         console.log('✅ Question bank displayed');
     }
     
-    async startCourseTest(courseId, courseName) {
+    async startCourseTest(courseId, courseName, startIndex = 0) {
         try {
             console.log(`Starting test for course: ${courseName}`);
             this.showLoading();
@@ -314,8 +499,28 @@ class NurseIQModule {
             
             this.currentCourseForTest = { id: courseId, name: courseName };
             this.currentCourseQuestions = questions;
-            this.currentQuestionIndex = 0;
-            this.userTestAnswers = {};
+            this.currentSessionAnswers = {};
+            
+            // Determine starting index
+            let actualStartIndex = 0;
+            if (startIndex === -1) {
+                // Find last answered question
+                let lastAnsweredIndex = 0;
+                for (let i = 0; i < questions.length; i++) {
+                    const question = questions[i];
+                    if (this.userTestAnswers[question.id]?.answered) {
+                        lastAnsweredIndex = i;
+                    }
+                }
+                actualStartIndex = Math.min(lastAnsweredIndex, questions.length - 1);
+            } else if (startIndex >= 0 && startIndex < questions.length) {
+                actualStartIndex = startIndex;
+            }
+            
+            this.currentQuestionIndex = actualStartIndex;
+            
+            // Load saved answers for this course
+            this.loadSavedAnswersForCourse(courseId, questions);
             
             this.displayInteractiveQuestions(courseName, questions);
             
@@ -326,6 +531,20 @@ class NurseIQModule {
         } finally {
             this.hideLoading();
         }
+    }
+    
+    loadSavedAnswersForCourse(courseId, questions) {
+        // Map question IDs to indices and load saved answers
+        this.userTestAnswers = {};
+        questions.forEach((question, index) => {
+            const savedAnswer = this.userTestAnswers[question.id];
+            if (savedAnswer) {
+                this.userTestAnswers[index] = {
+                    ...savedAnswer,
+                    questionId: question.id
+                };
+            }
+        });
     }
     
     displayInteractiveQuestions(courseName, questions) {
@@ -350,7 +569,7 @@ class NurseIQModule {
                             <div class="progress-stat-top">
                                 <div class="progress-label-top">Question</div>
                                 <div class="progress-value-top">
-                                    <span id="currentQuestionCountTop">1</span>/<span id="totalQuestionsTop">${questions.length}</span>
+                                    <span id="currentQuestionCountTop">${this.currentQuestionIndex + 1}</span>/<span id="totalQuestionsTop">${questions.length}</span>
                                 </div>
                             </div>
                             <div class="progress-stat-top">
@@ -428,9 +647,9 @@ class NurseIQModule {
                             
                             <div class="compact-progress">
                                 <div class="compact-progress-bar">
-                                    <div class="compact-progress-fill" id="progressFill" style="width: 0%;"></div>
+                                    <div class="compact-progress-fill" id="progressFill" style="width: ${Math.round(((this.currentQuestionIndex + 1) / questions.length) * 100)}%;"></div>
                                 </div>
-                                <span class="compact-progress-text" id="progressPercent">0%</span>
+                                <span class="compact-progress-text" id="progressPercent">${Math.round(((this.currentQuestionIndex + 1) / questions.length) * 100)}%</span>
                             </div>
                             
                             <button onclick="window.nextQuestion()" id="nextBtn" class="compact-nav-btn compact-nav-next">
@@ -442,6 +661,7 @@ class NurseIQModule {
                             </button>
                         </div>
                         
+                        <!-- FEATURE 1: Answer & Explanation Section - Now persistent -->
                         <div id="answerRevealSection" class="answer-reveal-section" style="display: none;">
                             <div class="answer-header">
                                 <h3><i class="fas fa-check-double"></i> Answer & Explanation</h3>
@@ -536,12 +756,17 @@ class NurseIQModule {
         this.updateNavigationButtons();
         this.updateMarkButton();
         
-        const answerRevealSection = document.getElementById('answerRevealSection');
-        if (answerRevealSection) answerRevealSection.style.display = 'none';
-        
+        // FEATURE 1: Check if we should show answer section from previous question
         const userAnswer = this.userTestAnswers[this.currentQuestionIndex];
-        if (!userAnswer?.answered) this.resetOptionSelection();
-        if (userAnswer?.answered) this.showUserAnswer(userAnswer);
+        const answerRevealSection = document.getElementById('answerRevealSection');
+        
+        if (userAnswer?.answered) {
+            this.showUserAnswer(userAnswer);
+            this.showAnswerRevealSection();
+        } else {
+            if (answerRevealSection) answerRevealSection.style.display = 'none';
+            this.resetOptionSelection();
+        }
         
         this.highlightCurrentQuestionInGrid();
     }
@@ -592,7 +817,8 @@ class NurseIQModule {
             this.userTestAnswers[this.currentQuestionIndex] = {
                 ...this.userTestAnswers[this.currentQuestionIndex],
                 questionId: question.id,
-                correctAnswer: correctAnswer
+                correctAnswer: correctAnswer,
+                timestamp: new Date().toISOString()
             };
         }
     }
@@ -609,7 +835,8 @@ class NurseIQModule {
                 ...this.userTestAnswers[this.currentQuestionIndex],
                 selectedOption: optionText,
                 selectedOptionIndex: parseInt(optionIndex),
-                answered: false
+                answered: false,
+                timestamp: new Date().toISOString()
             };
         }
     }
@@ -650,8 +877,6 @@ class NurseIQModule {
                 }
             }
         });
-        
-        if (userAnswer.answered) this.showAnswerRevealSection();
     }
     
     checkAnswer() {
@@ -666,6 +891,20 @@ class NurseIQModule {
         const isCorrect = userAnswer.selectedOption === correctAnswer;
         userAnswer.answered = true;
         userAnswer.correct = isCorrect;
+        userAnswer.timestamp = new Date().toISOString();
+        
+        // Save to permanent storage
+        if (question.id) {
+            this.userTestAnswers[question.id] = {
+                selectedOption: userAnswer.selectedOption,
+                selectedOptionIndex: userAnswer.selectedOptionIndex,
+                answered: true,
+                correct: isCorrect,
+                correctAnswer: correctAnswer,
+                timestamp: userAnswer.timestamp,
+                questionText: question.question_text
+            };
+        }
         
         this.showUserAnswer(userAnswer);
         this.updateCounters();
@@ -673,6 +912,7 @@ class NurseIQModule {
         this.showAnswerRevealSection();
         this.updateQuestionGrid();
         this.showFeedbackNotification(isCorrect);
+        this.saveUserProgress(); // Save progress
         
         if (isCorrect && this.currentQuestionIndex < this.currentCourseQuestions.length - 1) {
             setTimeout(() => this.nextQuestion(), 2000);
@@ -692,6 +932,12 @@ class NurseIQModule {
             explanationText.innerHTML = question.explanation || '<div class="no-explanation">No detailed explanation available.</div>';
         }
         answerRevealSection.style.display = 'block';
+        
+        // FEATURE 1: Save that user has seen the explanation
+        this.userTestAnswers[this.currentQuestionIndex] = {
+            ...this.userTestAnswers[this.currentQuestionIndex],
+            viewed: true
+        };
     }
     
     showFeedbackNotification(isCorrect) {
@@ -717,7 +963,15 @@ class NurseIQModule {
     
     resetQuestion() {
         const userAnswer = this.userTestAnswers[this.currentQuestionIndex];
-        if (userAnswer?.answered) delete this.userTestAnswers[this.currentQuestionIndex];
+        if (userAnswer?.answered) {
+            // Remove from permanent storage too
+            const question = this.currentCourseQuestions[this.currentQuestionIndex];
+            if (question.id && this.userTestAnswers[question.id]) {
+                delete this.userTestAnswers[question.id];
+            }
+            delete this.userTestAnswers[this.currentQuestionIndex];
+            this.saveUserProgress();
+        }
         this.loadCurrentInteractiveQuestion();
         this.updateQuestionGrid();
         this.updateTopProgressStats();
@@ -751,6 +1005,7 @@ class NurseIQModule {
         this.updateTopProgressStats();
         const action = !isMarked ? 'marked for review' : 'unmarked';
         this.showNotification(`Question ${currentIndex + 1} ${action}`, 'info');
+        this.saveUserProgress();
     }
     
     updateMarkButton() {
@@ -1027,7 +1282,9 @@ window.loadQuestionBankCards = function() {
     else window.initNurseIQ().then(() => window.nurseiqModule.loadQuestionBankCards()).catch(console.error);
 };
 window.clearQuestionBankSearch = function() { if (window.nurseiqModule) window.nurseiqModule.clearQuestionBankSearch(); };
-window.startCourseTest = function(courseId, courseName) { if (window.nurseiqModule) window.nurseiqModule.startCourseTest(courseId, courseName); };
+window.startCourseTest = function(courseId, courseName, startIndex = 0) { 
+    if (window.nurseiqModule) window.nurseiqModule.startCourseTest(courseId, courseName, startIndex); 
+};
 window.prevQuestion = function() { if (window.nurseiqModule) window.nurseiqModule.prevQuestion(); };
 window.nextQuestion = function() { if (window.nurseiqModule) window.nurseiqModule.nextQuestion(); };
 window.goToQuestion = function(index) { if (window.nurseiqModule) window.nurseiqModule.goToQuestion(index); };
@@ -1039,4 +1296,4 @@ window.markForReview = function() { if (window.nurseiqModule) window.nurseiqModu
 window.finishPractice = function() { if (window.nurseiqModule) window.nurseiqModule.finishPractice(); };
 window.scrollQuestions = function(direction) { if (window.nurseiqModule) window.nurseiqModule.scrollQuestions(direction); };
 
-console.log('✅ NurseIQ module loaded (Optimized & Fixed)');
+console.log('✅ NurseIQ module loaded (Enhanced with Persistent Progress & Answer Visibility)');
