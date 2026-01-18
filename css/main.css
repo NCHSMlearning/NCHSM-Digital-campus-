@@ -723,3 +723,29 @@ body {
     font-size: 0.9rem;
     opacity: 0.8;
 }
+/* In main.css, add at the end: */
+
+/* Force desktop for any screen > 768px */
+@media (min-width: 769px) {
+    .sidebar {
+        transform: translateX(0) !important;
+        position: fixed !important;
+    }
+    
+    .main {
+        margin-left: 280px !important;
+        width: calc(100% - 280px) !important;
+    }
+    
+    .overlay,
+    .mobile-menu-toggle {
+        display: none !important;
+    }
+    
+    .current-time,
+    .header-actions,
+    .profile-info,
+    .header-titles {
+        display: flex !important;
+    }
+}
