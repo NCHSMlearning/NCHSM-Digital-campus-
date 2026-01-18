@@ -579,7 +579,7 @@
     </form>
 </section>
 
-               <!-- Calendar Tab - IMPROVED -->
+              <!-- Calendar Tab - IMPROVED -->
 <section id="calendar" class="tab-content" role="region" aria-label="Academic Calendar">
     <!-- Calendar Header -->
     <div class="calendar-header">
@@ -645,51 +645,50 @@
 
         <!-- Calendar Table -->
         <div id="calendar-table-container" style="display: none;">
+            <!-- CALENDAR SUMMARY HEADER (REPLACES TABLE HEADER) -->
+            <div class="calendar-summary-header">
+                <div class="summary-header-item">
+                    <i class="fas fa-calendar-day"></i>
+                    <div class="summary-header-content">
+                        <div class="summary-header-label">Date & Time</div>
+                        <div class="summary-header-value" id="total-events">0</div>
+                        <div class="summary-header-sublabel">Total Events</div>
+                    </div>
+                </div>
+                
+                <div class="summary-header-item">
+                    <i class="fas fa-info-circle"></i>
+                    <div class="summary-header-content">
+                        <div class="summary-header-label">Event / Details</div>
+                        <div class="summary-header-value" id="upcoming-events">0</div>
+                        <div class="summary-header-sublabel">Upcoming</div>
+                    </div>
+                </div>
+                
+                <div class="summary-header-item">
+                    <i class="fas fa-tag"></i>
+                    <div class="summary-header-content">
+                        <div class="summary-header-label">Type</div>
+                        <div class="summary-header-value" id="week-events">0</div>
+                        <div class="summary-header-sublabel">This Week</div>
+                    </div>
+                </div>
+                
+                <div class="summary-header-item">
+                    <i class="fas fa-check-circle"></i>
+                    <div class="summary-header-content">
+                        <div class="summary-header-label">Status</div>
+                        <div class="summary-header-value exam-count" id="exam-events">0</div>
+                        <div class="summary-header-sublabel">Exams</div>
+                    </div>
+                </div>
+            </div>
+          
             <table class="calendar-table" aria-label="Academic Calendar Events">
-                <thead>
-                    <tr>
-                        <th scope="col" class="date-col">
-                            <i class="fas fa-calendar-day"></i>
-                            Date & Time
-                        </th>
-                        <th scope="col">
-                            <i class="fas fa-info-circle"></i>
-                            Event / Details
-                        </th>
-                        <th scope="col" class="type-col">
-                            <i class="fas fa-tag"></i>
-                            Type
-                        </th>
-                        <th scope="col" class="status-col">
-                            <i class="fas fa-check-circle"></i>
-                            Status
-                        </th>
-                    </tr>
-                </thead>
                 <tbody id="calendar-table">
                     <!-- Events will be loaded here dynamically -->
                 </tbody>
             </table>
-        </div>
-    </div>
-
-    <!-- Calendar Summary -->
-    <div id="calendar-summary" class="calendar-summary" style="display: none;">
-        <div class="summary-item">
-            <span class="summary-label">Total Events:</span>
-            <span class="summary-value" id="total-events">0</span>
-        </div>
-        <div class="summary-item">
-            <span class="summary-label">Upcoming:</span>
-            <span class="summary-value" id="upcoming-events">0</span>
-        </div>
-        <div class="summary-item">
-            <span class="summary-label">This Week:</span>
-            <span class="summary-value" id="week-events">0</span>
-        </div>
-        <div class="summary-item">
-            <span class="summary-label">Exams:</span>
-            <span class="summary-value exam-count" id="exam-events">0</span>
         </div>
     </div>
 </section>
