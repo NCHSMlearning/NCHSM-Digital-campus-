@@ -237,14 +237,14 @@
         </div>
     </aside>
 
-  <!-- Main Content -->
+ <!-- Main Content -->
 <main class="main" id="main-content">
-    <!-- Dashboard Tab - IMPROVED with GRID LAYOUT -->
+    <!-- Dashboard Tab - IMPROVED -->
     <section id="dashboard" class="tab-content active" role="region" aria-label="Dashboard">
         <!-- Welcome Section -->
         <div class="welcome-card" id="welcome-section">
             <div class="welcome-header">
-                <h2 id="welcome-header">Welcome back, Student!</h2>
+                <h2 id="welcome-header">Welcome back, <span id="welcome-student-name">Student</span>!</h2>
                 <p id="student-welcome-message" class="welcome-subtitle">
                     Access your courses, schedule, and check your attendance status.
                 </p>
@@ -266,89 +266,92 @@
             </div>
         </div>
 
-        <!-- QUICK SNAPSHOT - GRID LAYOUT -->
-        <div class="dashboard-grid-section">
-            <h2 class="dashboard-section-title">Quick Snapshot</h2>
+        <!-- QUICK SNAPSHOT - USING YOUR CSS CLASSES -->
+        <h2 class="dashboard-section-title">Quick Snapshot</h2>
+        
+        <!-- Change this div from "cards" to "cards-grid" -->
+        <div class="cards-grid" role="group" aria-label="Quick statistics">
             
-            <!-- Dashboard Grid Container -->
-            <div class="dashboard-grid" role="group" aria-label="Quick statistics">
-                
-                <!-- ATTENDANCE CARD -->
-                <div class="dashboard-card attendance" data-tab="attendance" role="button" tabindex="0">
-                    <div class="card-icon">📊</div>
-                    <h3 class="card-title">Attendance Rate</h3>
-                    <div class="card-value" id="dashboard-attendance-rate">--%</div>
-                    <div class="card-stats-grid">
-                        <div class="stat-item">
-                            <span class="stat-value" id="dashboard-verified-count">0</span>
-                            <span class="stat-label">Verified</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-value" id="dashboard-total-count">0</span>
-                            <span class="stat-label">Total</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-value" id="dashboard-pending-count">0</span>
-                            <span class="stat-label">Pending</span>
-                        </div>
+            <!-- ATTENDANCE CARD - Updated with stat-card class -->
+            <div class="stat-card" data-tab="attendance" role="button" tabindex="0">
+                <div class="card-header">
+                    <div class="card-icon attendance">
+                        <i class="fas fa-calendar-check"></i>
                     </div>
-                    <div class="card-footer">
-                        <small>Last updated: Just now</small>
+                    <h3>Attendance Rate</h3>
+                </div>
+                <div class="card-body">
+                    <p class="stat-value" id="dashboard-attendance-rate">--%</p>
+                    <p class="stat-subtitle">Overall attendance rate</p>
+                    <div class="stat-details">
+                        <p>Verified: <strong id="dashboard-verified-count">0</strong> / <strong id="dashboard-total-count">0</strong></p>
+                        <p class="pending-text">Pending: <strong id="dashboard-pending-count">0</strong></p>
                     </div>
                 </div>
+            </div>
 
-                <!-- EXAMS CARD -->
-                <div class="dashboard-card exams" data-tab="cats" role="button" tabindex="0">
-                    <div class="card-icon">📝</div>
-                    <h3 class="card-title">Upcoming Exam</h3>
-                    <div class="card-value" id="dashboard-upcoming-exam">Loading...</div>
-                    <div class="card-details">
-                        <small>Next CAT/Exam date</small>
+            <!-- UPCOMING EXAM CARD -->
+            <div class="stat-card" data-tab="cats" role="button" tabindex="0">
+                <div class="card-header">
+                    <div class="card-icon exam">
+                        <i class="fas fa-file-alt"></i>
                     </div>
+                    <h3>Upcoming Exam</h3>
                 </div>
-
-                <!-- COURSES CARD -->
-                <div class="dashboard-card courses" data-tab="courses" role="button" tabindex="0">
-                    <div class="card-icon">📚</div>
-                    <h3 class="card-title">Active Courses</h3>
-                    <div class="card-value" id="dashboard-active-courses">0</div>
-                    <div class="card-details">
-                        <small>Currently enrolled</small>
-                    </div>
+                <div class="card-body">
+                    <p class="stat-value" id="dashboard-upcoming-exam">Loading...</p>
+                    <p class="stat-subtitle">Next CAT/Exam date</p>
                 </div>
+            </div>
 
-                <!-- RESOURCES CARD -->
-                <div class="dashboard-card resources" data-tab="resources" role="button" tabindex="0">
-                    <div class="card-icon">📁</div>
-                    <h3 class="card-title">New Resources</h3>
-                    <div class="card-value" id="dashboard-new-resources">0</div>
-                    <div class="card-details">
-                        <small>Last 7 days</small>
+            <!-- ACTIVE COURSES CARD -->
+            <div class="stat-card" data-tab="courses" role="button" tabindex="0">
+                <div class="card-header">
+                    <div class="card-icon courses">
+                        <i class="fas fa-book-open"></i>
                     </div>
+                    <h3>Active Courses</h3>
                 </div>
+                <div class="card-body">
+                    <p class="stat-value" id="dashboard-active-courses">0</p>
+                    <p class="stat-subtitle">Currently enrolled</p>
+                </div>
+            </div>
 
-                <!-- NURSEIQ CARD -->
-                <div class="dashboard-card nurseiq" data-tab="nurseiq" role="button" tabindex="0">
-                    <div class="card-icon">🧠</div>
-                    <h3 class="card-title">NurseIQ Progress</h3>
-                    <div class="card-main-value">
-                        <span class="value" id="dashboard-nurseiq-progress">--%</span>
+            <!-- NEW RESOURCES CARD -->
+            <div class="stat-card" data-tab="resources" role="button" tabindex="0">
+                <div class="card-header">
+                    <div class="card-icon resources">
+                        <i class="fas fa-folder-open"></i>
                     </div>
-                    <div class="card-stats-grid">
-                        <div class="stat-item">
-                            <span class="stat-value" id="dashboard-nurseiq-accuracy">--%</span>
-                            <span class="stat-label">Accuracy</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-value" id="dashboard-nurseiq-questions">0</span>
-                            <span class="stat-label">Questions</span>
-                        </div>
+                    <h3>New Resources</h3>
+                </div>
+                <div class="card-body">
+                    <p class="stat-value" id="dashboard-new-resources">0</p>
+                    <p class="stat-subtitle">Last 7 days</p>
+                </div>
+            </div>
+
+            <!-- NURSEIQ CARD -->
+            <div class="stat-card nurseiq-card" data-tab="nurseiq" role="button" tabindex="0">
+                <div class="card-header">
+                    <div class="card-icon nurseiq">
+                        <i class="fas fa-brain"></i>
+                    </div>
+                    <h3>NurseIQ Progress</h3>
+                </div>
+                <div class="card-body">
+                    <p class="stat-value" id="dashboard-nurseiq-progress">--%</p>
+                    <p class="stat-subtitle">Overall progress</p>
+                    <div class="stat-details">
+                        <p>Accuracy: <strong id="dashboard-nurseiq-accuracy">--%</strong></p>
+                        <p>Questions: <strong id="dashboard-nurseiq-questions">0</strong> completed</p>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Action Required Section -->
+        <!-- Action Required -->
         <div class="section-header">
             <h2><i class="fas fa-bell"></i> Action Required</h2>
             <p class="section-subtitle">Items needing your attention</p>
