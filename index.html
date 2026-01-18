@@ -579,7 +579,8 @@
     </form>
 </section>
 
-              <!-- Calendar Tab - COLUMN LAYOUT -->
+             
+<!-- Calendar Tab - HORIZONTAL ROW LAYOUT -->
 <section id="calendar" class="tab-content" role="region" aria-label="Academic Calendar">
     <!-- Calendar Header -->
     <div class="calendar-header">
@@ -645,56 +646,61 @@
 
         <!-- Calendar Table -->
         <div id="calendar-table-container" style="display: none;">
+            <!-- HORIZONTAL SUMMARY ROW -->
+            <div class="horizontal-summary-row">
+                <div class="summary-item">
+                    <div class="summary-icon">
+                        <i class="fas fa-calendar-day"></i>
+                    </div>
+                    <div class="summary-content">
+                        <div class="summary-value" id="total-events">0</div>
+                        <div class="summary-title">Date & Time</div>
+                        <div class="summary-label">Total Events</div>
+                    </div>
+                </div>
+                
+                <div class="summary-item">
+                    <div class="summary-icon">
+                        <i class="fas fa-info-circle"></i>
+                    </div>
+                    <div class="summary-content">
+                        <div class="summary-value" id="upcoming-events">0</div>
+                        <div class="summary-title">Event / Details</div>
+                        <div class="summary-label">Upcoming</div>
+                    </div>
+                </div>
+                
+                <div class="summary-item">
+                    <div class="summary-icon">
+                        <i class="fas fa-tag"></i>
+                    </div>
+                    <div class="summary-content">
+                        <div class="summary-value" id="week-events">0</div>
+                        <div class="summary-title">Type</div>
+                        <div class="summary-label">This Week</div>
+                    </div>
+                </div>
+                
+                <div class="summary-item">
+                    <div class="summary-icon">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div class="summary-content">
+                        <div class="summary-value exam-count" id="exam-events">0</div>
+                        <div class="summary-title">Status</div>
+                        <div class="summary-label">Exams</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Table with headers only (no summary in headers) -->
             <table class="calendar-table" aria-label="Academic Calendar Events">
                 <thead>
                     <tr>
-                        <!-- Column 1: Date & Time with Summary -->
-                        <th scope="col" class="date-col">
-                            <div class="column-header">
-                                <i class="fas fa-calendar-day"></i>
-                                <span class="header-title">Date & Time</span>
-                            </div>
-                            <div class="column-summary">
-                                <div class="summary-value" id="total-events">0</div>
-                                <div class="summary-label">Total Events</div>
-                            </div>
-                        </th>
-                        
-                        <!-- Column 2: Event Details with Summary -->
-                        <th scope="col">
-                            <div class="column-header">
-                                <i class="fas fa-info-circle"></i>
-                                <span class="header-title">Event / Details</span>
-                            </div>
-                            <div class="column-summary">
-                                <div class="summary-value" id="upcoming-events">0</div>
-                                <div class="summary-label">Upcoming</div>
-                            </div>
-                        </th>
-                        
-                        <!-- Column 3: Type with Summary -->
-                        <th scope="col" class="type-col">
-                            <div class="column-header">
-                                <i class="fas fa-tag"></i>
-                                <span class="header-title">Type</span>
-                            </div>
-                            <div class="column-summary">
-                                <div class="summary-value" id="week-events">0</div>
-                                <div class="summary-label">This Week</div>
-                            </div>
-                        </th>
-                        
-                        <!-- Column 4: Status with Summary -->
-                        <th scope="col" class="status-col">
-                            <div class="column-header">
-                                <i class="fas fa-check-circle"></i>
-                                <span class="header-title">Status</span>
-                            </div>
-                            <div class="column-summary">
-                                <div class="summary-value exam-count" id="exam-events">0</div>
-                                <div class="summary-label">Exams</div>
-                            </div>
-                        </th>
+                        <th scope="col" class="date-col">Date & Time</th>
+                        <th scope="col">Event / Details</th>
+                        <th scope="col" class="type-col">Type</th>
+                        <th scope="col" class="status-col">Status</th>
                     </tr>
                 </thead>
                 <tbody id="calendar-table">
@@ -705,41 +711,80 @@
     </div>
 </section>
 
-<!-- Add minimal CSS for column layout -->
 <style>
-.column-header {
+/* HORIZONTAL SUMMARY ROW STYLES */
+.horizontal-summary-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 15px;
+    margin-bottom: 20px;
+    padding: 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 12px;
+    color: white;
+}
+
+.summary-item {
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin-bottom: 8px;
+    gap: 15px;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    transition: transform 0.2s;
 }
 
-.header-title {
-    font-weight: 600;
-    color: #374151;
+.summary-item:hover {
+    transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.15);
 }
 
-.column-summary {
-    text-align: center;
-    padding-top: 8px;
-    border-top: 2px solid #e5e7eb;
+.summary-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+}
+
+.summary-content {
+    flex: 1;
 }
 
 .summary-value {
-    font-size: 1.75rem;
+    font-size: 2rem;
     font-weight: 800;
-    color: #111827;
     line-height: 1;
+    margin-bottom: 4px;
+}
+
+.summary-title {
+    font-size: 0.9rem;
+    opacity: 0.9;
+    font-weight: 600;
+    margin-bottom: 2px;
 }
 
 .summary-label {
     font-size: 0.85rem;
-    color: #6b7280;
-    margin-top: 4px;
+    opacity: 0.8;
 }
 
 .summary-value.exam-count {
-    color: #ef4444;
+    color: #ff6b6b;
+}
+
+/* Table header alignment */
+.calendar-table thead th {
+    text-align: left;
+    padding: 15px;
+    background: #f8fafc;
+    border-bottom: 2px solid #e2e8f0;
+    font-weight: 600;
+    color: #374151;
 }
 </style>
               <!-- Courses Tab -->
