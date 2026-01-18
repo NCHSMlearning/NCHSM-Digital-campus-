@@ -184,7 +184,7 @@ class UIModule {
             'cats': 'CATS/Exams',
             'resources': 'Resources',
             'messages': 'Messages',
-            'support-tickets', 
+            'support-tickets': 'Support Tickets',  // FIXED: Removed trailing comma and added value
             'nurseiq': 'NurseIQ'
         };
         
