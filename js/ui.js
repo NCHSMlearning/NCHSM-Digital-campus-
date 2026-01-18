@@ -124,13 +124,10 @@ class UIModule {
     
     showTab(tabId) {
         if (!this.isValidTab(tabId)) {
-            console.error(`Invalid tab ID: ${tabId}`);
             tabId = 'dashboard';
         }
         
         if (this.currentTab === tabId) return;
-        
-        console.log(`🔄 Switching to tab: ${tabId} (from: ${this.currentTab})`);
         
         this.tabs.forEach(tab => {
             tab.style.removeProperty('display');
@@ -184,7 +181,7 @@ class UIModule {
             'cats': 'CATS/Exams',
             'resources': 'Resources',
             'messages': 'Messages',
-            'support-tickets': 'Support Tickets',  // FIXED: Removed trailing comma and added value
+            'support-tickets': 'Support Tickets',
             'nurseiq': 'NurseIQ'
         };
         
@@ -351,7 +348,6 @@ class UIModule {
     
     setupTabChangeListener() {
         window.addEventListener('tabChanged', (e) => {
-            console.log(`📢 Tab changed to: ${e.detail.tabId}`);
             this.loadTabModule(e.detail.tabId);
         });
     }
@@ -360,68 +356,57 @@ class UIModule {
         const validTabs = [
             'dashboard', 'profile', 'calendar', 'courses', 
             'attendance', 'cats', 'resources', 'messages', 
-            'nurseiq'
+            'support-tickets', 'nurseiq'
         ];
         return validTabs.includes(tabId);
     }
     
     loadTabModule(tabId) {
-        console.log(`📂 Loading module for tab: ${tabId}`);
-        
         window.dispatchEvent(new CustomEvent('loadModule', { detail: { tabId } }));
         
         switch(tabId) {
             case 'dashboard':
                 if (typeof loadDashboard === 'function') {
-                    console.log('Loading dashboard...');
                     loadDashboard();
                 }
                 break;
             case 'profile':
                 if (typeof loadProfile === 'function') {
-                    console.log('Loading profile...');
                     loadProfile();
                 }
                 break;
             case 'calendar':
                 if (typeof loadAcademicCalendar === 'function') {
-                    console.log('Loading calendar...');
                     loadAcademicCalendar();
                 }
                 break;
             case 'courses':
                 if (typeof loadCourses === 'function') {
-                    console.log('Loading courses...');
                     loadCourses();
                 }
                 break;
             case 'attendance':
                 if (typeof loadAttendance === 'function') {
-                    console.log('Loading attendance...');
                     loadAttendance();
                 }
                 break;
             case 'cats':
                 if (typeof loadExams === 'function') {
-                    console.log('Loading exams...');
                     loadExams();
                 }
                 break;
             case 'resources':
                 if (typeof loadResources === 'function') {
-                    console.log('Loading resources...');
                     loadResources();
                 }
                 break;
             case 'messages':
                 if (typeof loadMessages === 'function') {
-                    console.log('Loading messages...');
                     loadMessages();
                 }
                 break;
             case 'nurseiq':
                 if (typeof loadNurseIQ === 'function') {
-                    console.log('Loading NurseIQ...');
                     loadNurseIQ();
                 }
                 break;
@@ -643,7 +628,6 @@ class UIModule {
             window.location.href = 'login.html';
             
         } catch (error) {
-            console.error('Logout error:', error);
             // Fallback redirect if something fails
             setTimeout(() => {
                 window.location.href = 'login.html';
@@ -660,7 +644,6 @@ class UIModule {
                     });
                     this.showToast('Cache cleared successfully!', 'success');
                 }).catch(error => {
-                    console.error('Error clearing cache:', error);
                     this.showToast('Error clearing cache', 'error');
                 });
             } else {
@@ -770,29 +753,11 @@ class UIModule {
     }
     
     debugTabState() {
-        console.log('🔍 Current Tab State:');
-        console.log(`Current Tab: ${this.currentTab}`);
-        
-        this.tabs.forEach(tab => {
-            console.log(`${tab.id}:`, {
-                display: window.getComputedStyle(tab).display,
-                classList: Array.from(tab.classList),
-                hasInlineStyle: tab.style.display ? true : false,
-                offsetHeight: tab.offsetHeight,
-                visible: tab.offsetParent !== null
-            });
-        });
-        
-        this.navLinks.forEach(link => {
-            console.log(`Nav ${link.getAttribute('data-tab')}:`, {
-                active: link.classList.contains('active')
-            });
-        });
+        // Debug function - kept but without console.log
+        // Can be called manually if needed
     }
     
     forceShowTab(tabId) {
-        console.log(`🚨 Force showing tab: ${tabId}`);
-        
         this.tabs.forEach(tab => {
             tab.style.setProperty('display', 'none', 'important');
             tab.classList.remove('active');
@@ -829,8 +794,6 @@ window.refreshDashboard = () => ui.refreshDashboard();
 
 // Add cleanup function
 window.addEventListener('DOMContentLoaded', function() {
-    console.log('✅ UI Module loaded successfully');
-    
     // Remove any inline display styles that might have been set before
     document.querySelectorAll('.tab-content').forEach(tab => {
         tab.style.removeProperty('display');
@@ -838,11 +801,8 @@ window.addEventListener('DOMContentLoaded', function() {
     
     // Call debug after a short delay
     setTimeout(() => {
-        ui.debugTabState();
-        
         const dashboardTab = document.getElementById('dashboard');
         if (dashboardTab && dashboardTab.offsetHeight === 0) {
-            console.warn('⚠️ Dashboard not visible, forcing display...');
             ui.forceShowTab('dashboard');
         }
     }, 100);
