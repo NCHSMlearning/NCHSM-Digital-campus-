@@ -2,7 +2,7 @@
 
 /* Exams Header */
 .exams-header {
-    background: white;
+    background: linear-gradient(135deg, #6d28d9, #9333ea);
     border-radius: 12px;
     padding: 25px;
     margin-bottom: 25px;
