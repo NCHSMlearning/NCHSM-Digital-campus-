@@ -42,7 +42,7 @@ class DashboardModule {
             welcomeMessage: document.getElementById('student-welcome-message'),
             studentAnnouncement: document.getElementById('student-announcement'),
             
-            // Stats (dashboard cards)
+            // Stats (dashboard cards) - UPDATED to match new grid structure
             attendanceRate: document.getElementById('dashboard-attendance-rate'),
             verifiedCount: document.getElementById('dashboard-verified-count'),
             totalCount: document.getElementById('dashboard-total-count'),
@@ -56,6 +56,13 @@ class DashboardModule {
             nurseiqAccuracy: document.getElementById('dashboard-nurseiq-accuracy'),
             nurseiqQuestions: document.getElementById('dashboard-nurseiq-questions'),
             
+            // New grid card elements
+            attendanceCard: document.querySelector('.dashboard-card.attendance'),
+            examsCard: document.querySelector('.dashboard-card.exams'),
+            coursesCard: document.querySelector('.dashboard-card.courses'),
+            resourcesCard: document.querySelector('.dashboard-card.resources'),
+            nurseiqCard: document.querySelector('.dashboard-card.nurseiq'),
+            
             // Time (in footer)
             currentDateTime: document.getElementById('currentDateTime'),
             
@@ -63,7 +70,10 @@ class DashboardModule {
             headerTime: document.getElementById('header-time'),
             headerUserName: document.getElementById('header-user-name'),
             headerProfilePhoto: document.getElementById('header-profile-photo'),
-            headerRefresh: document.getElementById('header-refresh')
+            headerRefresh: document.getElementById('header-refresh'),
+            
+            // Dashboard container for grid layout
+            dashboardGrid: document.querySelector('.dashboard-grid')
         };
         
         console.log('🔍 Cached dashboard elements:', Object.keys(this.elements).filter(k => this.elements[k]));
@@ -88,6 +98,7 @@ class DashboardModule {
                 // Update dashboard count directly from courses.js data
                 if (this.elements.activeCourses) {
                     this.elements.activeCourses.textContent = e.detail.activeCount;
+                    this.updateCardAppearance('courses', e.detail.activeCount);
                 }
                 
                 console.log(`✅ Courses updated from event: ${e.detail.activeCount} active`);
@@ -141,14 +152,6 @@ class DashboardModule {
             refreshBtn.addEventListener('click', () => this.refreshDashboard());
         }
         
-        // ⚠️ REMOVED: Auto-refresh every 30 seconds
-        // setInterval(() => {
-        //     if (this.userId) {
-        //         console.log('⏰ Auto-refreshing dashboard...');
-        //         this.refreshDashboard();
-        //     }
-        // }, 30000);
-        
         console.log('✅ Event listeners setup complete. Auto-refresh DISABLED.');
     }
     
@@ -198,10 +201,111 @@ class DashboardModule {
             
             console.log('✅ Dashboard loaded successfully');
             
+            // Apply grid styling after data loads
+            this.applyGridStyling();
+            
         } catch (error) {
             console.error('❌ Error loading dashboard:', error);
             this.showErrorStates();
         }
+    }
+    
+    // Apply grid styling to cards
+    applyGridStyling() {
+        if (!this.elements.dashboardGrid) return;
+        
+        // Add grid class for better layout
+        this.elements.dashboardGrid.classList.add('grid-view');
+        
+        // Style individual cards
+        const cards = document.querySelectorAll('.dashboard-card');
+        cards.forEach(card => {
+            card.classList.add('grid-card');
+            this.animateCardAppearance(card);
+        });
+    }
+    
+    // Animate card appearance
+    animateCardAppearance(card) {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(20px)';
+        
+        setTimeout(() => {
+            card.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        }, 100);
+    }
+    
+    // Update card appearance based on data
+    updateCardAppearance(type, value) {
+        const card = this.elements[`${type}Card`];
+        if (!card) return;
+        
+        let colorClass = '';
+        
+        switch(type) {
+            case 'attendance':
+                if (value >= 80) colorClass = 'card-success';
+                else if (value >= 60) colorClass = 'card-warning';
+                else colorClass = 'card-danger';
+                break;
+            case 'exams':
+                if (value === 'Today') colorClass = 'card-danger';
+                else if (value.includes('d') && parseInt(value) <= 7) colorClass = 'card-warning';
+                else colorClass = 'card-info';
+                break;
+            case 'courses':
+                if (value === 0) colorClass = 'card-danger';
+                else if (value >= 5) colorClass = 'card-success';
+                else colorClass = 'card-info';
+                break;
+            case 'resources':
+                if (value >= 5) colorClass = 'card-success';
+                else if (value > 0) colorClass = 'card-info';
+                else colorClass = 'card-neutral';
+                break;
+            case 'nurseiq':
+                const progress = parseInt(this.elements.nurseiqProgress?.textContent || '0');
+                if (progress >= 75) colorClass = 'card-success';
+                else if (progress >= 50) colorClass = 'card-warning';
+                else colorClass = 'card-info';
+                break;
+        }
+        
+        // Remove existing color classes
+        card.classList.remove('card-success', 'card-warning', 'card-danger', 'card-info', 'card-neutral');
+        
+        // Add new color class
+        if (colorClass) {
+            card.classList.add(colorClass);
+            
+            // Add icon based on type
+            this.addCardIcon(card, type);
+        }
+    }
+    
+    // Add icon to card
+    addCardIcon(card, type) {
+        const iconMap = {
+            'attendance': '📊',
+            'exams': '📝',
+            'courses': '📚',
+            'resources': '📁',
+            'nurseiq': '🧠'
+        };
+        
+        let iconElement = card.querySelector('.card-icon');
+        if (!iconElement) {
+            iconElement = document.createElement('div');
+            iconElement.className = 'card-icon';
+            const title = card.querySelector('.card-title');
+            if (title) {
+                title.parentNode.insertBefore(iconElement, title);
+            }
+        }
+        
+        iconElement.textContent = iconMap[type] || '📊';
     }
     
     // 🔥 UPDATED: Update header with user data using actual profile photo
@@ -235,7 +339,7 @@ class DashboardModule {
         }
     }
     
-    // 🔥 NEW: Update profile photo with proper fallback chain
+    // 🔥 UPDATED: Update profile photo with proper fallback chain including passport_url
     updateProfilePhoto(photoUrl = null) {
         if (!this.elements.headerProfilePhoto) return;
         
@@ -248,10 +352,17 @@ class DashboardModule {
             return;
         }
         
-        // Priority 2: Check userProfile for profile_photo_url
+        // Priority 2: Check userProfile for profile_photo_url or passport_url
         if (this.userProfile?.profile_photo_url) {
             this.elements.headerProfilePhoto.src = this.userProfile.profile_photo_url;
             console.log('✅ Using profile_photo_url from userProfile:', this.userProfile.profile_photo_url);
+            return;
+        }
+        
+        // Priority 2b: Check userProfile for passport_url (from consolidated table)
+        if (this.userProfile?.passport_url) {
+            this.elements.headerProfilePhoto.src = this.userProfile.passport_url;
+            console.log('✅ Using passport_url from userProfile:', this.userProfile.passport_url);
             return;
         }
         
@@ -270,7 +381,7 @@ class DashboardModule {
             return;
         }
         
-        // Priority 5: Try to fetch from profiles table
+        // Priority 5: Try to fetch from consolidated_user_profiles_table and profiles table
         if (this.userId && this.sb) {
             this.fetchProfilePhotoFromDB();
             return;
@@ -288,41 +399,67 @@ class DashboardModule {
         }
     }
     
-    // 🔥 NEW: Fetch profile photo from database
+    // 🔥 UPDATED: Fetch profile photo from consolidated_user_profiles_table
     async fetchProfilePhotoFromDB() {
         if (!this.userId || !this.sb) return;
         
         try {
-            console.log('🔍 Fetching profile photo from database...');
+            console.log('🔍 Fetching profile photo from consolidated_user_profiles_table...');
             
-            const { data, error } = await this.sb
+            // FIRST: Try consolidated_user_profiles_table (which has passport_url)
+            const { data: consolidatedData, error: consolidatedError } = await this.sb
+                .from('consolidated_user_profiles_table')
+                .select('passport_url, full_name, role')
+                .eq('user_id', this.userId)  // Use user_id column
+                .maybeSingle();
+            
+            if (!consolidatedError && consolidatedData?.passport_url) {
+                console.log('✅ Found profile photo in consolidated table (passport_url):', consolidatedData.passport_url);
+                
+                // Use passport_url as profile photo
+                this.elements.headerProfilePhoto.src = consolidatedData.passport_url;
+                
+                // Cache the result
+                this.userProfile.profile_photo_url = consolidatedData.passport_url;
+                localStorage.setItem('userProfilePhoto', consolidatedData.passport_url);
+                
+                // Update window object
+                if (window.currentUserProfile) {
+                    window.currentUserProfile.profile_photo_url = consolidatedData.passport_url;
+                }
+                
+                return;
+            }
+            
+            console.log('ℹ️ No photo in consolidated table, trying profiles table...');
+            
+            // SECOND: Fallback to profiles table
+            const { data: profileData, error: profileError } = await this.sb
                 .from('profiles')
                 .select('profile_photo_url')
                 .eq('id', this.userId)
                 .maybeSingle();
             
-            if (error) {
-                console.error('❌ Error fetching profile photo:', error);
-                this.useGeneratedAvatar();
-                return;
-            }
-            
-            if (data?.profile_photo_url) {
-                this.elements.headerProfilePhoto.src = data.profile_photo_url;
-                console.log('✅ Loaded profile photo from DB:', data.profile_photo_url);
+            if (!profileError && profileData?.profile_photo_url) {
+                console.log('✅ Found profile photo in profiles table:', profileData.profile_photo_url);
                 
-                // Update local cache
-                this.userProfile.profile_photo_url = data.profile_photo_url;
-                localStorage.setItem('userProfilePhoto', data.profile_photo_url);
+                this.elements.headerProfilePhoto.src = profileData.profile_photo_url;
+                
+                // Cache the result
+                this.userProfile.profile_photo_url = profileData.profile_photo_url;
+                localStorage.setItem('userProfilePhoto', profileData.profile_photo_url);
                 
                 // Update window object
                 if (window.currentUserProfile) {
-                    window.currentUserProfile.profile_photo_url = data.profile_photo_url;
+                    window.currentUserProfile.profile_photo_url = profileData.profile_photo_url;
                 }
-            } else {
-                console.log('ℹ️ No profile photo in database');
-                this.useGeneratedAvatar();
+                
+                return;
             }
+            
+            console.log('ℹ️ No profile photo found in any table');
+            this.useGeneratedAvatar();
+            
         } catch (error) {
             console.error('❌ Error in fetchProfilePhotoFromDB:', error);
             this.useGeneratedAvatar();
@@ -379,6 +516,9 @@ class DashboardModule {
             if (this.elements.totalCount) this.elements.totalCount.textContent = totalLogs;
             if (this.elements.pendingCount) this.elements.pendingCount.textContent = pendingCount;
             
+            // Update card appearance
+            this.updateCardAppearance('attendance', attendanceRate);
+            
             console.log(`✅ Attendance: ${attendanceRate}% (${verifiedCount}/${totalLogs})`);
             
         } catch (error) {
@@ -397,6 +537,7 @@ class DashboardModule {
             
             if (this.elements.activeCourses) {
                 this.elements.activeCourses.textContent = activeCount;
+                this.updateCardAppearance('courses', activeCount);
             }
             return;
         }
@@ -412,6 +553,7 @@ class DashboardModule {
             
             if (this.elements.activeCourses) {
                 this.elements.activeCourses.textContent = activeCount;
+                this.updateCardAppearance('courses', activeCount);
             }
             return;
         }
@@ -470,6 +612,7 @@ class DashboardModule {
             
             if (this.elements.activeCourses) {
                 this.elements.activeCourses.textContent = activeCount;
+                this.updateCardAppearance('courses', activeCount);
             }
             
             console.log(`✅ Courses: ${activeCount} active (using courses.js logic)`);
@@ -538,6 +681,9 @@ class DashboardModule {
                 this.elements.upcomingExam.style.color = examColor;
             }
             
+            // Update card appearance
+            this.updateCardAppearance('exams', examText);
+            
             console.log(`✅ Exams: ${examText}`);
             
         } catch (error) {
@@ -577,6 +723,7 @@ class DashboardModule {
             
             if (this.elements.newResources) {
                 this.elements.newResources.textContent = newCount;
+                this.updateCardAppearance('resources', newCount);
             }
             
             console.log(`✅ Resources: ${newCount} new`);
@@ -614,9 +761,18 @@ class DashboardModule {
             const targetQuestions = 100;
             const progress = Math.min(Math.round((totalQuestions / targetQuestions) * 100), 100);
             
-            if (this.elements.nurseiqProgress) this.elements.nurseiqProgress.textContent = `${progress}%`;
-            if (this.elements.nurseiqAccuracy) this.elements.nurseiqAccuracy.textContent = `${accuracy}%`;
-            if (this.elements.nurseiqQuestions) this.elements.nurseiqQuestions.textContent = totalQuestions;
+            if (this.elements.nurseiqProgress) {
+                this.elements.nurseiqProgress.textContent = `${progress}%`;
+            }
+            if (this.elements.nurseiqAccuracy) {
+                this.elements.nurseiqAccuracy.textContent = `${accuracy}%`;
+            }
+            if (this.elements.nurseiqQuestions) {
+                this.elements.nurseiqQuestions.textContent = totalQuestions;
+            }
+            
+            // Update card appearance based on progress
+            this.updateCardAppearance('nurseiq', progress);
             
             console.log(`✅ NurseIQ: ${progress}% progress, ${accuracy}% accuracy`);
             
@@ -707,6 +863,7 @@ class DashboardModule {
             
             if (this.elements.activeCourses) {
                 this.elements.activeCourses.textContent = activeCount;
+                this.updateCardAppearance('courses', activeCount);
             }
             
             console.log(`✅ Synced: ${activeCount} active courses from coursesModule`);
@@ -746,16 +903,24 @@ class DashboardModule {
     
     showLoadingStates() {
         // Show loading for all stats
-        if (this.elements.attendanceRate) this.elements.attendanceRate.textContent = '...';
-        if (this.elements.verifiedCount) this.elements.verifiedCount.textContent = '...';
-        if (this.elements.totalCount) this.elements.totalCount.textContent = '...';
-        if (this.elements.pendingCount) this.elements.pendingCount.textContent = '...';
-        if (this.elements.upcomingExam) this.elements.upcomingExam.textContent = '...';
-        if (this.elements.activeCourses) this.elements.activeCourses.textContent = '...';
-        if (this.elements.newResources) this.elements.newResources.textContent = '...';
-        if (this.elements.nurseiqProgress) this.elements.nurseiqProgress.textContent = '...';
-        if (this.elements.nurseiqAccuracy) this.elements.nurseiqAccuracy.textContent = '...';
-        if (this.elements.nurseiqQuestions) this.elements.nurseiqQuestions.textContent = '...';
+        const loadingTexts = {
+            attendanceRate: '...%',
+            verifiedCount: '...',
+            totalCount: '...',
+            pendingCount: '...',
+            upcomingExam: '...',
+            activeCourses: '...',
+            newResources: '...',
+            nurseiqProgress: '...%',
+            nurseiqAccuracy: '...%',
+            nurseiqQuestions: '...'
+        };
+        
+        for (const [key, value] of Object.entries(loadingTexts)) {
+            if (this.elements[key]) {
+                this.elements[key].textContent = value;
+            }
+        }
         
         // Announcement
         if (this.elements.studentAnnouncement) {
@@ -766,44 +931,67 @@ class DashboardModule {
         if (this.elements.headerTime) {
             this.elements.headerTime.textContent = 'Loading...';
         }
+        
+        // Add loading class to cards
+        const cards = document.querySelectorAll('.dashboard-card');
+        cards.forEach(card => {
+            card.classList.add('loading');
+        });
     }
     
     showErrorStates() {
         // Show error states
-        if (this.elements.attendanceRate) this.elements.attendanceRate.textContent = '--%';
-        if (this.elements.verifiedCount) this.elements.verifiedCount.textContent = '--';
-        if (this.elements.totalCount) this.elements.totalCount.textContent = '--';
-        if (this.elements.pendingCount) this.elements.pendingCount.textContent = '--';
-        if (this.elements.upcomingExam) this.elements.upcomingExam.textContent = 'Error';
-        if (this.elements.activeCourses) this.elements.activeCourses.textContent = '0';
-        if (this.elements.newResources) this.elements.newResources.textContent = '0';
-        if (this.elements.nurseiqProgress) this.elements.nurseiqProgress.textContent = '--%';
-        if (this.elements.nurseiqAccuracy) this.elements.nurseiqAccuracy.textContent = '--%';
-        if (this.elements.nurseiqQuestions) this.elements.nurseiqQuestions.textContent = '0';
+        const errorTexts = {
+            attendanceRate: '--%',
+            verifiedCount: '--',
+            totalCount: '--',
+            pendingCount: '--',
+            upcomingExam: 'Error',
+            activeCourses: '0',
+            newResources: '0',
+            nurseiqProgress: '--%',
+            nurseiqAccuracy: '--%',
+            nurseiqQuestions: '0'
+        };
+        
+        for (const [key, value] of Object.entries(errorTexts)) {
+            if (this.elements[key]) {
+                this.elements[key].textContent = value;
+            }
+        }
+        
+        // Add error class to cards
+        const cards = document.querySelectorAll('.dashboard-card');
+        cards.forEach(card => {
+            card.classList.remove('loading');
+            card.classList.add('error');
+        });
     }
     
     showErrorState(metric) {
-        switch(metric) {
-            case 'attendance':
-                if (this.elements.attendanceRate) this.elements.attendanceRate.textContent = '--%';
-                if (this.elements.verifiedCount) this.elements.verifiedCount.textContent = '--';
-                if (this.elements.totalCount) this.elements.totalCount.textContent = '--';
-                if (this.elements.pendingCount) this.elements.pendingCount.textContent = '--';
-                break;
-            case 'courses':
-                if (this.elements.activeCourses) this.elements.activeCourses.textContent = '0';
-                break;
-            case 'exams':
-                if (this.elements.upcomingExam) this.elements.upcomingExam.textContent = 'Error';
-                break;
-            case 'resources':
-                if (this.elements.newResources) this.elements.newResources.textContent = '0';
-                break;
-            case 'nurseiq':
-                if (this.elements.nurseiqProgress) this.elements.nurseiqProgress.textContent = '--%';
-                if (this.elements.nurseiqAccuracy) this.elements.nurseiqAccuracy.textContent = '--%';
-                if (this.elements.nurseiqQuestions) this.elements.nurseiqQuestions.textContent = '0';
-                break;
+        const errorMap = {
+            'attendance': {
+                attendanceRate: '--%',
+                verifiedCount: '--',
+                totalCount: '--',
+                pendingCount: '--'
+            },
+            'courses': { activeCourses: '0' },
+            'exams': { upcomingExam: 'Error' },
+            'resources': { newResources: '0' },
+            'nurseiq': {
+                nurseiqProgress: '--%',
+                nurseiqAccuracy: '--%',
+                nurseiqQuestions: '0'
+            }
+        };
+        
+        if (errorMap[metric]) {
+            for (const [key, value] of Object.entries(errorMap[metric])) {
+                if (this.elements[key]) {
+                    this.elements[key].textContent = value;
+                }
+            }
         }
     }
     
@@ -979,4 +1167,4 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-console.log('✅ UPDATED Dashboard module loaded (with Profile Photo Integration) - AUTO-REFRESH DISABLED');
+console.log('✅ UPDATED Dashboard module loaded (with Profile Photo Integration & Grid Layout) - AUTO-REFRESH DISABLED');
