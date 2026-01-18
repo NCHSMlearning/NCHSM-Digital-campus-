@@ -1,4 +1,4 @@
-/* ========== CALENDAR STYLES ========== */
+/* ========== CALENDAR STYLES - FIXED ========== */
 
 /* Calendar Header */
 .calendar-header {
@@ -103,7 +103,7 @@
     align-items: center;
 }
 
-/* Calendar Table */
+/* Calendar Table Container */
 .table-container {
     background: white;
     border-radius: 12px;
@@ -112,15 +112,30 @@
     margin-bottom: 24px;
 }
 
+/* ========== TABLE LAYOUT FIXES ========== */
+
+/* Desktop table layout - PROPER TABLE DISPLAY */
 .calendar-table {
     width: 100%;
     border-collapse: collapse;
     font-size: 0.95rem;
+    display: table;
 }
 
 .calendar-table thead {
     background: #f9fafb;
     border-bottom: 2px solid #e5e7eb;
+    display: table-header-group;
+}
+
+.calendar-table tbody {
+    display: table-row-group;
+}
+
+.calendar-table tr {
+    border-bottom: 1px solid #f3f4f6;
+    transition: background 0.2s;
+    display: table-row;
 }
 
 .calendar-table th {
@@ -129,25 +144,161 @@
     font-weight: 600;
     color: #4b5563;
     white-space: nowrap;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.calendar-table tbody tr {
-    border-bottom: 1px solid #f3f4f6;
-    transition: background 0.2s;
-}
-
-.calendar-table tbody tr:hover {
-    background: #f9fafb;
+    display: table-cell;
+    vertical-align: top;
 }
 
 .calendar-table td {
     padding: 16px 20px;
     vertical-align: top;
+    display: table-cell;
 }
 
+/* Header with stats */
+.header-with-stats {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    min-height: 80px;
+}
+
+.header-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 8px;
+}
+
+.header-stats {
+    padding-top: 8px;
+    border-top: 2px solid #e5e7eb;
+    width: 100%;
+}
+
+.stat-number {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: #111827;
+    line-height: 1;
+    margin-bottom: 4px;
+}
+
+.stat-label {
+    font-size: 0.85rem;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+.stat-number.exam-stat {
+    color: #ef4444;
+}
+
+/* Event Type Badges */
+.event-type-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border: 1px solid;
+}
+
+/* Status Badges */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.status-upcoming {
+    background-color: #dbeafe;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+}
+
+.status-completed {
+    background-color: #d1fae5;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+}
+
+/* Event details */
+.date-time-container {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.event-date {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+}
+
+.event-time, .event-venue {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.9rem;
+    color: #6b7280;
+}
+
+.event-details {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.event-title {
+    margin: 0;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.program-badge {
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    background: #f3f4f6;
+    color: #6b7280;
+    border-radius: 4px;
+}
+
+.event-description {
+    margin: 0;
+    font-size: 0.95rem;
+    color: #4b5563;
+}
+
+.event-organizer, .event-source {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    color: #6b7280;
+}
+
+.today-badge {
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    background: #6d28d9;
+    color: white;
+    border-radius: 4px;
+    margin-left: 6px;
+}
+
+/* Column widths */
 .date-col {
     width: 180px;
     min-width: 180px;
@@ -161,56 +312,6 @@
 .status-col {
     width: 100px;
     min-width: 100px;
-}
-
-/* Event Type Badges */
-.event-type {
-    display: inline-block;
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.event-type.Clinical {
-    background: #dbeafe;
-    color: #1e40af;
-}
-
-.event-type.Class {
-    background: #dcfce7;
-    color: #166534;
-}
-
-.event-type.Exam {
-    background: #fef3c7;
-    color: #92400e;
-}
-
-/* Status Badges */
-.event-status {
-    display: inline-block;
-    padding: 4px 10px;
-    border-radius: 12px;
-    font-size: 0.8rem;
-    font-weight: 600;
-}
-
-.event-status.upcoming {
-    background: #f0f9ff;
-    color: #0369a1;
-}
-
-.event-status.in-progress {
-    background: #fef3c7;
-    color: #92400e;
-}
-
-.event-status.completed {
-    background: #f0fdf4;
-    color: #166534;
 }
 
 /* Calendar Summary */
@@ -249,7 +350,9 @@
     color: #f97316;
 }
 
-/* Responsive */
+/* ========== RESPONSIVE STYLES ========== */
+
+/* Tablet */
 @media (max-width: 768px) {
     .calendar-header {
         flex-direction: column;
@@ -283,8 +386,9 @@
     }
 }
 
-/* Mobile card view for calendar */
+/* Mobile - Switch to card layout */
 @media (max-width: 640px) {
+    /* Override table display for mobile */
     .calendar-table {
         display: block;
     }
@@ -293,18 +397,24 @@
         display: none;
     }
     
-    .calendar-table tbody tr {
+    .calendar-table tbody {
+        display: block;
+    }
+    
+    .calendar-table tr {
         display: block;
         margin-bottom: 16px;
         border: 1px solid #e5e7eb;
         border-radius: 8px;
         padding: 16px;
+        background: white;
     }
     
     .calendar-table td {
         display: block;
         padding: 8px 0;
         border: none;
+        width: 100%;
     }
     
     .calendar-table td::before {
@@ -314,5 +424,48 @@
         color: #6b7280;
         margin-bottom: 4px;
         font-size: 0.85rem;
+    }
+    
+    /* Add data-labels for mobile */
+    .date-col::before { content: "Date & Time"; }
+    .type-col::before { content: "Type"; }
+    .status-col::before { content: "Status"; }
+    
+    /* Adjust header stats for mobile */
+    .header-with-stats {
+        min-height: auto;
+        padding: 10px;
+    }
+    
+    .stat-number {
+        font-size: 1.5rem;
+    }
+}
+
+/* Ensure desktop keeps table layout */
+@media (min-width: 641px) {
+    .calendar-table {
+        display: table !important;
+    }
+    
+    .calendar-table thead {
+        display: table-header-group !important;
+    }
+    
+    .calendar-table tbody {
+        display: table-row-group !important;
+    }
+    
+    .calendar-table tr {
+        display: table-row !important;
+    }
+    
+    .calendar-table th,
+    .calendar-table td {
+        display: table-cell !important;
+    }
+    
+    .calendar-table td::before {
+        display: none !important;
     }
 }
