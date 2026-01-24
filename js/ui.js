@@ -1224,3 +1224,31 @@ window.debugUI = function() {
 };
 
 console.log('✅ UI Module loaded successfully');
+// Add this at the VERY END of your ui.js file:
+
+// Force dashboard to load on first app start
+window.addEventListener('load', function() {
+    console.log('📱 Page fully loaded - checking dashboard...');
+    
+    // Wait for everything to settle
+    setTimeout(() => {
+        const dashboardTab = document.getElementById('dashboard');
+        const isDashboardActive = dashboardTab && dashboardTab.classList.contains('active');
+        
+        if (!isDashboardActive && window.ui) {
+            console.log('🎯 Dashboard not active - forcing it...');
+            window.ui.showTab('dashboard');
+        }
+    }, 1000);
+});
+
+// Also force dashboard when appReady event fires
+document.addEventListener('appReady', function() {
+    console.log('🎉 App ready - ensuring dashboard is shown...');
+    
+    setTimeout(() => {
+        if (window.ui) {
+            window.ui.showTab('dashboard');
+        }
+    }, 500);
+});
