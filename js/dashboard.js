@@ -131,6 +131,14 @@ class DashboardModule {
             }
         });
         
+        // 🔥 FIX: Listen for NurseIQ metrics updates
+        document.addEventListener('nurseiqMetricsUpdated', (e) => {
+            console.log('🧠 Dashboard: NurseIQ metrics updated event received', e.detail);
+            if (e.detail) {
+                this.updateNurseIQUI(e.detail);
+            }
+        });
+        
         // Header refresh button
         if (this.elements.headerRefresh) {
             this.elements.headerRefresh.addEventListener('click', (e) => {
@@ -146,7 +154,7 @@ class DashboardModule {
             refreshBtn.addEventListener('click', () => this.refreshDashboard());
         }
         
-        // Add click handlers to cards for tab switching
+        // 🔥 FIX: Add click handlers to ALL cards for tab switching
         this.addCardClickHandlers();
         
         console.log('✅ Event listeners setup complete');
@@ -154,31 +162,105 @@ class DashboardModule {
     
     addCardClickHandlers() {
         // Add click handlers to all stat cards
-        const cards = document.querySelectorAll('.stat-card[data-tab]');
+        const cards = document.querySelectorAll('.stat-card');
         cards.forEach(card => {
+            // Remove any existing click handlers to prevent duplicates
+            card.removeEventListener('click', this.handleCardClick);
+            
+            // Add new click handler
             card.addEventListener('click', (e) => {
+                // Don't trigger if clicking on interactive elements inside card
+                if (e.target.tagName === 'BUTTON' || 
+                    e.target.tagName === 'A' || 
+                    e.target.closest('button') || 
+                    e.target.closest('a')) {
+                    return;
+                }
+                
                 const tab = card.getAttribute('data-tab');
-                console.log(`📱 Card clicked: ${tab}`);
-                this.switchToTab(tab);
+                if (tab) {
+                    console.log(`📱 Card clicked: ${tab}`);
+                    this.switchToTab(tab);
+                } else if (card.classList.contains('nurseiq-card')) {
+                    console.log('🧠 NurseIQ card clicked');
+                    this.switchToTab('nurseiq');
+                }
             });
             
+            // Add keyboard support
             card.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                     const tab = card.getAttribute('data-tab');
-                    console.log(`📱 Card activated: ${tab}`);
-                    this.switchToTab(tab);
-                    e.preventDefault();
+                    if (tab) {
+                        console.log(`📱 Card activated: ${tab}`);
+                        this.switchToTab(tab);
+                        e.preventDefault();
+                    } else if (card.classList.contains('nurseiq-card')) {
+                        console.log('🧠 NurseIQ card activated');
+                        this.switchToTab('nurseiq');
+                        e.preventDefault();
+                    }
                 }
             });
+            
+            // Add hover effects
+            card.addEventListener('mouseenter', () => {
+                card.style.cursor = 'pointer';
+                card.style.transform = 'translateY(-2px)';
+                card.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+                card.style.transition = 'all 0.2s ease';
+            });
+            
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = 'translateY(0)';
+                card.style.boxShadow = '';
+            });
         });
+        
+        console.log(`✅ Added click handlers to ${cards.length} cards`);
     }
     
     switchToTab(tabName) {
-        // Dispatch event to switch tabs
-        const event = new CustomEvent('switchTab', {
-            detail: { tab: tabName }
+        console.log(`🔄 Switching to tab: ${tabName}`);
+        
+        // Add visual feedback
+        const activeTab = document.querySelector(`.nav-link[href="#${tabName}"]`);
+        if (activeTab) {
+            // Simulate click on the actual tab
+            activeTab.click();
+        } else {
+            // Fallback: dispatch event to switch tabs
+            const event = new CustomEvent('switchTab', {
+                detail: { tab: tabName }
+            });
+            document.dispatchEvent(event);
+        }
+        
+        // Highlight the clicked card
+        this.highlightClickedCard(tabName);
+    }
+    
+    highlightClickedCard(tabName) {
+        // Remove highlight from all cards
+        document.querySelectorAll('.stat-card').forEach(card => {
+            card.classList.remove('card-clicked');
         });
-        document.dispatchEvent(event);
+        
+        // Add highlight to clicked card
+        let card;
+        if (tabName === 'nurseiq') {
+            card = document.querySelector('.stat-card.nurseiq-card');
+        } else {
+            card = document.querySelector(`.stat-card[data-tab="${tabName}"]`);
+        }
+        
+        if (card) {
+            card.classList.add('card-clicked');
+            // Remove highlight after 1 second
+            setTimeout(() => {
+                card.classList.remove('card-clicked');
+            }, 1000);
+        }
     }
     
     async initialize(userId, userProfile) {
@@ -205,6 +287,11 @@ class DashboardModule {
         setTimeout(() => {
             this.syncWithCoursesModule();
         }, 1000);
+        
+        // 🔥 FIX: Re-add click handlers after content loads
+        setTimeout(() => {
+            this.addCardClickHandlers();
+        }, 1500);
         
         return true;
     }
@@ -267,8 +354,16 @@ class DashboardModule {
                 else card.classList.add('card-danger');
                 break;
             case 'courses':
-                if (value === 0) card.classList.add('card-warning');
-                else if (value >= 5) card.classList.add('card-success');
+                if (value === 0) {
+                    card.classList.add('card-warning');
+                    // Add warning icon
+                    const valueEl = card.querySelector('.stat-value');
+                    if (valueEl && !valueEl.querySelector('.warning-icon')) {
+                        valueEl.innerHTML = `<i class="fas fa-exclamation-triangle warning-icon mr-1"></i>${value}`;
+                    }
+                } else if (value >= 5) {
+                    card.classList.add('card-success');
+                }
                 break;
             case 'resources':
                 if (value >= 5) card.classList.add('card-success');
@@ -277,6 +372,7 @@ class DashboardModule {
                 const progress = parseInt(this.elements.nurseiqProgress?.textContent || '0');
                 if (progress >= 75) card.classList.add('card-success');
                 else if (progress >= 50) card.classList.add('card-warning');
+                else if (progress > 0) card.classList.add('card-danger');
                 break;
         }
     }
@@ -695,9 +791,36 @@ class DashboardModule {
         }
     }
     
+    // 🔥 UPDATED: Enhanced NurseIQ Metrics with multiple sources
     async loadNurseIQMetrics() {
         console.log('🧠 Loading NurseIQ metrics...');
         
+        // METHOD 1: Try to get from localStorage (fastest)
+        try {
+            const cachedMetrics = localStorage.getItem('nurseiq_dashboard_metrics');
+            if (cachedMetrics) {
+                const metrics = JSON.parse(cachedMetrics);
+                console.log('📊 Using cached NurseIQ metrics:', metrics);
+                this.updateNurseIQUI(metrics);
+                return;
+            }
+        } catch (error) {
+            console.warn('Could not parse cached metrics:', error);
+        }
+        
+        // METHOD 2: Try to get from NurseIQ module
+        if (typeof window.getNurseIQDashboardMetrics === 'function') {
+            try {
+                const metrics = window.getNurseIQDashboardMetrics();
+                console.log('📊 Got metrics from NurseIQ module:', metrics);
+                this.updateNurseIQUI(metrics);
+                return;
+            } catch (error) {
+                console.warn('Could not get metrics from NurseIQ module:', error);
+            }
+        }
+        
+        // METHOD 3: Fallback to database query
         if (!this.userId || !this.sb) {
             console.warn('⚠️ Cannot load NurseIQ: No user ID or Supabase');
             this.showErrorState('nurseiq');
@@ -722,37 +845,62 @@ class DashboardModule {
             const targetQuestions = 100;
             const progress = Math.min(Math.round((totalQuestions / targetQuestions) * 100), 100);
             
-            if (this.elements.nurseiqProgress) {
-                this.elements.nurseiqProgress.textContent = `${progress}%`;
-                // Apply color classes
-                if (progress >= 75) {
-                    this.elements.nurseiqProgress.classList.add('dashboard-stat-high');
-                    this.elements.nurseiqProgress.classList.remove('dashboard-stat-medium', 'dashboard-stat-low');
-                } else if (progress >= 50) {
-                    this.elements.nurseiqProgress.classList.add('dashboard-stat-medium');
-                    this.elements.nurseiqProgress.classList.remove('dashboard-stat-high', 'dashboard-stat-low');
-                } else {
-                    this.elements.nurseiqProgress.classList.add('dashboard-stat-low');
-                    this.elements.nurseiqProgress.classList.remove('dashboard-stat-high', 'dashboard-stat-medium');
-                }
-            }
+            const metrics = {
+                totalAnswered: totalQuestions,
+                totalCorrect: correctAnswers,
+                accuracy: accuracy,
+                progress: progress,
+                recentActivity: 0,
+                streak: 0,
+                lastUpdated: new Date().toISOString()
+            };
             
-            if (this.elements.nurseiqAccuracy) {
-                this.elements.nurseiqAccuracy.textContent = `${accuracy}%`;
-            }
-            if (this.elements.nurseiqQuestions) {
-                this.elements.nurseiqQuestions.textContent = totalQuestions;
-            }
+            this.updateNurseIQUI(metrics);
             
-            // Update card appearance
-            this.updateCardAppearance('nurseiq', progress);
-            
-            console.log(`✅ NurseIQ: ${progress}% progress, ${accuracy}% accuracy`);
+            console.log(`✅ NurseIQ (DB): ${progress}% progress, ${accuracy}% accuracy`);
             
         } catch (error) {
             console.error('❌ Error loading NurseIQ:', error);
             this.showErrorState('nurseiq');
         }
+    }
+    
+    // 🔥 NEW: Update NurseIQ UI with metrics
+    updateNurseIQUI(metrics) {
+        if (!metrics) return;
+        
+        const progress = metrics.progress || 0;
+        const accuracy = metrics.accuracy || 0;
+        const totalQuestions = metrics.totalAnswered || 0;
+        
+        if (this.elements.nurseiqProgress) {
+            this.elements.nurseiqProgress.textContent = `${progress}%`;
+            // Apply color classes
+            if (progress >= 75) {
+                this.elements.nurseiqProgress.classList.add('dashboard-stat-high');
+                this.elements.nurseiqProgress.classList.remove('dashboard-stat-medium', 'dashboard-stat-low');
+            } else if (progress >= 50) {
+                this.elements.nurseiqProgress.classList.add('dashboard-stat-medium');
+                this.elements.nurseiqProgress.classList.remove('dashboard-stat-high', 'dashboard-stat-low');
+            } else if (progress > 0) {
+                this.elements.nurseiqProgress.classList.add('dashboard-stat-low');
+                this.elements.nurseiqProgress.classList.remove('dashboard-stat-high', 'dashboard-stat-medium');
+            } else {
+                this.elements.nurseiqProgress.classList.remove('dashboard-stat-high', 'dashboard-stat-medium', 'dashboard-stat-low');
+            }
+        }
+        
+        if (this.elements.nurseiqAccuracy) {
+            this.elements.nurseiqAccuracy.textContent = `${accuracy}%`;
+        }
+        if (this.elements.nurseiqQuestions) {
+            this.elements.nurseiqQuestions.textContent = totalQuestions;
+        }
+        
+        // Update card appearance
+        this.updateCardAppearance('nurseiq', progress);
+        
+        console.log(`✅ NurseIQ UI Updated: ${progress}% progress, ${accuracy}% accuracy`);
     }
     
     async loadLatestOfficialAnnouncement() {
