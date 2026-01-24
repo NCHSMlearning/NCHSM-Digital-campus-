@@ -1,4 +1,4 @@
-// js/ui.js - COMPLETE User Interface Management with Clean URLs
+// js/ui.js - COMPLETE User Interface Management with App-Style Loading
 class UIModule {
     constructor() {
         console.log('🚀 Initializing UIModule...');
@@ -61,10 +61,18 @@ class UIModule {
         this.profileTrigger = document.querySelector('.profile-trigger');
         this.dropdownMenu = document.querySelector('.dropdown-menu');
         
+        // Loading screen elements
+        this.loadingScreen = document.getElementById('loading-screen');
+        this.progressFill = document.getElementById('progress-fill');
+        this.progressText = document.getElementById('progress-text');
+        this.statusSteps = document.getElementById('status-steps');
+        this.funFact = document.getElementById('fun-fact');
+        
         // Log found elements
         console.log('📋 UI Elements found:');
         console.log('- Profile trigger:', !!this.profileTrigger);
         console.log('- Dropdown menu:', !!this.dropdownMenu);
+        console.log('- Loading screen:', !!this.loadingScreen);
         console.log('- Header user name:', !!this.headerUserName);
         console.log('- Header profile photo:', !!this.headerProfilePhoto);
         
@@ -76,28 +84,203 @@ class UIModule {
     }
     
     async initialize() {
-        console.log('🔧 Initializing UI...');
+        console.log('🔧 Initializing UI with app-style loading...');
         
-        // 1. Clean up styles FIRST
+        // 🔥 STEP 1: Start app-style loading
+        this.setupAppLoading();
+        this.updateLoadingProgress(0, 5);
+        
+        // 🔥 STEP 2: Clean up styles
+        await this.delay(300);
         this.cleanupInitialStyles();
+        this.updateLoadingProgress(1, 5);
         
-        // 2. Setup all event listeners
+        // 🔥 STEP 3: Setup event listeners
+        await this.delay(300);
         this.setupEventListeners();
+        this.updateLoadingProgress(2, 5);
         
-        // 3. Setup CLEAN URL navigation (no hash)
+        // 🔥 STEP 4: Setup clean URL navigation
+        await this.delay(400);
         this.setupCleanUrlNavigation();
         this.setupTabChangeListener();
+        this.updateLoadingProgress(3, 5);
         
-        // 4. Initialize utilities
+        // 🔥 STEP 5: Initialize utilities
+        await this.delay(300);
         this.initializeDateTime();
         this.setupOfflineIndicator();
         this.setupMobileMenuVisibility();
         this.loadLastTab();
+        this.updateLoadingProgress(4, 5);
         
-        // 5. Load initial user data
+        // 🔥 STEP 6: Load user data
+        await this.delay(500);
         await this.loadInitialUserData();
+        this.updateLoadingProgress(5, 5);
+        
+        // 🔥 STEP 7: Hide loading screen
+        await this.delay(800);
+        await this.hideLoadingScreen();
         
         console.log('✅ UIModule fully initialized');
+    }
+    
+    // Helper for delays
+    delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+    
+    // 🔥 APP-STYLE LOADING: Modern app loading experience
+    setupAppLoading() {
+        console.log('📱 Setting up app-style loading...');
+        
+        if (!this.loadingScreen) {
+            console.warn('⚠️ No loading screen found');
+            return;
+        }
+        
+        // Make it look like a modern app splash screen
+        this.loadingScreen.classList.add('app-splash');
+        
+        // Update welcome text to be more app-like
+        const welcomeText = this.loadingScreen.querySelector('.welcome-text h1');
+        if (welcomeText) {
+            welcomeText.textContent = 'NCHSM Portal';
+        }
+        
+        const subtitle = this.loadingScreen.querySelector('.subtitle');
+        if (subtitle) {
+            subtitle.textContent = 'Your Academic Hub';
+        }
+        
+        // Add app version
+        if (!this.loadingScreen.querySelector('.app-version')) {
+            const versionEl = document.createElement('div');
+            versionEl.className = 'app-version';
+            versionEl.textContent = 'v2.1';
+            this.loadingScreen.querySelector('.loading-container').appendChild(versionEl);
+        }
+        
+        console.log('✅ App-style loading configured');
+    }
+    
+    // 🔥 Update loading progress with smooth animations
+    updateLoadingProgress(step, totalSteps = 5) {
+        if (!this.loadingScreen || !this.progressFill || !this.progressText) return;
+        
+        // Calculate percentage with smooth animation
+        const percentage = Math.min((step / totalSteps) * 100, 100);
+        
+        // Animate progress bar
+        this.progressFill.style.transition = 'width 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
+        this.progressFill.style.width = `${percentage}%`;
+        
+        // Update progress text with app-like messages
+        const loadingMessages = [
+            'Launching Portal...',
+            'Loading Your Profile...',
+            'Preparing Dashboard...',
+            'Syncing Data...',
+            'Finalizing Setup...',
+            'Ready!'
+        ];
+        
+        if (step >= 0 && step < loadingMessages.length) {
+            this.progressText.textContent = loadingMessages[step];
+            
+            // Add typing effect
+            this.progressText.style.opacity = '0';
+            this.progressText.style.transform = 'translateY(5px)';
+            setTimeout(() => {
+                this.progressText.style.opacity = '1';
+                this.progressText.style.transform = 'translateY(0)';
+                this.progressText.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+            }, 50);
+        }
+        
+        // Update status steps if available
+        if (this.statusSteps) {
+            const steps = [
+                { text: 'System Check', icon: 'fa-cogs' },
+                { text: 'User Auth', icon: 'fa-user-shield' },
+                { text: 'Data Sync', icon: 'fa-sync' },
+                { text: 'UI Setup', icon: 'fa-palette' },
+                { text: 'Ready', icon: 'fa-check-circle' }
+            ];
+            
+            this.statusSteps.innerHTML = '';
+            steps.forEach((stepData, index) => {
+                const stepEl = document.createElement('div');
+                stepEl.className = `status-step ${index < step ? 'completed' : ''}`;
+                stepEl.innerHTML = `
+                    <i class="fas ${index < step ? 'fa-check-circle' : stepData.icon}"></i>
+                    <span>${stepData.text}</span>
+                `;
+                this.statusSteps.appendChild(stepEl);
+            });
+        }
+        
+        // Update fun facts
+        if (this.funFact) {
+            const funFacts = [
+                'Pro Tip: Bookmark important resources for quick access.',
+                'Did you know? You can access course materials offline!',
+                'Hot Tip: Use NurseIQ daily for exam preparation.',
+                'Remember: Regular attendance improves performance.',
+                'Tip: Enable notifications for deadline reminders.'
+            ];
+            
+            if (step < funFacts.length) {
+                this.funFact.innerHTML = `<i class="fas fa-lightbulb"></i><span>${funFacts[step]}</span>`;
+                
+                // Fade in animation
+                this.funFact.style.opacity = '0';
+                setTimeout(() => {
+                    this.funFact.style.opacity = '1';
+                    this.funFact.style.transition = 'opacity 0.5s ease';
+                }, 300);
+            }
+        }
+        
+        console.log(`📊 Loading progress: ${step}/${totalSteps} (${percentage}%)`);
+    }
+    
+    // 🔥 Hide loading screen with professional animation
+    async hideLoadingScreen() {
+        console.log('🎬 Hiding loading screen...');
+        
+        if (!this.loadingScreen) {
+            console.log('⚠️ No loading screen to hide');
+            return;
+        }
+        
+        // Add exit animation class
+        this.loadingScreen.classList.add('loading-exit');
+        
+        // Wait for animation to complete
+        await this.delay(800);
+        
+        // Hide completely
+        this.loadingScreen.style.display = 'none';
+        
+        // Show main content with fade in
+        const mainContent = document.querySelector('.main-content, .app-container');
+        if (mainContent) {
+            mainContent.style.opacity = '0';
+            mainContent.style.display = 'block';
+            setTimeout(() => {
+                mainContent.style.opacity = '1';
+                mainContent.style.transition = 'opacity 0.5s ease';
+            }, 100);
+        }
+        
+        // Show welcome toast
+        setTimeout(() => {
+            this.showToast('Welcome to NCHSM Student Portal!', 'success', 3000);
+        }, 500);
+        
+        console.log('✅ Loading screen hidden gracefully');
     }
     
     // CRITICAL FIX: Remove all inline styles first
@@ -1312,7 +1495,7 @@ window.debugUI = function() {
     console.log('- Current user profile:', window.currentUserProfile);
 };
 
-console.log('✅ UI Module loaded successfully with Clean URLs');
+console.log('✅ UI Module loaded successfully with App-Style Loading');
 
 // Force dashboard to load on first app start
 window.addEventListener('load', function() {
@@ -1340,3 +1523,44 @@ document.addEventListener('appReady', function() {
         }
     }, 500);
 });
+
+// Add this CSS to your styles.css for app-style loading:
+/*
+.app-splash {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.loading-exit {
+    opacity: 0;
+    transform: scale(1.1);
+    transition: opacity 0.8s ease, transform 0.8s ease;
+}
+
+.status-step {
+    display: flex;
+    align-items: center;
+    margin: 8px 0;
+    opacity: 0.7;
+    transition: opacity 0.3s ease;
+}
+
+.status-step.completed {
+    opacity: 1;
+    color: #10B981;
+}
+
+.status-step i {
+    margin-right: 10px;
+    font-size: 14px;
+}
+
+.app-version {
+    position: absolute;
+    bottom: 20px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 12px;
+}
+*/
