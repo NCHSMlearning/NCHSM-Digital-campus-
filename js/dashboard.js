@@ -23,6 +23,7 @@ class DashboardModule {
         this.userId = null;
         this.userProfile = null;
         this.cachedCourses = [];
+        this.autoRefreshInterval = null;
         
         // Cache elements
         this.cacheElements();
@@ -35,14 +36,16 @@ class DashboardModule {
     }
     
     cacheElements() {
-        // Get ALL dashboard elements
+        console.log('🔍 Caching dashboard elements...');
+        
+        // Get ALL dashboard elements using multiple selectors
         this.elements = {
             // Welcome section
             welcomeHeader: document.getElementById('welcome-header'),
             welcomeMessage: document.getElementById('student-welcome-message'),
             studentAnnouncement: document.getElementById('student-announcement'),
             
-            // Stats (dashboard cards) - Updated to match HTML
+            // Stats (dashboard cards)
             attendanceRate: document.getElementById('dashboard-attendance-rate'),
             verifiedCount: document.getElementById('dashboard-verified-count'),
             totalCount: document.getElementById('dashboard-total-count'),
@@ -69,14 +72,42 @@ class DashboardModule {
             // Time (in footer)
             currentDateTime: document.getElementById('currentDateTime'),
             
-            // HEADER elements
+            // HEADER elements - Comprehensive list
             headerTime: document.getElementById('header-time'),
             headerUserName: document.getElementById('header-user-name'),
             headerProfilePhoto: document.getElementById('header-profile-photo'),
-            headerRefresh: document.getElementById('header-refresh')
+            headerRefresh: document.getElementById('header-refresh'),
+            
+            // Additional common header selectors
+            studentNameDisplay: document.getElementById('student-name-display'),
+            userDisplayName: document.getElementById('user-display-name'),
+            profileName: document.getElementById('profile-name'),
+            userName: document.getElementById('user-name'),
+            studentProfilePic: document.getElementById('student-profile-pic'),
+            userProfileImg: document.getElementById('user-profile-img'),
+            profileImage: document.getElementById('profile-image'),
+            
+            // Common CSS class selectors
+            headerProfileName: document.querySelector('.header-profile-name'),
+            headerUserInfo: document.querySelector('.header-user-info'),
+            navProfile: document.querySelector('.nav-profile'),
+            userAvatar: document.querySelector('.user-avatar'),
+            avatarImg: document.querySelector('.avatar-img'),
+            userDropdownName: document.querySelector('.user-dropdown-name'),
+            
+            // Dropdown menu elements
+            dropdownMenu: document.querySelector('.dropdown-menu'),
+            userMenu: document.querySelector('.user-menu'),
+            profileDropdown: document.querySelector('.profile-dropdown')
         };
         
-        console.log('🔍 Cached dashboard elements:', Object.keys(this.elements).filter(k => this.elements[k]));
+        // Log found elements
+        const foundElements = Object.keys(this.elements).filter(k => this.elements[k]);
+        console.log('✅ Found elements:', foundElements);
+        
+        if (foundElements.length === 0) {
+            console.warn('⚠️ No dashboard elements found! Check HTML structure.');
+        }
     }
     
     setupEventListeners() {
@@ -119,7 +150,7 @@ class DashboardModule {
         // Listen for profile photo updates
         document.addEventListener('profilePhotoUpdated', (e) => {
             console.log('📸 Dashboard: profilePhotoUpdated event received', e.detail);
-            this.updateProfilePhoto(e.detail?.photoUrl);
+            this.updateAllProfilePhotos(e.detail?.photoUrl);
         });
         
         // Listen for profile updates
@@ -127,11 +158,19 @@ class DashboardModule {
             console.log('👤 Dashboard: profileUpdated event received');
             if (window.currentUserProfile) {
                 this.userProfile = window.currentUserProfile;
-                this.updateHeaderWithUserData();
+                this.updateAllUserInfo();
             }
         });
         
-        // 🔥 FIX: Listen for NurseIQ metrics updates
+        // 🔥 Listen for exams metrics updates
+        document.addEventListener('examsMetricsUpdated', (e) => {
+            console.log('📝 Dashboard: Exams metrics updated event received', e.detail);
+            if (e.detail) {
+                this.updateExamsUI(e.detail);
+            }
+        });
+        
+        // Listen for NurseIQ metrics updates
         document.addEventListener('nurseiqMetricsUpdated', (e) => {
             console.log('🧠 Dashboard: NurseIQ metrics updated event received', e.detail);
             if (e.detail) {
@@ -154,7 +193,7 @@ class DashboardModule {
             refreshBtn.addEventListener('click', () => this.refreshDashboard());
         }
         
-        // 🔥 FIX: Add click handlers to ALL cards for tab switching
+        // Add click handlers to ALL cards for tab switching
         this.addCardClickHandlers();
         
         console.log('✅ Event listeners setup complete');
@@ -265,6 +304,7 @@ class DashboardModule {
     
     async initialize(userId, userProfile) {
         console.log('👤 Dashboard initializing with user:', userId);
+        console.log('👤 User profile data:', userProfile);
         
         this.userId = userId;
         this.userProfile = userProfile;
@@ -274,13 +314,18 @@ class DashboardModule {
             return false;
         }
         
-        // UPDATE HEADER FIRST
-        this.updateHeaderWithUserData();
+        // 🔥 UPDATED: Update ALL user info immediately
+        console.log('🔄 Updating all user info...');
+        this.updateAllUserInfo();
         
         // Show loading states
         this.showLoadingStates();
         
-        // Load all dashboard data
+        // 🔥 NEW: Start auto-refresh for real-time updates
+        this.startAutoRefresh();
+        
+        // Load all dashboard data WITHOUT waiting
+        console.log('📊 Loading ALL dashboard data automatically...');
         await this.loadDashboard();
         
         // Try to sync with courses module
@@ -288,7 +333,7 @@ class DashboardModule {
             this.syncWithCoursesModule();
         }, 1000);
         
-        // 🔥 FIX: Re-add click handlers after content loads
+        // Re-add click handlers after content loads
         setTimeout(() => {
             this.addCardClickHandlers();
         }, 1500);
@@ -296,31 +341,215 @@ class DashboardModule {
         return true;
     }
     
+    // 🔥 NEW: Update ALL user information (name, photo, dropdown, etc.)
+    updateAllUserInfo() {
+        console.log('👤 Updating ALL user information...');
+        
+        if (!this.userProfile) {
+            console.warn('⚠️ No user profile available');
+            return;
+        }
+        
+        const studentName = this.userProfile.full_name || 'Student';
+        console.log('📝 Setting name to:', studentName);
+        
+        // Update ALL possible name elements
+        const nameSelectors = [
+            '#header-user-name',
+            '#student-name-display',
+            '#user-display-name',
+            '#profile-name',
+            '#user-name',
+            '.header-profile-name',
+            '.user-dropdown-name',
+            '.nav-profile .user-name',
+            '.dropdown-menu .user-name',
+            '[data-user-name]'
+        ];
+        
+        nameSelectors.forEach(selector => {
+            try {
+                const elements = document.querySelectorAll(selector);
+                elements.forEach(element => {
+                    element.textContent = studentName;
+                    console.log(`✅ Set name on: ${selector}`);
+                });
+            } catch (error) {
+                console.log(`⚠️ Could not set name on ${selector}:`, error.message);
+            }
+        });
+        
+        // Update profile photos
+        this.updateAllProfilePhotos();
+        
+        // Update welcome header
+        if (this.elements.welcomeHeader) {
+            const getGreeting = (hour) => {
+                if (hour >= 5 && hour < 12) return "Good Morning";
+                if (hour >= 12 && hour < 17) return "Good Afternoon";
+                if (hour >= 17 && hour < 21) return "Good Evening";
+                return "Good Night";
+            };
+            
+            const now = new Date();
+            const hour = now.getHours();
+            this.elements.welcomeHeader.textContent = `${getGreeting(hour)}, ${studentName}!`;
+        }
+        
+        // Update dropdown menu with user info if it exists
+        this.updateDropdownMenu();
+    }
+    
+    // 🔥 NEW: Update ALL profile photo elements
+    updateAllProfilePhotos(photoUrl = null) {
+        console.log('📸 Updating ALL profile photos...');
+        
+        let finalPhotoUrl = photoUrl;
+        
+        // Determine which photo URL to use
+        if (!finalPhotoUrl) {
+            // Priority chain for photo URL
+            if (this.userProfile?.profile_photo_url) {
+                finalPhotoUrl = this.userProfile.profile_photo_url;
+            } else if (this.userProfile?.passport_url) {
+                finalPhotoUrl = this.userProfile.passport_url;
+            } else if (localStorage.getItem('userProfilePhoto')) {
+                finalPhotoUrl = localStorage.getItem('userProfilePhoto');
+            } else if (window.currentUserProfile?.profile_photo_url) {
+                finalPhotoUrl = window.currentUserProfile.profile_photo_url;
+            } else {
+                const nameForAvatar = this.userProfile?.full_name?.replace(/\s+/g, '+') || 'Student';
+                finalPhotoUrl = `https://ui-avatars.com/api/?name=${nameForAvatar}&background=667eea&color=fff&size=100`;
+            }
+        }
+        
+        console.log('✅ Using photo URL:', finalPhotoUrl);
+        
+        // Update ALL possible photo elements
+        const photoSelectors = [
+            '#header-profile-photo',
+            '#student-profile-pic',
+            '#user-profile-img',
+            '#profile-image',
+            '.user-avatar',
+            '.avatar-img',
+            '.profile-photo',
+            '[data-user-avatar]',
+            'img[alt*="profile"]',
+            'img[alt*="avatar"]',
+            '.nav-profile img'
+        ];
+        
+        photoSelectors.forEach(selector => {
+            try {
+                const elements = document.querySelectorAll(selector);
+                elements.forEach(element => {
+                    element.src = finalPhotoUrl;
+                    element.onerror = () => {
+                        // Fallback to generated avatar if image fails to load
+                        const nameForAvatar = this.userProfile?.full_name?.replace(/\s+/g, '+') || 'Student';
+                        element.src = `https://ui-avatars.com/api/?name=${nameForAvatar}&background=667eea&color=fff&size=100`;
+                    };
+                    console.log(`✅ Updated photo on: ${selector}`);
+                });
+            } catch (error) {
+                console.log(`⚠️ Could not update photo on ${selector}:`, error.message);
+            }
+        });
+        
+        // Cache the photo URL
+        localStorage.setItem('userProfilePhoto', finalPhotoUrl);
+    }
+    
+    // 🔥 NEW: Update dropdown menu with user information
+    updateDropdownMenu() {
+        console.log('📋 Updating dropdown menu...');
+        
+        if (!this.userProfile) return;
+        
+        // Update dropdown user info if elements exist
+        const dropdownSelectors = {
+            '.user-email': this.userProfile.email || 'No email',
+            '.user-program': this.userProfile.program || 'No program',
+            '.user-id': this.userProfile.student_id || 'No ID',
+            '.user-intake': this.userProfile.intake_year || 'No intake'
+        };
+        
+        Object.entries(dropdownSelectors).forEach(([selector, value]) => {
+            try {
+                const element = document.querySelector(selector);
+                if (element) {
+                    element.textContent = value;
+                    console.log(`✅ Updated ${selector}: ${value}`);
+                }
+            } catch (error) {
+                console.log(`⚠️ Could not update ${selector}`);
+            }
+        });
+    }
+    
     async loadDashboard() {
         console.log('📊 Loading complete dashboard data...');
         
         try {
-            // Load in parallel
-            await Promise.allSettled([
+            // 🔥 UPDATED: Load ALL metrics in parallel WITHOUT waiting
+            const promises = [
                 this.loadWelcomeDetails(),
                 this.loadStudentMessage(),
                 this.loadLatestOfficialAnnouncement(),
                 this.loadAttendanceMetrics(),
                 this.loadCourseMetrics(),
                 this.loadExamMetrics(),
-                this.loadResourceMetrics(),
+                this.loadResourceMetrics(true), // 🔥 Get ALL resources, not just new ones
                 this.loadNurseIQMetrics()
-            ]);
+            ];
+            
+            // Wait for all promises but don't fail if one fails
+            const results = await Promise.allSettled(promises);
+            
+            // Log results
+            results.forEach((result, index) => {
+                if (result.status === 'rejected') {
+                    console.warn(`⚠️ Metric ${index} failed:`, result.reason);
+                }
+            });
             
             console.log('✅ Dashboard loaded successfully');
             
             // Apply grid animations after data loads
             this.animateGridCards();
             
+            // 🔥 NEW: Update all cards appearance
+            this.updateAllCardsAppearance();
+            
         } catch (error) {
             console.error('❌ Error loading dashboard:', error);
             this.showErrorStates();
         }
+    }
+    
+    // 🔥 NEW: Start auto-refresh for real-time updates
+    startAutoRefresh() {
+        console.log('⏰ Starting auto-refresh (every 2 minutes)...');
+        
+        // Clear any existing interval
+        if (this.autoRefreshInterval) {
+            clearInterval(this.autoRefreshInterval);
+        }
+        
+        // Refresh dashboard every 2 minutes (120000 ms)
+        this.autoRefreshInterval = setInterval(() => {
+            console.log('🔄 Auto-refreshing dashboard...');
+            this.refreshDashboard(false); // Silent refresh
+        }, 120000); // 2 minutes
+        
+        // Also refresh when tab becomes visible
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                console.log('👁️ Tab became visible, refreshing dashboard...');
+                this.refreshDashboard(false);
+            }
+        });
     }
     
     // Animate grid cards appearance
@@ -338,6 +567,45 @@ class DashboardModule {
         });
     }
     
+    // 🔥 NEW: Update ALL cards appearance
+    updateAllCardsAppearance() {
+        console.log('🎨 Updating all cards appearance...');
+        
+        // Attendance card
+        const attendanceRate = parseInt(this.elements.attendanceRate?.textContent?.replace('%', '') || '0');
+        this.updateCardAppearance('attendance', attendanceRate);
+        
+        // Courses card
+        const activeCourses = parseInt(this.elements.activeCourses?.textContent || '0');
+        this.updateCardAppearance('courses', activeCourses);
+        
+        // Resources card
+        const resourceCount = parseInt(this.elements.newResources?.textContent || '0');
+        this.updateCardAppearance('resources', resourceCount);
+        
+        // NurseIQ card
+        const nurseiqProgress = parseInt(this.elements.nurseiqProgress?.textContent?.replace('%', '') || '0');
+        this.updateCardAppearance('nurseiq', nurseiqProgress);
+        
+        // Exams card - color based on upcoming exam
+        const upcomingExam = this.elements.upcomingExam?.textContent;
+        if (upcomingExam === 'Today') {
+            if (this.elements.examsCard) {
+                this.elements.examsCard.classList.add('card-danger');
+                this.elements.examsCard.classList.remove('card-warning', 'card-success');
+            }
+        } else if (upcomingExam && upcomingExam.includes('d') && parseInt(upcomingExam) <= 7) {
+            if (this.elements.examsCard) {
+                this.elements.examsCard.classList.add('card-warning');
+                this.elements.examsCard.classList.remove('card-danger', 'card-success');
+            }
+        } else {
+            if (this.elements.examsCard) {
+                this.elements.examsCard.classList.remove('card-danger', 'card-warning', 'card-success');
+            }
+        }
+    }
+    
     // Update card appearance based on data
     updateCardAppearance(type, value) {
         const card = this.elements[`${type}Card`];
@@ -351,7 +619,7 @@ class DashboardModule {
             case 'attendance':
                 if (value >= 80) card.classList.add('card-success');
                 else if (value >= 60) card.classList.add('card-warning');
-                else card.classList.add('card-danger');
+                else if (value > 0) card.classList.add('card-danger');
                 break;
             case 'courses':
                 if (value === 0) {
@@ -366,166 +634,15 @@ class DashboardModule {
                 }
                 break;
             case 'resources':
-                if (value >= 5) card.classList.add('card-success');
+                if (value >= 10) card.classList.add('card-success');
+                else if (value >= 5) card.classList.add('card-warning');
+                else if (value > 0) card.classList.add('card-danger');
                 break;
             case 'nurseiq':
-                const progress = parseInt(this.elements.nurseiqProgress?.textContent || '0');
-                if (progress >= 75) card.classList.add('card-success');
-                else if (progress >= 50) card.classList.add('card-warning');
-                else if (progress > 0) card.classList.add('card-danger');
+                if (value >= 75) card.classList.add('card-success');
+                else if (value >= 50) card.classList.add('card-warning');
+                else if (value > 0) card.classList.add('card-danger');
                 break;
-        }
-    }
-    
-    // 🔥 UPDATED: Update header with user data
-    updateHeaderWithUserData() {
-        console.log('👤 Updating header with user data...');
-        
-        if (!this.userProfile) return;
-        
-        // Update user name in header
-        if (this.elements.headerUserName && this.userProfile.full_name) {
-            this.elements.headerUserName.textContent = this.userProfile.full_name;
-        }
-        
-        // Update header profile photo
-        if (this.elements.headerProfilePhoto) {
-            this.updateProfilePhoto();
-        }
-        
-        // Update welcome message
-        if (this.elements.welcomeHeader && this.userProfile.full_name) {
-            const getGreeting = (hour) => {
-                if (hour >= 5 && hour < 12) return "Good Morning";
-                if (hour >= 12 && hour < 17) return "Good Afternoon";
-                if (hour >= 17 && hour < 21) return "Good Evening";
-                return "Good Night";
-            };
-            
-            const now = new Date();
-            const hour = now.getHours();
-            this.elements.welcomeHeader.textContent = `${getGreeting(hour)}, ${this.userProfile.full_name}!`;
-        }
-    }
-    
-    // 🔥 UPDATED: Update profile photo with fallback chain
-    updateProfilePhoto(photoUrl = null) {
-        if (!this.elements.headerProfilePhoto) return;
-        
-        console.log('📸 Updating header profile photo...');
-        
-        // Priority 1: Use provided photoUrl (from event)
-        if (photoUrl) {
-            this.elements.headerProfilePhoto.src = photoUrl;
-            console.log('✅ Using photo from event:', photoUrl);
-            return;
-        }
-        
-        // Priority 2: Check userProfile for profile_photo_url or passport_url
-        if (this.userProfile?.profile_photo_url) {
-            this.elements.headerProfilePhoto.src = this.userProfile.profile_photo_url;
-            console.log('✅ Using profile_photo_url from userProfile:', this.userProfile.profile_photo_url);
-            return;
-        }
-        
-        if (this.userProfile?.passport_url) {
-            this.elements.headerProfilePhoto.src = this.userProfile.passport_url;
-            console.log('✅ Using passport_url from userProfile:', this.userProfile.passport_url);
-            return;
-        }
-        
-        // Priority 3: Check localStorage
-        const cachedPhoto = localStorage.getItem('userProfilePhoto');
-        if (cachedPhoto) {
-            this.elements.headerProfilePhoto.src = cachedPhoto;
-            console.log('✅ Using cached profile photo from localStorage');
-            return;
-        }
-        
-        // Priority 4: Check window.currentUserProfile
-        if (window.currentUserProfile?.profile_photo_url) {
-            this.elements.headerProfilePhoto.src = window.currentUserProfile.profile_photo_url;
-            console.log('✅ Using profile photo from window.currentUserProfile');
-            return;
-        }
-        
-        // Priority 5: Try to fetch from database
-        if (this.userId && this.sb) {
-            this.fetchProfilePhotoFromDB();
-            return;
-        }
-        
-        // Final fallback: Generate avatar from name
-        this.useGeneratedAvatar();
-    }
-    
-    // 🔥 Fetch profile photo from database
-    async fetchProfilePhotoFromDB() {
-        if (!this.userId || !this.sb) return;
-        
-        try {
-            console.log('🔍 Fetching profile photo from database...');
-            
-            // Try consolidated_user_profiles_table first
-            const { data: consolidatedData, error: consolidatedError } = await this.sb
-                .from('consolidated_user_profiles_table')
-                .select('passport_url')
-                .eq('user_id', this.userId)
-                .maybeSingle();
-            
-            if (!consolidatedError && consolidatedData?.passport_url) {
-                console.log('✅ Found photo in consolidated table:', consolidatedData.passport_url);
-                this.elements.headerProfilePhoto.src = consolidatedData.passport_url;
-                
-                // Cache the result
-                this.userProfile.profile_photo_url = consolidatedData.passport_url;
-                localStorage.setItem('userProfilePhoto', consolidatedData.passport_url);
-                
-                if (window.currentUserProfile) {
-                    window.currentUserProfile.profile_photo_url = consolidatedData.passport_url;
-                }
-                return;
-            }
-            
-            // Fallback to profiles table
-            const { data: profileData, error: profileError } = await this.sb
-                .from('profiles')
-                .select('profile_photo_url')
-                .eq('id', this.userId)
-                .maybeSingle();
-            
-            if (!profileError && profileData?.profile_photo_url) {
-                console.log('✅ Found photo in profiles table:', profileData.profile_photo_url);
-                this.elements.headerProfilePhoto.src = profileData.profile_photo_url;
-                
-                // Cache the result
-                this.userProfile.profile_photo_url = profileData.profile_photo_url;
-                localStorage.setItem('userProfilePhoto', profileData.profile_photo_url);
-                
-                if (window.currentUserProfile) {
-                    window.currentUserProfile.profile_photo_url = profileData.profile_photo_url;
-                }
-                return;
-            }
-            
-            console.log('ℹ️ No profile photo found in any table');
-            this.useGeneratedAvatar();
-            
-        } catch (error) {
-            console.error('❌ Error in fetchProfilePhotoFromDB:', error);
-            this.useGeneratedAvatar();
-        }
-    }
-    
-    // Helper: Use generated avatar
-    useGeneratedAvatar() {
-        if (!this.elements.headerProfilePhoto) return;
-        
-        if (this.userProfile?.full_name) {
-            const nameForAvatar = this.userProfile.full_name.replace(/\s+/g, '+');
-            this.elements.headerProfilePhoto.src = `https://ui-avatars.com/api/?name=${nameForAvatar}&background=667eea&color=fff&size=100`;
-        } else {
-            this.elements.headerProfilePhoto.src = 'https://ui-avatars.com/api/?name=Student&background=667eea&color=fff&size=100';
         }
     }
     
@@ -684,122 +801,122 @@ class DashboardModule {
                             'CRAFT CERTIFICATE', 'ARTISAN', 'DIPLOMA IN TVET'];
         return tvetPrograms.some(tvet => program.toUpperCase().includes(tvet));
     }
+    
     async loadExamMetrics() {
-    console.log('📝 Loading exam metrics...');
-    
-    // METHOD 1: Try to get from exams module (preferred)
-    if (typeof window.getExamsDashboardMetrics === 'function') {
-        try {
-            const metrics = window.getExamsDashboardMetrics();
-            console.log('📊 Got metrics from exams module:', metrics);
-            this.updateExamsUI(metrics);
-            return;
-        } catch (error) {
-            console.warn('Could not get metrics from exams module:', error);
-        }
-    }
-    
-    // METHOD 2: Try to get from localStorage
-    try {
-        const cachedMetrics = localStorage.getItem('exams_dashboard_metrics');
-        if (cachedMetrics) {
-            const metrics = JSON.parse(cachedMetrics);
-            console.log('📊 Using cached exams metrics:', metrics);
-            this.updateExamsUI(metrics);
-            return;
-        }
-    } catch (error) {
-        console.warn('Could not parse cached metrics:', error);
-    }
-    
-    // METHOD 3: Fallback to database query (your existing code)
-    if (!this.userProfile || !this.sb) {
-        console.warn('⚠️ Cannot load exams: No user profile or Supabase');
-        this.showErrorState('exams');
-        return;
-    }
-    
-    try {
-        const today = new Date().toISOString().split('T')[0];
-        const { data: exams, error } = await this.sb
-            .from('exams_with_courses')
-            .select('exam_name, exam_date')
-            .or(`program_type.eq.${this.userProfile.program},program_type.is.null`)
-            .or(`block_term.eq.${this.userProfile.block},block_term.is.null`)
-            .eq('intake_year', this.userProfile.intake_year)
-            .gte('exam_date', today)
-            .order('exam_date', { ascending: true })
-            .limit(1);
+        console.log('📝 Loading exam metrics...');
         
-        if (error) {
-            console.error('❌ Exams query error:', error);
+        // METHOD 1: Try to get from exams module (preferred)
+        if (typeof window.getExamsDashboardMetrics === 'function') {
+            try {
+                const metrics = window.getExamsDashboardMetrics();
+                console.log('📊 Got metrics from exams module:', metrics);
+                this.updateExamsUI(metrics);
+                return;
+            } catch (error) {
+                console.warn('Could not get metrics from exams module:', error);
+            }
+        }
+        
+        // METHOD 2: Try to get from localStorage
+        try {
+            const cachedMetrics = localStorage.getItem('exams_dashboard_metrics');
+            if (cachedMetrics) {
+                const metrics = JSON.parse(cachedMetrics);
+                console.log('📊 Using cached exams metrics:', metrics);
+                this.updateExamsUI(metrics);
+                return;
+            }
+        } catch (error) {
+            console.warn('Could not parse cached metrics:', error);
+        }
+        
+        // METHOD 3: Fallback to database query
+        if (!this.userProfile || !this.sb) {
+            console.warn('⚠️ Cannot load exams: No user profile or Supabase');
             this.showErrorState('exams');
             return;
         }
         
-        let examText = 'None';
-        
-        if (exams && exams.length > 0) {
-            const examDate = new Date(exams[0].exam_date);
-            const diffDays = Math.ceil((examDate - new Date()) / (1000 * 60 * 60 * 24));
+        try {
+            const today = new Date().toISOString().split('T')[0];
+            const { data: exams, error } = await this.sb
+                .from('exams_with_courses')
+                .select('exam_name, exam_date')
+                .or(`program_type.eq.${this.userProfile.program},program_type.is.null`)
+                .or(`block_term.eq.${this.userProfile.block},block_term.is.null`)
+                .eq('intake_year', this.userProfile.intake_year)
+                .gte('exam_date', today)
+                .order('exam_date', { ascending: true })
+                .limit(1);
             
-            if (diffDays <= 0) {
-                examText = 'Today';
-            } else if (diffDays <= 7) {
-                examText = `${diffDays}d`;
+            if (error) {
+                console.error('❌ Exams query error:', error);
+                this.showErrorState('exams');
+                return;
+            }
+            
+            let examText = 'None';
+            
+            if (exams && exams.length > 0) {
+                const examDate = new Date(exams[0].exam_date);
+                const diffDays = Math.ceil((examDate - new Date()) / (1000 * 60 * 60 * 24));
+                
+                if (diffDays <= 0) {
+                    examText = 'Today';
+                } else if (diffDays <= 7) {
+                    examText = `${diffDays}d`;
+                } else {
+                    examText = examDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                }
+            }
+            
+            const metrics = {
+                upcomingExam: examText,
+                gradedExams: 0,
+                averageScore: 0,
+                bestScore: 0,
+                passRate: 0,
+                lastUpdated: new Date().toISOString()
+            };
+            
+            this.updateExamsUI(metrics);
+            
+            console.log(`✅ Exams: ${examText}`);
+            
+        } catch (error) {
+            console.error('❌ Error loading exams:', error);
+            this.showErrorState('exams');
+        }
+    }
+    
+    // Update exams UI
+    updateExamsUI(metrics) {
+        if (!metrics) return;
+        
+        const upcomingExam = metrics.upcomingExam || 'None';
+        
+        if (this.elements.upcomingExam) {
+            this.elements.upcomingExam.textContent = upcomingExam;
+            // Apply color classes
+            if (upcomingExam === 'Today') {
+                this.elements.upcomingExam.classList.add('dashboard-stat-low');
+                this.elements.upcomingExam.classList.remove('dashboard-stat-medium', 'dashboard-stat-high');
+            } else if (upcomingExam.includes('d') && parseInt(upcomingExam) <= 7) {
+                this.elements.upcomingExam.classList.add('dashboard-stat-medium');
+                this.elements.upcomingExam.classList.remove('dashboard-stat-low', 'dashboard-stat-high');
             } else {
-                examText = examDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                this.elements.upcomingExam.classList.remove('dashboard-stat-low', 'dashboard-stat-medium', 'dashboard-stat-high');
             }
         }
         
-        const metrics = {
-            upcomingExam: examText,
-            gradedExams: 0,
-            averageScore: 0,
-            bestScore: 0,
-            passRate: 0,
-            lastUpdated: new Date().toISOString()
-        };
+        // Update exams card appearance
+        this.updateCardAppearance('exams', upcomingExam === 'Today' ? 1 : upcomingExam !== 'None' ? 50 : 0);
         
-        this.updateExamsUI(metrics);
-        
-        console.log(`✅ Exams: ${examText}`);
-        
-    } catch (error) {
-        console.error('❌ Error loading exams:', error);
-        this.showErrorState('exams');
-    }
-}
-
-// 🔥 ADD THIS NEW METHOD to DashboardModule class:
-updateExamsUI(metrics) {
-    if (!metrics) return;
-    
-    const upcomingExam = metrics.upcomingExam || 'None';
-    
-    if (this.elements.upcomingExam) {
-        this.elements.upcomingExam.textContent = upcomingExam;
-        // Apply color classes
-        if (upcomingExam === 'Today') {
-            this.elements.upcomingExam.classList.add('dashboard-stat-low');
-            this.elements.upcomingExam.classList.remove('dashboard-stat-medium', 'dashboard-stat-high');
-        } else if (upcomingExam.includes('d') && parseInt(upcomingExam) <= 7) {
-            this.elements.upcomingExam.classList.add('dashboard-stat-medium');
-            this.elements.upcomingExam.classList.remove('dashboard-stat-low', 'dashboard-stat-high');
-        } else {
-            this.elements.upcomingExam.classList.remove('dashboard-stat-low', 'dashboard-stat-medium', 'dashboard-stat-high');
-        }
+        console.log(`✅ Exams UI Updated: Next exam - ${upcomingExam}`);
     }
     
-    // You can also update other exam metrics if you want to show more on dashboard
-    if (metrics.gradedExams > 0) {
-        console.log(`📊 Exams Summary: ${metrics.gradedExams} graded, ${metrics.averageScore}% avg`);
-    }
-    
-    console.log(`✅ Exams UI Updated: Next exam - ${upcomingExam}`);
-}
-    
-    async loadResourceMetrics() {
+    // 🔥 UPDATED: Load resource metrics - ALL resources, not just new ones
+    async loadResourceMetrics(allResources = true) {
         console.log('📁 Loading resource metrics...');
         
         if (!this.userProfile || !this.sb) {
@@ -809,16 +926,22 @@ updateExamsUI(metrics) {
         }
         
         try {
-            const oneWeekAgo = new Date();
-            oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-            
-            const { data: resources, error } = await this.sb
+            let query = this.sb
                 .from('resources')
-                .select('created_at')
+                .select('id, created_at, resource_type')
                 .eq('target_program', this.userProfile.program)
                 .eq('block', this.userProfile.block)
                 .eq('intake_year', this.userProfile.intake_year)
-                .gte('created_at', oneWeekAgo.toISOString());
+                .eq('is_published', true);
+            
+            // If we want ALL resources, don't filter by date
+            if (!allResources) {
+                const oneWeekAgo = new Date();
+                oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+                query = query.gte('created_at', oneWeekAgo.toISOString());
+            }
+            
+            const { data: resources, error } = await query;
             
             if (error) {
                 console.error('❌ Resources query error:', error);
@@ -826,14 +949,26 @@ updateExamsUI(metrics) {
                 return;
             }
             
-            const newCount = resources?.length || 0;
+            const resourceCount = resources?.length || 0;
             
             if (this.elements.newResources) {
-                this.elements.newResources.textContent = newCount;
-                this.updateCardAppearance('resources', newCount);
+                this.elements.newResources.textContent = resourceCount;
+                // Add tooltip to show what this number represents
+                this.elements.newResources.title = allResources 
+                    ? `Total available resources: ${resourceCount}`
+                    : `New resources (last 7 days): ${resourceCount}`;
+                this.updateCardAppearance('resources', resourceCount);
             }
             
-            console.log(`✅ Resources: ${newCount} new`);
+            // Also update card label if we're showing all resources
+            if (allResources && this.elements.resourcesCard) {
+                const labelElement = this.elements.resourcesCard.querySelector('.stat-label');
+                if (labelElement && !labelElement.textContent.includes('Available')) {
+                    labelElement.textContent = 'Available Resources';
+                }
+            }
+            
+            console.log(`✅ Resources: ${resourceCount} ${allResources ? 'total available' : 'new'}`);
             
         } catch (error) {
             console.error('❌ Error loading resources:', error);
@@ -841,7 +976,7 @@ updateExamsUI(metrics) {
         }
     }
     
-    // 🔥 UPDATED: Enhanced NurseIQ Metrics with multiple sources
+    // Enhanced NurseIQ Metrics with multiple sources
     async loadNurseIQMetrics() {
         console.log('🧠 Loading NurseIQ metrics...');
         
@@ -915,7 +1050,7 @@ updateExamsUI(metrics) {
         }
     }
     
-    // 🔥 NEW: Update NurseIQ UI with metrics
+    // Update NurseIQ UI with metrics
     updateNurseIQUI(metrics) {
         if (!metrics) return;
         
@@ -961,6 +1096,7 @@ updateExamsUI(metrics) {
                 .from('notifications')
                 .select('*')
                 .eq('subject', 'Official Announcement')
+                .eq('is_active', true)
                 .order('created_at', { ascending: false })
                 .limit(1);
             
@@ -968,6 +1104,9 @@ updateExamsUI(metrics) {
             
             if (data && data.length > 0) {
                 this.elements.studentAnnouncement.textContent = data[0].message;
+                // Add timestamp
+                const date = new Date(data[0].created_at);
+                this.elements.studentAnnouncement.title = `Posted on ${date.toLocaleDateString()} at ${date.toLocaleTimeString()}`;
             } else {
                 this.elements.studentAnnouncement.textContent = 'No official announcements at this time.';
             }
@@ -1168,20 +1307,23 @@ updateExamsUI(metrics) {
         }
     }
     
-    async refreshDashboard() {
-        console.log('🔄 Manually refreshing dashboard...');
-        
-        this.showLoadingStates();
+    async refreshDashboard(silent = false) {
+        if (!silent) {
+            console.log('🔄 Manually refreshing dashboard...');
+            this.showLoadingStates();
+        }
         
         await Promise.allSettled([
             this.loadAttendanceMetrics(),
             this.loadCourseMetrics(),
             this.loadExamMetrics(),
-            this.loadResourceMetrics(),
+            this.loadResourceMetrics(true), // 🔥 Get ALL resources
             this.loadNurseIQMetrics()
         ]);
         
-        console.log('✅ Dashboard refreshed');
+        if (!silent) {
+            console.log('✅ Dashboard refreshed');
+        }
     }
 }
 
@@ -1265,8 +1407,8 @@ document.addEventListener('DOMContentLoaded', function() {
         
         document.addEventListener('profilePhotoUpdated', (e) => {
             console.log('📸 Profile photo updated globally', e.detail);
-            if (dashboardModule?.elements?.headerProfilePhoto) {
-                dashboardModule.updateProfilePhoto(e.detail?.photoUrl);
+            if (dashboardModule) {
+                dashboardModule.updateAllProfilePhotos(e.detail?.photoUrl);
             }
         });
     }
