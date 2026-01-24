@@ -1,3 +1,4 @@
+// dashboard.js - COMPLETE Dashboard Module with Dropdown Fixes
 class DashboardModule {
     constructor(supabaseClient) {
         console.log('🚀 Initializing DashboardModule...');
@@ -199,6 +200,107 @@ class DashboardModule {
         console.log('✅ Event listeners setup complete');
     }
     
+    // 🔥 NEW: Initialize dropdown behavior
+    setupDropdownBehavior() {
+        console.log('📋 Setting up dropdown behavior...');
+        
+        // Find dropdown elements
+        this.profileTrigger = document.querySelector('.profile-trigger');
+        this.dropdownMenu = document.querySelector('.dropdown-menu');
+        
+        console.log('📋 Found dropdown elements:');
+        console.log('- Profile trigger:', !!this.profileTrigger);
+        console.log('- Dropdown menu:', !!this.dropdownMenu);
+        
+        if (!this.profileTrigger || !this.dropdownMenu) {
+            console.error('❌ Dropdown elements not found!');
+            return;
+        }
+        
+        // CRITICAL: Remove inline style first
+        this.dropdownMenu.style.display = 'none';
+        
+        // Add click handler to profile trigger
+        this.profileTrigger.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            console.log('👤 Profile dropdown clicked');
+            
+            // Toggle dropdown visibility
+            const isVisible = this.dropdownMenu.style.display === 'block';
+            this.dropdownMenu.style.display = isVisible ? 'none' : 'block';
+            
+            // Rotate arrow icon
+            const arrow = this.profileTrigger.querySelector('.dropdown-icon');
+            if (arrow) {
+                arrow.style.transform = isVisible ? 'rotate(0deg)' : 'rotate(180deg)';
+                arrow.style.transition = 'transform 0.3s ease';
+            }
+            
+            console.log(`📋 Dropdown ${isVisible ? 'hidden' : 'shown'}`);
+        });
+        
+        // Close dropdown when clicking elsewhere
+        document.addEventListener('click', (e) => {
+            if (!this.profileTrigger.contains(e.target) && !this.dropdownMenu.contains(e.target)) {
+                this.dropdownMenu.style.display = 'none';
+                
+                // Reset arrow rotation
+                const arrow = this.profileTrigger.querySelector('.dropdown-icon');
+                if (arrow) {
+                    arrow.style.transform = 'rotate(0deg)';
+                }
+            }
+        });
+        
+        // Handle dropdown links
+        const profileLink = this.dropdownMenu.querySelector('a[data-tab="profile"]');
+        if (profileLink) {
+            profileLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                console.log('👤 Profile link clicked in dropdown');
+                this.switchToTab('profile');
+                this.dropdownMenu.style.display = 'none';
+                
+                // Reset arrow
+                const arrow = this.profileTrigger.querySelector('.dropdown-icon');
+                if (arrow) {
+                    arrow.style.transform = 'rotate(0deg)';
+                }
+            });
+        }
+        
+        // Handle logout in dropdown
+        const dropdownLogout = this.dropdownMenu.querySelector('#header-logout');
+        if (dropdownLogout) {
+            dropdownLogout.addEventListener('click', (e) => {
+                e.preventDefault();
+                console.log('🔐 Logout from dropdown clicked');
+                this.logout();
+            });
+        }
+        
+        console.log('✅ Dropdown behavior setup complete');
+    }
+    
+    // 🔥 NEW: Add logout method
+    logout() {
+        console.log('🔐 Dashboard logout called');
+        
+        // Call UI module logout if available
+        if (window.ui && window.ui.logout) {
+            window.ui.logout();
+        } else {
+            // Fallback logout
+            const confirmLogout = confirm('Are you sure you want to logout?');
+            if (confirmLogout) {
+                localStorage.clear();
+                window.location.href = 'login.html';
+            }
+        }
+    }
+    
     addCardClickHandlers() {
         // Add click handlers to all stat cards
         const cards = document.querySelectorAll('.stat-card');
@@ -313,6 +415,10 @@ class DashboardModule {
             console.error('❌ Dashboard: Missing user data');
             return false;
         }
+        
+        // 🔥 CRITICAL: Setup dropdown behavior FIRST
+        console.log('📋 Setting up dropdown behavior...');
+        this.setupDropdownBehavior();
         
         // 🔥 UPDATED: Update ALL user info immediately
         console.log('🔄 Updating all user info...');
