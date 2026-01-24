@@ -684,70 +684,120 @@ class DashboardModule {
                             'CRAFT CERTIFICATE', 'ARTISAN', 'DIPLOMA IN TVET'];
         return tvetPrograms.some(tvet => program.toUpperCase().includes(tvet));
     }
-    
     async loadExamMetrics() {
-        console.log('📝 Loading exam metrics...');
+    console.log('📝 Loading exam metrics...');
+    
+    // METHOD 1: Try to get from exams module (preferred)
+    if (typeof window.getExamsDashboardMetrics === 'function') {
+        try {
+            const metrics = window.getExamsDashboardMetrics();
+            console.log('📊 Got metrics from exams module:', metrics);
+            this.updateExamsUI(metrics);
+            return;
+        } catch (error) {
+            console.warn('Could not get metrics from exams module:', error);
+        }
+    }
+    
+    // METHOD 2: Try to get from localStorage
+    try {
+        const cachedMetrics = localStorage.getItem('exams_dashboard_metrics');
+        if (cachedMetrics) {
+            const metrics = JSON.parse(cachedMetrics);
+            console.log('📊 Using cached exams metrics:', metrics);
+            this.updateExamsUI(metrics);
+            return;
+        }
+    } catch (error) {
+        console.warn('Could not parse cached metrics:', error);
+    }
+    
+    // METHOD 3: Fallback to database query (your existing code)
+    if (!this.userProfile || !this.sb) {
+        console.warn('⚠️ Cannot load exams: No user profile or Supabase');
+        this.showErrorState('exams');
+        return;
+    }
+    
+    try {
+        const today = new Date().toISOString().split('T')[0];
+        const { data: exams, error } = await this.sb
+            .from('exams_with_courses')
+            .select('exam_name, exam_date')
+            .or(`program_type.eq.${this.userProfile.program},program_type.is.null`)
+            .or(`block_term.eq.${this.userProfile.block},block_term.is.null`)
+            .eq('intake_year', this.userProfile.intake_year)
+            .gte('exam_date', today)
+            .order('exam_date', { ascending: true })
+            .limit(1);
         
-        if (!this.userProfile || !this.sb) {
-            console.warn('⚠️ Cannot load exams: No user profile or Supabase');
+        if (error) {
+            console.error('❌ Exams query error:', error);
             this.showErrorState('exams');
             return;
         }
         
-        try {
-            const today = new Date().toISOString().split('T')[0];
-            const { data: exams, error } = await this.sb
-                .from('exams_with_courses')
-                .select('exam_name, exam_date')
-                .or(`program_type.eq.${this.userProfile.program},program_type.is.null`)
-                .or(`block_term.eq.${this.userProfile.block},block_term.is.null`)
-                .eq('intake_year', this.userProfile.intake_year)
-                .gte('exam_date', today)
-                .order('exam_date', { ascending: true })
-                .limit(1);
+        let examText = 'None';
+        
+        if (exams && exams.length > 0) {
+            const examDate = new Date(exams[0].exam_date);
+            const diffDays = Math.ceil((examDate - new Date()) / (1000 * 60 * 60 * 24));
             
-            if (error) {
-                console.error('❌ Exams query error:', error);
-                this.showErrorState('exams');
-                return;
+            if (diffDays <= 0) {
+                examText = 'Today';
+            } else if (diffDays <= 7) {
+                examText = `${diffDays}d`;
+            } else {
+                examText = examDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
             }
-            
-            let examText = 'None';
-            
-            if (exams && exams.length > 0) {
-                const examDate = new Date(exams[0].exam_date);
-                const diffDays = Math.ceil((examDate - new Date()) / (1000 * 60 * 60 * 24));
-                
-                if (diffDays <= 0) {
-                    examText = 'Today';
-                } else if (diffDays <= 7) {
-                    examText = `${diffDays}d`;
-                } else {
-                    examText = examDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                }
-            }
-            
-            if (this.elements.upcomingExam) {
-                this.elements.upcomingExam.textContent = examText;
-                // Apply color classes
-                if (examText === 'Today') {
-                    this.elements.upcomingExam.classList.add('dashboard-stat-low');
-                    this.elements.upcomingExam.classList.remove('dashboard-stat-medium', 'dashboard-stat-high');
-                } else if (examText.includes('d') && parseInt(examText) <= 7) {
-                    this.elements.upcomingExam.classList.add('dashboard-stat-medium');
-                    this.elements.upcomingExam.classList.remove('dashboard-stat-low', 'dashboard-stat-high');
-                } else {
-                    this.elements.upcomingExam.classList.remove('dashboard-stat-low', 'dashboard-stat-medium', 'dashboard-stat-high');
-                }
-            }
-            
-            console.log(`✅ Exams: ${examText}`);
-            
-        } catch (error) {
-            console.error('❌ Error loading exams:', error);
-            this.showErrorState('exams');
+        }
+        
+        const metrics = {
+            upcomingExam: examText,
+            gradedExams: 0,
+            averageScore: 0,
+            bestScore: 0,
+            passRate: 0,
+            lastUpdated: new Date().toISOString()
+        };
+        
+        this.updateExamsUI(metrics);
+        
+        console.log(`✅ Exams: ${examText}`);
+        
+    } catch (error) {
+        console.error('❌ Error loading exams:', error);
+        this.showErrorState('exams');
+    }
+}
+
+// 🔥 ADD THIS NEW METHOD to DashboardModule class:
+updateExamsUI(metrics) {
+    if (!metrics) return;
+    
+    const upcomingExam = metrics.upcomingExam || 'None';
+    
+    if (this.elements.upcomingExam) {
+        this.elements.upcomingExam.textContent = upcomingExam;
+        // Apply color classes
+        if (upcomingExam === 'Today') {
+            this.elements.upcomingExam.classList.add('dashboard-stat-low');
+            this.elements.upcomingExam.classList.remove('dashboard-stat-medium', 'dashboard-stat-high');
+        } else if (upcomingExam.includes('d') && parseInt(upcomingExam) <= 7) {
+            this.elements.upcomingExam.classList.add('dashboard-stat-medium');
+            this.elements.upcomingExam.classList.remove('dashboard-stat-low', 'dashboard-stat-high');
+        } else {
+            this.elements.upcomingExam.classList.remove('dashboard-stat-low', 'dashboard-stat-medium', 'dashboard-stat-high');
         }
     }
+    
+    // You can also update other exam metrics if you want to show more on dashboard
+    if (metrics.gradedExams > 0) {
+        console.log(`📊 Exams Summary: ${metrics.gradedExams} graded, ${metrics.averageScore}% avg`);
+    }
+    
+    console.log(`✅ Exams UI Updated: Next exam - ${upcomingExam}`);
+}
     
     async loadResourceMetrics() {
         console.log('📁 Loading resource metrics...');
