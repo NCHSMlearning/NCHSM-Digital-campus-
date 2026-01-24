@@ -1,13 +1,15 @@
 // js/ui.js - User Interface Management
 class UIModule {
     constructor() {
+        console.log('🚀 Initializing UIModule...');
+        
+        // Cache all elements
         this.sidebar = document.getElementById('sidebar');
         this.overlay = document.getElementById('overlay');
         this.mobileMenuToggle = document.getElementById('mobile-menu-toggle');
         this.navLinks = document.querySelectorAll('.nav a');
         this.tabs = document.querySelectorAll('.tab-content');
         this.toast = document.getElementById('toast');
-        this.logoutBtn = document.getElementById('logoutBtn');
         this.headerLogout = document.getElementById('header-logout');
         this.currentTab = 'dashboard';
         
@@ -34,11 +36,24 @@ class UIModule {
         this.readerBackBtn = document.getElementById('readerBackBtn');
         this.mobileReader = document.getElementById('mobile-reader');
         
+        // Profile dropdown elements - CRITICAL FIX
+        this.profileTrigger = document.querySelector('.profile-trigger');
+        this.dropdownMenu = document.querySelector('.dropdown-menu');
+        
+        // Log found elements
+        console.log('📋 UI Elements found:');
+        console.log('- Profile trigger:', !!this.profileTrigger);
+        console.log('- Dropdown menu:', !!this.dropdownMenu);
+        console.log('- Header user name:', !!this.headerUserName);
+        console.log('- Header profile photo:', !!this.headerProfilePhoto);
+        
         // Initialize
         this.initialize();
     }
     
     initialize() {
+        console.log('🔧 Initializing UI...');
+        this.cleanupInitialStyles();  // MUST CALL FIRST
         this.setupEventListeners();
         this.setupHashNavigation();
         this.setupTabChangeListener();
@@ -46,29 +61,35 @@ class UIModule {
         this.setupOfflineIndicator();
         this.setupMobileMenuVisibility();
         this.loadLastTab();
-        this.fixInitialDisplay();
+        
+        console.log('✅ UIModule initialized');
     }
     
-    fixInitialDisplay() {
-        // Remove all inline styles first
+    // CRITICAL FIX: Remove all inline styles first
+    cleanupInitialStyles() {
+        console.log('🧹 Cleaning up initial styles...');
+        
+        // Remove all inline styles from tabs
         this.tabs.forEach(tab => {
             tab.style.removeProperty('display');
+            tab.style.removeProperty('opacity');
+            tab.style.removeProperty('visibility');
+            tab.style.removeProperty('position');
             tab.classList.remove('active');
         });
         
-        // Show dashboard by default
-        const dashboardTab = document.getElementById('dashboard');
-        if (dashboardTab) {
-            dashboardTab.classList.add('active');
-        }
-        
-        // Set active nav link
+        // Remove active class from all nav links
         this.navLinks.forEach(link => {
             link.classList.remove('active');
-            if (link.getAttribute('data-tab') === 'dashboard') {
-                link.classList.add('active');
-            }
         });
+        
+        // Initialize dropdown menu properly
+        if (this.dropdownMenu) {
+            this.dropdownMenu.style.display = 'none'; // Start hidden
+            this.dropdownMenu.classList.remove('show');
+        }
+        
+        console.log('✅ Styles cleaned up');
     }
     
     setupMobileMenuVisibility() {
@@ -88,18 +109,25 @@ class UIModule {
     }
     
     setupHashNavigation() {
+        console.log('🔗 Setting up hash navigation...');
+        
         // Handle initial page load
         window.addEventListener('load', () => {
             const hash = window.location.hash.substring(1);
+            console.log('🔗 Initial hash:', hash);
             
             if (hash && this.isValidTab(hash)) {
+                console.log(`🎯 Showing tab from hash: ${hash}`);
                 this.showTab(hash);
             } else {
                 const lastTab = localStorage.getItem(this.storageKey);
+                console.log(`💾 Saved last tab: ${lastTab}`);
+                
                 if (lastTab && this.isValidTab(lastTab)) {
                     this.showTab(lastTab);
                     window.location.hash = lastTab;
                 } else {
+                    console.log('🎯 Defaulting to dashboard');
                     this.showTab('dashboard');
                 }
             }
@@ -108,6 +136,8 @@ class UIModule {
         // Handle browser back/forward buttons
         window.addEventListener('hashchange', () => {
             const hash = window.location.hash.substring(1);
+            console.log('🔗 Hash changed to:', hash);
+            
             if (hash && this.isValidTab(hash)) {
                 this.showTab(hash);
                 localStorage.setItem(this.storageKey, hash);
@@ -123,22 +153,35 @@ class UIModule {
     }
     
     showTab(tabId) {
+        console.log(`📱 showTab(${tabId}) called`);
+        
         if (!this.isValidTab(tabId)) {
+            console.warn(`⚠️ Invalid tab: ${tabId}, defaulting to dashboard`);
             tabId = 'dashboard';
         }
         
-        if (this.currentTab === tabId) return;
+        if (this.currentTab === tabId) {
+            console.log(`⚠️ Tab ${tabId} is already active`);
+            return;
+        }
         
+        // Hide all tabs
         this.tabs.forEach(tab => {
             tab.style.removeProperty('display');
             tab.classList.remove('active');
         });
         
+        // Show selected tab
         const selectedTab = document.getElementById(tabId);
         if (selectedTab) {
             selectedTab.classList.add('active');
+            console.log(`✅ Tab ${tabId} activated`);
+        } else {
+            console.error(`❌ Tab element not found: ${tabId}`);
+            return;
         }
         
+        // Update navigation
         this.navLinks.forEach(link => {
             link.classList.remove('active');
             if (link.getAttribute('data-tab') === tabId) {
@@ -146,13 +189,16 @@ class UIModule {
             }
         });
         
+        // Update URL hash
         if (window.location.hash.substring(1) !== tabId) {
             history.replaceState(null, null, `#${tabId}`);
         }
         
+        // Save tab state
         localStorage.setItem(this.storageKey, tabId);
         this.closeMenu();
         
+        // Dispatch event
         const previousTab = this.currentTab;
         this.currentTab = tabId;
         
@@ -164,11 +210,13 @@ class UIModule {
             }
         }));
         
+        // Update page title
         this.updatePageTitle(tabId);
         
-        if (selectedTab) {
-            void selectedTab.offsetHeight;
-        }
+        // Load tab data
+        setTimeout(() => this.loadTabModule(tabId), 100);
+        
+        console.log(`✅ Successfully switched to tab: ${tabId}`);
     }
     
     updatePageTitle(tabId) {
@@ -178,7 +226,7 @@ class UIModule {
             'calendar': 'Academic Calendar',
             'courses': 'My Courses',
             'attendance': 'Attendance',
-            'cats': 'CATS/Exams',
+            'cats': 'Exams & Grades',
             'resources': 'Resources',
             'messages': 'Messages',
             'support-tickets': 'Support Tickets',
@@ -190,14 +238,18 @@ class UIModule {
     }
     
     setupEventListeners() {
+        console.log('🔧 Setting up event listeners...');
+        
         // Mobile menu toggle
         if (this.mobileMenuToggle) {
             this.mobileMenuToggle.addEventListener('click', () => this.toggleMenu());
+            console.log('✅ Mobile menu toggle listener added');
         }
         
         // Overlay click to close menu
         if (this.overlay) {
             this.overlay.addEventListener('click', () => this.closeMenu());
+            console.log('✅ Overlay listener added');
         }
         
         // Navigation links
@@ -205,31 +257,34 @@ class UIModule {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
                 const tabId = link.getAttribute('data-tab');
+                console.log(`📱 Nav clicked: ${tabId}`);
+                
                 if (tabId) {
                     this.showTab(tabId);
                     this.closeMenu();
                 }
             });
         });
+        console.log(`✅ Added ${this.navLinks.length} nav link listeners`);
         
-        // Logout - Both sidebar and header logout buttons
-        if (this.logoutBtn) {
-            this.logoutBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                this.logout();
-            });
-        }
-        
+        // Header logout button - CRITICAL FIX
         if (this.headerLogout) {
+            console.log('🔐 Header logout button found');
             this.headerLogout.addEventListener('click', (e) => {
                 e.preventDefault();
+                console.log('🔐 Logout clicked');
                 this.logout();
             });
+        } else {
+            console.error('❌ Header logout button not found!');
         }
         
         // Header refresh button
         if (this.headerRefresh) {
-            this.headerRefresh.addEventListener('click', () => this.refreshDashboard());
+            this.headerRefresh.addEventListener('click', () => {
+                console.log('🔄 Header refresh clicked');
+                this.refreshDashboard();
+            });
         }
         
         // Footer buttons
@@ -276,78 +331,112 @@ class UIModule {
             this.readerBackBtn.addEventListener('click', () => this.closeReader());
         }
         
-        // Dashboard card clicks
-        document.querySelectorAll('.card[data-tab]').forEach(card => {
-            card.addEventListener('click', (e) => {
-                const tabId = card.getAttribute('data-tab');
-                if (tabId) {
-                    this.showTab(tabId);
-                }
-            });
-        });
-        
-        // Action card buttons
-        document.querySelectorAll('.profile-button[data-tab]').forEach(button => {
-            button.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const tabId = button.getAttribute('data-tab');
-                if (tabId) {
-                    this.showTab(tabId);
-                }
-            });
-        });
-        
-        // Footer links
-        document.querySelectorAll('.footer-links a[data-tab]').forEach(link => {
-            link.addEventListener('click', (e) => {
-                e.preventDefault();
-                const tabId = link.getAttribute('data-tab');
-                if (tabId) {
-                    this.showTab(tabId);
-                }
-            });
-        });
-        
-        // Profile dropdown in header
+        // Setup profile dropdown - CRITICAL FIX
         this.setupProfileDropdown();
         
-        // Prevent URL hash from scrolling
-        if (window.location.hash) {
-            window.scrollTo(0, 0);
-        }
+        // Dashboard card clicks
+        setTimeout(() => {
+            const cards = document.querySelectorAll('.stat-card[data-tab]');
+            cards.forEach(card => {
+                card.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const tabId = card.getAttribute('data-tab');
+                    console.log(`📱 Card clicked: ${tabId}`);
+                    
+                    if (tabId) {
+                        this.showTab(tabId);
+                    }
+                });
+            });
+            console.log(`✅ Added ${cards.length} card click listeners`);
+        }, 1000);
+        
+        console.log('✅ All event listeners setup complete');
     }
     
+    // FIXED PROFILE DROPDOWN - This was the main problem
     setupProfileDropdown() {
-        const profileTrigger = document.querySelector('.profile-trigger');
-        const dropdownMenu = document.querySelector('.dropdown-menu');
+        console.log('📋 Setting up profile dropdown...');
         
-        if (profileTrigger && dropdownMenu) {
-            profileTrigger.addEventListener('click', (e) => {
-                e.stopPropagation();
-                dropdownMenu.classList.toggle('show');
-            });
+        if (!this.profileTrigger || !this.dropdownMenu) {
+            console.error('❌ Profile dropdown elements not found!');
+            console.log('- Profile trigger exists:', !!this.profileTrigger);
+            console.log('- Dropdown menu exists:', !!this.dropdownMenu);
+            return;
+        }
+        
+        console.log('✅ Found dropdown elements');
+        
+        // CRITICAL: Remove inline style first
+        this.dropdownMenu.style.display = 'none';
+        
+        // Add click handler to profile trigger
+        this.profileTrigger.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
             
-            // Close dropdown when clicking outside
-            document.addEventListener('click', (e) => {
-                if (!profileTrigger.contains(e.target) && !dropdownMenu.contains(e.target)) {
-                    dropdownMenu.classList.remove('show');
+            console.log('👤 Profile dropdown clicked');
+            
+            // Toggle dropdown visibility
+            const isVisible = this.dropdownMenu.style.display === 'block';
+            this.dropdownMenu.style.display = isVisible ? 'none' : 'block';
+            
+            // Rotate arrow icon
+            const arrow = this.profileTrigger.querySelector('.dropdown-icon');
+            if (arrow) {
+                arrow.style.transform = isVisible ? 'rotate(0deg)' : 'rotate(180deg)';
+                arrow.style.transition = 'transform 0.3s ease';
+            }
+            
+            console.log(`📋 Dropdown ${isVisible ? 'hidden' : 'shown'}`);
+        });
+        
+        // Close dropdown when clicking elsewhere
+        document.addEventListener('click', (e) => {
+            if (!this.profileTrigger.contains(e.target) && !this.dropdownMenu.contains(e.target)) {
+                this.dropdownMenu.style.display = 'none';
+                
+                // Reset arrow rotation
+                const arrow = this.profileTrigger.querySelector('.dropdown-icon');
+                if (arrow) {
+                    arrow.style.transform = 'rotate(0deg)';
+                }
+            }
+        });
+        
+        // Handle dropdown links
+        const profileLink = this.dropdownMenu.querySelector('a[data-tab="profile"]');
+        if (profileLink) {
+            profileLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                console.log('👤 Profile link clicked in dropdown');
+                this.showTab('profile');
+                this.dropdownMenu.style.display = 'none';
+                
+                // Reset arrow
+                const arrow = this.profileTrigger.querySelector('.dropdown-icon');
+                if (arrow) {
+                    arrow.style.transform = 'rotate(0deg)';
                 }
             });
-            
-            // Profile link in dropdown
-            const profileLink = dropdownMenu.querySelector('a[data-tab="profile"]');
-            if (profileLink) {
-                profileLink.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    this.showTab('profile');
-                    dropdownMenu.classList.remove('show');
-                });
-            }
         }
+        
+        // Handle logout in dropdown
+        const dropdownLogout = this.dropdownMenu.querySelector('#header-logout');
+        if (dropdownLogout) {
+            dropdownLogout.addEventListener('click', (e) => {
+                e.preventDefault();
+                console.log('🔐 Logout from dropdown clicked');
+                this.logout();
+            });
+        }
+        
+        console.log('✅ Profile dropdown setup complete');
     }
     
     setupTabChangeListener() {
         window.addEventListener('tabChanged', (e) => {
+            console.log(`🔄 Tab changed to: ${e.detail.tabId}`);
             this.loadTabModule(e.detail.tabId);
         });
     }
@@ -362,55 +451,64 @@ class UIModule {
     }
     
     loadTabModule(tabId) {
+        console.log(`📦 Loading module for tab: ${tabId}`);
+        
         window.dispatchEvent(new CustomEvent('loadModule', { detail: { tabId } }));
         
-        switch(tabId) {
-            case 'dashboard':
-                if (typeof loadDashboard === 'function') {
-                    loadDashboard();
-                }
-                break;
-            case 'profile':
-                if (typeof loadProfile === 'function') {
-                    loadProfile();
-                }
-                break;
-            case 'calendar':
-                if (typeof loadAcademicCalendar === 'function') {
-                    loadAcademicCalendar();
-                }
-                break;
-            case 'courses':
-                if (typeof loadCourses === 'function') {
-                    loadCourses();
-                }
-                break;
-            case 'attendance':
-                if (typeof loadAttendance === 'function') {
-                    loadAttendance();
-                }
-                break;
-            case 'cats':
-                if (typeof loadExams === 'function') {
-                    loadExams();
-                }
-                break;
-            case 'resources':
-                if (typeof loadResources === 'function') {
-                    loadResources();
-                }
-                break;
-            case 'messages':
-                if (typeof loadMessages === 'function') {
-                    loadMessages();
-                }
-                break;
-            case 'nurseiq':
-                if (typeof loadNurseIQ === 'function') {
-                    loadNurseIQ();
-                }
-                break;
-        }
+        // Load specific tab data based on available functions
+        setTimeout(() => {
+            switch(tabId) {
+                case 'dashboard':
+                    if (typeof loadDashboard === 'function') {
+                        loadDashboard();
+                    } else if (window.dashboardModule && window.dashboardModule.loadDashboard) {
+                        window.dashboardModule.loadDashboard();
+                    }
+                    break;
+                case 'profile':
+                    if (typeof loadProfile === 'function') {
+                        loadProfile();
+                    }
+                    break;
+                case 'calendar':
+                    if (typeof loadAcademicCalendar === 'function') {
+                        loadAcademicCalendar();
+                    }
+                    break;
+                case 'courses':
+                    if (typeof loadCourses === 'function') {
+                        loadCourses();
+                    }
+                    break;
+                case 'attendance':
+                    if (typeof loadAttendance === 'function') {
+                        loadAttendance();
+                    } else if (window.attendanceModule && window.attendanceModule.loadAttendanceData) {
+                        window.attendanceModule.loadAttendanceData();
+                    }
+                    break;
+                case 'cats':
+                    if (typeof loadExams === 'function') {
+                        loadExams();
+                    }
+                    break;
+                case 'resources':
+                    if (typeof loadResources === 'function') {
+                        loadResources();
+                    }
+                    break;
+                case 'messages':
+                    if (typeof loadMessages === 'function') {
+                        loadMessages();
+                    }
+                    break;
+                case 'nurseiq':
+                    if (typeof loadNurseIQ === 'function') {
+                        loadNurseIQ();
+                    }
+                    break;
+            }
+        }, 300);
     }
     
     toggleMenu() {
@@ -434,6 +532,7 @@ class UIModule {
     }
     
     refreshDashboard() {
+        console.log('🔄 Refreshing dashboard...');
         this.showToast('Refreshing dashboard...', 'info', 1500);
         
         // Clear dashboard cache
@@ -442,14 +541,14 @@ class UIModule {
         }
         
         // Reload dashboard data
-        if (this.currentTab === 'dashboard') {
-            this.loadTabModule('dashboard');
-        } else {
-            this.showTab('dashboard');
+        if (window.dashboardModule && window.dashboardModule.refreshDashboard) {
+            window.dashboardModule.refreshDashboard();
+        } else if (typeof loadDashboard === 'function') {
+            loadDashboard();
         }
     }
     
-    // FIXED: Toast notifications with proper sizing
+    // Toast notifications
     showToast(message, type = 'info', duration = 3000) {
         // Remove existing toasts
         const existingToasts = document.querySelectorAll('.custom-toast');
@@ -522,27 +621,104 @@ class UIModule {
         return colors[type] || colors.info;
     }
     
-    updateHeaderInfo(userProfile) {
-        if (userProfile) {
-            if (this.headerUserName && userProfile.full_name) {
-                this.headerUserName.textContent = userProfile.full_name;
-            }
-            this.updateHeaderProfilePhoto(userProfile);
+    // CRITICAL FIX: Update ALL user information
+    updateAllUserInfo(userProfile = null) {
+        console.log('👤 Updating all user info...');
+        
+        const profile = userProfile || window.currentUserProfile || window.db?.currentUserProfile;
+        
+        if (!profile) {
+            console.warn('⚠️ No user profile available');
+            return;
         }
+        
+        console.log('📝 User profile:', profile);
+        
+        const studentName = profile.full_name || 'Student';
+        
+        // Update header user name
+        if (this.headerUserName) {
+            this.headerUserName.textContent = studentName;
+            console.log(`✅ Header name updated: ${studentName}`);
+        }
+        
+        // Update profile photo
+        this.updateProfilePhoto(profile);
+        
+        // Update welcome header
+        const welcomeHeader = document.getElementById('welcome-header');
+        if (welcomeHeader) {
+            const getGreeting = (hour) => {
+                if (hour >= 5 && hour < 12) return "Good Morning";
+                if (hour >= 12 && hour < 17) return "Good Afternoon";
+                if (hour >= 17 && hour < 21) return "Good Evening";
+                return "Good Night";
+            };
+            
+            const now = new Date();
+            const hour = now.getHours();
+            welcomeHeader.textContent = `${getGreeting(hour)}, ${studentName}!`;
+        }
+        
+        // Update profile page name field
+        const profileName = document.getElementById('profile-name');
+        if (profileName && !profileName.value) {
+            profileName.value = studentName;
+        }
+        
+        console.log('✅ All user info updated');
     }
     
-    updateHeaderProfilePhoto(userProfile) {
-        if (!this.headerProfilePhoto) return;
+    updateProfilePhoto(userProfile = null) {
+        console.log('📸 Updating profile photo...');
         
-        const savedPhoto = localStorage.getItem('userProfilePhoto');
-        if (savedPhoto) {
-            this.headerProfilePhoto.src = savedPhoto;
-        } else {
-            const nameForAvatar = userProfile.full_name ? 
-                userProfile.full_name.replace(/\s+/g, '') : 
-                'Student';
-            this.headerProfilePhoto.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(nameForAvatar)}&background=667eea&color=fff&size=100`;
+        if (!this.headerProfilePhoto) {
+            console.error('❌ Header profile photo element not found!');
+            return;
         }
+        
+        const profile = userProfile || window.currentUserProfile || window.db?.currentUserProfile;
+        
+        // Determine photo URL
+        let photoUrl = null;
+        
+        if (profile?.profile_photo_url) {
+            photoUrl = profile.profile_photo_url;
+            console.log('📸 Using profile_photo_url from database');
+        } else if (profile?.passport_url) {
+            photoUrl = profile.passport_url;
+            console.log('📸 Using passport_url from database');
+        } else if (localStorage.getItem('userProfilePhoto')) {
+            photoUrl = localStorage.getItem('userProfilePhoto');
+            console.log('📸 Using cached photo from localStorage');
+        } else if (profile?.full_name) {
+            const nameForAvatar = profile.full_name.replace(/\s+/g, '+');
+            photoUrl = `https://ui-avatars.com/api/?name=${nameForAvatar}&background=667eea&color=fff&size=100`;
+            console.log('📸 Using generated avatar');
+        } else {
+            photoUrl = 'https://ui-avatars.com/api/?name=Student&background=667eea&color=fff&size=100';
+            console.log('📸 Using default avatar');
+        }
+        
+        console.log('📸 Photo URL:', photoUrl);
+        
+        // Update header photo
+        this.headerProfilePhoto.src = photoUrl;
+        this.headerProfilePhoto.onerror = () => {
+            console.error('❌ Failed to load profile photo, using fallback');
+            const fallbackUrl = 'https://ui-avatars.com/api/?name=Student&background=667eea&color=fff&size=100';
+            this.headerProfilePhoto.src = fallbackUrl;
+        };
+        
+        // Update all other profile photos
+        const allProfilePhotos = document.querySelectorAll('img[alt*="profile"], img[alt*="avatar"], .user-avatar img, .profile-photo');
+        allProfilePhotos.forEach(img => {
+            if (img !== this.headerProfilePhoto) {
+                img.src = photoUrl;
+            }
+        });
+        
+        console.log('✅ Profile photo updated');
     }
     
     showTranscriptModal(examData) {
@@ -557,7 +733,7 @@ class UIModule {
         const status = examData.total >= 50 ? 'PASS' : 'FAIL';
         const statusElement = document.getElementById('transcript-status');
         statusElement.textContent = status;
-        statusElement.style.color = status === 'PASS' ? 'var(--color-success)' : 'var(--color-alert)';
+        statusElement.style.color = status === 'PASS' ? '#10B981' : '#EF4444';
         
         this.transcriptModal.style.display = 'flex';
     }
@@ -596,24 +772,24 @@ class UIModule {
         }
     }
     
-    // FIXED: Logout method without GitHub errors
     async logout() {
         try {
-            // Clean logout confirmation
+            // Confirmation
             const confirmLogout = confirm('Are you sure you want to logout?\n\nYou will need to sign in again to access the portal.');
             if (!confirmLogout) return;
             
             this.showToast('Logging out...', 'info', 1500);
             
-            // Clear local storage items
-            const itemsToKeep = ['nchsm_last_tab', 'userProfilePhoto'];
+            // Clear data
+            localStorage.removeItem(this.storageKey);
+            const keepKeys = ['userProfilePhoto'];
+            
             Object.keys(localStorage).forEach(key => {
-                if (!itemsToKeep.includes(key)) {
+                if (!keepKeys.includes(key)) {
                     localStorage.removeItem(key);
                 }
             });
             
-            // Clear session storage
             sessionStorage.clear();
             
             // Clear cookies
@@ -621,14 +797,20 @@ class UIModule {
                 document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
             });
             
+            // Sign out from Supabase
+            if (window.db && window.db.supabase) {
+                await window.db.supabase.auth.signOut();
+            }
+            
             // Wait for toast to show
             await new Promise(resolve => setTimeout(resolve, 1000));
             
-            // Redirect to login page
+            // Redirect to login
             window.location.href = 'login.html';
             
         } catch (error) {
-            // Fallback redirect if something fails
+            console.error('Logout error:', error);
+            // Fallback redirect
             setTimeout(() => {
                 window.location.href = 'login.html';
             }, 500);
@@ -676,7 +858,6 @@ class UIModule {
             online: navigator.onLine,
             screenSize: `${window.innerWidth} x ${window.innerHeight}`,
             currentTab: this.currentTab,
-            lastLogin: localStorage.getItem('last_login') || 'Not available',
             localStorageSize: `${JSON.stringify(localStorage).length} bytes`
         };
         
@@ -687,7 +868,6 @@ class UIModule {
             Online: ${info.online ? 'Yes' : 'No'}
             Screen: ${info.screenSize}
             Current Tab: ${info.currentTab}
-            Last Login: ${info.lastLogin}
             Storage: ${info.localStorageSize}
             
             © 2026 Nakuru College of Health Sciences and Management
@@ -697,6 +877,8 @@ class UIModule {
     }
     
     initializeDateTime() {
+        console.log('⏰ Initializing date/time...');
+        
         const updateHeaderTime = () => {
             if (this.headerTime) {
                 const now = new Date();
@@ -752,20 +934,18 @@ class UIModule {
         updateOnlineStatus();
     }
     
-    debugTabState() {
-        // Debug function - kept but without console.log
-        // Can be called manually if needed
-    }
-    
+    // Force show tab (emergency fallback)
     forceShowTab(tabId) {
+        console.log(`🚨 Force showing tab: ${tabId}`);
+        
         this.tabs.forEach(tab => {
-            tab.style.setProperty('display', 'none', 'important');
+            tab.style.display = 'none';
             tab.classList.remove('active');
         });
         
         const selectedTab = document.getElementById(tabId);
         if (selectedTab) {
-            selectedTab.style.setProperty('display', 'block', 'important');
+            selectedTab.style.display = 'block';
             selectedTab.classList.add('active');
         }
         
@@ -777,6 +957,9 @@ class UIModule {
         });
         
         this.currentTab = tabId;
+        this.updatePageTitle(tabId);
+        
+        console.log(`✅ Force show complete: ${tabId}`);
     }
 }
 
@@ -794,30 +977,38 @@ window.refreshDashboard = () => ui.refreshDashboard();
 
 // Add cleanup function
 window.addEventListener('DOMContentLoaded', function() {
-    // Remove any inline display styles that might have been set before
-    document.querySelectorAll('.tab-content').forEach(tab => {
-        tab.style.removeProperty('display');
-    });
+    console.log('📱 DOM fully loaded');
     
-    // Call debug after a short delay
-    setTimeout(() => {
-        const dashboardTab = document.getElementById('dashboard');
-        if (dashboardTab && dashboardTab.offsetHeight === 0) {
-            ui.forceShowTab('dashboard');
-        }
-    }, 100);
-});
-
-// Event listener for profile photo updates
-window.addEventListener('profilePhotoUpdated', function(e) {
-    if (ui && ui.headerProfilePhoto && e.detail && e.detail.photoUrl) {
-        ui.headerProfilePhoto.src = e.detail.photoUrl;
+    // Ensure UI is ready
+    if (!window.ui) {
+        window.ui = new UIModule();
     }
 });
 
-// Event listener for user profile updates
-window.addEventListener('userProfileUpdated', function(e) {
-    if (ui && e.detail && e.detail.userProfile) {
-        ui.updateHeaderInfo(e.detail.userProfile);
+// Event listeners for user updates
+document.addEventListener('profilePhotoUpdated', function(e) {
+    console.log('📸 Profile photo updated event received', e.detail);
+    if (window.ui && e.detail && e.detail.photoUrl) {
+        localStorage.setItem('userProfilePhoto', e.detail.photoUrl);
+        window.ui.updateProfilePhoto();
     }
 });
+
+document.addEventListener('userProfileUpdated', function(e) {
+    console.log('👤 User profile updated event received', e.detail);
+    if (window.ui && e.detail && e.detail.userProfile) {
+        window.ui.updateAllUserInfo(e.detail.userProfile);
+    }
+});
+
+// Debug helper
+window.debugUI = function() {
+    console.log('🔍 UI Debug Info:');
+    console.log('- Current tab:', window.ui?.currentTab);
+    console.log('- Profile trigger:', !!window.ui?.profileTrigger);
+    console.log('- Dropdown menu:', !!window.ui?.dropdownMenu);
+    console.log('- Header photo:', window.ui?.headerProfilePhoto?.src);
+    console.log('- Header name:', window.ui?.headerUserName?.textContent);
+};
+
+console.log('✅ UI Module loaded successfully');
