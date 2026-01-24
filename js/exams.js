@@ -1,8 +1,8 @@
-// js/exams.js - COMPLETE UPDATED VERSION with KRCHN & TVET filtering
+// js/exams.js - COMPLETE UPDATED VERSION with KRCHN & TVET filtering + DASHBOARD INTEGRATION
 (function() {
     'use strict';
     
-    console.log('✅ exams.js - Updated Version with KRCHN & TVET Support');
+    console.log('✅ exams.js - Updated Version with KRCHN & TVET Support + Dashboard Integration');
     
     class ExamsModule {
         constructor() {
@@ -22,6 +22,16 @@
             this.term = this.userProfile.term || 'Term 1'; // For TVET programs
             this.userId = window.db?.currentUserId;
             
+            // Dashboard metrics storage
+            this.dashboardMetrics = {
+                upcomingExam: 'None',
+                gradedExams: 0,
+                averageScore: 0,
+                bestScore: 0,
+                passRate: 0,
+                lastUpdated: null
+            };
+            
             // Check if TVET program
             this.isTVET = this.isTVETProgram(this.program);
             console.log(`🎓 Program: ${this.program}, TVET: ${this.isTVET}, Block: ${this.block}, Term: ${this.term}`);
@@ -33,6 +43,9 @@
             this.initializeEventListeners();
             this.updateFilterButtons();
             this.loadExams();
+            
+            // 🔥 NEW: Initialize dashboard connection
+            this.setupDashboardConnection();
         }
         
         isTVETProgram(program) {
@@ -84,6 +97,23 @@
             console.log('✅ Cached all DOM elements');
         }
         
+        setupDashboardConnection() {
+            console.log('📊 Setting up dashboard connection...');
+            
+            // Listen for dashboard ready event
+            document.addEventListener('dashboardReady', () => {
+                console.log('📊 Dashboard ready - updating exams metrics');
+                this.updateDashboardMetrics();
+            });
+            
+            // Also update dashboard when exams are loaded
+            const originalLoadExams = this.loadExams.bind(this);
+            this.loadExams = async function() {
+                await originalLoadExams();
+                this.updateDashboardMetrics();
+            };
+        }
+        
         initializeEventListeners() {
             console.log('🔌 Setting up event listeners...');
             
@@ -122,6 +152,16 @@
                     e.preventDefault();
                     console.log('📋 Transcript button clicked');
                     this.showTranscriptModal();
+                });
+            }
+            
+            // 🔥 NEW: Dashboard update button (if exists)
+            const dashboardUpdateBtn = document.getElementById('update-dashboard-from-exams');
+            if (dashboardUpdateBtn) {
+                dashboardUpdateBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    console.log('📊 Dashboard update button clicked');
+                    this.updateDashboardMetrics(true);
                 });
             }
             
@@ -412,6 +452,167 @@
                     });
                 }
             });
+        }
+        
+        // 🔥 NEW: Calculate dashboard metrics from exams data
+        calculateDashboardMetrics() {
+            try {
+                // Count completed (graded) exams
+                const completedExams = this.allExams.filter(exam => exam.isCompleted && exam.totalPercentage !== null);
+                const totalCompleted = completedExams.length;
+                
+                // Default metrics if no exams
+                const defaultMetrics = {
+                    upcomingExam: 'None',
+                    gradedExams: 0,
+                    averageScore: 0,
+                    bestScore: 0,
+                    passRate: 0,
+                    lastUpdated: new Date().toISOString()
+                };
+                
+                if (totalCompleted === 0) {
+                    // Still check for upcoming exams even if none completed
+                    const upcomingExams = this.allExams
+                        .filter(exam => !exam.isCompleted && exam.examDate)
+                        .sort((a, b) => a.examDate - b.examDate);
+                    
+                    if (upcomingExams.length > 0) {
+                        const nextExam = upcomingExams[0];
+                        const diffDays = this.calculateDaysUntil(nextExam.examDate);
+                        defaultMetrics.upcomingExam = this.formatUpcomingExam(diffDays);
+                    }
+                    
+                    this.dashboardMetrics = defaultMetrics;
+                    return defaultMetrics;
+                }
+                
+                // Calculate upcoming exam (first non-completed exam by date)
+                const upcomingExams = this.allExams
+                    .filter(exam => !exam.isCompleted && exam.examDate)
+                    .sort((a, b) => a.examDate - b.examDate);
+                
+                let upcomingExamText = 'None';
+                if (upcomingExams.length > 0) {
+                    const nextExam = upcomingExams[0];
+                    const diffDays = this.calculateDaysUntil(nextExam.examDate);
+                    upcomingExamText = this.formatUpcomingExam(diffDays);
+                }
+                
+                // Calculate performance metrics
+                const scores = completedExams.map(exam => exam.totalPercentage);
+                const averageScore = scores.reduce((sum, score) => sum + score, 0) / scores.length;
+                const bestScore = Math.max(...scores);
+                const passedExams = completedExams.filter(exam => exam.totalPercentage >= 60).length;
+                const passRate = (passedExams / totalCompleted) * 100;
+                
+                const metrics = {
+                    upcomingExam: upcomingExamText,
+                    gradedExams: totalCompleted,
+                    averageScore: Math.round(averageScore * 10) / 10, // Round to 1 decimal
+                    bestScore: Math.round(bestScore * 10) / 10,
+                    passRate: Math.round(passRate),
+                    lastUpdated: new Date().toISOString()
+                };
+                
+                this.dashboardMetrics = metrics;
+                console.log('📊 Calculated dashboard metrics from exams:', metrics);
+                
+                return metrics;
+            } catch (error) {
+                console.error('❌ Error calculating dashboard metrics:', error);
+                return this.dashboardMetrics;
+            }
+        }
+        
+        calculateDaysUntil(examDate) {
+            if (!examDate) return null;
+            const today = new Date();
+            const diffTime = examDate - today;
+            return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        }
+        
+        formatUpcomingExam(diffDays) {
+            if (diffDays === null) return 'None';
+            if (diffDays <= 0) return 'Today';
+            if (diffDays <= 7) return `${diffDays}d`;
+            if (diffDays <= 30) return `${Math.floor(diffDays / 7)}w`;
+            return 'Future';
+        }
+        
+        // 🔥 NEW: Update dashboard with exams metrics
+        updateDashboardMetrics(forceUpdate = false) {
+            try {
+                const metrics = this.calculateDashboardMetrics();
+                
+                // Save to localStorage for dashboard access
+                localStorage.setItem('exams_dashboard_metrics', JSON.stringify(metrics));
+                
+                // Dispatch event for real-time dashboard updates
+                this.dispatchExamsUpdateEvent(metrics);
+                
+                // Force dashboard refresh if requested
+                if (forceUpdate && window.dashboardModule) {
+                    window.dashboardModule.loadExamMetrics();
+                    console.log('📊 Forced dashboard refresh');
+                }
+                
+                console.log('📊 Dashboard metrics updated from exams:', metrics);
+                
+                return metrics;
+            } catch (error) {
+                console.error('❌ Error updating dashboard metrics:', error);
+            }
+        }
+        
+        // 🔥 NEW: Dispatch event for dashboard updates
+        dispatchExamsUpdateEvent(metrics) {
+            const event = new CustomEvent('examsMetricsUpdated', {
+                detail: {
+                    upcomingExam: metrics.upcomingExam,
+                    gradedExams: metrics.gradedExams,
+                    averageScore: metrics.averageScore,
+                    bestScore: metrics.bestScore,
+                    passRate: metrics.passRate,
+                    lastUpdated: metrics.lastUpdated
+                }
+            });
+            document.dispatchEvent(event);
+        }
+        
+        // 🔥 NEW: Static method for dashboard to get metrics
+        static getDashboardMetrics() {
+            try {
+                const savedMetrics = localStorage.getItem('exams_dashboard_metrics');
+                if (savedMetrics) {
+                    const parsed = JSON.parse(savedMetrics);
+                    // Check if metrics are recent (within last 10 minutes)
+                    if (parsed.lastUpdated && 
+                        (new Date() - new Date(parsed.lastUpdated)) < 600000) {
+                        return parsed;
+                    }
+                }
+                
+                // Return default if no recent data
+                return {
+                    upcomingExam: 'None',
+                    gradedExams: 0,
+                    averageScore: 0,
+                    bestScore: 0,
+                    passRate: 0,
+                    lastUpdated: new Date().toISOString()
+                };
+            } catch (error) {
+                console.error('❌ Error getting exams dashboard metrics:', error);
+                return {
+                    upcomingExam: 'None',
+                    gradedExams: 0,
+                    averageScore: 0,
+                    bestScore: 0,
+                    passRate: 0,
+                    lastUpdated: new Date().toISOString()
+                };
+            }
         }
         
         displayTables() {
@@ -1232,6 +1433,11 @@
             this.loadExams();
         }
         
+        // 🔥 NEW: Public method to get dashboard metrics
+        getDashboardData() {
+            return this.calculateDashboardMetrics();
+        }
+        
         // Debug method
         debugGrading() {
             console.log('🔍 DEBUG: Current grading state');
@@ -1258,6 +1464,14 @@
     
     // Create global instance
     window.examsModule = new ExamsModule();
+    
+    // 🔥 NEW: Global function for dashboard to get exams metrics
+    window.getExamsDashboardMetrics = function() {
+        if (window.examsModule) {
+            return window.examsModule.getDashboardData();
+        }
+        return ExamsModule.getDashboardMetrics();
+    };
     
     // Global functions for backward compatibility
     window.loadExams = () => {
@@ -1295,5 +1509,5 @@
         }
     };
     
-    console.log('✅ Exams module ready with KRCHN & TVET support!');
+    console.log('✅ Exams module ready with KRCHN & TVET support + Dashboard Integration!');
 })();
