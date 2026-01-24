@@ -73,33 +73,26 @@ class DashboardModule {
             // Time (in footer)
             currentDateTime: document.getElementById('currentDateTime'),
             
-            // HEADER elements - Comprehensive list
+            // HEADER elements - EXACT selectors from your HTML
             headerTime: document.getElementById('header-time'),
             headerUserName: document.getElementById('header-user-name'),
             headerProfilePhoto: document.getElementById('header-profile-photo'),
             headerRefresh: document.getElementById('header-refresh'),
             
-            // Additional common header selectors
+            // Mobile menu toggle
+            mobileMenuToggle: document.getElementById('mobile-menu-toggle'),
+            
+            // NEW: Profile dropdown elements from your HTML
+            profileInfo: document.querySelector('.profile-info'),
+            profileName: document.querySelector('.profile-info .profile-name'),
+            profileRole: document.querySelector('.profile-info .profile-role'),
+            dropdownIcon: document.querySelector('.dropdown-icon'),
+            
+            // Additional common selectors
             studentNameDisplay: document.getElementById('student-name-display'),
             userDisplayName: document.getElementById('user-display-name'),
-            profileName: document.getElementById('profile-name'),
             userName: document.getElementById('user-name'),
-            studentProfilePic: document.getElementById('student-profile-pic'),
-            userProfileImg: document.getElementById('user-profile-img'),
-            profileImage: document.getElementById('profile-image'),
-            
-            // Common CSS class selectors
-            headerProfileName: document.querySelector('.header-profile-name'),
-            headerUserInfo: document.querySelector('.header-user-info'),
-            navProfile: document.querySelector('.nav-profile'),
-            userAvatar: document.querySelector('.user-avatar'),
-            avatarImg: document.querySelector('.avatar-img'),
-            userDropdownName: document.querySelector('.user-dropdown-name'),
-            
-            // Dropdown menu elements
-            dropdownMenu: document.querySelector('.dropdown-menu'),
-            userMenu: document.querySelector('.user-menu'),
-            profileDropdown: document.querySelector('.profile-dropdown')
+            studentProfilePic: document.getElementById('student-profile-pic')
         };
         
         // Log found elements
@@ -202,22 +195,22 @@ class DashboardModule {
     
     // 🔥 NEW: Initialize dropdown behavior
     setupDropdownBehavior() {
-        console.log('📋 Setting up dropdown behavior...');
+        console.log('📋 Setting up dropdown behavior for your HTML...');
         
-        // Find dropdown elements
-        this.profileTrigger = document.querySelector('.profile-trigger');
-        this.dropdownMenu = document.querySelector('.dropdown-menu');
+        // Find dropdown elements EXACTLY as in your HTML
+        this.profileTrigger = document.querySelector('.user-profile-dropdown .profile-trigger');
+        this.dropdownMenu = document.querySelector('.user-profile-dropdown .dropdown-menu');
         
         console.log('📋 Found dropdown elements:');
-        console.log('- Profile trigger:', !!this.profileTrigger);
-        console.log('- Dropdown menu:', !!this.dropdownMenu);
+        console.log('- Profile trigger (.profile-trigger):', !!this.profileTrigger);
+        console.log('- Dropdown menu (.dropdown-menu):', !!this.dropdownMenu);
         
         if (!this.profileTrigger || !this.dropdownMenu) {
             console.error('❌ Dropdown elements not found!');
             return;
         }
         
-        // CRITICAL: Remove inline style first
+        // CRITICAL: Start with dropdown hidden
         this.dropdownMenu.style.display = 'none';
         
         // Add click handler to profile trigger
@@ -228,8 +221,16 @@ class DashboardModule {
             console.log('👤 Profile dropdown clicked');
             
             // Toggle dropdown visibility
-            const isVisible = this.dropdownMenu.style.display === 'block';
-            this.dropdownMenu.style.display = isVisible ? 'none' : 'block';
+            const isVisible = this.dropdownMenu.style.display === 'block' || 
+                             this.dropdownMenu.classList.contains('show');
+            
+            if (isVisible) {
+                this.dropdownMenu.style.display = 'none';
+                this.dropdownMenu.classList.remove('show');
+            } else {
+                this.dropdownMenu.style.display = 'block';
+                this.dropdownMenu.classList.add('show');
+            }
             
             // Rotate arrow icon
             const arrow = this.profileTrigger.querySelector('.dropdown-icon');
@@ -245,6 +246,7 @@ class DashboardModule {
         document.addEventListener('click', (e) => {
             if (!this.profileTrigger.contains(e.target) && !this.dropdownMenu.contains(e.target)) {
                 this.dropdownMenu.style.display = 'none';
+                this.dropdownMenu.classList.remove('show');
                 
                 // Reset arrow rotation
                 const arrow = this.profileTrigger.querySelector('.dropdown-icon');
@@ -260,8 +262,21 @@ class DashboardModule {
             profileLink.addEventListener('click', (e) => {
                 e.preventDefault();
                 console.log('👤 Profile link clicked in dropdown');
-                this.switchToTab('profile');
+                
+                // Navigate to profile tab
+                if (window.ui && window.ui.showTab) {
+                    window.ui.showTab('profile');
+                } else {
+                    // Fallback
+                    const event = new CustomEvent('switchTab', {
+                        detail: { tab: 'profile' }
+                    });
+                    document.dispatchEvent(event);
+                }
+                
+                // Close dropdown
                 this.dropdownMenu.style.display = 'none';
+                this.dropdownMenu.classList.remove('show');
                 
                 // Reset arrow
                 const arrow = this.profileTrigger.querySelector('.dropdown-icon');
@@ -281,7 +296,17 @@ class DashboardModule {
             });
         }
         
-        console.log('✅ Dropdown behavior setup complete');
+        // Add hover effects for better UX
+        this.profileTrigger.addEventListener('mouseenter', () => {
+            this.profileTrigger.style.cursor = 'pointer';
+            this.profileTrigger.style.backgroundColor = 'rgba(0,0,0,0.05)';
+        });
+        
+        this.profileTrigger.addEventListener('mouseleave', () => {
+            this.profileTrigger.style.backgroundColor = '';
+        });
+        
+        console.log('✅ Dropdown behavior setup complete for your HTML structure');
     }
     
     // 🔥 NEW: Add logout method
@@ -457,33 +482,27 @@ class DashboardModule {
         }
         
         const studentName = this.userProfile.full_name || 'Student';
+        const studentRole = 'Student'; // Hardcoded or could be from profile
         console.log('📝 Setting name to:', studentName);
         
-        // Update ALL possible name elements
-        const nameSelectors = [
-            '#header-user-name',
-            '#student-name-display',
-            '#user-display-name',
-            '#profile-name',
-            '#user-name',
-            '.header-profile-name',
-            '.user-dropdown-name',
-            '.nav-profile .user-name',
-            '.dropdown-menu .user-name',
-            '[data-user-name]'
-        ];
+        // Update header user name (EXACT selector from your HTML)
+        if (this.elements.headerUserName) {
+            this.elements.headerUserName.textContent = studentName;
+            console.log('✅ Updated header-user-name');
+        }
         
-        nameSelectors.forEach(selector => {
-            try {
-                const elements = document.querySelectorAll(selector);
-                elements.forEach(element => {
-                    element.textContent = studentName;
-                    console.log(`✅ Set name on: ${selector}`);
-                });
-            } catch (error) {
-                console.log(`⚠️ Could not set name on ${selector}:`, error.message);
-            }
-        });
+        // Update profile name in the dropdown trigger (profile-info)
+        const profileNameElement = document.querySelector('.profile-info .profile-name');
+        if (profileNameElement) {
+            profileNameElement.textContent = studentName;
+            console.log('✅ Updated .profile-info .profile-name');
+        }
+        
+        // Update profile role
+        const profileRoleElement = document.querySelector('.profile-info .profile-role');
+        if (profileRoleElement) {
+            profileRoleElement.textContent = studentRole;
+        }
         
         // Update profile photos
         this.updateAllProfilePhotos();
@@ -502,7 +521,7 @@ class DashboardModule {
             this.elements.welcomeHeader.textContent = `${getGreeting(hour)}, ${studentName}!`;
         }
         
-        // Update dropdown menu with user info if it exists
+        // Update dropdown menu with user info if elements exist
         this.updateDropdownMenu();
     }
     
@@ -534,16 +553,16 @@ class DashboardModule {
         // Update ALL possible photo elements
         const photoSelectors = [
             '#header-profile-photo',
-            '#student-profile-pic',
-            '#user-profile-img',
-            '#profile-image',
+            '.profile-avatar.round',
             '.user-avatar',
             '.avatar-img',
             '.profile-photo',
-            '[data-user-avatar]',
             'img[alt*="profile"]',
             'img[alt*="avatar"]',
-            '.nav-profile img'
+            '.nav-profile img',
+            // Add more specific selectors for your structure
+            '.user-profile-dropdown img',
+            '.profile-trigger img'
         ];
         
         photoSelectors.forEach(selector => {
@@ -551,6 +570,11 @@ class DashboardModule {
                 const elements = document.querySelectorAll(selector);
                 elements.forEach(element => {
                     element.src = finalPhotoUrl;
+                    // Ensure round styling is preserved
+                    if (selector.includes('round') || element.classList.contains('round')) {
+                        element.style.borderRadius = '50%';
+                        element.style.objectFit = 'cover';
+                    }
                     element.onerror = () => {
                         // Fallback to generated avatar if image fails to load
                         const nameForAvatar = this.userProfile?.full_name?.replace(/\s+/g, '+') || 'Student';
