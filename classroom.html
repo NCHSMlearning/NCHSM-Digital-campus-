@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduMeet - Online Classroom</title>
+    
+    <!-- External Libraries -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Supabase -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    
+    <style>
+    /* Role-specific styles */
+    .teacher-only { display: none; }
+    .student-only { display: none; }
+
+    /* Show based on data-role attribute */
+    body[data-role="lecturer"] .teacher-only,
+    body[data-role="admin"] .teacher-only,
+    body[data-role="superadmin"] .teacher-only {
+        display: block !important;
+    }
+    
+    body[data-role="student"] .student-only {
+        display: block !important;
+    }
+
+    /* Role badges */
+    .user-role {
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    /* Role badge colors */
+    .lecturer-badge {
+        color: #4f46e5;
+        background-color: #e0e7ff;
+    }
+
+    .student-badge {
+        color: #10b981;
+        background-color: #d1fae5;
+    }
+
+    .admin-badge {
+        color: #ef4444;
+        background-color: #fee2e2;
+    }
+
+    .superadmin-badge {
+        color: #8b5cf6;
+        background-color: #ede9fe;
+    }
+</style>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="loading-screen">
+        <div class="spinner"></div>
+        <p>Loading EduMeet...</p>
+    </div>
+
+    <!-- Auth Screens -->
+    <div id="auth-screens" class="hidden">
+        <!-- Login Screen -->
+        <div id="login-screen" class="auth-screen">
+            <div class="auth-container">
+                <div class="logo">
+                    <i class="fas fa-graduation-cap"></i>
+                    <h1>EduMeet</h1>
+                </div>
+                
+                <div class="auth-tabs">
+                    <button class="tab-btn active" onclick="showAuthTab('login')">Login</button>
+                    <button class="tab-btn" onclick="showAuthTab('register')">Register</button>
+                </div>
+
+                <!-- Login Form -->
+                <div id="login-form" class="auth-form active">
+                    <div class="form-group">
+                        <label for="login-email">Email</label>
+                        <input type="email" id="login-email" placeholder="Enter your email">
+                    </div>
+                    <div class="form-group">
+                        <label for="login-password">Password</label>
+                        <input type="password" id="login-password" placeholder="Enter your password">
+                    </div>
+                    <button onclick="login()" class="btn btn-primary">Sign In</button>
+                    
+                    <div class="auth-footer">
+                        <a href="#" onclick="forgotPassword()">Forgot password?</a>
+                    </div>
+                </div>
+
+                <!-- Register Form -->
+                <div id="register-form" class="auth-form">
+                    <div class="form-group">
+                        <label for="register-name">Full Name</label>
+                        <input type="text" id="register-name" placeholder="Enter your full name">
+                    </div>
+                    <div class="form-group">
+                        <label for="register-email">Email</label>
+                        <input type="email" id="register-email" placeholder="Enter your email">
+                    </div>
+                    <div class="form-group">
+                        <label for="register-password">Password</label>
+                        <input type="password" id="register-password" placeholder="Create a password">
+                    </div>
+                    <div class="form-group">
+                        <label for="register-role">Role</label>
+                        <select id="register-role">
+                            <option value="student">Student</option>
+                            <option value="teacher">Teacher</option>
+                        </select>
+                    </div>
+                    <button onclick="register()" class="btn btn-primary">Create Account</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App (Hidden Initially) -->
+    <div id="main-app" class="hidden">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-left">
+                <div class="logo">
+                    <i class="fas fa-graduation-cap"></i>
+                    <h1>EduMeet</h1>
+                </div>
+                <div class="user-info" id="user-info">
+                    <span class="user-name">Loading...</span>
+                    <span class="user-role">Loading...</span>
+                </div>
+            </div>
+            
+            <div class="header-center">
+                <div class="current-class" id="current-class">
+                    <i class="fas fa-chalkboard-teacher"></i>
+                    <span>No Active Class</span>
+                </div>
+            </div>
+            
+            <div class="header-right">
+                <button class="btn-icon" onclick="toggleNotifications()">
+                    <i class="fas fa-bell"></i>
+                    <span class="notification-badge hidden" id="notification-count">0</span>
+                </button>
+                <button class="btn-icon" onclick="openSettings()">
+                    <i class="fas fa-cog"></i>
+                </button>
+                <button class="btn btn-danger" onclick="logout()">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <nav class="sidebar-nav">
+                    <a href="#" class="nav-item active" onclick="showSection('dashboard')">
+                        <i class="fas fa-home"></i>
+                        <span>Dashboard</span>
+                    </a>
+                    <a href="#" class="nav-item" onclick="showSection('classroom')">
+                        <i class="fas fa-video"></i>
+                        <span>Classroom</span>
+                    </a>
+                    <a href="#" class="nav-item" onclick="showSection('assignments')">
+                        <i class="fas fa-tasks"></i>
+                        <span>Assignments</span>
+                    </a>
+                    <a href="#" class="nav-item" onclick="showSection('grades')">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Grades</span>
+                    </a>
+                    <a href="#" class="nav-item" onclick="showSection('calendar')">
+                        <i class="fas fa-calendar-alt"></i>
+                        <span>Calendar</span>
+                    </a>
+                    <a href="#" class="nav-item" onclick="showSection('resources')">
+                        <i class="fas fa-folder-open"></i>
+                        <span>Resources</span>
+                    </a>
+                    <a href="#" class="nav-item" onclick="showSection('discussions')">
+                        <i class="fas fa-comments"></i>
+                        <span>Discussions</span>
+                    </a>
+                </nav>
+                
+                <div class="online-users" id="online-users">
+                    <h3><i class="fas fa-users"></i> Online</h3>
+                    <div class="user-list" id="user-list">
+                        <!-- Online users will appear here -->
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Content Area -->
+            <main class="content-area">
+                <!-- Dashboard -->
+                <section id="dashboard-section" class="content-section active">
+                    <div class="section-header">
+                        <h2>Dashboard</h2>
+                        <div class="actions">
+                            <button class="btn btn-primary teacher-only" onclick="createClassModal()">
+                                <i class="fas fa-plus"></i> New Class
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="dashboard-grid">
+                        <!-- Stats Cards -->
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-icon" style="background: #4f46e5;">
+                                    <i class="fas fa-calendar-check"></i>
+                                </div>
+                                <div class="stat-info">
+                                    <h3 id="attendance-rate">--</h3>
+                                    <p>Attendance Rate</p>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon" style="background: #10b981;">
+                                    <i class="fas fa-tasks"></i>
+                                </div>
+                                <div class="stat-info">
+                                    <h3 id="assignments-due">--</h3>
+                                    <p>Assignments Due</p>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon" style="background: #f59e0b;">
+                                    <i class="fas fa-chart-line"></i>
+                                </div>
+                                <div class="stat-info">
+                                    <h3 id="avg-grade">--</h3>
+                                    <p>Average Grade</p>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon" style="background: #ef4444;">
+                                    <i class="fas fa-clock"></i>
+                                </div>
+                                <div class="stat-info">
+                                    <h3 id="next-class">--</h3>
+                                    <p>Next Class</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Upcoming Classes -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h3><i class="fas fa-chalkboard-teacher"></i> Upcoming Classes</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="class-list" id="upcoming-classes">
+                                    <div class="empty-state">
+                                        <i class="fas fa-calendar-alt"></i>
+                                        <p>No upcoming classes</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Recent Announcements -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h3><i class="fas fa-bullhorn"></i> Recent Announcements</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="announcement-list" id="announcements">
+                                    <div class="empty-state">
+                                        <i class="fas fa-bullhorn"></i>
+                                        <p>No announcements</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Quick Actions -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h3><i class="fas fa-bolt"></i> Quick Actions</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="quick-actions" id="quick-actions">
+                                    <!-- Will be populated by JavaScript based on role -->
+                                    <div class="empty-state">
+                                        <i class="fas fa-bolt"></i>
+                                        <p>Loading quick actions...</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Classroom -->
+                <section id="classroom-section" class="content-section">
+                    <div class="section-header">
+                        <h2>Virtual Classroom</h2>
+                        <div class="actions">
+                            <button class="btn btn-primary" id="join-class-btn" onclick="joinClass()">
+                                <i class="fas fa-video"></i> Join Class
+                            </button>
+                            <button class="btn btn-secondary teacher-only" id="create-class-btn" onclick="createClassModal()">
+                                <i class="fas fa-plus"></i> Create Class
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="classroom-container" id="classroom-container">
+                        <!-- Classroom will load here -->
+                    </div>
+                </section>
+
+                <!-- Assignments -->
+                <section id="assignments-section" class="content-section">
+                    <div class="section-header">
+                        <h2>Assignments</h2>
+                        <div class="actions">
+                            <button class="btn btn-primary teacher-only" onclick="createAssignment()">
+                                <i class="fas fa-plus"></i> New Assignment
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="assignments-container">
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>Your Assignments</h3>
+                                <div class="filter-tabs">
+                                    <button class="filter-btn active" onclick="filterAssignments('all')">All</button>
+                                    <button class="filter-btn" onclick="filterAssignments('pending')">Pending</button>
+                                    <button class="filter-btn" onclick="filterAssignments('submitted')">Submitted</button>
+                                    <button class="filter-btn" onclick="filterAssignments('graded')">Graded</button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="assignment-list" id="assignment-list">
+                                    <div class="empty-state">
+                                        <i class="fas fa-tasks"></i>
+                                        <p>No assignments yet</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Grades -->
+                <section id="grades-section" class="content-section">
+                    <div class="section-header">
+                        <h2>Grades</h2>
+                        <div class="actions">
+                            <button class="btn btn-secondary teacher-only" onclick="exportGrades()">
+                                <i class="fas fa-download"></i> Export
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="grades-container">
+                        <div class="grade-overview">
+                            <div class="grade-card">
+                                <h3>Overall Grade</h3>
+                                <div class="grade-circle" id="overall-grade">--</div>
+                                <p>Average: <span id="average-score">--</span></p>
+                            </div>
+                            <div class="grade-stats">
+                                <div class="stat-item">
+                                    <span class="stat-label">Assignments</span>
+                                    <span class="stat-value" id="total-assignments">--</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">Submitted</span>
+                                    <span class="stat-value" id="submitted-count">--</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">Average</span>
+                                    <span class="stat-value" id="average-grade">--</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>Grade Breakdown</h3>
+                            </div>
+                            <div class="card-body">
+                                <table class="grade-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Assignment</th>
+                                            <th>Due Date</th>
+                                            <th>Status</th>
+                                            <th>Score</th>
+                                            <th>Grade</th>
+                                            <th>Feedback</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="grades-table">
+                                        <tr>
+                                            <td colspan="6" class="empty-state">
+                                                No grades available
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Calendar -->
+                <section id="calendar-section" class="content-section">
+                    <div class="section-header">
+                        <h2>Calendar</h2>
+                        <div class="actions">
+                            <button class="btn btn-primary teacher-only" onclick="addCalendarEvent()">
+                                <i class="fas fa-plus"></i> Add Event
+                            </button>
+                        </div>
+                    </div>
+                    <div class="calendar-container" id="calendar">
+                        <div class="empty-state">
+                            <i class="fas fa-calendar-alt"></i>
+                            <p>Calendar will be displayed here</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Resources -->
+                <section id="resources-section" class="content-section">
+                    <div class="section-header">
+                        <h2>Resources</h2>
+                        <div class="actions">
+                            <button class="btn btn-primary teacher-only" onclick="uploadResource()">
+                                <i class="fas fa-upload"></i> Upload
+                            </button>
+                        </div>
+                    </div>
+                    <div class="resources-grid" id="resources-grid">
+                        <div class="empty-state">
+                            <i class="fas fa-folder-open"></i>
+                            <p>No resources uploaded yet</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Discussions -->
+                <section id="discussions-section" class="content-section">
+                    <div class="section-header">
+                        <h2>Discussions</h2>
+                        <div class="actions">
+                            <button class="btn btn-primary teacher-only" onclick="createDiscussion()">
+                                <i class="fas fa-plus"></i> New Discussion
+                            </button>
+                        </div>
+                    </div>
+                    <div class="discussions-container" id="discussions-container">
+                        <div class="empty-state">
+                            <i class="fas fa-comments"></i>
+                            <p>No discussions yet</p>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+
+        <!-- Modals -->
+        <div id="modals">
+            <!-- Create Class Modal -->
+            <div id="create-class-modal" class="modal hidden">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>Create New Class</h3>
+                        <button class="modal-close" onclick="closeModal('create-class-modal')">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label>Class Name</label>
+                            <input type="text" id="class-name" placeholder="e.g., Mathematics 101">
+                        </div>
+                        <div class="form-group">
+                            <label>Description</label>
+                            <textarea id="class-description" rows="3"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Schedule</label>
+                            <input type="datetime-local" id="class-schedule">
+                        </div>
+                        <div class="form-group">
+                            <label>Duration (minutes)</label>
+                            <input type="number" id="class-duration" value="60" min="15" max="240">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" onclick="closeModal('create-class-modal')">Cancel</button>
+                        <button class="btn btn-primary" onclick="saveClass()">Create Class</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Create Assignment Modal -->
+            <div id="create-assignment-modal" class="modal hidden">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>Create Assignment</h3>
+                        <button class="modal-close" onclick="closeModal('create-assignment-modal')">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label>Assignment Title</label>
+                            <input type="text" id="assignment-title" placeholder="Enter assignment title">
+                        </div>
+                        <div class="form-group">
+                            <label>Description</label>
+                            <textarea id="assignment-description" rows="3"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Due Date</label>
+                            <input type="datetime-local" id="assignment-due-date">
+                        </div>
+                        <div class="form-group">
+                            <label>Max Points</label>
+                            <input type="number" id="assignment-points" value="100">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" onclick="closeModal('create-assignment-modal')">Cancel</button>
+                        <button class="btn btn-primary" onclick="saveAssignment()">Create Assignment</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notifications Panel -->
+        <div id="notifications-panel" class="notifications-panel hidden">
+            <div class="notifications-header">
+                <h3><i class="fas fa-bell"></i> Notifications</h3>
+                <button class="btn-icon" onclick="toggleNotifications()">&times;</button>
+            </div>
+            <div class="notifications-list" id="notifications-list">
+                <div class="empty-state">
+                    <i class="fas fa-bell-slash"></i>
+                    <p>No notifications</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <script src="js/supabase-config.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/dashboard.js"></script>
+    <script src="js/assignments.js"></script>
+    <script src="js/classroom.js"></script>
+    <script src="js/main.js"></script>
+    
+   <script>
+    // Global function to update role-based UI
+    window.updateRoleBasedUI = function() {
+        const role = window.AppState?.userRole || 'student';
+        
+        // Update body data-role attribute
+        document.body.setAttribute('data-role', role);
+        
+        // Update role badge
+        const roleElements = document.querySelectorAll('.user-role');
+        roleElements.forEach(el => {
+            // Display role name
+            const displayName = role === 'lecturer' ? 'Lecturer' :
+                               role === 'superadmin' ? 'Super Admin' :
+                               role.charAt(0).toUpperCase() + role.slice(1);
+            el.textContent = displayName;
+            
+            // Add correct badge class
+            el.className = 'user-role';
+            el.classList.add(`${role}-badge`);
+        });
+    };
+</script>
+</body>
+</html>
