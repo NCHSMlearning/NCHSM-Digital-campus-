@@ -1,4 +1,4 @@
-// js/ui.js - User Interface Management
+// js/ui.js - COMPLETE FIXED User Interface Management
 class UIModule {
     constructor() {
         console.log('🚀 Initializing UIModule...');
@@ -47,22 +47,36 @@ class UIModule {
         console.log('- Header user name:', !!this.headerUserName);
         console.log('- Header profile photo:', !!this.headerProfilePhoto);
         
+        // Supabase client reference
+        this.supabase = window.supabase || window.db?.supabase;
+        
         // Initialize
         this.initialize();
     }
     
-    initialize() {
+    async initialize() {
         console.log('🔧 Initializing UI...');
-        this.cleanupInitialStyles();  // MUST CALL FIRST
+        
+        // 1. Clean up styles FIRST
+        this.cleanupInitialStyles();
+        
+        // 2. Setup all event listeners
         this.setupEventListeners();
+        
+        // 3. Setup navigation
         this.setupHashNavigation();
         this.setupTabChangeListener();
+        
+        // 4. Initialize utilities
         this.initializeDateTime();
         this.setupOfflineIndicator();
         this.setupMobileMenuVisibility();
         this.loadLastTab();
         
-        console.log('✅ UIModule initialized');
+        // 5. Load initial user data
+        await this.loadInitialUserData();
+        
+        console.log('✅ UIModule fully initialized');
     }
     
     // CRITICAL FIX: Remove all inline styles first
@@ -89,7 +103,89 @@ class UIModule {
             this.dropdownMenu.classList.remove('show');
         }
         
+        // Ensure sidebar starts closed on mobile
+        if (window.innerWidth <= 768 && this.sidebar) {
+            this.sidebar.classList.remove('active');
+        }
+        
         console.log('✅ Styles cleaned up');
+    }
+    
+    // NEW: Load initial user data from database
+    async loadInitialUserData() {
+        console.log('👤 Loading initial user data...');
+        
+        try {
+            // Wait for user to be authenticated
+            if (!window.currentUserId && window.db?.currentUserId) {
+                window.currentUserId = window.db.currentUserId;
+            }
+            
+            if (!window.currentUserProfile && window.db?.currentUserProfile) {
+                window.currentUserProfile = window.db.currentUserProfile;
+            }
+            
+            if (window.currentUserId && this.supabase) {
+                // Load fresh data from consolidated_user_profiles_table
+                const userData = await this.loadUserFromDatabase(window.currentUserId);
+                if (userData) {
+                    this.updateAllUserInfo(userData);
+                } else {
+                    // Fallback to cached data
+                    this.updateAllUserInfo(window.currentUserProfile);
+                }
+            } else if (window.currentUserProfile) {
+                // Use cached profile
+                this.updateAllUserInfo(window.currentUserProfile);
+            }
+        } catch (error) {
+            console.error('❌ Error loading initial user data:', error);
+        }
+    }
+    
+    // NEW: Load user data from consolidated_user_profiles_table
+    async loadUserFromDatabase(userId) {
+        try {
+            if (!this.supabase) {
+                console.warn('⚠️ No Supabase client available');
+                return null;
+            }
+            
+            console.log('🔍 Querying consolidated_user_profiles_table for user:', userId);
+            
+            const { data: userProfile, error } = await this.supabase
+                .from('consolidated_user_profiles_table')
+                .select('*')
+                .or(`id.eq.${userId},user_id.eq.${userId}`)
+                .maybeSingle();
+            
+            if (error) {
+                console.error('❌ Database query error:', error);
+                return null;
+            }
+            
+            if (userProfile) {
+                console.log('✅ User data loaded from database:', {
+                    id: userProfile.id,
+                    name: userProfile.full_name,
+                    email: userProfile.email,
+                    studentId: userProfile.student_id
+                });
+                
+                // Cache the data
+                window.currentUserProfile = userProfile;
+                localStorage.setItem('currentUserProfile', JSON.stringify(userProfile));
+                
+                return userProfile;
+            }
+            
+            console.warn('⚠️ No user profile found in database for ID:', userId);
+            return null;
+            
+        } catch (error) {
+            console.error('❌ Error loading user from database:', error);
+            return null;
+        }
     }
     
     setupMobileMenuVisibility() {
@@ -354,7 +450,7 @@ class UIModule {
         console.log('✅ All event listeners setup complete');
     }
     
-    // FIXED PROFILE DROPDOWN - This was the main problem
+    // FIXED PROFILE DROPDOWN - Works with your HTML
     setupProfileDropdown() {
         console.log('📋 Setting up profile dropdown...');
         
@@ -621,55 +717,119 @@ class UIModule {
         return colors[type] || colors.info;
     }
     
-    // CRITICAL FIX: Update ALL user information
-    updateAllUserInfo(userProfile = null) {
-        console.log('👤 Updating all user info...');
-        
-        const profile = userProfile || window.currentUserProfile || window.db?.currentUserProfile;
-        
-        if (!profile) {
-            console.warn('⚠️ No user profile available');
-            return;
-        }
-        
-        console.log('📝 User profile:', profile);
-        
-        const studentName = profile.full_name || 'Student';
-        
-        // Update header user name
-        if (this.headerUserName) {
-            this.headerUserName.textContent = studentName;
-            console.log(`✅ Header name updated: ${studentName}`);
-        }
-        
-        // Update profile photo
-        this.updateProfilePhoto(profile);
-        
-        // Update welcome header
-        const welcomeHeader = document.getElementById('welcome-header');
-        if (welcomeHeader) {
-            const getGreeting = (hour) => {
-                if (hour >= 5 && hour < 12) return "Good Morning";
-                if (hour >= 12 && hour < 17) return "Good Afternoon";
-                if (hour >= 17 && hour < 21) return "Good Evening";
-                return "Good Night";
-            };
+    // UPDATED: Get profile photo from database
+    async getProfilePhotoFromDatabase(userId) {
+        try {
+            if (!this.supabase) {
+                console.warn('⚠️ No Supabase client available');
+                return null;
+            }
             
-            const now = new Date();
-            const hour = now.getHours();
-            welcomeHeader.textContent = `${getGreeting(hour)}, ${studentName}!`;
+            // Query consolidated_user_profiles_table
+            const { data: userProfile, error } = await this.supabase
+                .from('consolidated_user_profiles_table')
+                .select('passport_url, full_name')
+                .or(`id.eq.${userId},user_id.eq.${userId}`)
+                .maybeSingle();
+            
+            if (error) {
+                console.error('❌ Error fetching user profile:', error);
+                return null;
+            }
+            
+            if (!userProfile) {
+                console.warn('⚠️ No user profile found for ID:', userId);
+                return null;
+            }
+            
+            // Check if passport_url exists and is valid
+            if (userProfile.passport_url && userProfile.passport_url.trim() !== '') {
+                console.log('📸 Found passport_url in database:', userProfile.passport_url);
+                return userProfile.passport_url;
+            }
+            
+            // Fallback to generated avatar
+            const nameForAvatar = userProfile.full_name 
+                ? userProfile.full_name.replace(/\s+/g, '+')
+                : 'Student';
+            
+            const avatarUrl = `https://ui-avatars.com/api/?name=${nameForAvatar}&background=667eea&color=fff&size=100`;
+            console.log('📸 Using generated avatar for:', userProfile.full_name);
+            
+            return avatarUrl;
+            
+        } catch (error) {
+            console.error('❌ Error getting profile photo:', error);
+            return null;
         }
-        
-        // Update profile page name field
-        const profileName = document.getElementById('profile-name');
-        if (profileName && !profileName.value) {
-            profileName.value = studentName;
-        }
-        
-        console.log('✅ All user info updated');
     }
     
-    updateProfilePhoto(userProfile = null) {
+    // UPDATED: Update ALL user information
+    async updateAllUserInfo(userProfile = null) {
+        console.log('👤 Updating all user info...');
+        
+        try {
+            let profile = userProfile || window.currentUserProfile || window.db?.currentUserProfile;
+            
+            if (!profile && window.currentUserId) {
+                // Load from database
+                profile = await this.loadUserFromDatabase(window.currentUserId);
+            }
+            
+            if (!profile) {
+                console.warn('⚠️ No user profile available');
+                return;
+            }
+            
+            console.log('📝 User profile data:', profile);
+            
+            const studentName = profile.full_name || 'Student';
+            
+            // Update header user name
+            if (this.headerUserName) {
+                this.headerUserName.textContent = studentName;
+                console.log(`✅ Header name updated: ${studentName}`);
+            }
+            
+            // Update profile photo
+            await this.updateProfilePhoto(profile);
+            
+            // Update welcome header
+            const welcomeHeader = document.getElementById('welcome-header');
+            if (welcomeHeader) {
+                const getGreeting = (hour) => {
+                    if (hour >= 5 && hour < 12) return "Good Morning";
+                    if (hour >= 12 && hour < 17) return "Good Afternoon";
+                    if (hour >= 17 && hour < 21) return "Good Evening";
+                    return "Good Night";
+                };
+                
+                const now = new Date();
+                const hour = now.getHours();
+                welcomeHeader.textContent = `${getGreeting(hour)}, ${studentName}!`;
+            }
+            
+            // Update profile page name field
+            const profileName = document.getElementById('profile-name');
+            if (profileName && !profileName.value && studentName !== 'Student') {
+                profileName.value = studentName;
+            }
+            
+            // Update student ID in profile page
+            const studentIdField = document.getElementById('profile-student-id');
+            if (studentIdField && profile.student_id && !studentIdField.value) {
+                studentIdField.value = profile.student_id;
+            }
+            
+            console.log('✅ All user info updated');
+            
+        } catch (error) {
+            console.error('❌ Error updating user info:', error);
+        }
+    }
+    
+    // UPDATED: Profile photo loading with database priority
+    async updateProfilePhoto(userProfile = null) {
         console.log('📸 Updating profile photo...');
         
         if (!this.headerProfilePhoto) {
@@ -677,48 +837,71 @@ class UIModule {
             return;
         }
         
-        const profile = userProfile || window.currentUserProfile || window.db?.currentUserProfile;
-        
-        // Determine photo URL
-        let photoUrl = null;
-        
-        if (profile?.profile_photo_url) {
-            photoUrl = profile.profile_photo_url;
-            console.log('📸 Using profile_photo_url from database');
-        } else if (profile?.passport_url) {
-            photoUrl = profile.passport_url;
-            console.log('📸 Using passport_url from database');
-        } else if (localStorage.getItem('userProfilePhoto')) {
-            photoUrl = localStorage.getItem('userProfilePhoto');
-            console.log('📸 Using cached photo from localStorage');
-        } else if (profile?.full_name) {
-            const nameForAvatar = profile.full_name.replace(/\s+/g, '+');
-            photoUrl = `https://ui-avatars.com/api/?name=${nameForAvatar}&background=667eea&color=fff&size=100`;
-            console.log('📸 Using generated avatar');
-        } else {
-            photoUrl = 'https://ui-avatars.com/api/?name=Student&background=667eea&color=fff&size=100';
-            console.log('📸 Using default avatar');
-        }
-        
-        console.log('📸 Photo URL:', photoUrl);
-        
-        // Update header photo
-        this.headerProfilePhoto.src = photoUrl;
-        this.headerProfilePhoto.onerror = () => {
-            console.error('❌ Failed to load profile photo, using fallback');
+        try {
+            let photoUrl = null;
+            
+            // 1. Try to get from database first
+            if (window.currentUserId) {
+                photoUrl = await this.getProfilePhotoFromDatabase(window.currentUserId);
+            }
+            
+            // 2. Try from userProfile object
+            if (!photoUrl && userProfile?.passport_url) {
+                photoUrl = userProfile.passport_url;
+                console.log('📸 Using passport_url from userProfile object');
+            }
+            
+            // 3. Try localStorage cache
+            if (!photoUrl) {
+                photoUrl = localStorage.getItem('userProfilePhoto');
+                if (photoUrl) {
+                    console.log('📸 Using cached photo from localStorage');
+                }
+            }
+            
+            // 4. Generate from name
+            if (!photoUrl && userProfile?.full_name) {
+                const nameForAvatar = userProfile.full_name.replace(/\s+/g, '+');
+                photoUrl = `https://ui-avatars.com/api/?name=${nameForAvatar}&background=667eea&color=fff&size=100`;
+                console.log('📸 Generated avatar from name:', userProfile.full_name);
+            }
+            
+            // 5. Default avatar
+            if (!photoUrl) {
+                photoUrl = 'https://ui-avatars.com/api/?name=Student&background=667eea&color=fff&size=100';
+                console.log('📸 Using default avatar');
+            }
+            
+            console.log('📸 Final photo URL:', photoUrl);
+            
+            // Update header photo
+            this.headerProfilePhoto.src = photoUrl;
+            this.headerProfilePhoto.onerror = () => {
+                console.error('❌ Failed to load profile photo, using fallback');
+                const fallbackUrl = 'https://ui-avatars.com/api/?name=Student&background=667eea&color=fff&size=100';
+                this.headerProfilePhoto.src = fallbackUrl;
+            };
+            
+            // Update all other profile photos
+            const allProfilePhotos = document.querySelectorAll('img[alt*="profile"], img[alt*="avatar"], .user-avatar img, .profile-photo');
+            allProfilePhotos.forEach(img => {
+                if (img !== this.headerProfilePhoto && img.tagName === 'IMG') {
+                    img.src = photoUrl;
+                }
+            });
+            
+            // Cache the photo URL
+            localStorage.setItem('userProfilePhoto', photoUrl);
+            
+            console.log('✅ Profile photo updated');
+            
+        } catch (error) {
+            console.error('❌ Error updating profile photo:', error);
+            
+            // Emergency fallback
             const fallbackUrl = 'https://ui-avatars.com/api/?name=Student&background=667eea&color=fff&size=100';
             this.headerProfilePhoto.src = fallbackUrl;
-        };
-        
-        // Update all other profile photos
-        const allProfilePhotos = document.querySelectorAll('img[alt*="profile"], img[alt*="avatar"], .user-avatar img, .profile-photo');
-        allProfilePhotos.forEach(img => {
-            if (img !== this.headerProfilePhoto) {
-                img.src = photoUrl;
-            }
-        });
-        
-        console.log('✅ Profile photo updated');
+        }
     }
     
     showTranscriptModal(examData) {
@@ -782,10 +965,13 @@ class UIModule {
             
             // Clear data
             localStorage.removeItem(this.storageKey);
-            const keepKeys = ['userProfilePhoto'];
+            localStorage.removeItem('userProfilePhoto');
+            localStorage.removeItem('currentUserProfile');
             
+            // Clear all localStorage except maybe some settings
+            const keysToKeep = [];
             Object.keys(localStorage).forEach(key => {
-                if (!keepKeys.includes(key)) {
+                if (!keysToKeep.includes(key)) {
                     localStorage.removeItem(key);
                 }
             });
@@ -798,7 +984,9 @@ class UIModule {
             });
             
             // Sign out from Supabase
-            if (window.db && window.db.supabase) {
+            if (window.supabase) {
+                await window.supabase.auth.signOut();
+            } else if (window.db?.supabase) {
                 await window.db.supabase.auth.signOut();
             }
             
@@ -832,12 +1020,13 @@ class UIModule {
                 this.showToast('Cache API not supported', 'warning');
             }
             
-            const keepKeys = ['nchsm_last_tab', 'userProfilePhoto'];
+            // Clear localStorage but keep essential data
+            const keysToKeep = ['nchsm_last_tab', 'userProfilePhoto', 'currentUserProfile'];
             const keysToRemove = [];
             
             for (let i = 0; i < localStorage.length; i++) {
                 const key = localStorage.key(i);
-                if (!keepKeys.includes(key)) {
+                if (!keysToKeep.includes(key)) {
                     keysToRemove.push(key);
                 }
             }
@@ -858,7 +1047,8 @@ class UIModule {
             online: navigator.onLine,
             screenSize: `${window.innerWidth} x ${window.innerHeight}`,
             currentTab: this.currentTab,
-            localStorageSize: `${JSON.stringify(localStorage).length} bytes`
+            localStorageSize: `${JSON.stringify(localStorage).length} bytes`,
+            currentUser: window.currentUserProfile?.full_name || 'Not logged in'
         };
         
         const infoText = `
@@ -868,6 +1058,7 @@ class UIModule {
             Online: ${info.online ? 'Yes' : 'No'}
             Screen: ${info.screenSize}
             Current Tab: ${info.currentTab}
+            User: ${info.currentUser}
             Storage: ${info.localStorageSize}
             
             © 2026 Nakuru College of Health Sciences and Management
@@ -967,36 +1158,55 @@ class UIModule {
 window.ui = new UIModule();
 
 // Export functions to window for backward compatibility
-window.toggleMenu = () => ui.toggleMenu();
-window.closeMenu = () => ui.closeMenu();
-window.showTab = (tabId) => ui.showTab(tabId);
-window.showToast = (message, type, duration) => ui.showToast(message, type, duration);
-window.logout = () => ui.logout();
-window.forceShowTab = (tabId) => ui.forceShowTab(tabId);
-window.refreshDashboard = () => ui.refreshDashboard();
+window.toggleMenu = () => window.ui?.toggleMenu();
+window.closeMenu = () => window.ui?.closeMenu();
+window.showTab = (tabId) => window.ui?.showTab(tabId);
+window.showToast = (message, type, duration) => window.ui?.showToast(message, type, duration);
+window.logout = () => window.ui?.logout();
+window.forceShowTab = (tabId) => window.ui?.forceShowTab(tabId);
+window.refreshDashboard = () => window.ui?.refreshDashboard();
 
-// Add cleanup function
-window.addEventListener('DOMContentLoaded', function() {
+// Event listeners for user updates
+document.addEventListener('DOMContentLoaded', function() {
     console.log('📱 DOM fully loaded');
     
     // Ensure UI is ready
     if (!window.ui) {
         window.ui = new UIModule();
     }
+    
+    // Load user data after a short delay
+    setTimeout(() => {
+        if (window.ui && window.currentUserId) {
+            window.ui.updateAllUserInfo();
+        }
+    }, 1000);
 });
 
-// Event listeners for user updates
-document.addEventListener('profilePhotoUpdated', function(e) {
-    console.log('📸 Profile photo updated event received', e.detail);
-    if (window.ui && e.detail && e.detail.photoUrl) {
-        localStorage.setItem('userProfilePhoto', e.detail.photoUrl);
-        window.ui.updateProfilePhoto();
+// Listen for app ready event
+document.addEventListener('appReady', function(e) {
+    console.log('🎉 App ready event received', e.detail);
+    
+    if (window.ui && e.detail?.userProfile) {
+        window.ui.updateAllUserInfo(e.detail.userProfile);
     }
 });
 
+// Listen for profile photo updates
+document.addEventListener('profilePhotoUpdated', function(e) {
+    console.log('📸 Profile photo updated event received', e.detail);
+    if (window.ui && e.detail?.photoUrl) {
+        localStorage.setItem('userProfilePhoto', e.detail.photoUrl);
+        if (window.ui.headerProfilePhoto) {
+            window.ui.headerProfilePhoto.src = e.detail.photoUrl;
+        }
+    }
+});
+
+// Listen for user profile updates
 document.addEventListener('userProfileUpdated', function(e) {
     console.log('👤 User profile updated event received', e.detail);
-    if (window.ui && e.detail && e.detail.userProfile) {
+    if (window.ui && e.detail?.userProfile) {
         window.ui.updateAllUserInfo(e.detail.userProfile);
     }
 });
@@ -1009,6 +1219,8 @@ window.debugUI = function() {
     console.log('- Dropdown menu:', !!window.ui?.dropdownMenu);
     console.log('- Header photo:', window.ui?.headerProfilePhoto?.src);
     console.log('- Header name:', window.ui?.headerUserName?.textContent);
+    console.log('- Current user ID:', window.currentUserId);
+    console.log('- Current user profile:', window.currentUserProfile);
 };
 
 console.log('✅ UI Module loaded successfully');
