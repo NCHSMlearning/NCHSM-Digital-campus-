@@ -1,0 +1,1069 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Exam - NCHSM</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* --- General and Reset --- */
+body { 
+    font-family: 'Poppins', sans-serif; 
+    background: #F8F9FA; 
+    margin: 0; 
+    padding: 10px; 
+}
+/* Disable all forms of selection and context menu for lockdown */
+body, .exam-main, .question, .options, .options li, label { user-select: none; }
+h1 { text-align: center; color: #073450; margin-bottom: 20px; font-size: 1.8rem; } 
+
+/* --- Main Layout: Grid for Sidebar + Content (Mobile First) --- */
+.page-wrapper {
+    display: grid;
+    grid-template-columns: 1fr; 
+    gap: 20px; 
+    max-width: 1200px;
+    margin: 10px auto;
+}
+.sidebar {
+    background: #fff;
+    padding: 15px; 
+    border-radius: 12px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.05);
+    position: static; 
+    top: 20px;
+    height: auto;
+    order: 2; 
+}
+.exam-main {
+    background: #fff;
+    padding: 20px; 
+    border-radius: 12px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.05);
+    order: 1; 
+}
+
+/* --- Desktop/Tablet Layout Adjustment (Min-width 992px) --- */
+@media (min-width: 992px) {
+    body { padding: 20px; }
+    .page-wrapper {
+        grid-template-columns: 300px 1fr; 
+        gap: 30px;
+        margin: 20px auto;
+    }
+    .sidebar {
+        position: sticky; 
+        order: 1; 
+    }
+    .exam-main {
+        order: 2;
+        padding: 30px;
+    }
+}
+
+/* --- Question Status Table Styling (Responsive Grid) --- */
+.status-title { font-size: 1.1rem; font-weight: 600; color: #073450; margin-bottom: 15px; border-bottom: 2px solid #E2E8F0; padding-bottom: 10px; }
+#question-status-table {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr); 
+    gap: 8px; 
+}
+@media (min-width: 576px) {
+    #question-status-table {
+        grid-template-columns: repeat(8, 1fr); 
+    }
+}
+@media (min-width: 992px) {
+    #question-status-table {
+        grid-template-columns: repeat(4, 1fr); 
+        gap: 10px;
+    }
+}
+.status-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 45px; 
+    background: #F1F5F9;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #475569;
+    border: 2px solid #F1F5F9;
+}
+.status-item:hover { background: #E2E8F0; transform: translateY(-1px); }
+.status-item.current { border-color: #0A3D62; background: #E2E8F0; font-weight: 700; }
+.status-item.answered { background: #D1FAE5; border-color: #38A169; color: #064E3B; }
+.status-item.answered::after { content: '✓'; font-size: 1.2rem; margin-top: 3px; color: #38A169; }
+.status-number { font-weight: 600; }
+.status-item.answered .status-number { display: none; }
+
+/* --- Exam Header/Timer --- */
+#timer { font-weight: 600; font-size: 1.1rem; margin-bottom: 15px; color: #DC2626; } 
+
+/* --- Progress and Question Content --- */
+#progress { margin-top: 15px; margin-bottom: 10px; color: #475569; font-weight: 500;}
+.progress-bar { height: 8px; margin-bottom: 20px; } 
+.progress-fill { height: 100%; background: #38A169; width: 0%; transition: width 0.3s ease; }
+.question-area { border-top: 1px solid #E2E8F0; padding-top: 20px; }
+.question { margin-bottom: 20px; font-size: 1rem; font-weight: 600; color: #073450;}
+.options { list-style: none; padding: 0; }
+.options li { margin: 10px 0; }
+.options label { padding: 10px; border-radius: 6px;}
+
+/* --- Navigation Buttons (Streamlined) --- */
+#nav-buttons {
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column; 
+    gap: 10px;
+    padding-top: 15px;
+    border-top: 1px solid #E2E8F0;
+}
+.left-nav {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    justify-content: space-around; 
+}
+.left-nav button { flex-grow: 1; margin: 0 10px; } 
+
+button {
+    padding: 10px 20px; 
+    font-size: 0.9rem;
+    border-radius: 6px;
+    transition: all 0.2s ease; 
+}
+@media (min-width: 576px) {
+    #nav-buttons {
+        flex-direction: row; 
+        justify-content: space-between;
+    }
+    .left-nav { width: auto; }
+    .left-nav button { margin-right: 10px; }
+    button { padding: 12px 25px; font-size: 1rem; }
+}
+button#submit-exam-btn { background: #DC2626; }
+button#submit-exam-btn:hover:enabled { background: #B91C1C; }
+button:disabled { background: #94D3A2; cursor: not-allowed; opacity: 0.6; }
+button:hover:enabled { background: #2F855A; }
+button#submit-exam-btn:disabled { background: #FCA5A5; cursor: not-allowed; box-shadow: none; }
+
+/* --- Messages --- */
+#answer-saved { 
+    padding: 6px 12px; 
+    margin: 10px auto 20px; 
+}
+#error { color: #EF4444; font-weight: 600; text-align: center; margin-bottom: 15px; }
+#final-msg { text-align: center; font-size: 1.3rem; color: #064E3B; margin-top: 30px; }
+
+/* --- Success Screen Styles --- */
+.success-screen {
+    text-align: center;
+    padding: 40px 20px;
+    background: linear-gradient(135deg, #D1FAE5 0%, #F0FDF4 100%);
+    border-radius: 16px;
+    margin: 20px auto;
+    max-width: 600px;
+    border: 3px solid #38A169;
+    box-shadow: 0 10px 40px rgba(5, 150, 105, 0.1);
+}
+
+.success-icon {
+    font-size: 4rem;
+    margin-bottom: 20px;
+    animation: successPulse 2s infinite;
+}
+
+@keyframes successPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+.success-title {
+    color: #064E3B;
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 15px;
+}
+
+.success-message {
+    color: #047857;
+    font-size: 1.1rem;
+    margin-bottom: 25px;
+    line-height: 1.6;
+}
+
+.redirect-countdown {
+    background: white;
+    padding: 15px;
+    border-radius: 10px;
+    margin: 20px auto;
+    max-width: 300px;
+    border: 2px solid #38A169;
+    font-weight: 600;
+    color: #065F46;
+}
+
+.redirect-countdown span {
+    color: #DC2626;
+    font-size: 1.3rem;
+    font-weight: 700;
+}
+
+.dashboard-link {
+    display: inline-block;
+    margin-top: 20px;
+    padding: 12px 30px;
+    background: #38A169;
+    color: white;
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: 600;
+    transition: all 0.3s;
+}
+
+.dashboard-link:hover {
+    background: #2F855A;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(5, 150, 105, 0.3);
+}
+
+/* =============================== */
+/* --- SUBMISSION MODAL STYLES --- */
+/* =============================== */
+.modal-overlay {
+    display: none; /* Hidden by default */
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    z-index: 1000; /* Ensure it's above everything */
+    align-items: center;
+    justify-content: center;
+}
+.modal-content {
+    background: #fff;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    width: 90%;
+    max-width: 400px;
+    text-align: center;
+}
+.modal-content h3 {
+    color: #DC2626;
+    margin-top: 0;
+    font-weight: 700;
+}
+.modal-content p {
+    color: #475569;
+    font-size: 1rem;
+    margin-bottom: 25px;
+    font-weight: 500;
+}
+.modal-buttons button {
+    margin: 0 10px;
+    padding: 10px 20px;
+    font-weight: 600;
+    width: 120px; /* Uniform width */
+}
+#confirm-submit-btn {
+    background: #38A169;
+}
+#confirm-submit-btn:hover {
+    background: #2F855A;
+}
+#cancel-submit-btn {
+    background: #E5E7EB;
+    color: #475569;
+}
+#cancel-submit-btn:hover {
+    background: #D1D5DB;
+}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<div class="page-wrapper">
+    <div class="sidebar">
+        <div id="timer">Loading timer...</div>
+        <div class="status-title">Question Status</div>
+        <div id="question-status-table"></div>
+    </div>
+    
+    <div class="exam-main">
+        <h1 id="exam-title">Examination</h1>
+        
+        <div id="progress">
+            Question <span id="current">0</span> of <span id="total">0</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+        
+        <div class="question-area">
+            <div id="error"></div>
+            
+            <div id="exam-container">Loading question...</div>
+            
+            <div id="answer-saved">✅ Answer saved!</div>
+
+            <div id="nav-buttons">
+                <div class="left-nav">
+                    <button id="prev-btn" disabled>Previous</button>
+                    <button id="next-btn" disabled>Next</button>
+                </div>
+                <button id="submit-exam-btn" disabled>Submit Exam</button>
+            </div>
+        </div>
+        
+        <div id="final-msg"></div>
+    </div>
+</div>
+
+<!-- Submission Confirmation Modal -->
+<div id="submission-modal" class="modal-overlay">
+    <div class="modal-content">
+        <h3>Final Submission Confirmation</h3>
+        <p id="modal-message">You are about to submit your exam. Please confirm.</p>
+        <div class="modal-buttons">
+            <button id="cancel-submit-btn">Cancel</button>
+            <button id="confirm-submit-btn">Confirm & Submit</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// --- IMPROVED AUTHENTICATION SYSTEM ---
+function getStudentId() {
+    const params = new URLSearchParams(window.location.search);
+    const urlUserId = params.get('user_id');
+    const localUserId = localStorage.getItem('currentUserId');
+    return urlUserId || localUserId;
+}
+
+let studentId = getStudentId();
+
+if (!studentId) {
+    const returnUrl = encodeURIComponent(window.location.href);
+    window.location.href = `exam_login.html?return=${returnUrl}`;
+} else {
+    console.log('✅ Student authenticated:', studentId.substring(0, 8) + '...');
+    localStorage.setItem('currentUserId', studentId);
+}
+
+// --- CONFIGURATION ---
+const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
+const REDIRECT_URL = 'https://nakurucollegeofhealthelearning.site/exam_dashboard.html';
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const params = new URLSearchParams(window.location.search);
+const EXAM_ID = params.get('exam_id');
+let questions = [], currentIndex = 0, duration = 0, timerInterval;
+let answers = {}; 
+let hasAnsweredAtLeastOne = false; 
+let examType = 'EXAM';
+
+// References to the modal elements
+const submissionModal = document.getElementById('submission-modal');
+const confirmSubmitBtn = document.getElementById('confirm-submit-btn');
+const cancelSubmitBtn = document.getElementById('cancel-submit-btn');
+const finalSubmitBtn = document.getElementById('submit-exam-btn');
+const modalMessage = document.getElementById('modal-message');
+const examTitle = document.getElementById('exam-title');
+
+// --- BEFOREUNLOAD HANDLER FUNCTION ---
+function beforeUnloadHandler(e) {
+    e.preventDefault();
+    e.returnValue = 'Warning: Leaving this page will submit your exam immediately.';
+    return e.returnValue;
+}
+
+// --- NAVIGATION FUNCTIONS ---
+function nextQuestion() {
+    if (currentIndex < questions.length - 1) {
+        renderQuestion(currentIndex + 1);
+    }
+}
+
+function prevQuestion() {
+    if (currentIndex > 0) {
+        renderQuestion(currentIndex - 1);
+    }
+}
+
+// --- CORE FUNCTIONS ---
+async function initExam() {
+    try {
+        const { data: examData, error: examError } = await sb.from('exams')
+            .select('exam_name, exam_type, duration_minutes')
+            .eq('id', EXAM_ID)
+            .single();
+        
+        if (examError || !examData) { 
+            document.getElementById('error').innerText = 'Exam not found'; 
+            return; 
+        }
+        
+        duration = examData.duration_minutes || 30;
+        examType = examData.exam_type || 'EXAM';
+        examTitle.textContent = examData.exam_name || 'Examination';
+        
+        const { data: qData, error: qError } = await sb.from('exam_questions')
+            .select('*')
+            .eq('exam_id', EXAM_ID)
+            .order('question_number', { ascending: true });
+        
+        if (qError || !qData || qData.length === 0) { 
+            document.getElementById('exam-container').innerText = 'No questions found or failed to load questions.'; 
+            console.error('Question error:', qError);
+            return; 
+        }
+        
+        questions = qData;
+
+        await loadExistingAnswers();
+        
+        document.getElementById('total').innerText = questions.length;
+        renderQuestionStatusTable();
+        renderQuestion();
+        startTimer(duration * 60);
+        lockDown();
+        
+    } catch (err) { 
+        console.error('Init exam error:', err); 
+        document.getElementById('error').innerText = 'Error loading exam.'; 
+    }
+}
+
+async function loadExistingAnswers() {
+    try {
+        const { data, error } = await sb.from('exam_grades')
+            .select('question_id, selected_answer')
+            .eq('student_id', studentId)
+            .eq('exam_id', EXAM_ID);
+
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+            data.forEach(item => {
+                if (item.selected_answer !== null) { 
+                    answers[item.question_id] = item.selected_answer;
+                    hasAnsweredAtLeastOne = true;
+                }
+            });
+            if (hasAnsweredAtLeastOne) {
+                finalSubmitBtn.disabled = false;
+            }
+        }
+    } catch (err) {
+        console.error('Error loading existing answers:', err);
+    }
+}
+
+function renderQuestion(index = currentIndex) {
+    currentIndex = index;
+    const q = questions[currentIndex];
+    const container = document.getElementById('exam-container');
+    
+    container.innerHTML = '';
+
+    const questionText = document.createElement('div');
+    questionText.className = 'question';
+    questionText.innerHTML = `<p><strong>Q${currentIndex + 1}:</strong> ${q.question_text}</p>`;
+    container.appendChild(questionText);
+
+    const ul = document.createElement('ul'); 
+    ul.className = 'options';
+    
+    const options = [];
+    if (q.option_a) options.push({ letter: 'A', text: q.option_a });
+    if (q.option_b) options.push({ letter: 'B', text: q.option_b });
+    if (q.option_c) options.push({ letter: 'C', text: q.option_c });
+    if (q.option_d) options.push({ letter: 'D', text: q.option_d });
+    
+    options.forEach(opt => {
+        const li = document.createElement('li');
+        const radioId = `q${q.id}_${opt.letter}`;
+        
+        li.innerHTML = `
+            <label for="${radioId}">
+                <input type="radio" id="${radioId}" name="question_${q.id}" value="${opt.letter}">
+                <span>${opt.letter}: ${opt.text}</span>
+            </label>
+        `; 
+        ul.appendChild(li);
+    });
+    container.appendChild(ul);
+
+    if (answers[q.id]) {
+        const input = document.querySelector(`input[name="question_${q.id}"][value="${answers[q.id]}"]`);
+        if (input) {
+            input.checked = true;
+            console.log(`Restored answer for Q${currentIndex + 1}: ${answers[q.id]}`);
+        }
+    }
+
+    updateProgressUI();
+    updateStatusTableUI();
+
+    setTimeout(() => {
+        const radios = document.querySelectorAll(`input[name="question_${q.id}"]`);
+        console.log(`Found ${radios.length} radio buttons for Q${currentIndex + 1}`);
+        
+        radios.forEach(r => {
+            const newRadio = r.cloneNode(true);
+            r.parentNode.replaceChild(newRadio, r);
+            
+            newRadio.addEventListener('change', (event) => { 
+                console.log(`Radio changed for Q${currentIndex + 1}:`, event.target.value);
+                saveAnswer(event.target.value);
+                if (!hasAnsweredAtLeastOne) {
+                    hasAnsweredAtLeastOne = true;
+                    finalSubmitBtn.disabled = false;
+                }
+                updateStatusTableUI(); 
+            });
+        });
+    }, 100);
+}
+
+// --- STATUS TABLE FUNCTIONS ---
+function renderQuestionStatusTable() {
+    const tableEl = document.getElementById('question-status-table');
+    tableEl.innerHTML = '';
+
+    questions.forEach((q, index) => {
+        const item = document.createElement('div');
+        item.className = 'status-item';
+        item.id = `q-status-${index}`;
+        item.innerHTML = `<span class="status-number">${index + 1}</span>`;
+        item.dataset.index = index;
+        
+        item.addEventListener('click', () => {
+            renderQuestion(index);
+        });
+
+        tableEl.appendChild(item);
+    });
+
+    updateStatusTableUI();
+}
+
+function updateStatusTableUI() {
+    questions.forEach((q, index) => {
+        const item = document.getElementById(`q-status-${index}`);
+        if (!item) return;
+
+        item.classList.remove('current', 'answered');
+
+        if (index === currentIndex) {
+            item.classList.add('current');
+        }
+
+        if (answers.hasOwnProperty(q.id) && answers[q.id] !== null) {
+            item.classList.add('answered');
+        }
+    });
+}
+
+function updateProgressUI() {
+    document.getElementById('current').innerText = currentIndex + 1;
+    
+    const progressPercent = ((currentIndex + 1) / questions.length) * 100;
+    document.getElementById('progress-fill').style.width = progressPercent + '%';
+
+    document.getElementById('prev-btn').disabled = (currentIndex === 0);
+    document.getElementById('next-btn').disabled = (currentIndex === questions.length - 1);
+}
+
+// --- ANSWER SAVING ---
+async function saveAnswer(selectedAnswerValue) {
+    const q = questions[currentIndex];
+    const answer = selectedAnswerValue;
+    
+    console.log('=== SAVE ANSWER (LOCAL) ===');
+    console.log('Question:', currentIndex + 1);
+    console.log('Question ID:', q.id);
+    console.log('Selected Answer:', answer);
+    console.log('Correct Answer:', q.correct_answer);
+    
+    // Save answer locally only during exam
+    answers[q.id] = answer; 
+
+    // Show save confirmation
+    document.getElementById('answer-saved').style.display = 'block';
+    setTimeout(() => { 
+        document.getElementById('answer-saved').style.display = 'none'; 
+    }, 1000);
+
+    if (!hasAnsweredAtLeastOne) {
+        hasAnsweredAtLeastOne = true;
+        finalSubmitBtn.disabled = false;
+    }
+    updateStatusTableUI();
+}
+
+function submitExam() {
+    let skippedCount = 0;
+    
+    questions.forEach(q => {
+        if (!answers.hasOwnProperty(q.id) || answers[q.id] === null) {
+            skippedCount++;
+        }
+    });
+
+    let message = `You are about to submit your ${examType} exam. Please confirm.`;
+
+    if (skippedCount > 0) {
+        message += ` <br><br><strong style="color:#DC2626;">⚠️ Warning:</strong> You have <strong>${skippedCount}</strong> unanswered question(s). These will be marked as incorrect (0 marks).`;
+    } else {
+        message += ` <br><br>✅ All ${questions.length} questions have been answered.`;
+    }
+    
+    modalMessage.innerHTML = message;
+    submissionModal.style.display = 'flex';
+}
+
+// --- SAVE ALL QUESTIONS TO DATABASE ---
+async function saveAllQuestions() {
+    try {
+        console.log('=== SAVING ALL QUESTIONS FOR FINAL SUBMISSION ===');
+        
+        const allEntries = [];
+        const answeredCount = Object.keys(answers).filter(qId => answers[qId] !== null).length;
+        
+        questions.forEach(q => {
+            const questionId = q.id;
+            const isAnswered = answers.hasOwnProperty(questionId) && answers[questionId] !== null;
+            
+            let entry = {
+                student_id: studentId, 
+                exam_id: EXAM_ID, 
+                question_id: questionId, 
+                graded_at: new Date().toISOString()
+            };
+            
+            if (isAnswered) {
+                // Calculate marks for answered questions
+                const isCorrect = answers[questionId] === q.correct_answer;
+                entry.selected_answer = answers[questionId];
+                entry.marks = isCorrect ? (q.marks || 1) : 0;
+            } else {
+                // Unanswered questions get 0 marks
+                entry.selected_answer = null;
+                entry.marks = 0;
+            }
+            
+            allEntries.push(entry);
+        });
+
+        console.log(`📝 Saving ${allEntries.length} total questions (${answeredCount} answered, ${allEntries.length - answeredCount} unanswered)`);
+
+        // Save ALL questions in batches
+        const batchSize = 20;
+        for (let i = 0; i < allEntries.length; i += batchSize) {
+            const batch = allEntries.slice(i, i + batchSize);
+            
+            const { error } = await sb.from('exam_grades').upsert(
+                batch,
+                { 
+                    onConflict: ['student_id', 'exam_id', 'question_id'] 
+                }
+            );
+            
+            if (error) {
+                console.error(`❌ Error saving batch ${i/batchSize + 1}:`, error);
+                // Try individual saves as fallback
+                for (const entry of batch) {
+                    try {
+                        await sb.from('exam_grades').upsert([entry], { 
+                            onConflict: ['student_id', 'exam_id', 'question_id'] 
+                        });
+                    } catch (singleError) {
+                        console.error(`❌ Failed to save question ${entry.question_id}:`, singleError);
+                    }
+                }
+            }
+        }
+        
+        console.log('✅ All questions saved to database');
+        
+        // Verify all questions were saved
+        await verifyQuestionSubmission();
+        
+    } catch (error) {
+        console.error('❌ Error saving all questions:', error);
+    }
+}
+
+// Verify that all questions were saved
+async function verifyQuestionSubmission() {
+    try {
+        const { data: savedQuestions, error } = await sb.from('exam_grades')
+            .select('question_id, marks, selected_answer')
+            .eq('student_id', studentId)
+            .eq('exam_id', EXAM_ID)
+            .neq('question_id', '00000000-0000-0000-0000-000000000000');
+        
+        if (error) {
+            console.error('❌ Error verifying submission:', error);
+            return;
+        }
+        
+        const savedCount = savedQuestions?.length || 0;
+        const answeredCount = savedQuestions?.filter(q => q.selected_answer !== null).length || 0;
+        const totalMarks = savedQuestions?.reduce((sum, q) => sum + (q.marks || 0), 0) || 0;
+        
+        console.log(`✅ Verification: ${savedCount}/${questions.length} questions saved`);
+        console.log(`✅ Answered: ${answeredCount} questions`);
+        console.log(`✅ Total marks in database: ${totalMarks}`);
+        
+        if (savedCount < questions.length) {
+            console.warn(`⚠️ Warning: Only ${savedCount}/${questions.length} questions saved to database`);
+        }
+        
+    } catch (error) {
+        console.error('Error verifying submission:', error);
+    }
+}
+
+// --- MAIN SUBMISSION FUNCTION ---
+async function executeSubmission() {
+    // Disable all buttons to prevent double-clicks
+    document.querySelectorAll('button').forEach(btn => btn.disabled = true);
+    submissionModal.style.display = 'none';
+    
+    showSuccessScreen('submitting');
+
+    console.log('=== STARTING EXAM SUBMISSION ===');
+    console.log('Exam ID:', EXAM_ID);
+    console.log('Student ID:', studentId);
+    console.log('Exam Type:', examType);
+    console.log('Total Questions:', questions.length);
+    console.log('Local answers:', Object.keys(answers).length);
+    
+    // STEP 1: Save ALL questions to database
+    await saveAllQuestions();
+    
+    // STEP 2: Wait a moment to ensure database writes complete
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
+    // STEP 3: Calculate and save final grade
+    await calculateAndSaveFinalGrade();
+    
+    // STEP 4: Update success screen
+    showSuccessScreen('completed');
+    
+    // STEP 5: Countdown before redirect
+    let countdown = 5;
+    const countdownElement = document.querySelector('#countdown-number');
+    const countdownInterval = setInterval(() => {
+        countdown--;
+        if (countdownElement) countdownElement.textContent = countdown;
+        if (countdown <= 0) {
+            clearInterval(countdownInterval);
+            redirectToDashboard();
+        }
+    }, 1000);
+}
+
+// --- FINAL GRADE CALCULATION ---
+async function calculateAndSaveFinalGrade() {
+    try {
+        console.log('=== CALCULATING FINAL GRADE ===');
+        
+        // Wait a bit to ensure all answers are saved
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Get ALL answers for this exam
+        const { data: allAnswers, error: answersError } = await sb.from('exam_grades')
+            .select('marks')
+            .eq('student_id', studentId)
+            .eq('exam_id', EXAM_ID)
+            .neq('question_id', '00000000-0000-0000-0000-000000000000');
+        
+        if (answersError) {
+            console.error('❌ Error fetching answers:', answersError);
+            throw answersError;
+        }
+        
+        if (!allAnswers || allAnswers.length === 0) {
+            console.log('No answers found to calculate grade');
+            return;
+        }
+
+        // Calculate total marks
+        const totalMarks = allAnswers.reduce((sum, answer) => sum + (answer.marks || 0), 0);
+        const totalQuestions = allAnswers.length;
+        
+        console.log(`📊 Grade Summary: ${totalMarks} marks from ${totalQuestions} questions`);
+        
+        // Calculate percentage
+        let percentage = 0;
+        
+        if (examType === 'CAT_1' || examType === 'CAT_2' || examType === 'CAT') {
+            // For CAT exams: each question is 1 mark, total out of 30
+            const totalPossible = Math.min(30, totalQuestions);
+            percentage = (totalMarks / totalPossible) * 100;
+            console.log(`📊 CAT Calculation: ${totalMarks}/${totalPossible} = ${percentage.toFixed(2)}%`);
+        } else if (examType === 'EXAM') {
+            // For exams: get total possible marks from questions
+            const { data: questionData } = await sb.from('exam_questions')
+                .select('marks')
+                .eq('exam_id', EXAM_ID);
+            
+            let totalPossible = 0;
+            if (questionData && questionData.length > 0) {
+                totalPossible = questionData.reduce((sum, q) => sum + (q.marks || 1), 0);
+            } else {
+                totalPossible = totalQuestions; // Assume 1 mark per question
+            }
+            
+            percentage = (totalMarks / totalPossible) * 100;
+            console.log(`📊 EXAM Calculation: ${totalMarks}/${totalPossible} = ${percentage.toFixed(2)}%`);
+        } else {
+            // Default: assume 1 mark per question
+            percentage = (totalMarks / totalQuestions) * 100;
+            console.log(`📊 Default Calculation: ${totalMarks}/${totalQuestions} = ${percentage.toFixed(2)}%`);
+        }
+        
+        // Ensure percentage is valid
+        percentage = Math.min(100, Math.max(0, parseFloat(percentage.toFixed(2))));
+        const resultStatus = percentage >= 60 ? 'PASS' : 'FAIL';
+        
+        // Prepare grade data
+        let gradeData = {
+            student_id: studentId,
+            exam_id: parseInt(EXAM_ID),
+            question_id: '00000000-0000-0000-0000-000000000000',
+            total_score: percentage,
+            score: percentage,
+            marks: totalMarks,
+            result_status: resultStatus,
+            graded_at: new Date().toISOString(),
+            graded_by: null,
+            selected_answer: null,
+            remarks: `Auto-graded ${examType}. Score: ${totalMarks}/${totalQuestions} (${percentage.toFixed(2)}%)`,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+        
+        // Set CAT or EXAM specific scores
+        if (examType === 'CAT_1' || examType === 'CAT') {
+            gradeData.cat_1_score = totalMarks;
+            gradeData.cat_score = totalMarks;
+            gradeData.cat_2_score = null;
+            gradeData.exam_score = null;
+            console.log(`✅ CAT 1 Grade: ${totalMarks}/30 = ${gradeData.total_score}% (Status: ${resultStatus})`);
+        } else if (examType === 'CAT_2') {
+            gradeData.cat_2_score = totalMarks;
+            gradeData.cat_score = totalMarks;
+            gradeData.cat_1_score = null;
+            gradeData.exam_score = null;
+            console.log(`✅ CAT 2 Grade: ${totalMarks}/30 = ${gradeData.total_score}% (Status: ${resultStatus})`);
+        } else if (examType === 'EXAM') {
+            gradeData.exam_score = totalMarks;
+            gradeData.cat_1_score = null;
+            gradeData.cat_2_score = null;
+            gradeData.cat_score = null;
+            console.log(`✅ Final Exam Grade: ${totalMarks} marks = ${gradeData.total_score}% (Status: ${resultStatus})`);
+        } else {
+            gradeData.cat_1_score = null;
+            gradeData.cat_2_score = null;
+            gradeData.cat_score = null;
+            gradeData.exam_score = null;
+            console.log(`✅ Default Grade: ${totalMarks} marks = ${gradeData.total_score}% (Status: ${resultStatus})`);
+        }
+
+        // Check if a grade record already exists and update it
+        const { data: existingGrade } = await sb.from('exam_grades')
+            .select('*')
+            .eq('student_id', studentId)
+            .eq('exam_id', EXAM_ID)
+            .eq('question_id', '00000000-0000-0000-0000-000000000000')
+            .single();
+
+        if (existingGrade) {
+            console.log('📝 Updating existing grade record...');
+            // Update existing record
+            const { error: updateError } = await sb.from('exam_grades')
+                .update(gradeData)
+                .eq('student_id', studentId)
+                .eq('exam_id', EXAM_ID)
+                .eq('question_id', '00000000-0000-0000-0000-000000000000');
+            
+            if (updateError) {
+                console.error('❌ Error updating grade:', updateError);
+                throw updateError;
+            }
+            console.log('✅ Grade record updated successfully');
+        } else {
+            console.log('📝 Creating new grade record...');
+            // Insert new record
+            const { error: insertError } = await sb.from('exam_grades')
+                .insert([gradeData]);
+            
+            if (insertError) {
+                console.error('❌ Error inserting grade:', insertError);
+                throw insertError;
+            }
+            console.log('✅ New grade record created successfully');
+        }
+        
+    } catch (error) {
+        console.error('❌ Error calculating final grade:', error);
+        console.error('Error details:', error.message);
+        
+        // Show error to user but continue with redirect
+        const errorElement = document.querySelector('.success-screen');
+        if (errorElement) {
+            errorElement.innerHTML += `
+                <div style="margin-top: 20px; padding: 10px; background: #FEE2E2; border-radius: 8px; border: 1px solid #FCA5A5;">
+                    <p style="color: #DC2626; margin: 0;">⚠️ Grade calculation had an issue, but your answers were saved.</p>
+                    <p style="color: #92400E; margin: 5px 0 0 0; font-size: 0.9rem;">Contact your instructor if needed.</p>
+                </div>
+            `;
+        }
+    }
+}
+
+// --- SUCCESS SCREEN ---
+function showSuccessScreen(status) {
+    clearInterval(timerInterval);
+    
+    // Remove the beforeunload event listener safely
+    try {
+        window.removeEventListener('beforeunload', beforeUnloadHandler);
+    } catch (e) {
+        console.log('Could not remove beforeunload handler:', e);
+    }
+    
+    const container = document.getElementById('exam-container');
+    const navButtons = document.getElementById('nav-buttons');
+    const progress = document.getElementById('progress');
+    const answerSaved = document.getElementById('answer-saved');
+    const timer = document.getElementById('timer');
+    const finalMsg = document.getElementById('final-msg');
+    
+    container.style.display = 'none';
+    navButtons.style.display = 'none';
+    progress.style.display = 'none';
+    answerSaved.style.display = 'none';
+    timer.style.display = 'none';
+    finalMsg.style.display = 'none';
+    
+    let title, message, details;
+    
+    if (status === 'submitting') {
+        title = "⏳ Processing Submission";
+        message = "Your exam is being submitted. Please wait while we process your answers and calculate your grade.";
+        details = "Saving responses to database...";
+    } else {
+        title = "🎉 Exam Successfully Submitted!";
+        message = `Congratulations! Your ${examType} has been successfully submitted and graded.`;
+        details = "Your results have been saved and are now available in your dashboard.";
+    }
+    
+    const successHTML = `
+        <div class="success-screen">
+            <div class="success-icon">${status === 'submitting' ? '⏳' : '✅'}</div>
+            <h2 class="success-title">${title}</h2>
+            <p class="success-message">${message}</p>
+            <p style="color: #475569; margin-bottom: 20px;">${details}</p>
+            
+            <div class="redirect-countdown">
+                <p>You will be redirected to your dashboard in <span id="countdown-number">5</span> seconds...</p>
+            </div>
+            
+            <p style="margin-top: 20px; color: #64748B;">
+                <small>Exam ID: ${EXAM_ID} | Student: ${studentId.substring(0, 8)}...</small>
+            </p>
+            
+            <a href="${REDIRECT_URL}?exam_completed=${EXAM_ID}&type=${examType}" class="dashboard-link">
+                Go to Dashboard Now
+            </a>
+        </div>
+    `;
+    
+    document.querySelector('.question-area').insertAdjacentHTML('beforeend', successHTML);
+}
+
+function redirectToDashboard() {
+    window.location.href = `${REDIRECT_URL}?exam_completed=${EXAM_ID}&type=${examType}`;
+}
+
+// --- TIMER AND LOCKDOWN ---
+function startTimer(seconds) {
+    const timerEl = document.getElementById('timer');
+    function updateTimer() {
+        const m = Math.floor(seconds / 60), s = seconds % 60;
+        const timeString = `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+        timerEl.innerText = `Time Remaining: ${timeString}`;
+        if (seconds-- <= 0) {
+            showTimeoutMessage();
+            setTimeout(executeSubmission, 2000);
+            return;
+        }
+    }
+    updateTimer();
+    timerInterval = setInterval(updateTimer, 1000);
+}
+
+function showTimeoutMessage() {
+    const container = document.getElementById('exam-container');
+    container.innerHTML = `
+        <div style="text-align: center; padding: 40px 20px; background: #FEF3C7; border-radius: 12px; border: 3px solid #F59E0B;">
+            <div style="font-size: 3rem; margin-bottom: 20px;">⏰</div>
+            <h3 style="color: #92400E;">Time's Up!</h3>
+            <p>Your exam time has expired. The system is now automatically submitting your answers.</p>
+            <p><strong>Please wait while we process your submission...</strong></p>
+        </div>
+    `;
+}
+
+function lockDown() {
+    document.addEventListener('contextmenu', e => e.preventDefault());
+    document.addEventListener('copy', e => e.preventDefault());
+    document.addEventListener('cut', e => e.preventDefault());
+    document.addEventListener('paste', e => e.preventDefault());
+    document.addEventListener('selectstart', e => e.preventDefault());
+    
+    // Add the beforeunload handler
+    window.addEventListener('beforeunload', beforeUnloadHandler);
+    
+    let isSubmitting = false;
+    
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden && !isSubmitting) {
+            setTimeout(() => {
+                if (document.hidden) {
+                    alert('⚠️ Exam Security Alert: Tab switching detected. Your exam is being submitted automatically.');
+                    isSubmitting = true;
+                    executeSubmission();
+                }
+            }, 1000);
+        }
+    });
+}
+
+// --- EVENT LISTENERS ---
+document.getElementById('prev-btn').addEventListener('click', prevQuestion);
+document.getElementById('next-btn').addEventListener('click', nextQuestion);
+finalSubmitBtn.addEventListener('click', submitExam);
+confirmSubmitBtn.addEventListener('click', executeSubmission);
+cancelSubmitBtn.addEventListener('click', () => {
+    submissionModal.style.display = 'none';
+});
+
+window.addEventListener('DOMContentLoaded', initExam);
+</script>
+</body>
+    </html>
