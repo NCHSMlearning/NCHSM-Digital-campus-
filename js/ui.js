@@ -16,6 +16,13 @@ class UIModule {
         // Store tab state in localStorage for persistence
         this.storageKey = 'nchsm_last_tab';
         
+        // Define valid tabs
+        this.validTabs = [
+            'dashboard', 'profile', 'calendar', 'courses', 
+            'attendance', 'cats', 'resources', 'messages', 
+            'support-tickets', 'nurseiq'
+        ];
+        
         // Define tab paths (URLs without .html extension)
         this.tabPaths = {
             'dashboard': '/dashboard',
@@ -213,6 +220,11 @@ class UIModule {
         return null;
     }
     
+    // ✅ FIXED: isValidTab function
+    isValidTab(tabId) {
+        return this.validTabs.includes(tabId);
+    }
+    
     // Update URL for a tab
     updateURLForTab(tabId) {
         if (!this.isValidTab(tabId)) return;
@@ -346,7 +358,7 @@ class UIModule {
                 const tabId = link.getAttribute('data-tab');
                 console.log(`📱 Nav clicked: ${tabId}`);
                 
-                if (tabId) {
+                if (tabId && this.isValidTab(tabId)) {
                     this.showTab(tabId);
                     this.closeMenu();
                 }
@@ -430,7 +442,7 @@ class UIModule {
                     const tabId = card.getAttribute('data-tab');
                     console.log(`📱 Card clicked: ${tabId}`);
                     
-                    if (tabId) {
+                    if (tabId && this.isValidTab(tabId)) {
                         this.showTab(tabId);
                     }
                 });
