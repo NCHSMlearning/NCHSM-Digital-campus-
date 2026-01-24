@@ -16,6 +16,13 @@ class UIModule {
         // Store tab state in localStorage for persistence
         this.storageKey = 'nchsm_last_tab';
         
+        // Define valid tabs
+        this.validTabs = [
+            'dashboard', 'profile', 'calendar', 'courses', 
+            'attendance', 'cats', 'resources', 'messages', 
+            'support-tickets', 'nurseiq'
+        ];
+        
         // Footer buttons
         this.clearCacheBtn = document.getElementById('clearCacheBtn');
         this.exportDataBtn = document.getElementById('exportDataBtn');
@@ -111,99 +118,6 @@ class UIModule {
         console.log('✅ Styles cleaned up');
     }
     
-    // NEW: Load initial user data from database
-    async loadInitialUserData() {
-        console.log('👤 Loading initial user data...');
-        
-        try {
-            // Wait for user to be authenticated
-            if (!window.currentUserId && window.db?.currentUserId) {
-                window.currentUserId = window.db.currentUserId;
-            }
-            
-            if (!window.currentUserProfile && window.db?.currentUserProfile) {
-                window.currentUserProfile = window.db.currentUserProfile;
-            }
-            
-            if (window.currentUserId && this.supabase) {
-                // Load fresh data from consolidated_user_profiles_table
-                const userData = await this.loadUserFromDatabase(window.currentUserId);
-                if (userData) {
-                    this.updateAllUserInfo(userData);
-                } else {
-                    // Fallback to cached data
-                    this.updateAllUserInfo(window.currentUserProfile);
-                }
-            } else if (window.currentUserProfile) {
-                // Use cached profile
-                this.updateAllUserInfo(window.currentUserProfile);
-            }
-        } catch (error) {
-            console.error('❌ Error loading initial user data:', error);
-        }
-    }
-    
-    // NEW: Load user data from consolidated_user_profiles_table
-    async loadUserFromDatabase(userId) {
-        try {
-            if (!this.supabase) {
-                console.warn('⚠️ No Supabase client available');
-                return null;
-            }
-            
-            console.log('🔍 Querying consolidated_user_profiles_table for user:', userId);
-            
-            const { data: userProfile, error } = await this.supabase
-                .from('consolidated_user_profiles_table')
-                .select('*')
-                .or(`id.eq.${userId},user_id.eq.${userId}`)
-                .maybeSingle();
-            
-            if (error) {
-                console.error('❌ Database query error:', error);
-                return null;
-            }
-            
-            if (userProfile) {
-                console.log('✅ User data loaded from database:', {
-                    id: userProfile.id,
-                    name: userProfile.full_name,
-                    email: userProfile.email,
-                    studentId: userProfile.student_id
-                });
-                
-                // Cache the data
-                window.currentUserProfile = userProfile;
-                localStorage.setItem('currentUserProfile', JSON.stringify(userProfile));
-                
-                return userProfile;
-            }
-            
-            console.warn('⚠️ No user profile found in database for ID:', userId);
-            return null;
-            
-        } catch (error) {
-            console.error('❌ Error loading user from database:', error);
-            return null;
-        }
-    }
-    
-    setupMobileMenuVisibility() {
-        if (!this.mobileMenuToggle) return;
-        
-        const updateVisibility = () => {
-            if (window.innerWidth <= 768) {
-                this.mobileMenuToggle.style.display = 'flex';
-            } else {
-                this.mobileMenuToggle.style.display = 'none';
-                this.closeMenu();
-            }
-        };
-        
-        updateVisibility();
-        window.addEventListener('resize', updateVisibility);
-    }
-    
     setupHashNavigation() {
         console.log('🔗 Setting up hash navigation...');
         
@@ -246,6 +160,10 @@ class UIModule {
         if (lastTab && this.isValidTab(lastTab)) {
             this.currentTab = lastTab;
         }
+    }
+    
+    isValidTab(tabId) {
+        return this.validTabs.includes(tabId);
     }
     
     showTab(tabId) {
@@ -355,7 +273,7 @@ class UIModule {
                 const tabId = link.getAttribute('data-tab');
                 console.log(`📱 Nav clicked: ${tabId}`);
                 
-                if (tabId) {
+                if (tabId && this.isValidTab(tabId)) {
                     this.showTab(tabId);
                     this.closeMenu();
                 }
@@ -439,7 +357,7 @@ class UIModule {
                     const tabId = card.getAttribute('data-tab');
                     console.log(`📱 Card clicked: ${tabId}`);
                     
-                    if (tabId) {
+                    if (tabId && this.isValidTab(tabId)) {
                         this.showTab(tabId);
                     }
                 });
@@ -535,15 +453,6 @@ class UIModule {
             console.log(`🔄 Tab changed to: ${e.detail.tabId}`);
             this.loadTabModule(e.detail.tabId);
         });
-    }
-    
-    isValidTab(tabId) {
-        const validTabs = [
-            'dashboard', 'profile', 'calendar', 'courses', 
-            'attendance', 'cats', 'resources', 'messages', 
-            'support-tickets', 'nurseiq'
-        ];
-        return validTabs.includes(tabId);
     }
     
     loadTabModule(tabId) {
@@ -715,6 +624,99 @@ class UIModule {
             'error': '#EF4444'
         };
         return colors[type] || colors.info;
+    }
+    
+    // NEW: Load initial user data from database
+    async loadInitialUserData() {
+        console.log('👤 Loading initial user data...');
+        
+        try {
+            // Wait for user to be authenticated
+            if (!window.currentUserId && window.db?.currentUserId) {
+                window.currentUserId = window.db.currentUserId;
+            }
+            
+            if (!window.currentUserProfile && window.db?.currentUserProfile) {
+                window.currentUserProfile = window.db.currentUserProfile;
+            }
+            
+            if (window.currentUserId && this.supabase) {
+                // Load fresh data from consolidated_user_profiles_table
+                const userData = await this.loadUserFromDatabase(window.currentUserId);
+                if (userData) {
+                    this.updateAllUserInfo(userData);
+                } else {
+                    // Fallback to cached data
+                    this.updateAllUserInfo(window.currentUserProfile);
+                }
+            } else if (window.currentUserProfile) {
+                // Use cached profile
+                this.updateAllUserInfo(window.currentUserProfile);
+            }
+        } catch (error) {
+            console.error('❌ Error loading initial user data:', error);
+        }
+    }
+    
+    // NEW: Load user data from consolidated_user_profiles_table
+    async loadUserFromDatabase(userId) {
+        try {
+            if (!this.supabase) {
+                console.warn('⚠️ No Supabase client available');
+                return null;
+            }
+            
+            console.log('🔍 Querying consolidated_user_profiles_table for user:', userId);
+            
+            const { data: userProfile, error } = await this.supabase
+                .from('consolidated_user_profiles_table')
+                .select('*')
+                .or(`id.eq.${userId},user_id.eq.${userId}`)
+                .maybeSingle();
+            
+            if (error) {
+                console.error('❌ Database query error:', error);
+                return null;
+            }
+            
+            if (userProfile) {
+                console.log('✅ User data loaded from database:', {
+                    id: userProfile.id,
+                    name: userProfile.full_name,
+                    email: userProfile.email,
+                    studentId: userProfile.student_id
+                });
+                
+                // Cache the data
+                window.currentUserProfile = userProfile;
+                localStorage.setItem('currentUserProfile', JSON.stringify(userProfile));
+                
+                return userProfile;
+            }
+            
+            console.warn('⚠️ No user profile found in database for ID:', userId);
+            return null;
+            
+        } catch (error) {
+            console.error('❌ Error loading user from database:', error);
+            return null;
+        }
+    }
+    
+    setupMobileMenuVisibility() {
+        if (!this.mobileMenuToggle) return;
+        
+        const updateVisibility = () => {
+            if (window.innerWidth <= 768) {
+                this.mobileMenuToggle.style.display = 'flex';
+            } else {
+                this.mobileMenuToggle.style.display = 'none';
+                this.closeMenu();
+            }
+        };
+        
+        updateVisibility();
+        window.addEventListener('resize', updateVisibility);
     }
     
     // UPDATED: Get profile photo from database
@@ -1224,8 +1226,8 @@ window.debugUI = function() {
 };
 
 console.log('✅ UI Module loaded successfully');
-// Add this at the VERY END of your ui.js file:
 
+// Add this at the VERY END of your ui.js file:
 // Force dashboard to load on first app start
 window.addEventListener('load', function() {
     console.log('📱 Page fully loaded - checking dashboard...');
@@ -1252,4 +1254,3 @@ document.addEventListener('appReady', function() {
         }
     }, 500);
 });
-  
