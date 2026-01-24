@@ -1,4 +1,4 @@
-// js/ui.js - COMPLETE FIXED User Interface Management
+// js/ui.js - COMPLETE User Interface Management with Clean URLs
 class UIModule {
     constructor() {
         console.log('🚀 Initializing UIModule...');
@@ -22,6 +22,20 @@ class UIModule {
             'attendance', 'cats', 'resources', 'messages', 
             'support-tickets', 'nurseiq'
         ];
+        
+        // Define clean URL paths for each tab
+        this.tabPaths = {
+            'dashboard': '/dashboard',
+            'profile': '/profile', 
+            'calendar': '/calendar',
+            'courses': '/courses',
+            'attendance': '/attendance',
+            'cats': '/exams',
+            'resources': '/resources',
+            'messages': '/messages',
+            'support-tickets': '/support-tickets',
+            'nurseiq': '/nurseiq'
+        };
         
         // Footer buttons
         this.clearCacheBtn = document.getElementById('clearCacheBtn');
@@ -70,8 +84,8 @@ class UIModule {
         // 2. Setup all event listeners
         this.setupEventListeners();
         
-        // 3. Setup navigation
-        this.setupHashNavigation();
+        // 3. Setup CLEAN URL navigation (no hash)
+        this.setupCleanUrlNavigation();
         this.setupTabChangeListener();
         
         // 4. Initialize utilities
@@ -118,41 +132,114 @@ class UIModule {
         console.log('✅ Styles cleaned up');
     }
     
-    setupHashNavigation() {
-        console.log('🔗 Setting up hash navigation...');
+    // NEW: Setup clean URL navigation (no hash)
+    setupCleanUrlNavigation() {
+        console.log('🔗 Setting up clean URL navigation...');
         
         // Handle initial page load
         window.addEventListener('load', () => {
-            const hash = window.location.hash.substring(1);
-            console.log('🔗 Initial hash:', hash);
+            const path = this.getCurrentPath();
+            console.log('🔗 Initial path:', path);
             
-            if (hash && this.isValidTab(hash)) {
-                console.log(`🎯 Showing tab from hash: ${hash}`);
-                this.showTab(hash);
+            // Determine tab from path
+            let tabId = this.getTabFromPath(path);
+            console.log(`📊 Determined tab from path: ${tabId}`);
+            
+            if (tabId && this.isValidTab(tabId)) {
+                console.log(`🎯 Showing tab from path: ${tabId}`);
+                this.showTab(tabId);
             } else {
                 const lastTab = localStorage.getItem(this.storageKey);
                 console.log(`💾 Saved last tab: ${lastTab}`);
                 
                 if (lastTab && this.isValidTab(lastTab)) {
-                    this.showTab(lastTab);
-                    window.location.hash = lastTab;
+                    tabId = lastTab;
+                    this.showTab(tabId);
+                    // Update URL to match the tab (clean URL)
+                    this.updateUrlForTab(tabId);
                 } else {
                     console.log('🎯 Defaulting to dashboard');
-                    this.showTab('dashboard');
+                    tabId = 'dashboard';
+                    this.showTab(tabId);
+                    this.updateUrlForTab(tabId);
                 }
             }
         });
         
         // Handle browser back/forward buttons
-        window.addEventListener('hashchange', () => {
-            const hash = window.location.hash.substring(1);
-            console.log('🔗 Hash changed to:', hash);
+        window.addEventListener('popstate', (event) => {
+            console.log('🔗 Popstate event triggered');
+            const newPath = this.getCurrentPath();
+            console.log('🔗 New path from popstate:', newPath);
             
-            if (hash && this.isValidTab(hash)) {
-                this.showTab(hash);
-                localStorage.setItem(this.storageKey, hash);
+            const newTabId = this.getTabFromPath(newPath);
+            if (newTabId && this.isValidTab(newTabId)) {
+                console.log(`🎯 Popstate showing tab: ${newTabId}`);
+                this.showTab(newTabId, true); // true = from popstate (no URL update)
+                localStorage.setItem(this.storageKey, newTabId);
             }
         });
+    }
+    
+    // Get current clean path (no hash, no .html)
+    getCurrentPath() {
+        // Get current pathname
+        let path = window.location.pathname;
+        
+        // Remove .html extension if present
+        path = path.replace(/\.html$/, '');
+        
+        // Remove trailing slash
+        path = path.replace(/\/$/, '');
+        
+        // Handle root path - redirect to dashboard
+        if (path === '' || path === '/index' || path === '/') {
+            console.log('🏠 Root path detected, defaulting to dashboard');
+            return '/dashboard';
+        }
+        
+        return path;
+    }
+    
+    // Get tab ID from path
+    getTabFromPath(path) {
+        // Remove leading slash
+        const cleanPath = path.startsWith('/') ? path.substring(1) : path;
+        
+        // Find matching tab in tabPaths
+        for (const [tabId, tabPath] of Object.entries(this.tabPaths)) {
+            const cleanTabPath = tabPath.startsWith('/') ? tabPath.substring(1) : tabPath;
+            if (cleanPath === cleanTabPath) {
+                return tabId;
+            }
+        }
+        
+        // Try direct match with tab ID (for backward compatibility)
+        if (this.isValidTab(cleanPath)) {
+            return cleanPath;
+        }
+        
+        console.log(`❓ No tab found for path: ${cleanPath}`);
+        return null;
+    }
+    
+    // Update URL to clean path for a tab
+    updateUrlForTab(tabId) {
+        if (!this.isValidTab(tabId)) return;
+        
+        const path = this.tabPaths[tabId] || '/dashboard';
+        const currentPath = this.getCurrentPath();
+        const expectedPath = path.startsWith('/') ? path.substring(1) : path;
+        const currentCleanPath = currentPath.startsWith('/') ? currentPath.substring(1) : currentPath;
+        
+        // Only update if current path doesn't match
+        if (expectedPath !== currentCleanPath) {
+            const newUrl = `${window.location.origin}${path}`;
+            console.log(`🔗 Updating URL to: ${newUrl}`);
+            
+            // Use pushState to update URL without reload (clean URL, no hash)
+            window.history.pushState({ tabId }, '', newUrl);
+        }
     }
     
     loadLastTab() {
@@ -166,15 +253,15 @@ class UIModule {
         return this.validTabs.includes(tabId);
     }
     
-    showTab(tabId) {
-        console.log(`📱 showTab(${tabId}) called`);
+    showTab(tabId, fromPopstate = false) {
+        console.log(`📱 showTab(${tabId}, fromPopstate: ${fromPopstate}) called`);
         
         if (!this.isValidTab(tabId)) {
             console.warn(`⚠️ Invalid tab: ${tabId}, defaulting to dashboard`);
             tabId = 'dashboard';
         }
         
-        if (this.currentTab === tabId) {
+        if (this.currentTab === tabId && !fromPopstate) {
             console.log(`⚠️ Tab ${tabId} is already active`);
             return;
         }
@@ -203,9 +290,9 @@ class UIModule {
             }
         });
         
-        // Update URL hash
-        if (window.location.hash.substring(1) !== tabId) {
-            history.replaceState(null, null, `#${tabId}`);
+        // Update URL if not from popstate (browser navigation)
+        if (!fromPopstate) {
+            this.updateUrlForTab(tabId);
         }
         
         // Save tab state
@@ -220,7 +307,7 @@ class UIModule {
             detail: { 
                 tabId, 
                 previousTab,
-                fromHashChange: false
+                fromPopstate
             }
         }));
         
@@ -266,7 +353,7 @@ class UIModule {
             console.log('✅ Overlay listener added');
         }
         
-        // Navigation links
+        // Navigation links - UPDATED for clean URLs
         this.navLinks.forEach(link => {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -1225,9 +1312,8 @@ window.debugUI = function() {
     console.log('- Current user profile:', window.currentUserProfile);
 };
 
-console.log('✅ UI Module loaded successfully');
+console.log('✅ UI Module loaded successfully with Clean URLs');
 
-// Add this at the VERY END of your ui.js file:
 // Force dashboard to load on first app start
 window.addEventListener('load', function() {
     console.log('📱 Page fully loaded - checking dashboard...');
