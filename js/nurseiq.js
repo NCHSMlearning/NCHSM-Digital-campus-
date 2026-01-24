@@ -1,4 +1,4 @@
-// js/nurseiq.js - COMPLETE ENHANCED VERSION WITH PERSISTENT PROGRESS & ANSWER VISIBILITY
+// js/nurseiq.js - COMPLETE ENHANCED VERSION WITH DASHBOARD INTEGRATION
 class NurseIQModule {
     constructor() {
         this.userId = null;
@@ -18,7 +18,8 @@ class NurseIQModule {
         this.storageKey = 'nurseiq_user_progress';
         this.lastCourseProgressKey = 'nurseiq_last_course';
         this.currentSessionAnswers = {};
-        this.progressVersion = '1.0';
+        this.progressVersion = '2.0'; // Updated version for dashboard integration
+        this.dashboardMetricsKey = 'nurseiq_dashboard_metrics';
     }
     
     async initializeElements() {
@@ -97,6 +98,10 @@ class NurseIQModule {
             await this.loadUserProgress();
             await this.loadQuestionBankCards();
             this.initialized = true;
+            
+            // 🔥 NEW: Update dashboard on initialization
+            this.updateDashboardMetrics();
+            
             console.log('✅ NurseIQ Module initialized');
         } catch (error) {
             console.error('❌ Failed to initialize:', error);
@@ -168,7 +173,10 @@ class NurseIQModule {
                 this.saveProgressToDatabase();
             }
             
-            console.log('💾 Progress saved');
+            // 🔥 NEW: Update dashboard metrics whenever progress is saved
+            this.updateDashboardMetrics();
+            
+            console.log('💾 Progress saved and dashboard updated');
         } catch (error) {
             console.warn('Could not save progress:', error);
         }
@@ -193,6 +201,225 @@ class NurseIQModule {
         }
     }
     
+    // 🔥 NEW: Dashboard Integration Methods
+    
+    getNurseIQDashboardMetrics() {
+        try {
+            // Calculate comprehensive metrics from user progress
+            let totalAnswered = 0;
+            let totalCorrect = 0;
+            let totalQuestionsAttempted = 0;
+            let recentActivity = 0; // Last 7 days activity
+            const courses = {};
+            
+            const sevenDaysAgo = new Date();
+            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+            
+            // Process all answered questions
+            Object.values(this.userTestAnswers).forEach(answer => {
+                if (answer.answered) {
+                    totalAnswered++;
+                    if (answer.correct) totalCorrect++;
+                    
+                    // Count recent activity
+                    if (answer.timestamp) {
+                        const answerDate = new Date(answer.timestamp);
+                        if (answerDate >= sevenDaysAgo) {
+                            recentActivity++;
+                        }
+                    }
+                    
+                    // Track by course
+                    if (answer.courseId) {
+                        if (!courses[answer.courseId]) {
+                            courses[answer.courseId] = {
+                                answered: 0,
+                                correct: 0,
+                                name: answer.courseName || 'Unknown Course'
+                            };
+                        }
+                        courses[answer.courseId].answered++;
+                        if (answer.correct) courses[answer.courseId].correct++;
+                    }
+                }
+            });
+            
+            // Calculate stats
+            const accuracy = totalAnswered > 0 ? Math.round((totalCorrect / totalAnswered) * 100) : 0;
+            const targetQuestions = 100; // Target for progress bar
+            const progress = Math.min(Math.round((totalAnswered / targetQuestions) * 100), 100);
+            
+            // Calculate study streak
+            const streak = this.calculateStudyStreak();
+            
+            // Get most active course
+            let mostActiveCourse = { name: 'None', answered: 0 };
+            Object.entries(courses).forEach(([courseId, courseData]) => {
+                if (courseData.answered > mostActiveCourse.answered) {
+                    mostActiveCourse = {
+                        name: courseData.name,
+                        answered: courseData.answered,
+                        accuracy: courseData.answered > 0 ? Math.round((courseData.correct / courseData.answered) * 100) : 0
+                    };
+                }
+            });
+            
+            const metrics = {
+                totalAnswered,
+                totalCorrect,
+                accuracy,
+                progress,
+                recentActivity,
+                streak,
+                totalCourses: Object.keys(courses).length,
+                mostActiveCourse: mostActiveCourse.name !== 'None' ? mostActiveCourse : null,
+                lastUpdated: new Date().toISOString()
+            };
+            
+            // Cache for dashboard
+            localStorage.setItem(this.dashboardMetricsKey, JSON.stringify(metrics));
+            
+            return metrics;
+        } catch (error) {
+            console.error('Error calculating NurseIQ metrics:', error);
+            return this.getDefaultDashboardMetrics();
+        }
+    }
+    
+    calculateStudyStreak() {
+        try {
+            // Get all timestamps from answered questions
+            const timestamps = [];
+            Object.values(this.userTestAnswers).forEach(answer => {
+                if (answer.answered && answer.timestamp) {
+                    timestamps.push(new Date(answer.timestamp));
+                }
+            });
+            
+            if (timestamps.length === 0) return 0;
+            
+            // Sort dates in descending order
+            timestamps.sort((a, b) => b - a);
+            
+            // Remove duplicate dates (same day)
+            const uniqueDates = [];
+            timestamps.forEach(date => {
+                const dateStr = date.toDateString();
+                if (!uniqueDates.includes(dateStr)) {
+                    uniqueDates.push(dateStr);
+                }
+            });
+            
+            // Calculate streak
+            let streak = 0;
+            const today = new Date();
+            const yesterday = new Date(today);
+            yesterday.setDate(yesterday.getDate() - 1);
+            
+            let currentDate = today;
+            
+            // Check if there was activity today or yesterday
+            const todayStr = today.toDateString();
+            const yesterdayStr = yesterday.toDateString();
+            
+            // Start counting from the most recent activity day
+            let startDate = null;
+            if (uniqueDates.includes(todayStr)) {
+                startDate = today;
+                streak = 1;
+            } else if (uniqueDates.includes(yesterdayStr)) {
+                startDate = yesterday;
+                streak = 1;
+            } else {
+                return 0; // No recent activity
+            }
+            
+            // Count consecutive days
+            for (let i = 1; i < uniqueDates.length; i++) {
+                const checkDate = new Date(startDate);
+                checkDate.setDate(checkDate.getDate() - i);
+                const checkDateStr = checkDate.toDateString();
+                
+                if (uniqueDates.includes(checkDateStr)) {
+                    streak++;
+                } else {
+                    break; // Streak broken
+                }
+            }
+            
+            return streak;
+        } catch (error) {
+            console.error('Error calculating streak:', error);
+            return 0;
+        }
+    }
+    
+    getDefaultDashboardMetrics() {
+        return {
+            totalAnswered: 0,
+            totalCorrect: 0,
+            accuracy: 0,
+            progress: 0,
+            recentActivity: 0,
+            streak: 0,
+            totalCourses: 0,
+            mostActiveCourse: null,
+            lastUpdated: new Date().toISOString()
+        };
+    }
+    
+    updateDashboardMetrics() {
+        try {
+            const metrics = this.getNurseIQDashboardMetrics();
+            
+            // Save to localStorage for dashboard access
+            localStorage.setItem(this.dashboardMetricsKey, JSON.stringify(metrics));
+            
+            // Also dispatch event for dashboard to update in real-time
+            this.dispatchDashboardUpdateEvent(metrics);
+            
+            console.log('📊 Dashboard metrics updated:', metrics);
+        } catch (error) {
+            console.error('Error updating dashboard metrics:', error);
+        }
+    }
+    
+    dispatchDashboardUpdateEvent(metrics) {
+        const event = new CustomEvent('nurseiqMetricsUpdated', {
+            detail: {
+                progress: metrics.progress,
+                accuracy: metrics.accuracy,
+                totalQuestions: metrics.totalAnswered,
+                recentActivity: metrics.recentActivity,
+                streak: metrics.streak,
+                lastUpdated: metrics.lastUpdated
+            }
+        });
+        document.dispatchEvent(event);
+    }
+    
+    // For dashboard module to get metrics
+    static getDashboardMetrics() {
+        try {
+            const savedMetrics = localStorage.getItem('nurseiq_dashboard_metrics');
+            if (savedMetrics) {
+                return JSON.parse(savedMetrics);
+            }
+        } catch (error) {
+            console.error('Error getting dashboard metrics:', error);
+        }
+        return {
+            totalAnswered: 0,
+            totalCorrect: 0,
+            accuracy: 0,
+            progress: 0,
+            recentActivity: 0,
+            streak: 0,
+            lastUpdated: new Date().toISOString()
+        };
+    }
+    
+    // Rest of your existing methods continue below...
     getLastCourseProgress() {
         try {
             const lastProgress = localStorage.getItem(this.lastCourseProgressKey);
@@ -985,6 +1212,10 @@ class NurseIQModule {
         userAnswer.correct = isCorrect;
         userAnswer.timestamp = new Date().toISOString();
         userAnswer.correctAnswer = correctAnswer;
+        userAnswer.courseId = question.course_id;
+        userAnswer.courseName = this.currentCourseForTest.name;
+        userAnswer.questionText = question.question_text;
+        userAnswer.difficulty = question.difficulty;
         
         // Save to permanent storage by question ID
         this.userTestAnswers[question.id] = {
@@ -996,6 +1227,7 @@ class NurseIQModule {
             timestamp: userAnswer.timestamp,
             questionText: question.question_text,
             courseId: question.course_id,
+            courseName: this.currentCourseForTest.name,
             difficulty: question.difficulty
         };
         
@@ -1005,7 +1237,7 @@ class NurseIQModule {
         this.showAnswerRevealSection();
         this.updateQuestionGrid();
         this.showFeedbackNotification(isCorrect);
-        this.saveUserProgress();
+        this.saveUserProgress(); // This now also updates dashboard
         
         if (isCorrect && this.currentQuestionIndex < this.currentCourseQuestions.length - 1) {
             setTimeout(() => this.nextQuestion(), 2000);
@@ -1069,7 +1301,7 @@ class NurseIQModule {
         }
         
         delete this.userTestAnswers[this.currentQuestionIndex];
-        this.saveUserProgress();
+        this.saveUserProgress(); // This will update dashboard
         
         this.loadCurrentInteractiveQuestion();
         this.updateQuestionGrid();
@@ -1418,8 +1650,10 @@ class NurseIQModule {
         if (confirm('Are you sure you want to clear all your progress? This cannot be undone.')) {
             localStorage.removeItem(this.storageKey);
             localStorage.removeItem(this.lastCourseProgressKey);
+            localStorage.removeItem(this.dashboardMetricsKey);
             this.userTestAnswers = {};
             this.showNotification('All progress cleared', 'success');
+            this.updateDashboardMetrics(); // Update dashboard to show cleared state
             this.loadQuestionBankCards();
         }
     }
@@ -1509,4 +1743,12 @@ window.clearAllProgress = function() {
     if (window.nurseiqModule) window.nurseiqModule.clearAllProgress(); 
 };
 
-console.log('✅ NurseIQ module loaded (Complete Enhanced Version)');
+// 🔥 NEW: Dashboard integration helper
+window.getNurseIQDashboardMetrics = function() {
+    if (window.nurseiqModule) {
+        return window.nurseiqModule.getNurseIQDashboardMetrics();
+    }
+    return NurseIQModule.getDashboardMetrics();
+};
+
+console.log('✅ NurseIQ module loaded (Complete Enhanced Version with Dashboard Integration)');
