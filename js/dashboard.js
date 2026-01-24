@@ -1414,4 +1414,67 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-console.log('✅ Dashboard module loaded');
+// 🔥 CRITICAL FIX: Force dashboard to show on first load
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🎯 DOM loaded - checking dashboard visibility...');
+    
+    // Wait for everything to initialize
+    setTimeout(() => {
+        const dashboardTab = document.getElementById('dashboard');
+        const isDashboardVisible = dashboardTab && 
+            (dashboardTab.classList.contains('active') || 
+             getComputedStyle(dashboardTab).display !== 'none');
+        
+        if (!isDashboardVisible && window.ui) {
+            console.log('🚨 Dashboard not visible - forcing it to show...');
+            
+            // 1. Use UI module if available
+            window.ui.showTab('dashboard');
+            
+            // 2. Emergency CSS fix
+            dashboardTab.style.display = 'block';
+            dashboardTab.classList.add('active');
+            
+            // 3. Hide all other tabs
+            document.querySelectorAll('.tab-content:not(#dashboard)').forEach(tab => {
+                tab.style.display = 'none';
+                tab.classList.remove('active');
+            });
+        }
+    }, 1500); // Wait 1.5 seconds for everything to load
+});
+
+// 🔥 ALSO: Listen for appReady event and force dashboard
+document.addEventListener('appReady', function(e) {
+    console.log('🎉 App ready - ensuring dashboard shows...');
+    
+    setTimeout(() => {
+        if (window.ui) {
+            window.ui.showTab('dashboard');
+        } else {
+            // Fallback
+            const dashboard = document.getElementById('dashboard');
+            if (dashboard) {
+                dashboard.style.display = 'block';
+                dashboard.classList.add('active');
+            }
+        }
+    }, 500);
+});
+
+// 🔥 EMERGENCY: If still not showing after 3 seconds
+setTimeout(() => {
+    const dashboard = document.getElementById('dashboard');
+    if (dashboard && getComputedStyle(dashboard).display === 'none') {
+        console.log('🚨 EMERGENCY: Dashboard still hidden after 3s - forcing display');
+        dashboard.style.display = 'block';
+        dashboard.style.visibility = 'visible';
+        dashboard.style.opacity = '1';
+        dashboard.classList.add('active');
+        
+        // Hide all other tabs
+        document.querySelectorAll('.tab-content:not(#dashboard)').forEach(tab => {
+            tab.style.display = 'none';
+        });
+    }
+}, 3000);
