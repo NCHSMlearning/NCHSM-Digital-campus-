@@ -2,148 +2,126 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nakuru College Digital Portal Login - NCHSM</title>
-    <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" sizes="32x32">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NCHSM Digital Portal - Login</title>
+    <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png">
     
-    <!-- REQUIRED LIBRARIES -->
+    <!-- Libraries -->
     <script src="https://unpkg.com/@otplib/preset-browser@^12.0.0/buffer.js"></script>
     <script src="https://unpkg.com/@otplib/preset-browser@^12.0.0/index.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
-    <!-- MODERN FONTS -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
     <style>
-        /* ===== MODERN CSS VARIABLES ===== */
+        /* ===== MOBILE-FIRST CSS ===== */
         :root {
-            /* NCHSM Brand Colors - Modernized */
-            --nchsm-primary: #0A3D62;
-            --nchsm-primary-dark: #073450;
-            --nchsm-primary-light: #1E5A87;
-            --nchsm-accent: #38A169;
-            --nchsm-accent-dark: #2F855A;
-            --nchsm-accent-light: #48BB78;
+            /* NCHSM Colors */
+            --primary: #0A3D62;
+            --primary-dark: #073450;
+            --primary-light: #1E5A87;
+            --accent: #38A169;
+            --accent-dark: #2F855A;
+            --accent-light: #48BB78;
             
-            /* Modern UI Colors */
-            --background: #FFFFFF;
-            --surface: #F8FAFC;
-            --surface-elevated: #FFFFFF;
-            --text-primary: #1E293B;
-            --text-secondary: #64748B;
-            --text-tertiary: #94A3B8;
-            --border: #E2E8F0;
-            --border-hover: #CBD5E1;
-            --overlay: rgba(7, 52, 80, 0.92);
+            /* UI Colors */
+            --white: #FFFFFF;
+            --gray-50: #F8FAFC;
+            --gray-100: #F1F5F9;
+            --gray-200: #E2E8F0;
+            --gray-300: #CBD5E1;
+            --gray-400: #94A3B8;
+            --gray-500: #64748B;
+            --gray-600: #475569;
+            --gray-700: #334155;
+            --gray-800: #1E293B;
+            --gray-900: #0F172A;
             
-            /* Shadows - Modern */
-            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-            --shadow-primary: 0 10px 25px -5px rgba(10, 61, 98, 0.15);
+            /* Status Colors */
+            --success: #10B981;
+            --warning: #F59E0B;
+            --error: #EF4444;
+            --info: #3B82F6;
             
             /* Gradients */
-            --gradient-primary: linear-gradient(135deg, var(--nchsm-primary) 0%, var(--nchsm-primary-dark) 100%);
-            --gradient-accent: linear-gradient(135deg, var(--nchsm-accent) 0%, var(--nchsm-accent-dark) 100%);
-            --gradient-surface: linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%);
+            --gradient-primary: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            --gradient-accent: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
+            
+            /* Shadows */
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
             
             /* Transitions */
-            --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
-            --transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
-            --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition: all 0.2s ease;
             
             /* Border Radius */
-            --radius-sm: 8px;
-            --radius-md: 12px;
+            --radius-sm: 6px;
+            --radius-md: 10px;
             --radius-lg: 16px;
-            --radius-xl: 20px;
+            --radius-xl: 24px;
             --radius-full: 9999px;
-            
-            /* Spacing */
-            --space-xs: 0.25rem;
-            --space-sm: 0.5rem;
-            --space-md: 1rem;
-            --space-lg: 1.5rem;
-            --space-xl: 2rem;
-            --space-2xl: 3rem;
         }
 
-        /* ===== RESET & BASE STYLES ===== */
+        /* Reset & Base */
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html {
+            font-size: 16px;
+            -webkit-text-size-adjust: 100%;
         }
 
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: var(--surface);
-            color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: var(--gray-50);
+            color: var(--gray-800);
             line-height: 1.5;
             min-height: 100vh;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
+            padding: 0;
+            margin: 0;
         }
 
-        /* ===== LAYOUT ===== */
-        .login-container {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
+        /* Mobile Container */
+        .mobile-container {
             min-height: 100vh;
-            background: var(--background);
-        }
-
-        /* ===== LEFT PANEL - MODERN BRANDING ===== */
-        .brand-panel {
-            position: relative;
-            background: linear-gradient(135deg, rgba(10, 61, 98, 0.9) 0%, rgba(7, 52, 80, 0.95) 100%),
-                        url('https://nakurucollegeofhealth.ac.ke/wp-content/uploads/2022/12/IMG-20221130-WA0018.jpg') center/cover;
-            padding: var(--space-2xl);
             display: flex;
             flex-direction: column;
-            justify-content: center;
-            color: white;
-            overflow: hidden;
-        }
-
-        .brand-panel::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: linear-gradient(135deg, rgba(10, 61, 98, 0.4) 0%, rgba(7, 52, 80, 0.6) 100%);
-            backdrop-filter: blur(2px);
-        }
-
-        .brand-content {
+            background: var(--white);
             position: relative;
-            z-index: 2;
-            max-width: 480px;
-            margin: 0 auto;
         }
 
-        .logo-container {
+        /* Header - Mobile Optimized */
+        .mobile-header {
+            background: var(--gradient-primary);
+            color: var(--white);
+            padding: 1rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: var(--shadow-md);
+        }
+
+        .header-content {
             display: flex;
             align-items: center;
-            gap: var(--space-md);
-            margin-bottom: var(--space-xl);
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            padding: var(--space-md);
-            border-radius: var(--radius-lg);
-            border: 1px solid rgba(255, 255, 255, 0.15);
+            gap: 0.75rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
         }
 
         .logo {
-            width: 64px;
-            height: 64px;
+            width: 48px;
+            height: 48px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: var(--radius-md);
+            padding: 0.5rem;
             flex-shrink: 0;
         }
 
@@ -154,169 +132,116 @@
             filter: brightness(0) invert(1);
         }
 
-        .college-info h1 {
-            font-family: 'Poppins', sans-serif;
-            font-size: 1.5rem;
+        .college-info {
+            flex: 1;
+            min-width: 0; /* Prevent flex overflow */
+        }
+
+        .college-name {
+            font-size: 0.95rem;
             font-weight: 700;
             line-height: 1.2;
-            margin-bottom: var(--space-xs);
+            margin-bottom: 0.125rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
-        .college-info p {
-            font-size: 0.875rem;
+        .college-tagline {
+            font-size: 0.75rem;
             opacity: 0.9;
-            font-weight: 400;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
-        .security-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: var(--space-sm);
-            background: rgba(255, 255, 255, 0.15);
-            backdrop-filter: blur(10px);
-            color: white;
-            padding: var(--space-sm) var(--space-lg);
-            border-radius: var(--radius-full);
-            font-size: 0.875rem;
-            font-weight: 500;
-            margin-bottom: var(--space-xl);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-
-        .features-grid {
-            display: grid;
-            gap: var(--space-lg);
-            margin-top: var(--space-xl);
-        }
-
-        .feature-card {
-            background: rgba(255, 255, 255, 0.08);
-            backdrop-filter: blur(10px);
-            padding: var(--space-lg);
-            border-radius: var(--radius-lg);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            transition: all var(--transition-base);
-        }
-
-        .feature-card:hover {
-            background: rgba(255, 255, 255, 0.12);
-            transform: translateY(-2px);
-        }
-
-        .feature-icon {
-            width: 40px;
-            height: 40px;
-            background: rgba(255, 255, 255, 0.15);
-            border-radius: var(--radius-md);
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            padding: 1.5rem 1rem;
             display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: var(--space-md);
-            color: white;
-        }
-
-        .feature-title {
-            font-size: 1rem;
-            font-weight: 600;
-            margin-bottom: var(--space-xs);
-            color: white;
-        }
-
-        .feature-description {
-            font-size: 0.875rem;
-            opacity: 0.85;
-            line-height: 1.4;
-        }
-
-        /* ===== RIGHT PANEL - MODERN LOGIN ===== */
-        .login-panel {
-            padding: var(--space-2xl);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: var(--background);
-        }
-
-        .login-card {
+            flex-direction: column;
+            max-width: 1200px;
+            margin: 0 auto;
             width: 100%;
-            max-width: 400px;
-            background: var(--surface-elevated);
-            border-radius: var(--radius-xl);
-            padding: var(--space-2xl);
-            box-shadow: var(--shadow-xl);
-            border: 1px solid var(--border);
         }
 
-        .welcome-header {
+        /* Welcome Card */
+        .welcome-card {
+            background: var(--white);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            box-shadow: var(--shadow-md);
+            margin-bottom: 1.5rem;
+            border: 1px solid var(--gray-200);
             text-align: center;
-            margin-bottom: var(--space-xl);
         }
 
-        .avatar {
+        .welcome-icon {
             width: 64px;
             height: 64px;
-            background: var(--gradient-primary);
+            background: var(--gradient-accent);
             border-radius: var(--radius-full);
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0 auto var(--space-lg);
-            color: white;
-            font-size: 1.5rem;
+            margin: 0 auto 1rem;
+            color: var(--white);
         }
 
         .welcome-title {
-            font-family: 'Poppins', sans-serif;
-            font-size: 1.75rem;
+            font-size: 1.5rem;
             font-weight: 700;
-            color: var(--text-primary);
-            margin-bottom: var(--space-xs);
-            line-height: 1.2;
+            color: var(--gray-900);
+            margin-bottom: 0.25rem;
         }
 
         .welcome-subtitle {
             font-size: 0.875rem;
-            color: var(--text-secondary);
-            font-weight: 400;
+            color: var(--gray-500);
+            margin-bottom: 1.5rem;
         }
 
-        /* ===== FORM STYLES ===== */
+        /* Login Form */
+        .login-form {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
         .form-group {
-            margin-bottom: var(--space-lg);
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .form-label {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--gray-700);
         }
 
         .input-wrapper {
             position: relative;
         }
 
-        .form-label {
-            display: block;
-            font-size: 0.875rem;
-            font-weight: 500;
-            color: var(--text-primary);
-            margin-bottom: var(--space-sm);
-        }
-
         .form-input {
             width: 100%;
             padding: 0.875rem 1rem;
-            font-size: 0.9375rem;
-            font-weight: 400;
-            color: var(--text-primary);
-            background: var(--background);
-            border: 1.5px solid var(--border);
+            font-size: 1rem;
+            background: var(--white);
+            border: 1.5px solid var(--gray-300);
             border-radius: var(--radius-md);
-            transition: all var(--transition-fast);
-            outline: none;
+            color: var(--gray-900);
+            transition: var(--transition);
+            -webkit-appearance: none;
+            appearance: none;
         }
 
         .form-input:focus {
-            border-color: var(--nchsm-accent);
+            outline: none;
+            border-color: var(--accent);
             box-shadow: 0 0 0 3px rgba(56, 161, 105, 0.1);
-        }
-
-        .form-input::placeholder {
-            color: var(--text-tertiary);
         }
 
         .password-toggle {
@@ -326,72 +251,61 @@
             transform: translateY(-50%);
             background: none;
             border: none;
-            color: var(--text-tertiary);
-            cursor: pointer;
+            color: var(--gray-400);
             padding: 0.25rem;
-            border-radius: var(--radius-sm);
-            transition: all var(--transition-fast);
-        }
-
-        .password-toggle:hover {
-            color: var(--text-secondary);
-            background: var(--surface);
+            cursor: pointer;
         }
 
         .form-options {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: var(--space-xl);
+            margin: 0.5rem 0;
         }
 
-        .checkbox-label {
+        .remember-me {
             display: flex;
             align-items: center;
-            gap: var(--space-sm);
+            gap: 0.5rem;
             font-size: 0.875rem;
-            color: var(--text-secondary);
-            cursor: pointer;
-            user-select: none;
+            color: var(--gray-600);
         }
 
-        .checkbox-label input[type="checkbox"] {
+        .remember-me input[type="checkbox"] {
             width: 1rem;
             height: 1rem;
-            border-radius: 4px;
-            accent-color: var(--nchsm-accent);
+            accent-color: var(--accent);
         }
 
         .forgot-link {
             font-size: 0.875rem;
             font-weight: 500;
-            color: var(--nchsm-primary);
+            color: var(--primary);
             text-decoration: none;
-            transition: color var(--transition-fast);
         }
 
         .forgot-link:hover {
-            color: var(--nchsm-accent);
             text-decoration: underline;
         }
 
         .login-button {
             width: 100%;
             padding: 0.875rem;
-            font-size: 0.9375rem;
+            font-size: 1rem;
             font-weight: 600;
-            color: white;
             background: var(--gradient-accent);
+            color: var(--white);
             border: none;
             border-radius: var(--radius-md);
             cursor: pointer;
-            transition: all var(--transition-base);
-            box-shadow: var(--shadow-primary);
+            transition: var(--transition);
+            box-shadow: 0 4px 12px rgba(56, 161, 105, 0.3);
+            margin-top: 0.5rem;
         }
 
         .login-button:hover:not(:disabled) {
             transform: translateY(-1px);
-            box-shadow: 0 12px 30px -5px rgba(56, 161, 105, 0.25);
+            box-shadow: 0 6px 16px rgba(56, 161, 105, 0.4);
         }
 
         .login-button:active:not(:disabled) {
@@ -403,11 +317,12 @@
             cursor: not-allowed;
         }
 
+        /* Divider */
         .divider {
             display: flex;
             align-items: center;
-            margin: var(--space-xl 0);
-            color: var(--text-tertiary);
+            margin: 1.5rem 0;
+            color: var(--gray-400);
             font-size: 0.875rem;
         }
 
@@ -416,41 +331,40 @@
             content: '';
             flex: 1;
             height: 1px;
-            background: var(--border);
+            background: var(--gray-300);
         }
 
         .divider span {
-            padding: 0 var(--space-md);
+            padding: 0 1rem;
         }
 
+        /* Sign Up Prompt */
         .signup-prompt {
             text-align: center;
             font-size: 0.875rem;
-            color: var(--text-secondary);
-            margin-top: var(--space-xl);
+            color: var(--gray-600);
+            margin-top: 1rem;
         }
 
         .signup-link {
             font-weight: 600;
-            color: var(--nchsm-primary);
+            color: var(--primary);
             text-decoration: none;
-            transition: color var(--transition-fast);
         }
 
         .signup-link:hover {
-            color: var(--nchsm-accent);
             text-decoration: underline;
         }
 
+        /* Error Message */
         .error-message {
             background: rgba(239, 68, 68, 0.05);
             border: 1px solid rgba(239, 68, 68, 0.2);
-            color: #EF4444;
-            padding: var(--space-md);
+            color: var(--error);
+            padding: 0.75rem;
             border-radius: var(--radius-md);
             font-size: 0.875rem;
-            font-weight: 500;
-            margin-bottom: var(--space-lg);
+            margin-bottom: 1rem;
             display: none;
         }
 
@@ -458,15 +372,16 @@
             display: block;
         }
 
-        .loading {
+        /* Loading Spinner */
+        .loading-spinner {
             display: inline-block;
-            width: 16px;
-            height: 16px;
+            width: 1rem;
+            height: 1rem;
             border: 2px solid rgba(255, 255, 255, 0.3);
-            border-top: 2px solid white;
+            border-top: 2px solid var(--white);
             border-radius: 50%;
             animation: spin 1s linear infinite;
-            margin-right: 8px;
+            margin-right: 0.5rem;
             vertical-align: middle;
         }
 
@@ -475,22 +390,54 @@
             100% { transform: rotate(360deg); }
         }
 
-        /* ===== 2FA MODAL - MODERN DESIGN ===== */
+        /* Footer */
+        .mobile-footer {
+            background: var(--gray-900);
+            color: var(--gray-400);
+            padding: 1rem;
+            font-size: 0.75rem;
+            text-align: center;
+            border-top: 1px solid var(--gray-800);
+        }
+
+        .copyright {
+            margin-bottom: 0.25rem;
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .footer-links a {
+            color: var(--gray-400);
+            text-decoration: none;
+        }
+
+        .footer-links a:hover {
+            color: var(--gray-300);
+            text-decoration: underline;
+        }
+
+        /* ===== MODAL STYLES (Mobile Optimized) ===== */
         .modal-overlay {
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
             bottom: 0;
-            background: var(--overlay);
-            backdrop-filter: blur(12px);
+            background: rgba(7, 52, 80, 0.95);
+            backdrop-filter: blur(8px);
+            z-index: 1000;
             display: flex;
             align-items: center;
             justify-content: center;
-            z-index: 1000;
+            padding: 1rem;
             opacity: 0;
             visibility: hidden;
-            transition: all var(--transition-base);
+            transition: var(--transition);
         }
 
         .modal-overlay.active {
@@ -499,95 +446,127 @@
         }
 
         .modal-content {
-            background: var(--surface-elevated);
-            border-radius: var(--radius-xl);
-            padding: var(--space-2xl);
-            width: 90%;
-            max-width: 440px;
+            background: var(--white);
+            border-radius: var(--radius-lg);
+            width: 100%;
+            max-width: 400px;
             max-height: 90vh;
             overflow-y: auto;
             box-shadow: var(--shadow-xl);
-            border: 1px solid var(--border);
-            transform: translateY(20px);
-            transition: transform var(--transition-base);
+            position: relative;
+            animation: modalSlideIn 0.3s ease;
         }
 
-        .modal-overlay.active .modal-content {
-            transform: translateY(0);
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .modal-header {
+            padding: 1.5rem 1.5rem 1rem;
             text-align: center;
-            margin-bottom: var(--space-xl);
+            border-bottom: 1px solid var(--gray-200);
+            position: sticky;
+            top: 0;
+            background: var(--white);
+            z-index: 1;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--gray-400);
+            cursor: pointer;
+            width: 2rem;
+            height: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: var(--radius-full);
+        }
+
+        .modal-close:hover {
+            background: var(--gray-100);
         }
 
         .modal-icon {
-            width: 64px;
-            height: 64px;
+            width: 56px;
+            height: 56px;
             background: var(--gradient-accent);
             border-radius: var(--radius-full);
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0 auto var(--space-lg);
-            color: white;
+            margin: 0 auto 1rem;
+            color: var(--white);
         }
 
         .modal-title {
-            font-family: 'Poppins', sans-serif;
-            font-size: 1.5rem;
+            font-size: 1.25rem;
             font-weight: 700;
-            color: var(--text-primary);
-            margin-bottom: var(--space-xs);
+            color: var(--gray-900);
+            margin-bottom: 0.25rem;
         }
 
         .modal-subtitle {
             font-size: 0.875rem;
-            color: var(--text-secondary);
+            color: var(--gray-500);
             line-height: 1.4;
         }
 
-        /* ===== METHOD SELECTION ===== */
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        /* Method Selection */
         .method-grid {
             display: grid;
-            gap: var(--space-md);
-            margin: var(--space-xl 0);
+            gap: 0.75rem;
+            margin: 1rem 0;
         }
 
         .method-card {
-            background: var(--surface);
-            border: 2px solid var(--border);
-            border-radius: var(--radius-lg);
-            padding: var(--space-lg);
+            background: var(--gray-50);
+            border: 2px solid var(--gray-300);
+            border-radius: var(--radius-md);
+            padding: 1rem;
             cursor: pointer;
-            transition: all var(--transition-base);
+            transition: var(--transition);
             display: flex;
-            align-items: flex-start;
-            gap: var(--space-md);
+            align-items: center;
+            gap: 1rem;
         }
 
         .method-card:hover {
-            border-color: var(--nchsm-accent);
+            border-color: var(--accent);
             background: rgba(56, 161, 105, 0.02);
-            transform: translateY(-2px);
         }
 
         .method-card.selected {
-            border-color: var(--nchsm-accent);
+            border-color: var(--accent);
             background: rgba(56, 161, 105, 0.05);
-            box-shadow: 0 8px 16px rgba(56, 161, 105, 0.08);
+            box-shadow: 0 4px 12px rgba(56, 161, 105, 0.1);
         }
 
         .method-icon-circle {
-            width: 48px;
-            height: 48px;
+            width: 40px;
+            height: 40px;
             border-radius: var(--radius-full);
             display: flex;
             align-items: center;
             justify-content: center;
+            color: var(--white);
             flex-shrink: 0;
-            color: white;
-            font-size: 1.25rem;
         }
 
         .method-icon-circle.authenticator {
@@ -595,7 +574,7 @@
         }
 
         .method-icon-circle.sms {
-            background: linear-gradient(135deg, #0A3D62 0%, #073450 100%);
+            background: var(--gradient-primary);
         }
 
         .method-icon-circle.email {
@@ -608,110 +587,109 @@
 
         .method-title {
             font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 4px;
+            color: var(--gray-900);
+            margin-bottom: 0.125rem;
             font-size: 0.9375rem;
         }
 
         .method-description {
             font-size: 0.8125rem;
-            color: var(--text-secondary);
+            color: var(--gray-500);
             line-height: 1.4;
         }
 
-        /* ===== OTP INPUT ===== */
+        /* OTP Input */
         .otp-container {
-            margin: var(--space-xl 0);
+            margin: 1.5rem 0;
         }
 
         .otp-inputs {
             display: flex;
-            gap: var(--space-sm);
+            gap: 0.5rem;
             justify-content: center;
         }
 
         .otp-digit {
-            width: 48px;
-            height: 56px;
+            width: 44px;
+            height: 52px;
             text-align: center;
             font-size: 1.25rem;
             font-weight: 600;
-            color: var(--text-primary);
-            background: var(--surface);
-            border: 2px solid var(--border);
+            color: var(--gray-900);
+            background: var(--gray-50);
+            border: 2px solid var(--gray-300);
             border-radius: var(--radius-md);
-            transition: all var(--transition-fast);
+            transition: var(--transition);
             outline: none;
         }
 
         .otp-digit:focus {
-            border-color: var(--nchsm-accent);
-            background: white;
+            border-color: var(--accent);
+            background: var(--white);
             box-shadow: 0 0 0 3px rgba(56, 161, 105, 0.1);
         }
 
         .otp-digit.filled {
-            border-color: var(--nchsm-accent);
+            border-color: var(--accent);
             background: rgba(56, 161, 105, 0.05);
         }
 
-        /* ===== QR CODE ===== */
+        /* QR Code */
         .qr-container {
             text-align: center;
-            margin: var(--space-xl 0);
+            margin: 1.5rem 0;
         }
 
         .qr-code {
             display: inline-block;
-            padding: var(--space-md);
-            background: white;
-            border-radius: var(--radius-lg);
-            border: 1px solid var(--border);
-            margin: var(--space-md 0);
+            padding: 1rem;
+            background: var(--white);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--gray-300);
+            margin: 1rem 0;
         }
 
         .qr-instructions {
-            background: var(--surface);
-            padding: var(--space-lg);
-            border-radius: var(--radius-lg);
-            margin: var(--space-lg 0);
+            background: var(--gray-50);
+            padding: 1rem;
+            border-radius: var(--radius-md);
+            margin: 1rem 0;
             text-align: left;
         }
 
         .qr-instructions ol {
-            padding-left: var(--space-lg);
-            margin: var(--space-md 0);
+            padding-left: 1.25rem;
+            margin: 0.5rem 0;
         }
 
         .qr-instructions li {
-            margin-bottom: var(--space-sm);
-            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+            color: var(--gray-600);
             font-size: 0.875rem;
         }
 
-        /* ===== BACKUP CODES ===== */
+        /* Backup Codes */
         .backup-codes {
-            background: var(--surface);
-            border-radius: var(--radius-lg);
-            padding: var(--space-lg);
-            margin: var(--space-xl 0);
+            background: var(--gray-50);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            margin: 1.5rem 0;
         }
 
         .backup-codes-grid {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: var(--space-sm);
-            margin: var(--space-lg 0);
+            gap: 0.5rem;
+            margin: 1rem 0;
         }
 
         .backup-code {
             font-family: 'Courier New', monospace;
             font-size: 0.875rem;
             font-weight: 600;
-            padding: var(--space-md);
-            background: white;
-            border: 1px solid var(--border);
-            border-radius: var(--radius-md);
+            padding: 0.75rem;
+            background: var(--white);
+            border: 1px solid var(--gray-300);
+            border-radius: var(--radius-sm);
             text-align: center;
             position: relative;
             user-select: all;
@@ -719,12 +697,12 @@
 
         .copy-button {
             position: absolute;
-            top: 4px;
-            right: 4px;
-            width: 24px;
-            height: 24px;
-            background: var(--nchsm-primary);
-            color: white;
+            top: 0.25rem;
+            right: 0.25rem;
+            width: 1.5rem;
+            height: 1.5rem;
+            background: var(--primary);
+            color: var(--white);
             border: none;
             border-radius: var(--radius-sm);
             font-size: 0.75rem;
@@ -733,118 +711,184 @@
             align-items: center;
             justify-content: center;
             opacity: 0;
-            transition: opacity var(--transition-fast);
+            transition: var(--transition);
         }
 
         .backup-code:hover .copy-button {
             opacity: 1;
         }
 
-        /* ===== TRUST DEVICE ===== */
+        /* Trust Device */
         .trust-device {
             display: flex;
             align-items: center;
-            gap: var(--space-sm);
-            margin: var(--space-lg 0;
-            padding: var(--space-md);
-            background: var(--surface);
+            gap: 0.5rem;
+            margin: 1rem 0;
+            padding: 0.75rem;
+            background: var(--gray-50);
             border-radius: var(--radius-md);
         }
 
         .trust-device input[type="checkbox"] {
-            width: 18px;
-            height: 18px;
-            accent-color: var(--nchsm-accent);
+            width: 1rem;
+            height: 1rem;
+            accent-color: var(--accent);
         }
 
         .trust-device label {
             font-size: 0.875rem;
-            color: var(--text-secondary);
+            color: var(--gray-600);
             cursor: pointer;
         }
 
-        /* ===== ACTION BUTTONS ===== */
+        /* Action Buttons */
         .action-buttons {
             display: flex;
-            gap: var(--space-md);
-            margin-top: var(--space-xl);
+            gap: 0.75rem;
+            margin-top: 1.5rem;
         }
 
         .btn-primary {
             flex: 1;
             padding: 0.875rem;
-            font-size: 0.9375rem;
+            font-size: 1rem;
             font-weight: 600;
-            color: white;
+            color: var(--white);
             background: var(--gradient-accent);
             border: none;
             border-radius: var(--radius-md);
             cursor: pointer;
-            transition: all var(--transition-base);
+            transition: var(--transition);
         }
 
         .btn-primary:hover:not(:disabled) {
             transform: translateY(-1px);
-            box-shadow: 0 8px 20px rgba(56, 161, 105, 0.2);
+            box-shadow: 0 6px 16px rgba(56, 161, 105, 0.3);
         }
 
         .btn-secondary {
             flex: 1;
             padding: 0.875rem;
-            font-size: 0.9375rem;
+            font-size: 1rem;
             font-weight: 600;
-            color: var(--nchsm-primary);
-            background: var(--surface);
-            border: 1.5px solid var(--border);
+            color: var(--primary);
+            background: var(--gray-100);
+            border: 1.5px solid var(--gray-300);
             border-radius: var(--radius-md);
             cursor: pointer;
-            transition: all var(--transition-base);
+            transition: var(--transition);
         }
 
         .btn-secondary:hover {
-            border-color: var(--nchsm-primary);
-            background: rgba(10, 61, 98, 0.02);
+            border-color: var(--primary);
+            background: var(--gray-200);
         }
 
-        /* ===== MOBILE RESPONSIVE ===== */
-        @media (max-width: 1024px) {
-            .login-container {
-                grid-template-columns: 1fr;
-            }
-            
-            .brand-panel {
-                padding: var(--space-xl);
-                min-height: 40vh;
-            }
-            
-            .login-panel {
-                padding: var(--space-xl);
-            }
+        /* Help Links */
+        .help-links {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-top: 1rem;
+            font-size: 0.875rem;
         }
 
-        @media (max-width: 640px) {
-            :root {
-                --space-2xl: 2rem;
-                --space-xl: 1.5rem;
-                --space-lg: 1rem;
+        .help-links a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        .help-links a:hover {
+            text-decoration: underline;
+        }
+
+        /* Tablet & Desktop */
+        @media (min-width: 768px) {
+            .mobile-container {
+                flex-direction: row;
+                min-height: 100vh;
             }
             
-            .login-card {
-                padding: var(--space-xl);
-                border-radius: var(--radius-lg);
+            .mobile-header {
+                position: fixed;
+                top: 0;
+                left: 0;
+                bottom: 0;
+                width: 320px;
+                padding: 2rem;
+                display: flex;
+                flex-direction: column;
+            }
+            
+            .header-content {
+                flex-direction: column;
+                text-align: center;
+                gap: 1rem;
+            }
+            
+            .college-info {
+                text-align: center;
+            }
+            
+            .college-name {
+                font-size: 1.25rem;
+                white-space: normal;
+            }
+            
+            .college-tagline {
+                font-size: 0.875rem;
+                white-space: normal;
+            }
+            
+            .main-content {
+                margin-left: 320px;
+                padding: 2rem;
+                justify-content: center;
+                max-width: 480px;
+            }
+            
+            .welcome-card {
+                padding: 2rem;
             }
             
             .modal-content {
-                padding: var(--space-xl);
-                border-radius: var(--radius-lg);
+                max-width: 440px;
             }
             
-            .features-grid {
-                grid-template-columns: 1fr;
+            .otp-digit {
+                width: 52px;
+                height: 60px;
             }
             
             .backup-codes-grid {
-                grid-template-columns: 1fr;
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .mobile-header {
+                width: 380px;
+                padding: 3rem 2rem;
+            }
+            
+            .main-content {
+                margin-left: 380px;
+                max-width: 520px;
+            }
+        }
+
+        /* Small Phones */
+        @media (max-width: 360px) {
+            html {
+                font-size: 14px;
+            }
+            
+            .main-content {
+                padding: 1rem;
+            }
+            
+            .welcome-card {
+                padding: 1.25rem;
             }
             
             .otp-digit {
@@ -852,133 +896,109 @@
                 height: 48px;
                 font-size: 1.125rem;
             }
-        }
-
-        @media (max-width: 480px) {
+            
             .action-buttons {
                 flex-direction: column;
             }
-            
-            .method-card {
-                flex-direction: column;
-                text-align: center;
+        }
+
+        /* Landscape Mode */
+        @media (max-height: 600px) and (orientation: landscape) {
+            .mobile-container {
+                flex-direction: row;
             }
             
-            .method-icon-circle {
-                margin: 0 auto;
+            .mobile-header {
+                width: 280px;
             }
             
+            .main-content {
+                margin-left: 280px;
+                overflow-y: auto;
+                padding: 1rem;
+            }
+            
+            .modal-content {
+                max-height: 85vh;
+            }
+        }
+
+        /* Dark Mode Support */
+        @media (prefers-color-scheme: dark) {
+            body {
+                background: var(--gray-900);
+                color: var(--gray-200);
+            }
+            
+            .mobile-container {
+                background: var(--gray-900);
+            }
+            
+            .welcome-card,
+            .modal-content {
+                background: var(--gray-800);
+                border-color: var(--gray-700);
+            }
+            
+            .form-input,
             .otp-digit {
-                width: 36px;
-                height: 44px;
-                font-size: 1rem;
+                background: var(--gray-800);
+                border-color: var(--gray-700);
+                color: var(--gray-200);
+            }
+            
+            .method-card,
+            .qr-instructions,
+            .backup-codes,
+            .trust-device {
+                background: var(--gray-800);
+                border-color: var(--gray-700);
+            }
+            
+            .method-title,
+            .modal-title {
+                color: var(--gray-100);
+            }
+            
+            .method-description,
+            .modal-subtitle,
+            .welcome-subtitle {
+                color: var(--gray-400);
             }
         }
-
-        /* ===== UTILITY CLASSES ===== */
-        .hidden {
-            display: none !important;
-        }
-
-        .text-center {
-            text-align: center;
-        }
-
-        .text-sm {
-            font-size: 0.875rem;
-        }
-
-        .text-xs {
-            font-size: 0.75rem;
-        }
-
-        .font-medium {
-            font-weight: 500;
-        }
-
-        .font-semibold {
-            font-weight: 600;
-        }
-
-        .mt-1 { margin-top: var(--space-sm); }
-        .mt-2 { margin-top: var(--space-md); }
-        .mt-3 { margin-top: var(--space-lg); }
-        .mt-4 { margin-top: var(--space-xl); }
-        .mt-5 { margin-top: var(--space-2xl); }
-
-        .mb-1 { margin-bottom: var(--space-sm); }
-        .mb-2 { margin-bottom: var(--space-md); }
-        .mb-3 { margin-bottom: var(--space-lg); }
-        .mb-4 { margin-bottom: var(--space-xl); }
-        .mb-5 { margin-bottom: var(--space-2xl); }
     </style>
 </head>
 <body>
-    <div class="login-container">
-        <!-- Left Panel - Modern Branding -->
-        <div class="brand-panel">
-            <div class="brand-content">
-                <div class="logo-container">
-                    <div class="logo">
-                        <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo">
-                    </div>
-                    <div class="college-info">
-                        <h1>NAKURU COLLEGE OF HEALTH SCIENCES AND MANAGEMENT</h1>
-                        <p>Centre of Nursing & Health Sciences Excellence</p>
-                    </div>
+    <div class="mobile-container">
+        <!-- Mobile Header -->
+        <header class="mobile-header">
+            <div class="header-content">
+                <div class="logo">
+                    <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo">
                 </div>
-                
-                <div class="security-badge">
-                    <i data-feather="shield"></i>
-                    <span>Secure Digital Learning Platform</span>
-                </div>
-                
-                <div class="features-grid">
-                    <div class="feature-card">
-                        <div class="feature-icon">
-                            <i data-feather="book-open"></i>
-                        </div>
-                        <h3 class="feature-title">Comprehensive Learning</h3>
-                        <p class="feature-description">Access to complete course materials, lectures, and resources</p>
-                    </div>
-                    
-                    <div class="feature-card">
-                        <div class="feature-icon">
-                            <i data-feather="trending-up"></i>
-                        </div>
-                        <h3 class="feature-title">Progress Tracking</h3>
-                        <p class="feature-description">Monitor your academic performance with real-time analytics</p>
-                    </div>
-                    
-                    <div class="feature-card">
-                        <div class="feature-icon">
-                            <i data-feather="users"></i>
-                        </div>
-                        <h3 class="feature-title">Collaborative Learning</h3>
-                        <p class="feature-description">Connect with peers and lecturers for enhanced learning</p>
-                    </div>
+                <div class="college-info">
+                    <h1 class="college-name">NAKURU COLLEGE OF HEALTH SCIENCES AND MANAGEMENT</h1>
+                    <p class="college-tagline">Centre of Nursing & Health Sciences Excellence</p>
                 </div>
             </div>
-        </div>
+        </header>
 
-        <!-- Right Panel - Modern Login -->
-        <div class="login-panel">
-            <div class="login-card">
-                <div class="welcome-header">
-                    <div class="avatar">
-                        <i data-feather="lock"></i>
-                    </div>
-                    <h2 class="welcome-title">Welcome Back</h2>
-                    <p class="welcome-subtitle">Sign in to access your digital learning portal</p>
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="welcome-card">
+                <div class="welcome-icon">
+                    <i data-feather="lock"></i>
                 </div>
-
+                <h2 class="welcome-title">Welcome Back</h2>
+                <p class="welcome-subtitle">Sign in to access your digital learning portal</p>
+                
                 <div id="errorMsg" class="error-message"></div>
                 
-                <form id="loginForm">
+                <form id="loginForm" class="login-form">
                     <div class="form-group">
                         <label class="form-label">Email Address</label>
                         <div class="input-wrapper">
-                            <input type="email" id="email" class="form-input" placeholder="Enter your college email" required>
+                            <input type="email" id="email" class="form-input" placeholder="student@nchsm.ac.ke" required>
                         </div>
                     </div>
                     
@@ -993,7 +1013,7 @@
                     </div>
                     
                     <div class="form-options">
-                        <label class="checkbox-label">
+                        <label class="remember-me">
                             <input type="checkbox" id="rememberMe">
                             <span>Remember me</span>
                         </label>
@@ -1013,13 +1033,26 @@
                     Don't have an account? <a href="register.html" class="signup-link">Create account</a>
                 </div>
             </div>
-        </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="mobile-footer">
+            <p class="copyright">© 2025 Nakuru College of Health Sciences and Management</p>
+            <div class="footer-links">
+                <a href="privacy.html">Privacy</a>
+                <a href="terms.html">Terms</a>
+                <a href="contact.html">Contact</a>
+                <a href="support.html">Support</a>
+            </div>
+        </footer>
     </div>
+    
+    <!-- ===== MODALS ===== -->
     
     <!-- 2FA Verification Modal -->
     <div id="twoFactorModal" class="modal-overlay">
         <div class="modal-content">
-            <button onclick="hideAllModals()" class="password-toggle" style="position: absolute; top: 20px; right: 20px;">×</button>
+            <button class="modal-close" onclick="hideAllModals()">×</button>
             
             <div class="modal-header">
                 <div class="modal-icon">
@@ -1027,49 +1060,48 @@
                 </div>
                 <h3 class="modal-title">Security Verification</h3>
                 <p class="modal-subtitle" id="verificationMethodText"></p>
-                <p class="text-sm font-medium mt-2" id="2faEmail" style="color: var(--nchsm-primary);"></p>
+                <p class="modal-subtitle" id="2faEmail" style="color: var(--primary); font-weight: 500;"></p>
             </div>
             
-            <div class="otp-container">
-                <div class="otp-inputs">
-                    <input type="text" maxlength="1" class="otp-digit" data-index="0" oninput="moveToNextOTP(this, 'verify')">
-                    <input type="text" maxlength="1" class="otp-digit" data-index="1" oninput="moveToNextOTP(this, 'verify')">
-                    <input type="text" maxlength="1" class="otp-digit" data-index="2" oninput="moveToNextOTP(this, 'verify')">
-                    <input type="text" maxlength="1" class="otp-digit" data-index="3" oninput="moveToNextOTP(this, 'verify')">
-                    <input type="text" maxlength="1" class="otp-digit" data-index="4" oninput="moveToNextOTP(this, 'verify')">
-                    <input type="text" maxlength="1" class="otp-digit" data-index="5" oninput="moveToNextOTP(this, 'verify')">
+            <div class="modal-body">
+                <div class="otp-container">
+                    <div class="otp-inputs">
+                        <input type="text" maxlength="1" class="otp-digit" data-index="0" oninput="moveToNextOTP(this, 'verify')">
+                        <input type="text" maxlength="1" class="otp-digit" data-index="1" oninput="moveToNextOTP(this, 'verify')">
+                        <input type="text" maxlength="1" class="otp-digit" data-index="2" oninput="moveToNextOTP(this, 'verify')">
+                        <input type="text" maxlength="1" class="otp-digit" data-index="3" oninput="moveToNextOTP(this, 'verify')">
+                        <input type="text" maxlength="1" class="otp-digit" data-index="4" oninput="moveToNextOTP(this, 'verify')">
+                        <input type="text" maxlength="1" class="otp-digit" data-index="5" oninput="moveToNextOTP(this, 'verify')">
+                    </div>
                 </div>
-            </div>
-            
-            <div id="verifyingSpinner" class="loading hidden mt-3"></div>
-            
-            <div class="trust-device">
-                <input type="checkbox" id="trustDevice">
-                <label for="trustDevice">Trust this device for 30 days</label>
-            </div>
-            
-            <div class="action-buttons mt-4">
-                <button onclick="verify2FACode()" id="verify2FABtn" class="btn-primary">
-                    Verify & Continue
-                </button>
-            </div>
-            
-            <div class="text-center mt-3">
-                <div class="text-sm" style="color: var(--text-secondary);">
-                    <a href="#" onclick="useBackupCode()" class="forgot-link">Use backup code</a>
-                    <span class="mx-2">•</span>
-                    <a href="#" onclick="sendRecoveryEmail()" class="forgot-link">Can't access?</a>
+                
+                <div id="verifyingSpinner" class="loading-spinner" style="display: none;"></div>
+                
+                <div class="trust-device">
+                    <input type="checkbox" id="trustDevice">
+                    <label for="trustDevice">Trust this device for 30 days</label>
                 </div>
+                
+                <div class="action-buttons">
+                    <button onclick="verify2FACode()" id="verify2FABtn" class="btn-primary">
+                        Verify & Continue
+                    </button>
+                </div>
+                
+                <div class="help-links">
+                    <a href="#" onclick="useBackupCode()">Use backup code</a>
+                    <a href="#" onclick="sendRecoveryEmail()">Can't access?</a>
+                </div>
+                
+                <div id="2faError" class="error-message" style="display: none;"></div>
             </div>
-            
-            <div id="2faError" class="error-message mt-3"></div>
         </div>
     </div>
     
     <!-- Method Selection Modal -->
     <div id="methodSelectionModal" class="modal-overlay">
         <div class="modal-content">
-            <button onclick="hideAllModals()" class="password-toggle" style="position: absolute; top: 20px; right: 20px;">×</button>
+            <button class="modal-close" onclick="hideAllModals()">×</button>
             
             <div class="modal-header">
                 <div class="modal-icon" style="background: var(--gradient-primary);">
@@ -1079,44 +1111,46 @@
                 <p class="modal-subtitle">Select your preferred two-factor authentication method</p>
             </div>
             
-            <div class="method-grid">
-                <div class="method-card" onclick="selectMethod('authenticator')">
-                    <div class="method-icon-circle authenticator">
-                        <i data-feather="smartphone"></i>
+            <div class="modal-body">
+                <div class="method-grid">
+                    <div class="method-card" onclick="selectMethod('authenticator')">
+                        <div class="method-icon-circle authenticator">
+                            <i data-feather="smartphone"></i>
+                        </div>
+                        <div class="method-content">
+                            <h4 class="method-title">Authenticator App</h4>
+                            <p class="method-description">Use Google Authenticator, Authy, or Microsoft Authenticator</p>
+                        </div>
                     </div>
-                    <div class="method-content">
-                        <h4 class="method-title">Authenticator App</h4>
-                        <p class="method-description">Use Google Authenticator, Authy, or Microsoft Authenticator</p>
+                    
+                    <div class="method-card" onclick="selectMethod('sms')">
+                        <div class="method-icon-circle sms">
+                            <i data-feather="message-circle"></i>
+                        </div>
+                        <div class="method-content">
+                            <h4 class="method-title">Text Message (SMS)</h4>
+                            <p class="method-description">Receive verification codes via SMS to your phone</p>
+                        </div>
+                    </div>
+                    
+                    <div class="method-card" onclick="selectMethod('email')">
+                        <div class="method-icon-circle email">
+                            <i data-feather="mail"></i>
+                        </div>
+                        <div class="method-content">
+                            <h4 class="method-title">Email Verification</h4>
+                            <p class="method-description">Receive verification codes via email</p>
+                        </div>
                     </div>
                 </div>
                 
-                <div class="method-card" onclick="selectMethod('sms')">
-                    <div class="method-icon-circle sms">
-                        <i data-feather="message-circle"></i>
-                    </div>
-                    <div class="method-content">
-                        <h4 class="method-title">Text Message (SMS)</h4>
-                        <p class="method-description">Receive verification codes via SMS to your phone</p>
-                    </div>
-                </div>
+                <div id="methodError" class="error-message" style="display: none;"></div>
                 
-                <div class="method-card" onclick="selectMethod('email')">
-                    <div class="method-icon-circle email">
-                        <i data-feather="mail"></i>
-                    </div>
-                    <div class="method-content">
-                        <h4 class="method-title">Email Verification</h4>
-                        <p class="method-description">Receive verification codes via email</p>
-                    </div>
+                <div class="action-buttons">
+                    <button onclick="proceedWithSelectedMethod()" id="proceedMethodBtn" class="btn-primary">
+                        Continue
+                    </button>
                 </div>
-            </div>
-            
-            <div id="methodError" class="error-message"></div>
-            
-            <div class="action-buttons mt-4">
-                <button onclick="proceedWithSelectedMethod()" id="proceedMethodBtn" class="btn-primary">
-                    Continue
-                </button>
             </div>
         </div>
     </div>
@@ -1124,7 +1158,7 @@
     <!-- Authenticator Setup Modal -->
     <div id="authenticatorSetupModal" class="modal-overlay">
         <div class="modal-content">
-            <button onclick="hideAllModals()" class="password-toggle" style="position: absolute; top: 20px; right: 20px;">×</button>
+            <button class="modal-close" onclick="hideAllModals()">×</button>
             
             <div class="modal-header">
                 <div class="modal-icon" style="background: linear-gradient(135deg, #4285F4 0%, #34A853 100%);">
@@ -1134,41 +1168,43 @@
                 <p class="modal-subtitle">Scan QR code with your authenticator app</p>
             </div>
             
-            <div class="qr-container">
-                <div id="qrCode" class="qr-code"></div>
-            </div>
-            
-            <div class="qr-instructions">
-                <p class="font-semibold mb-2">Setup Instructions:</p>
-                <ol>
-                    <li>Install Google Authenticator, Authy, or Microsoft Authenticator</li>
-                    <li>Open the app and tap "Scan QR Code"</li>
-                    <li>Point your camera at the QR code above</li>
-                    <li>Enter the 6-digit code shown in the app below</li>
-                </ol>
-            </div>
-            
-            <div class="otp-container">
-                <p class="text-sm text-center mb-3" style="color: var(--text-secondary);">
-                    Enter the 6-digit code from your authenticator app:
-                </p>
-                <div class="otp-inputs">
-                    <input type="text" maxlength="1" class="otp-digit" data-index="0" oninput="moveToNextOTP(this, 'authenticator')">
-                    <input type="text" maxlength="1" class="otp-digit" data-index="1" oninput="moveToNextOTP(this, 'authenticator')">
-                    <input type="text" maxlength="1" class="otp-digit" data-index="2" oninput="moveToNextOTP(this, 'authenticator')">
-                    <input type="text" maxlength="1" class="otp-digit" data-index="3" oninput="moveToNextOTP(this, 'authenticator')">
-                    <input type="text" maxlength="1" class="otp-digit" data-index="4" oninput="moveToNextOTP(this, 'authenticator')">
-                    <input type="text" maxlength="1" class="otp-digit" data-index="5" oninput="moveToNextOTP(this, 'authenticator')">
+            <div class="modal-body">
+                <div class="qr-container">
+                    <div id="qrCode" class="qr-code"></div>
                 </div>
-            </div>
-            
-            <div id="setupVerifyingSpinner" class="loading hidden mt-3"></div>
-            <div id="setupError" class="error-message mt-3"></div>
-            
-            <div class="action-buttons mt-4">
-                <button onclick="completeAuthenticatorSetup()" id="setup2FABtn" class="btn-primary">
-                    Verify & Continue
-                </button>
+                
+                <div class="qr-instructions">
+                    <p style="font-weight: 600; margin-bottom: 0.5rem; color: var(--gray-800);">Setup Instructions:</p>
+                    <ol>
+                        <li>Install Google Authenticator, Authy, or Microsoft Authenticator</li>
+                        <li>Open the app and tap "Scan QR Code"</li>
+                        <li>Point your camera at the QR code above</li>
+                        <li>Enter the 6-digit code shown in the app below</li>
+                    </ol>
+                </div>
+                
+                <div class="otp-container">
+                    <p style="text-align: center; color: var(--gray-600); margin-bottom: 1rem; font-size: 0.875rem;">
+                        Enter the 6-digit code from your authenticator app:
+                    </p>
+                    <div class="otp-inputs">
+                        <input type="text" maxlength="1" class="otp-digit" data-index="0" oninput="moveToNextOTP(this, 'authenticator')">
+                        <input type="text" maxlength="1" class="otp-digit" data-index="1" oninput="moveToNextOTP(this, 'authenticator')">
+                        <input type="text" maxlength="1" class="otp-digit" data-index="2" oninput="moveToNextOTP(this, 'authenticator')">
+                        <input type="text" maxlength="1" class="otp-digit" data-index="3" oninput="moveToNextOTP(this, 'authenticator')">
+                        <input type="text" maxlength="1" class="otp-digit" data-index="4" oninput="moveToNextOTP(this, 'authenticator')">
+                        <input type="text" maxlength="1" class="otp-digit" data-index="5" oninput="moveToNextOTP(this, 'authenticator')">
+                    </div>
+                </div>
+                
+                <div id="setupVerifyingSpinner" class="loading-spinner" style="display: none;"></div>
+                <div id="setupError" class="error-message" style="display: none;"></div>
+                
+                <div class="action-buttons">
+                    <button onclick="completeAuthenticatorSetup()" id="setup2FABtn" class="btn-primary">
+                        Verify & Continue
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -1176,7 +1212,7 @@
     <!-- Backup Codes Modal -->
     <div id="backupCodesModal" class="modal-overlay">
         <div class="modal-content">
-            <button onclick="hideAllModals()" class="password-toggle" style="position: absolute; top: 20px; right: 20px;">×</button>
+            <button class="modal-close" onclick="hideAllModals()">×</button>
             
             <div class="modal-header">
                 <div class="modal-icon">
@@ -1186,19 +1222,21 @@
                 <p class="modal-subtitle">Save these backup codes in a secure location</p>
             </div>
             
-            <div class="backup-codes">
-                <p class="text-sm mb-3" style="color: var(--text-secondary);">
-                    Each code can be used once if you lose access to your authenticator app.
-                </p>
-                <div class="backup-codes-grid" id="backupCodesList"></div>
-                
-                <div class="action-buttons mt-4">
-                    <button onclick="downloadBackupCodes()" class="btn-secondary">
-                        <i data-feather="download"></i> Download Codes
-                    </button>
-                    <button onclick="proceedToDashboard()" class="btn-primary">
-                        Continue to Portal
-                    </button>
+            <div class="modal-body">
+                <div class="backup-codes">
+                    <p style="color: var(--error); font-size: 0.875rem; margin-bottom: 1rem; text-align: center;">
+                        ⚠️ Each code can be used once if you lose access to your authenticator app
+                    </p>
+                    <div class="backup-codes-grid" id="backupCodesList"></div>
+                    
+                    <div class="action-buttons">
+                        <button onclick="downloadBackupCodes()" class="btn-secondary">
+                            <i data-feather="download"></i> Download Codes
+                        </button>
+                        <button onclick="proceedToDashboard()" class="btn-primary">
+                            Continue to Portal
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1206,31 +1244,27 @@
 
     <script>
     // ============================================
-    // MODERN JAVASCRIPT - MODULAR & CLEAN
+    // MOBILE-FIRST JAVASCRIPT
     // ============================================
     
-    // Global State
+    // State Management
     const state = {
         currentUser: null,
         selectedMethod: null,
-        otpAttempts: 0,
-        maxOtpAttempts: 3,
         currentSecret: null,
-        backupCodes: []
+        backupCodes: [],
+        isLoggingIn: false,
+        otpAttempts: 0,
+        maxOtpAttempts: 3
     };
     
     // Supabase Configuration
-    const SUPABASE_CONFIG = {
-        url: 'https://lwhtjozfsmbyihenfunw.supabase.co',
-        key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk'
-    };
+    const supabase = window.supabase.createClient(
+        'https://lwhtjozfsmbyihenfunw.supabase.co',
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk'
+    );
     
-    // Initialize Supabase
-    const supabase = window.supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.key);
-    
-    // ============================================
-    // DOM INITIALIZATION
-    // ============================================
+    // Initialize on DOM Ready
     document.addEventListener('DOMContentLoaded', () => {
         // Initialize Feather Icons
         if (typeof feather !== 'undefined') {
@@ -1246,18 +1280,57 @@
             toggleButton.addEventListener('click', () => {
                 const isPassword = passwordInput.type === 'password';
                 passwordInput.type = isPassword ? 'text' : 'password';
-                const iconName = isPassword ? 'eye' : 'eye-off';
-                toggleIcon.setAttribute('data-feather', iconName);
+                toggleIcon.setAttribute('data-feather', isPassword ? 'eye' : 'eye-off');
                 feather.replace();
-                toggleButton.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
             });
+            
+            // Prevent form submission on toggle
+            toggleButton.addEventListener('mousedown', (e) => e.preventDefault());
+            toggleButton.addEventListener('touchstart', (e) => e.preventDefault());
         }
         
         // Form Submission
         const loginForm = document.getElementById('loginForm');
         if (loginForm) {
             loginForm.addEventListener('submit', handleLogin);
+            
+            // Prevent zoom on input focus on mobile
+            const inputs = loginForm.querySelectorAll('input');
+            inputs.forEach(input => {
+                input.addEventListener('focus', () => {
+                    document.querySelector('meta[name=viewport]')
+                        .setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+                });
+                
+                input.addEventListener('blur', () => {
+                    document.querySelector('meta[name=viewport]')
+                        .setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes');
+                });
+            });
         }
+        
+        // Prevent pull-to-refresh on modals
+        document.querySelectorAll('.modal-content').forEach(modal => {
+            modal.addEventListener('touchmove', (e) => {
+                if (modal.scrollHeight > modal.clientHeight) {
+                    e.stopPropagation();
+                }
+            }, { passive: false });
+        });
+        
+        // Handle virtual keyboard
+        window.addEventListener('resize', () => {
+            if (window.visualViewport) {
+                const viewport = window.visualViewport;
+                if (viewport.height < window.innerHeight * 0.8) {
+                    // Keyboard is open
+                    document.documentElement.style.setProperty('--viewport-height', `${viewport.height}px`);
+                } else {
+                    // Keyboard is closed
+                    document.documentElement.style.removeProperty('--viewport-height');
+                }
+            }
+        });
     });
     
     // ============================================
@@ -1266,34 +1339,63 @@
     async function handleLogin(e) {
         e.preventDefault();
         
+        if (state.isLoggingIn) return;
+        
         const email = document.getElementById('email').value.trim();
         const password = document.getElementById('password').value;
         const errorMsg = document.getElementById('errorMsg');
         const loginButton = document.getElementById('loginButton');
         const buttonText = document.getElementById('button-text');
         
-        // Reset UI
+        // Validation
+        if (!email || !password) {
+            showError(errorMsg, 'Please enter both email and password');
+            return;
+        }
+        
+        // Update UI
         errorMsg.classList.remove('show');
+        state.isLoggingIn = true;
         loginButton.disabled = true;
-        buttonText.innerHTML = '<span class="loading"></span> Signing In...';
+        buttonText.innerHTML = '<span class="loading-spinner"></span> Signing In...';
         
         try {
-            // Authenticate with Supabase
+            // 1. Authenticate with Supabase
             const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ 
                 email, 
                 password 
             });
             
-            if (authError) throw new Error(authError.message);
+            if (authError) throw new Error('Invalid email or password');
             
-            // Store user info
+            // 2. Store user session
             state.currentUser = {
                 email,
-                password,
-                userId: authData.user.id
+                userId: authData.user.id,
+                session: authData.session
             };
             
-            // Check if 2FA is already set up
+            // 3. Check profile status
+            const { data: profileData } = await supabase
+                .from('consolidated_user_profiles_table')
+                .select('*')
+                .eq('user_id', authData.user.id)
+                .maybeSingle();
+            
+            if (!profileData) {
+                await supabase.auth.signOut();
+                throw new Error('Account not found. Please register first.');
+            }
+            
+            if (profileData.status?.toLowerCase() !== 'approved') {
+                await supabase.auth.signOut();
+                throw new Error('Account pending approval');
+            }
+            
+            // 4. Store profile
+            localStorage.setItem('currentUserProfile', JSON.stringify(profileData));
+            
+            // 5. Check 2FA status
             const { data: totpSettings } = await supabase
                 .from('user_2fa_settings')
                 .select('*')
@@ -1301,17 +1403,20 @@
                 .maybeSingle();
             
             if (!totpSettings || !totpSettings.is_2fa_enabled) {
-                // New user - show method selection
+                // New user - setup 2FA
                 showMethodSelection();
             } else {
-                // Existing user - show verification
-                showVerificationModal(totpSettings.preferred_method);
+                // Existing user - verify 2FA
+                showVerificationModal(totpSettings.preferred_method || 'authenticator');
             }
             
         } catch (error) {
             console.error('Login error:', error);
-            showError(errorMsg, error.message || 'Login failed. Please check your credentials.');
+            await supabase.auth.signOut();
+            showError(errorMsg, error.message || 'Login failed');
+            
         } finally {
+            state.isLoggingIn = false;
             loginButton.disabled = false;
             buttonText.textContent = 'Sign In';
         }
@@ -1331,7 +1436,6 @@
         const methodText = document.getElementById('verificationMethodText');
         const emailText = document.getElementById('2faEmail');
         
-        // Set method-specific text
         const methods = {
             authenticator: 'Enter the 6-digit code from your authenticator app',
             sms: 'Enter the 6-digit code sent to your phone',
@@ -1341,13 +1445,11 @@
         methodText.textContent = methods[method] || methods.authenticator;
         emailText.textContent = state.currentUser.email;
         
-        // Clear OTP inputs
         clearOTPInputs('verify');
+        document.getElementById('2faError').style.display = 'none';
         
         modal.classList.add('active');
-        setTimeout(() => {
-            document.querySelector('#twoFactorModal .otp-digit').focus();
-        }, 300);
+        setTimeout(() => document.querySelector('#twoFactorModal .otp-digit').focus(), 100);
     }
     
     function showAuthenticatorSetup() {
@@ -1355,8 +1457,11 @@
         
         // Generate TOTP secret
         state.currentSecret = otplib.authenticator.generateSecret();
-        const email = state.currentUser.email;
-        const uri = otplib.authenticator.keyuri(email, 'NCHSM Portal', state.currentSecret);
+        const uri = otplib.authenticator.keyuri(
+            state.currentUser.email,
+            'NCHSM Portal',
+            state.currentSecret
+        );
         
         // Generate QR code
         const qrCodeDiv = document.getElementById('qrCode');
@@ -1365,20 +1470,14 @@
             width: 200,
             height: 200,
             margin: 1,
-            color: {
-                dark: '#073450',
-                light: '#FFFFFF'
-            }
+            color: { dark: '#073450', light: '#FFFFFF' }
         });
         
-        // Clear OTP inputs
         clearOTPInputs('authenticator');
+        document.getElementById('setupError').style.display = 'none';
         
-        // Show modal
         document.getElementById('authenticatorSetupModal').classList.add('active');
-        setTimeout(() => {
-            document.querySelector('#authenticatorSetupModal .otp-digit').focus();
-        }, 300);
+        setTimeout(() => document.querySelector('#authenticatorSetupModal .otp-digit').focus(), 100);
     }
     
     function showBackupCodesModal(codes) {
@@ -1389,7 +1488,7 @@
         codesList.innerHTML = codes.map(code => `
             <div class="backup-code">
                 ${code}
-                <button class="copy-button" onclick="copyToClipboard('${code}')">
+                <button class="copy-button" onclick="copyToClipboard('${code}', this)">
                     <i data-feather="copy" width="12" height="12"></i>
                 </button>
             </div>
@@ -1411,12 +1510,10 @@
     function selectMethod(method) {
         state.selectedMethod = method;
         
-        // Remove selected class from all
+        // Update UI
         document.querySelectorAll('.method-card').forEach(card => {
             card.classList.remove('selected');
         });
-        
-        // Add selected class to clicked
         event.currentTarget.classList.add('selected');
     }
     
@@ -1428,12 +1525,10 @@
         
         if (state.selectedMethod === 'authenticator') {
             showAuthenticatorSetup();
-        } else if (state.selectedMethod === 'sms') {
-            // For SMS, you'd need to implement phone number collection
-            alert('SMS setup would be implemented here with phone number input');
-        } else if (state.selectedMethod === 'email') {
-            // For email, use existing email
-            alert('Email verification would be implemented here');
+        } else {
+            // For demo, fall back to authenticator
+            alert(`${state.selectedMethod.toUpperCase()} setup would be implemented here`);
+            showAuthenticatorSetup();
         }
     }
     
@@ -1457,7 +1552,7 @@
             allInputs[index - 1].focus();
         }
         
-        // Auto-submit when complete
+        // Auto-submit
         if (index === 5 && input.value.length === 1) {
             const allFilled = Array.from(allInputs).every(inp => inp.value.length === 1);
             if (allFilled) {
@@ -1467,7 +1562,7 @@
                     } else if (context === 'verify') {
                         verify2FACode();
                     }
-                }, 100);
+                }, 150);
             }
         }
     }
@@ -1475,8 +1570,7 @@
     function getModalId(context) {
         switch(context) {
             case 'authenticator': return '#authenticatorSetupModal';
-            case 'sms': return '#smsSetupModal';
-            case 'email': return '#emailSetupModal';
+            case 'verify': return '#twoFactorModal';
             default: return '#twoFactorModal';
         }
     }
@@ -1505,16 +1599,15 @@
             return;
         }
         
-        // Show loading
         const setupBtn = document.getElementById('setup2FABtn');
         const spinner = document.getElementById('setupVerifyingSpinner');
         setupBtn.disabled = true;
-        spinner.classList.remove('hidden');
+        spinner.style.display = 'inline-block';
         
         try {
             // Verify code
             const isValid = otplib.authenticator.check(code, state.currentSecret);
-            if (!isValid) throw new Error('Invalid verification code');
+            if (!isValid) throw new Error('Invalid code');
             
             // Generate backup codes
             const backupCodes = Array.from({length: 10}, () => 
@@ -1537,7 +1630,6 @@
             
             if (error) throw error;
             
-            // Show backup codes
             showBackupCodesModal(backupCodes);
             
         } catch (error) {
@@ -1545,7 +1637,7 @@
             showError(document.getElementById('setupError'), error.message);
         } finally {
             setupBtn.disabled = false;
-            spinner.classList.add('hidden');
+            spinner.style.display = 'none';
         }
     }
     
@@ -1559,26 +1651,17 @@
             return;
         }
         
-        // Show loading
         const verifyBtn = document.getElementById('verify2FABtn');
         const spinner = document.getElementById('verifyingSpinner');
         verifyBtn.disabled = true;
-        spinner.classList.remove('hidden');
+        spinner.style.display = 'inline-block';
         
         try {
-            // Re-authenticate
-            const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-                email: state.currentUser.email,
-                password: state.currentUser.password
-            });
-            
-            if (authError) throw authError;
-            
             // Get TOTP secret
             const { data: totpData } = await supabase
                 .from('user_2fa_settings')
                 .select('totp_secret')
-                .eq('id', authData.user.id)
+                .eq('id', state.currentUser.userId)
                 .single();
             
             if (!totpData?.totp_secret) throw new Error('2FA not configured');
@@ -1589,18 +1672,19 @@
             if (!isValid) {
                 state.otpAttempts++;
                 if (state.otpAttempts >= state.maxOtpAttempts) {
-                    throw new Error('Too many failed attempts. Please try again later.');
+                    await supabase.auth.signOut();
+                    throw new Error('Too many failed attempts');
                 }
                 throw new Error(`Invalid code. ${state.maxOtpAttempts - state.otpAttempts} attempts remaining.`);
             }
             
-            // Trust device if checked
-            if (document.getElementById('trustDevice').checked) {
-                await trustDevice(authData.user.id);
+            // Trust device
+            if (document.getElementById('trustDevice')?.checked) {
+                await trustDevice(state.currentUser.userId);
             }
             
-            // Complete login
-            await completeLogin();
+            // Redirect to dashboard
+            await completeLoginAndRedirect();
             
         } catch (error) {
             console.error('Verification error:', error);
@@ -1609,8 +1693,49 @@
             document.querySelector('#twoFactorModal .otp-digit').focus();
         } finally {
             verifyBtn.disabled = false;
-            spinner.classList.add('hidden');
+            spinner.style.display = 'none';
         }
+    }
+    
+    // ============================================
+    // FINAL REDIRECT
+    // ============================================
+    async function completeLoginAndRedirect() {
+        try {
+            // Get profile
+            const { data: profileData } = await supabase
+                .from('consolidated_user_profiles_table')
+                .select('*')
+                .eq('user_id', state.currentUser.userId)
+                .single();
+            
+            if (!profileData) throw new Error('Profile not found');
+            
+            // Store profile
+            localStorage.setItem('currentUserProfile', JSON.stringify(profileData));
+            
+            // Redirect based on role
+            const redirects = {
+                'student': 'index.html',
+                'lecturer': 'lecturer.html',
+                'admin': 'admin.html',
+                'superadmin': 'superadmin.html',
+                'hod': 'hod-tracker.html'
+            };
+            
+            const role = profileData.role?.toLowerCase() || 'student';
+            window.location.href = redirects[role] || 'index.html';
+            
+        } catch (error) {
+            console.error('Redirect error:', error);
+            showError(document.getElementById('errorMsg'), error.message);
+            await supabase.auth.signOut();
+        }
+    }
+    
+    function proceedToDashboard() {
+        hideAllModals();
+        completeLoginAndRedirect();
     }
     
     // ============================================
@@ -1627,40 +1752,6 @@
         }));
     }
     
-    async function completeLogin() {
-        try {
-            const { data: profileData } = await supabase
-                .from('consolidated_user_profiles_table')
-                .select('*')
-                .eq('user_id', state.currentUser.userId)
-                .maybeSingle();
-            
-            if (!profileData) throw new Error('Profile not found');
-            
-            if (profileData.status?.toLowerCase() !== 'approved') {
-                throw new Error('Account pending approval');
-            }
-            
-            // Store profile and redirect
-            localStorage.setItem('currentUserProfile', JSON.stringify(profileData));
-            
-            const redirects = {
-                'student': 'index.html',
-                'lecturer': 'lecturer.html',
-                'admin': 'admin.html',
-                'superadmin': 'superadmin.html',
-                'hod': 'hod-tracker.html'
-            };
-            
-            const role = profileData.role?.toLowerCase() || 'student';
-            window.location.href = redirects[role] || 'index.html';
-            
-        } catch (error) {
-            console.error('Login completion error:', error);
-            showError(document.getElementById('errorMsg'), error.message);
-        }
-    }
-    
     function useBackupCode() {
         const backupCode = prompt('Enter your backup code:');
         if (backupCode) {
@@ -1672,12 +1763,16 @@
         alert('Recovery email would be sent here');
     }
     
-    function copyToClipboard(text) {
+    function copyToClipboard(text, button) {
         navigator.clipboard.writeText(text).then(() => {
-            const button = event.target.closest('button');
-            const original = button.innerHTML;
-            button.innerHTML = '<i data-feather="check" width="12" height="12"></i>';
-            setTimeout(() => button.innerHTML = original, 1000);
+            const icon = button.querySelector('i');
+            icon.setAttribute('data-feather', 'check');
+            feather.replace();
+            
+            setTimeout(() => {
+                icon.setAttribute('data-feather', 'copy');
+                feather.replace();
+            }, 1000);
         });
     }
     
@@ -1694,14 +1789,12 @@
         URL.revokeObjectURL(url);
     }
     
-    function proceedToDashboard() {
-        hideAllModals();
-        completeLogin();
-    }
-    
     function showError(element, message) {
-        element.textContent = message;
-        element.classList.add('show');
+        if (element) {
+            element.textContent = message;
+            element.classList.add('show');
+            element.style.display = 'block';
+        }
     }
     </script>
 </body>
