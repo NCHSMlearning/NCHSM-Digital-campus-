@@ -6,33 +6,74 @@
     <title>Nakuru College Digital Portal Login - NCHSM</title>
     <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" sizes="32x32">
     
-    <<!-- REQUIRED LIBRARIES -->
-<script src="https://unpkg.com/@otplib/preset-browser@^12.0.0/buffer.js"></script>
-<script src="https://unpkg.com/@otplib/preset-browser@^12.0.0/index.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-        
-    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"></noscript>
+    <!-- REQUIRED LIBRARIES -->
+    <script src="https://unpkg.com/@otplib/preset-browser@^12.0.0/buffer.js"></script>
+    <script src="https://unpkg.com/@otplib/preset-browser@^12.0.0/index.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- MODERN FONTS -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     
     <style>
+        /* ===== MODERN CSS VARIABLES ===== */
         :root {
-            --nchsm-blue-dark: #073450;
-            --nchsm-blue-light: #0A3D62;
-            --nchsm-green: #38A169;
-            --nchsm-green-hover: #2F855A;
+            /* NCHSM Brand Colors - Modernized */
+            --nchsm-primary: #0A3D62;
+            --nchsm-primary-dark: #073450;
+            --nchsm-primary-light: #1E5A87;
+            --nchsm-accent: #38A169;
+            --nchsm-accent-dark: #2F855A;
+            --nchsm-accent-light: #48BB78;
+            
+            /* Modern UI Colors */
             --background: #FFFFFF;
-            --page-bg: #F8FAFC;
-            --gradient-primary: linear-gradient(135deg, #0A3D62 0%, #073450 100%);
-            --gradient-accent: linear-gradient(135deg, #38A169 0%, #2F855A 100%);
-            --shadow: 0 8px 32px rgba(10, 61, 98, 0.12);
-            --input-border: #E2E8F0;
-            --text-muted: #64748B;
-            --text-dark: #1E293B;
-            --focus-ring: 0 0 0 3px rgba(56, 161, 105, 0.15);
+            --surface: #F8FAFC;
+            --surface-elevated: #FFFFFF;
+            --text-primary: #1E293B;
+            --text-secondary: #64748B;
+            --text-tertiary: #94A3B8;
+            --border: #E2E8F0;
+            --border-hover: #CBD5E1;
+            --overlay: rgba(7, 52, 80, 0.92);
+            
+            /* Shadows - Modern */
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            --shadow-primary: 0 10px 25px -5px rgba(10, 61, 98, 0.15);
+            
+            /* Gradients */
+            --gradient-primary: linear-gradient(135deg, var(--nchsm-primary) 0%, var(--nchsm-primary-dark) 100%);
+            --gradient-accent: linear-gradient(135deg, var(--nchsm-accent) 0%, var(--nchsm-accent-dark) 100%);
+            --gradient-surface: linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%);
+            
+            /* Transitions */
+            --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+            
+            /* Border Radius */
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --radius-xl: 20px;
+            --radius-full: 9999px;
+            
+            /* Spacing */
+            --space-xs: 0.25rem;
+            --space-sm: 0.5rem;
+            --space-md: 1rem;
+            --space-lg: 1.5rem;
+            --space-xl: 2rem;
+            --space-2xl: 3rem;
         }
 
+        /* ===== RESET & BASE STYLES ===== */
         * {
             margin: 0;
             padding: 0;
@@ -40,46 +81,70 @@
         }
 
         body {
-            font-family: 'Poppins', sans-serif;
-            background: var(--page-bg);
-            min-height: 100vh;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--surface);
+            color: var(--text-primary);
             line-height: 1.5;
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
 
-        .login-wrapper {
-            display: flex;
-            width: 100%;
+        /* ===== LAYOUT ===== */
+        .login-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
             min-height: 100vh;
             background: var(--background);
         }
 
+        /* ===== LEFT PANEL - MODERN BRANDING ===== */
         .brand-panel {
-            flex: 0.8;
-            background: linear-gradient(rgba(10, 61, 98, 0.85), rgba(7, 52, 80, 0.9)), 
+            position: relative;
+            background: linear-gradient(135deg, rgba(10, 61, 98, 0.9) 0%, rgba(7, 52, 80, 0.95) 100%),
                         url('https://nakurucollegeofhealth.ac.ke/wp-content/uploads/2022/12/IMG-20221130-WA0018.jpg') center/cover;
-            color: white;
-            padding: 30px;
+            padding: var(--space-2xl);
             display: flex;
             flex-direction: column;
             justify-content: center;
-            position: relative;
+            color: white;
+            overflow: hidden;
+        }
+
+        .brand-panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(10, 61, 98, 0.4) 0%, rgba(7, 52, 80, 0.6) 100%);
+            backdrop-filter: blur(2px);
         }
 
         .brand-content {
             position: relative;
             z-index: 2;
-            text-align: center;
+            max-width: 480px;
+            margin: 0 auto;
+        }
+
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+            margin-bottom: var(--space-xl);
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: var(--space-md);
+            border-radius: var(--radius-lg);
+            border: 1px solid rgba(255, 255, 255, 0.15);
         }
 
         .logo {
-            width: 80px;
-            height: 80px;
-            margin: 0 auto 20px;
-            background: rgba(255, 255, 255, 0.15);
-            border-radius: 16px;
-            padding: 12px;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            width: 64px;
+            height: 64px;
+            flex-shrink: 0;
         }
 
         .logo img {
@@ -89,304 +154,320 @@
             filter: brightness(0) invert(1);
         }
 
-        .college-title {
-            font-size: 1.6rem;
+        .college-info h1 {
+            font-family: 'Poppins', sans-serif;
+            font-size: 1.5rem;
             font-weight: 700;
-            margin-bottom: 12px;
-            line-height: 1.3;
+            line-height: 1.2;
+            margin-bottom: var(--space-xs);
         }
 
-        .tagline {
-            font-size: 1rem;
+        .college-info p {
+            font-size: 0.875rem;
+            opacity: 0.9;
             font-weight: 400;
-            opacity: 0.9;
-            margin-bottom: 20px;
         }
 
-        .portal-label {
-            display: inline-block;
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
-            padding: 8px 18px;
-            border-radius: 20px;
-            font-size: 0.95rem;
-            font-weight: 500;
+        .security-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-sm);
+            background: rgba(255, 255, 255, 0.15);
             backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            margin-bottom: 25px;
+            color: white;
+            padding: var(--space-sm) var(--space-lg);
+            border-radius: var(--radius-full);
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-bottom: var(--space-xl);
+            border: 1px solid rgba(255, 255, 255, 0.2);
         }
 
-        .features-list {
-            text-align: left;
-            margin-top: 30px;
+        .features-grid {
+            display: grid;
+            gap: var(--space-lg);
+            margin-top: var(--space-xl);
         }
 
-        .feature-item {
-            display: flex;
-            align-items: center;
-            margin-bottom: 18px;
-            font-size: 0.95rem;
-            opacity: 0.9;
+        .feature-card {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(10px);
+            padding: var(--space-lg);
+            border-radius: var(--radius-lg);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all var(--transition-base);
         }
 
-        .feature-item i {
-            margin-right: 12px;
-            background: rgba(255, 255, 255, 0.2);
-            padding: 6px;
-            border-radius: 50%;
-            width: 30px;
-            height: 30px;
+        .feature-card:hover {
+            background: rgba(255, 255, 255, 0.12);
+            transform: translateY(-2px);
+        }
+
+        .feature-icon {
+            width: 40px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: var(--radius-md);
             display: flex;
             align-items: center;
             justify-content: center;
-            flex-shrink: 0;
+            margin-bottom: var(--space-md);
+            color: white;
         }
 
+        .feature-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: var(--space-xs);
+            color: white;
+        }
+
+        .feature-description {
+            font-size: 0.875rem;
+            opacity: 0.85;
+            line-height: 1.4;
+        }
+
+        /* ===== RIGHT PANEL - MODERN LOGIN ===== */
         .login-panel {
-            flex: 1.2;
-            padding: 40px;
+            padding: var(--space-2xl);
             display: flex;
-            flex-direction: column;
+            align-items: center;
             justify-content: center;
-            overflow-y: auto;
+            background: var(--background);
         }
 
-        .login-content {
-            max-width: 420px;
+        .login-card {
             width: 100%;
-            margin: 0 auto;
+            max-width: 400px;
+            background: var(--surface-elevated);
+            border-radius: var(--radius-xl);
+            padding: var(--space-2xl);
+            box-shadow: var(--shadow-xl);
+            border: 1px solid var(--border);
         }
 
-        .welcome-section {
-            margin-bottom: 35px;
+        .welcome-header {
             text-align: center;
+            margin-bottom: var(--space-xl);
         }
 
-        .welcome-msg {
-            font-size: 2rem;
+        .avatar {
+            width: 64px;
+            height: 64px;
+            background: var(--gradient-primary);
+            border-radius: var(--radius-full);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto var(--space-lg);
+            color: white;
+            font-size: 1.5rem;
+        }
+
+        .welcome-title {
+            font-family: 'Poppins', sans-serif;
+            font-size: 1.75rem;
             font-weight: 700;
-            color: var(--nchsm-blue-dark);
-            margin-bottom: 8px;
+            color: var(--text-primary);
+            margin-bottom: var(--space-xs);
             line-height: 1.2;
         }
 
-        .sub-msg {
-            font-size: 1.1rem;
-            color: var(--text-muted);
+        .welcome-subtitle {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
             font-weight: 400;
         }
 
-        form {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            width: 100%;
+        /* ===== FORM STYLES ===== */
+        .form-group {
+            margin-bottom: var(--space-lg);
         }
 
-        .input-group {
+        .input-wrapper {
             position: relative;
-            width: 100%;
         }
 
-        input {
-            width: 100%;
-            padding: 16px 50px 16px 18px;
-            border-radius: 10px;
-            border: 1.5px solid var(--input-border);
-            background-color: var(--background);
-            font-size: 1rem;
+        .form-label {
+            display: block;
+            font-size: 0.875rem;
             font-weight: 500;
-            transition: all 0.2s ease;
-            color: var(--text-dark);
+            color: var(--text-primary);
+            margin-bottom: var(--space-sm);
         }
 
-        input:focus {
-            outline: none;
-            border-color: var(--nchsm-green);
-            box-shadow: var(--focus-ring);
-        }
-
-        input::placeholder {
-            color: #94A3B8;
+        .form-input {
+            width: 100%;
+            padding: 0.875rem 1rem;
+            font-size: 0.9375rem;
             font-weight: 400;
+            color: var(--text-primary);
+            background: var(--background);
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius-md);
+            transition: all var(--transition-fast);
+            outline: none;
+        }
+
+        .form-input:focus {
+            border-color: var(--nchsm-accent);
+            box-shadow: 0 0 0 3px rgba(56, 161, 105, 0.1);
+        }
+
+        .form-input::placeholder {
+            color: var(--text-tertiary);
         }
 
         .password-toggle {
             position: absolute;
-            right: 12px;
+            right: 0.75rem;
             top: 50%;
             transform: translateY(-50%);
             background: none;
             border: none;
+            color: var(--text-tertiary);
             cursor: pointer;
-            padding: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--text-muted);
-            border-radius: 4px;
-            transition: all 0.2s ease;
-            width: 36px;
-            height: 36px;
+            padding: 0.25rem;
+            border-radius: var(--radius-sm);
+            transition: all var(--transition-fast);
         }
 
         .password-toggle:hover {
-            background: rgba(10, 61, 98, 0.05);
+            color: var(--text-secondary);
+            background: var(--surface);
         }
 
-        .password-toggle:focus {
-            outline: none;
-            box-shadow: var(--focus-ring);
-        }
-
-        .checkbox-row {
+        .form-options {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin: 15px 0;
-            width: 100%;
+            margin-bottom: var(--space-xl);
         }
 
-        .checkbox-row label {
+        .checkbox-label {
             display: flex;
             align-items: center;
-            color: var(--text-muted);
+            gap: var(--space-sm);
+            font-size: 0.875rem;
+            color: var(--text-secondary);
             cursor: pointer;
+            user-select: none;
+        }
+
+        .checkbox-label input[type="checkbox"] {
+            width: 1rem;
+            height: 1rem;
+            border-radius: 4px;
+            accent-color: var(--nchsm-accent);
+        }
+
+        .forgot-link {
+            font-size: 0.875rem;
             font-weight: 500;
-            font-size: 0.95rem;
-            flex-shrink: 0;
-        }
-
-        .checkbox-row input[type="checkbox"] {
-            margin-right: 10px;
-            width: 18px;
-            height: 18px;
-            accent-color: var(--nchsm-green);
-        }
-
-        .forgot-password {
-            color: var(--nchsm-blue-light);
+            color: var(--nchsm-primary);
             text-decoration: none;
-            font-weight: 600;
-            font-size: 0.95rem;
-            transition: all 0.2s ease;
-            flex-shrink: 0;
+            transition: color var(--transition-fast);
         }
 
-        .forgot-password:hover {
-            color: var(--nchsm-green);
+        .forgot-link:hover {
+            color: var(--nchsm-accent);
             text-decoration: underline;
         }
 
-        button[type="submit"] {
-            background: var(--gradient-accent);
-            color: #fff;
-            border: none;
-            padding: 16px;
-            border-radius: 10px;
-            cursor: pointer;
-            font-size: 1rem;
-            font-weight: 600;
-            transition: all 0.2s ease;
-            margin-top: 10px;
+        .login-button {
             width: 100%;
-            box-shadow: 0 4px 12px rgba(56, 161, 105, 0.3);
+            padding: 0.875rem;
+            font-size: 0.9375rem;
+            font-weight: 600;
+            color: white;
+            background: var(--gradient-accent);
+            border: none;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all var(--transition-base);
+            box-shadow: var(--shadow-primary);
         }
 
-        button[type="submit"]:hover {
+        .login-button:hover:not(:disabled) {
             transform: translateY(-1px);
-            box-shadow: 0 6px 16px rgba(56, 161, 105, 0.4);
+            box-shadow: 0 12px 30px -5px rgba(56, 161, 105, 0.25);
         }
 
-        button[type="submit"]:active {
+        .login-button:active:not(:disabled) {
             transform: translateY(0);
         }
 
-        button[type="submit"]:disabled {
-            background: #CBD5E1;
+        .login-button:disabled {
+            opacity: 0.6;
             cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
         }
 
-        .error {
-            color: #EF4444;
-            font-size: 0.95rem;
-            margin: 15px 0;
+        .divider {
+            display: flex;
+            align-items: center;
+            margin: var(--space-xl 0);
+            color: var(--text-tertiary);
+            font-size: 0.875rem;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+
+        .divider span {
+            padding: 0 var(--space-md);
+        }
+
+        .signup-prompt {
             text-align: center;
-            font-weight: 500;
-            padding: 12px;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin-top: var(--space-xl);
+        }
+
+        .signup-link {
+            font-weight: 600;
+            color: var(--nchsm-primary);
+            text-decoration: none;
+            transition: color var(--transition-fast);
+        }
+
+        .signup-link:hover {
+            color: var(--nchsm-accent);
+            text-decoration: underline;
+        }
+
+        .error-message {
             background: rgba(239, 68, 68, 0.05);
-            border-radius: 8px;
             border: 1px solid rgba(239, 68, 68, 0.2);
+            color: #EF4444;
+            padding: var(--space-md);
+            border-radius: var(--radius-md);
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-bottom: var(--space-lg);
             display: none;
         }
 
-        .error.show {
+        .error-message.show {
             display: block;
         }
 
-        .footer {
-            margin-top: 30px;
-            text-align: center;
-            width: 100%;
-        }
-
-        .footer p {
-            color: var(--text-muted);
-            margin-bottom: 8px;
-            font-size: 0.95rem;
-        }
-
-        .footer a {
-            color: var(--nchsm-blue-light);
-            font-weight: 600;
-            text-decoration: none;
-            transition: color 0.2s;
-        }
-
-        .footer a:hover {
-            color: var(--nchsm-green);
-            text-decoration: underline;
-        }
-/* Add to your CSS around line 250-260 */
-#qrCode img {
-    width: 180px;
-    height: 180px;
-    border: 1px solid var(--input-border);
-    border-radius: 8px;
-}
-
-@media print {
-    body * {
-        visibility: hidden;
-    }
-    #setup2FAModal, #setup2FAModal * {
-        visibility: visible;
-    }
-    #setup2FAModal {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 100%;
-        background: white;
-    }
-}
-        .copyright-line {
-            color: #94A3B8;
-            font-size: 0.85rem;
-            margin-top: 10px;
-        }
-
-        .btn-loading {
+        .loading {
             display: inline-block;
             width: 16px;
             height: 16px;
-            border: 2px solid transparent;
-            border-top: 2px solid #ffffff;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top: 2px solid white;
             border-radius: 50%;
             animation: spin 1s linear infinite;
             margin-right: 8px;
+            vertical-align: middle;
         }
 
         @keyframes spin {
@@ -394,1030 +475,1234 @@
             100% { transform: rotate(360deg); }
         }
 
-        /* 2FA MODAL STYLES */
-        .two-factor-modal {
+        /* ===== 2FA MODAL - MODERN DESIGN ===== */
+        .modal-overlay {
             position: fixed;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(7, 52, 80, 0.95);
-            backdrop-filter: blur(10px);
+            right: 0;
+            bottom: 0;
+            background: var(--overlay);
+            backdrop-filter: blur(12px);
             display: flex;
             align-items: center;
             justify-content: center;
-            z-index: 9999;
+            z-index: 1000;
             opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.3s ease;
+            visibility: hidden;
+            transition: all var(--transition-base);
         }
 
-        .two-factor-modal.active {
+        .modal-overlay.active {
             opacity: 1;
-            pointer-events: all;
+            visibility: visible;
         }
 
-        .two-factor-content {
-            background: white;
-            padding: 40px;
-            border-radius: 20px;
+        .modal-content {
+            background: var(--surface-elevated);
+            border-radius: var(--radius-xl);
+            padding: var(--space-2xl);
             width: 90%;
-            max-width: 400px;
-            text-align: center;
-            box-shadow: 0 25px 50px rgba(7, 52, 80, 0.3);
+            max-width: 440px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow-xl);
+            border: 1px solid var(--border);
             transform: translateY(20px);
-            transition: transform 0.4s ease;
-            position: relative;
+            transition: transform var(--transition-base);
         }
 
-        .two-factor-modal.active .two-factor-content {
+        .modal-overlay.active .modal-content {
             transform: translateY(0);
+        }
+
+        .modal-header {
+            text-align: center;
+            margin-bottom: var(--space-xl);
+        }
+
+        .modal-icon {
+            width: 64px;
+            height: 64px;
+            background: var(--gradient-accent);
+            border-radius: var(--radius-full);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto var(--space-lg);
+            color: white;
+        }
+
+        .modal-title {
+            font-family: 'Poppins', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: var(--space-xs);
+        }
+
+        .modal-subtitle {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+
+        /* ===== METHOD SELECTION ===== */
+        .method-grid {
+            display: grid;
+            gap: var(--space-md);
+            margin: var(--space-xl 0);
+        }
+
+        .method-card {
+            background: var(--surface);
+            border: 2px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: var(--space-lg);
+            cursor: pointer;
+            transition: all var(--transition-base);
+            display: flex;
+            align-items: flex-start;
+            gap: var(--space-md);
+        }
+
+        .method-card:hover {
+            border-color: var(--nchsm-accent);
+            background: rgba(56, 161, 105, 0.02);
+            transform: translateY(-2px);
+        }
+
+        .method-card.selected {
+            border-color: var(--nchsm-accent);
+            background: rgba(56, 161, 105, 0.05);
+            box-shadow: 0 8px 16px rgba(56, 161, 105, 0.08);
+        }
+
+        .method-icon-circle {
+            width: 48px;
+            height: 48px;
+            border-radius: var(--radius-full);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            color: white;
+            font-size: 1.25rem;
+        }
+
+        .method-icon-circle.authenticator {
+            background: linear-gradient(135deg, #4285F4 0%, #34A853 100%);
+        }
+
+        .method-icon-circle.sms {
+            background: linear-gradient(135deg, #0A3D62 0%, #073450 100%);
+        }
+
+        .method-icon-circle.email {
+            background: linear-gradient(135deg, #EA4335 0%, #FBBC05 100%);
+        }
+
+        .method-content {
+            flex: 1;
+        }
+
+        .method-title {
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+            font-size: 0.9375rem;
+        }
+
+        .method-description {
+            font-size: 0.8125rem;
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+
+        /* ===== OTP INPUT ===== */
+        .otp-container {
+            margin: var(--space-xl 0);
         }
 
         .otp-inputs {
             display: flex;
-            gap: 12px;
+            gap: var(--space-sm);
             justify-content: center;
-            margin: 30px 0;
         }
 
-        .otp-input {
-            width: 55px;
-            height: 65px;
+        .otp-digit {
+            width: 48px;
+            height: 56px;
             text-align: center;
-            font-size: 24px;
+            font-size: 1.25rem;
             font-weight: 600;
-            border: 2px solid var(--input-border);
-            border-radius: 12px;
-            background: #F8FAFC;
-            transition: all 0.2s;
-            color: var(--nchsm-blue-dark);
-        }
-
-        .otp-input:focus {
-            border-color: var(--nchsm-green);
-            background: white;
+            color: var(--text-primary);
+            background: var(--surface);
+            border: 2px solid var(--border);
+            border-radius: var(--radius-md);
+            transition: all var(--transition-fast);
             outline: none;
-            box-shadow: 0 0 0 3px rgba(56, 161, 105, 0.15);
-            transform: translateY(-2px);
         }
 
-        .otp-input.filled {
-            border-color: var(--nchsm-green);
+        .otp-digit:focus {
+            border-color: var(--nchsm-accent);
+            background: white;
+            box-shadow: 0 0 0 3px rgba(56, 161, 105, 0.1);
+        }
+
+        .otp-digit.filled {
+            border-color: var(--nchsm-accent);
             background: rgba(56, 161, 105, 0.05);
         }
 
-        .verifying-spinner {
-            display: none;
+        /* ===== QR CODE ===== */
+        .qr-container {
+            text-align: center;
+            margin: var(--space-xl 0);
+        }
+
+        .qr-code {
+            display: inline-block;
+            padding: var(--space-md);
+            background: white;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border);
+            margin: var(--space-md 0);
+        }
+
+        .qr-instructions {
+            background: var(--surface);
+            padding: var(--space-lg);
+            border-radius: var(--radius-lg);
+            margin: var(--space-lg 0);
+            text-align: left;
+        }
+
+        .qr-instructions ol {
+            padding-left: var(--space-lg);
+            margin: var(--space-md 0);
+        }
+
+        .qr-instructions li {
+            margin-bottom: var(--space-sm);
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        /* ===== BACKUP CODES ===== */
+        .backup-codes {
+            background: var(--surface);
+            border-radius: var(--radius-lg);
+            padding: var(--space-lg);
+            margin: var(--space-xl 0);
+        }
+
+        .backup-codes-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--space-sm);
+            margin: var(--space-lg 0);
+        }
+
+        .backup-code {
+            font-family: 'Courier New', monospace;
+            font-size: 0.875rem;
+            font-weight: 600;
+            padding: var(--space-md);
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            text-align: center;
+            position: relative;
+            user-select: all;
+        }
+
+        .copy-button {
+            position: absolute;
+            top: 4px;
+            right: 4px;
             width: 24px;
             height: 24px;
-            border: 3px solid rgba(56, 161, 105, 0.2);
-            border-top: 3px solid var(--nchsm-green);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 15px auto;
-        }
-
-        .verifying-spinner.active {
-            display: block;
-        }
-
-        #2faError {
-            color: #EF4444;
-            font-size: 14px;
-            margin-top: 15px;
-            display: none;
-            padding: 10px;
-            background: rgba(239, 68, 68, 0.05);
-            border-radius: 8px;
-            border: 1px solid rgba(239, 68, 68, 0.2);
-        }
-
-        .two-factor-options {
-            margin-top: 20px;
-            font-size: 14px;
-            color: var(--text-muted);
-        }
-
-        .two-factor-options a {
-            color: var(--nchsm-blue-light);
-            text-decoration: none;
-            margin: 0 10px;
-            font-weight: 500;
-            transition: color 0.2s;
-        }
-
-        .two-factor-options a:hover {
-            color: var(--nchsm-green);
-            text-decoration: underline;
-        }
-
-        .trust-device {
+            background: var(--nchsm-primary);
+            color: white;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-size: 0.75rem;
+            cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 10px;
-            margin-top: 20px;
-            color: var(--text-muted);
-            font-size: 14px;
+            opacity: 0;
+            transition: opacity var(--transition-fast);
+        }
+
+        .backup-code:hover .copy-button {
+            opacity: 1;
+        }
+
+        /* ===== TRUST DEVICE ===== */
+        .trust-device {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+            margin: var(--space-lg 0;
+            padding: var(--space-md);
+            background: var(--surface);
+            border-radius: var(--radius-md);
         }
 
         .trust-device input[type="checkbox"] {
             width: 18px;
             height: 18px;
-            accent-color: var(--nchsm-green);
+            accent-color: var(--nchsm-accent);
         }
 
-        /* Mobile Responsive */
-        @media (max-width: 768px) {
-            .login-wrapper {
-                flex-direction: column;
+        .trust-device label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+
+        /* ===== ACTION BUTTONS ===== */
+        .action-buttons {
+            display: flex;
+            gap: var(--space-md);
+            margin-top: var(--space-xl);
+        }
+
+        .btn-primary {
+            flex: 1;
+            padding: 0.875rem;
+            font-size: 0.9375rem;
+            font-weight: 600;
+            color: white;
+            background: var(--gradient-accent);
+            border: none;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all var(--transition-base);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 20px rgba(56, 161, 105, 0.2);
+        }
+
+        .btn-secondary {
+            flex: 1;
+            padding: 0.875rem;
+            font-size: 0.9375rem;
+            font-weight: 600;
+            color: var(--nchsm-primary);
+            background: var(--surface);
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all var(--transition-base);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--nchsm-primary);
+            background: rgba(10, 61, 98, 0.02);
+        }
+
+        /* ===== MOBILE RESPONSIVE ===== */
+        @media (max-width: 1024px) {
+            .login-container {
+                grid-template-columns: 1fr;
             }
             
             .brand-panel {
-                padding: 25px 20px;
+                padding: var(--space-xl);
                 min-height: 40vh;
             }
             
             .login-panel {
-                padding: 30px 25px;
-                min-height: 60vh;
+                padding: var(--space-xl);
+            }
+        }
+
+        @media (max-width: 640px) {
+            :root {
+                --space-2xl: 2rem;
+                --space-xl: 1.5rem;
+                --space-lg: 1rem;
             }
             
-            .logo {
-                width: 60px;
-                height: 60px;
+            .login-card {
+                padding: var(--space-xl);
+                border-radius: var(--radius-lg);
             }
             
-            .college-title {
-                font-size: 1.3rem;
+            .modal-content {
+                padding: var(--space-xl);
+                border-radius: var(--radius-lg);
             }
             
-            .welcome-msg {
-                font-size: 1.6rem;
+            .features-grid {
+                grid-template-columns: 1fr;
             }
             
-            .otp-inputs {
-                gap: 8px;
+            .backup-codes-grid {
+                grid-template-columns: 1fr;
             }
             
-            .otp-input {
-                width: 48px;
-                height: 58px;
-                font-size: 20px;
+            .otp-digit {
+                width: 40px;
+                height: 48px;
+                font-size: 1.125rem;
             }
         }
 
         @media (max-width: 480px) {
-            .otp-inputs {
-                gap: 6px;
+            .action-buttons {
+                flex-direction: column;
             }
             
-            .otp-input {
-                width: 44px;
-                height: 54px;
-                font-size: 18px;
+            .method-card {
+                flex-direction: column;
+                text-align: center;
             }
             
-            .two-factor-content {
-                padding: 25px 15px;
+            .method-icon-circle {
+                margin: 0 auto;
+            }
+            
+            .otp-digit {
+                width: 36px;
+                height: 44px;
+                font-size: 1rem;
             }
         }
+
+        /* ===== UTILITY CLASSES ===== */
+        .hidden {
+            display: none !important;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .text-sm {
+            font-size: 0.875rem;
+        }
+
+        .text-xs {
+            font-size: 0.75rem;
+        }
+
+        .font-medium {
+            font-weight: 500;
+        }
+
+        .font-semibold {
+            font-weight: 600;
+        }
+
+        .mt-1 { margin-top: var(--space-sm); }
+        .mt-2 { margin-top: var(--space-md); }
+        .mt-3 { margin-top: var(--space-lg); }
+        .mt-4 { margin-top: var(--space-xl); }
+        .mt-5 { margin-top: var(--space-2xl); }
+
+        .mb-1 { margin-bottom: var(--space-sm); }
+        .mb-2 { margin-bottom: var(--space-md); }
+        .mb-3 { margin-bottom: var(--space-lg); }
+        .mb-4 { margin-bottom: var(--space-xl); }
+        .mb-5 { margin-bottom: var(--space-2xl); }
     </style>
 </head>
 <body>
-    <div class="login-wrapper">
-        <!-- Left Panel - Branding -->
+    <div class="login-container">
+        <!-- Left Panel - Modern Branding -->
         <div class="brand-panel">
             <div class="brand-content">
-                <div class="logo">
-                    <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="Nakuru College Logo">
+                <div class="logo-container">
+                    <div class="logo">
+                        <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo">
+                    </div>
+                    <div class="college-info">
+                        <h1>NAKURU COLLEGE OF HEALTH SCIENCES AND MANAGEMENT</h1>
+                        <p>Centre of Nursing & Health Sciences Excellence</p>
+                    </div>
                 </div>
-                <div class="college-title">NAKURU COLLEGE OF HEALTH SCIENCES AND MANAGEMENT</div>
-                <div class="tagline">Centre of Nursing & Health Sciences Excellence</div>
-                <span class="portal-label">Digital Learning Platform</span>
-
-                <div class="features-list">
-                    <div class="feature-item">
-                        <i data-feather="book-open"></i>
-                        <span>Access to comprehensive learning materials</span>
+                
+                <div class="security-badge">
+                    <i data-feather="shield"></i>
+                    <span>Secure Digital Learning Platform</span>
+                </div>
+                
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i data-feather="book-open"></i>
+                        </div>
+                        <h3 class="feature-title">Comprehensive Learning</h3>
+                        <p class="feature-description">Access to complete course materials, lectures, and resources</p>
                     </div>
-                    <div class="feature-item">
-                        <i data-feather="award"></i>
-                        <span>Track your academic progress</span>
+                    
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i data-feather="trending-up"></i>
+                        </div>
+                        <h3 class="feature-title">Progress Tracking</h3>
+                        <p class="feature-description">Monitor your academic performance with real-time analytics</p>
                     </div>
-                    <div class="feature-item">
-                        <i data-feather="users"></i>
-                        <span>Connect with lecturers and peers</span>
-                    </div>
-                    <div class="feature-item">
-                        <i data-feather="bar-chart-2"></i>
-                        <span>Real-time performance analytics</span>
+                    
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i data-feather="users"></i>
+                        </div>
+                        <h3 class="feature-title">Collaborative Learning</h3>
+                        <p class="feature-description">Connect with peers and lecturers for enhanced learning</p>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Right Panel - Login Form -->
+        <!-- Right Panel - Modern Login -->
         <div class="login-panel">
-            <div class="login-content">
-                <div class="welcome-section">
-                    <div class="welcome-msg">Hi, welcome back</div>
-                    <div class="sub-msg">Please fill in your details to log in</div>
+            <div class="login-card">
+                <div class="welcome-header">
+                    <div class="avatar">
+                        <i data-feather="lock"></i>
+                    </div>
+                    <h2 class="welcome-title">Welcome Back</h2>
+                    <p class="welcome-subtitle">Sign in to access your digital learning portal</p>
                 </div>
 
-                <div id="errorMsg" class="error"></div>
+                <div id="errorMsg" class="error-message"></div>
                 
                 <form id="loginForm">
-                    <div class="input-group">
-                        <input type="email" id="email" placeholder="Username / Email" required>
+                    <div class="form-group">
+                        <label class="form-label">Email Address</label>
+                        <div class="input-wrapper">
+                            <input type="email" id="email" class="form-input" placeholder="Enter your college email" required>
+                        </div>
                     </div>
                     
-                    <div class="input-group">
-                        <input type="password" id="password" placeholder="Password" required>
-                        <button type="button" id="password-toggle-btn" class="password-toggle" aria-label="Show password">
-                            <i data-feather="eye-off" id="toggle-icon" width="16" height="16"></i>
-                        </button>
+                    <div class="form-group">
+                        <label class="form-label">Password</label>
+                        <div class="input-wrapper">
+                            <input type="password" id="password" class="form-input" placeholder="Enter your password" required>
+                            <button type="button" id="password-toggle-btn" class="password-toggle">
+                                <i data-feather="eye-off" id="toggle-icon"></i>
+                            </button>
+                        </div>
                     </div>
                     
-                    <div class="checkbox-row">
-                        <label>
-                            <input type="checkbox" id="rememberMe"> Remember me
+                    <div class="form-options">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="rememberMe">
+                            <span>Remember me</span>
                         </label>
-                        <a href="forgot-password.html" class="forgot-password">Forgot Password?</a>
+                        <a href="forgot-password.html" class="forgot-link">Forgot Password?</a>
                     </div>
-
-                    <button type="submit" id="loginButton">
-                        <span id="button-text">Log In</span>
+                    
+                    <button type="submit" id="loginButton" class="login-button">
+                        <span id="button-text">Sign In</span>
                     </button>
                 </form>
                 
-                <div class="footer">
-                    <p>Don't have an account? <a href="register.html">Sign Up</a></p>
-                    <span class="copyright-line">Copyright &copy; 2025 - Nakuru College of Health Sciences and Management</span>
+                <div class="divider">
+                    <span>New to NCHSM?</span>
+                </div>
+                
+                <div class="signup-prompt">
+                    Don't have an account? <a href="register.html" class="signup-link">Create account</a>
                 </div>
             </div>
         </div>
     </div>
     
-    <!-- 2FA Modal -->
-    <div id="twoFactorModal" class="two-factor-modal">
-        <div class="two-factor-content">
-            <button onclick="hide2FAModal()" style="position: absolute; top: 20px; right: 20px; background: none; border: none; color: #64748B; cursor: pointer; font-size: 20px; padding: 5px; z-index: 1;">×</button>
+    <!-- 2FA Verification Modal -->
+    <div id="twoFactorModal" class="modal-overlay">
+        <div class="modal-content">
+            <button onclick="hideAllModals()" class="password-toggle" style="position: absolute; top: 20px; right: 20px;">×</button>
             
-            <div style="margin-bottom: 20px;">
-                <div style="width: 60px; height: 60px; background: linear-gradient(135deg, #38A169 0%, #2F855A 100%); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 15px;">
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
-                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                    </svg>
+            <div class="modal-header">
+                <div class="modal-icon">
+                    <i data-feather="shield"></i>
                 </div>
-                <h3 style="color: var(--nchsm-blue-dark); margin-bottom: 8px; font-size: 1.4rem;">Security Verification</h3>
-                <p style="color: var(--text-muted); font-size: 15px; margin-bottom: 5px;">Enter 6-digit code from your authenticator app</p>
-                <p id="2faEmail" style="color: var(--nchsm-blue-light); font-weight: 500; font-size: 14px; margin-bottom: 5px;"></p>
+                <h3 class="modal-title">Security Verification</h3>
+                <p class="modal-subtitle" id="verificationMethodText"></p>
+                <p class="text-sm font-medium mt-2" id="2faEmail" style="color: var(--nchsm-primary);"></p>
             </div>
             
-            <div class="otp-inputs">
-                <input type="text" maxlength="1" class="otp-input" data-index="0" oninput="moveToNextOTP(this)">
-                <input type="text" maxlength="1" class="otp-input" data-index="1" oninput="moveToNextOTP(this)">
-                <input type="text" maxlength="1" class="otp-input" data-index="2" oninput="moveToNextOTP(this)">
-                <input type="text" maxlength="1" class="otp-input" data-index="3" oninput="moveToNextOTP(this)">
-                <input type="text" maxlength="1" class="otp-input" data-index="4" oninput="moveToNextOTP(this)">
-                <input type="text" maxlength="1" class="otp-input" data-index="5" oninput="moveToNextOTP(this)">
+            <div class="otp-container">
+                <div class="otp-inputs">
+                    <input type="text" maxlength="1" class="otp-digit" data-index="0" oninput="moveToNextOTP(this, 'verify')">
+                    <input type="text" maxlength="1" class="otp-digit" data-index="1" oninput="moveToNextOTP(this, 'verify')">
+                    <input type="text" maxlength="1" class="otp-digit" data-index="2" oninput="moveToNextOTP(this, 'verify')">
+                    <input type="text" maxlength="1" class="otp-digit" data-index="3" oninput="moveToNextOTP(this, 'verify')">
+                    <input type="text" maxlength="1" class="otp-digit" data-index="4" oninput="moveToNextOTP(this, 'verify')">
+                    <input type="text" maxlength="1" class="otp-digit" data-index="5" oninput="moveToNextOTP(this, 'verify')">
+                </div>
             </div>
             
-            <div id="verifyingSpinner" class="verifying-spinner"></div>
-            
-            <button onclick="verify2FACode()" id="verify2FABtn" style="background: var(--gradient-accent); color: white; border: none; padding: 14px 30px; border-radius: 10px; font-weight: 600; cursor: pointer; width: 100%; margin-top: 10px; transition: all 0.2s;">
-                Verify & Continue
-            </button>
+            <div id="verifyingSpinner" class="loading hidden mt-3"></div>
             
             <div class="trust-device">
                 <input type="checkbox" id="trustDevice">
                 <label for="trustDevice">Trust this device for 30 days</label>
             </div>
             
-            <div class="two-factor-options">
-                <a href="#" onclick="useBackupCode()">Use backup code</a>
-                •
-                <a href="#" onclick="send2FARecoveryEmail()">Can't access your app?</a>
+            <div class="action-buttons mt-4">
+                <button onclick="verify2FACode()" id="verify2FABtn" class="btn-primary">
+                    Verify & Continue
+                </button>
             </div>
             
-            <div id="2faError"></div>
+            <div class="text-center mt-3">
+                <div class="text-sm" style="color: var(--text-secondary);">
+                    <a href="#" onclick="useBackupCode()" class="forgot-link">Use backup code</a>
+                    <span class="mx-2">•</span>
+                    <a href="#" onclick="sendRecoveryEmail()" class="forgot-link">Can't access?</a>
+                </div>
+            </div>
+            
+            <div id="2faError" class="error-message mt-3"></div>
         </div>
     </div>
     
+    <!-- Method Selection Modal -->
+    <div id="methodSelectionModal" class="modal-overlay">
+        <div class="modal-content">
+            <button onclick="hideAllModals()" class="password-toggle" style="position: absolute; top: 20px; right: 20px;">×</button>
             
-       <script>
-// ============================================
-// GLOBAL VARIABLES & INITIALIZATION
-// ============================================
-let currentUser = null;
-let otpAttempts = 0;
-const maxOtpAttempts = 3;
-const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
-window.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-// ============================================
-// DOM READY FUNCTION
-// ============================================
-document.addEventListener('DOMContentLoaded', () => {
-    // Initialize Feather Icons
-    if (typeof feather !== 'undefined') {
-        feather.replace(); 
-    }
-
-    // Password toggle functionality
-    const passwordInput = document.getElementById('password');
-    const toggleButton = document.getElementById('password-toggle-btn');
-    const toggleIcon = document.getElementById('toggle-icon');
-
-    if (passwordInput && toggleButton && toggleIcon) {
-        toggleButton.addEventListener('click', () => {
-            const isPassword = passwordInput.type === 'password';
-            passwordInput.type = isPassword ? 'text' : 'password';
-            const iconName = isPassword ? 'eye' : 'eye-off';
-            toggleIcon.setAttribute('data-feather', iconName);
+            <div class="modal-header">
+                <div class="modal-icon" style="background: var(--gradient-primary);">
+                    <i data-feather="shield"></i>
+                </div>
+                <h3 class="modal-title">Choose Security Method</h3>
+                <p class="modal-subtitle">Select your preferred two-factor authentication method</p>
+            </div>
             
-            if (typeof feather !== 'undefined') {
+            <div class="method-grid">
+                <div class="method-card" onclick="selectMethod('authenticator')">
+                    <div class="method-icon-circle authenticator">
+                        <i data-feather="smartphone"></i>
+                    </div>
+                    <div class="method-content">
+                        <h4 class="method-title">Authenticator App</h4>
+                        <p class="method-description">Use Google Authenticator, Authy, or Microsoft Authenticator</p>
+                    </div>
+                </div>
+                
+                <div class="method-card" onclick="selectMethod('sms')">
+                    <div class="method-icon-circle sms">
+                        <i data-feather="message-circle"></i>
+                    </div>
+                    <div class="method-content">
+                        <h4 class="method-title">Text Message (SMS)</h4>
+                        <p class="method-description">Receive verification codes via SMS to your phone</p>
+                    </div>
+                </div>
+                
+                <div class="method-card" onclick="selectMethod('email')">
+                    <div class="method-icon-circle email">
+                        <i data-feather="mail"></i>
+                    </div>
+                    <div class="method-content">
+                        <h4 class="method-title">Email Verification</h4>
+                        <p class="method-description">Receive verification codes via email</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="methodError" class="error-message"></div>
+            
+            <div class="action-buttons mt-4">
+                <button onclick="proceedWithSelectedMethod()" id="proceedMethodBtn" class="btn-primary">
+                    Continue
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Authenticator Setup Modal -->
+    <div id="authenticatorSetupModal" class="modal-overlay">
+        <div class="modal-content">
+            <button onclick="hideAllModals()" class="password-toggle" style="position: absolute; top: 20px; right: 20px;">×</button>
+            
+            <div class="modal-header">
+                <div class="modal-icon" style="background: linear-gradient(135deg, #4285F4 0%, #34A853 100%);">
+                    <i data-feather="smartphone"></i>
+                </div>
+                <h3 class="modal-title">Setup Authenticator</h3>
+                <p class="modal-subtitle">Scan QR code with your authenticator app</p>
+            </div>
+            
+            <div class="qr-container">
+                <div id="qrCode" class="qr-code"></div>
+            </div>
+            
+            <div class="qr-instructions">
+                <p class="font-semibold mb-2">Setup Instructions:</p>
+                <ol>
+                    <li>Install Google Authenticator, Authy, or Microsoft Authenticator</li>
+                    <li>Open the app and tap "Scan QR Code"</li>
+                    <li>Point your camera at the QR code above</li>
+                    <li>Enter the 6-digit code shown in the app below</li>
+                </ol>
+            </div>
+            
+            <div class="otp-container">
+                <p class="text-sm text-center mb-3" style="color: var(--text-secondary);">
+                    Enter the 6-digit code from your authenticator app:
+                </p>
+                <div class="otp-inputs">
+                    <input type="text" maxlength="1" class="otp-digit" data-index="0" oninput="moveToNextOTP(this, 'authenticator')">
+                    <input type="text" maxlength="1" class="otp-digit" data-index="1" oninput="moveToNextOTP(this, 'authenticator')">
+                    <input type="text" maxlength="1" class="otp-digit" data-index="2" oninput="moveToNextOTP(this, 'authenticator')">
+                    <input type="text" maxlength="1" class="otp-digit" data-index="3" oninput="moveToNextOTP(this, 'authenticator')">
+                    <input type="text" maxlength="1" class="otp-digit" data-index="4" oninput="moveToNextOTP(this, 'authenticator')">
+                    <input type="text" maxlength="1" class="otp-digit" data-index="5" oninput="moveToNextOTP(this, 'authenticator')">
+                </div>
+            </div>
+            
+            <div id="setupVerifyingSpinner" class="loading hidden mt-3"></div>
+            <div id="setupError" class="error-message mt-3"></div>
+            
+            <div class="action-buttons mt-4">
+                <button onclick="completeAuthenticatorSetup()" id="setup2FABtn" class="btn-primary">
+                    Verify & Continue
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Backup Codes Modal -->
+    <div id="backupCodesModal" class="modal-overlay">
+        <div class="modal-content">
+            <button onclick="hideAllModals()" class="password-toggle" style="position: absolute; top: 20px; right: 20px;">×</button>
+            
+            <div class="modal-header">
+                <div class="modal-icon">
+                    <i data-feather="check-circle"></i>
+                </div>
+                <h3 class="modal-title">Setup Complete!</h3>
+                <p class="modal-subtitle">Save these backup codes in a secure location</p>
+            </div>
+            
+            <div class="backup-codes">
+                <p class="text-sm mb-3" style="color: var(--text-secondary);">
+                    Each code can be used once if you lose access to your authenticator app.
+                </p>
+                <div class="backup-codes-grid" id="backupCodesList"></div>
+                
+                <div class="action-buttons mt-4">
+                    <button onclick="downloadBackupCodes()" class="btn-secondary">
+                        <i data-feather="download"></i> Download Codes
+                    </button>
+                    <button onclick="proceedToDashboard()" class="btn-primary">
+                        Continue to Portal
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // ============================================
+    // MODERN JAVASCRIPT - MODULAR & CLEAN
+    // ============================================
+    
+    // Global State
+    const state = {
+        currentUser: null,
+        selectedMethod: null,
+        otpAttempts: 0,
+        maxOtpAttempts: 3,
+        currentSecret: null,
+        backupCodes: []
+    };
+    
+    // Supabase Configuration
+    const SUPABASE_CONFIG = {
+        url: 'https://lwhtjozfsmbyihenfunw.supabase.co',
+        key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk'
+    };
+    
+    // Initialize Supabase
+    const supabase = window.supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.key);
+    
+    // ============================================
+    // DOM INITIALIZATION
+    // ============================================
+    document.addEventListener('DOMContentLoaded', () => {
+        // Initialize Feather Icons
+        if (typeof feather !== 'undefined') {
+            feather.replace();
+        }
+        
+        // Password Toggle
+        const passwordInput = document.getElementById('password');
+        const toggleButton = document.getElementById('password-toggle-btn');
+        const toggleIcon = document.getElementById('toggle-icon');
+        
+        if (passwordInput && toggleButton && toggleIcon) {
+            toggleButton.addEventListener('click', () => {
+                const isPassword = passwordInput.type === 'password';
+                passwordInput.type = isPassword ? 'text' : 'password';
+                const iconName = isPassword ? 'eye' : 'eye-off';
+                toggleIcon.setAttribute('data-feather', iconName);
                 feather.replace();
-            }
-            toggleButton.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
-        });
-    }
-
-    // Login form submission
-    const errorMsg = document.getElementById('errorMsg');
-    const loginForm = document.getElementById('loginForm');
-    const loginButton = document.getElementById('loginButton');
-    const buttonText = document.getElementById('button-text');
-
-    if (!loginForm) return;
-
-    loginForm.addEventListener('submit', async e => {
+                toggleButton.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
+            });
+        }
+        
+        // Form Submission
+        const loginForm = document.getElementById('loginForm');
+        if (loginForm) {
+            loginForm.addEventListener('submit', handleLogin);
+        }
+    });
+    
+    // ============================================
+    // LOGIN HANDLER
+    // ============================================
+    async function handleLogin(e) {
         e.preventDefault();
-        errorMsg.innerText = '';
-        errorMsg.classList.remove('show');
-        loginButton.disabled = true;
-        buttonText.innerHTML = '<div class="btn-loading"></div> Signing In...';
-
+        
         const email = document.getElementById('email').value.trim();
         const password = document.getElementById('password').value;
-
+        const errorMsg = document.getElementById('errorMsg');
+        const loginButton = document.getElementById('loginButton');
+        const buttonText = document.getElementById('button-text');
+        
+        // Reset UI
+        errorMsg.classList.remove('show');
+        loginButton.disabled = true;
+        buttonText.innerHTML = '<span class="loading"></span> Signing In...';
+        
         try {
-            // Step 1: Login with Supabase
-            const { data: authData, error: authError } = await window.supabase.auth.signInWithPassword({ 
+            // Authenticate with Supabase
+            const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ 
                 email, 
                 password 
             });
             
-            if (authError) {
-                errorMsg.innerText = authError.message || 'Login failed. Check your credentials.';
-                errorMsg.classList.add('show');
-                loginButton.disabled = false;
-                buttonText.textContent = 'Log In';
-                return;
-            }
+            if (authError) throw new Error(authError.message);
             
-            // Step 2: Check if user has set up 2FA
-            const { data: totpSettings } = await window.supabase
+            // Store user info
+            state.currentUser = {
+                email,
+                password,
+                userId: authData.user.id
+            };
+            
+            // Check if 2FA is already set up
+            const { data: totpSettings } = await supabase
                 .from('user_2fa_settings')
                 .select('*')
                 .eq('id', authData.user.id)
                 .maybeSingle();
             
-            // Store user credentials for later use
-            currentUser = { 
-                email, 
-                password,
-                userId: authData.user.id,
-                authData: authData
-            };
-            
-            // Step 3: Check if 2FA is set up
             if (!totpSettings || !totpSettings.is_2fa_enabled) {
-                // FIRST TIME USER - FORCE 2FA SETUP
-                show2FASetupModal();
+                // New user - show method selection
+                showMethodSelection();
             } else {
-                // EXISTING USER - SHOW VERIFICATION MODAL
-                document.getElementById('2faEmail').textContent = email;
-                show2FAVerifyModal();
+                // Existing user - show verification
+                showVerificationModal(totpSettings.preferred_method);
             }
             
-            // Reset login button
+        } catch (error) {
+            console.error('Login error:', error);
+            showError(errorMsg, error.message || 'Login failed. Please check your credentials.');
+        } finally {
             loginButton.disabled = false;
-            buttonText.textContent = 'Log In';
-            
-        } catch (err) {
-            console.error('Login error:', err);
-            errorMsg.innerText = 'Login failed. Please check your credentials.';
-            errorMsg.classList.add('show');
-            loginButton.disabled = false;
-            buttonText.textContent = 'Log In';
-        }
-    });
-});
-
-// ============================================
-// 2FA SETUP MODAL (FOR FIRST-TIME USERS)
-// ============================================
-function show2FASetupModal() {
-    // Generate new TOTP secret
-    const secret = otplib.authenticator.generateSecret();
-    const email = currentUser.email;
-    const uri = otplib.authenticator.keyuri(email, 'NCHSM Portal', secret);
-    
-    // Create setup modal HTML
-    const setupModalHTML = `
-        <div id="setup2FAModal" class="two-factor-modal active">
-            <div class="two-factor-content" style="max-width: 500px;">
-                <button onclick="hideAll2FAModals()" style="position: absolute; top: 20px; right: 20px; background: none; border: none; color: #64748B; cursor: pointer; font-size: 20px; padding: 5px; z-index: 1;">×</button>
-                
-                <div style="margin-bottom: 20px;">
-                    <div style="width: 60px; height: 60px; background: linear-gradient(135deg, #0A3D62 0%, #073450 100%); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 15px;">
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
-                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                        </svg>
-                    </div>
-                    <h3 style="color: var(--nchsm-blue-dark); margin-bottom: 8px; font-size: 1.4rem;">🔒 Security Setup Required</h3>
-                    <p style="color: var(--text-muted); font-size: 15px; margin-bottom: 5px;">
-                        <strong>College Policy:</strong> All users must enable Two-Factor Authentication
-                    </p>
-                </div>
-                
-                <div style="background: #F8FAFC; padding: 20px; border-radius: 12px; margin: 20px 0;">
-                    <h4 style="color: var(--nchsm-blue-dark); margin-bottom: 15px; font-size: 1.1rem;">📱 Step 1: Scan QR Code</h4>
-                    <div id="qrCodeContainer" style="margin: 20px 0; text-align: center;">
-                        <div id="qrCode" style="display: inline-block; padding: 20px; background: white; border-radius: 8px;"></div>
-                    </div>
-                    <p style="color: var(--text-muted); font-size: 13px; text-align: center; margin-bottom: 20px;">
-                        Scan with Google Authenticator, Authy, or Microsoft Authenticator
-                    </p>
-                    
-                    <div style="background: white; padding: 15px; border-radius: 8px; margin: 15px 0; border: 1px solid var(--input-border);">
-                        <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 5px; font-weight: 500;">Manual Entry (if you can't scan):</p>
-                        <code style="background: #F8FAFC; padding: 8px 12px; border-radius: 6px; font-family: 'Courier New', monospace; font-size: 14px; word-break: break-all; display: block; text-align: center;">
-                            ${secret}
-                        </code>
-                    </div>
-                    
-                    <h4 style="color: var(--nchsm-blue-dark); margin-bottom: 15px; font-size: 1.1rem; margin-top: 25px;">📝 Step 2: Test Your Setup</h4>
-                    <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 15px;">
-                        Enter the 6-digit code from your authenticator app:
-                    </p>
-                    
-                    <div class="otp-inputs">
-                        <input type="text" maxlength="1" class="otp-input" data-index="0" oninput="moveToNextOTP(this, 'setup')">
-                        <input type="text" maxlength="1" class="otp-input" data-index="1" oninput="moveToNextOTP(this, 'setup')">
-                        <input type="text" maxlength="1" class="otp-input" data-index="2" oninput="moveToNextOTP(this, 'setup')">
-                        <input type="text" maxlength="1" class="otp-input" data-index="3" oninput="moveToNextOTP(this, 'setup')">
-                        <input type="text" maxlength="1" class="otp-input" data-index="4" oninput="moveToNextOTP(this, 'setup')">
-                        <input type="text" maxlength="1" class="otp-input" data-index="5" oninput="moveToNextOTP(this, 'setup')">
-                    </div>
-                </div>
-                
-                <div id="setupVerifyingSpinner" class="verifying-spinner"></div>
-                
-                <button onclick="complete2FASetup('${secret}')" id="setup2FABtn" style="background: var(--gradient-accent); color: white; border: none; padding: 14px 30px; border-radius: 10px; font-weight: 600; cursor: pointer; width: 100%; margin-top: 10px;">
-                    Complete Security Setup
-                </button>
-                
-                <div style="margin-top: 20px; font-size: 13px; color: var(--text-muted); text-align: left;">
-                    <p style="margin-bottom: 10px;"><strong>📲 Recommended Apps:</strong></p>
-                    <ul style="padding-left: 20px; margin-bottom: 15px;">
-                        <li>Google Authenticator (Android/iOS)</li>
-                        <li>Authy (Android/iOS/Desktop)</li>
-                        <li>Microsoft Authenticator</li>
-                    </ul>
-                    <p style="font-size: 12px; color: #EF4444; background: rgba(239, 68, 68, 0.05); padding: 10px; border-radius: 6px; border: 1px solid rgba(239, 68, 68, 0.1);">
-                        ⚠️ <strong>Important:</strong> You cannot access the portal without completing this security setup.
-                    </p>
-                </div>
-                
-                <div id="setupError" style="color: #EF4444; font-size: 14px; margin-top: 15px; display: none; padding: 10px; background: rgba(239, 68, 68, 0.05); border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.2);"></div>
-            </div>
-        </div>
-    `;
-    
-    // Add modal to page
-    document.body.insertAdjacentHTML('beforeend', setupModalHTML);
-    
-    // Generate QR code using QRCode.js (client-side)
-    const qrCodeDiv = document.getElementById('qrCode');
-    const qr = new QRCode(qrCodeDiv, {
-        text: uri,
-        width: 180,
-        height: 180,
-        colorDark: "#073450",
-        colorLight: "#FFFFFF",
-        correctLevel: QRCode.CorrectLevel.H
-    });
-    
-    // Store secret for verification
-    window.currentTOTPSecret = secret;
-    
-    // Focus first OTP input
-    setTimeout(() => {
-        document.querySelector('#setup2FAModal .otp-input').focus();
-    }, 300);
-}
-
-// ============================================
-// 2FA VERIFICATION MODAL (FOR EXISTING USERS)
-// ============================================
-function show2FAVerifyModal() {
-    const modal = document.getElementById('twoFactorModal');
-    const otpInputs = modal.querySelectorAll('.otp-input');
-    
-    // Clear previous inputs
-    otpInputs.forEach(input => {
-        input.value = '';
-        input.classList.remove('filled');
-    });
-    
-    // Show modal
-    modal.classList.add('active');
-    
-    // Focus first input
-    setTimeout(() => otpInputs[0].focus(), 300);
-}
-
-function hideAll2FAModals() {
-    // Hide verification modal
-    const verifyModal = document.getElementById('twoFactorModal');
-    if (verifyModal) verifyModal.classList.remove('active');
-    
-    // Hide setup modal
-    const setupModal = document.getElementById('setup2FAModal');
-    if (setupModal) setupModal.remove();
-    
-    // Clear errors and loading
-    document.getElementById('2faError').style.display = 'none';
-    const verifyingSpinners = document.querySelectorAll('.verifying-spinner');
-    verifyingSpinners.forEach(spinner => spinner.classList.remove('active'));
-    
-    // Reset attempts
-    otpAttempts = 0;
-}
-
-// ============================================
-// OTP INPUT HANDLING
-// ============================================
-function moveToNextOTP(input, modalType = 'verify') {
-    const index = parseInt(input.dataset.index);
-    let allInputs;
-    
-    if (modalType === 'setup') {
-        allInputs = document.querySelectorAll('#setup2FAModal .otp-input');
-    } else {
-        allInputs = document.querySelectorAll('#twoFactorModal .otp-input');
-    }
-    
-    // Update UI
-    if (input.value.length > 0) {
-        input.classList.add('filled');
-    } else {
-        input.classList.remove('filled');
-    }
-    
-    // Move to next input if value entered
-    if (input.value.length === 1 && index < 5) {
-        allInputs[index + 1].focus();
-    }
-    
-    // Move to previous input if backspace pressed and empty
-    if (input.value.length === 0 && index > 0 && event.inputType === 'deleteContentBackward') {
-        allInputs[index - 1].focus();
-    }
-    
-    // Auto-submit if all digits entered
-    if (index === 5 && input.value.length === 1) {
-        const allFilled = Array.from(allInputs).every(inp => inp.value.length === 1);
-        if (allFilled) {
-            setTimeout(() => {
-                if (modalType === 'setup') {
-                    complete2FASetup(window.currentTOTPSecret);
-                } else {
-                    verify2FACode();
-                }
-            }, 100);
+            buttonText.textContent = 'Sign In';
         }
     }
-}
-
-// ============================================
-// 2FA SETUP COMPLETION
-// ============================================
-async function complete2FASetup(secret) {
-    const otpInputs = document.querySelectorAll('#setup2FAModal .otp-input');
-    const otpCode = Array.from(otpInputs).map(input => input.value).join('');
     
-    if (otpCode.length !== 6) {
-        showSetupError('Please enter all 6 digits');
-        return;
+    // ============================================
+    // MODAL MANAGEMENT
+    // ============================================
+    function showMethodSelection() {
+        hideAllModals();
+        document.getElementById('methodSelectionModal').classList.add('active');
     }
     
-    // Show loading
-    document.getElementById('setupVerifyingSpinner').classList.add('active');
-    document.getElementById('setup2FABtn').disabled = true;
-    document.getElementById('setupError').style.display = 'none';
-    
-    try {
-        // Verify the test code
-        const isValid = otplib.authenticator.check(otpCode, secret);
+    function showVerificationModal(method = 'authenticator') {
+        hideAllModals();
+        const modal = document.getElementById('twoFactorModal');
+        const methodText = document.getElementById('verificationMethodText');
+        const emailText = document.getElementById('2faEmail');
         
-        if (!isValid) {
-            showSetupError('Invalid code. Please try again.');
+        // Set method-specific text
+        const methods = {
+            authenticator: 'Enter the 6-digit code from your authenticator app',
+            sms: 'Enter the 6-digit code sent to your phone',
+            email: 'Enter the 6-digit code sent to your email'
+        };
+        
+        methodText.textContent = methods[method] || methods.authenticator;
+        emailText.textContent = state.currentUser.email;
+        
+        // Clear OTP inputs
+        clearOTPInputs('verify');
+        
+        modal.classList.add('active');
+        setTimeout(() => {
+            document.querySelector('#twoFactorModal .otp-digit').focus();
+        }, 300);
+    }
+    
+    function showAuthenticatorSetup() {
+        hideAllModals();
+        
+        // Generate TOTP secret
+        state.currentSecret = otplib.authenticator.generateSecret();
+        const email = state.currentUser.email;
+        const uri = otplib.authenticator.keyuri(email, 'NCHSM Portal', state.currentSecret);
+        
+        // Generate QR code
+        const qrCodeDiv = document.getElementById('qrCode');
+        qrCodeDiv.innerHTML = '';
+        QRCode.toCanvas(qrCodeDiv, uri, {
+            width: 200,
+            height: 200,
+            margin: 1,
+            color: {
+                dark: '#073450',
+                light: '#FFFFFF'
+            }
+        });
+        
+        // Clear OTP inputs
+        clearOTPInputs('authenticator');
+        
+        // Show modal
+        document.getElementById('authenticatorSetupModal').classList.add('active');
+        setTimeout(() => {
+            document.querySelector('#authenticatorSetupModal .otp-digit').focus();
+        }, 300);
+    }
+    
+    function showBackupCodesModal(codes) {
+        hideAllModals();
+        state.backupCodes = codes;
+        
+        const codesList = document.getElementById('backupCodesList');
+        codesList.innerHTML = codes.map(code => `
+            <div class="backup-code">
+                ${code}
+                <button class="copy-button" onclick="copyToClipboard('${code}')">
+                    <i data-feather="copy" width="12" height="12"></i>
+                </button>
+            </div>
+        `).join('');
+        
+        feather.replace();
+        document.getElementById('backupCodesModal').classList.add('active');
+    }
+    
+    function hideAllModals() {
+        document.querySelectorAll('.modal-overlay').forEach(modal => {
+            modal.classList.remove('active');
+        });
+    }
+    
+    // ============================================
+    // METHOD SELECTION
+    // ============================================
+    function selectMethod(method) {
+        state.selectedMethod = method;
+        
+        // Remove selected class from all
+        document.querySelectorAll('.method-card').forEach(card => {
+            card.classList.remove('selected');
+        });
+        
+        // Add selected class to clicked
+        event.currentTarget.classList.add('selected');
+    }
+    
+    function proceedWithSelectedMethod() {
+        if (!state.selectedMethod) {
+            showError(document.getElementById('methodError'), 'Please select a security method');
             return;
         }
         
-        // Generate backup codes
-        const backupCodes = Array.from({length: 10}, () => {
-            return Array.from({length: 8}, () => 
-                'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'[Math.floor(Math.random() * 36)]
-            ).join('');
-        });
-        
-        // Save to database
-        const { error: saveError } = await window.supabase
-            .from('user_2fa_settings')
-            .upsert({
-                id: currentUser.userId,
-                totp_secret: secret,
-                backup_codes: backupCodes,
-                is_2fa_enabled: true,
-                updated_at: new Date().toISOString()
-            });
-        
-        if (saveError) throw saveError;
-        
-        // Show success message with backup codes
-        showBackupCodes(backupCodes);
-        
-    } catch (error) {
-        console.error('2FA setup error:', error);
-        showSetupError('Setup failed. Please try again.');
-    } finally {
-        document.getElementById('setupVerifyingSpinner').classList.remove('active');
-        document.getElementById('setup2FABtn').disabled = false;
-    }
-}
-
-function showBackupCodes(backupCodes) {
-    const modal = document.getElementById('setup2FAModal');
-    modal.querySelector('.two-factor-content').innerHTML = `
-        <button onclick="hideAll2FAModals()" style="position: absolute; top: 20px; right: 20px; background: none; border: none; color: #64748B; cursor: pointer; font-size: 20px; padding: 5px; z-index: 1;">×</button>
-        
-        <div style="margin-bottom: 20px;">
-            <div style="width: 60px; height: 60px; background: linear-gradient(135deg, #38A169 0%, #2F855A 100%); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 15px;">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
-                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                </svg>
-            </div>
-            <h3 style="color: var(--nchsm-blue-dark); margin-bottom: 8px; font-size: 1.4rem;">✅ Security Setup Complete!</h3>
-            <p style="color: var(--text-muted); font-size: 15px; margin-bottom: 5px;">
-                Your 2FA is now active. <strong>SAVE THESE BACKUP CODES:</strong>
-            </p>
-        </div>
-        
-        <div style="background: #F8FAFC; padding: 20px; border-radius: 12px; margin: 20px 0;">
-            <h4 style="color: var(--nchsm-blue-dark); margin-bottom: 15px; font-size: 1.1rem;">📋 Backup Codes (ONE-TIME USE)</h4>
-            <p style="color: #EF4444; font-size: 14px; margin-bottom: 15px; background: rgba(239, 68, 68, 0.05); padding: 10px; border-radius: 6px; border: 1px solid rgba(239, 68, 68, 0.1);">
-                ⚠️ Save these codes in a secure place. Each code can be used once if you lose access to your authenticator app.
-            </p>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: center; margin: 20px 0;">
-                ${backupCodes.map(code => `
-                    <div style="position: relative;">
-                        <code style="padding: 12px; background: white; border-radius: 8px; font-family: 'Courier New', monospace; font-weight: bold; font-size: 15px; letter-spacing: 1px; display: block; border: 1px solid var(--input-border);">
-                            ${code}
-                        </code>
-                        <button onclick="copyCode('${code}')" style="position: absolute; top: 4px; right: 4px; background: var(--nchsm-blue-light); color: white; border: none; border-radius: 4px; width: 24px; height: 24px; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center;">
-                            📋
-                        </button>
-                    </div>
-                `).join('')}
-            </div>
-            
-            <div style="display: flex; gap: 10px; margin-top: 20px;">
-                <button onclick="downloadBackupCodes(${JSON.stringify(backupCodes)})" style="flex: 1; background: var(--nchsm-blue-dark); color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                    <span>📥</span> Download Codes
-                </button>
-                <button onclick="printBackupCodes()" style="flex: 1; background: var(--nchsm-blue-light); color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                    <span>🖨️</span> Print Codes
-                </button>
-            </div>
-        </div>
-        
-        <div style="background: rgba(56, 161, 105, 0.05); padding: 15px; border-radius: 8px; margin: 20px 0; border: 1px solid rgba(56, 161, 105, 0.2);">
-            <p style="color: var(--nchsm-green); font-size: 14px; margin: 0; display: flex; align-items: center; gap: 8px;">
-                <span style="font-size: 18px;">✅</span>
-                <strong>Next time you login:</strong> You'll need to enter a code from your authenticator app.
-            </p>
-        </div>
-        
-        <button onclick="proceedToDashboard()" style="background: var(--gradient-accent); color: white; border: none; padding: 14px 30px; border-radius: 10px; font-weight: 600; cursor: pointer; width: 100%; margin-top: 10px;">
-            Continue to Dashboard
-        </button>
-    `;
-}
-
-function copyCode(code) {
-    navigator.clipboard.writeText(code).then(() => {
-        // Show temporary feedback
-        const button = event.target;
-        const original = button.innerHTML;
-        button.innerHTML = '✅';
-        setTimeout(() => button.innerHTML = original, 1000);
-    });
-}
-
-function downloadBackupCodes(codes) {
-    const content = `===========================================
-NAKURU COLLEGE OF HEALTH SCIENCES AND MANAGEMENT
-TWO-FACTOR AUTHENTICATION BACKUP CODES
-===========================================
-
-IMPORTANT: Save this file in a secure location.
-Each code can be used ONCE if you lose access to your authenticator app.
-
-USER: ${currentUser.email}
-GENERATED: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}
-
-BACKUP CODES:
-${codes.map((code, i) => `${i + 1}. ${code}`).join('\n')}
-
-INSTRUCTIONS:
-1. If you lose your authenticator app, use one of these codes
-2. Each code works only once
-3. After using all codes, contact IT support
-4. Never share these codes with anyone
-
-IT Support: it-support@nchsm.ac.ke
-Portal: https://portal.nchsm.ac.ke
-===========================================`;
-    
-    const blob = new Blob([content], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `nchsm-2fa-backup-${currentUser.email.replace(/[@.]/g, '-')}-${new Date().getTime()}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-}
-
-function printBackupCodes() {
-    const printContent = document.getElementById('setup2FAModal').innerHTML;
-    const originalContent = document.body.innerHTML;
-    document.body.innerHTML = printContent;
-    window.print();
-    document.body.innerHTML = originalContent;
-    location.reload();
-}
-
-function showSetupError(message) {
-    const errorEl = document.getElementById('setupError');
-    errorEl.textContent = message;
-    errorEl.style.display = 'block';
-}
-
-// ============================================
-// 2FA VERIFICATION (EXISTING USERS)
-// ============================================
-async function verify2FACode() {
-    const otpInputs = document.querySelectorAll('#twoFactorModal .otp-input');
-    const otpCode = Array.from(otpInputs).map(input => input.value).join('');
-    
-    if (otpCode.length !== 6) {
-        show2FAError('Please enter all 6 digits');
-        return;
+        if (state.selectedMethod === 'authenticator') {
+            showAuthenticatorSetup();
+        } else if (state.selectedMethod === 'sms') {
+            // For SMS, you'd need to implement phone number collection
+            alert('SMS setup would be implemented here with phone number input');
+        } else if (state.selectedMethod === 'email') {
+            // For email, use existing email
+            alert('Email verification would be implemented here');
+        }
     }
     
-    // Show loading
-    document.getElementById('verifyingSpinner').classList.add('active');
-    document.getElementById('verify2FABtn').disabled = true;
-    document.getElementById('2faError').style.display = 'none';
-    
-    try {
-        // First, re-login with stored credentials
-        const { data: authData, error: authError } = await window.supabase.auth.signInWithPassword({
-            email: currentUser.email,
-            password: currentUser.password
-        });
+    // ============================================
+    // OTP HANDLING
+    // ============================================
+    function moveToNextOTP(input, context) {
+        const index = parseInt(input.dataset.index);
+        const modalId = getModalId(context);
+        const allInputs = document.querySelectorAll(`${modalId} .otp-digit`);
         
-        if (authError) throw authError;
+        // Update UI
+        input.classList.toggle('filled', input.value.length > 0);
         
-        // Get user's TOTP secret and verify
-        const { data: totpData, error: totpError } = await window.supabase
-            .from('user_2fa_settings')
-            .select('totp_secret')
-            .eq('id', authData.user.id)
-            .single();
-        
-        if (totpError || !totpData?.totp_secret) {
-            show2FAError('2FA not configured properly. Please contact support.');
-            return;
+        // Auto-navigation
+        if (input.value.length === 1 && index < 5) {
+            allInputs[index + 1].focus();
         }
         
-        // Verify TOTP code
-        const isValid = otplib.authenticator.check(otpCode, totpData.totp_secret);
+        if (input.value.length === 0 && index > 0 && event.inputType === 'deleteContentBackward') {
+            allInputs[index - 1].focus();
+        }
         
-        if (!isValid) {
-            otpAttempts++;
-            if (otpAttempts >= maxOtpAttempts) {
-                show2FAError('Too many failed attempts. Account locked for 15 minutes.');
-                await window.supabase.auth.signOut();
+        // Auto-submit when complete
+        if (index === 5 && input.value.length === 1) {
+            const allFilled = Array.from(allInputs).every(inp => inp.value.length === 1);
+            if (allFilled) {
                 setTimeout(() => {
-                    hideAll2FAModals();
-                    window.location.reload();
-                }, 3000);
-            } else {
-                show2FAError(`Invalid code. ${maxOtpAttempts - otpAttempts} attempts remaining.`);
-                otpInputs.forEach(input => {
-                    input.value = '';
-                    input.classList.remove('filled');
-                });
-                otpInputs[0].focus();
+                    if (context === 'authenticator') {
+                        completeAuthenticatorSetup();
+                    } else if (context === 'verify') {
+                        verify2FACode();
+                    }
+                }, 100);
             }
-            return;
         }
-        
-        // 2FA verification successful!
-        if (document.getElementById('trustDevice').checked) {
-            await markDeviceAsTrusted(authData.user.id);
-        }
-        
-        // Complete login process
-        await completeLogin(currentUser.email, currentUser.password);
-        
-    } catch (error) {
-        console.error('2FA verification error:', error);
-        show2FAError('Verification failed. Please try again.');
-    } finally {
-        document.getElementById('verifyingSpinner').classList.remove('active');
-        document.getElementById('verify2FABtn').disabled = false;
     }
-}
-
-function show2FAError(message) {
-    const errorEl = document.getElementById('2faError');
-    errorEl.textContent = message;
-    errorEl.style.display = 'block';
-}
-
-// ============================================
-// TRUST DEVICE & BACKUP FUNCTIONS
-// ============================================
-async function markDeviceAsTrusted(userId) {
-    const deviceId = btoa(navigator.userAgent + navigator.language + screen.width + screen.height);
-    const trustedUntil = new Date();
-    trustedUntil.setDate(trustedUntil.getDate() + 30);
     
-    // Get current trusted devices
-    const { data: currentSettings } = await window.supabase
-        .from('user_2fa_settings')
-        .select('trusted_devices')
-        .eq('id', userId)
-        .single();
+    function getModalId(context) {
+        switch(context) {
+            case 'authenticator': return '#authenticatorSetupModal';
+            case 'sms': return '#smsSetupModal';
+            case 'email': return '#emailSetupModal';
+            default: return '#twoFactorModal';
+        }
+    }
     
-    const trustedDevices = currentSettings?.trusted_devices || [];
-    trustedDevices.push({
-        deviceId,
-        trustedUntil: trustedUntil.toISOString(),
-        addedAt: new Date().toISOString(),
-        userAgent: navigator.userAgent.substring(0, 100)
-    });
-    
-    // Update database
-    await window.supabase
-        .from('user_2fa_settings')
-        .update({ trusted_devices: trustedDevices })
-        .eq('id', userId);
-    
-    // Store in localStorage
-    localStorage.setItem(`trusted_device_${userId}`, JSON.stringify({
-        deviceId,
-        trustedUntil: trustedUntil.toISOString()
-    }));
-}
-
-async function useBackupCode() {
-    const backupCode = prompt('Enter your backup code:');
-    if (!backupCode) return;
-    
-    try {
-        const { data: authData, error: authError } = await window.supabase.auth.signInWithPassword({
-            email: currentUser.email,
-            password: currentUser.password
+    function clearOTPInputs(context) {
+        const modalId = getModalId(context);
+        document.querySelectorAll(`${modalId} .otp-digit`).forEach(input => {
+            input.value = '';
+            input.classList.remove('filled');
         });
-        
-        if (authError) throw authError;
-        
-        // Check backup code in database
-        const { data: totpSettings, error: totpError } = await window.supabase
-            .from('user_2fa_settings')
-            .select('backup_codes')
-            .eq('id', authData.user.id)
-            .single();
-        
-        if (totpError || !totpSettings?.backup_codes) {
-            alert('No backup codes available');
+    }
+    
+    function getOTPCode(context) {
+        const modalId = getModalId(context);
+        const inputs = document.querySelectorAll(`${modalId} .otp-digit`);
+        return Array.from(inputs).map(input => input.value).join('');
+    }
+    
+    // ============================================
+    // AUTHENTICATOR SETUP
+    // ============================================
+    async function completeAuthenticatorSetup() {
+        const code = getOTPCode('authenticator');
+        if (code.length !== 6) {
+            showError(document.getElementById('setupError'), 'Please enter all 6 digits');
             return;
         }
         
-        if (totpSettings.backup_codes.includes(backupCode)) {
-            // Remove used backup code
-            const updatedCodes = totpSettings.backup_codes.filter(code => code !== backupCode);
-            await window.supabase
+        // Show loading
+        const setupBtn = document.getElementById('setup2FABtn');
+        const spinner = document.getElementById('setupVerifyingSpinner');
+        setupBtn.disabled = true;
+        spinner.classList.remove('hidden');
+        
+        try {
+            // Verify code
+            const isValid = otplib.authenticator.check(code, state.currentSecret);
+            if (!isValid) throw new Error('Invalid verification code');
+            
+            // Generate backup codes
+            const backupCodes = Array.from({length: 10}, () => 
+                Array.from({length: 8}, () => 
+                    'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'[Math.floor(Math.random() * 36)]
+                ).join('')
+            );
+            
+            // Save to database
+            const { error } = await supabase
                 .from('user_2fa_settings')
-                .update({ backup_codes: updatedCodes })
-                .eq('id', authData.user.id);
+                .upsert({
+                    id: state.currentUser.userId,
+                    totp_secret: state.currentSecret,
+                    backup_codes: backupCodes,
+                    preferred_method: 'authenticator',
+                    is_2fa_enabled: true,
+                    updated_at: new Date().toISOString()
+                });
+            
+            if (error) throw error;
+            
+            // Show backup codes
+            showBackupCodesModal(backupCodes);
+            
+        } catch (error) {
+            console.error('Setup error:', error);
+            showError(document.getElementById('setupError'), error.message);
+        } finally {
+            setupBtn.disabled = false;
+            spinner.classList.add('hidden');
+        }
+    }
+    
+    // ============================================
+    // 2FA VERIFICATION
+    // ============================================
+    async function verify2FACode() {
+        const code = getOTPCode('verify');
+        if (code.length !== 6) {
+            showError(document.getElementById('2faError'), 'Please enter all 6 digits');
+            return;
+        }
+        
+        // Show loading
+        const verifyBtn = document.getElementById('verify2FABtn');
+        const spinner = document.getElementById('verifyingSpinner');
+        verifyBtn.disabled = true;
+        spinner.classList.remove('hidden');
+        
+        try {
+            // Re-authenticate
+            const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+                email: state.currentUser.email,
+                password: state.currentUser.password
+            });
+            
+            if (authError) throw authError;
+            
+            // Get TOTP secret
+            const { data: totpData } = await supabase
+                .from('user_2fa_settings')
+                .select('totp_secret')
+                .eq('id', authData.user.id)
+                .single();
+            
+            if (!totpData?.totp_secret) throw new Error('2FA not configured');
+            
+            // Verify TOTP
+            const isValid = otplib.authenticator.check(code, totpData.totp_secret);
+            
+            if (!isValid) {
+                state.otpAttempts++;
+                if (state.otpAttempts >= state.maxOtpAttempts) {
+                    throw new Error('Too many failed attempts. Please try again later.');
+                }
+                throw new Error(`Invalid code. ${state.maxOtpAttempts - state.otpAttempts} attempts remaining.`);
+            }
+            
+            // Trust device if checked
+            if (document.getElementById('trustDevice').checked) {
+                await trustDevice(authData.user.id);
+            }
             
             // Complete login
-            hideAll2FAModals();
-            await completeLogin(currentUser.email, currentUser.password);
-        } else {
-            alert('Invalid backup code');
+            await completeLogin();
+            
+        } catch (error) {
+            console.error('Verification error:', error);
+            showError(document.getElementById('2faError'), error.message);
+            clearOTPInputs('verify');
+            document.querySelector('#twoFactorModal .otp-digit').focus();
+        } finally {
+            verifyBtn.disabled = false;
+            spinner.classList.add('hidden');
         }
-    } catch (error) {
-        alert('Backup code verification failed');
-        console.error(error);
     }
-}
-
-async function send2FARecoveryEmail() {
-    try {
-        await window.supabase.auth.resetPasswordForEmail(currentUser.email);
-        alert('Recovery email sent. Check your inbox for instructions.');
-    } catch (error) {
-        console.error('Failed to send recovery email:', error);
-        alert('Failed to send recovery email. Please try again.');
-    }
-}
-
-// ============================================
-// FINAL LOGIN COMPLETION
-// ============================================
-async function proceedToDashboard() {
-    hideAll2FAModals();
-    await completeLogin(currentUser.email, currentUser.password);
-}
-
-async function completeLogin(email, password) {
-    try {
-        const { data: authData, error: authError } = await window.supabase.auth.signInWithPassword({ email, password });
-        if (authError || !authData.user) {
-            throw new Error(authError?.message || 'Login failed');
-        }
-
-        const { data: refreshedData } = await window.supabase.auth.refreshSession();
-        const sessionUser = refreshedData?.session?.user ?? authData.user;
-
-        // Check profile
-        const { data: profileData, error: profileError } = await window.supabase
-            .from('consolidated_user_profiles_table')
-            .select('*')
-            .eq('user_id', sessionUser.id)
-            .maybeSingle();
-
-        if (profileError || !profileData) {
-            throw new Error('Profile access issue');
-        }
-
-        // Check status
-        const currentStatus = profileData.status?.toLowerCase() ?? 'pending';
-        if (currentStatus !== 'approved') {
-            throw new Error('Account pending approval');
-        }
-
-        // Store profile
-        localStorage.setItem('currentUserProfile', JSON.stringify(profileData));
-
-        // Redirect based on role
-        const profileRole = profileData.role?.toLowerCase() ?? 'student';
-        const redirects = {
-            'student': 'index.html',
-            'lecturer': 'lecturer.html',
-            'admin': 'admin.html',
-            'superadmin': 'superadmin.html',
-            'hod': 'hod-tracker.html'
-        };
-
-        window.location.href = redirects[profileRole] || 'index.html';
-
-    } catch (err) {
-        console.error('Login completion error:', err);
-        const errorMsg = document.getElementById('errorMsg');
-        errorMsg.innerText = err.message || 'Login failed';
-        errorMsg.classList.add('show');
+    
+    // ============================================
+    // UTILITY FUNCTIONS
+    // ============================================
+    async function trustDevice(userId) {
+        const deviceId = btoa(navigator.userAgent + navigator.language + screen.width + screen.height);
+        const trustedUntil = new Date();
+        trustedUntil.setDate(trustedUntil.getDate() + 30);
         
-        const loginButton = document.getElementById('loginButton');
-        const buttonText = document.getElementById('button-text');
-        loginButton.disabled = false;
-        buttonText.textContent = 'Log In';
+        localStorage.setItem(`trusted_device_${userId}`, JSON.stringify({
+            deviceId,
+            trustedUntil: trustedUntil.toISOString()
+        }));
     }
-}
-       </script>    
+    
+    async function completeLogin() {
+        try {
+            const { data: profileData } = await supabase
+                .from('consolidated_user_profiles_table')
+                .select('*')
+                .eq('user_id', state.currentUser.userId)
+                .maybeSingle();
+            
+            if (!profileData) throw new Error('Profile not found');
+            
+            if (profileData.status?.toLowerCase() !== 'approved') {
+                throw new Error('Account pending approval');
+            }
+            
+            // Store profile and redirect
+            localStorage.setItem('currentUserProfile', JSON.stringify(profileData));
+            
+            const redirects = {
+                'student': 'index.html',
+                'lecturer': 'lecturer.html',
+                'admin': 'admin.html',
+                'superadmin': 'superadmin.html',
+                'hod': 'hod-tracker.html'
+            };
+            
+            const role = profileData.role?.toLowerCase() || 'student';
+            window.location.href = redirects[role] || 'index.html';
+            
+        } catch (error) {
+            console.error('Login completion error:', error);
+            showError(document.getElementById('errorMsg'), error.message);
+        }
+    }
+    
+    function useBackupCode() {
+        const backupCode = prompt('Enter your backup code:');
+        if (backupCode) {
+            alert('Backup code verification would be implemented here');
+        }
+    }
+    
+    function sendRecoveryEmail() {
+        alert('Recovery email would be sent here');
+    }
+    
+    function copyToClipboard(text) {
+        navigator.clipboard.writeText(text).then(() => {
+            const button = event.target.closest('button');
+            const original = button.innerHTML;
+            button.innerHTML = '<i data-feather="check" width="12" height="12"></i>';
+            setTimeout(() => button.innerHTML = original, 1000);
+        });
+    }
+    
+    function downloadBackupCodes() {
+        const content = `NCHSM Backup Codes\n\n${state.backupCodes.join('\n')}`;
+        const blob = new Blob([content], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `nchsm-backup-codes-${Date.now()}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+    
+    function proceedToDashboard() {
+        hideAllModals();
+        completeLogin();
+    }
+    
+    function showError(element, message) {
+        element.textContent = message;
+        element.classList.add('show');
+    }
+    </script>
 </body>
 </html>
