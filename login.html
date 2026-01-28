@@ -373,6 +373,202 @@
             100% { transform: rotate(360deg); }
         }
 
+        /* 2FA Modal Styles - ADDED */
+        .two-factor-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(7, 52, 80, 0.95);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .two-factor-modal.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .two-factor-content {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 25px 50px rgba(7, 52, 80, 0.3);
+            transform: translateY(20px);
+            transition: transform 0.4s ease;
+            position: relative;
+        }
+
+        .two-factor-modal.active .two-factor-content {
+            transform: translateY(0);
+        }
+
+        .otp-inputs {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin: 30px 0;
+        }
+
+        .otp-input {
+            width: 55px;
+            height: 65px;
+            text-align: center;
+            font-size: 24px;
+            font-weight: 600;
+            border: 2px solid var(--input-border);
+            border-radius: 12px;
+            background: #F8FAFC;
+            transition: all 0.2s;
+            color: var(--nchsm-blue-dark);
+        }
+
+        .otp-input:focus {
+            border-color: var(--nchsm-green);
+            background: white;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(56, 161, 105, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .otp-input.filled {
+            border-color: var(--nchsm-green);
+            background: rgba(56, 161, 105, 0.05);
+        }
+
+        .two-factor-options {
+            margin-top: 20px;
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        .two-factor-options a {
+            color: var(--nchsm-blue-light);
+            text-decoration: none;
+            margin: 0 10px;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .two-factor-options a:hover {
+            color: var(--nchsm-green);
+            text-decoration: underline;
+        }
+
+        .trust-device {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        .trust-device input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--nchsm-green);
+        }
+
+        .verifying-spinner {
+            display: none;
+            width: 24px;
+            height: 24px;
+            border: 3px solid rgba(56, 161, 105, 0.2);
+            border-top: 3px solid var(--nchsm-green);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 15px auto;
+        }
+
+        .verifying-spinner.active {
+            display: block;
+        }
+
+        #2faError {
+            color: #EF4444;
+            font-size: 14px;
+            margin-top: 15px;
+            display: none;
+            padding: 10px;
+            background: rgba(239, 68, 68, 0.05);
+            border-radius: 8px;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .security-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(56, 161, 105, 0.1);
+            color: var(--nchsm-green);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            margin-top: 20px;
+        }
+
+        /* 2FA Setup Styles */
+        .two-factor-setup {
+            margin-top: 30px;
+            padding: 20px;
+            background: #F8FAFC;
+            border-radius: 12px;
+            border: 1px solid var(--input-border);
+        }
+
+        .two-factor-setup h4 {
+            color: var(--nchsm-blue-dark);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .two-factor-setup h4 i {
+            color: var(--nchsm-green);
+        }
+
+        .qr-code-container {
+            text-align: center;
+            margin: 20px 0;
+            padding: 20px;
+            background: white;
+            border-radius: 12px;
+        }
+
+        .backup-codes {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 2;
+            text-align: center;
+        }
+
+        .backup-codes code {
+            display: inline-block;
+            padding: 4px 8px;
+            margin: 4px;
+            background: #F8FAFC;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
         /* --- Mobile Optimizations --- */
         @media (max-width: 1024px) {
             .brand-panel {
@@ -452,6 +648,22 @@
             .sub-msg {
                 font-size: 1rem;
             }
+
+            /* 2FA Mobile Optimizations */
+            .otp-inputs {
+                gap: 8px;
+            }
+            
+            .otp-input {
+                width: 48px;
+                height: 58px;
+                font-size: 20px;
+            }
+            
+            .two-factor-content {
+                padding: 30px 20px;
+                margin: 20px;
+            }
         }
 
         @media (max-width: 480px) {
@@ -515,6 +727,21 @@
                 height: 32px;
                 right: 10px;
             }
+
+            /* 2FA Mobile Optimizations */
+            .otp-inputs {
+                gap: 6px;
+            }
+            
+            .otp-input {
+                width: 44px;
+                height: 54px;
+                font-size: 18px;
+            }
+            
+            .two-factor-content {
+                padding: 25px 15px;
+            }
         }
 
         @media (max-width: 360px) {
@@ -556,6 +783,17 @@
             
             .forgot-password {
                 align-self: flex-end;
+            }
+
+            /* 2FA Mobile Optimizations */
+            .otp-inputs {
+                gap: 4px;
+            }
+            
+            .otp-input {
+                width: 40px;
+                height: 50px;
+                font-size: 16px;
             }
         }
 
@@ -660,13 +898,66 @@
         </div>
     </div>
     
+    <!-- 2FA Modal -->
+    <div id="twoFactorModal" class="two-factor-modal">
+        <div class="two-factor-content">
+            <button onclick="hide2FAModal()" style="position: absolute; top: 20px; right: 20px; background: none; border: none; color: #64748B; cursor: pointer; font-size: 20px; padding: 5px; z-index: 1;">×</button>
+            
+            <div style="margin-bottom: 20px;">
+                <div style="width: 60px; height: 60px; background: linear-gradient(135deg, #38A169 0%, #2F855A 100%); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 15px;">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    </svg>
+                </div>
+                <h3 style="color: var(--nchsm-blue-dark); margin-bottom: 8px; font-size: 1.4rem;">Security Verification</h3>
+                <p style="color: var(--text-muted); font-size: 15px; margin-bottom: 5px;">Enter 6-digit code from your authenticator app</p>
+                <p id="2faEmail" style="color: var(--nchsm-blue-light); font-weight: 500; font-size: 14px; margin-bottom: 5px;"></p>
+            </div>
+            
+            <div class="otp-inputs">
+                <input type="text" maxlength="1" class="otp-input" data-index="0" oninput="moveToNextOTP(this)">
+                <input type="text" maxlength="1" class="otp-input" data-index="1" oninput="moveToNextOTP(this)">
+                <input type="text" maxlength="1" class="otp-input" data-index="2" oninput="moveToNextOTP(this)">
+                <input type="text" maxlength="1" class="otp-input" data-index="3" oninput="moveToNextOTP(this)">
+                <input type="text" maxlength="1" class="otp-input" data-index="4" oninput="moveToNextOTP(this)">
+                <input type="text" maxlength="1" class="otp-input" data-index="5" oninput="moveToNextOTP(this)">
+            </div>
+            
+            <div id="verifyingSpinner" class="verifying-spinner"></div>
+            
+            <button onclick="verify2FACode()" id="verify2FABtn" style="background: var(--gradient-accent); color: white; border: none; padding: 14px 30px; border-radius: 10px; font-weight: 600; cursor: pointer; width: 100%; margin-top: 10px; transition: all 0.2s;">
+                Verify & Continue
+            </button>
+            
+            <div class="trust-device">
+                <input type="checkbox" id="trustDevice">
+                <label for="trustDevice">Trust this device for 30 days</label>
+            </div>
+            
+            <div class="two-factor-options">
+                <a href="#" onclick="useBackupCode()">Use backup code</a>
+                •
+                <a href="#" onclick="send2FARecoveryEmail()">Can't access your app?</a>
+            </div>
+            
+            <div id="2faError"></div>
+        </div>
+    </div>
+    
     <script>
+    // Global variables
+    let currentUser = null;
+    let twoFactorSecret = null;
+    let otpAttempts = 0;
+    const maxOtpAttempts = 3;
+
     document.addEventListener('DOMContentLoaded', () => {
         // Initialize Feather Icons
         if (typeof feather !== 'undefined') {
             feather.replace(); 
         }
 
+        // Password toggle
         const passwordInput = document.getElementById('password');
         const toggleButton = document.getElementById('password-toggle-btn');
         const toggleIcon = document.getElementById('toggle-icon');
@@ -685,16 +976,12 @@
             });
         }
 
-        // Remove .html from URL
-        if (window.location.pathname.endsWith('.html')) {
-            const cleanPath = window.location.pathname.replace(/\.html$/, '');
-            window.history.replaceState({}, '', cleanPath);
-        }
-
+        // Initialize Supabase
         const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        window.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+        // Login form submission
         const errorMsg = document.getElementById('errorMsg');
         const loginForm = document.getElementById('loginForm');
         const loginButton = document.getElementById('loginButton');
@@ -713,83 +1000,269 @@
             const password = document.getElementById('password').value;
 
             try {
-                const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password });
-                if (authError || !authData.user) {
-                    errorMsg.innerText = authError?.message || 'Login failed. Check your email and password.';
-                    errorMsg.classList.add('show');
-                    loginButton.disabled = false;
-                    buttonText.textContent = 'Log In';
-                    return;
-                }
-
-                const { data: refreshedData, error: refreshError } = await supabase.auth.refreshSession();
-                if (refreshError) console.warn('Session refresh failed', refreshError);
-                const sessionUser = refreshedData?.session?.user ?? authData.user;
-
-                let role = sessionUser.user_metadata?.role?.toLowerCase() ?? 'student';
-
-                if (role === 'superadmin') {
-                    window.location.href = 'superadmin.html';
-                    return;
-                } else if (role === 'admin') {
-                    window.location.href = 'admin.html';
-                    return;
-                }
-
-                const { data: profileData, error: profileError } = await supabase
+                // 1. Check if user has 2FA enabled
+                const { data: userProfile } = await window.supabase
                     .from('consolidated_user_profiles_table')
                     .select('*')
-                    .eq('user_id', sessionUser.id)
+                    .eq('email', email)
                     .maybeSingle();
 
-                if (profileError || !profileData) {
-                    errorMsg.innerText = 'Login failed: Profile access issue.';
-                    errorMsg.classList.add('show');
-                    await supabase.auth.signOut();
+                if (userProfile?.two_factor_enabled) {
+                    // User has 2FA enabled - show modal instead of logging in directly
+                    currentUser = { email, password };
+                    document.getElementById('2faEmail').textContent = email;
+                    show2FAModal();
+                    
+                    // Reset login button
                     loginButton.disabled = false;
                     buttonText.textContent = 'Log In';
                     return;
                 }
 
-                const currentStatus = profileData.status?.toLowerCase() ?? 'pending';
-                if (currentStatus !== 'approved') {
-                    errorMsg.innerText = 'Login failed: Your account is pending approval.';
-                    errorMsg.classList.add('show');
-                    await supabase.auth.signOut();
-                    loginButton.disabled = false;
-                    buttonText.textContent = 'Log In';
-                    return;
-                }
-
-                localStorage.setItem('currentUserProfile', JSON.stringify(profileData));
-
-                const profileRole = profileData.role?.toLowerCase() ?? 'student';
-
-                // Enhanced role-based redirect logic with HOD support
-                if (profileRole === 'student') {
-                    window.location.href = 'index.html';
-                } else if (profileRole === 'lecturer') {
-                    window.location.href = 'lecturer.html';
-                } else if (profileRole === 'admin') {
-                    window.location.href = 'admin.html';
-                } else if (profileRole === 'superadmin') {
-                    window.location.href = 'superadmin.html';
-                } else if (profileRole === 'hod') {
-                    // ADDED: Redirect HOD users to hod-tracker.html
-                    window.location.href = 'hod-tracker.html';
-                } else {
-                    window.location.href = 'index.html';
-                }
-
+                // 2. Proceed with normal login if no 2FA
+                await completeLogin(email, password);
+                
             } catch (err) {
-                console.error('Unexpected system error:', err);
-                errorMsg.innerText = 'A critical system error occurred. Please try again later.';
+                console.error('Login error:', err);
+                errorMsg.innerText = 'Login failed. Please check your credentials.';
                 errorMsg.classList.add('show');
                 loginButton.disabled = false;
                 buttonText.textContent = 'Log In';
             }
         });
     });
+
+    // 2FA Functions
+    function show2FAModal() {
+        const modal = document.getElementById('twoFactorModal');
+        const otpInputs = modal.querySelectorAll('.otp-input');
+        
+        // Clear previous inputs
+        otpInputs.forEach(input => {
+            input.value = '';
+            input.classList.remove('filled');
+        });
+        
+        // Show modal
+        modal.classList.add('active');
+        
+        // Focus first input
+        setTimeout(() => otpInputs[0].focus(), 300);
+    }
+
+    function hide2FAModal() {
+        document.getElementById('twoFactorModal').classList.remove('active');
+        document.getElementById('2faError').style.display = 'none';
+        document.getElementById('verifyingSpinner').classList.remove('active');
+        otpAttempts = 0;
+    }
+
+    function moveToNextOTP(input) {
+        const index = parseInt(input.dataset.index);
+        const allInputs = document.querySelectorAll('.otp-input');
+        
+        // Update UI
+        input.classList.add('filled');
+        
+        // Move to next input if value entered
+        if (input.value.length === 1 && index < 5) {
+            allInputs[index + 1].focus();
+        }
+        
+        // Auto-submit if all digits entered
+        if (index === 5 && input.value.length === 1) {
+            const allFilled = Array.from(allInputs).every(inp => inp.value.length === 1);
+            if (allFilled) {
+                setTimeout(verify2FACode, 100);
+            }
+        }
+    }
+
+    async function verify2FACode() {
+        const otpInputs = document.querySelectorAll('.otp-input');
+        const otpCode = Array.from(otpInputs).map(input => input.value).join('');
+        
+        if (otpCode.length !== 6) {
+            show2FAError('Please enter all 6 digits');
+            return;
+        }
+        
+        // Show loading
+        document.getElementById('verifyingSpinner').classList.add('active');
+        document.getElementById('verify2FABtn').disabled = true;
+        document.getElementById('2faError').style.display = 'none';
+        
+        try {
+            // First, login with stored credentials
+            const { data: authData, error: authError } = await window.supabase.auth.signInWithPassword({
+                email: currentUser.email,
+                password: currentUser.password
+            });
+            
+            if (authError) throw authError;
+            
+            // Verify TOTP code (you'll need to implement this based on your 2FA setup)
+            const { data: verifyData, error: verifyError } = await verifyTOTPWithBackend(authData.user.id, otpCode);
+            
+            if (verifyError) {
+                otpAttempts++;
+                if (otpAttempts >= maxOtpAttempts) {
+                    show2FAError('Too many failed attempts. Please try again later or use backup code.');
+                    await window.supabase.auth.signOut();
+                    setTimeout(hide2FAModal, 3000);
+                } else {
+                    show2FAError(`Invalid code. ${maxOtpAttempts - otpAttempts} attempts remaining.`);
+                    // Clear inputs
+                    otpInputs.forEach(input => {
+                        input.value = '';
+                        input.classList.remove('filled');
+                    });
+                    otpInputs[0].focus();
+                }
+                return;
+            }
+            
+            // 2FA verification successful!
+            if (document.getElementById('trustDevice').checked) {
+                await markDeviceAsTrusted(authData.user.id);
+            }
+            
+            // Complete login process
+            await completeLogin(currentUser.email, currentUser.password);
+            
+        } catch (error) {
+            console.error('2FA verification error:', error);
+            show2FAError('Verification failed. Please try again.');
+        } finally {
+            document.getElementById('verifyingSpinner').classList.remove('active');
+            document.getElementById('verify2FABtn').disabled = false;
+        }
+    }
+
+    function show2FAError(message) {
+        const errorEl = document.getElementById('2faError');
+        errorEl.textContent = message;
+        errorEl.style.display = 'block';
+    }
+
+    async function verifyTOTPWithBackend(userId, code) {
+        // This is a placeholder - you'll need to implement proper TOTP verification
+        // Example implementation:
+        /*
+        const { data, error } = await window.supabase
+            .from('user_2fa_settings')
+            .select('totp_secret')
+            .eq('id', userId)
+            .single();
+        
+        if (error) return { error };
+        
+        // Verify TOTP code (use a TOTP library like otplib)
+        const isValid = verifyTOTPCode(data.totp_secret, code);
+        
+        return isValid ? { data: { success: true } } : { error: 'Invalid code' };
+        */
+        
+        // For now, simulate verification
+        return new Promise(resolve => {
+            setTimeout(() => {
+                // Simulate successful verification
+                resolve({ data: { success: true } });
+            }, 1000);
+        });
+    }
+
+    async function markDeviceAsTrusted(userId) {
+        const deviceId = generateDeviceId();
+        const trustedUntil = new Date();
+        trustedUntil.setDate(trustedUntil.getDate() + 30);
+        
+        // Store in localStorage
+        localStorage.setItem(`trusted_device_${userId}`, JSON.stringify({
+            deviceId,
+            trustedUntil: trustedUntil.toISOString()
+        }));
+    }
+
+    function generateDeviceId() {
+        // Generate a simple device fingerprint
+        return btoa(navigator.userAgent + navigator.language + screen.width + screen.height);
+    }
+
+    async function useBackupCode() {
+        const backupCode = prompt('Enter your backup code:');
+        if (!backupCode) return;
+        
+        // Verify backup code (implement this based on your backup code storage)
+        alert('Backup code verification would be implemented here');
+    }
+
+    async function send2FARecoveryEmail() {
+        try {
+            // Send recovery email
+            await window.supabase.auth.resetPasswordForEmail(currentUser.email);
+            alert('Recovery email sent. Check your inbox.');
+        } catch (error) {
+            console.error('Failed to send recovery email:', error);
+            alert('Failed to send recovery email. Please try again.');
+        }
+    }
+
+    // Original login completion function
+    async function completeLogin(email, password) {
+        try {
+            const { data: authData, error: authError } = await window.supabase.auth.signInWithPassword({ email, password });
+            if (authError || !authData.user) {
+                throw new Error(authError?.message || 'Login failed');
+            }
+
+            const { data: refreshedData } = await window.supabase.auth.refreshSession();
+            const sessionUser = refreshedData?.session?.user ?? authData.user;
+
+            // Check profile
+            const { data: profileData, error: profileError } = await window.supabase
+                .from('consolidated_user_profiles_table')
+                .select('*')
+                .eq('user_id', sessionUser.id)
+                .maybeSingle();
+
+            if (profileError || !profileData) {
+                throw new Error('Profile access issue');
+            }
+
+            // Check status
+            const currentStatus = profileData.status?.toLowerCase() ?? 'pending';
+            if (currentStatus !== 'approved') {
+                throw new Error('Account pending approval');
+            }
+
+            // Store profile
+            localStorage.setItem('currentUserProfile', JSON.stringify(profileData));
+
+            // Redirect based on role
+            const profileRole = profileData.role?.toLowerCase() ?? 'student';
+            const redirects = {
+                'student': 'index.html',
+                'lecturer': 'lecturer.html',
+                'admin': 'admin.html',
+                'superadmin': 'superadmin.html',
+                'hod': 'hod-tracker.html'
+            };
+
+            window.location.href = redirects[profileRole] || 'index.html';
+
+        } catch (err) {
+            console.error('Login completion error:', err);
+            const errorMsg = document.getElementById('errorMsg');
+            errorMsg.innerText = err.message || 'Login failed';
+            errorMsg.classList.add('show');
+            
+            const loginButton = document.getElementById('loginButton');
+            const buttonText = document.getElementById('button-text');
+            loginButton.disabled = false;
+            buttonText.textContent = 'Log In';
+        }
+    }
     </script>
 </body>
 </html>
