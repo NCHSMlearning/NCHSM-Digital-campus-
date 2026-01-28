@@ -6,12 +6,13 @@
     <title>Nakuru College Digital Portal Login - NCHSM</title>
     <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" sizes="32x32">
     
-    <!-- REQUIRED LIBRARIES -->
-    <script src="https://unpkg.com/@otplib/preset-browser@^12.0.0/buffer.js"></script>
-    <script src="https://unpkg.com/@otplib/preset-browser@^12.0.0/index.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
+    <<!-- REQUIRED LIBRARIES -->
+<script src="https://unpkg.com/@otplib/preset-browser@^12.0.0/buffer.js"></script>
+<script src="https://unpkg.com/@otplib/preset-browser@^12.0.0/index.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+        
     <link rel="preload" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"></noscript>
     
@@ -348,7 +349,29 @@
             color: var(--nchsm-green);
             text-decoration: underline;
         }
+/* Add to your CSS around line 250-260 */
+#qrCode img {
+    width: 180px;
+    height: 180px;
+    border: 1px solid var(--input-border);
+    border-radius: 8px;
+}
 
+@media print {
+    body * {
+        visibility: hidden;
+    }
+    #setup2FAModal, #setup2FAModal * {
+        visibility: visible;
+    }
+    #setup2FAModal {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        background: white;
+    }
+}
         .copyright-line {
             color: #94A3B8;
             font-size: 0.85rem;
