@@ -683,367 +683,718 @@
         </div>
     </div>
     
-    <script>
-    // GLOBAL VARIABLES
-    let currentUser = null;
-    let otpAttempts = 0;
-    const maxOtpAttempts = 3;
-    const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
-    window.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            
+       <script>
+// ============================================
+// GLOBAL VARIABLES & INITIALIZATION
+// ============================================
+let currentUser = null;
+let otpAttempts = 0;
+const maxOtpAttempts = 3;
+const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
+window.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    document.addEventListener('DOMContentLoaded', () => {
-        // Initialize Feather Icons
-        if (typeof feather !== 'undefined') {
-            feather.replace(); 
-        }
+// ============================================
+// DOM READY FUNCTION
+// ============================================
+document.addEventListener('DOMContentLoaded', () => {
+    // Initialize Feather Icons
+    if (typeof feather !== 'undefined') {
+        feather.replace(); 
+    }
 
-        // Password toggle functionality
-        const passwordInput = document.getElementById('password');
-        const toggleButton = document.getElementById('password-toggle-btn');
-        const toggleIcon = document.getElementById('toggle-icon');
+    // Password toggle functionality
+    const passwordInput = document.getElementById('password');
+    const toggleButton = document.getElementById('password-toggle-btn');
+    const toggleIcon = document.getElementById('toggle-icon');
 
-        if (passwordInput && toggleButton && toggleIcon) {
-            toggleButton.addEventListener('click', () => {
-                const isPassword = passwordInput.type === 'password';
-                passwordInput.type = isPassword ? 'text' : 'password';
-                const iconName = isPassword ? 'eye' : 'eye-off';
-                toggleIcon.setAttribute('data-feather', iconName);
-                
-                if (typeof feather !== 'undefined') {
-                    feather.replace();
-                }
-                toggleButton.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
+    if (passwordInput && toggleButton && toggleIcon) {
+        toggleButton.addEventListener('click', () => {
+            const isPassword = passwordInput.type === 'password';
+            passwordInput.type = isPassword ? 'text' : 'password';
+            const iconName = isPassword ? 'eye' : 'eye-off';
+            toggleIcon.setAttribute('data-feather', iconName);
+            
+            if (typeof feather !== 'undefined') {
+                feather.replace();
+            }
+            toggleButton.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
+        });
+    }
+
+    // Login form submission
+    const errorMsg = document.getElementById('errorMsg');
+    const loginForm = document.getElementById('loginForm');
+    const loginButton = document.getElementById('loginButton');
+    const buttonText = document.getElementById('button-text');
+
+    if (!loginForm) return;
+
+    loginForm.addEventListener('submit', async e => {
+        e.preventDefault();
+        errorMsg.innerText = '';
+        errorMsg.classList.remove('show');
+        loginButton.disabled = true;
+        buttonText.innerHTML = '<div class="btn-loading"></div> Signing In...';
+
+        const email = document.getElementById('email').value.trim();
+        const password = document.getElementById('password').value;
+
+        try {
+            // Step 1: Login with Supabase
+            const { data: authData, error: authError } = await window.supabase.auth.signInWithPassword({ 
+                email, 
+                password 
             });
-        }
-
-        // Login form submission
-        const errorMsg = document.getElementById('errorMsg');
-        const loginForm = document.getElementById('loginForm');
-        const loginButton = document.getElementById('loginButton');
-        const buttonText = document.getElementById('button-text');
-
-        if (!loginForm) return;
-
-        loginForm.addEventListener('submit', async e => {
-            e.preventDefault();
-            errorMsg.innerText = '';
-            errorMsg.classList.remove('show');
-            loginButton.disabled = true;
-            buttonText.innerHTML = '<div class="btn-loading"></div> Signing In...';
-
-            const email = document.getElementById('email').value.trim();
-            const password = document.getElementById('password').value;
-
-            try {
-                // Check if user exists and has 2FA enabled
-                const { data: userProfile } = await window.supabase
-                    .from('consolidated_user_profiles_table')
-                    .select('*')
-                    .eq('email', email)
-                    .maybeSingle();
-
-                // Check 2FA settings from separate table
-                const { data: authUser } = await window.supabase.auth.getUser();
-                let userId = null;
-                if (authUser?.user) {
-                    const { data: totpSettings } = await window.supabase
-                        .from('user_2fa_settings')
-                        .select('is_2fa_enabled')
-                        .eq('id', authUser.user.id)
-                        .maybeSingle();
-                    
-                    if (totpSettings?.is_2fa_enabled || userProfile?.two_factor_enabled) {
-                        // User has 2FA enabled - show modal
-                        currentUser = { email, password };
-                        document.getElementById('2faEmail').textContent = email;
-                        show2FAModal();
-                        
-                        loginButton.disabled = false;
-                        buttonText.textContent = 'Log In';
-                        return;
-                    }
-                }
-
-                // No 2FA - proceed with normal login
-                await completeLogin(email, password);
-                
-            } catch (err) {
-                console.error('Login error:', err);
-                errorMsg.innerText = 'Login failed. Please check your credentials.';
+            
+            if (authError) {
+                errorMsg.innerText = authError.message || 'Login failed. Check your credentials.';
                 errorMsg.classList.add('show');
                 loginButton.disabled = false;
                 buttonText.textContent = 'Log In';
-            }
-        });
-    });
-
-    // 2FA FUNCTIONS
-    function show2FAModal() {
-        const modal = document.getElementById('twoFactorModal');
-        const otpInputs = modal.querySelectorAll('.otp-input');
-        
-        // Clear previous inputs
-        otpInputs.forEach(input => {
-            input.value = '';
-            input.classList.remove('filled');
-        });
-        
-        // Show modal
-        modal.classList.add('active');
-        
-        // Focus first input
-        setTimeout(() => otpInputs[0].focus(), 300);
-    }
-
-    function hide2FAModal() {
-        document.getElementById('twoFactorModal').classList.remove('active');
-        document.getElementById('2faError').style.display = 'none';
-        document.getElementById('verifyingSpinner').classList.remove('active');
-        otpAttempts = 0;
-    }
-
-    function moveToNextOTP(input) {
-        const index = parseInt(input.dataset.index);
-        const allInputs = document.querySelectorAll('.otp-input');
-        
-        // Update UI
-        input.classList.add('filled');
-        
-        // Move to next input if value entered
-        if (input.value.length === 1 && index < 5) {
-            allInputs[index + 1].focus();
-        }
-        
-        // Auto-submit if all digits entered
-        if (index === 5 && input.value.length === 1) {
-            const allFilled = Array.from(allInputs).every(inp => inp.value.length === 1);
-            if (allFilled) {
-                setTimeout(verify2FACode, 100);
-            }
-        }
-    }
-
-    async function verify2FACode() {
-        const otpInputs = document.querySelectorAll('.otp-input');
-        const otpCode = Array.from(otpInputs).map(input => input.value).join('');
-        
-        if (otpCode.length !== 6) {
-            show2FAError('Please enter all 6 digits');
-            return;
-        }
-        
-        // Show loading
-        document.getElementById('verifyingSpinner').classList.add('active');
-        document.getElementById('verify2FABtn').disabled = true;
-        document.getElementById('2faError').style.display = 'none';
-        
-        try {
-            // First, login with stored credentials
-            const { data: authData, error: authError } = await window.supabase.auth.signInWithPassword({
-                email: currentUser.email,
-                password: currentUser.password
-            });
-            
-            if (authError) throw authError;
-            
-            // Verify TOTP code
-            const { data: verifyData, error: verifyError } = await verifyTOTPWithBackend(authData.user.id, otpCode);
-            
-            if (verifyError) {
-                otpAttempts++;
-                if (otpAttempts >= maxOtpAttempts) {
-                    show2FAError('Too many failed attempts. Please try again later or use backup code.');
-                    await window.supabase.auth.signOut();
-                    setTimeout(hide2FAModal, 3000);
-                } else {
-                    show2FAError(`Invalid code. ${maxOtpAttempts - otpAttempts} attempts remaining.`);
-                    // Clear inputs
-                    otpInputs.forEach(input => {
-                        input.value = '';
-                        input.classList.remove('filled');
-                    });
-                    otpInputs[0].focus();
-                }
                 return;
             }
             
-            // 2FA verification successful!
-            if (document.getElementById('trustDevice').checked) {
-                await markDeviceAsTrusted(authData.user.id);
-            }
-            
-            // Complete login process
-            await completeLogin(currentUser.email, currentUser.password);
-            
-        } catch (error) {
-            console.error('2FA verification error:', error);
-            show2FAError('Verification failed. Please try again.');
-        } finally {
-            document.getElementById('verifyingSpinner').classList.remove('active');
-            document.getElementById('verify2FABtn').disabled = false;
-        }
-    }
-
-    // REAL TOTP VERIFICATION FUNCTION
-    async function verifyTOTPWithBackend(userId, code) {
-        try {
-            // Get user's TOTP secret from database
-            const { data: totpData, error: totpError } = await window.supabase
-                .from('user_2fa_settings')
-                .select('totp_secret')
-                .eq('id', userId)
-                .single();
-            
-            if (totpError || !totpData?.totp_secret) {
-                return { error: '2FA not configured properly' };
-            }
-            
-            // Verify the TOTP code using otplib
-            const isValid = otplib.authenticator.check(code, totpData.totp_secret);
-            
-            if (!isValid) {
-                return { error: 'Invalid verification code' };
-            }
-            
-            return { data: { success: true } };
-            
-        } catch (error) {
-            console.error('TOTP verification error:', error);
-            return { error: 'Verification failed' };
-        }
-    }
-
-    function show2FAError(message) {
-        const errorEl = document.getElementById('2faError');
-        errorEl.textContent = message;
-        errorEl.style.display = 'block';
-    }
-
-    async function markDeviceAsTrusted(userId) {
-        const deviceId = generateDeviceId();
-        const trustedUntil = new Date();
-        trustedUntil.setDate(trustedUntil.getDate() + 30);
-        
-        // Store in localStorage
-        localStorage.setItem(`trusted_device_${userId}`, JSON.stringify({
-            deviceId,
-            trustedUntil: trustedUntil.toISOString()
-        }));
-    }
-
-    function generateDeviceId() {
-        return btoa(navigator.userAgent + navigator.language + screen.width + screen.height);
-    }
-
-    async function useBackupCode() {
-        const backupCode = prompt('Enter your backup code:');
-        if (!backupCode) return;
-        
-        try {
-            const { data: authData } = await window.supabase.auth.signInWithPassword({
-                email: currentUser.email,
-                password: currentUser.password
-            });
-            
-            if (!authData.user) throw new Error('Authentication failed');
-            
-            // Check backup code in database
+            // Step 2: Check if user has set up 2FA
             const { data: totpSettings } = await window.supabase
                 .from('user_2fa_settings')
-                .select('backup_codes')
-                .eq('id', authData.user.id)
-                .single();
-            
-            if (!totpSettings?.backup_codes) {
-                alert('No backup codes available');
-                return;
-            }
-            
-            if (totpSettings.backup_codes.includes(backupCode)) {
-                // Remove used backup code
-                const updatedCodes = totpSettings.backup_codes.filter(code => code !== backupCode);
-                await window.supabase
-                    .from('user_2fa_settings')
-                    .update({ backup_codes: updatedCodes })
-                    .eq('id', authData.user.id);
-                
-                // Complete login
-                await completeLogin(currentUser.email, currentUser.password);
-            } else {
-                alert('Invalid backup code');
-            }
-        } catch (error) {
-            alert('Backup code verification failed');
-            console.error(error);
-        }
-    }
-
-    async function send2FARecoveryEmail() {
-        try {
-            await window.supabase.auth.resetPasswordForEmail(currentUser.email);
-            alert('Recovery email sent. Check your inbox.');
-        } catch (error) {
-            console.error('Failed to send recovery email:', error);
-            alert('Failed to send recovery email. Please try again.');
-        }
-    }
-
-    // ORIGINAL LOGIN COMPLETION FUNCTION
-    async function completeLogin(email, password) {
-        try {
-            const { data: authData, error: authError } = await window.supabase.auth.signInWithPassword({ email, password });
-            if (authError || !authData.user) {
-                throw new Error(authError?.message || 'Login failed');
-            }
-
-            const { data: refreshedData } = await window.supabase.auth.refreshSession();
-            const sessionUser = refreshedData?.session?.user ?? authData.user;
-
-            // Check profile
-            const { data: profileData, error: profileError } = await window.supabase
-                .from('consolidated_user_profiles_table')
                 .select('*')
-                .eq('user_id', sessionUser.id)
+                .eq('id', authData.user.id)
                 .maybeSingle();
-
-            if (profileError || !profileData) {
-                throw new Error('Profile access issue');
-            }
-
-            // Check status
-            const currentStatus = profileData.status?.toLowerCase() ?? 'pending';
-            if (currentStatus !== 'approved') {
-                throw new Error('Account pending approval');
-            }
-
-            // Store profile
-            localStorage.setItem('currentUserProfile', JSON.stringify(profileData));
-
-            // Redirect based on role
-            const profileRole = profileData.role?.toLowerCase() ?? 'student';
-            const redirects = {
-                'student': 'index.html',
-                'lecturer': 'lecturer.html',
-                'admin': 'admin.html',
-                'superadmin': 'superadmin.html',
-                'hod': 'hod-tracker.html'
-            };
-
-            window.location.href = redirects[profileRole] || 'index.html';
-
-        } catch (err) {
-            console.error('Login completion error:', err);
-            const errorMsg = document.getElementById('errorMsg');
-            errorMsg.innerText = err.message || 'Login failed';
-            errorMsg.classList.add('show');
             
-            const loginButton = document.getElementById('loginButton');
-            const buttonText = document.getElementById('button-text');
+            // Store user credentials for later use
+            currentUser = { 
+                email, 
+                password,
+                userId: authData.user.id,
+                authData: authData
+            };
+            
+            // Step 3: Check if 2FA is set up
+            if (!totpSettings || !totpSettings.is_2fa_enabled) {
+                // FIRST TIME USER - FORCE 2FA SETUP
+                show2FASetupModal();
+            } else {
+                // EXISTING USER - SHOW VERIFICATION MODAL
+                document.getElementById('2faEmail').textContent = email;
+                show2FAVerifyModal();
+            }
+            
+            // Reset login button
+            loginButton.disabled = false;
+            buttonText.textContent = 'Log In';
+            
+        } catch (err) {
+            console.error('Login error:', err);
+            errorMsg.innerText = 'Login failed. Please check your credentials.';
+            errorMsg.classList.add('show');
             loginButton.disabled = false;
             buttonText.textContent = 'Log In';
         }
+    });
+});
+
+// ============================================
+// 2FA SETUP MODAL (FOR FIRST-TIME USERS)
+// ============================================
+function show2FASetupModal() {
+    // Generate new TOTP secret
+    const secret = otplib.authenticator.generateSecret();
+    const email = currentUser.email;
+    const uri = otplib.authenticator.keyuri(email, 'NCHSM Portal', secret);
+    
+    // Create setup modal HTML
+    const setupModalHTML = `
+        <div id="setup2FAModal" class="two-factor-modal active">
+            <div class="two-factor-content" style="max-width: 500px;">
+                <button onclick="hideAll2FAModals()" style="position: absolute; top: 20px; right: 20px; background: none; border: none; color: #64748B; cursor: pointer; font-size: 20px; padding: 5px; z-index: 1;">×</button>
+                
+                <div style="margin-bottom: 20px;">
+                    <div style="width: 60px; height: 60px; background: linear-gradient(135deg, #0A3D62 0%, #073450 100%); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 15px;">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                        </svg>
+                    </div>
+                    <h3 style="color: var(--nchsm-blue-dark); margin-bottom: 8px; font-size: 1.4rem;">🔒 Security Setup Required</h3>
+                    <p style="color: var(--text-muted); font-size: 15px; margin-bottom: 5px;">
+                        <strong>College Policy:</strong> All users must enable Two-Factor Authentication
+                    </p>
+                </div>
+                
+                <div style="background: #F8FAFC; padding: 20px; border-radius: 12px; margin: 20px 0;">
+                    <h4 style="color: var(--nchsm-blue-dark); margin-bottom: 15px; font-size: 1.1rem;">📱 Step 1: Scan QR Code</h4>
+                    <div id="qrCodeContainer" style="margin: 20px 0; text-align: center;">
+                        <div id="qrCode" style="display: inline-block; padding: 20px; background: white; border-radius: 8px;"></div>
+                    </div>
+                    <p style="color: var(--text-muted); font-size: 13px; text-align: center; margin-bottom: 20px;">
+                        Scan with Google Authenticator, Authy, or Microsoft Authenticator
+                    </p>
+                    
+                    <div style="background: white; padding: 15px; border-radius: 8px; margin: 15px 0; border: 1px solid var(--input-border);">
+                        <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 5px; font-weight: 500;">Manual Entry (if you can't scan):</p>
+                        <code style="background: #F8FAFC; padding: 8px 12px; border-radius: 6px; font-family: 'Courier New', monospace; font-size: 14px; word-break: break-all; display: block; text-align: center;">
+                            ${secret}
+                        </code>
+                    </div>
+                    
+                    <h4 style="color: var(--nchsm-blue-dark); margin-bottom: 15px; font-size: 1.1rem; margin-top: 25px;">📝 Step 2: Test Your Setup</h4>
+                    <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 15px;">
+                        Enter the 6-digit code from your authenticator app:
+                    </p>
+                    
+                    <div class="otp-inputs">
+                        <input type="text" maxlength="1" class="otp-input" data-index="0" oninput="moveToNextOTP(this, 'setup')">
+                        <input type="text" maxlength="1" class="otp-input" data-index="1" oninput="moveToNextOTP(this, 'setup')">
+                        <input type="text" maxlength="1" class="otp-input" data-index="2" oninput="moveToNextOTP(this, 'setup')">
+                        <input type="text" maxlength="1" class="otp-input" data-index="3" oninput="moveToNextOTP(this, 'setup')">
+                        <input type="text" maxlength="1" class="otp-input" data-index="4" oninput="moveToNextOTP(this, 'setup')">
+                        <input type="text" maxlength="1" class="otp-input" data-index="5" oninput="moveToNextOTP(this, 'setup')">
+                    </div>
+                </div>
+                
+                <div id="setupVerifyingSpinner" class="verifying-spinner"></div>
+                
+                <button onclick="complete2FASetup('${secret}')" id="setup2FABtn" style="background: var(--gradient-accent); color: white; border: none; padding: 14px 30px; border-radius: 10px; font-weight: 600; cursor: pointer; width: 100%; margin-top: 10px;">
+                    Complete Security Setup
+                </button>
+                
+                <div style="margin-top: 20px; font-size: 13px; color: var(--text-muted); text-align: left;">
+                    <p style="margin-bottom: 10px;"><strong>📲 Recommended Apps:</strong></p>
+                    <ul style="padding-left: 20px; margin-bottom: 15px;">
+                        <li>Google Authenticator (Android/iOS)</li>
+                        <li>Authy (Android/iOS/Desktop)</li>
+                        <li>Microsoft Authenticator</li>
+                    </ul>
+                    <p style="font-size: 12px; color: #EF4444; background: rgba(239, 68, 68, 0.05); padding: 10px; border-radius: 6px; border: 1px solid rgba(239, 68, 68, 0.1);">
+                        ⚠️ <strong>Important:</strong> You cannot access the portal without completing this security setup.
+                    </p>
+                </div>
+                
+                <div id="setupError" style="color: #EF4444; font-size: 14px; margin-top: 15px; display: none; padding: 10px; background: rgba(239, 68, 68, 0.05); border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.2);"></div>
+            </div>
+        </div>
+    `;
+    
+    // Add modal to page
+    document.body.insertAdjacentHTML('beforeend', setupModalHTML);
+    
+    // Generate QR code using QRCode.js (client-side)
+    const qrCodeDiv = document.getElementById('qrCode');
+    const qr = new QRCode(qrCodeDiv, {
+        text: uri,
+        width: 180,
+        height: 180,
+        colorDark: "#073450",
+        colorLight: "#FFFFFF",
+        correctLevel: QRCode.CorrectLevel.H
+    });
+    
+    // Store secret for verification
+    window.currentTOTPSecret = secret;
+    
+    // Focus first OTP input
+    setTimeout(() => {
+        document.querySelector('#setup2FAModal .otp-input').focus();
+    }, 300);
+}
+
+// ============================================
+// 2FA VERIFICATION MODAL (FOR EXISTING USERS)
+// ============================================
+function show2FAVerifyModal() {
+    const modal = document.getElementById('twoFactorModal');
+    const otpInputs = modal.querySelectorAll('.otp-input');
+    
+    // Clear previous inputs
+    otpInputs.forEach(input => {
+        input.value = '';
+        input.classList.remove('filled');
+    });
+    
+    // Show modal
+    modal.classList.add('active');
+    
+    // Focus first input
+    setTimeout(() => otpInputs[0].focus(), 300);
+}
+
+function hideAll2FAModals() {
+    // Hide verification modal
+    const verifyModal = document.getElementById('twoFactorModal');
+    if (verifyModal) verifyModal.classList.remove('active');
+    
+    // Hide setup modal
+    const setupModal = document.getElementById('setup2FAModal');
+    if (setupModal) setupModal.remove();
+    
+    // Clear errors and loading
+    document.getElementById('2faError').style.display = 'none';
+    const verifyingSpinners = document.querySelectorAll('.verifying-spinner');
+    verifyingSpinners.forEach(spinner => spinner.classList.remove('active'));
+    
+    // Reset attempts
+    otpAttempts = 0;
+}
+
+// ============================================
+// OTP INPUT HANDLING
+// ============================================
+function moveToNextOTP(input, modalType = 'verify') {
+    const index = parseInt(input.dataset.index);
+    let allInputs;
+    
+    if (modalType === 'setup') {
+        allInputs = document.querySelectorAll('#setup2FAModal .otp-input');
+    } else {
+        allInputs = document.querySelectorAll('#twoFactorModal .otp-input');
     }
-    </script>
+    
+    // Update UI
+    if (input.value.length > 0) {
+        input.classList.add('filled');
+    } else {
+        input.classList.remove('filled');
+    }
+    
+    // Move to next input if value entered
+    if (input.value.length === 1 && index < 5) {
+        allInputs[index + 1].focus();
+    }
+    
+    // Move to previous input if backspace pressed and empty
+    if (input.value.length === 0 && index > 0 && event.inputType === 'deleteContentBackward') {
+        allInputs[index - 1].focus();
+    }
+    
+    // Auto-submit if all digits entered
+    if (index === 5 && input.value.length === 1) {
+        const allFilled = Array.from(allInputs).every(inp => inp.value.length === 1);
+        if (allFilled) {
+            setTimeout(() => {
+                if (modalType === 'setup') {
+                    complete2FASetup(window.currentTOTPSecret);
+                } else {
+                    verify2FACode();
+                }
+            }, 100);
+        }
+    }
+}
+
+// ============================================
+// 2FA SETUP COMPLETION
+// ============================================
+async function complete2FASetup(secret) {
+    const otpInputs = document.querySelectorAll('#setup2FAModal .otp-input');
+    const otpCode = Array.from(otpInputs).map(input => input.value).join('');
+    
+    if (otpCode.length !== 6) {
+        showSetupError('Please enter all 6 digits');
+        return;
+    }
+    
+    // Show loading
+    document.getElementById('setupVerifyingSpinner').classList.add('active');
+    document.getElementById('setup2FABtn').disabled = true;
+    document.getElementById('setupError').style.display = 'none';
+    
+    try {
+        // Verify the test code
+        const isValid = otplib.authenticator.check(otpCode, secret);
+        
+        if (!isValid) {
+            showSetupError('Invalid code. Please try again.');
+            return;
+        }
+        
+        // Generate backup codes
+        const backupCodes = Array.from({length: 10}, () => {
+            return Array.from({length: 8}, () => 
+                'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'[Math.floor(Math.random() * 36)]
+            ).join('');
+        });
+        
+        // Save to database
+        const { error: saveError } = await window.supabase
+            .from('user_2fa_settings')
+            .upsert({
+                id: currentUser.userId,
+                totp_secret: secret,
+                backup_codes: backupCodes,
+                is_2fa_enabled: true,
+                updated_at: new Date().toISOString()
+            });
+        
+        if (saveError) throw saveError;
+        
+        // Show success message with backup codes
+        showBackupCodes(backupCodes);
+        
+    } catch (error) {
+        console.error('2FA setup error:', error);
+        showSetupError('Setup failed. Please try again.');
+    } finally {
+        document.getElementById('setupVerifyingSpinner').classList.remove('active');
+        document.getElementById('setup2FABtn').disabled = false;
+    }
+}
+
+function showBackupCodes(backupCodes) {
+    const modal = document.getElementById('setup2FAModal');
+    modal.querySelector('.two-factor-content').innerHTML = `
+        <button onclick="hideAll2FAModals()" style="position: absolute; top: 20px; right: 20px; background: none; border: none; color: #64748B; cursor: pointer; font-size: 20px; padding: 5px; z-index: 1;">×</button>
+        
+        <div style="margin-bottom: 20px;">
+            <div style="width: 60px; height: 60px; background: linear-gradient(135deg, #38A169 0%, #2F855A 100%); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 15px;">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+            </div>
+            <h3 style="color: var(--nchsm-blue-dark); margin-bottom: 8px; font-size: 1.4rem;">✅ Security Setup Complete!</h3>
+            <p style="color: var(--text-muted); font-size: 15px; margin-bottom: 5px;">
+                Your 2FA is now active. <strong>SAVE THESE BACKUP CODES:</strong>
+            </p>
+        </div>
+        
+        <div style="background: #F8FAFC; padding: 20px; border-radius: 12px; margin: 20px 0;">
+            <h4 style="color: var(--nchsm-blue-dark); margin-bottom: 15px; font-size: 1.1rem;">📋 Backup Codes (ONE-TIME USE)</h4>
+            <p style="color: #EF4444; font-size: 14px; margin-bottom: 15px; background: rgba(239, 68, 68, 0.05); padding: 10px; border-radius: 6px; border: 1px solid rgba(239, 68, 68, 0.1);">
+                ⚠️ Save these codes in a secure place. Each code can be used once if you lose access to your authenticator app.
+            </p>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: center; margin: 20px 0;">
+                ${backupCodes.map(code => `
+                    <div style="position: relative;">
+                        <code style="padding: 12px; background: white; border-radius: 8px; font-family: 'Courier New', monospace; font-weight: bold; font-size: 15px; letter-spacing: 1px; display: block; border: 1px solid var(--input-border);">
+                            ${code}
+                        </code>
+                        <button onclick="copyCode('${code}')" style="position: absolute; top: 4px; right: 4px; background: var(--nchsm-blue-light); color: white; border: none; border-radius: 4px; width: 24px; height: 24px; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                            📋
+                        </button>
+                    </div>
+                `).join('')}
+            </div>
+            
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button onclick="downloadBackupCodes(${JSON.stringify(backupCodes)})" style="flex: 1; background: var(--nchsm-blue-dark); color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                    <span>📥</span> Download Codes
+                </button>
+                <button onclick="printBackupCodes()" style="flex: 1; background: var(--nchsm-blue-light); color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                    <span>🖨️</span> Print Codes
+                </button>
+            </div>
+        </div>
+        
+        <div style="background: rgba(56, 161, 105, 0.05); padding: 15px; border-radius: 8px; margin: 20px 0; border: 1px solid rgba(56, 161, 105, 0.2);">
+            <p style="color: var(--nchsm-green); font-size: 14px; margin: 0; display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 18px;">✅</span>
+                <strong>Next time you login:</strong> You'll need to enter a code from your authenticator app.
+            </p>
+        </div>
+        
+        <button onclick="proceedToDashboard()" style="background: var(--gradient-accent); color: white; border: none; padding: 14px 30px; border-radius: 10px; font-weight: 600; cursor: pointer; width: 100%; margin-top: 10px;">
+            Continue to Dashboard
+        </button>
+    `;
+}
+
+function copyCode(code) {
+    navigator.clipboard.writeText(code).then(() => {
+        // Show temporary feedback
+        const button = event.target;
+        const original = button.innerHTML;
+        button.innerHTML = '✅';
+        setTimeout(() => button.innerHTML = original, 1000);
+    });
+}
+
+function downloadBackupCodes(codes) {
+    const content = `===========================================
+NAKURU COLLEGE OF HEALTH SCIENCES AND MANAGEMENT
+TWO-FACTOR AUTHENTICATION BACKUP CODES
+===========================================
+
+IMPORTANT: Save this file in a secure location.
+Each code can be used ONCE if you lose access to your authenticator app.
+
+USER: ${currentUser.email}
+GENERATED: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}
+
+BACKUP CODES:
+${codes.map((code, i) => `${i + 1}. ${code}`).join('\n')}
+
+INSTRUCTIONS:
+1. If you lose your authenticator app, use one of these codes
+2. Each code works only once
+3. After using all codes, contact IT support
+4. Never share these codes with anyone
+
+IT Support: it-support@nchsm.ac.ke
+Portal: https://portal.nchsm.ac.ke
+===========================================`;
+    
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `nchsm-2fa-backup-${currentUser.email.replace(/[@.]/g, '-')}-${new Date().getTime()}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+function printBackupCodes() {
+    const printContent = document.getElementById('setup2FAModal').innerHTML;
+    const originalContent = document.body.innerHTML;
+    document.body.innerHTML = printContent;
+    window.print();
+    document.body.innerHTML = originalContent;
+    location.reload();
+}
+
+function showSetupError(message) {
+    const errorEl = document.getElementById('setupError');
+    errorEl.textContent = message;
+    errorEl.style.display = 'block';
+}
+
+// ============================================
+// 2FA VERIFICATION (EXISTING USERS)
+// ============================================
+async function verify2FACode() {
+    const otpInputs = document.querySelectorAll('#twoFactorModal .otp-input');
+    const otpCode = Array.from(otpInputs).map(input => input.value).join('');
+    
+    if (otpCode.length !== 6) {
+        show2FAError('Please enter all 6 digits');
+        return;
+    }
+    
+    // Show loading
+    document.getElementById('verifyingSpinner').classList.add('active');
+    document.getElementById('verify2FABtn').disabled = true;
+    document.getElementById('2faError').style.display = 'none';
+    
+    try {
+        // First, re-login with stored credentials
+        const { data: authData, error: authError } = await window.supabase.auth.signInWithPassword({
+            email: currentUser.email,
+            password: currentUser.password
+        });
+        
+        if (authError) throw authError;
+        
+        // Get user's TOTP secret and verify
+        const { data: totpData, error: totpError } = await window.supabase
+            .from('user_2fa_settings')
+            .select('totp_secret')
+            .eq('id', authData.user.id)
+            .single();
+        
+        if (totpError || !totpData?.totp_secret) {
+            show2FAError('2FA not configured properly. Please contact support.');
+            return;
+        }
+        
+        // Verify TOTP code
+        const isValid = otplib.authenticator.check(otpCode, totpData.totp_secret);
+        
+        if (!isValid) {
+            otpAttempts++;
+            if (otpAttempts >= maxOtpAttempts) {
+                show2FAError('Too many failed attempts. Account locked for 15 minutes.');
+                await window.supabase.auth.signOut();
+                setTimeout(() => {
+                    hideAll2FAModals();
+                    window.location.reload();
+                }, 3000);
+            } else {
+                show2FAError(`Invalid code. ${maxOtpAttempts - otpAttempts} attempts remaining.`);
+                otpInputs.forEach(input => {
+                    input.value = '';
+                    input.classList.remove('filled');
+                });
+                otpInputs[0].focus();
+            }
+            return;
+        }
+        
+        // 2FA verification successful!
+        if (document.getElementById('trustDevice').checked) {
+            await markDeviceAsTrusted(authData.user.id);
+        }
+        
+        // Complete login process
+        await completeLogin(currentUser.email, currentUser.password);
+        
+    } catch (error) {
+        console.error('2FA verification error:', error);
+        show2FAError('Verification failed. Please try again.');
+    } finally {
+        document.getElementById('verifyingSpinner').classList.remove('active');
+        document.getElementById('verify2FABtn').disabled = false;
+    }
+}
+
+function show2FAError(message) {
+    const errorEl = document.getElementById('2faError');
+    errorEl.textContent = message;
+    errorEl.style.display = 'block';
+}
+
+// ============================================
+// TRUST DEVICE & BACKUP FUNCTIONS
+// ============================================
+async function markDeviceAsTrusted(userId) {
+    const deviceId = btoa(navigator.userAgent + navigator.language + screen.width + screen.height);
+    const trustedUntil = new Date();
+    trustedUntil.setDate(trustedUntil.getDate() + 30);
+    
+    // Get current trusted devices
+    const { data: currentSettings } = await window.supabase
+        .from('user_2fa_settings')
+        .select('trusted_devices')
+        .eq('id', userId)
+        .single();
+    
+    const trustedDevices = currentSettings?.trusted_devices || [];
+    trustedDevices.push({
+        deviceId,
+        trustedUntil: trustedUntil.toISOString(),
+        addedAt: new Date().toISOString(),
+        userAgent: navigator.userAgent.substring(0, 100)
+    });
+    
+    // Update database
+    await window.supabase
+        .from('user_2fa_settings')
+        .update({ trusted_devices: trustedDevices })
+        .eq('id', userId);
+    
+    // Store in localStorage
+    localStorage.setItem(`trusted_device_${userId}`, JSON.stringify({
+        deviceId,
+        trustedUntil: trustedUntil.toISOString()
+    }));
+}
+
+async function useBackupCode() {
+    const backupCode = prompt('Enter your backup code:');
+    if (!backupCode) return;
+    
+    try {
+        const { data: authData, error: authError } = await window.supabase.auth.signInWithPassword({
+            email: currentUser.email,
+            password: currentUser.password
+        });
+        
+        if (authError) throw authError;
+        
+        // Check backup code in database
+        const { data: totpSettings, error: totpError } = await window.supabase
+            .from('user_2fa_settings')
+            .select('backup_codes')
+            .eq('id', authData.user.id)
+            .single();
+        
+        if (totpError || !totpSettings?.backup_codes) {
+            alert('No backup codes available');
+            return;
+        }
+        
+        if (totpSettings.backup_codes.includes(backupCode)) {
+            // Remove used backup code
+            const updatedCodes = totpSettings.backup_codes.filter(code => code !== backupCode);
+            await window.supabase
+                .from('user_2fa_settings')
+                .update({ backup_codes: updatedCodes })
+                .eq('id', authData.user.id);
+            
+            // Complete login
+            hideAll2FAModals();
+            await completeLogin(currentUser.email, currentUser.password);
+        } else {
+            alert('Invalid backup code');
+        }
+    } catch (error) {
+        alert('Backup code verification failed');
+        console.error(error);
+    }
+}
+
+async function send2FARecoveryEmail() {
+    try {
+        await window.supabase.auth.resetPasswordForEmail(currentUser.email);
+        alert('Recovery email sent. Check your inbox for instructions.');
+    } catch (error) {
+        console.error('Failed to send recovery email:', error);
+        alert('Failed to send recovery email. Please try again.');
+    }
+}
+
+// ============================================
+// FINAL LOGIN COMPLETION
+// ============================================
+async function proceedToDashboard() {
+    hideAll2FAModals();
+    await completeLogin(currentUser.email, currentUser.password);
+}
+
+async function completeLogin(email, password) {
+    try {
+        const { data: authData, error: authError } = await window.supabase.auth.signInWithPassword({ email, password });
+        if (authError || !authData.user) {
+            throw new Error(authError?.message || 'Login failed');
+        }
+
+        const { data: refreshedData } = await window.supabase.auth.refreshSession();
+        const sessionUser = refreshedData?.session?.user ?? authData.user;
+
+        // Check profile
+        const { data: profileData, error: profileError } = await window.supabase
+            .from('consolidated_user_profiles_table')
+            .select('*')
+            .eq('user_id', sessionUser.id)
+            .maybeSingle();
+
+        if (profileError || !profileData) {
+            throw new Error('Profile access issue');
+        }
+
+        // Check status
+        const currentStatus = profileData.status?.toLowerCase() ?? 'pending';
+        if (currentStatus !== 'approved') {
+            throw new Error('Account pending approval');
+        }
+
+        // Store profile
+        localStorage.setItem('currentUserProfile', JSON.stringify(profileData));
+
+        // Redirect based on role
+        const profileRole = profileData.role?.toLowerCase() ?? 'student';
+        const redirects = {
+            'student': 'index.html',
+            'lecturer': 'lecturer.html',
+            'admin': 'admin.html',
+            'superadmin': 'superadmin.html',
+            'hod': 'hod-tracker.html'
+        };
+
+        window.location.href = redirects[profileRole] || 'index.html';
+
+    } catch (err) {
+        console.error('Login completion error:', err);
+        const errorMsg = document.getElementById('errorMsg');
+        errorMsg.innerText = err.message || 'Login failed';
+        errorMsg.classList.add('show');
+        
+        const loginButton = document.getElementById('loginButton');
+        const buttonText = document.getElementById('button-text');
+        loginButton.disabled = false;
+        buttonText.textContent = 'Log In';
+    }
+}
+       </script>    
 </body>
 </html>
