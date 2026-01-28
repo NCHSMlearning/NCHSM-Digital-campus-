@@ -6,13 +6,16 @@
     <title>Nakuru College Digital Portal Login - NCHSM</title>
     <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" sizes="32x32">
     
+    <!-- REQUIRED LIBRARIES -->
+    <script src="https://unpkg.com/@otplib/preset-browser@^12.0.0/buffer.js"></script>
+    <script src="https://unpkg.com/@otplib/preset-browser@^12.0.0/index.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
     <link rel="preload" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"></noscript>
     
     <style>
-        /* --- NCHSM Branding Colors & Modern Palette --- */
         :root {
             --nchsm-blue-dark: #073450;
             --nchsm-blue-light: #0A3D62;
@@ -49,7 +52,6 @@
             background: var(--background);
         }
 
-        /* Left Panel - Branding & Visual */
         .brand-panel {
             flex: 0.8;
             background: linear-gradient(rgba(10, 61, 98, 0.85), rgba(7, 52, 80, 0.9)), 
@@ -139,7 +141,6 @@
             flex-shrink: 0;
         }
 
-        /* Right Panel - Login Form */
         .login-panel {
             flex: 1.2;
             padding: 40px;
@@ -174,7 +175,6 @@
             font-weight: 400;
         }
 
-        /* Form Styles */
         form {
             display: flex;
             flex-direction: column;
@@ -189,7 +189,7 @@
 
         input {
             width: 100%;
-            padding: 16px 50px 16px 18px; /* Added right padding for toggle button */
+            padding: 16px 50px 16px 18px;
             border-radius: 10px;
             border: 1.5px solid var(--input-border);
             background-color: var(--background);
@@ -308,7 +308,6 @@
             box-shadow: none;
         }
 
-        /* Error - Only displayed when there's an error */
         .error {
             color: #EF4444;
             font-size: 0.95rem;
@@ -356,7 +355,6 @@
             margin-top: 10px;
         }
 
-        /* Loading Animation */
         .btn-loading {
             display: inline-block;
             width: 16px;
@@ -373,7 +371,7 @@
             100% { transform: rotate(360deg); }
         }
 
-        /* 2FA Modal Styles - ADDED */
+        /* 2FA MODAL STYLES */
         .two-factor-modal {
             position: fixed;
             top: 0;
@@ -446,6 +444,32 @@
             background: rgba(56, 161, 105, 0.05);
         }
 
+        .verifying-spinner {
+            display: none;
+            width: 24px;
+            height: 24px;
+            border: 3px solid rgba(56, 161, 105, 0.2);
+            border-top: 3px solid var(--nchsm-green);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 15px auto;
+        }
+
+        .verifying-spinner.active {
+            display: block;
+        }
+
+        #2faError {
+            color: #EF4444;
+            font-size: 14px;
+            margin-top: 15px;
+            display: none;
+            padding: 10px;
+            background: rgba(239, 68, 68, 0.05);
+            border-radius: 8px;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
         .two-factor-options {
             margin-top: 20px;
             font-size: 14px;
@@ -481,146 +505,20 @@
             accent-color: var(--nchsm-green);
         }
 
-        .verifying-spinner {
-            display: none;
-            width: 24px;
-            height: 24px;
-            border: 3px solid rgba(56, 161, 105, 0.2);
-            border-top: 3px solid var(--nchsm-green);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 15px auto;
-        }
-
-        .verifying-spinner.active {
-            display: block;
-        }
-
-        #2faError {
-            color: #EF4444;
-            font-size: 14px;
-            margin-top: 15px;
-            display: none;
-            padding: 10px;
-            background: rgba(239, 68, 68, 0.05);
-            border-radius: 8px;
-            border: 1px solid rgba(239, 68, 68, 0.2);
-        }
-
-        .security-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            background: rgba(56, 161, 105, 0.1);
-            color: var(--nchsm-green);
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 14px;
-            font-weight: 500;
-            margin-top: 20px;
-        }
-
-        /* 2FA Setup Styles */
-        .two-factor-setup {
-            margin-top: 30px;
-            padding: 20px;
-            background: #F8FAFC;
-            border-radius: 12px;
-            border: 1px solid var(--input-border);
-        }
-
-        .two-factor-setup h4 {
-            color: var(--nchsm-blue-dark);
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .two-factor-setup h4 i {
-            color: var(--nchsm-green);
-        }
-
-        .qr-code-container {
-            text-align: center;
-            margin: 20px 0;
-            padding: 20px;
-            background: white;
-            border-radius: 12px;
-        }
-
-        .backup-codes {
-            background: white;
-            padding: 20px;
-            border-radius: 12px;
-            margin-top: 20px;
-            font-family: 'Courier New', monospace;
-            font-size: 14px;
-            line-height: 2;
-            text-align: center;
-        }
-
-        .backup-codes code {
-            display: inline-block;
-            padding: 4px 8px;
-            margin: 4px;
-            background: #F8FAFC;
-            border-radius: 4px;
-            font-weight: 600;
-        }
-
-        /* --- Mobile Optimizations --- */
-        @media (max-width: 1024px) {
-            .brand-panel {
-                padding: 25px;
-            }
-            
-            .login-panel {
-                padding: 35px;
-            }
-            
-            .logo {
-                width: 70px;
-                height: 70px;
-            }
-            
-            .college-title {
-                font-size: 1.4rem;
-            }
-            
-            .tagline {
-                font-size: 0.9rem;
-            }
-            
-            .feature-item {
-                font-size: 0.85rem;
-            }
-            
-            .welcome-msg {
-                font-size: 1.8rem;
-            }
-        }
-
+        /* Mobile Responsive */
         @media (max-width: 768px) {
             .login-wrapper {
                 flex-direction: column;
-                min-height: 100vh;
             }
             
             .brand-panel {
                 padding: 25px 20px;
-                flex: 0;
                 min-height: 40vh;
             }
             
             .login-panel {
                 padding: 30px 25px;
-                flex: 1;
                 min-height: 60vh;
-            }
-            
-            .login-content {
-                max-width: 100%;
             }
             
             .logo {
@@ -632,24 +530,10 @@
                 font-size: 1.3rem;
             }
             
-            .tagline {
-                font-size: 0.85rem;
-            }
-            
-            .feature-item {
-                font-size: 0.8rem;
-                margin-bottom: 12px;
-            }
-            
             .welcome-msg {
                 font-size: 1.6rem;
             }
             
-            .sub-msg {
-                font-size: 1rem;
-            }
-
-            /* 2FA Mobile Optimizations */
             .otp-inputs {
                 gap: 8px;
             }
@@ -659,76 +543,9 @@
                 height: 58px;
                 font-size: 20px;
             }
-            
-            .two-factor-content {
-                padding: 30px 20px;
-                margin: 20px;
-            }
         }
 
         @media (max-width: 480px) {
-            .login-wrapper {
-                flex-direction: column;
-            }
-            
-            .brand-panel {
-                padding: 20px 15px;
-                min-height: 35vh;
-            }
-            
-            .login-panel {
-                padding: 25px 20px;
-                min-height: 65vh;
-            }
-            
-            .logo {
-                width: 50px;
-                height: 50px;
-            }
-            
-            .college-title {
-                font-size: 1.1rem;
-            }
-            
-            .tagline {
-                font-size: 0.8rem;
-            }
-            
-            .portal-label {
-                font-size: 0.85rem;
-                padding: 6px 14px;
-            }
-            
-            .feature-item {
-                font-size: 0.75rem;
-                margin-bottom: 10px;
-            }
-            
-            .welcome-msg {
-                font-size: 1.4rem;
-            }
-            
-            .sub-msg {
-                font-size: 0.9rem;
-            }
-            
-            input {
-                padding: 14px 45px 14px 16px;
-                font-size: 0.95rem;
-            }
-            
-            button[type="submit"] {
-                padding: 14px;
-                font-size: 0.95rem;
-            }
-            
-            .password-toggle {
-                width: 32px;
-                height: 32px;
-                right: 10px;
-            }
-
-            /* 2FA Mobile Optimizations */
             .otp-inputs {
                 gap: 6px;
             }
@@ -743,88 +560,11 @@
                 padding: 25px 15px;
             }
         }
-
-        @media (max-width: 360px) {
-            .login-wrapper {
-                flex-direction: column;
-            }
-            
-            .brand-panel {
-                padding: 15px 12px;
-                min-height: 30vh;
-            }
-            
-            .login-panel {
-                padding: 20px 15px;
-                min-height: 70vh;
-            }
-            
-            .college-title {
-                font-size: 1rem;
-            }
-            
-            .welcome-msg {
-                font-size: 1.3rem;
-            }
-            
-            input {
-                padding: 12px 42px 12px 14px;
-            }
-            
-            button[type="submit"] {
-                padding: 12px;
-            }
-            
-            .checkbox-row {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 10px;
-            }
-            
-            .forgot-password {
-                align-self: flex-end;
-            }
-
-            /* 2FA Mobile Optimizations */
-            .otp-inputs {
-                gap: 4px;
-            }
-            
-            .otp-input {
-                width: 40px;
-                height: 50px;
-                font-size: 16px;
-            }
-        }
-
-        /* Landscape mode adjustments */
-        @media (max-height: 500px) and (orientation: landscape) {
-            .login-wrapper {
-                flex-direction: row;
-            }
-            
-            .brand-panel, .login-panel {
-                padding: 15px;
-            }
-            
-            .features-list {
-                margin-top: 15px;
-            }
-            
-            .feature-item {
-                margin-bottom: 8px;
-                font-size: 0.8rem;
-            }
-            
-            .footer {
-                margin-top: 15px;
-            }
-        }
     </style>
 </head>
 <body>
     <div class="login-wrapper">
-        <!-- Left Panel - Branding & Visual -->
+        <!-- Left Panel - Branding -->
         <div class="brand-panel">
             <div class="brand-content">
                 <div class="logo">
@@ -863,7 +603,6 @@
                     <div class="sub-msg">Please fill in your details to log in</div>
                 </div>
 
-                <!-- Error message container - hidden by default -->
                 <div id="errorMsg" class="error"></div>
                 
                 <form id="loginForm">
@@ -945,11 +684,13 @@
     </div>
     
     <script>
-    // Global variables
+    // GLOBAL VARIABLES
     let currentUser = null;
-    let twoFactorSecret = null;
     let otpAttempts = 0;
     const maxOtpAttempts = 3;
+    const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
+    window.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     document.addEventListener('DOMContentLoaded', () => {
         // Initialize Feather Icons
@@ -957,7 +698,7 @@
             feather.replace(); 
         }
 
-        // Password toggle
+        // Password toggle functionality
         const passwordInput = document.getElementById('password');
         const toggleButton = document.getElementById('password-toggle-btn');
         const toggleIcon = document.getElementById('toggle-icon');
@@ -975,11 +716,6 @@
                 toggleButton.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
             });
         }
-
-        // Initialize Supabase
-        const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
-        window.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         // Login form submission
         const errorMsg = document.getElementById('errorMsg');
@@ -1000,26 +736,36 @@
             const password = document.getElementById('password').value;
 
             try {
-                // 1. Check if user has 2FA enabled
+                // Check if user exists and has 2FA enabled
                 const { data: userProfile } = await window.supabase
                     .from('consolidated_user_profiles_table')
                     .select('*')
                     .eq('email', email)
                     .maybeSingle();
 
-                if (userProfile?.two_factor_enabled) {
-                    // User has 2FA enabled - show modal instead of logging in directly
-                    currentUser = { email, password };
-                    document.getElementById('2faEmail').textContent = email;
-                    show2FAModal();
+                // Check 2FA settings from separate table
+                const { data: authUser } = await window.supabase.auth.getUser();
+                let userId = null;
+                if (authUser?.user) {
+                    const { data: totpSettings } = await window.supabase
+                        .from('user_2fa_settings')
+                        .select('is_2fa_enabled')
+                        .eq('id', authUser.user.id)
+                        .maybeSingle();
                     
-                    // Reset login button
-                    loginButton.disabled = false;
-                    buttonText.textContent = 'Log In';
-                    return;
+                    if (totpSettings?.is_2fa_enabled || userProfile?.two_factor_enabled) {
+                        // User has 2FA enabled - show modal
+                        currentUser = { email, password };
+                        document.getElementById('2faEmail').textContent = email;
+                        show2FAModal();
+                        
+                        loginButton.disabled = false;
+                        buttonText.textContent = 'Log In';
+                        return;
+                    }
                 }
 
-                // 2. Proceed with normal login if no 2FA
+                // No 2FA - proceed with normal login
                 await completeLogin(email, password);
                 
             } catch (err) {
@@ -1032,7 +778,7 @@
         });
     });
 
-    // 2FA Functions
+    // 2FA FUNCTIONS
     function show2FAModal() {
         const modal = document.getElementById('twoFactorModal');
         const otpInputs = modal.querySelectorAll('.otp-input');
@@ -1101,7 +847,7 @@
             
             if (authError) throw authError;
             
-            // Verify TOTP code (you'll need to implement this based on your 2FA setup)
+            // Verify TOTP code
             const { data: verifyData, error: verifyError } = await verifyTOTPWithBackend(authData.user.id, otpCode);
             
             if (verifyError) {
@@ -1139,37 +885,39 @@
         }
     }
 
+    // REAL TOTP VERIFICATION FUNCTION
+    async function verifyTOTPWithBackend(userId, code) {
+        try {
+            // Get user's TOTP secret from database
+            const { data: totpData, error: totpError } = await window.supabase
+                .from('user_2fa_settings')
+                .select('totp_secret')
+                .eq('id', userId)
+                .single();
+            
+            if (totpError || !totpData?.totp_secret) {
+                return { error: '2FA not configured properly' };
+            }
+            
+            // Verify the TOTP code using otplib
+            const isValid = otplib.authenticator.check(code, totpData.totp_secret);
+            
+            if (!isValid) {
+                return { error: 'Invalid verification code' };
+            }
+            
+            return { data: { success: true } };
+            
+        } catch (error) {
+            console.error('TOTP verification error:', error);
+            return { error: 'Verification failed' };
+        }
+    }
+
     function show2FAError(message) {
         const errorEl = document.getElementById('2faError');
         errorEl.textContent = message;
         errorEl.style.display = 'block';
-    }
-
-    async function verifyTOTPWithBackend(userId, code) {
-        // This is a placeholder - you'll need to implement proper TOTP verification
-        // Example implementation:
-        /*
-        const { data, error } = await window.supabase
-            .from('user_2fa_settings')
-            .select('totp_secret')
-            .eq('id', userId)
-            .single();
-        
-        if (error) return { error };
-        
-        // Verify TOTP code (use a TOTP library like otplib)
-        const isValid = verifyTOTPCode(data.totp_secret, code);
-        
-        return isValid ? { data: { success: true } } : { error: 'Invalid code' };
-        */
-        
-        // For now, simulate verification
-        return new Promise(resolve => {
-            setTimeout(() => {
-                // Simulate successful verification
-                resolve({ data: { success: true } });
-            }, 1000);
-        });
     }
 
     async function markDeviceAsTrusted(userId) {
@@ -1185,7 +933,6 @@
     }
 
     function generateDeviceId() {
-        // Generate a simple device fingerprint
         return btoa(navigator.userAgent + navigator.language + screen.width + screen.height);
     }
 
@@ -1193,13 +940,47 @@
         const backupCode = prompt('Enter your backup code:');
         if (!backupCode) return;
         
-        // Verify backup code (implement this based on your backup code storage)
-        alert('Backup code verification would be implemented here');
+        try {
+            const { data: authData } = await window.supabase.auth.signInWithPassword({
+                email: currentUser.email,
+                password: currentUser.password
+            });
+            
+            if (!authData.user) throw new Error('Authentication failed');
+            
+            // Check backup code in database
+            const { data: totpSettings } = await window.supabase
+                .from('user_2fa_settings')
+                .select('backup_codes')
+                .eq('id', authData.user.id)
+                .single();
+            
+            if (!totpSettings?.backup_codes) {
+                alert('No backup codes available');
+                return;
+            }
+            
+            if (totpSettings.backup_codes.includes(backupCode)) {
+                // Remove used backup code
+                const updatedCodes = totpSettings.backup_codes.filter(code => code !== backupCode);
+                await window.supabase
+                    .from('user_2fa_settings')
+                    .update({ backup_codes: updatedCodes })
+                    .eq('id', authData.user.id);
+                
+                // Complete login
+                await completeLogin(currentUser.email, currentUser.password);
+            } else {
+                alert('Invalid backup code');
+            }
+        } catch (error) {
+            alert('Backup code verification failed');
+            console.error(error);
+        }
     }
 
     async function send2FARecoveryEmail() {
         try {
-            // Send recovery email
             await window.supabase.auth.resetPasswordForEmail(currentUser.email);
             alert('Recovery email sent. Check your inbox.');
         } catch (error) {
@@ -1208,7 +989,7 @@
         }
     }
 
-    // Original login completion function
+    // ORIGINAL LOGIN COMPLETION FUNCTION
     async function completeLogin(email, password) {
         try {
             const { data: authData, error: authError } = await window.supabase.auth.signInWithPassword({ email, password });
