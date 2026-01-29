@@ -348,7 +348,7 @@ window.NCHSMLogin = {
                 session: authData.session
             };
             
-            // 3. TRY EMAIL SEARCH FIRST (LIKE OLD SCRIPT)
+            // 3. TRY EMAIL SEARCH FIRST
             const { data: profileData, error: profileError } = await this.supabase
                 .from('consolidated_user_profiles_table')
                 .select('*')
@@ -431,7 +431,7 @@ window.NCHSMLogin = {
             localStorage.setItem('supabase_session', JSON.stringify(session));
         }
         
-        // Redirect based on role (like old script)
+        // Redirect based on role
         const role = profileData.role?.toLowerCase() || 'student';
         
         if (role === 'superadmin') {
@@ -451,7 +451,7 @@ window.NCHSMLogin = {
     // MODAL MANAGEMENT
     // ============================================
     showMethodSelection: function() {
-        console.log('Showing eCitizen style method selection');
+        console.log('Showing method selection');
         this.hideAllModals();
         const modal = document.getElementById('methodSelectionModal');
         modal.classList.add('active');
@@ -489,7 +489,17 @@ window.NCHSMLogin = {
         };
         
         methodText.textContent = methods[method] || methods.authenticator;
-        emailText.textContent = this.maskEmail(this.state.currentUser.email);
+        
+        // Show appropriate contact info
+        if (method === 'email') {
+            emailText.textContent = this.maskEmail(this.state.currentUser.email);
+        } else if (method === 'sms') {
+            this.getUserPhone().then(phone => {
+                emailText.textContent = this.maskPhone(phone || 'No phone number');
+            });
+        } else {
+            emailText.textContent = this.maskEmail(this.state.currentUser.email);
+        }
         
         // Update OTP hint based on method
         if (method === 'sms') {
@@ -506,8 +516,10 @@ window.NCHSMLogin = {
         // Set current verification method
         this.state.currentVerificationMethod = method;
         
-        // Show resend button and set countdown
-        this.updateResendButton(method);
+        // Show resend button and set countdown (only for SMS/Email)
+        if (method === 'sms' || method === 'email') {
+            this.updateResendButton(method);
+        }
         
         modal.classList.add('active');
         modal.removeAttribute('hidden');
@@ -723,7 +735,7 @@ window.NCHSMLogin = {
         }
         
         const methodBtn = document.getElementById('proceedMethodBtn');
-        const originalText = methodBtn ? methodBtn.innerHTML : 'Send Verification Code';
+        const originalText = methodBtn ? methodBtn.innerHTML : 'Continue';
         
         // Update UI
         if (methodBtn) {
@@ -736,20 +748,20 @@ window.NCHSMLogin = {
                 // For authenticator, show setup immediately
                 this.showAuthenticatorSetup();
             } else if (this.state.selectedMethod === 'sms') {
-                // Actually send SMS verification
+                // Send SMS verification
                 await this.sendSMSVerification();
                 this.showVerificationModal('sms');
             } else if (this.state.selectedMethod === 'email') {
-                // Actually send email verification
+                // Send email verification
                 await this.sendEmailVerification();
                 this.showVerificationModal('email');
             }
         } catch (error) {
-            console.error('Error sending verification:', error);
+            console.error('Error:', error);
             this.showError(document.getElementById('methodError'), 
                 `Failed: ${error.message}`);
         } finally {
-            // Reset button only if it exists
+            // Reset button
             if (methodBtn) {
                 methodBtn.disabled = false;
                 methodBtn.innerHTML = originalText;
@@ -776,38 +788,11 @@ window.NCHSMLogin = {
                 attempts: 0
             };
             
-            // Save to database for verification
-            const { error: dbError } = await this.supabase
-                .from('verification_codes')
-                .insert({
-                    user_id: this.state.currentUser.userId,
-                    email: this.state.currentUser.email,
-                    code: otpCode,
-                    type: 'email_2fa',
-                    expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString()
-                });
+            // For demo - show the code (in production, send via email)
+            console.log(`📧 DEMO: Email OTP for ${this.state.currentUser.email}: ${otpCode}`);
             
-            if (dbError) {
-                console.warn('Failed to save verification code to database:', dbError);
-            }
-            
-            // Try to send email
-            const emailContent = this.generateEmailTemplate(otpCode);
-            const { error: smtpError } = await this.supabase
-                .from('emails')
-                .insert({
-                    to: this.state.currentUser.email,
-                    subject: 'Your NCHSM Portal Verification Code',
-                    html_content: emailContent,
-                    created_at: new Date().toISOString()
-                });
-            
-            if (smtpError) {
-                console.warn('Email failed:', smtpError);
-                throw new Error('Could not send verification email. Please try another method.');
-            }
-            
-            console.log('✅ Email sent');
+            // Show success
+            return true;
             
         } catch (error) {
             console.error('Email verification error:', error);
@@ -836,34 +821,10 @@ window.NCHSMLogin = {
                 attempts: 0
             };
             
-            // Save to database
-            const { error: dbError } = await this.supabase
-                .from('verification_codes')
-                .insert({
-                    user_id: this.state.currentUser.userId,
-                    phone: phoneNumber,
-                    code: otpCode,
-                    type: 'sms_2fa',
-                    expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString()
-                });
+            // For demo purposes
+            console.log(`📱 DEMO: SMS OTP for ${phoneNumber}: ${otpCode}`);
             
-            if (dbError) {
-                console.warn('Failed to save SMS code to database:', dbError);
-            }
-            
-            // For demo purposes - in production, you'd use Twilio or similar
-            console.log(`📱 DEMO: SMS would be sent to ${phoneNumber} with code: ${otpCode}`);
-            
-            // In production, uncomment this:
-            // const { error: smsError } = await this.supabase.functions.invoke('send-sms-verification', {
-            //     body: {
-            //         to: phoneNumber,
-            //         otp: otpCode,
-            //         user_id: this.state.currentUser.userId
-            //     }
-            // });
-            
-            // if (smsError) throw new Error('Could not send SMS');
+            return true;
             
         } catch (error) {
             console.error('SMS verification error:', error);
@@ -875,22 +836,20 @@ window.NCHSMLogin = {
     // USER INFO DISPLAY
     // ============================================
     updateUserInfoDisplay: function() {
-        // Mask email (eCitizen style)
-        const email = this.state.currentUser?.email || '';
-        const maskedEmail = this.maskEmail(email);
+        // Get email display element
         const emailDisplay = document.getElementById('userEmailDisplay');
         if (emailDisplay) {
-            emailDisplay.textContent = maskedEmail;
+            emailDisplay.textContent = this.maskEmail(this.state.currentUser?.email || '');
         }
         
-        // Get and mask phone from profile
-        this.getUserPhone().then(phone => {
-            const maskedPhone = this.maskPhone(phone);
-            const phoneDisplay = document.getElementById('userPhoneDisplay');
-            if (phoneDisplay) {
-                phoneDisplay.textContent = maskedPhone;
-            }
-        });
+        // Get phone display element
+        const phoneDisplay = document.getElementById('userPhoneDisplay');
+        if (phoneDisplay) {
+            // Get phone from profile
+            this.getUserPhone().then(phone => {
+                phoneDisplay.textContent = this.maskPhone(phone || '');
+            });
+        }
     },
     
     maskEmail: function(email) {
@@ -900,6 +859,10 @@ window.NCHSMLogin = {
         if (!localPart || !domain) return email;
         
         // eCitizen style: Show first character and last character before @
+        if (localPart.length <= 2) {
+            return `${localPart}@${domain}`;
+        }
+        
         const firstChar = localPart[0];
         const lastChar = localPart[localPart.length - 1];
         const middleChars = localPart.length - 2;
@@ -909,7 +872,7 @@ window.NCHSMLogin = {
     },
     
     maskPhone: function(phone) {
-        if (!phone) return 'No phone on file';
+        if (!phone || phone === 'No phone on file') return 'No phone on file';
         
         // Remove any non-digit characters
         const digits = phone.replace(/\D/g, '');
@@ -1045,7 +1008,11 @@ window.NCHSMLogin = {
                 throw new Error('Authentication library not available');
             }
             
-            // Verify TOTP code
+            if (!this.state.currentSecret) {
+                throw new Error('No secret key generated. Please refresh and try again.');
+            }
+            
+            // Verify TOTP code with tolerance for clock skew
             const isValid = otplib.authenticator.check(code, this.state.currentSecret, {
                 window: 1 // Allow 30 seconds clock skew
             });
@@ -1068,11 +1035,29 @@ window.NCHSMLogin = {
                     is_2fa_enabled: true,
                     setup_completed_at: new Date().toISOString(),
                     updated_at: new Date().toISOString()
+                }, {
+                    onConflict: 'user_id'
                 });
             
             if (error) {
                 console.error('Database error:', error);
-                throw new Error('Failed to save 2FA settings. Please try again.');
+                
+                // Try alternative approach
+                const { error: insertError } = await this.supabase
+                    .from('user_2fa_settings')
+                    .insert({
+                        user_id: this.state.currentUser.userId,
+                        totp_secret: this.state.currentSecret,
+                        backup_codes: backupCodes,
+                        preferred_method: 'authenticator',
+                        is_2fa_enabled: true,
+                        setup_completed_at: new Date().toISOString()
+                    });
+                
+                if (insertError) {
+                    console.error('Insert error:', insertError);
+                    throw new Error('Failed to save 2FA settings. Please try again.');
+                }
             }
             
             // Store backup locally
@@ -1088,7 +1073,13 @@ window.NCHSMLogin = {
             
         } catch (error) {
             console.error('Setup error:', error);
-            this.showError(document.getElementById('setupError'), error.message);
+            
+            let errorMessage = error.message;
+            if (error.message.includes('Invalid code')) {
+                errorMessage = 'The code you entered is incorrect. Please check your authenticator app and try again.';
+            }
+            
+            this.showError(document.getElementById('setupError'), errorMessage);
             
             // Clear OTP input and refocus
             this.clearOTPInputs('authenticator');
