@@ -14,7 +14,10 @@ window.NCHSMLogin = {
         otpAttempts: 0,
         maxOtpAttempts: 3,
         trustedDevices: JSON.parse(localStorage.getItem('trusted_devices') || '{}'),
-        verificationCodes: {}
+        verificationCodes: {},
+        currentVerificationMethod: null,
+        resendTimer: null,
+        resendTimeout: null
     },
     
     // Supabase client (will be initialized later)
@@ -52,6 +55,9 @@ window.NCHSMLogin = {
         
         // Initialize method selection
         this.initMethodSelection();
+        
+        // Initialize OTP input handling
+        this.initOTPInputs();
     },
     
     // ============================================
@@ -157,6 +163,20 @@ window.NCHSMLogin = {
         });
     },
     
+    initOTPInputs: function() {
+        // Initialize OTP input event listeners
+        const otpInput = document.getElementById('otpInput');
+        const authOtpInput = document.getElementById('authenticatorOtpInput');
+        
+        if (otpInput) {
+            otpInput.addEventListener('input', (e) => this.validateOTPInput(e.target, 'verify'));
+        }
+        
+        if (authOtpInput) {
+            authOtpInput.addEventListener('input', (e) => this.validateOTPInput(e.target, 'authenticator'));
+        }
+    },
+    
     initFocusManagement: function() {
         // Trap focus in modals
         document.addEventListener('keydown', (e) => {
@@ -247,6 +267,27 @@ window.NCHSMLogin = {
         this.clearError(document.getElementById('errorMsg'));
     },
     
+    validateOTPInput: function(input, context) {
+        // Only allow numbers
+        input.value = input.value.replace(/[^0-9]/g, '');
+        
+        // Limit to 6 digits
+        if (input.value.length > 6) {
+            input.value = input.value.substring(0, 6);
+        }
+        
+        // Auto-submit when 6 digits are entered
+        if (input.value.length === 6) {
+            setTimeout(() => {
+                if (context === 'authenticator') {
+                    this.completeAuthenticatorSetup();
+                } else if (context === 'verify') {
+                    this.verify2FACode();
+                }
+            }, 100);
+        }
+    },
+    
     // ============================================
     // LOGIN HANDLER
     // ============================================
@@ -311,7 +352,7 @@ window.NCHSMLogin = {
             const { data: profileData, error: profileError } = await this.supabase
                 .from('consolidated_user_profiles_table')
                 .select('*')
-                .eq('email', email)  // ← SEARCH BY EMAIL, NOT USER_ID
+                .eq('email', email)
                 .maybeSingle();
             
             if (profileError) {
@@ -344,7 +385,7 @@ window.NCHSMLogin = {
             const { data: totpSettings } = await this.supabase
                 .from('user_2fa_settings')
                 .select('*')
-                .eq('id', authData.user.id)
+                .eq('user_id', authData.user.id)
                 .maybeSingle();
             
             if (!totpSettings || !totpSettings.is_2fa_enabled) {
@@ -414,6 +455,7 @@ window.NCHSMLogin = {
         this.hideAllModals();
         const modal = document.getElementById('methodSelectionModal');
         modal.classList.add('active');
+        modal.removeAttribute('hidden');
         
         // Reset selection
         this.state.selectedMethod = null;
@@ -438,6 +480,7 @@ window.NCHSMLogin = {
         const modal = document.getElementById('twoFactorModal');
         const methodText = document.getElementById('verificationMethodText');
         const emailText = document.getElementById('2faEmail');
+        const otpHint = document.getElementById('otpHint');
         
         const methods = {
             authenticator: 'Enter the 6-digit code from your authenticator app',
@@ -448,18 +491,37 @@ window.NCHSMLogin = {
         methodText.textContent = methods[method] || methods.authenticator;
         emailText.textContent = this.maskEmail(this.state.currentUser.email);
         
+        // Update OTP hint based on method
+        if (method === 'sms') {
+            otpHint.textContent = 'Enter the 6-digit code sent to your phone';
+        } else if (method === 'email') {
+            otpHint.textContent = 'Enter the 6-digit code sent to your email';
+        } else {
+            otpHint.textContent = 'Enter the 6-digit code from your authenticator app';
+        }
+        
         this.clearOTPInputs('verify');
         this.clearError(document.getElementById('2faError'));
+        
+        // Set current verification method
+        this.state.currentVerificationMethod = method;
         
         // Show resend button and set countdown
         this.updateResendButton(method);
         
         modal.classList.add('active');
-        setTimeout(() => document.querySelector('#twoFactorModal .otp-digit').focus(), 100);
+        modal.removeAttribute('hidden');
+        setTimeout(() => document.getElementById('otpInput').focus(), 100);
     },
     
     showAuthenticatorSetup: function() {
         this.hideAllModals();
+        
+        // Check if otplib is available
+        if (typeof otplib === 'undefined') {
+            this.showError(document.getElementById('setupError'), 'Authentication library not loaded. Please refresh the page.');
+            return;
+        }
         
         // Generate TOTP secret
         this.state.currentSecret = otplib.authenticator.generateSecret();
@@ -481,15 +543,17 @@ window.NCHSMLogin = {
         }, (error) => {
             if (error) {
                 console.error('QR Code generation failed:', error);
-                this.showError(document.getElementById('setupError'), 'Failed to generate QR code');
+                this.showError(document.getElementById('setupError'), 'Failed to generate QR code. Please try again.');
             }
         });
         
         this.clearOTPInputs('authenticator');
         this.clearError(document.getElementById('setupError'));
         
-        document.getElementById('authenticatorSetupModal').classList.add('active');
-        setTimeout(() => document.querySelector('#authenticatorSetupModal .otp-digit').focus(), 100);
+        const modal = document.getElementById('authenticatorSetupModal');
+        modal.classList.add('active');
+        modal.removeAttribute('hidden');
+        setTimeout(() => document.getElementById('authenticatorOtpInput').focus(), 100);
     },
     
     showBackupCodesModal: function(codes) {
@@ -509,12 +573,16 @@ window.NCHSMLogin = {
         `).join('');
         
         feather.replace();
-        document.getElementById('backupCodesModal').classList.add('active');
+        
+        const modal = document.getElementById('backupCodesModal');
+        modal.classList.add('active');
+        modal.removeAttribute('hidden');
     },
     
     hideAllModals: function() {
         document.querySelectorAll('.modal-overlay').forEach(modal => {
             modal.classList.remove('active');
+            modal.setAttribute('hidden', 'true');
         });
         document.body.style.overflow = '';
     },
@@ -543,46 +611,45 @@ window.NCHSMLogin = {
     },
     
     proceedWithSelectedMethod: async function() {
-    if (!this.state.selectedMethod) {
-        this.showError(document.getElementById('methodError'), 'Please select a security method');
-        return;
-    }
-    
-    // Find the button safely
-    const methodBtn = document.getElementById('proceedWithMethodBtn');
-    let originalText = 'Proceed';
-    
-    // Update UI only if button exists
-    if (methodBtn) {
-        originalText = methodBtn.innerHTML;
-        methodBtn.disabled = true;
-        methodBtn.innerHTML = '<span class="loading-spinner"></span> Sending...';
-    }
-    
-    try {
-        if (this.state.selectedMethod === 'authenticator') {
-            this.showAuthenticatorSetup();
-        } else if (this.state.selectedMethod === 'sms') {
-            // Actually send SMS verification
-            await this.sendSMSVerification();
-            this.showVerificationModal('sms');
-        } else if (this.state.selectedMethod === 'email') {
-            // Actually send email verification
-            await this.sendEmailVerification();
-            this.showVerificationModal('email');
+        if (!this.state.selectedMethod) {
+            this.showError(document.getElementById('methodError'), 'Please select a security method');
+            return;
         }
-    } catch (error) {
-        console.error('Error sending verification:', error);
-        this.showError(document.getElementById('methodError'), 
-            `Failed to send verification: ${error.message}`);
-    } finally {
-        // Reset button only if it exists
+        
+        const methodBtn = document.getElementById('proceedMethodBtn');
+        const originalText = methodBtn ? methodBtn.innerHTML : 'Send Verification Code';
+        
+        // Update UI
         if (methodBtn) {
-            methodBtn.disabled = false;
-            methodBtn.innerHTML = originalText;
+            methodBtn.disabled = true;
+            methodBtn.innerHTML = '<span class="loading-spinner"></span> Sending...';
         }
-    }
-},
+        
+        try {
+            if (this.state.selectedMethod === 'authenticator') {
+                this.showAuthenticatorSetup();
+            } else if (this.state.selectedMethod === 'sms') {
+                // Actually send SMS verification
+                await this.sendSMSVerification();
+                this.showVerificationModal('sms');
+            } else if (this.state.selectedMethod === 'email') {
+                // Actually send email verification
+                await this.sendEmailVerification();
+                this.showVerificationModal('email');
+            }
+        } catch (error) {
+            console.error('Error sending verification:', error);
+            this.showError(document.getElementById('methodError'), 
+                `Failed to send verification: ${error.message}`);
+        } finally {
+            // Reset button only if it exists
+            if (methodBtn) {
+                methodBtn.disabled = false;
+                methodBtn.innerHTML = originalText;
+            }
+        }
+    },
+    
     // ============================================
     // EMAIL VERIFICATION
     // ============================================
@@ -814,63 +881,27 @@ window.NCHSMLogin = {
     },
     
     // ============================================
-    // OTP HANDLING
+    // OTP HANDLING - SINGLE INPUT VERSION
     // ============================================
-    moveToNextOTP: function(input, context) {
-        const index = parseInt(input.dataset.index);
-        const modalId = this.getModalId(context);
-        const allInputs = document.querySelectorAll(`${modalId} .otp-digit`);
-        
-        // Validate input (only numbers)
-        input.value = input.value.replace(/[^0-9]/g, '');
-        
-        // Update UI
-        input.classList.toggle('filled', input.value.length > 0);
-        
-        // Auto-navigation
-        if (input.value.length === 1 && index < 5) {
-            allInputs[index + 1].focus();
-        }
-        
-        if (input.value.length === 0 && index > 0 && event.inputType === 'deleteContentBackward') {
-            allInputs[index - 1].focus();
-        }
-        
-        // Auto-submit
-        if (index === 5 && input.value.length === 1) {
-            const allFilled = Array.from(allInputs).every(inp => inp.value.length === 1);
-            if (allFilled) {
-                setTimeout(() => {
-                    if (context === 'authenticator') {
-                        this.completeAuthenticatorSetup();
-                    } else if (context === 'verify') {
-                        this.verify2FACode();
-                    }
-                }, 150);
-            }
-        }
-    },
-    
-    getModalId: function(context) {
-        switch(context) {
-            case 'authenticator': return '#authenticatorSetupModal';
-            case 'verify': return '#twoFactorModal';
-            default: return '#twoFactorModal';
-        }
-    },
-    
     clearOTPInputs: function(context) {
-        const modalId = this.getModalId(context);
-        document.querySelectorAll(`${modalId} .otp-digit`).forEach(input => {
-            input.value = '';
-            input.classList.remove('filled');
-        });
+        if (context === 'authenticator') {
+            const input = document.getElementById('authenticatorOtpInput');
+            if (input) input.value = '';
+        } else if (context === 'verify') {
+            const input = document.getElementById('otpInput');
+            if (input) input.value = '';
+        }
     },
     
     getOTPCode: function(context) {
-        const modalId = this.getModalId(context);
-        const inputs = document.querySelectorAll(`${modalId} .otp-digit`);
-        return Array.from(inputs).map(input => input.value).join('');
+        if (context === 'authenticator') {
+            const input = document.getElementById('authenticatorOtpInput');
+            return input ? input.value : '';
+        } else if (context === 'verify') {
+            const input = document.getElementById('otpInput');
+            return input ? input.value : '';
+        }
+        return '';
     },
     
     // ============================================
@@ -934,16 +965,22 @@ window.NCHSMLogin = {
     completeAuthenticatorSetup: async function() {
         const code = this.getOTPCode('authenticator');
         if (code.length !== 6 || !/^\d+$/.test(code)) {
-            this.showError(document.getElementById('setupError'), 'Please enter all 6 digits');
+            this.showError(document.getElementById('setupError'), 'Please enter a valid 6-digit code');
             return;
         }
         
         const setupBtn = document.getElementById('setup2FABtn');
         const spinner = document.getElementById('setupVerifyingSpinner');
-        setupBtn.disabled = true;
-        spinner.style.display = 'inline-block';
+        
+        if (setupBtn) setupBtn.disabled = true;
+        if (spinner) spinner.style.display = 'inline-block';
         
         try {
+            // Check if otplib is available
+            if (typeof otplib === 'undefined') {
+                throw new Error('Authentication library not available');
+            }
+            
             // Verify code
             const isValid = otplib.authenticator.check(code, this.state.currentSecret);
             if (!isValid) {
@@ -957,11 +994,11 @@ window.NCHSMLogin = {
                 ).join('')
             );
             
-            // Save to database
+            // Save to database - NOTE: Changed column name from 'id' to 'user_id'
             const { error } = await this.supabase
                 .from('user_2fa_settings')
                 .upsert({
-                    id: this.state.currentUser.userId,
+                    user_id: this.state.currentUser.userId, // Changed from 'id'
                     totp_secret: this.state.currentSecret,
                     backup_codes: backupCodes,
                     preferred_method: 'authenticator',
@@ -977,8 +1014,8 @@ window.NCHSMLogin = {
             console.error('Setup error:', error);
             this.showError(document.getElementById('setupError'), error.message);
         } finally {
-            setupBtn.disabled = false;
-            spinner.style.display = 'none';
+            if (setupBtn) setupBtn.disabled = false;
+            if (spinner) spinner.style.display = 'none';
         }
     },
     
@@ -988,25 +1025,26 @@ window.NCHSMLogin = {
     verify2FACode: async function() {
         const code = this.getOTPCode('verify');
         if (code.length !== 6 || !/^\d+$/.test(code)) {
-            this.showError(document.getElementById('2faError'), 'Please enter all 6 digits');
+            this.showError(document.getElementById('2faError'), 'Please enter a valid 6-digit code');
             return;
         }
         
         const verifyBtn = document.getElementById('verify2FABtn');
         const spinner = document.getElementById('verifyingSpinner');
-        verifyBtn.disabled = true;
-        spinner.style.display = 'inline-block';
+        
+        if (verifyBtn) verifyBtn.disabled = true;
+        if (spinner) spinner.style.display = 'inline-block';
         
         try {
             // Determine verification method based on current method
             const method = this.getCurrentVerificationMethod();
             
             if (method === 'authenticator') {
-                // Get TOTP secret
+                // Get TOTP secret - NOTE: Changed column name from 'id' to 'user_id'
                 const { data: totpData } = await this.supabase
                     .from('user_2fa_settings')
                     .select('totp_secret')
-                    .eq('id', this.state.currentUser.userId)
+                    .eq('user_id', this.state.currentUser.userId) // Changed from 'id'
                     .single();
                 
                 if (!totpData?.totp_secret) throw new Error('2FA not configured');
@@ -1049,21 +1087,22 @@ window.NCHSMLogin = {
             console.error('Verification error:', error);
             this.showError(document.getElementById('2faError'), error.message);
             this.clearOTPInputs('verify');
-            document.querySelector('#twoFactorModal .otp-digit').focus();
+            const otpInput = document.getElementById('otpInput');
+            if (otpInput) otpInput.focus();
         } finally {
-            verifyBtn.disabled = false;
-            spinner.style.display = 'none';
+            if (verifyBtn) verifyBtn.disabled = false;
+            if (spinner) spinner.style.display = 'none';
         }
     },
     
     getCurrentVerificationMethod: function() {
         // Check which method was selected
-        if (this.state.selectedMethod) {
-            return this.state.selectedMethod;
+        if (this.state.currentVerificationMethod) {
+            return this.state.currentVerificationMethod;
         }
         
         // Fallback to checking from database
-        return 'authenticator'; // Default
+        return 'authenticator';
     },
     
     // ============================================
@@ -1076,21 +1115,22 @@ window.NCHSMLogin = {
         // Reset button
         resendBtn.disabled = false;
         resendBtn.innerHTML = 'Resend Code';
+        resendBtn.onclick = () => this.resendVerificationCode(method);
         
         // Clear any existing timer
-        if (this.resendTimer) clearInterval(this.resendTimer);
-        if (this.resendTimeout) clearTimeout(this.resendTimeout);
+        if (this.state.resendTimer) clearInterval(this.state.resendTimer);
+        if (this.state.resendTimeout) clearTimeout(this.state.resendTimeout);
         
         // Set countdown
         let timeLeft = 60; // 60 seconds
         resendBtn.disabled = true;
         
-        this.resendTimer = setInterval(() => {
+        this.state.resendTimer = setInterval(() => {
             timeLeft--;
             resendBtn.innerHTML = `Resend in ${timeLeft}s`;
             
             if (timeLeft <= 0) {
-                clearInterval(this.resendTimer);
+                clearInterval(this.state.resendTimer);
                 resendBtn.disabled = false;
                 resendBtn.innerHTML = 'Resend Code';
                 resendBtn.onclick = () => this.resendVerificationCode(method);
@@ -1302,8 +1342,11 @@ window.NCHSMLogin = {
     
     showError: function(element, message, type = 'error') {
         if (element) {
-            element.querySelector('.error-text').textContent = message;
-            element.classList.remove('success', 'error');
+            const errorText = element.querySelector('.error-text');
+            if (errorText) {
+                errorText.textContent = message;
+            }
+            element.classList.remove('success', 'error', 'show');
             element.classList.add(type);
             element.classList.add('show');
             element.style.display = 'flex';
@@ -1333,6 +1376,8 @@ window.NCHSMLogin = {
         this.state.currentUser = null;
         this.state.isLoggingIn = false;
         this.state.verificationCodes = {};
+        this.state.selectedMethod = null;
+        this.state.currentVerificationMethod = null;
         
         // Reset form
         const loginButton = document.getElementById('loginButton');
@@ -1340,8 +1385,13 @@ window.NCHSMLogin = {
         if (loginButton) loginButton.disabled = false;
         if (buttonText) buttonText.textContent = 'Sign In';
         
-        // Focus email field
+        // Clear form
         const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        if (emailInput) emailInput.value = '';
+        if (passwordInput) passwordInput.value = '';
+        
+        // Focus email field
         if (emailInput) emailInput.focus();
     },
     
@@ -1405,7 +1455,7 @@ window.NCHSMLogin = {
 
 // Make functions available globally for onclick handlers
 window.hideAllModals = () => window.NCHSMLogin.hideAllModals();
-window.moveToNextOTP = (input, context) => window.NCHSMLogin.moveToNextOTP(input, context);
+window.validateOTPInput = (input, context) => window.NCHSMLogin.validateOTPInput(input, context);
 window.verify2FACode = () => window.NCHSMLogin.verify2FACode();
 window.useBackupCode = () => window.NCHSMLogin.useBackupCode();
 window.selectMethod = (method) => window.NCHSMLogin.selectMethod(method);
