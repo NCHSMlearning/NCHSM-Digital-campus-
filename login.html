@@ -9,10 +9,7 @@
     <!-- External CSS -->
     <link rel="stylesheet" href="login-styles.css">
     
-    <!-- Libraries -->
-    <script src="https://unpkg.com/@otplib/preset-browser@^12.0.0/buffer.js"></script>
-    <script src="https://unpkg.com/@otplib/preset-browser@^12.0.0/index.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <!-- Only load Feather Icons in head -->
     <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
 </head>
 <body>
@@ -230,7 +227,7 @@
     <!-- 2FA Verification Modal -->
     <div id="twoFactorModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="2faModalTitle">
         <div class="modal-content">
-            <button class="modal-close" onclick="hideAllModals()" aria-label="Close modal">×</button>
+            <button class="modal-close" onclick="window.hideAllModals()" aria-label="Close modal">×</button>
             
             <div class="modal-header">
                 <div class="modal-icon">
@@ -250,42 +247,42 @@
                                class="otp-digit" 
                                data-index="0" 
                                id="otp-input-0"
-                               oninput="moveToNextOTP(this, 'verify')"
+                               oninput="window.moveToNextOTP(this, 'verify')"
                                aria-label="First digit of verification code">
                         <input type="text" 
                                maxlength="1" 
                                class="otp-digit" 
                                data-index="1" 
                                id="otp-input-1"
-                               oninput="moveToNextOTP(this, 'verify')"
+                               oninput="window.moveToNextOTP(this, 'verify')"
                                aria-label="Second digit of verification code">
                         <input type="text" 
                                maxlength="1" 
                                class="otp-digit" 
                                data-index="2" 
                                id="otp-input-2"
-                               oninput="moveToNextOTP(this, 'verify')"
+                               oninput="window.moveToNextOTP(this, 'verify')"
                                aria-label="Third digit of verification code">
                         <input type="text" 
                                maxlength="1" 
                                class="otp-digit" 
                                data-index="3" 
                                id="otp-input-3"
-                               oninput="moveToNextOTP(this, 'verify')"
+                               oninput="window.moveToNextOTP(this, 'verify')"
                                aria-label="Fourth digit of verification code">
                         <input type="text" 
                                maxlength="1" 
                                class="otp-digit" 
                                data-index="4" 
                                id="otp-input-4"
-                               oninput="moveToNextOTP(this, 'verify')"
+                               oninput="window.moveToNextOTP(this, 'verify')"
                                aria-label="Fifth digit of verification code">
                         <input type="text" 
                                maxlength="1" 
                                class="otp-digit" 
                                data-index="5" 
                                id="otp-input-5"
-                               oninput="moveToNextOTP(this, 'verify')"
+                               oninput="window.moveToNextOTP(this, 'verify')"
                                aria-label="Sixth digit of verification code">
                     </div>
                 </div>
@@ -301,7 +298,7 @@
                 </div>
                 
                 <div class="action-buttons">
-                    <button onclick="verify2FACode()" 
+                    <button onclick="window.verify2FACode()" 
                             id="verify2FABtn" 
                             class="modal-btn modal-btn-primary"
                             aria-live="polite">
@@ -310,8 +307,8 @@
                 </div>
                 
                 <div class="help-links">
-                    <a href="#" onclick="useBackupCode()" class="help-link">Use backup code</a>
-                    <a href="#" onclick="sendRecoveryEmail()" class="help-link">Can't access?</a>
+                    <a href="#" onclick="window.useBackupCode()" class="help-link">Use backup code</a>
+                    <a href="#" onclick="window.sendRecoveryEmail()" class="help-link">Can't access?</a>
                 </div>
                 
                 <div id="2faError" class="error-message" style="display: none;" role="alert"></div>
@@ -322,7 +319,7 @@
     <!-- Method Selection Modal -->
     <div id="methodSelectionModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="methodModalTitle">
         <div class="modal-content">
-            <button class="modal-close" onclick="hideAllModals()" aria-label="Close modal">×</button>
+            <button class="modal-close" onclick="window.hideAllModals()" aria-label="Close modal">×</button>
             
             <div class="modal-header">
                 <div class="modal-icon" style="background: var(--gradient-primary);">
@@ -334,7 +331,7 @@
             
             <div class="modal-body">
                 <div class="method-grid">
-                    <div class="method-card" onclick="selectMethod('authenticator')" role="button" tabindex="0">
+                    <div class="method-card" onclick="window.selectMethod('authenticator')" role="button" tabindex="0">
                         <div class="method-icon-circle authenticator">
                             <i data-feather="smartphone"></i>
                         </div>
@@ -344,7 +341,7 @@
                         </div>
                     </div>
                     
-                    <div class="method-card" onclick="selectMethod('sms')" role="button" tabindex="0">
+                    <div class="method-card" onclick="window.selectMethod('sms')" role="button" tabindex="0">
                         <div class="method-icon-circle sms">
                             <i data-feather="message-circle"></i>
                         </div>
@@ -354,7 +351,7 @@
                         </div>
                     </div>
                     
-                    <div class="method-card" onclick="selectMethod('email')" role="button" tabindex="0">
+                    <div class="method-card" onclick="window.selectMethod('email')" role="button" tabindex="0">
                         <div class="method-icon-circle email">
                             <i data-feather="mail"></i>
                         </div>
@@ -368,7 +365,7 @@
                 <div id="methodError" class="error-message" style="display: none;" role="alert"></div>
                 
                 <div class="action-buttons">
-                    <button onclick="proceedWithSelectedMethod()" 
+                    <button onclick="window.proceedWithSelectedMethod()" 
                             id="proceedMethodBtn" 
                             class="modal-btn modal-btn-primary">
                         Continue
@@ -381,7 +378,7 @@
     <!-- Authenticator Setup Modal -->
     <div id="authenticatorSetupModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="setupModalTitle">
         <div class="modal-content">
-            <button class="modal-close" onclick="hideAllModals()" aria-label="Close modal">×</button>
+            <button class="modal-close" onclick="window.hideAllModals()" aria-label="Close modal">×</button>
             
             <div class="modal-header">
                 <div class="modal-icon" style="background: linear-gradient(135deg, #4285F4 0%, #34A853 100%);">
@@ -415,37 +412,37 @@
                                maxlength="1" 
                                class="otp-digit" 
                                data-index="0" 
-                               oninput="moveToNextOTP(this, 'authenticator')"
+                               oninput="window.moveToNextOTP(this, 'authenticator')"
                                aria-label="First digit of setup code">
                         <input type="text" 
                                maxlength="1" 
                                class="otp-digit" 
                                data-index="1" 
-                               oninput="moveToNextOTP(this, 'authenticator')"
+                               oninput="window.moveToNextOTP(this, 'authenticator')"
                                aria-label="Second digit of setup code">
                         <input type="text" 
                                maxlength="1" 
                                class="otp-digit" 
                                data-index="2" 
-                               oninput="moveToNextOTP(this, 'authenticator')"
+                               oninput="window.moveToNextOTP(this, 'authenticator')"
                                aria-label="Third digit of setup code">
                         <input type="text" 
                                maxlength="1" 
                                class="otp-digit" 
                                data-index="3" 
-                               oninput="moveToNextOTP(this, 'authenticator')"
+                               oninput="window.moveToNextOTP(this, 'authenticator')"
                                aria-label="Fourth digit of setup code">
                         <input type="text" 
                                maxlength="1" 
                                class="otp-digit" 
                                data-index="4" 
-                               oninput="moveToNextOTP(this, 'authenticator')"
+                               oninput="window.moveToNextOTP(this, 'authenticator')"
                                aria-label="Fifth digit of setup code">
                         <input type="text" 
                                maxlength="1" 
                                class="otp-digit" 
                                data-index="5" 
-                               oninput="moveToNextOTP(this, 'authenticator')"
+                               oninput="window.moveToNextOTP(this, 'authenticator')"
                                aria-label="Sixth digit of setup code">
                     </div>
                 </div>
@@ -454,7 +451,7 @@
                 <div id="setupError" class="error-message" style="display: none;" role="alert"></div>
                 
                 <div class="action-buttons">
-                    <button onclick="completeAuthenticatorSetup()" 
+                    <button onclick="window.completeAuthenticatorSetup()" 
                             id="setup2FABtn" 
                             class="modal-btn modal-btn-primary"
                             aria-live="polite">
@@ -468,7 +465,7 @@
     <!-- Backup Codes Modal -->
     <div id="backupCodesModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="backupModalTitle">
         <div class="modal-content">
-            <button class="modal-close" onclick="hideAllModals()" aria-label="Close modal">×</button>
+            <button class="modal-close" onclick="window.hideAllModals()" aria-label="Close modal">×</button>
             
             <div class="modal-header">
                 <div class="modal-icon">
@@ -487,10 +484,10 @@
                     <div class="backup-codes-grid" id="backupCodesList"></div>
                     
                     <div class="action-buttons">
-                        <button onclick="downloadBackupCodes()" class="modal-btn modal-btn-secondary">
+                        <button onclick="window.downloadBackupCodes()" class="modal-btn modal-btn-secondary">
                             <i data-feather="download"></i> Download Codes
                         </button>
-                        <button onclick="proceedToDashboard()" class="modal-btn modal-btn-primary">
+                        <button onclick="window.proceedToDashboard()" class="modal-btn modal-btn-primary">
                             Continue to Portal
                         </button>
                     </div>
@@ -499,7 +496,10 @@
         </div>
     </div>
 
-    <!-- Load Supabase separately at the end -->
+    <!-- Load ALL scripts at the END -->
+    <script src="https://unpkg.com/@otplib/preset-browser@^12.0.0/buffer.js"></script>
+    <script src="https://unpkg.com/@otplib/preset-browser@^12.0.0/index.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="login-script.js"></script>
 </body>
