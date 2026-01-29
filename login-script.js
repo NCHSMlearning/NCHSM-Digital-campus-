@@ -193,118 +193,158 @@ window.NCHSMLogin = {
     // LOGIN HANDLER
     // ============================================
     handleLogin: async function(e) {
-        e.preventDefault();
-        
-        if (this.state.isLoggingIn) return;
-        
-        const email = document.getElementById('email').value.trim().toLowerCase();
-        const password = document.getElementById('password').value;
-        const errorMsg = document.getElementById('errorMsg');
-        const loginButton = document.getElementById('loginButton');
-        const buttonText = document.getElementById('button-text');
-        
-        // Validation
-        if (!this.validateEmail(email)) {
-            this.showError(errorMsg, 'Please enter a valid email address');
-            return;
+    e.preventDefault();
+    
+    if (this.state.isLoggingIn) return;
+    
+    const email = document.getElementById('email').value.trim().toLowerCase();
+    const password = document.getElementById('password').value;
+    const errorMsg = document.getElementById('errorMsg');
+    const loginButton = document.getElementById('loginButton');
+    const buttonText = document.getElementById('button-text');
+    
+    // Validation
+    if (!this.validateEmail(email)) {
+        this.showError(errorMsg, 'Please enter a valid email address');
+        return;
+    }
+    
+    if (!password) {
+        this.showError(errorMsg, 'Please enter your password');
+        return;
+    }
+    
+    // Update UI
+    this.clearError(errorMsg);
+    this.state.isLoggingIn = true;
+    loginButton.disabled = true;
+    buttonText.innerHTML = '<span class="loading-spinner"></span> Signing In...';
+    
+    try {
+        // Check if Supabase is available
+        if (!this.supabase) {
+            throw new Error('Authentication service not available');
         }
         
-        if (!password) {
-            this.showError(errorMsg, 'Please enter your password');
-            return;
+        // 1. Authenticate with Supabase
+        const { data: authData, error: authError } = await this.supabase.auth.signInWithPassword({ 
+            email, 
+            password 
+        });
+        
+        if (authError) {
+            if (authError.message.includes('Invalid login credentials')) {
+                throw new Error('Invalid email or password. Please try again.');
+            } else if (authError.message.includes('Email not confirmed')) {
+                throw new Error('Please verify your email address before logging in.');
+            } else {
+                throw new Error(authError.message);
+            }
         }
         
-        // Update UI
-        this.clearError(errorMsg);
-        this.state.isLoggingIn = true;
-        loginButton.disabled = true;
-        buttonText.innerHTML = '<span class="loading-spinner"></span> Signing In...';
+        // 2. Store user session
+        this.state.currentUser = {
+            email,
+            userId: authData.user.id,
+            session: authData.session
+        };
         
-        try {
-            // Check if Supabase is available
-            if (!this.supabase) {
-                throw new Error('Authentication service not available');
-            }
-            
-            // 1. Authenticate with Supabase
-            const { data: authData, error: authError } = await this.supabase.auth.signInWithPassword({ 
-                email, 
-                password 
-            });
-            
-            if (authError) {
-                if (authError.message.includes('Invalid login credentials')) {
-                    throw new Error('Invalid email or password. Please try again.');
-                } else if (authError.message.includes('Email not confirmed')) {
-                    throw new Error('Please verify your email address before logging in.');
-                } else {
-                    throw new Error(authError.message);
-                }
-            }
-            
-            // 2. Store user session
-            this.state.currentUser = {
-                email,
-                userId: authData.user.id,
-                session: authData.session
-            };
-            
-            // 3. Check profile status
-            const { data: profileData, error: profileError } = await this.supabase
+        // 3. TRY EMAIL SEARCH FIRST (LIKE OLD SCRIPT)
+        const { data: profileData, error: profileError } = await this.supabase
+            .from('consolidated_user_profiles_table')
+            .select('*')
+            .eq('email', email)  // ← SEARCH BY EMAIL, NOT USER_ID
+            .maybeSingle();
+        
+        if (profileError) {
+            console.warn('Profile search by email failed:', profileError);
+            // Try by user_id as fallback
+            const { data: fallbackProfile } = await this.supabase
                 .from('consolidated_user_profiles_table')
                 .select('*')
                 .eq('user_id', authData.user.id)
                 .maybeSingle();
             
-            if (profileError) throw new Error('Unable to load profile. Please try again.');
-            
-            if (!profileData) {
-                await this.supabase.auth.signOut();
+            if (!fallbackProfile) {
                 throw new Error('Account not found. Please register first.');
             }
             
-            if (profileData.status?.toLowerCase() !== 'approved') {
-                await this.supabase.auth.signOut();
-                throw new Error('Account is pending approval. Please contact administration.');
-            }
-            
-            // 4. Check if 2FA setup is required
-            const { data: totpSettings } = await this.supabase
-                .from('user_2fa_settings')
-                .select('*')
-                .eq('id', authData.user.id)
-                .maybeSingle();
-            
-            if (!totpSettings || !totpSettings.is_2fa_enabled) {
-                // New user - setup 2FA
-                this.showMethodSelection();
-            } else {
-                // Check for trusted device
-                const deviceId = this.generateDeviceId();
-                if (this.state.trustedDevices[deviceId] && 
-                    new Date(this.state.trustedDevices[deviceId].expires) > new Date()) {
-                    // Trusted device, skip 2FA
-                    await this.completeLogin(profileData);
-                } else {
-                    // Existing user - verify 2FA
-                    this.showVerificationModal(totpSettings.preferred_method || 'authenticator');
-                }
-            }
-            
-        } catch (error) {
-            console.error('Login error:', error);
-            if (this.supabase) {
-                await this.supabase.auth.signOut();
-            }
-            this.showError(errorMsg, error.message || 'Login failed. Please try again.');
-            
-        } finally {
-            this.state.isLoggingIn = false;
-            loginButton.disabled = false;
-            buttonText.textContent = 'Sign In';
+            await this.processLogin(fallbackProfile);
+            return;
         }
-    },
+        
+        if (!profileData) {
+            throw new Error('Account not found. Please register first.');
+        }
+        
+        if (profileData.status?.toLowerCase() !== 'approved') {
+            await this.supabase.auth.signOut();
+            throw new Error('Account is pending approval. Please contact administration.');
+        }
+        
+        // 4. Check if 2FA setup is required
+        const { data: totpSettings } = await this.supabase
+            .from('user_2fa_settings')
+            .select('*')
+            .eq('id', authData.user.id)
+            .maybeSingle();
+        
+        if (!totpSettings || !totpSettings.is_2fa_enabled) {
+            // New user - setup 2FA
+            this.showMethodSelection();
+        } else {
+            // Check for trusted device
+            const deviceId = this.generateDeviceId();
+            if (this.state.trustedDevices[deviceId] && 
+                new Date(this.state.trustedDevices[deviceId].expires) > new Date()) {
+                // Trusted device, skip 2FA
+                await this.completeLogin(profileData);
+            } else {
+                // Existing user - verify 2FA
+                this.showVerificationModal(totpSettings.preferred_method || 'authenticator');
+            }
+        }
+        
+    } catch (error) {
+        console.error('Login error:', error);
+        if (this.supabase) {
+            await this.supabase.auth.signOut();
+        }
+        this.showError(errorMsg, error.message || 'Login failed. Please try again.');
+        
+    } finally {
+        this.state.isLoggingIn = false;
+        loginButton.disabled = false;
+        buttonText.textContent = 'Sign In';
+    }
+},
+
+// Add this new helper function
+processLogin: async function(profileData) {
+    // Store profile
+    localStorage.setItem('currentUserProfile', JSON.stringify(profileData));
     
+    // Store session
+    const { data: { session } } = await this.supabase.auth.getSession();
+    if (session) {
+        localStorage.setItem('supabase_session', JSON.stringify(session));
+    }
+    
+    // Redirect based on role (like old script)
+    const role = profileData.role?.toLowerCase() || 'student';
+    
+    if (role === 'superadmin') {
+        window.location.href = 'superadmin.html';
+    } else if (role === 'admin') {
+        window.location.href = 'admin.html';
+    } else if (role === 'lecturer') {
+        window.location.href = 'lecturer.html';
+    } else if (role === 'hod') {
+        window.location.href = 'hod-tracker.html';
+    } else {
+        window.location.href = 'index.html';
+    }
+}
     // ============================================
     // VALIDATION FUNCTIONS
     // ============================================
