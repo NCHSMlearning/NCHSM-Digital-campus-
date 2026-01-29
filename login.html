@@ -316,66 +316,97 @@
         </div>
     </div>
     
-    <!-- Method Selection Modal -->
-    <div id="methodSelectionModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="methodModalTitle">
-        <div class="modal-content">
-            <button class="modal-close" onclick="window.hideAllModals()" aria-label="Close modal">×</button>
+ <!-- Method Selection Modal - eCitizen Style -->
+<div id="methodSelectionModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="methodModalTitle">
+    <div class="modal-content ecitizen-style">
+        <div class="modal-header">
+            <h1 class="modal-title text-center">OTP Verification</h1>
+            <p class="modal-subtitle text-center">All NCHSM Portal Services</p>
+        </div>
+        
+        <div class="modal-body">
+            <p class="text-center text-gray-600 mb-8">Select where you would like to receive a verification code</p>
             
-            <div class="modal-header">
-                <div class="modal-icon" style="background: var(--gradient-primary);">
-                    <i data-feather="shield"></i>
+            <div class="verification-methods">
+                <!-- Email Option -->
+                <div class="verification-option" data-method="email" role="button" tabindex="0">
+                    <div class="option-content">
+                        <div class="option-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+                            </svg>
+                        </div>
+                        <div class="option-details">
+                            <h3 class="option-title">Send code to my email</h3>
+                            <p class="option-info" id="userEmailDisplay">m*********8@gmail.com</p>
+                        </div>
+                    </div>
+                    <div class="option-check">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                        </svg>
+                    </div>
                 </div>
-                <h3 class="modal-title" id="methodModalTitle">Choose Security Method</h3>
-                <p class="modal-subtitle">Select your preferred two-factor authentication method</p>
+                
+                <!-- Phone Option -->
+                <div class="verification-option" data-method="sms" role="button" tabindex="0">
+                    <div class="option-content">
+                        <div class="option-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" />
+                            </svg>
+                        </div>
+                        <div class="option-details">
+                            <h3 class="option-title">Send code to my phone</h3>
+                            <p class="option-info" id="userPhoneDisplay">+254******743</p>
+                        </div>
+                    </div>
+                    <div class="option-check">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                        </svg>
+                    </div>
+                </div>
+                
+                <!-- Authenticator Option -->
+                <div class="verification-option" data-method="authenticator" role="button" tabindex="0">
+                    <div class="option-content">
+                        <div class="option-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                            </svg>
+                        </div>
+                        <div class="option-details">
+                            <h3 class="option-title">Use Authenticator App</h3>
+                            <p class="option-info">Google Authenticator, Authy, or Microsoft Authenticator</p>
+                        </div>
+                    </div>
+                    <div class="option-check">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                        </svg>
+                    </div>
+                </div>
             </div>
             
-            <div class="modal-body">
-               <!-- Replace the method cards section with this: -->
-<div class="method-grid">
-    <div class="method-card" data-method="authenticator" role="button" tabindex="0">
-        <div class="method-icon-circle authenticator">
-            <i data-feather="smartphone"></i>
-        </div>
-        <div class="method-content">
-            <h4 class="method-title">Authenticator App</h4>
-            <p class="method-description">Use Google Authenticator, Authy, or Microsoft Authenticator</p>
-        </div>
-    </div>
-    
-    <div class="method-card" data-method="sms" role="button" tabindex="0">
-        <div class="method-icon-circle sms">
-            <i data-feather="message-circle"></i>
-        </div>
-        <div class="method-content">
-            <h4 class="method-title">Text Message (SMS)</h4>
-            <p class="method-description">Receive verification codes via SMS to your phone</p>
-        </div>
-    </div>
-    
-    <div class="method-card" data-method="email" role="button" tabindex="0">
-        <div class="method-icon-circle email">
-            <i data-feather="mail"></i>
-        </div>
-        <div class="method-content">
-            <h4 class="method-title">Email Verification</h4>
-            <p class="method-description">Receive verification codes via email</p>
+            <div id="methodError" class="error-message mt-4" style="display: none;" role="alert"></div>
+            
+            <div class="action-buttons mt-8">
+                <button onclick="window.proceedWithSelectedMethod()" 
+                        id="proceedMethodBtn" 
+                        class="btn-primary w-full">
+                    Send Verification Code
+                </button>
+            </div>
+            
+            <div class="back-link mt-6 text-center">
+                <a href="#" onclick="window.goBackToLogin()" class="text-primary-600 hover:text-primary-700 font-medium">
+                    ← Back
+                </a>
+            </div>
         </div>
     </div>
 </div>
-                
-                <div id="methodError" class="error-message" style="display: none;" role="alert"></div>
-                
-                <div class="action-buttons">
-                    <button onclick="window.proceedWithSelectedMethod()" 
-                            id="proceedMethodBtn" 
-                            class="modal-btn modal-btn-primary">
-                        Continue
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-    
     <!-- Authenticator Setup Modal -->
     <div id="authenticatorSetupModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="setupModalTitle">
         <div class="modal-content">
