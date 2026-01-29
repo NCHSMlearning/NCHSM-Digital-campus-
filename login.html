@@ -11,60 +11,127 @@
     <script src="https://unpkg.com/@otplib/preset-browser@^12.0.0/index.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
     
     <style>
-        /* ===== MOBILE-FIRST CSS ===== */
+        /* ===== ENHANCED COLOR THEME ===== */
         :root {
-            /* NCHSM Colors */
-            --primary: #0A3D62;
-            --primary-dark: #073450;
-            --primary-light: #1E5A87;
-            --accent: #38A169;
-            --accent-dark: #2F855A;
-            --accent-light: #48BB78;
+            /* Primary Colors - Deep Blue */
+            --primary-50: #f0f9ff;
+            --primary-100: #e0f2fe;
+            --primary-200: #bae6fd;
+            --primary-300: #7dd3fc;
+            --primary-400: #38bdf8;
+            --primary-500: #0ea5e9;
+            --primary-600: #0284c7;
+            --primary-700: #0369a1;
+            --primary-800: #075985;
+            --primary-900: #0c4a6e;
+            --primary-950: #082f49;
             
-            /* UI Colors */
-            --white: #FFFFFF;
-            --gray-50: #F8FAFC;
-            --gray-100: #F1F5F9;
-            --gray-200: #E2E8F0;
-            --gray-300: #CBD5E1;
-            --gray-400: #94A3B8;
-            --gray-500: #64748B;
+            /* Secondary Colors - Emerald */
+            --secondary-50: #f0fdf4;
+            --secondary-100: #dcfce7;
+            --secondary-200: #bbf7d0;
+            --secondary-300: #86efac;
+            --secondary-400: #4ade80;
+            --secondary-500: #22c55e;
+            --secondary-600: #16a34a;
+            --secondary-700: #15803d;
+            --secondary-800: #166534;
+            --secondary-900: #14532d;
+            --secondary-950: #052e16;
+            
+            /* Neutral Colors */
+            --white: #ffffff;
+            --gray-50: #f8fafc;
+            --gray-100: #f1f5f9;
+            --gray-200: #e2e8f0;
+            --gray-300: #cbd5e1;
+            --gray-400: #94a3b8;
+            --gray-500: #64748b;
             --gray-600: #475569;
             --gray-700: #334155;
-            --gray-800: #1E293B;
-            --gray-900: #0F172A;
+            --gray-800: #1e293b;
+            --gray-900: #0f172a;
+            --gray-950: #020617;
             
             /* Status Colors */
-            --success: #10B981;
-            --warning: #F59E0B;
-            --error: #EF4444;
-            --info: #3B82F6;
+            --success-50: #f0fdf4;
+            --success-500: #10b981;
+            --success-600: #059669;
+            --warning-50: #fffbeb;
+            --warning-500: #f59e0b;
+            --warning-600: #d97706;
+            --error-50: #fef2f2;
+            --error-500: #ef4444;
+            --error-600: #dc2626;
+            --info-50: #eff6ff;
+            --info-500: #3b82f6;
+            --info-600: #2563eb;
             
             /* Gradients */
-            --gradient-primary: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-            --gradient-accent: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
+            --gradient-primary: linear-gradient(135deg, var(--primary-600) 0%, var(--primary-800) 100%);
+            --gradient-secondary: linear-gradient(135deg, var(--secondary-500) 0%, var(--secondary-700) 100%);
+            --gradient-blue-emerald: linear-gradient(135deg, var(--primary-500) 0%, var(--secondary-500) 100%);
             
             /* Shadows */
-            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            --shadow-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
             
             /* Transitions */
-            --transition: all 0.2s ease;
+            --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-base: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-slow: 500ms cubic-bezier(0.4, 0, 0.2, 1);
             
             /* Border Radius */
-            --radius-sm: 6px;
-            --radius-md: 10px;
+            --radius-sm: 8px;
+            --radius-md: 12px;
             --radius-lg: 16px;
             --radius-xl: 24px;
+            --radius-2xl: 32px;
             --radius-full: 9999px;
+            
+            /* Blur Effects */
+            --backdrop-blur: blur(16px);
         }
 
-        /* Reset & Base */
+        /* Dark Mode Colors */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --primary-50: #0c4a6e;
+                --primary-100: #075985;
+                --primary-200: #0369a1;
+                --primary-300: #0284c7;
+                --primary-400: #0ea5e9;
+                --primary-500: #38bdf8;
+                --primary-600: #7dd3fc;
+                --primary-700: #bae6fd;
+                --primary-800: #e0f2fe;
+                --primary-900: #f0f9ff;
+                
+                --white: #0f172a;
+                --gray-50: #1e293b;
+                --gray-100: #334155;
+                --gray-200: #475569;
+                --gray-300: #64748b;
+                --gray-400: #94a3b8;
+                --gray-500: #cbd5e1;
+                --gray-600: #e2e8f0;
+                --gray-700: #f1f5f9;
+                --gray-800: #f8fafc;
+                --gray-900: #ffffff;
+                
+                --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+                --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+                --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+            }
+        }
+
+        /* ===== RESET & BASE STYLES ===== */
         * {
             margin: 0;
             padding: 0;
@@ -74,55 +141,83 @@
 
         html {
             font-size: 16px;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
             -webkit-text-size-adjust: 100%;
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: var(--gray-50);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, var(--primary-50) 0%, var(--gray-50) 100%);
             color: var(--gray-800);
             line-height: 1.5;
             min-height: 100vh;
-            padding: 0;
-            margin: 0;
+            position: relative;
+            overflow-x: hidden;
         }
 
-        /* Mobile Container */
-        .mobile-container {
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 20% 80%, rgba(14, 165, 233, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(34, 197, 94, 0.1) 0%, transparent 50%);
+            z-index: -1;
+        }
+
+        /* ===== MOBILE CONTAINER ===== */
+        .container {
             min-height: 100vh;
             display: flex;
             flex-direction: column;
-            background: var(--white);
             position: relative;
         }
 
-        /* Header - Mobile Optimized */
-        .mobile-header {
-            background: var(--gradient-primary);
-            color: var(--white);
+        /* ===== HEADER ===== */
+        .header {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: var(--backdrop-blur);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
             padding: 1rem;
             position: sticky;
             top: 0;
             z-index: 100;
-            box-shadow: var(--shadow-md);
+            box-shadow: var(--shadow-sm);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .header {
+                background: rgba(15, 23, 42, 0.8);
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            }
         }
 
         .header-content {
             display: flex;
             align-items: center;
-            gap: 0.75rem;
+            gap: 1rem;
             max-width: 1200px;
             margin: 0 auto;
             width: 100%;
         }
 
         .logo {
-            width: 48px;
-            height: 48px;
-            background: rgba(255, 255, 255, 0.15);
-            border-radius: var(--radius-md);
+            width: 56px;
+            height: 56px;
+            background: var(--gradient-primary);
+            border-radius: var(--radius-lg);
             padding: 0.5rem;
             flex-shrink: 0;
+            box-shadow: var(--shadow-md);
+            transition: transform var(--transition-base);
+        }
+
+        .logo:hover {
+            transform: scale(1.05);
         }
 
         .logo img {
@@ -134,79 +229,177 @@
 
         .college-info {
             flex: 1;
-            min-width: 0; /* Prevent flex overflow */
+            min-width: 0;
         }
 
         .college-name {
-            font-size: 0.95rem;
+            font-size: 1rem;
             font-weight: 700;
             line-height: 1.2;
-            margin-bottom: 0.125rem;
-            white-space: nowrap;
+            color: var(--primary-800);
+            margin-bottom: 0.25rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
             overflow: hidden;
-            text-overflow: ellipsis;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .college-name {
+                color: var(--primary-300);
+            }
         }
 
         .college-tagline {
             font-size: 0.75rem;
-            opacity: 0.9;
-            white-space: nowrap;
+            color: var(--gray-600);
+            font-weight: 500;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
             overflow: hidden;
-            text-overflow: ellipsis;
         }
 
-        /* Main Content */
+        @media (prefers-color-scheme: dark) {
+            .college-tagline {
+                color: var(--gray-400);
+            }
+        }
+
+        /* ===== MAIN CONTENT ===== */
         .main-content {
             flex: 1;
-            padding: 1.5rem 1rem;
+            padding: 2rem 1rem;
             display: flex;
-            flex-direction: column;
+            align-items: center;
+            justify-content: center;
             max-width: 1200px;
             margin: 0 auto;
             width: 100%;
         }
 
-        /* Welcome Card */
-        .welcome-card {
-            background: var(--white);
-            border-radius: var(--radius-lg);
-            padding: 1.5rem;
-            box-shadow: var(--shadow-md);
-            margin-bottom: 1.5rem;
-            border: 1px solid var(--gray-200);
+        /* ===== LOGIN CARD ===== */
+        .login-card {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: var(--backdrop-blur);
+            border-radius: var(--radius-2xl);
+            padding: 2rem;
+            width: 100%;
+            max-width: 440px;
+            box-shadow: var(--shadow-xl);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            position: relative;
+            overflow: hidden;
+            animation: cardEntrance 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @keyframes cardEntrance {
+            from {
+                opacity: 0;
+                transform: translateY(20px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .login-card {
+                background: rgba(15, 23, 42, 0.9);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+            }
+        }
+
+        .login-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--gradient-blue-emerald);
+        }
+
+        /* ===== WELCOME SECTION ===== */
+        .welcome-section {
             text-align: center;
+            margin-bottom: 2rem;
         }
 
         .welcome-icon {
-            width: 64px;
-            height: 64px;
-            background: var(--gradient-accent);
+            width: 80px;
+            height: 80px;
+            background: var(--gradient-blue-emerald);
             border-radius: var(--radius-full);
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0 auto 1rem;
+            margin: 0 auto 1.5rem;
             color: var(--white);
+            box-shadow: var(--shadow-lg);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .welcome-icon::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(
+                45deg,
+                transparent 30%,
+                rgba(255, 255, 255, 0.1) 50%,
+                transparent 70%
+            );
+            animation: shimmer 3s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+            100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
         }
 
         .welcome-title {
-            font-size: 1.5rem;
-            font-weight: 700;
+            font-size: 1.75rem;
+            font-weight: 800;
             color: var(--gray-900);
-            margin-bottom: 0.25rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, var(--primary-600) 0%, var(--secondary-600) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
         .welcome-subtitle {
-            font-size: 0.875rem;
-            color: var(--gray-500);
-            margin-bottom: 1.5rem;
+            font-size: 0.9375rem;
+            color: var(--gray-600);
+            line-height: 1.6;
+            max-width: 320px;
+            margin: 0 auto;
         }
 
-        /* Login Form */
+        @media (prefers-color-scheme: dark) {
+            .welcome-title {
+                background: linear-gradient(135deg, var(--primary-400) 0%, var(--secondary-400) 100%);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+            }
+            
+            .welcome-subtitle {
+                color: var(--gray-400);
+            }
+        }
+
+        /* ===== FORM STYLES ===== */
         .login-form {
             display: flex;
             flex-direction: column;
-            gap: 1rem;
+            gap: 1.5rem;
         }
 
         .form-group {
@@ -217,8 +410,17 @@
 
         .form-label {
             font-size: 0.875rem;
-            font-weight: 500;
+            font-weight: 600;
             color: var(--gray-700);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .form-label {
+                color: var(--gray-300);
+            }
         }
 
         .input-wrapper {
@@ -227,161 +429,356 @@
 
         .form-input {
             width: 100%;
-            padding: 0.875rem 1rem;
+            padding: 1rem 1rem 1rem 3rem;
             font-size: 1rem;
-            background: var(--white);
-            border: 1.5px solid var(--gray-300);
-            border-radius: var(--radius-md);
+            background: rgba(255, 255, 255, 0.8);
+            border: 2px solid var(--gray-200);
+            border-radius: var(--radius-lg);
             color: var(--gray-900);
-            transition: var(--transition);
-            -webkit-appearance: none;
-            appearance: none;
+            transition: all var(--transition-base);
+            font-weight: 500;
+            box-shadow: var(--shadow-inner);
         }
 
         .form-input:focus {
             outline: none;
-            border-color: var(--accent);
-            box-shadow: 0 0 0 3px rgba(56, 161, 105, 0.1);
+            border-color: var(--primary-500);
+            box-shadow: 
+                var(--shadow-inner),
+                0 0 0 4px rgba(14, 165, 233, 0.1);
+            background: var(--white);
+            transform: translateY(-1px);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .form-input {
+                background: rgba(30, 41, 59, 0.8);
+                border-color: var(--gray-700);
+                color: var(--gray-100);
+            }
+            
+            .form-input:focus {
+                background: var(--gray-800);
+                border-color: var(--primary-400);
+                box-shadow: 
+                    var(--shadow-inner),
+                    0 0 0 4px rgba(56, 189, 248, 0.2);
+            }
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--gray-400);
+            pointer-events: none;
+        }
+
+        .form-input:focus + .input-icon {
+            color: var(--primary-500);
         }
 
         .password-toggle {
             position: absolute;
-            right: 0.75rem;
+            right: 1rem;
             top: 50%;
             transform: translateY(-50%);
             background: none;
             border: none;
             color: var(--gray-400);
-            padding: 0.25rem;
+            padding: 0.5rem;
             cursor: pointer;
+            border-radius: var(--radius-sm);
+            transition: all var(--transition-fast);
         }
 
+        .password-toggle:hover {
+            color: var(--primary-500);
+            background: var(--primary-50);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .password-toggle:hover {
+                background: var(--primary-900);
+            }
+        }
+
+        /* ===== FORM OPTIONS ===== */
         .form-options {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin: 0.5rem 0;
+            margin: 0.5rem 0 1rem;
         }
 
         .remember-me {
             display: flex;
             align-items: center;
-            gap: 0.5rem;
-            font-size: 0.875rem;
-            color: var(--gray-600);
+            gap: 0.75rem;
+            cursor: pointer;
+            user-select: none;
         }
 
-        .remember-me input[type="checkbox"] {
-            width: 1rem;
-            height: 1rem;
-            accent-color: var(--accent);
+        .checkbox-wrapper {
+            position: relative;
+            width: 20px;
+            height: 20px;
+        }
+
+        .remember-checkbox {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .checkbox-custom {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--gray-300);
+            border-radius: 6px;
+            background: var(--white);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--transition-fast);
+        }
+
+        .remember-checkbox:checked + .checkbox-custom {
+            background: var(--primary-500);
+            border-color: var(--primary-500);
+        }
+
+        .remember-checkbox:checked + .checkbox-custom::after {
+            content: '✓';
+            color: var(--white);
+            font-size: 0.875rem;
+            font-weight: bold;
+        }
+
+        .remember-checkbox:focus + .checkbox-custom {
+            box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.2);
+        }
+
+        .remember-label {
+            font-size: 0.875rem;
+            color: var(--gray-600);
+            font-weight: 500;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .checkbox-custom {
+                background: var(--gray-800);
+                border-color: var(--gray-600);
+            }
+            
+            .remember-label {
+                color: var(--gray-400);
+            }
         }
 
         .forgot-link {
             font-size: 0.875rem;
-            font-weight: 500;
-            color: var(--primary);
+            font-weight: 600;
+            color: var(--primary-600);
             text-decoration: none;
+            padding: 0.5rem;
+            border-radius: var(--radius-sm);
+            transition: all var(--transition-fast);
         }
 
         .forgot-link:hover {
-            text-decoration: underline;
+            color: var(--primary-700);
+            background: var(--primary-50);
+            text-decoration: none;
         }
 
+        @media (prefers-color-scheme: dark) {
+            .forgot-link {
+                color: var(--primary-400);
+            }
+            
+            .forgot-link:hover {
+                background: var(--primary-900);
+            }
+        }
+
+        /* ===== LOGIN BUTTON ===== */
         .login-button {
             width: 100%;
-            padding: 0.875rem;
+            padding: 1rem;
             font-size: 1rem;
-            font-weight: 600;
-            background: var(--gradient-accent);
+            font-weight: 700;
+            background: var(--gradient-blue-emerald);
             color: var(--white);
             border: none;
-            border-radius: var(--radius-md);
+            border-radius: var(--radius-lg);
             cursor: pointer;
-            transition: var(--transition);
-            box-shadow: 0 4px 12px rgba(56, 161, 105, 0.3);
-            margin-top: 0.5rem;
+            transition: all var(--transition-base);
+            box-shadow: 
+                0 4px 16px rgba(14, 165, 233, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            position: relative;
+            overflow: hidden;
+            letter-spacing: 0.5px;
+        }
+
+        .login-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                90deg,
+                transparent,
+                rgba(255, 255, 255, 0.2),
+                transparent
+            );
+            transition: left 0.7s ease;
         }
 
         .login-button:hover:not(:disabled) {
-            transform: translateY(-1px);
-            box-shadow: 0 6px 16px rgba(56, 161, 105, 0.4);
+            transform: translateY(-2px);
+            box-shadow: 
+                0 8px 24px rgba(14, 165, 233, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+        }
+
+        .login-button:hover:not(:disabled)::before {
+            left: 100%;
         }
 
         .login-button:active:not(:disabled) {
             transform: translateY(0);
+            box-shadow: 
+                0 2px 8px rgba(14, 165, 233, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
         }
 
         .login-button:disabled {
             opacity: 0.6;
             cursor: not-allowed;
+            transform: none !important;
         }
 
-        /* Divider */
-        .divider {
-            display: flex;
-            align-items: center;
-            margin: 1.5rem 0;
-            color: var(--gray-400);
-            font-size: 0.875rem;
-        }
-
-        .divider::before,
-        .divider::after {
-            content: '';
-            flex: 1;
-            height: 1px;
-            background: var(--gray-300);
-        }
-
-        .divider span {
-            padding: 0 1rem;
-        }
-
-        /* Sign Up Prompt */
-        .signup-prompt {
+        /* ===== SIGNUP SECTION ===== */
+        .signup-section {
             text-align: center;
-            font-size: 0.875rem;
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid var(--gray-200);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .signup-section {
+                border-top-color: var(--gray-700);
+            }
+        }
+
+        .signup-text {
+            font-size: 0.9375rem;
             color: var(--gray-600);
-            margin-top: 1rem;
+            margin-bottom: 1rem;
         }
 
         .signup-link {
-            font-weight: 600;
-            color: var(--primary);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.875rem 1.5rem;
+            font-size: 0.9375rem;
+            font-weight: 700;
+            color: var(--primary-600);
             text-decoration: none;
+            border: 2px solid var(--primary-200);
+            border-radius: var(--radius-lg);
+            background: var(--white);
+            transition: all var(--transition-base);
+            box-shadow: var(--shadow-sm);
         }
 
         .signup-link:hover {
-            text-decoration: underline;
+            border-color: var(--primary-500);
+            background: var(--primary-50);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
         }
 
-        /* Error Message */
+        @media (prefers-color-scheme: dark) {
+            .signup-text {
+                color: var(--gray-400);
+            }
+            
+            .signup-link {
+                color: var(--primary-400);
+                background: var(--gray-800);
+                border-color: var(--primary-800);
+            }
+            
+            .signup-link:hover {
+                background: var(--primary-900);
+                border-color: var(--primary-500);
+            }
+        }
+
+        /* ===== ERROR MESSAGE ===== */
         .error-message {
-            background: rgba(239, 68, 68, 0.05);
-            border: 1px solid rgba(239, 68, 68, 0.2);
-            color: var(--error);
-            padding: 0.75rem;
-            border-radius: var(--radius-md);
+            background: var(--error-50);
+            border: 2px solid var(--error-500);
+            color: var(--error-600);
+            padding: 1rem;
+            border-radius: var(--radius-lg);
             font-size: 0.875rem;
-            margin-bottom: 1rem;
+            font-weight: 500;
+            margin-bottom: 1.5rem;
             display: none;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .error-message.show {
-            display: block;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
         }
 
-        /* Loading Spinner */
+        .error-icon {
+            flex-shrink: 0;
+            color: var(--error-500);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .error-message {
+                background: rgba(239, 68, 68, 0.1);
+                border-color: var(--error-500);
+                color: var(--error-400);
+            }
+        }
+
+        /* ===== LOADING SPINNER ===== */
         .loading-spinner {
             display: inline-block;
-            width: 1rem;
-            height: 1rem;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-top: 2px solid var(--white);
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top: 3px solid var(--white);
             border-radius: 50%;
             animation: spin 1s linear infinite;
-            margin-right: 0.5rem;
+            margin-right: 0.75rem;
             vertical-align: middle;
         }
 
@@ -390,45 +787,79 @@
             100% { transform: rotate(360deg); }
         }
 
-        /* Footer */
-        .mobile-footer {
-            background: var(--gray-900);
-            color: var(--gray-400);
-            padding: 1rem;
-            font-size: 0.75rem;
+        /* ===== FOOTER ===== */
+        .footer {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: var(--backdrop-blur);
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 1.5rem 1rem;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .footer {
+                background: rgba(15, 23, 42, 0.8);
+                border-top: 1px solid rgba(255, 255, 255, 0.1);
+            }
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
             text-align: center;
-            border-top: 1px solid var(--gray-800);
         }
 
         .copyright {
-            margin-bottom: 0.25rem;
+            font-size: 0.875rem;
+            color: var(--gray-600);
+            margin-bottom: 1rem;
+            font-weight: 500;
         }
 
         .footer-links {
             display: flex;
             justify-content: center;
-            gap: 1rem;
+            gap: 2rem;
             flex-wrap: wrap;
         }
 
-        .footer-links a {
-            color: var(--gray-400);
+        .footer-link {
+            font-size: 0.875rem;
+            color: var(--gray-500);
             text-decoration: none;
+            font-weight: 500;
+            padding: 0.5rem;
+            border-radius: var(--radius-sm);
+            transition: all var(--transition-fast);
         }
 
-        .footer-links a:hover {
-            color: var(--gray-300);
-            text-decoration: underline;
+        .footer-link:hover {
+            color: var(--primary-600);
+            background: var(--primary-50);
         }
 
-        /* ===== MODAL STYLES (Mobile Optimized) ===== */
+        @media (prefers-color-scheme: dark) {
+            .copyright {
+                color: var(--gray-400);
+            }
+            
+            .footer-link {
+                color: var(--gray-400);
+            }
+            
+            .footer-link:hover {
+                color: var(--primary-400);
+                background: var(--primary-900);
+            }
+        }
+
+        /* ===== MODAL STYLES ===== */
         .modal-overlay {
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(7, 52, 80, 0.95);
+            background: rgba(2, 6, 23, 0.8);
             backdrop-filter: blur(8px);
             z-index: 1000;
             display: flex;
@@ -437,7 +868,7 @@
             padding: 1rem;
             opacity: 0;
             visibility: hidden;
-            transition: var(--transition);
+            transition: all var(--transition-base);
         }
 
         .modal-overlay.active {
@@ -447,126 +878,208 @@
 
         .modal-content {
             background: var(--white);
-            border-radius: var(--radius-lg);
+            border-radius: var(--radius-2xl);
             width: 100%;
-            max-width: 400px;
+            max-width: 420px;
             max-height: 90vh;
             overflow-y: auto;
-            box-shadow: var(--shadow-xl);
+            box-shadow: var(--shadow-2xl);
             position: relative;
-            animation: modalSlideIn 0.3s ease;
+            animation: modalSlideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
 
         @keyframes modalSlideIn {
             from {
                 opacity: 0;
-                transform: translateY(20px);
+                transform: translateY(40px) scale(0.95);
             }
             to {
                 opacity: 1;
-                transform: translateY(0);
+                transform: translateY(0) scale(1);
             }
         }
 
-        .modal-header {
-            padding: 1.5rem 1.5rem 1rem;
-            text-align: center;
-            border-bottom: 1px solid var(--gray-200);
-            position: sticky;
-            top: 0;
-            background: var(--white);
-            z-index: 1;
+        @media (prefers-color-scheme: dark) {
+            .modal-content {
+                background: var(--gray-800);
+            }
         }
 
         .modal-close {
             position: absolute;
-            top: 1rem;
-            right: 1rem;
-            background: none;
+            top: 1.25rem;
+            right: 1.25rem;
+            width: 40px;
+            height: 40px;
+            background: var(--gray-100);
             border: none;
+            border-radius: var(--radius-full);
             font-size: 1.5rem;
-            color: var(--gray-400);
+            color: var(--gray-600);
             cursor: pointer;
-            width: 2rem;
-            height: 2rem;
             display: flex;
             align-items: center;
             justify-content: center;
-            border-radius: var(--radius-full);
+            transition: all var(--transition-fast);
+            z-index: 2;
         }
 
         .modal-close:hover {
-            background: var(--gray-100);
+            background: var(--error-50);
+            color: var(--error-600);
+            transform: rotate(90deg);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .modal-close {
+                background: var(--gray-700);
+                color: var(--gray-300);
+            }
+            
+            .modal-close:hover {
+                background: rgba(239, 68, 68, 0.2);
+                color: var(--error-400);
+            }
+        }
+
+        .modal-header {
+            padding: 2rem 2rem 1.5rem;
+            text-align: center;
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .modal-header {
+                border-bottom-color: var(--gray-700);
+            }
         }
 
         .modal-icon {
-            width: 56px;
-            height: 56px;
-            background: var(--gradient-accent);
+            width: 64px;
+            height: 64px;
+            background: var(--gradient-blue-emerald);
             border-radius: var(--radius-full);
             display: flex;
             align-items: center;
             justify-content: center;
             margin: 0 auto 1rem;
             color: var(--white);
+            box-shadow: var(--shadow-lg);
         }
 
         .modal-title {
-            font-size: 1.25rem;
-            font-weight: 700;
+            font-size: 1.5rem;
+            font-weight: 800;
             color: var(--gray-900);
-            margin-bottom: 0.25rem;
+            margin-bottom: 0.5rem;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .modal-title {
+                color: var(--gray-100);
+            }
         }
 
         .modal-subtitle {
-            font-size: 0.875rem;
-            color: var(--gray-500);
-            line-height: 1.4;
+            font-size: 0.9375rem;
+            color: var(--gray-600);
+            line-height: 1.6;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .modal-subtitle {
+                color: var(--gray-400);
+            }
         }
 
         .modal-body {
-            padding: 1.5rem;
+            padding: 1.5rem 2rem 2rem;
         }
 
-        /* Method Selection */
+        /* ===== METHOD SELECTION ===== */
         .method-grid {
             display: grid;
-            gap: 0.75rem;
-            margin: 1rem 0;
+            gap: 1rem;
+            margin: 1.5rem 0;
         }
 
         .method-card {
             background: var(--gray-50);
-            border: 2px solid var(--gray-300);
-            border-radius: var(--radius-md);
-            padding: 1rem;
+            border: 2px solid var(--gray-200);
+            border-radius: var(--radius-lg);
+            padding: 1.25rem;
             cursor: pointer;
-            transition: var(--transition);
+            transition: all var(--transition-base);
             display: flex;
             align-items: center;
             gap: 1rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .method-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--gradient-primary);
+            transform: translateY(-100%);
+            transition: transform var(--transition-base);
         }
 
         .method-card:hover {
-            border-color: var(--accent);
-            background: rgba(56, 161, 105, 0.02);
+            border-color: var(--primary-300);
+            background: var(--white);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .method-card:hover::before {
+            transform: translateY(0);
         }
 
         .method-card.selected {
-            border-color: var(--accent);
-            background: rgba(56, 161, 105, 0.05);
-            box-shadow: 0 4px 12px rgba(56, 161, 105, 0.1);
+            border-color: var(--primary-500);
+            background: var(--white);
+            box-shadow: 
+                var(--shadow-lg),
+                0 0 0 1px var(--primary-500);
+        }
+
+        .method-card.selected::before {
+            transform: translateY(0);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .method-card {
+                background: var(--gray-800);
+                border-color: var(--gray-700);
+            }
+            
+            .method-card:hover {
+                background: var(--gray-700);
+                border-color: var(--primary-500);
+            }
+            
+            .method-card.selected {
+                background: var(--gray-700);
+                border-color: var(--primary-500);
+            }
         }
 
         .method-icon-circle {
-            width: 40px;
-            height: 40px;
+            width: 48px;
+            height: 48px;
             border-radius: var(--radius-full);
             display: flex;
             align-items: center;
             justify-content: center;
             color: var(--white);
             flex-shrink: 0;
+            font-size: 1.25rem;
+            box-shadow: var(--shadow-md);
         }
 
         .method-icon-circle.authenticator {
@@ -586,122 +1099,323 @@
         }
 
         .method-title {
-            font-weight: 600;
+            font-weight: 700;
             color: var(--gray-900);
-            margin-bottom: 0.125rem;
-            font-size: 0.9375rem;
+            margin-bottom: 0.25rem;
+            font-size: 1rem;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .method-title {
+                color: var(--gray-100);
+            }
         }
 
         .method-description {
             font-size: 0.8125rem;
-            color: var(--gray-500);
-            line-height: 1.4;
+            color: var(--gray-600);
+            line-height: 1.5;
         }
 
-        /* OTP Input */
+        @media (prefers-color-scheme: dark) {
+            .method-description {
+                color: var(--gray-400);
+            }
+        }
+
+        /* ===== OTP INPUT ===== */
         .otp-container {
-            margin: 1.5rem 0;
+            margin: 2rem 0;
+        }
+
+        .otp-label {
+            font-size: 0.9375rem;
+            color: var(--gray-700);
+            font-weight: 600;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .otp-label {
+                color: var(--gray-300);
+            }
         }
 
         .otp-inputs {
             display: flex;
-            gap: 0.5rem;
+            gap: 0.75rem;
             justify-content: center;
         }
 
         .otp-digit {
-            width: 44px;
-            height: 52px;
+            width: 56px;
+            height: 64px;
             text-align: center;
-            font-size: 1.25rem;
-            font-weight: 600;
+            font-size: 1.5rem;
+            font-weight: 700;
             color: var(--gray-900);
             background: var(--gray-50);
             border: 2px solid var(--gray-300);
-            border-radius: var(--radius-md);
-            transition: var(--transition);
+            border-radius: var(--radius-lg);
+            transition: all var(--transition-fast);
             outline: none;
+            caret-color: var(--primary-500);
+            box-shadow: var(--shadow-inner);
         }
 
         .otp-digit:focus {
-            border-color: var(--accent);
+            border-color: var(--primary-500);
             background: var(--white);
-            box-shadow: 0 0 0 3px rgba(56, 161, 105, 0.1);
+            box-shadow: 
+                var(--shadow-inner),
+                0 0 0 3px rgba(14, 165, 233, 0.1);
+            transform: translateY(-1px);
         }
 
         .otp-digit.filled {
-            border-color: var(--accent);
-            background: rgba(56, 161, 105, 0.05);
+            border-color: var(--primary-500);
+            background: rgba(14, 165, 233, 0.05);
         }
 
-        /* QR Code */
-        .qr-container {
-            text-align: center;
+        @media (prefers-color-scheme: dark) {
+            .otp-digit {
+                background: var(--gray-800);
+                border-color: var(--gray-700);
+                color: var(--gray-100);
+            }
+            
+            .otp-digit:focus {
+                background: var(--gray-700);
+                border-color: var(--primary-400);
+                box-shadow: 
+                    var(--shadow-inner),
+                    0 0 0 3px rgba(56, 189, 248, 0.2);
+            }
+            
+            .otp-digit.filled {
+                background: rgba(56, 189, 248, 0.1);
+                border-color: var(--primary-400);
+            }
+        }
+
+        /* ===== TRUST DEVICE ===== */
+        .trust-device {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
             margin: 1.5rem 0;
-        }
-
-        .qr-code {
-            display: inline-block;
             padding: 1rem;
-            background: var(--white);
-            border-radius: var(--radius-md);
-            border: 1px solid var(--gray-300);
-            margin: 1rem 0;
-        }
-
-        .qr-instructions {
             background: var(--gray-50);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--gray-200);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .trust-device {
+                background: var(--gray-800);
+                border-color: var(--gray-700);
+            }
+        }
+
+        .trust-checkbox {
+            width: 20px;
+            height: 20px;
+            accent-color: var(--primary-500);
+        }
+
+        .trust-label {
+            font-size: 0.9375rem;
+            color: var(--gray-700);
+            font-weight: 500;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .trust-label {
+                color: var(--gray-300);
+            }
+        }
+
+        /* ===== ACTION BUTTONS ===== */
+        .action-buttons {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .modal-btn {
+            flex: 1;
             padding: 1rem;
-            border-radius: var(--radius-md);
-            margin: 1rem 0;
-            text-align: left;
+            font-size: 1rem;
+            font-weight: 700;
+            border-radius: var(--radius-lg);
+            cursor: pointer;
+            transition: all var(--transition-base);
+            border: none;
+            position: relative;
+            overflow: hidden;
         }
 
-        .qr-instructions ol {
-            padding-left: 1.25rem;
-            margin: 0.5rem 0;
+        .modal-btn-primary {
+            background: var(--gradient-blue-emerald);
+            color: var(--white);
+            box-shadow: 
+                0 4px 16px rgba(14, 165, 233, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
         }
 
-        .qr-instructions li {
-            margin-bottom: 0.5rem;
-            color: var(--gray-600);
+        .modal-btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 
+                0 8px 24px rgba(14, 165, 233, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+        }
+
+        .modal-btn-secondary {
+            background: var(--white);
+            color: var(--primary-600);
+            border: 2px solid var(--primary-200);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .modal-btn-secondary:hover {
+            border-color: var(--primary-500);
+            background: var(--primary-50);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .modal-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .modal-btn-secondary {
+                background: var(--gray-800);
+                color: var(--primary-400);
+                border-color: var(--primary-800);
+            }
+            
+            .modal-btn-secondary:hover {
+                background: var(--primary-900);
+                border-color: var(--primary-500);
+            }
+        }
+
+        /* ===== HELP LINKS ===== */
+        .help-links {
+            display: flex;
+            justify-content: center;
+            gap: 1.5rem;
+            margin-top: 1.5rem;
             font-size: 0.875rem;
         }
 
-        /* Backup Codes */
+        .help-link {
+            color: var(--primary-600);
+            text-decoration: none;
+            font-weight: 600;
+            padding: 0.5rem;
+            border-radius: var(--radius-sm);
+            transition: all var(--transition-fast);
+        }
+
+        .help-link:hover {
+            color: var(--primary-700);
+            background: var(--primary-50);
+            text-decoration: none;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .help-link {
+                color: var(--primary-400);
+            }
+            
+            .help-link:hover {
+                background: var(--primary-900);
+            }
+        }
+
+        /* ===== BACKUP CODES ===== */
         .backup-codes {
             background: var(--gray-50);
-            border-radius: var(--radius-md);
+            border-radius: var(--radius-xl);
             padding: 1.5rem;
             margin: 1.5rem 0;
+            border: 1px solid var(--gray-200);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .backup-codes {
+                background: var(--gray-800);
+                border-color: var(--gray-700);
+            }
+        }
+
+        .backup-warning {
+            color: var(--error-600);
+            font-size: 0.875rem;
+            margin-bottom: 1rem;
+            text-align: center;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .backup-warning {
+                color: var(--error-400);
+            }
         }
 
         .backup-codes-grid {
             display: grid;
-            gap: 0.5rem;
-            margin: 1rem 0;
+            gap: 0.75rem;
+            margin: 1.5rem 0;
+        }
+
+        @media (min-width: 640px) {
+            .backup-codes-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
         }
 
         .backup-code {
-            font-family: 'Courier New', monospace;
-            font-size: 0.875rem;
-            font-weight: 600;
-            padding: 0.75rem;
+            font-family: 'JetBrains Mono', 'Courier New', monospace;
+            font-size: 0.9375rem;
+            font-weight: 700;
+            padding: 1rem;
             background: var(--white);
             border: 1px solid var(--gray-300);
-            border-radius: var(--radius-sm);
+            border-radius: var(--radius-lg);
             text-align: center;
             position: relative;
             user-select: all;
+            color: var(--gray-800);
+            letter-spacing: 1px;
+            transition: all var(--transition-fast);
+        }
+
+        .backup-code:hover {
+            border-color: var(--primary-500);
+            background: var(--primary-50);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-sm);
         }
 
         .copy-button {
             position: absolute;
-            top: 0.25rem;
-            right: 0.25rem;
-            width: 1.5rem;
-            height: 1.5rem;
-            background: var(--primary);
+            top: 0.5rem;
+            right: 0.5rem;
+            width: 28px;
+            height: 28px;
+            background: var(--primary-500);
             color: var(--white);
             border: none;
             border-radius: var(--radius-sm);
@@ -711,119 +1425,99 @@
             align-items: center;
             justify-content: center;
             opacity: 0;
-            transition: var(--transition);
+            transition: all var(--transition-fast);
+            box-shadow: var(--shadow-sm);
         }
 
         .backup-code:hover .copy-button {
             opacity: 1;
         }
 
-        /* Trust Device */
-        .trust-device {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            margin: 1rem 0;
-            padding: 0.75rem;
-            background: var(--gray-50);
-            border-radius: var(--radius-md);
+        .copy-button:hover {
+            background: var(--primary-600);
+            transform: scale(1.1);
         }
 
-        .trust-device input[type="checkbox"] {
-            width: 1rem;
-            height: 1rem;
-            accent-color: var(--accent);
+        @media (prefers-color-scheme: dark) {
+            .backup-code {
+                background: var(--gray-700);
+                border-color: var(--gray-600);
+                color: var(--gray-100);
+            }
+            
+            .backup-code:hover {
+                background: var(--primary-900);
+                border-color: var(--primary-500);
+            }
         }
 
-        .trust-device label {
-            font-size: 0.875rem;
-            color: var(--gray-600);
-            cursor: pointer;
+        /* ===== RESPONSIVE DESIGN ===== */
+        @media (min-width: 640px) {
+            .header-content {
+                gap: 1.5rem;
+            }
+            
+            .logo {
+                width: 64px;
+                height: 64px;
+            }
+            
+            .college-name {
+                font-size: 1.125rem;
+            }
+            
+            .college-tagline {
+                font-size: 0.8125rem;
+            }
+            
+            .login-card {
+                padding: 2.5rem;
+            }
+            
+            .welcome-icon {
+                width: 96px;
+                height: 96px;
+            }
+            
+            .welcome-title {
+                font-size: 2rem;
+            }
+            
+            .footer-links {
+                gap: 3rem;
+            }
         }
 
-        /* Action Buttons */
-        .action-buttons {
-            display: flex;
-            gap: 0.75rem;
-            margin-top: 1.5rem;
-        }
-
-        .btn-primary {
-            flex: 1;
-            padding: 0.875rem;
-            font-size: 1rem;
-            font-weight: 600;
-            color: var(--white);
-            background: var(--gradient-accent);
-            border: none;
-            border-radius: var(--radius-md);
-            cursor: pointer;
-            transition: var(--transition);
-        }
-
-        .btn-primary:hover:not(:disabled) {
-            transform: translateY(-1px);
-            box-shadow: 0 6px 16px rgba(56, 161, 105, 0.3);
-        }
-
-        .btn-secondary {
-            flex: 1;
-            padding: 0.875rem;
-            font-size: 1rem;
-            font-weight: 600;
-            color: var(--primary);
-            background: var(--gray-100);
-            border: 1.5px solid var(--gray-300);
-            border-radius: var(--radius-md);
-            cursor: pointer;
-            transition: var(--transition);
-        }
-
-        .btn-secondary:hover {
-            border-color: var(--primary);
-            background: var(--gray-200);
-        }
-
-        /* Help Links */
-        .help-links {
-            display: flex;
-            justify-content: center;
-            gap: 1rem;
-            margin-top: 1rem;
-            font-size: 0.875rem;
-        }
-
-        .help-links a {
-            color: var(--primary);
-            text-decoration: none;
-        }
-
-        .help-links a:hover {
-            text-decoration: underline;
-        }
-
-        /* Tablet & Desktop */
         @media (min-width: 768px) {
-            .mobile-container {
+            .container {
                 flex-direction: row;
                 min-height: 100vh;
             }
             
-            .mobile-header {
+            .header {
                 position: fixed;
                 top: 0;
                 left: 0;
                 bottom: 0;
-                width: 320px;
+                width: 380px;
                 padding: 2rem;
                 display: flex;
                 flex-direction: column;
+                justify-content: center;
+                border-right: 1px solid rgba(255, 255, 255, 0.2);
+                border-bottom: none;
             }
             
             .header-content {
                 flex-direction: column;
                 text-align: center;
-                gap: 1rem;
+                gap: 2rem;
+            }
+            
+            .logo {
+                width: 120px;
+                height: 120px;
+                border-radius: var(--radius-2xl);
             }
             
             .college-info {
@@ -831,150 +1525,236 @@
             }
             
             .college-name {
-                font-size: 1.25rem;
-                white-space: normal;
+                font-size: 1.5rem;
+                -webkit-line-clamp: 3;
             }
             
             .college-tagline {
-                font-size: 0.875rem;
-                white-space: normal;
-            }
-            
-            .main-content {
-                margin-left: 320px;
-                padding: 2rem;
-                justify-content: center;
-                max-width: 480px;
-            }
-            
-            .welcome-card {
-                padding: 2rem;
-            }
-            
-            .modal-content {
-                max-width: 440px;
-            }
-            
-            .otp-digit {
-                width: 52px;
-                height: 60px;
-            }
-            
-            .backup-codes-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-
-        @media (min-width: 1024px) {
-            .mobile-header {
-                width: 380px;
-                padding: 3rem 2rem;
+                font-size: 0.9375rem;
+                -webkit-line-clamp: 3;
             }
             
             .main-content {
                 margin-left: 380px;
-                max-width: 520px;
+                padding: 2rem;
+                justify-content: center;
+            }
+            
+            .login-card {
+                max-width: 480px;
+                padding: 3rem;
+            }
+            
+            .footer {
+                position: fixed;
+                bottom: 0;
+                left: 380px;
+                right: 0;
+                background: transparent;
+                backdrop-filter: none;
+                border-top: none;
+            }
+            
+            .footer-content {
+                max-width: 480px;
+                margin: 0 auto;
+                text-align: center;
             }
         }
 
-        /* Small Phones */
+        @media (min-width: 1024px) {
+            .header {
+                width: 480px;
+                padding: 3rem;
+            }
+            
+            .main-content {
+                margin-left: 480px;
+                padding: 3rem;
+            }
+            
+            .footer {
+                left: 480px;
+            }
+            
+            .login-card {
+                max-width: 520px;
+                padding: 4rem;
+            }
+        }
+
+        @media (min-width: 1280px) {
+            .header {
+                width: 560px;
+            }
+            
+            .main-content {
+                margin-left: 560px;
+            }
+            
+            .footer {
+                left: 560px;
+            }
+            
+            .login-card {
+                max-width: 560px;
+            }
+        }
+
+        /* Landscape Mode Optimization */
+        @media (max-height: 600px) and (orientation: landscape) {
+            .header {
+                position: relative;
+                width: 100%;
+                padding: 0.75rem;
+            }
+            
+            .header-content {
+                flex-direction: row;
+                text-align: left;
+            }
+            
+            .logo {
+                width: 40px;
+                height: 40px;
+            }
+            
+            .main-content {
+                padding: 1rem;
+            }
+            
+            .login-card {
+                padding: 1.5rem;
+                max-width: 480px;
+            }
+            
+            .welcome-section {
+                margin-bottom: 1rem;
+            }
+            
+            .welcome-icon {
+                width: 60px;
+                height: 60px;
+                margin-bottom: 1rem;
+            }
+            
+            .welcome-title {
+                font-size: 1.5rem;
+            }
+            
+            .form-group {
+                gap: 0.25rem;
+            }
+            
+            .form-input {
+                padding: 0.75rem 0.75rem 0.75rem 2.5rem;
+            }
+            
+            .modal-content {
+                max-height: 80vh;
+            }
+        }
+
+        /* Small Mobile Screens */
         @media (max-width: 360px) {
             html {
-                font-size: 14px;
+                font-size: 15px;
             }
             
             .main-content {
                 padding: 1rem;
             }
             
-            .welcome-card {
-                padding: 1.25rem;
+            .login-card {
+                padding: 1.5rem;
             }
             
             .otp-digit {
+                width: 48px;
+                height: 56px;
+                font-size: 1.25rem;
+            }
+            
+            .method-card {
+                padding: 1rem;
+            }
+            
+            .method-icon-circle {
                 width: 40px;
-                height: 48px;
-                font-size: 1.125rem;
-            }
-            
-            .action-buttons {
-                flex-direction: column;
+                height: 40px;
+                font-size: 1rem;
             }
         }
 
-        /* Landscape Mode */
-        @media (max-height: 600px) and (orientation: landscape) {
-            .mobile-container {
-                flex-direction: row;
+        /* Print Styles */
+        @media print {
+            .header,
+            .footer,
+            .password-toggle,
+            .modal-overlay {
+                display: none !important;
             }
             
-            .mobile-header {
-                width: 280px;
-            }
-            
-            .main-content {
-                margin-left: 280px;
-                overflow-y: auto;
-                padding: 1rem;
-            }
-            
-            .modal-content {
-                max-height: 85vh;
-            }
-        }
-
-        /* Dark Mode Support */
-        @media (prefers-color-scheme: dark) {
             body {
-                background: var(--gray-900);
-                color: var(--gray-200);
+                background: white !important;
+                color: black !important;
             }
             
-            .mobile-container {
-                background: var(--gray-900);
+            .login-card {
+                box-shadow: none !important;
+                border: 1px solid #ccc !important;
+                max-width: none !important;
             }
-            
-            .welcome-card,
-            .modal-content {
-                background: var(--gray-800);
-                border-color: var(--gray-700);
+        }
+
+        /* Accessibility Improvements */
+        @media (prefers-reduced-motion: reduce) {
+            *,
+            *::before,
+            *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
             }
-            
-            .form-input,
-            .otp-digit {
-                background: var(--gray-800);
-                border-color: var(--gray-700);
-                color: var(--gray-200);
-            }
-            
-            .method-card,
-            .qr-instructions,
-            .backup-codes,
-            .trust-device {
-                background: var(--gray-800);
-                border-color: var(--gray-700);
-            }
-            
-            .method-title,
-            .modal-title {
-                color: var(--gray-100);
-            }
-            
-            .method-description,
-            .modal-subtitle,
-            .welcome-subtitle {
-                color: var(--gray-400);
-            }
+        }
+
+        /* Focus Visible for Keyboard Navigation */
+        :focus-visible {
+            outline: 3px solid var(--primary-500);
+            outline-offset: 2px;
+            border-radius: var(--radius-sm);
+        }
+
+        /* Skip to Main Content Link */
+        .skip-to-content {
+            position: absolute;
+            top: -40px;
+            left: 0;
+            background: var(--primary-600);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            text-decoration: none;
+            border-radius: 0 0 var(--radius-md) var(--radius-md);
+            z-index: 1000;
+            transition: top 0.3s ease;
+        }
+
+        .skip-to-content:focus {
+            top: 0;
         }
     </style>
 </head>
 <body>
-    <div class="mobile-container">
-        <!-- Mobile Header -->
-        <header class="mobile-header">
+    <a href="#main-content" class="skip-to-content">Skip to main content</a>
+    
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
             <div class="header-content">
                 <div class="logo">
-                    <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo">
+                    <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" 
+                         alt="NCHSM Logo" 
+                         loading="eager">
                 </div>
                 <div class="college-info">
                     <h1 class="college-name">NAKURU COLLEGE OF HEALTH SCIENCES AND MANAGEMENT</h1>
@@ -984,65 +1764,110 @@
         </header>
 
         <!-- Main Content -->
-        <main class="main-content">
-            <div class="welcome-card">
-                <div class="welcome-icon">
-                    <i data-feather="lock"></i>
+        <main id="main-content" class="main-content">
+            <div class="login-card">
+                <div class="welcome-section">
+                    <div class="welcome-icon">
+                        <i data-feather="lock"></i>
+                    </div>
+                    <h2 class="welcome-title">Welcome Back</h2>
+                    <p class="welcome-subtitle">Sign in to access your digital learning portal and continue your healthcare education journey</p>
                 </div>
-                <h2 class="welcome-title">Welcome Back</h2>
-                <p class="welcome-subtitle">Sign in to access your digital learning portal</p>
                 
-                <div id="errorMsg" class="error-message"></div>
+                <div id="errorMsg" class="error-message" role="alert" aria-live="assertive">
+                    <i data-feather="alert-circle" class="error-icon"></i>
+                    <span class="error-text"></span>
+                </div>
                 
-                <form id="loginForm" class="login-form">
+                <form id="loginForm" class="login-form" novalidate>
                     <div class="form-group">
-                        <label class="form-label">Email Address</label>
+                        <label for="email" class="form-label">
+                            <i data-feather="mail" width="16" height="16"></i>
+                            Email Address
+                        </label>
                         <div class="input-wrapper">
-                            <input type="email" id="email" class="form-input" placeholder="student@nchsm.ac.ke" required>
+                            <i data-feather="mail" class="input-icon"></i>
+                            <input type="email" 
+                                   id="email" 
+                                   class="form-input" 
+                                   placeholder="student@nchsm.ac.ke" 
+                                   required
+                                   autocomplete="email"
+                                   aria-describedby="emailHelp">
                         </div>
+                        <small id="emailHelp" class="sr-only">Enter your college email address</small>
                     </div>
                     
                     <div class="form-group">
-                        <label class="form-label">Password</label>
+                        <label for="password" class="form-label">
+                            <i data-feather="lock" width="16" height="16"></i>
+                            Password
+                        </label>
                         <div class="input-wrapper">
-                            <input type="password" id="password" class="form-input" placeholder="Enter your password" required>
-                            <button type="button" id="password-toggle-btn" class="password-toggle">
+                            <i data-feather="lock" class="input-icon"></i>
+                            <input type="password" 
+                                   id="password" 
+                                   class="form-input" 
+                                   placeholder="Enter your password" 
+                                   required
+                                   autocomplete="current-password"
+                                   aria-describedby="passwordHelp">
+                            <button type="button" 
+                                    id="password-toggle-btn" 
+                                    class="password-toggle"
+                                    aria-label="Toggle password visibility">
                                 <i data-feather="eye-off" id="toggle-icon"></i>
                             </button>
                         </div>
+                        <small id="passwordHelp" class="sr-only">Enter your password</small>
                     </div>
                     
                     <div class="form-options">
                         <label class="remember-me">
-                            <input type="checkbox" id="rememberMe">
-                            <span>Remember me</span>
+                            <div class="checkbox-wrapper">
+                                <input type="checkbox" 
+                                       id="rememberMe" 
+                                       class="remember-checkbox"
+                                       aria-label="Remember me on this device">
+                                <span class="checkbox-custom"></span>
+                            </div>
+                            <span class="remember-label">Remember me</span>
                         </label>
-                        <a href="forgot-password.html" class="forgot-link">Forgot Password?</a>
+                        <a href="forgot-password.html" 
+                           class="forgot-link"
+                           aria-label="Forgot password?">
+                            Forgot Password?
+                        </a>
                     </div>
                     
-                    <button type="submit" id="loginButton" class="login-button">
+                    <button type="submit" 
+                            id="loginButton" 
+                            class="login-button"
+                            aria-live="polite">
                         <span id="button-text">Sign In</span>
                     </button>
                 </form>
                 
-                <div class="divider">
-                    <span>New to NCHSM?</span>
-                </div>
-                
-                <div class="signup-prompt">
-                    Don't have an account? <a href="register.html" class="signup-link">Create account</a>
+                <div class="signup-section">
+                    <p class="signup-text">New to NCHSM Portal?</p>
+                    <a href="register.html" class="signup-link">
+                        <i data-feather="user-plus"></i>
+                        Create New Account
+                    </a>
                 </div>
             </div>
         </main>
 
         <!-- Footer -->
-        <footer class="mobile-footer">
-            <p class="copyright">© 2025 Nakuru College of Health Sciences and Management</p>
-            <div class="footer-links">
-                <a href="privacy.html">Privacy</a>
-                <a href="terms.html">Terms</a>
-                <a href="contact.html">Contact</a>
-                <a href="support.html">Support</a>
+        <footer class="footer">
+            <div class="footer-content">
+                <p class="copyright">© 2025 Nakuru College of Health Sciences and Management. All rights reserved.</p>
+                <div class="footer-links">
+                    <a href="privacy.html" class="footer-link">Privacy Policy</a>
+                    <a href="terms.html" class="footer-link">Terms of Service</a>
+                    <a href="contact.html" class="footer-link">Contact Us</a>
+                    <a href="support.html" class="footer-link">Support Center</a>
+                </div>
             </div>
         </footer>
     </div>
@@ -1050,70 +1875,113 @@
     <!-- ===== MODALS ===== -->
     
     <!-- 2FA Verification Modal -->
-    <div id="twoFactorModal" class="modal-overlay">
+    <div id="twoFactorModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="2faModalTitle">
         <div class="modal-content">
-            <button class="modal-close" onclick="hideAllModals()">×</button>
+            <button class="modal-close" onclick="hideAllModals()" aria-label="Close modal">×</button>
             
             <div class="modal-header">
                 <div class="modal-icon">
                     <i data-feather="shield"></i>
                 </div>
-                <h3 class="modal-title">Security Verification</h3>
+                <h3 class="modal-title" id="2faModalTitle">Security Verification</h3>
                 <p class="modal-subtitle" id="verificationMethodText"></p>
-                <p class="modal-subtitle" id="2faEmail" style="color: var(--primary); font-weight: 500;"></p>
+                <p class="modal-subtitle" id="2faEmail"></p>
             </div>
             
             <div class="modal-body">
                 <div class="otp-container">
+                    <label class="otp-label" for="otp-input-0">Enter 6-digit verification code</label>
                     <div class="otp-inputs">
-                        <input type="text" maxlength="1" class="otp-digit" data-index="0" oninput="moveToNextOTP(this, 'verify')">
-                        <input type="text" maxlength="1" class="otp-digit" data-index="1" oninput="moveToNextOTP(this, 'verify')">
-                        <input type="text" maxlength="1" class="otp-digit" data-index="2" oninput="moveToNextOTP(this, 'verify')">
-                        <input type="text" maxlength="1" class="otp-digit" data-index="3" oninput="moveToNextOTP(this, 'verify')">
-                        <input type="text" maxlength="1" class="otp-digit" data-index="4" oninput="moveToNextOTP(this, 'verify')">
-                        <input type="text" maxlength="1" class="otp-digit" data-index="5" oninput="moveToNextOTP(this, 'verify')">
+                        <input type="text" 
+                               maxlength="1" 
+                               class="otp-digit" 
+                               data-index="0" 
+                               id="otp-input-0"
+                               oninput="moveToNextOTP(this, 'verify')"
+                               aria-label="First digit of verification code">
+                        <input type="text" 
+                               maxlength="1" 
+                               class="otp-digit" 
+                               data-index="1" 
+                               id="otp-input-1"
+                               oninput="moveToNextOTP(this, 'verify')"
+                               aria-label="Second digit of verification code">
+                        <input type="text" 
+                               maxlength="1" 
+                               class="otp-digit" 
+                               data-index="2" 
+                               id="otp-input-2"
+                               oninput="moveToNextOTP(this, 'verify')"
+                               aria-label="Third digit of verification code">
+                        <input type="text" 
+                               maxlength="1" 
+                               class="otp-digit" 
+                               data-index="3" 
+                               id="otp-input-3"
+                               oninput="moveToNextOTP(this, 'verify')"
+                               aria-label="Fourth digit of verification code">
+                        <input type="text" 
+                               maxlength="1" 
+                               class="otp-digit" 
+                               data-index="4" 
+                               id="otp-input-4"
+                               oninput="moveToNextOTP(this, 'verify')"
+                               aria-label="Fifth digit of verification code">
+                        <input type="text" 
+                               maxlength="1" 
+                               class="otp-digit" 
+                               data-index="5" 
+                               id="otp-input-5"
+                               oninput="moveToNextOTP(this, 'verify')"
+                               aria-label="Sixth digit of verification code">
                     </div>
                 </div>
                 
-                <div id="verifyingSpinner" class="loading-spinner" style="display: none;"></div>
+                <div id="verifyingSpinner" class="loading-spinner" style="display: none;" aria-hidden="true"></div>
                 
                 <div class="trust-device">
-                    <input type="checkbox" id="trustDevice">
-                    <label for="trustDevice">Trust this device for 30 days</label>
+                    <input type="checkbox" 
+                           id="trustDevice" 
+                           class="trust-checkbox"
+                           aria-label="Trust this device for 30 days">
+                    <label for="trustDevice" class="trust-label">Trust this device for 30 days</label>
                 </div>
                 
                 <div class="action-buttons">
-                    <button onclick="verify2FACode()" id="verify2FABtn" class="btn-primary">
+                    <button onclick="verify2FACode()" 
+                            id="verify2FABtn" 
+                            class="modal-btn modal-btn-primary"
+                            aria-live="polite">
                         Verify & Continue
                     </button>
                 </div>
                 
                 <div class="help-links">
-                    <a href="#" onclick="useBackupCode()">Use backup code</a>
-                    <a href="#" onclick="sendRecoveryEmail()">Can't access?</a>
+                    <a href="#" onclick="useBackupCode()" class="help-link">Use backup code</a>
+                    <a href="#" onclick="sendRecoveryEmail()" class="help-link">Can't access?</a>
                 </div>
                 
-                <div id="2faError" class="error-message" style="display: none;"></div>
+                <div id="2faError" class="error-message" style="display: none;" role="alert"></div>
             </div>
         </div>
     </div>
     
     <!-- Method Selection Modal -->
-    <div id="methodSelectionModal" class="modal-overlay">
+    <div id="methodSelectionModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="methodModalTitle">
         <div class="modal-content">
-            <button class="modal-close" onclick="hideAllModals()">×</button>
+            <button class="modal-close" onclick="hideAllModals()" aria-label="Close modal">×</button>
             
             <div class="modal-header">
                 <div class="modal-icon" style="background: var(--gradient-primary);">
                     <i data-feather="shield"></i>
                 </div>
-                <h3 class="modal-title">Choose Security Method</h3>
+                <h3 class="modal-title" id="methodModalTitle">Choose Security Method</h3>
                 <p class="modal-subtitle">Select your preferred two-factor authentication method</p>
             </div>
             
             <div class="modal-body">
                 <div class="method-grid">
-                    <div class="method-card" onclick="selectMethod('authenticator')">
+                    <div class="method-card" onclick="selectMethod('authenticator')" role="button" tabindex="0">
                         <div class="method-icon-circle authenticator">
                             <i data-feather="smartphone"></i>
                         </div>
@@ -1123,7 +1991,7 @@
                         </div>
                     </div>
                     
-                    <div class="method-card" onclick="selectMethod('sms')">
+                    <div class="method-card" onclick="selectMethod('sms')" role="button" tabindex="0">
                         <div class="method-icon-circle sms">
                             <i data-feather="message-circle"></i>
                         </div>
@@ -1133,7 +2001,7 @@
                         </div>
                     </div>
                     
-                    <div class="method-card" onclick="selectMethod('email')">
+                    <div class="method-card" onclick="selectMethod('email')" role="button" tabindex="0">
                         <div class="method-icon-circle email">
                             <i data-feather="mail"></i>
                         </div>
@@ -1144,10 +2012,12 @@
                     </div>
                 </div>
                 
-                <div id="methodError" class="error-message" style="display: none;"></div>
+                <div id="methodError" class="error-message" style="display: none;" role="alert"></div>
                 
                 <div class="action-buttons">
-                    <button onclick="proceedWithSelectedMethod()" id="proceedMethodBtn" class="btn-primary">
+                    <button onclick="proceedWithSelectedMethod()" 
+                            id="proceedMethodBtn" 
+                            class="modal-btn modal-btn-primary">
                         Continue
                     </button>
                 </div>
@@ -1156,21 +2026,21 @@
     </div>
     
     <!-- Authenticator Setup Modal -->
-    <div id="authenticatorSetupModal" class="modal-overlay">
+    <div id="authenticatorSetupModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="setupModalTitle">
         <div class="modal-content">
-            <button class="modal-close" onclick="hideAllModals()">×</button>
+            <button class="modal-close" onclick="hideAllModals()" aria-label="Close modal">×</button>
             
             <div class="modal-header">
                 <div class="modal-icon" style="background: linear-gradient(135deg, #4285F4 0%, #34A853 100%);">
                     <i data-feather="smartphone"></i>
                 </div>
-                <h3 class="modal-title">Setup Authenticator</h3>
+                <h3 class="modal-title" id="setupModalTitle">Setup Authenticator</h3>
                 <p class="modal-subtitle">Scan QR code with your authenticator app</p>
             </div>
             
             <div class="modal-body">
                 <div class="qr-container">
-                    <div id="qrCode" class="qr-code"></div>
+                    <div id="qrCode" class="qr-code" role="img" aria-label="QR code for authenticator setup"></div>
                 </div>
                 
                 <div class="qr-instructions">
@@ -1188,20 +2058,53 @@
                         Enter the 6-digit code from your authenticator app:
                     </p>
                     <div class="otp-inputs">
-                        <input type="text" maxlength="1" class="otp-digit" data-index="0" oninput="moveToNextOTP(this, 'authenticator')">
-                        <input type="text" maxlength="1" class="otp-digit" data-index="1" oninput="moveToNextOTP(this, 'authenticator')">
-                        <input type="text" maxlength="1" class="otp-digit" data-index="2" oninput="moveToNextOTP(this, 'authenticator')">
-                        <input type="text" maxlength="1" class="otp-digit" data-index="3" oninput="moveToNextOTP(this, 'authenticator')">
-                        <input type="text" maxlength="1" class="otp-digit" data-index="4" oninput="moveToNextOTP(this, 'authenticator')">
-                        <input type="text" maxlength="1" class="otp-digit" data-index="5" oninput="moveToNextOTP(this, 'authenticator')">
+                        <input type="text" 
+                               maxlength="1" 
+                               class="otp-digit" 
+                               data-index="0" 
+                               oninput="moveToNextOTP(this, 'authenticator')"
+                               aria-label="First digit of setup code">
+                        <input type="text" 
+                               maxlength="1" 
+                               class="otp-digit" 
+                               data-index="1" 
+                               oninput="moveToNextOTP(this, 'authenticator')"
+                               aria-label="Second digit of setup code">
+                        <input type="text" 
+                               maxlength="1" 
+                               class="otp-digit" 
+                               data-index="2" 
+                               oninput="moveToNextOTP(this, 'authenticator')"
+                               aria-label="Third digit of setup code">
+                        <input type="text" 
+                               maxlength="1" 
+                               class="otp-digit" 
+                               data-index="3" 
+                               oninput="moveToNextOTP(this, 'authenticator')"
+                               aria-label="Fourth digit of setup code">
+                        <input type="text" 
+                               maxlength="1" 
+                               class="otp-digit" 
+                               data-index="4" 
+                               oninput="moveToNextOTP(this, 'authenticator')"
+                               aria-label="Fifth digit of setup code">
+                        <input type="text" 
+                               maxlength="1" 
+                               class="otp-digit" 
+                               data-index="5" 
+                               oninput="moveToNextOTP(this, 'authenticator')"
+                               aria-label="Sixth digit of setup code">
                     </div>
                 </div>
                 
-                <div id="setupVerifyingSpinner" class="loading-spinner" style="display: none;"></div>
-                <div id="setupError" class="error-message" style="display: none;"></div>
+                <div id="setupVerifyingSpinner" class="loading-spinner" style="display: none;" aria-hidden="true"></div>
+                <div id="setupError" class="error-message" style="display: none;" role="alert"></div>
                 
                 <div class="action-buttons">
-                    <button onclick="completeAuthenticatorSetup()" id="setup2FABtn" class="btn-primary">
+                    <button onclick="completeAuthenticatorSetup()" 
+                            id="setup2FABtn" 
+                            class="modal-btn modal-btn-primary"
+                            aria-live="polite">
                         Verify & Continue
                     </button>
                 </div>
@@ -1210,30 +2113,31 @@
     </div>
     
     <!-- Backup Codes Modal -->
-    <div id="backupCodesModal" class="modal-overlay">
+    <div id="backupCodesModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="backupModalTitle">
         <div class="modal-content">
-            <button class="modal-close" onclick="hideAllModals()">×</button>
+            <button class="modal-close" onclick="hideAllModals()" aria-label="Close modal">×</button>
             
             <div class="modal-header">
                 <div class="modal-icon">
                     <i data-feather="check-circle"></i>
                 </div>
-                <h3 class="modal-title">Setup Complete!</h3>
+                <h3 class="modal-title" id="backupModalTitle">Setup Complete!</h3>
                 <p class="modal-subtitle">Save these backup codes in a secure location</p>
             </div>
             
             <div class="modal-body">
                 <div class="backup-codes">
-                    <p style="color: var(--error); font-size: 0.875rem; margin-bottom: 1rem; text-align: center;">
-                        ⚠️ Each code can be used once if you lose access to your authenticator app
+                    <p class="backup-warning">
+                        <i data-feather="alert-triangle" width="16" height="16"></i>
+                        Each code can be used once if you lose access to your authenticator app
                     </p>
                     <div class="backup-codes-grid" id="backupCodesList"></div>
                     
                     <div class="action-buttons">
-                        <button onclick="downloadBackupCodes()" class="btn-secondary">
+                        <button onclick="downloadBackupCodes()" class="modal-btn modal-btn-secondary">
                             <i data-feather="download"></i> Download Codes
                         </button>
-                        <button onclick="proceedToDashboard()" class="btn-primary">
+                        <button onclick="proceedToDashboard()" class="modal-btn modal-btn-primary">
                             Continue to Portal
                         </button>
                     </div>
@@ -1244,10 +2148,22 @@
 
     <script>
     // ============================================
-    // MOBILE-FIRST JAVASCRIPT
+    // SINGLE SUPABASE INITIALIZATION
     // ============================================
     
-    // State Management
+    // Check if supabase is already initialized to prevent re-declaration
+    if (!window.supabaseClient) {
+        window.supabaseClient = window.supabase.createClient(
+            'https://lwhtjozfsmbyihenfunw.supabase.co',
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk'
+        );
+    }
+    
+    const supabase = window.supabaseClient;
+    
+    // ============================================
+    // STATE MANAGEMENT
+    // ============================================
     const state = {
         currentUser: null,
         selectedMethod: null,
@@ -1255,83 +2171,156 @@
         backupCodes: [],
         isLoggingIn: false,
         otpAttempts: 0,
-        maxOtpAttempts: 3
+        maxOtpAttempts: 3,
+        trustedDevices: JSON.parse(localStorage.getItem('trusted_devices') || '{}')
     };
     
-    // Supabase Configuration
-    const supabase = window.supabase.createClient(
-        'https://lwhtjozfsmbyihenfunw.supabase.co',
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk'
-    );
-    
-    // Initialize on DOM Ready
+    // ============================================
+    // INITIALIZATION
+    // ============================================
     document.addEventListener('DOMContentLoaded', () => {
         // Initialize Feather Icons
         if (typeof feather !== 'undefined') {
             feather.replace();
         }
         
+        // Check for trusted device
+        checkTrustedDevice();
+        
         // Password Toggle
+        initPasswordToggle();
+        
+        // Form Submission
+        initLoginForm();
+        
+        // Initialize modals
+        initModals();
+        
+        // Focus management for accessibility
+        initFocusManagement();
+        
+        // Handle virtual keyboard
+        initVirtualKeyboardHandler();
+    });
+    
+    // ============================================
+    // INITIALIZATION FUNCTIONS
+    // ============================================
+    function initPasswordToggle() {
         const passwordInput = document.getElementById('password');
         const toggleButton = document.getElementById('password-toggle-btn');
         const toggleIcon = document.getElementById('toggle-icon');
         
-        if (passwordInput && toggleButton && toggleIcon) {
-            toggleButton.addEventListener('click', () => {
-                const isPassword = passwordInput.type === 'password';
-                passwordInput.type = isPassword ? 'text' : 'password';
-                toggleIcon.setAttribute('data-feather', isPassword ? 'eye' : 'eye-off');
-                feather.replace();
-            });
-            
-            // Prevent form submission on toggle
-            toggleButton.addEventListener('mousedown', (e) => e.preventDefault());
-            toggleButton.addEventListener('touchstart', (e) => e.preventDefault());
-        }
+        if (!passwordInput || !toggleButton || !toggleIcon) return;
         
-        // Form Submission
-        const loginForm = document.getElementById('loginForm');
-        if (loginForm) {
-            loginForm.addEventListener('submit', handleLogin);
-            
-            // Prevent zoom on input focus on mobile
-            const inputs = loginForm.querySelectorAll('input');
-            inputs.forEach(input => {
-                input.addEventListener('focus', () => {
-                    document.querySelector('meta[name=viewport]')
-                        .setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
-                });
-                
-                input.addEventListener('blur', () => {
-                    document.querySelector('meta[name=viewport]')
-                        .setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes');
-                });
-            });
-        }
-        
-        // Prevent pull-to-refresh on modals
-        document.querySelectorAll('.modal-content').forEach(modal => {
-            modal.addEventListener('touchmove', (e) => {
-                if (modal.scrollHeight > modal.clientHeight) {
-                    e.stopPropagation();
-                }
-            }, { passive: false });
+        toggleButton.addEventListener('click', () => {
+            const isPassword = passwordInput.type === 'password';
+            passwordInput.type = isPassword ? 'text' : 'password';
+            toggleIcon.setAttribute('data-feather', isPassword ? 'eye' : 'eye-off');
+            feather.replace();
+            toggleButton.setAttribute('aria-label', 
+                isPassword ? 'Hide password' : 'Show password');
         });
         
-        // Handle virtual keyboard
-        window.addEventListener('resize', () => {
-            if (window.visualViewport) {
-                const viewport = window.visualViewport;
-                if (viewport.height < window.innerHeight * 0.8) {
-                    // Keyboard is open
-                    document.documentElement.style.setProperty('--viewport-height', `${viewport.height}px`);
-                } else {
-                    // Keyboard is closed
-                    document.documentElement.style.removeProperty('--viewport-height');
+        // Prevent form submission on toggle
+        toggleButton.addEventListener('mousedown', (e) => e.preventDefault());
+        toggleButton.addEventListener('touchstart', (e) => e.preventDefault());
+    }
+    
+    function initLoginForm() {
+        const loginForm = document.getElementById('loginForm');
+        if (!loginForm) return;
+        
+        loginForm.addEventListener('submit', handleLogin);
+        
+        // Auto-focus email field on load
+        const emailInput = document.getElementById('email');
+        if (emailInput) {
+            setTimeout(() => emailInput.focus(), 100);
+        }
+        
+        // Add input validation
+        const inputs = loginForm.querySelectorAll('input[required]');
+        inputs.forEach(input => {
+            input.addEventListener('blur', validateField);
+            input.addEventListener('input', clearFieldError);
+        });
+    }
+    
+    function initModals() {
+        // Add keyboard navigation to modals
+        document.querySelectorAll('.modal-overlay').forEach(modal => {
+            modal.addEventListener('keydown', handleModalKeyboard);
+        });
+        
+        // Close modal on backdrop click
+        document.querySelectorAll('.modal-overlay').forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    hideAllModals();
                 }
+            });
+        });
+    }
+    
+    function initFocusManagement() {
+        // Trap focus in modals
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Tab' && document.querySelector('.modal-overlay.active')) {
+                trapFocus(e);
             }
         });
-    });
+    }
+    
+    function initVirtualKeyboardHandler() {
+        if (!window.visualViewport) return;
+        
+        const viewport = window.visualViewport;
+        let keyboardVisible = false;
+        
+        viewport.addEventListener('resize', () => {
+            const isKeyboardOpen = viewport.height < window.innerHeight * 0.6;
+            
+            if (isKeyboardOpen && !keyboardVisible) {
+                // Keyboard opened
+                keyboardVisible = true;
+                document.body.style.paddingBottom = `${window.innerHeight - viewport.height}px`;
+            } else if (!isKeyboardOpen && keyboardVisible) {
+                // Keyboard closed
+                keyboardVisible = false;
+                document.body.style.paddingBottom = '0';
+            }
+        });
+    }
+    
+    // ============================================
+    // TRUSTED DEVICE CHECK
+    // ============================================
+    function checkTrustedDevice() {
+        const deviceId = generateDeviceId();
+        const trustedDevice = state.trustedDevices[deviceId];
+        
+        if (trustedDevice && new Date(trustedDevice.expires) > new Date()) {
+            // Device is trusted, skip to dashboard
+            const storedUser = localStorage.getItem('currentUserProfile');
+            if (storedUser) {
+                const profile = JSON.parse(storedUser);
+                redirectToDashboard(profile);
+            }
+        }
+    }
+    
+    function generateDeviceId() {
+        const data = [
+            navigator.userAgent,
+            navigator.language,
+            screen.width,
+            screen.height,
+            new Intl.DateTimeFormat().resolvedOptions().timeZone
+        ].join('|');
+        
+        return btoa(data).substring(0, 32);
+    }
     
     // ============================================
     // LOGIN HANDLER
@@ -1341,20 +2330,25 @@
         
         if (state.isLoggingIn) return;
         
-        const email = document.getElementById('email').value.trim();
+        const email = document.getElementById('email').value.trim().toLowerCase();
         const password = document.getElementById('password').value;
         const errorMsg = document.getElementById('errorMsg');
         const loginButton = document.getElementById('loginButton');
         const buttonText = document.getElementById('button-text');
         
         // Validation
-        if (!email || !password) {
-            showError(errorMsg, 'Please enter both email and password');
+        if (!validateEmail(email)) {
+            showError(errorMsg, 'Please enter a valid email address');
+            return;
+        }
+        
+        if (!password) {
+            showError(errorMsg, 'Please enter your password');
             return;
         }
         
         // Update UI
-        errorMsg.classList.remove('show');
+        clearError(errorMsg);
         state.isLoggingIn = true;
         loginButton.disabled = true;
         buttonText.innerHTML = '<span class="loading-spinner"></span> Signing In...';
@@ -1366,7 +2360,15 @@
                 password 
             });
             
-            if (authError) throw new Error('Invalid email or password');
+            if (authError) {
+                if (authError.message.includes('Invalid login credentials')) {
+                    throw new Error('Invalid email or password. Please try again.');
+                } else if (authError.message.includes('Email not confirmed')) {
+                    throw new Error('Please verify your email address before logging in.');
+                } else {
+                    throw new Error(authError.message);
+                }
+            }
             
             // 2. Store user session
             state.currentUser = {
@@ -1376,11 +2378,13 @@
             };
             
             // 3. Check profile status
-            const { data: profileData } = await supabase
+            const { data: profileData, error: profileError } = await supabase
                 .from('consolidated_user_profiles_table')
                 .select('*')
                 .eq('user_id', authData.user.id)
                 .maybeSingle();
+            
+            if (profileError) throw new Error('Unable to load profile. Please try again.');
             
             if (!profileData) {
                 await supabase.auth.signOut();
@@ -1389,13 +2393,10 @@
             
             if (profileData.status?.toLowerCase() !== 'approved') {
                 await supabase.auth.signOut();
-                throw new Error('Account pending approval');
+                throw new Error('Account is pending approval. Please contact administration.');
             }
             
-            // 4. Store profile
-            localStorage.setItem('currentUserProfile', JSON.stringify(profileData));
-            
-            // 5. Check 2FA status
+            // 4. Check if 2FA setup is required
             const { data: totpSettings } = await supabase
                 .from('user_2fa_settings')
                 .select('*')
@@ -1406,14 +2407,22 @@
                 // New user - setup 2FA
                 showMethodSelection();
             } else {
-                // Existing user - verify 2FA
-                showVerificationModal(totpSettings.preferred_method || 'authenticator');
+                // Check for trusted device
+                const deviceId = generateDeviceId();
+                if (state.trustedDevices[deviceId] && 
+                    new Date(state.trustedDevices[deviceId].expires) > new Date()) {
+                    // Trusted device, skip 2FA
+                    await completeLogin(profileData);
+                } else {
+                    // Existing user - verify 2FA
+                    showVerificationModal(totpSettings.preferred_method || 'authenticator');
+                }
             }
             
         } catch (error) {
             console.error('Login error:', error);
             await supabase.auth.signOut();
-            showError(errorMsg, error.message || 'Login failed');
+            showError(errorMsg, error.message || 'Login failed. Please try again.');
             
         } finally {
             state.isLoggingIn = false;
@@ -1423,11 +2432,50 @@
     }
     
     // ============================================
+    // VALIDATION FUNCTIONS
+    // ============================================
+    function validateEmail(email) {
+        const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return re.test(email);
+    }
+    
+    function validateField(e) {
+        const input = e.target;
+        const value = input.value.trim();
+        
+        if (input.type === 'email' && value && !validateEmail(value)) {
+            input.classList.add('error');
+            return false;
+        }
+        
+        if (input.required && !value) {
+            input.classList.add('error');
+            return false;
+        }
+        
+        input.classList.remove('error');
+        return true;
+    }
+    
+    function clearFieldError(e) {
+        e.target.classList.remove('error');
+        clearError(document.getElementById('errorMsg'));
+    }
+    
+    // ============================================
     // MODAL MANAGEMENT
     // ============================================
     function showMethodSelection() {
         hideAllModals();
-        document.getElementById('methodSelectionModal').classList.add('active');
+        const modal = document.getElementById('methodSelectionModal');
+        modal.classList.add('active');
+        document.querySelector('#methodSelectionModal .method-card').focus();
+        
+        // Reset selection
+        state.selectedMethod = null;
+        document.querySelectorAll('.method-card').forEach(card => {
+            card.classList.remove('selected');
+        });
     }
     
     function showVerificationModal(method = 'authenticator') {
@@ -1446,7 +2494,7 @@
         emailText.textContent = state.currentUser.email;
         
         clearOTPInputs('verify');
-        document.getElementById('2faError').style.display = 'none';
+        clearError(document.getElementById('2faError'));
         
         modal.classList.add('active');
         setTimeout(() => document.querySelector('#twoFactorModal .otp-digit').focus(), 100);
@@ -1466,15 +2514,21 @@
         // Generate QR code
         const qrCodeDiv = document.getElementById('qrCode');
         qrCodeDiv.innerHTML = '';
+        
         QRCode.toCanvas(qrCodeDiv, uri, {
             width: 200,
             height: 200,
             margin: 1,
-            color: { dark: '#073450', light: '#FFFFFF' }
+            color: { dark: '#0c4a6e', light: '#ffffff' }
+        }, (error) => {
+            if (error) {
+                console.error('QR Code generation failed:', error);
+                showError(document.getElementById('setupError'), 'Failed to generate QR code');
+            }
         });
         
         clearOTPInputs('authenticator');
-        document.getElementById('setupError').style.display = 'none';
+        clearError(document.getElementById('setupError'));
         
         document.getElementById('authenticatorSetupModal').classList.add('active');
         setTimeout(() => document.querySelector('#authenticatorSetupModal .otp-digit').focus(), 100);
@@ -1486,9 +2540,11 @@
         
         const codesList = document.getElementById('backupCodesList');
         codesList.innerHTML = codes.map(code => `
-            <div class="backup-code">
+            <div class="backup-code" role="text" aria-label="Backup code">
                 ${code}
-                <button class="copy-button" onclick="copyToClipboard('${code}', this)">
+                <button class="copy-button" 
+                        onclick="copyToClipboard('${code}', this)"
+                        aria-label="Copy code ${code}">
                     <i data-feather="copy" width="12" height="12"></i>
                 </button>
             </div>
@@ -1502,6 +2558,7 @@
         document.querySelectorAll('.modal-overlay').forEach(modal => {
             modal.classList.remove('active');
         });
+        document.body.style.overflow = '';
     }
     
     // ============================================
@@ -1514,7 +2571,20 @@
         document.querySelectorAll('.method-card').forEach(card => {
             card.classList.remove('selected');
         });
-        event.currentTarget.classList.add('selected');
+        
+        const selectedCard = event.currentTarget;
+        selectedCard.classList.add('selected');
+        selectedCard.setAttribute('aria-checked', 'true');
+        
+        // Update other cards
+        document.querySelectorAll('.method-card').forEach(card => {
+            if (card !== selectedCard) {
+                card.setAttribute('aria-checked', 'false');
+            }
+        });
+        
+        // Clear any previous errors
+        clearError(document.getElementById('methodError'));
     }
     
     function proceedWithSelectedMethod() {
@@ -1526,9 +2596,8 @@
         if (state.selectedMethod === 'authenticator') {
             showAuthenticatorSetup();
         } else {
-            // For demo, fall back to authenticator
-            alert(`${state.selectedMethod.toUpperCase()} setup would be implemented here`);
-            showAuthenticatorSetup();
+            // For SMS/Email, show verification modal directly
+            showVerificationModal(state.selectedMethod);
         }
     }
     
@@ -1539,6 +2608,9 @@
         const index = parseInt(input.dataset.index);
         const modalId = getModalId(context);
         const allInputs = document.querySelectorAll(`${modalId} .otp-digit`);
+        
+        // Validate input (only numbers)
+        input.value = input.value.replace(/[^0-9]/g, '');
         
         // Update UI
         input.classList.toggle('filled', input.value.length > 0);
@@ -1594,7 +2666,7 @@
     // ============================================
     async function completeAuthenticatorSetup() {
         const code = getOTPCode('authenticator');
-        if (code.length !== 6) {
+        if (code.length !== 6 || !/^\d+$/.test(code)) {
             showError(document.getElementById('setupError'), 'Please enter all 6 digits');
             return;
         }
@@ -1607,7 +2679,9 @@
         try {
             // Verify code
             const isValid = otplib.authenticator.check(code, state.currentSecret);
-            if (!isValid) throw new Error('Invalid code');
+            if (!isValid) {
+                throw new Error('Invalid code. Please try again.');
+            }
             
             // Generate backup codes
             const backupCodes = Array.from({length: 10}, () => 
@@ -1646,7 +2720,7 @@
     // ============================================
     async function verify2FACode() {
         const code = getOTPCode('verify');
-        if (code.length !== 6) {
+        if (code.length !== 6 || !/^\d+$/.test(code)) {
             showError(document.getElementById('2faError'), 'Please enter all 6 digits');
             return;
         }
@@ -1673,18 +2747,26 @@
                 state.otpAttempts++;
                 if (state.otpAttempts >= state.maxOtpAttempts) {
                     await supabase.auth.signOut();
-                    throw new Error('Too many failed attempts');
+                    throw new Error('Too many failed attempts. Please try again later.');
                 }
                 throw new Error(`Invalid code. ${state.maxOtpAttempts - state.otpAttempts} attempts remaining.`);
             }
             
-            // Trust device
+            // Trust device if selected
             if (document.getElementById('trustDevice')?.checked) {
                 await trustDevice(state.currentUser.userId);
             }
             
-            // Redirect to dashboard
-            await completeLoginAndRedirect();
+            // Get profile and complete login
+            const { data: profileData } = await supabase
+                .from('consolidated_user_profiles_table')
+                .select('*')
+                .eq('user_id', state.currentUser.userId)
+                .single();
+            
+            if (!profileData) throw new Error('Profile not found');
+            
+            await completeLogin(profileData);
             
         } catch (error) {
             console.error('Verification error:', error);
@@ -1698,69 +2780,92 @@
     }
     
     // ============================================
-    // FINAL REDIRECT
+    // COMPLETE LOGIN
     // ============================================
-    async function completeLoginAndRedirect() {
+    async function completeLogin(profileData) {
         try {
-            // Get profile
-            const { data: profileData } = await supabase
-                .from('consolidated_user_profiles_table')
-                .select('*')
-                .eq('user_id', state.currentUser.userId)
-                .single();
-            
-            if (!profileData) throw new Error('Profile not found');
-            
             // Store profile
             localStorage.setItem('currentUserProfile', JSON.stringify(profileData));
             
-            // Redirect based on role
-            const redirects = {
-                'student': 'index.html',
-                'lecturer': 'lecturer.html',
-                'admin': 'admin.html',
-                'superadmin': 'superadmin.html',
-                'hod': 'hod-tracker.html'
-            };
+            // Store session
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+                localStorage.setItem('supabase_session', JSON.stringify(session));
+            }
             
-            const role = profileData.role?.toLowerCase() || 'student';
-            window.location.href = redirects[role] || 'index.html';
+            // Redirect to dashboard
+            redirectToDashboard(profileData);
             
         } catch (error) {
-            console.error('Redirect error:', error);
-            showError(document.getElementById('errorMsg'), error.message);
+            console.error('Complete login error:', error);
             await supabase.auth.signOut();
+            localStorage.removeItem('currentUserProfile');
+            localStorage.removeItem('supabase_session');
+            showError(document.getElementById('errorMsg'), 'Login failed. Please try again.');
         }
+    }
+    
+    async function trustDevice(userId) {
+        const deviceId = generateDeviceId();
+        const expires = new Date();
+        expires.setDate(expires.getDate() + 30);
+        
+        state.trustedDevices[deviceId] = {
+            userId,
+            expires: expires.toISOString()
+        };
+        
+        localStorage.setItem('trusted_devices', JSON.stringify(state.trustedDevices));
+    }
+    
+    function redirectToDashboard(profileData) {
+        const redirects = {
+            'student': 'index.html',
+            'lecturer': 'lecturer.html',
+            'admin': 'admin.html',
+            'superadmin': 'superadmin.html',
+            'hod': 'hod-tracker.html',
+            'staff': 'staff.html'
+        };
+        
+        const role = profileData.role?.toLowerCase() || 'student';
+        const redirectUrl = redirects[role] || 'index.html';
+        
+        // Add fade-out animation
+        document.body.style.opacity = '0';
+        document.body.style.transition = 'opacity 0.3s ease';
+        
+        setTimeout(() => {
+            window.location.href = redirectUrl;
+        }, 300);
     }
     
     function proceedToDashboard() {
         hideAllModals();
-        completeLoginAndRedirect();
+        
+        const storedProfile = localStorage.getItem('currentUserProfile');
+        if (storedProfile) {
+            const profile = JSON.parse(storedProfile);
+            redirectToDashboard(profile);
+        }
     }
     
     // ============================================
     // UTILITY FUNCTIONS
     // ============================================
-    async function trustDevice(userId) {
-        const deviceId = btoa(navigator.userAgent + navigator.language + screen.width + screen.height);
-        const trustedUntil = new Date();
-        trustedUntil.setDate(trustedUntil.getDate() + 30);
-        
-        localStorage.setItem(`trusted_device_${userId}`, JSON.stringify({
-            deviceId,
-            trustedUntil: trustedUntil.toISOString()
-        }));
-    }
-    
     function useBackupCode() {
         const backupCode = prompt('Enter your backup code:');
         if (backupCode) {
+            // Verify backup code (simplified for demo)
             alert('Backup code verification would be implemented here');
         }
     }
     
     function sendRecoveryEmail() {
-        alert('Recovery email would be sent here');
+        if (!state.currentUser?.email) return;
+        
+        // Send recovery email (simplified for demo)
+        alert(`Recovery email would be sent to ${state.currentUser.email}`);
     }
     
     function copyToClipboard(text, button) {
@@ -1768,17 +2873,28 @@
             const icon = button.querySelector('i');
             icon.setAttribute('data-feather', 'check');
             feather.replace();
+            button.setAttribute('aria-label', 'Copied!');
             
             setTimeout(() => {
                 icon.setAttribute('data-feather', 'copy');
                 feather.replace();
-            }, 1000);
+                button.setAttribute('aria-label', `Copy code ${text}`);
+            }, 2000);
+        }).catch(err => {
+            console.error('Copy failed:', err);
         });
     }
     
     function downloadBackupCodes() {
-        const content = `NCHSM Backup Codes\n\n${state.backupCodes.join('\n')}`;
-        const blob = new Blob([content], { type: 'text/plain' });
+        if (!state.backupCodes.length) return;
+        
+        const content = `NCHSM Digital Portal - Backup Codes\n\n` +
+                       `Generated: ${new Date().toLocaleDateString()}\n` +
+                       `Email: ${state.currentUser?.email || 'Unknown'}\n\n` +
+                       `IMPORTANT: Keep these codes in a secure place. Each code can be used once.\n\n` +
+                       state.backupCodes.join('\n');
+        
+        const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -1791,11 +2907,93 @@
     
     function showError(element, message) {
         if (element) {
-            element.textContent = message;
+            element.querySelector('.error-text').textContent = message;
             element.classList.add('show');
-            element.style.display = 'block';
+            element.style.display = 'flex';
         }
     }
+    
+    function clearError(element) {
+        if (element) {
+            element.classList.remove('show');
+            element.style.display = 'none';
+        }
+    }
+    
+    // ============================================
+    // ACCESSIBILITY FUNCTIONS
+    // ============================================
+    function handleModalKeyboard(e) {
+        if (e.key === 'Escape') {
+            hideAllModals();
+        }
+        
+        if (e.key === 'Enter' && e.target.classList.contains('method-card')) {
+            const method = e.target.getAttribute('onclick')?.match(/selectMethod\('(.+)'\)/)?.[1];
+            if (method) {
+                selectMethod(method);
+            }
+        }
+    }
+    
+    function trapFocus(e) {
+        const modal = document.querySelector('.modal-overlay.active');
+        if (!modal) return;
+        
+        const focusable = modal.querySelectorAll(
+            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        const firstFocusable = focusable[0];
+        const lastFocusable = focusable[focusable.length - 1];
+        
+        if (e.shiftKey) {
+            if (document.activeElement === firstFocusable) {
+                e.preventDefault();
+                lastFocusable.focus();
+            }
+        } else {
+            if (document.activeElement === lastFocusable) {
+                e.preventDefault();
+                firstFocusable.focus();
+            }
+        }
+    }
+    
+    // ============================================
+    // PERFORMANCE OPTIMIZATIONS
+    // ============================================
+    let resizeTimeout;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(() => {
+            // Handle resize completion
+        }, 250);
+    });
+    
+    // Service worker registration for PWA
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js').catch(err => {
+                console.log('ServiceWorker registration failed:', err);
+            });
+        });
+    }
+    
+    // Offline detection
+    window.addEventListener('online', updateOnlineStatus);
+    window.addEventListener('offline', updateOnlineStatus);
+    
+    function updateOnlineStatus() {
+        const isOnline = navigator.onLine;
+        document.body.classList.toggle('offline', !isOnline);
+        
+        if (!isOnline) {
+            showError(document.getElementById('errorMsg'), 'You are currently offline. Some features may be unavailable.');
+        }
+    }
+    
+    // Initialize online status
+    updateOnlineStatus();
     </script>
 </body>
 </html>
