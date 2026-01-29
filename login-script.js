@@ -523,10 +523,18 @@ window.NCHSMLogin = {
             return;
         }
         
+        // Check if QRCode library is available
+        if (typeof QRCode === 'undefined') {
+            this.showError(document.getElementById('setupError'), 'QR Code generator not loaded. Please refresh the page.');
+            return;
+        }
+        
         // Generate TOTP secret
         this.state.currentSecret = otplib.authenticator.generateSecret();
+        
+        // Create URI for QR code
         const uri = otplib.authenticator.keyuri(
-            this.state.currentUser.email,
+            encodeURIComponent(this.state.currentUser.email),
             'NCHSM Portal',
             this.state.currentSecret
         );
@@ -535,17 +543,31 @@ window.NCHSMLogin = {
         const qrCodeDiv = document.getElementById('qrCode');
         qrCodeDiv.innerHTML = '';
         
-        QRCode.toCanvas(qrCodeDiv, uri, {
-            width: 200,
-            height: 200,
-            margin: 1,
-            color: { dark: '#0c4a6e', light: '#ffffff' }
-        }, (error) => {
-            if (error) {
-                console.error('QR Code generation failed:', error);
-                this.showError(document.getElementById('setupError'), 'Failed to generate QR code. Please try again.');
-            }
-        });
+        try {
+            QRCode.toCanvas(qrCodeDiv, uri, {
+                width: 200,
+                height: 200,
+                margin: 1,
+                color: { 
+                    dark: '#0c4a6e', 
+                    light: '#ffffff'
+                },
+                errorCorrectionLevel: 'H'
+            }, (error) => {
+                if (error) {
+                    console.error('QR Code generation failed:', error);
+                    // Still show manual entry
+                    this.showManualEntryOption();
+                }
+            });
+        } catch (error) {
+            console.error('QR Code error:', error);
+            // Show manual entry as fallback
+            this.showManualEntryOption();
+        }
+        
+        // Always show manual entry option
+        this.showManualEntryOption();
         
         this.clearOTPInputs('authenticator');
         this.clearError(document.getElementById('setupError'));
@@ -553,7 +575,91 @@ window.NCHSMLogin = {
         const modal = document.getElementById('authenticatorSetupModal');
         modal.classList.add('active');
         modal.removeAttribute('hidden');
-        setTimeout(() => document.getElementById('authenticatorOtpInput').focus(), 100);
+        
+        // Focus OTP input
+        setTimeout(() => {
+            const otpInput = document.getElementById('authenticatorOtpInput');
+            if (otpInput) {
+                otpInput.focus();
+            }
+        }, 300);
+    },
+    
+    // Show manual entry option for authenticator
+    showManualEntryOption: function() {
+        if (!this.state.currentSecret) return;
+        
+        const manualEntryDiv = document.createElement('div');
+        manualEntryDiv.className = 'manual-entry';
+        manualEntryDiv.innerHTML = `
+            <p style="font-weight: 600; margin: 1rem 0 0.5rem 0; color: var(--gray-800);">
+                Can't scan QR code?
+            </p>
+            <div class="manual-entry-code">
+                <p style="font-size: 0.875rem; color: var(--gray-600); margin-bottom: 0.5rem;">
+                    Enter this secret key manually:
+                </p>
+                <code style="font-family: monospace; background: #f8fafc; padding: 0.75rem; 
+                        border-radius: 6px; word-break: break-all; display: block; border: 1px solid #e5e7eb;">
+                    ${this.state.currentSecret}
+                </code>
+                <button onclick="window.NCHSMLogin.copySecretToClipboard()" 
+                        class="copy-secret-btn"
+                        style="margin-top: 0.75rem; padding: 0.5rem 1rem; font-size: 0.875rem;
+                               background: #0c4a6e; color: white; border: none; border-radius: 4px;
+                               cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
+                    <i data-feather="copy" width="14" height="14"></i> Copy Secret Key
+                </button>
+            </div>
+            <p style="font-size: 0.875rem; color: var(--gray-600); margin-top: 0.75rem;">
+                <strong>Instructions:</strong><br>
+                1. Open Google Authenticator/Authy/Microsoft Authenticator<br>
+                2. Tap "+" to add new account<br>
+                3. Choose "Enter a setup key"<br>
+                4. Enter the secret key above<br>
+                5. Save and get your 6-digit code
+            </p>
+        `;
+        
+        const qrContainer = document.querySelector('.qr-container');
+        if (qrContainer) {
+            // Remove existing manual entry if any
+            const existing = qrContainer.querySelector('.manual-entry');
+            if (existing) existing.remove();
+            
+            qrContainer.appendChild(manualEntryDiv);
+            feather.replace();
+        }
+    },
+    
+    // Copy secret to clipboard
+    copySecretToClipboard: function() {
+        if (!this.state.currentSecret) return;
+        
+        navigator.clipboard.writeText(this.state.currentSecret).then(() => {
+            // Show success message
+            const setupError = document.getElementById('setupError');
+            this.showError(setupError, 'Secret key copied to clipboard!', 'success');
+            
+            // Update button text temporarily
+            const copyBtn = document.querySelector('.copy-secret-btn');
+            if (copyBtn) {
+                const originalText = copyBtn.innerHTML;
+                copyBtn.innerHTML = '<i data-feather="check" width="14" height="14"></i> Copied!';
+                copyBtn.style.background = '#10b981';
+                feather.replace();
+                
+                setTimeout(() => {
+                    copyBtn.innerHTML = originalText;
+                    copyBtn.style.background = '#0c4a6e';
+                    feather.replace();
+                }, 2000);
+            }
+        }).catch(err => {
+            console.error('Copy failed:', err);
+            this.showError(document.getElementById('setupError'), 
+                'Failed to copy. Please select and copy manually.');
+        });
     },
     
     showBackupCodesModal: function(codes) {
@@ -622,11 +728,12 @@ window.NCHSMLogin = {
         // Update UI
         if (methodBtn) {
             methodBtn.disabled = true;
-            methodBtn.innerHTML = '<span class="loading-spinner"></span> Sending...';
+            methodBtn.innerHTML = '<span class="loading-spinner"></span> Processing...';
         }
         
         try {
             if (this.state.selectedMethod === 'authenticator') {
+                // For authenticator, show setup immediately
                 this.showAuthenticatorSetup();
             } else if (this.state.selectedMethod === 'sms') {
                 // Actually send SMS verification
@@ -640,7 +747,7 @@ window.NCHSMLogin = {
         } catch (error) {
             console.error('Error sending verification:', error);
             this.showError(document.getElementById('methodError'), 
-                `Failed to send verification: ${error.message}`);
+                `Failed: ${error.message}`);
         } finally {
             // Reset button only if it exists
             if (methodBtn) {
@@ -669,7 +776,7 @@ window.NCHSMLogin = {
                 attempts: 0
             };
             
-            // Save to database for verification (optional but recommended)
+            // Save to database for verification
             const { error: dbError } = await this.supabase
                 .from('verification_codes')
                 .insert({
@@ -682,50 +789,9 @@ window.NCHSMLogin = {
             
             if (dbError) {
                 console.warn('Failed to save verification code to database:', dbError);
-                // Continue anyway, we have it in memory
             }
             
-            // Method 1: Use Supabase Edge Function (Recommended)
-            try {
-                const { error: emailError } = await this.supabase.functions.invoke('send-2fa-email', {
-                    body: {
-                        to: this.state.currentUser.email,
-                        otp: otpCode,
-                        user_id: this.state.currentUser.userId
-                    }
-                });
-                
-                if (!emailError) {
-                    console.log('✅ Email sent via Edge Function');
-                    return;
-                }
-            } catch (edgeFuncError) {
-                console.warn('Edge function failed:', edgeFuncError);
-            }
-            
-            // Method 2: Use Supabase Email (if configured)
-            try {
-                const { error: emailError } = await this.supabase.auth.resend({
-                    type: 'signup',
-                    email: this.state.currentUser.email,
-                    options: {
-                        emailRedirectTo: window.location.origin,
-                        data: {
-                            otp_code: otpCode,
-                            message: `Your NCHSM verification code is: ${otpCode}`
-                        }
-                    }
-                });
-                
-                if (!emailError) {
-                    console.log('✅ Email sent via Supabase Auth');
-                    return;
-                }
-            } catch (authEmailError) {
-                console.warn('Supabase Auth email failed:', authEmailError);
-            }
-            
-            // Method 3: Use SMTP via Supabase
+            // Try to send email
             const emailContent = this.generateEmailTemplate(otpCode);
             const { error: smtpError } = await this.supabase
                 .from('emails')
@@ -737,11 +803,11 @@ window.NCHSMLogin = {
                 });
             
             if (smtpError) {
-                console.warn('SMTP email failed:', smtpError);
+                console.warn('Email failed:', smtpError);
                 throw new Error('Could not send verification email. Please try another method.');
             }
             
-            console.log('✅ Email sent via SMTP');
+            console.log('✅ Email sent');
             
         } catch (error) {
             console.error('Email verification error:', error);
@@ -785,21 +851,19 @@ window.NCHSMLogin = {
                 console.warn('Failed to save SMS code to database:', dbError);
             }
             
-            // Send SMS using Supabase Edge Function
-            const { error: smsError } = await this.supabase.functions.invoke('send-sms-verification', {
-                body: {
-                    to: phoneNumber,
-                    otp: otpCode,
-                    user_id: this.state.currentUser.userId
-                }
-            });
+            // For demo purposes - in production, you'd use Twilio or similar
+            console.log(`📱 DEMO: SMS would be sent to ${phoneNumber} with code: ${otpCode}`);
             
-            if (smsError) {
-                console.warn('SMS Edge Function failed:', smsError);
-                throw new Error('Could not send SMS. Please try another method.');
-            }
+            // In production, uncomment this:
+            // const { error: smsError } = await this.supabase.functions.invoke('send-sms-verification', {
+            //     body: {
+            //         to: phoneNumber,
+            //         otp: otpCode,
+            //         user_id: this.state.currentUser.userId
+            //     }
+            // });
             
-            console.log(`✅ SMS sent to ${this.maskPhone(phoneNumber)}`);
+            // if (smsError) throw new Error('Could not send SMS');
             
         } catch (error) {
             console.error('SMS verification error:', error);
@@ -964,7 +1028,7 @@ window.NCHSMLogin = {
     // ============================================
     completeAuthenticatorSetup: async function() {
         const code = this.getOTPCode('authenticator');
-        if (code.length !== 6 || !/^\d+$/.test(code)) {
+        if (code.length !== 6 || !/^\d{6}$/.test(code)) {
             this.showError(document.getElementById('setupError'), 'Please enter a valid 6-digit code');
             return;
         }
@@ -981,42 +1045,79 @@ window.NCHSMLogin = {
                 throw new Error('Authentication library not available');
             }
             
-            // Verify code
-            const isValid = otplib.authenticator.check(code, this.state.currentSecret);
+            // Verify TOTP code
+            const isValid = otplib.authenticator.check(code, this.state.currentSecret, {
+                window: 1 // Allow 30 seconds clock skew
+            });
+            
             if (!isValid) {
-                throw new Error('Invalid code. Please try again.');
+                throw new Error('Invalid code. Please check your authenticator app and try again.');
             }
             
             // Generate backup codes
-            const backupCodes = Array.from({length: 10}, () => 
-                Array.from({length: 8}, () => 
-                    'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'[Math.floor(Math.random() * 36)]
-                ).join('')
-            );
+            const backupCodes = this.generateSecureBackupCodes(10);
             
-            // Save to database - NOTE: Changed column name from 'id' to 'user_id'
+            // Save to database
             const { error } = await this.supabase
                 .from('user_2fa_settings')
                 .upsert({
-                    user_id: this.state.currentUser.userId, // Changed from 'id'
+                    user_id: this.state.currentUser.userId,
                     totp_secret: this.state.currentSecret,
                     backup_codes: backupCodes,
                     preferred_method: 'authenticator',
                     is_2fa_enabled: true,
+                    setup_completed_at: new Date().toISOString(),
                     updated_at: new Date().toISOString()
                 });
             
-            if (error) throw error;
+            if (error) {
+                console.error('Database error:', error);
+                throw new Error('Failed to save 2FA settings. Please try again.');
+            }
             
+            // Store backup locally
+            localStorage.setItem(`2fa_backup_${this.state.currentUser.userId}`, 
+                JSON.stringify({
+                    secret: this.state.currentSecret,
+                    backupCodes: backupCodes,
+                    setupDate: new Date().toISOString()
+                }));
+            
+            // Show success modal with backup codes
             this.showBackupCodesModal(backupCodes);
             
         } catch (error) {
             console.error('Setup error:', error);
             this.showError(document.getElementById('setupError'), error.message);
+            
+            // Clear OTP input and refocus
+            this.clearOTPInputs('authenticator');
+            const otpInput = document.getElementById('authenticatorOtpInput');
+            if (otpInput) otpInput.focus();
+            
         } finally {
             if (setupBtn) setupBtn.disabled = false;
             if (spinner) spinner.style.display = 'none';
         }
+    },
+    
+    // Generate secure backup codes
+    generateSecureBackupCodes: function(count) {
+        const codes = [];
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Removed confusing characters
+        
+        for (let i = 0; i < count; i++) {
+            let code = '';
+            for (let j = 0; j < 8; j++) {
+                code += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            
+            // Add hyphen for readability: XXXX-XXXX format
+            code = code.substring(0, 4) + '-' + code.substring(4);
+            codes.push(code);
+        }
+        
+        return codes;
     },
     
     // ============================================
@@ -1024,7 +1125,7 @@ window.NCHSMLogin = {
     // ============================================
     verify2FACode: async function() {
         const code = this.getOTPCode('verify');
-        if (code.length !== 6 || !/^\d+$/.test(code)) {
+        if (code.length !== 6 || !/^\d{6}$/.test(code)) {
             this.showError(document.getElementById('2faError'), 'Please enter a valid 6-digit code');
             return;
         }
@@ -1036,34 +1137,14 @@ window.NCHSMLogin = {
         if (spinner) spinner.style.display = 'inline-block';
         
         try {
-            // Determine verification method based on current method
+            // Determine verification method
             const method = this.getCurrentVerificationMethod();
             
             if (method === 'authenticator') {
-                // Get TOTP secret - NOTE: Changed column name from 'id' to 'user_id'
-                const { data: totpData } = await this.supabase
-                    .from('user_2fa_settings')
-                    .select('totp_secret')
-                    .eq('user_id', this.state.currentUser.userId) // Changed from 'id'
-                    .single();
-                
-                if (!totpData?.totp_secret) throw new Error('2FA not configured');
-                
-                // Verify TOTP
-                const isValid = otplib.authenticator.check(code, totpData.totp_secret);
-                if (!isValid) {
-                    this.state.otpAttempts++;
-                    if (this.state.otpAttempts >= this.state.maxOtpAttempts) {
-                        await this.supabase.auth.signOut();
-                        throw new Error('Too many failed attempts. Please try again later.');
-                    }
-                    throw new Error(`Invalid code. ${this.state.maxOtpAttempts - this.state.otpAttempts} attempts remaining.`);
-                }
+                await this.verifyAuthenticatorCode(code);
             } else if (method === 'email') {
-                // Verify email OTP
                 await this.verifyEmailCode(code);
             } else if (method === 'sms') {
-                // Verify SMS OTP
                 await this.verifySMSCode(code);
             }
             
@@ -1095,14 +1176,62 @@ window.NCHSMLogin = {
         }
     },
     
-    getCurrentVerificationMethod: function() {
-        // Check which method was selected
-        if (this.state.currentVerificationMethod) {
-            return this.state.currentVerificationMethod;
+    // Verify authenticator code
+    verifyAuthenticatorCode: async function(code) {
+        try {
+            // Get TOTP secret from database
+            const { data: totpData } = await this.supabase
+                .from('user_2fa_settings')
+                .select('totp_secret')
+                .eq('user_id', this.state.currentUser.userId)
+                .single();
+            
+            if (!totpData?.totp_secret) {
+                // Try local storage as fallback
+                const localBackup = localStorage.getItem(`2fa_backup_${this.state.currentUser.userId}`);
+                if (localBackup) {
+                    const backupData = JSON.parse(localBackup);
+                    if (backupData.secret) {
+                        const isValid = otplib.authenticator.check(code, backupData.secret, { window: 1 });
+                        if (isValid) return true;
+                    }
+                }
+                throw new Error('2FA not configured. Please set up authenticator first.');
+            }
+            
+            // Verify with tolerance for clock skew
+            const isValid = otplib.authenticator.check(code, totpData.totp_secret, {
+                window: 1
+            });
+            
+            if (!isValid) {
+                this.state.otpAttempts++;
+                
+                if (this.state.otpAttempts >= this.state.maxOtpAttempts) {
+                    await this.supabase.auth.signOut();
+                    
+                    // Store lockout timestamp
+                    localStorage.setItem(`2fa_lockout_${this.state.currentUser.userId}`, 
+                        Date.now().toString());
+                    
+                    throw new Error('Too many failed attempts. Please try again in 15 minutes.');
+                }
+                
+                const remaining = this.state.maxOtpAttempts - this.state.otpAttempts;
+                throw new Error(`Invalid code. ${remaining} attempt${remaining !== 1 ? 's' : ''} remaining.`);
+            }
+            
+            // Reset attempts on success
+            this.state.otpAttempts = 0;
+            return true;
+            
+        } catch (error) {
+            throw error;
         }
-        
-        // Fallback to checking from database
-        return 'authenticator';
+    },
+    
+    getCurrentVerificationMethod: function() {
+        return this.state.currentVerificationMethod || 'authenticator';
     },
     
     // ============================================
@@ -1122,7 +1251,7 @@ window.NCHSMLogin = {
         if (this.state.resendTimeout) clearTimeout(this.state.resendTimeout);
         
         // Set countdown
-        let timeLeft = 60; // 60 seconds
+        let timeLeft = 60;
         resendBtn.disabled = true;
         
         this.state.resendTimer = setInterval(() => {
@@ -1151,12 +1280,12 @@ window.NCHSMLogin = {
             
             // Show success message
             this.showError(document.getElementById('2faError'), 
-                `New verification code sent to your ${method}`, 'success');
+                `New code sent to your ${method}`, 'success');
             
         } catch (error) {
             console.error('Resend error:', error);
             this.showError(document.getElementById('2faError'), 
-                `Failed to resend code: ${error.message}`);
+                `Failed to resend: ${error.message}`);
         }
     },
     
@@ -1298,7 +1427,7 @@ window.NCHSMLogin = {
     useBackupCode: function() {
         const backupCode = prompt('Enter your backup code:');
         if (backupCode) {
-            // Verify backup code (simplified for demo)
+            // Verify backup code
             alert('Backup code verification would be implemented here');
         }
     },
@@ -1464,6 +1593,7 @@ window.completeAuthenticatorSetup = () => window.NCHSMLogin.completeAuthenticato
 window.downloadBackupCodes = () => window.NCHSMLogin.downloadBackupCodes();
 window.proceedToDashboard = () => window.NCHSMLogin.proceedToDashboard();
 window.copyToClipboard = (text, button) => window.NCHSMLogin.copyToClipboard(text, button);
+window.copySecretToClipboard = () => window.NCHSMLogin.copySecretToClipboard();
 window.goBackToLogin = () => window.NCHSMLogin.goBackToLogin();
 window.resendVerificationCode = (method) => window.NCHSMLogin.resendVerificationCode(method);
 
