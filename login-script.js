@@ -134,22 +134,22 @@ window.NCHSMLogin = {
     },
     
     initMethodSelection: function() {
-        // Add click handlers to method cards
-        document.querySelectorAll('.method-card').forEach(card => {
-            card.addEventListener('click', (e) => {
-                const method = card.getAttribute('data-method');
-                if (method) {
-                    this.selectMethod(method);
+        // Add click handlers to verification options
+        document.querySelectorAll('.verification-option').forEach(option => {
+            option.addEventListener('click', (e) => {
+                const methodType = option.getAttribute('data-method');
+                if (methodType) {
+                    this.selectMethod(methodType);
                 }
             });
             
             // Add keyboard support
-            card.addEventListener('keydown', (e) => {
+            option.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
-                    const method = card.getAttribute('data-method');
-                    if (method) {
-                        this.selectMethod(method);
+                    const methodType = option.getAttribute('data-method');
+                    if (methodType) {
+                        this.selectMethod(methodType);
                     }
                 }
             });
@@ -409,25 +409,25 @@ window.NCHSMLogin = {
     // MODAL MANAGEMENT
     // ============================================
     showMethodSelection: function() {
-        console.log('Showing method selection modal');
+        console.log('Showing eCitizen style method selection');
         this.hideAllModals();
         const modal = document.getElementById('methodSelectionModal');
         modal.classList.add('active');
         
         // Reset selection
         this.state.selectedMethod = null;
-        document.querySelectorAll('.method-card').forEach(card => {
-            card.classList.remove('selected');
+        document.querySelectorAll('.verification-option').forEach(option => {
+            option.classList.remove('selected');
         });
         
-        console.log('Method cards found:', document.querySelectorAll('.method-card').length);
+        // Update user information display
+        this.updateUserInfoDisplay();
         
-        // Focus first method card
+        // Focus first option
         setTimeout(() => {
-            const firstCard = document.querySelector('.method-card');
-            if (firstCard) {
-                firstCard.focus();
-                console.log('First card focused');
+            const firstOption = document.querySelector('.verification-option');
+            if (firstOption) {
+                firstOption.focus();
             }
         }, 100);
     },
@@ -445,7 +445,7 @@ window.NCHSMLogin = {
         };
         
         methodText.textContent = methods[method] || methods.authenticator;
-        emailText.textContent = this.state.currentUser.email;
+        emailText.textContent = this.maskEmail(this.state.currentUser.email);
         
         this.clearOTPInputs('verify');
         this.clearError(document.getElementById('2faError'));
@@ -516,22 +516,22 @@ window.NCHSMLogin = {
     },
     
     // ============================================
-    // METHOD SELECTION
+    // METHOD SELECTION - eCitizen Style
     // ============================================
     selectMethod: function(method) {
         this.state.selectedMethod = method;
         
         // Update UI
-        document.querySelectorAll('.method-card').forEach(card => {
-            card.classList.remove('selected');
-            card.setAttribute('aria-checked', 'false');
+        document.querySelectorAll('.verification-option').forEach(element => {
+            element.classList.remove('selected');
+            element.setAttribute('aria-checked', 'false');
         });
         
-        const selectedCard = document.querySelector(`.method-card[data-method="${method}"]`);
-        if (selectedCard) {
-            selectedCard.classList.add('selected');
-            selectedCard.setAttribute('aria-checked', 'true');
-            selectedCard.focus();
+        const selectedElement = document.querySelector(`.verification-option[data-method="${method}"]`);
+        if (selectedElement) {
+            selectedElement.classList.add('selected');
+            selectedElement.setAttribute('aria-checked', 'true');
+            selectedElement.focus();
         }
         
         // Clear any previous errors
@@ -549,13 +549,88 @@ window.NCHSMLogin = {
         } else if (this.state.selectedMethod === 'sms') {
             // Show SMS verification
             this.showVerificationModal('sms');
-            // Here you would typically send an SMS code
-            alert('SMS verification would be implemented here');
+            alert(`SMS verification code would be sent to ${this.maskPhoneFromProfile()}`);
         } else if (this.state.selectedMethod === 'email') {
             // Show email verification
             this.showVerificationModal('email');
-            // Here you would typically send an email code
-            alert('Email verification would be implemented here');
+            alert(`Email verification code would be sent to ${this.maskEmail(this.state.currentUser.email)}`);
+        }
+    },
+    
+    // ============================================
+    // USER INFO DISPLAY
+    // ============================================
+    updateUserInfoDisplay: function() {
+        // Mask email (eCitizen style)
+        const email = this.state.currentUser?.email || '';
+        const maskedEmail = this.maskEmail(email);
+        const emailDisplay = document.getElementById('userEmailDisplay');
+        if (emailDisplay) {
+            emailDisplay.textContent = maskedEmail;
+        }
+        
+        // Get and mask phone from profile
+        this.getUserPhone().then(phone => {
+            const maskedPhone = this.maskPhone(phone);
+            const phoneDisplay = document.getElementById('userPhoneDisplay');
+            if (phoneDisplay) {
+                phoneDisplay.textContent = maskedPhone;
+            }
+        });
+    },
+    
+    maskEmail: function(email) {
+        if (!email) return 'No email on file';
+        
+        const [localPart, domain] = email.split('@');
+        if (!localPart || !domain) return email;
+        
+        // eCitizen style: Show first character and last character before @
+        const firstChar = localPart[0];
+        const lastChar = localPart[localPart.length - 1];
+        const middleChars = localPart.length - 2;
+        const maskedLocal = firstChar + '*'.repeat(middleChars) + lastChar;
+        
+        return `${maskedLocal}@${domain}`;
+    },
+    
+    maskPhone: function(phone) {
+        if (!phone) return 'No phone on file';
+        
+        // Remove any non-digit characters
+        const digits = phone.replace(/\D/g, '');
+        
+        if (digits.length < 4) return phone;
+        
+        // eCitizen style: Show country code and last 4 digits, mask the rest
+        const countryCode = digits.length > 9 ? digits.slice(0, digits.length - 9) : '';
+        const lastFour = digits.slice(-4);
+        const middleDigits = digits.length - countryCode.length - 4;
+        
+        const maskedPart = '*'.repeat(middleDigits);
+        
+        return `+${countryCode}${maskedPart}${lastFour}`;
+    },
+    
+    maskPhoneFromProfile: function() {
+        return this.getUserPhone().then(phone => this.maskPhone(phone));
+    },
+    
+    getUserPhone: async function() {
+        try {
+            if (!this.supabase || !this.state.currentUser?.email) return null;
+            
+            // Get phone from profile
+            const { data: profile } = await this.supabase
+                .from('consolidated_user_profiles_table')
+                .select('phone')
+                .eq('email', this.state.currentUser.email)
+                .maybeSingle();
+            
+            return profile?.phone || '+254700000000'; // Default if not found
+        } catch (error) {
+            console.error('Error fetching phone:', error);
+            return '+254700000000';
         }
     },
     
@@ -614,7 +689,7 @@ window.NCHSMLogin = {
     },
     
     getOTPCode: function(context) {
-        const modalId = this.getModalId(context);
+        const modalId = getModalId(context);
         const inputs = document.querySelectorAll(`${modalId} .otp-digit`);
         return Array.from(inputs).map(input => input.value).join('');
     },
@@ -880,6 +955,26 @@ window.NCHSMLogin = {
         }
     },
     
+    goBackToLogin: function() {
+        this.hideAllModals();
+        if (this.supabase) {
+            this.supabase.auth.signOut();
+        }
+        // Clear any login state
+        this.state.currentUser = null;
+        this.state.isLoggingIn = false;
+        
+        // Reset form
+        const loginButton = document.getElementById('loginButton');
+        const buttonText = document.getElementById('button-text');
+        if (loginButton) loginButton.disabled = false;
+        if (buttonText) buttonText.textContent = 'Sign In';
+        
+        // Focus email field
+        const emailInput = document.getElementById('email');
+        if (emailInput) emailInput.focus();
+    },
+    
     // ============================================
     // ACCESSIBILITY FUNCTIONS
     // ============================================
@@ -888,7 +983,7 @@ window.NCHSMLogin = {
             this.hideAllModals();
         }
         
-        if (e.key === 'Enter' && e.target.classList.contains('method-card')) {
+        if (e.key === 'Enter' && e.target.classList.contains('verification-option')) {
             e.preventDefault();
             const method = e.target.getAttribute('data-method');
             if (method) {
@@ -932,6 +1027,7 @@ window.NCHSMLogin = {
         }
     }
 };
+
 
 // ============================================
 // GLOBAL FUNCTION EXPORTS
