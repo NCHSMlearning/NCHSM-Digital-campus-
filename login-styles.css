@@ -967,3 +967,232 @@ body {
         max-width: none !important;
     }
 }
+/* ===== eCitizen OTP Verification Style ===== */
+.modal-content.ecitizen-style {
+    max-width: 400px;
+    padding: 0;
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+}
+
+.modal-content.ecitizen-style .modal-header {
+    padding: 2rem 2rem 1rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.modal-content.ecitizen-style .modal-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin-bottom: 0.5rem;
+}
+
+.modal-content.ecitizen-style .modal-subtitle {
+    font-size: 1rem;
+    color: #6b7280;
+    font-weight: 400;
+}
+
+.modal-content.ecitizen-style .modal-body {
+    padding: 1.5rem 2rem 2rem;
+}
+
+/* Verification Options - eCitizen Style */
+.verification-methods {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin: 1.5rem 0;
+}
+
+.verification-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.25rem;
+    background: #ffffff;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.verification-option:hover {
+    border-color: #3b82f6;
+    background: #f8fafc;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
+}
+
+.verification-option.selected {
+    border-color: #3b82f6;
+    background: #eff6ff;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.verification-option.selected .option-check {
+    opacity: 1;
+    transform: scale(1);
+    background: #3b82f6;
+    color: #ffffff;
+}
+
+.option-content {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex: 1;
+}
+
+.option-icon {
+    width: 48px;
+    height: 48px;
+    background: #f3f4f6;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: #4b5563;
+}
+
+.verification-option.selected .option-icon {
+    background: #3b82f6;
+    color: #ffffff;
+}
+
+.option-icon svg {
+    width: 24px;
+    height: 24px;
+}
+
+.option-details {
+    flex: 1;
+}
+
+.option-title {
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 0.25rem;
+    font-size: 0.9375rem;
+}
+
+.option-info {
+    font-size: 0.875rem;
+    color: #6b7280;
+    line-height: 1.4;
+}
+
+.option-check {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    opacity: 0;
+    transform: scale(0.8);
+    transition: all 0.2s ease;
+}
+
+.option-check svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* Button - eCitizen Style */
+.btn-primary {
+    background: #3b82f6;
+    color: #ffffff;
+    border: none;
+    padding: 1rem;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    width: 100%;
+}
+
+.btn-primary:hover {
+    background: #2563eb;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+}
+
+.btn-primary:disabled {
+    background: #9ca3af;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* Focus styles */
+.verification-option:focus {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+    .modal-content.ecitizen-style {
+        background: #1f2937;
+        border: 1px solid #374151;
+    }
+    
+    .modal-content.ecitizen-style .modal-header {
+        border-bottom-color: #374151;
+    }
+    
+    .modal-content.ecitizen-style .modal-title {
+        color: #f9fafb;
+    }
+    
+    .modal-content.ecitizen-style .modal-subtitle {
+        color: #9ca3af;
+    }
+    
+    .verification-option {
+        background: #374151;
+        border-color: #4b5563;
+    }
+    
+    .verification-option:hover {
+        background: #4b5563;
+        border-color: #3b82f6;
+    }
+    
+    .verification-option.selected {
+        background: rgba(59, 130, 246, 0.1);
+        border-color: #3b82f6;
+    }
+    
+    .option-icon {
+        background: #4b5563;
+        color: #d1d5db;
+    }
+    
+    .verification-option.selected .option-icon {
+        background: #3b82f6;
+        color: #ffffff;
+    }
+    
+    .option-title {
+        color: #f9fafb;
+    }
+    
+    .option-info {
+        color: #9ca3af;
+    }
+    
+    .option-check {
+        background: #4b5563;
+    }
+}
