@@ -48,6 +48,9 @@ window.NCHSMLogin = {
         
         // Initialize Supabase safely
         this.initSupabase();
+        
+        // Initialize method selection
+        this.initMethodSelection();
     },
     
     // ============================================
@@ -109,15 +112,15 @@ window.NCHSMLogin = {
         // Add input validation
         const inputs = loginForm.querySelectorAll('input[required]');
         inputs.forEach(input => {
-            input.addEventListener('blur', this.validateField.bind(this));
-            input.addEventListener('input', this.clearFieldError.bind(this));
+            input.addEventListener('blur', (e) => this.validateField(e));
+            input.addEventListener('input', (e) => this.clearFieldError(e));
         });
     },
     
     initModals: function() {
         // Add keyboard navigation to modals
         document.querySelectorAll('.modal-overlay').forEach(modal => {
-            modal.addEventListener('keydown', this.handleModalKeyboard.bind(this));
+            modal.addEventListener('keydown', (e) => this.handleModalKeyboard(e));
         });
         
         // Close modal on backdrop click
@@ -125,6 +128,29 @@ window.NCHSMLogin = {
             modal.addEventListener('click', (e) => {
                 if (e.target === modal) {
                     this.hideAllModals();
+                }
+            });
+        });
+    },
+    
+    initMethodSelection: function() {
+        // Add click handlers to method cards
+        document.querySelectorAll('.method-card').forEach(card => {
+            card.addEventListener('click', (e) => {
+                const method = card.getAttribute('data-method');
+                if (method) {
+                    this.selectMethod(method);
+                }
+            });
+            
+            // Add keyboard support
+            card.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    const method = card.getAttribute('data-method');
+                    if (method) {
+                        this.selectMethod(method);
+                    }
                 }
             });
         });
@@ -190,162 +216,6 @@ window.NCHSMLogin = {
     },
     
     // ============================================
-    // LOGIN HANDLER
-    // ============================================
-    handleLogin: async function(e) {
-    e.preventDefault();
-    
-    if (this.state.isLoggingIn) return;
-    
-    const email = document.getElementById('email').value.trim().toLowerCase();
-    const password = document.getElementById('password').value;
-    const errorMsg = document.getElementById('errorMsg');
-    const loginButton = document.getElementById('loginButton');
-    const buttonText = document.getElementById('button-text');
-    
-    // Validation
-    if (!this.validateEmail(email)) {
-        this.showError(errorMsg, 'Please enter a valid email address');
-        return;
-    }
-    
-    if (!password) {
-        this.showError(errorMsg, 'Please enter your password');
-        return;
-    }
-    
-    // Update UI
-    this.clearError(errorMsg);
-    this.state.isLoggingIn = true;
-    loginButton.disabled = true;
-    buttonText.innerHTML = '<span class="loading-spinner"></span> Signing In...';
-    
-    try {
-        // Check if Supabase is available
-        if (!this.supabase) {
-            throw new Error('Authentication service not available');
-        }
-        
-        // 1. Authenticate with Supabase
-        const { data: authData, error: authError } = await this.supabase.auth.signInWithPassword({ 
-            email, 
-            password 
-        });
-        
-        if (authError) {
-            if (authError.message.includes('Invalid login credentials')) {
-                throw new Error('Invalid email or password. Please try again.');
-            } else if (authError.message.includes('Email not confirmed')) {
-                throw new Error('Please verify your email address before logging in.');
-            } else {
-                throw new Error(authError.message);
-            }
-        }
-        
-        // 2. Store user session
-        this.state.currentUser = {
-            email,
-            userId: authData.user.id,
-            session: authData.session
-        };
-        
-        // 3. TRY EMAIL SEARCH FIRST (LIKE OLD SCRIPT)
-        const { data: profileData, error: profileError } = await this.supabase
-            .from('consolidated_user_profiles_table')
-            .select('*')
-            .eq('email', email)  // ← SEARCH BY EMAIL, NOT USER_ID
-            .maybeSingle();
-        
-        if (profileError) {
-            console.warn('Profile search by email failed:', profileError);
-            // Try by user_id as fallback
-            const { data: fallbackProfile } = await this.supabase
-                .from('consolidated_user_profiles_table')
-                .select('*')
-                .eq('user_id', authData.user.id)
-                .maybeSingle();
-            
-            if (!fallbackProfile) {
-                throw new Error('Account not found. Please register first.');
-            }
-            
-            await this.processLogin(fallbackProfile);
-            return;
-        }
-        
-        if (!profileData) {
-            throw new Error('Account not found. Please register first.');
-        }
-        
-        if (profileData.status?.toLowerCase() !== 'approved') {
-            await this.supabase.auth.signOut();
-            throw new Error('Account is pending approval. Please contact administration.');
-        }
-        
-        // 4. Check if 2FA setup is required
-        const { data: totpSettings } = await this.supabase
-            .from('user_2fa_settings')
-            .select('*')
-            .eq('id', authData.user.id)
-            .maybeSingle();
-        
-        if (!totpSettings || !totpSettings.is_2fa_enabled) {
-            // New user - setup 2FA
-            this.showMethodSelection();
-        } else {
-            // Check for trusted device
-            const deviceId = this.generateDeviceId();
-            if (this.state.trustedDevices[deviceId] && 
-                new Date(this.state.trustedDevices[deviceId].expires) > new Date()) {
-                // Trusted device, skip 2FA
-                await this.completeLogin(profileData);
-            } else {
-                // Existing user - verify 2FA
-                this.showVerificationModal(totpSettings.preferred_method || 'authenticator');
-            }
-        }
-        
-    } catch (error) {
-        console.error('Login error:', error);
-        if (this.supabase) {
-            await this.supabase.auth.signOut();
-        }
-        this.showError(errorMsg, error.message || 'Login failed. Please try again.');
-        
-    } finally {
-        this.state.isLoggingIn = false;
-        loginButton.disabled = false;
-        buttonText.textContent = 'Sign In';
-    }
-},
-
-// Add this new helper function
-processLogin: async function(profileData) {
-    // Store profile
-    localStorage.setItem('currentUserProfile', JSON.stringify(profileData));
-    
-    // Store session
-    const { data: { session } } = await this.supabase.auth.getSession();
-    if (session) {
-        localStorage.setItem('supabase_session', JSON.stringify(session));
-    }
-    
-    // Redirect based on role (like old script)
-    const role = profileData.role?.toLowerCase() || 'student';
-    
-    if (role === 'superadmin') {
-        window.location.href = 'superadmin.html';
-    } else if (role === 'admin') {
-        window.location.href = 'admin.html';
-    } else if (role === 'lecturer') {
-        window.location.href = 'lecturer.html';
-    } else if (role === 'hod') {
-        window.location.href = 'hod-tracker.html';
-    } else {
-        window.location.href = 'index.html';
-    }
-}
-    // ============================================
     // VALIDATION FUNCTIONS
     // ============================================
     validateEmail: function(email) {
@@ -377,19 +247,189 @@ processLogin: async function(profileData) {
     },
     
     // ============================================
+    // LOGIN HANDLER
+    // ============================================
+    handleLogin: async function(e) {
+        e.preventDefault();
+        
+        if (this.state.isLoggingIn) return;
+        
+        const email = document.getElementById('email').value.trim().toLowerCase();
+        const password = document.getElementById('password').value;
+        const errorMsg = document.getElementById('errorMsg');
+        const loginButton = document.getElementById('loginButton');
+        const buttonText = document.getElementById('button-text');
+        
+        // Validation
+        if (!this.validateEmail(email)) {
+            this.showError(errorMsg, 'Please enter a valid email address');
+            return;
+        }
+        
+        if (!password) {
+            this.showError(errorMsg, 'Please enter your password');
+            return;
+        }
+        
+        // Update UI
+        this.clearError(errorMsg);
+        this.state.isLoggingIn = true;
+        loginButton.disabled = true;
+        buttonText.innerHTML = '<span class="loading-spinner"></span> Signing In...';
+        
+        try {
+            // Check if Supabase is available
+            if (!this.supabase) {
+                throw new Error('Authentication service not available');
+            }
+            
+            // 1. Authenticate with Supabase
+            const { data: authData, error: authError } = await this.supabase.auth.signInWithPassword({ 
+                email, 
+                password 
+            });
+            
+            if (authError) {
+                if (authError.message.includes('Invalid login credentials')) {
+                    throw new Error('Invalid email or password. Please try again.');
+                } else if (authError.message.includes('Email not confirmed')) {
+                    throw new Error('Please verify your email address before logging in.');
+                } else {
+                    throw new Error(authError.message);
+                }
+            }
+            
+            // 2. Store user session
+            this.state.currentUser = {
+                email,
+                userId: authData.user.id,
+                session: authData.session
+            };
+            
+            // 3. TRY EMAIL SEARCH FIRST (LIKE OLD SCRIPT)
+            const { data: profileData, error: profileError } = await this.supabase
+                .from('consolidated_user_profiles_table')
+                .select('*')
+                .eq('email', email)  // ← SEARCH BY EMAIL, NOT USER_ID
+                .maybeSingle();
+            
+            if (profileError) {
+                console.warn('Profile search by email failed:', profileError);
+                // Try by user_id as fallback
+                const { data: fallbackProfile } = await this.supabase
+                    .from('consolidated_user_profiles_table')
+                    .select('*')
+                    .eq('user_id', authData.user.id)
+                    .maybeSingle();
+                
+                if (!fallbackProfile) {
+                    throw new Error('Account not found. Please register first.');
+                }
+                
+                await this.processLogin(fallbackProfile);
+                return;
+            }
+            
+            if (!profileData) {
+                throw new Error('Account not found. Please register first.');
+            }
+            
+            if (profileData.status?.toLowerCase() !== 'approved') {
+                await this.supabase.auth.signOut();
+                throw new Error('Account is pending approval. Please contact administration.');
+            }
+            
+            // 4. Check if 2FA setup is required
+            const { data: totpSettings } = await this.supabase
+                .from('user_2fa_settings')
+                .select('*')
+                .eq('id', authData.user.id)
+                .maybeSingle();
+            
+            if (!totpSettings || !totpSettings.is_2fa_enabled) {
+                // New user - setup 2FA
+                this.showMethodSelection();
+            } else {
+                // Check for trusted device
+                const deviceId = this.generateDeviceId();
+                if (this.state.trustedDevices[deviceId] && 
+                    new Date(this.state.trustedDevices[deviceId].expires) > new Date()) {
+                    // Trusted device, skip 2FA
+                    await this.completeLogin(profileData);
+                } else {
+                    // Existing user - verify 2FA
+                    this.showVerificationModal(totpSettings.preferred_method || 'authenticator');
+                }
+            }
+            
+        } catch (error) {
+            console.error('Login error:', error);
+            if (this.supabase) {
+                await this.supabase.auth.signOut();
+            }
+            this.showError(errorMsg, error.message || 'Login failed. Please try again.');
+            
+        } finally {
+            this.state.isLoggingIn = false;
+            loginButton.disabled = false;
+            buttonText.textContent = 'Sign In';
+        }
+    },
+    
+    // ============================================
+    // PROCESS LOGIN HELPER
+    // ============================================
+    processLogin: async function(profileData) {
+        // Store profile
+        localStorage.setItem('currentUserProfile', JSON.stringify(profileData));
+        
+        // Store session
+        const { data: { session } } = await this.supabase.auth.getSession();
+        if (session) {
+            localStorage.setItem('supabase_session', JSON.stringify(session));
+        }
+        
+        // Redirect based on role (like old script)
+        const role = profileData.role?.toLowerCase() || 'student';
+        
+        if (role === 'superadmin') {
+            window.location.href = 'superadmin.html';
+        } else if (role === 'admin') {
+            window.location.href = 'admin.html';
+        } else if (role === 'lecturer') {
+            window.location.href = 'lecturer.html';
+        } else if (role === 'hod') {
+            window.location.href = 'hod-tracker.html';
+        } else {
+            window.location.href = 'index.html';
+        }
+    },
+    
+    // ============================================
     // MODAL MANAGEMENT
     // ============================================
     showMethodSelection: function() {
+        console.log('Showing method selection modal');
         this.hideAllModals();
         const modal = document.getElementById('methodSelectionModal');
         modal.classList.add('active');
-        document.querySelector('#methodSelectionModal .method-card').focus();
         
         // Reset selection
         this.state.selectedMethod = null;
         document.querySelectorAll('.method-card').forEach(card => {
             card.classList.remove('selected');
         });
+        
+        console.log('Method cards found:', document.querySelectorAll('.method-card').length);
+        
+        // Focus first method card
+        setTimeout(() => {
+            const firstCard = document.querySelector('.method-card');
+            if (firstCard) {
+                firstCard.focus();
+                console.log('First card focused');
+            }
+        }, 100);
     },
     
     showVerificationModal: function(method = 'authenticator') {
@@ -484,18 +524,15 @@ processLogin: async function(profileData) {
         // Update UI
         document.querySelectorAll('.method-card').forEach(card => {
             card.classList.remove('selected');
+            card.setAttribute('aria-checked', 'false');
         });
         
-        const selectedCard = event.currentTarget;
-        selectedCard.classList.add('selected');
-        selectedCard.setAttribute('aria-checked', 'true');
-        
-        // Update other cards
-        document.querySelectorAll('.method-card').forEach(card => {
-            if (card !== selectedCard) {
-                card.setAttribute('aria-checked', 'false');
-            }
-        });
+        const selectedCard = document.querySelector(`.method-card[data-method="${method}"]`);
+        if (selectedCard) {
+            selectedCard.classList.add('selected');
+            selectedCard.setAttribute('aria-checked', 'true');
+            selectedCard.focus();
+        }
         
         // Clear any previous errors
         this.clearError(document.getElementById('methodError'));
@@ -509,9 +546,16 @@ processLogin: async function(profileData) {
         
         if (this.state.selectedMethod === 'authenticator') {
             this.showAuthenticatorSetup();
-        } else {
-            // For SMS/Email, show verification modal directly
-            this.showVerificationModal(this.state.selectedMethod);
+        } else if (this.state.selectedMethod === 'sms') {
+            // Show SMS verification
+            this.showVerificationModal('sms');
+            // Here you would typically send an SMS code
+            alert('SMS verification would be implemented here');
+        } else if (this.state.selectedMethod === 'email') {
+            // Show email verification
+            this.showVerificationModal('email');
+            // Here you would typically send an email code
+            alert('Email verification would be implemented here');
         }
     },
     
@@ -675,7 +719,7 @@ processLogin: async function(profileData) {
             const { data: profileData } = await this.supabase
                 .from('consolidated_user_profiles_table')
                 .select('*')
-                .eq('user_id', this.state.currentUser.userId)
+                .eq('email', this.state.currentUser.email)
                 .single();
             
             if (!profileData) throw new Error('Profile not found');
@@ -845,7 +889,8 @@ processLogin: async function(profileData) {
         }
         
         if (e.key === 'Enter' && e.target.classList.contains('method-card')) {
-            const method = e.target.getAttribute('onclick')?.match(/selectMethod\('(.+)'\)/)?.[1];
+            e.preventDefault();
+            const method = e.target.getAttribute('data-method');
             if (method) {
                 this.selectMethod(method);
             }
@@ -893,26 +938,26 @@ processLogin: async function(profileData) {
 // ============================================
 
 // Make functions available globally for onclick handlers
-window.hideAllModals = () => NCHSMLogin.hideAllModals();
-window.moveToNextOTP = (input, context) => NCHSMLogin.moveToNextOTP(input, context);
-window.verify2FACode = () => NCHSMLogin.verify2FACode();
-window.useBackupCode = () => NCHSMLogin.useBackupCode();
-window.sendRecoveryEmail = () => NCHSMLogin.sendRecoveryEmail();
-window.selectMethod = (method) => NCHSMLogin.selectMethod(method);
-window.proceedWithSelectedMethod = () => NCHSMLogin.proceedWithSelectedMethod();
-window.completeAuthenticatorSetup = () => NCHSMLogin.completeAuthenticatorSetup();
-window.downloadBackupCodes = () => NCHSMLogin.downloadBackupCodes();
-window.proceedToDashboard = () => NCHSMLogin.proceedToDashboard();
-window.copyToClipboard = (text, button) => NCHSMLogin.copyToClipboard(text, button);
+window.hideAllModals = () => window.NCHSMLogin.hideAllModals();
+window.moveToNextOTP = (input, context) => window.NCHSMLogin.moveToNextOTP(input, context);
+window.verify2FACode = () => window.NCHSMLogin.verify2FACode();
+window.useBackupCode = () => window.NCHSMLogin.useBackupCode();
+window.sendRecoveryEmail = () => window.NCHSMLogin.sendRecoveryEmail();
+window.selectMethod = (method) => window.NCHSMLogin.selectMethod(method);
+window.proceedWithSelectedMethod = () => window.NCHSMLogin.proceedWithSelectedMethod();
+window.completeAuthenticatorSetup = () => window.NCHSMLogin.completeAuthenticatorSetup();
+window.downloadBackupCodes = () => window.NCHSMLogin.downloadBackupCodes();
+window.proceedToDashboard = () => window.NCHSMLogin.proceedToDashboard();
+window.copyToClipboard = (text, button) => window.NCHSMLogin.copyToClipboard(text, button);
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-    NCHSMLogin.init();
+    window.NCHSMLogin.init();
     
     // Offline detection
-    window.addEventListener('online', () => NCHSMLogin.updateOnlineStatus());
-    window.addEventListener('offline', () => NCHSMLogin.updateOnlineStatus());
+    window.addEventListener('online', () => window.NCHSMLogin.updateOnlineStatus());
+    window.addEventListener('offline', () => window.NCHSMLogin.updateOnlineStatus());
     
     // Initialize online status
-    NCHSMLogin.updateOnlineStatus();
+    window.NCHSMLogin.updateOnlineStatus();
 });
