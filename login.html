@@ -330,37 +330,38 @@
             </div>
             
             <div class="modal-body">
-                <div class="method-grid">
-                    <div class="method-card" onclick="window.selectMethod('authenticator')" role="button" tabindex="0">
-                        <div class="method-icon-circle authenticator">
-                            <i data-feather="smartphone"></i>
-                        </div>
-                        <div class="method-content">
-                            <h4 class="method-title">Authenticator App</h4>
-                            <p class="method-description">Use Google Authenticator, Authy, or Microsoft Authenticator</p>
-                        </div>
-                    </div>
-                    
-                    <div class="method-card" onclick="window.selectMethod('sms')" role="button" tabindex="0">
-                        <div class="method-icon-circle sms">
-                            <i data-feather="message-circle"></i>
-                        </div>
-                        <div class="method-content">
-                            <h4 class="method-title">Text Message (SMS)</h4>
-                            <p class="method-description">Receive verification codes via SMS to your phone</p>
-                        </div>
-                    </div>
-                    
-                    <div class="method-card" onclick="window.selectMethod('email')" role="button" tabindex="0">
-                        <div class="method-icon-circle email">
-                            <i data-feather="mail"></i>
-                        </div>
-                        <div class="method-content">
-                            <h4 class="method-title">Email Verification</h4>
-                            <p class="method-description">Receive verification codes via email</p>
-                        </div>
-                    </div>
-                </div>
+               <!-- Replace the method cards section with this: -->
+<div class="method-grid">
+    <div class="method-card" data-method="authenticator" role="button" tabindex="0">
+        <div class="method-icon-circle authenticator">
+            <i data-feather="smartphone"></i>
+        </div>
+        <div class="method-content">
+            <h4 class="method-title">Authenticator App</h4>
+            <p class="method-description">Use Google Authenticator, Authy, or Microsoft Authenticator</p>
+        </div>
+    </div>
+    
+    <div class="method-card" data-method="sms" role="button" tabindex="0">
+        <div class="method-icon-circle sms">
+            <i data-feather="message-circle"></i>
+        </div>
+        <div class="method-content">
+            <h4 class="method-title">Text Message (SMS)</h4>
+            <p class="method-description">Receive verification codes via SMS to your phone</p>
+        </div>
+    </div>
+    
+    <div class="method-card" data-method="email" role="button" tabindex="0">
+        <div class="method-icon-circle email">
+            <i data-feather="mail"></i>
+        </div>
+        <div class="method-content">
+            <h4 class="method-title">Email Verification</h4>
+            <p class="method-description">Receive verification codes via email</p>
+        </div>
+    </div>
+</div>
                 
                 <div id="methodError" class="error-message" style="display: none;" role="alert"></div>
                 
