@@ -543,39 +543,46 @@ window.NCHSMLogin = {
     },
     
     proceedWithSelectedMethod: async function() {
-        if (!this.state.selectedMethod) {
-            this.showError(document.getElementById('methodError'), 'Please select a security method');
-            return;
-        }
-        
-        // Show loading state
-        const methodBtn = document.getElementById('proceedWithMethodBtn');
-        const originalText = methodBtn.innerHTML;
+    if (!this.state.selectedMethod) {
+        this.showError(document.getElementById('methodError'), 'Please select a security method');
+        return;
+    }
+    
+    // Find the button safely
+    const methodBtn = document.getElementById('proceedWithMethodBtn');
+    let originalText = 'Proceed';
+    
+    // Update UI only if button exists
+    if (methodBtn) {
+        originalText = methodBtn.innerHTML;
         methodBtn.disabled = true;
         methodBtn.innerHTML = '<span class="loading-spinner"></span> Sending...';
-        
-        try {
-            if (this.state.selectedMethod === 'authenticator') {
-                this.showAuthenticatorSetup();
-            } else if (this.state.selectedMethod === 'sms') {
-                // Actually send SMS verification
-                await this.sendSMSVerification();
-                this.showVerificationModal('sms');
-            } else if (this.state.selectedMethod === 'email') {
-                // Actually send email verification
-                await this.sendEmailVerification();
-                this.showVerificationModal('email');
-            }
-        } catch (error) {
-            console.error('Error sending verification:', error);
-            this.showError(document.getElementById('methodError'), 
-                `Failed to send verification: ${error.message}`);
-        } finally {
+    }
+    
+    try {
+        if (this.state.selectedMethod === 'authenticator') {
+            this.showAuthenticatorSetup();
+        } else if (this.state.selectedMethod === 'sms') {
+            // Actually send SMS verification
+            await this.sendSMSVerification();
+            this.showVerificationModal('sms');
+        } else if (this.state.selectedMethod === 'email') {
+            // Actually send email verification
+            await this.sendEmailVerification();
+            this.showVerificationModal('email');
+        }
+    } catch (error) {
+        console.error('Error sending verification:', error);
+        this.showError(document.getElementById('methodError'), 
+            `Failed to send verification: ${error.message}`);
+    } finally {
+        // Reset button only if it exists
+        if (methodBtn) {
             methodBtn.disabled = false;
             methodBtn.innerHTML = originalText;
         }
-    },
-    
+    }
+},
     // ============================================
     // EMAIL VERIFICATION
     // ============================================
