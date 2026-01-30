@@ -27,6 +27,8 @@ window.NCHSMLogin = {
     // INITIALIZATION
     // ============================================
     init: function() {
+        console.log('🚀 Initializing NCHSMLogin...');
+        
         // Initialize Feather Icons
         if (typeof feather !== 'undefined') {
             feather.replace();
@@ -58,6 +60,8 @@ window.NCHSMLogin = {
         
         // Initialize OTP input handling
         this.initOTPInputs();
+        
+        console.log('✅ NCHSMLogin initialized');
     },
     
     // ============================================
@@ -68,15 +72,21 @@ window.NCHSMLogin = {
             if (window.supabase) {
                 this.supabase = window.supabase.createClient(
                     'https://lwhtjozfsmbyihenfunw.supabase.co',
-                    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk'
+                    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk',
+                    {
+                        auth: {
+                            persistSession: true,
+                            autoRefreshToken: true
+                        }
+                    }
                 );
-                console.log('Supabase initialized successfully');
+                console.log('✅ Supabase initialized successfully');
             } else {
-                console.error('Supabase library not loaded');
+                console.error('❌ Supabase library not loaded');
                 this.showError(document.getElementById('errorMsg'), 'Authentication service not available. Please refresh the page.');
             }
         } catch (error) {
-            console.error('Error initializing Supabase:', error);
+            console.error('❌ Error initializing Supabase:', error);
         }
     },
     
@@ -289,7 +299,7 @@ window.NCHSMLogin = {
     },
     
     // ============================================
-    // LOGIN HANDLER
+    // LOGIN HANDLER - FIXED VERSION
     // ============================================
     handleLogin: async function(e) {
         e.preventDefault();
@@ -320,10 +330,14 @@ window.NCHSMLogin = {
         buttonText.innerHTML = '<span class="loading-spinner"></span> Signing In...';
         
         try {
+            console.log('🔐 Attempting login for:', email);
+            
             // Check if Supabase is available
             if (!this.supabase) {
                 throw new Error('Authentication service not available');
             }
+            
+            console.log('✅ Supabase client ready');
             
             // 1. Authenticate with Supabase
             const { data: authData, error: authError } = await this.supabase.auth.signInWithPassword({ 
@@ -332,6 +346,7 @@ window.NCHSMLogin = {
             });
             
             if (authError) {
+                console.error('❌ Auth error:', authError);
                 if (authError.message.includes('Invalid login credentials')) {
                     throw new Error('Invalid email or password. Please try again.');
                 } else if (authError.message.includes('Email not confirmed')) {
@@ -341,6 +356,11 @@ window.NCHSMLogin = {
                 }
             }
             
+            console.log('✅ Authentication successful:', {
+                userId: authData.user.id,
+                email: authData.user.email
+            });
+            
             // 2. Store user session
             this.state.currentUser = {
                 email,
@@ -348,28 +368,35 @@ window.NCHSMLogin = {
                 session: authData.session
             };
             
-            // 3. TRY EMAIL SEARCH FIRST
-            const { data: profileData, error: profileError } = await this.supabase
+            // 3. Get user profile
+            console.log('👤 Fetching user profile...');
+            let profileData = null;
+            
+            // Try by email first
+            const { data: profileByEmail, error: emailError } = await this.supabase
                 .from('consolidated_user_profiles_table')
                 .select('*')
                 .eq('email', email)
                 .maybeSingle();
             
-            if (profileError) {
-                console.warn('Profile search by email failed:', profileError);
+            if (!emailError && profileByEmail) {
+                profileData = profileByEmail;
+                console.log('✅ Profile found by email');
+            } else {
                 // Try by user_id as fallback
-                const { data: fallbackProfile } = await this.supabase
+                console.log('⚠️ Trying profile by user_id...');
+                const { data: profileByUserId } = await this.supabase
                     .from('consolidated_user_profiles_table')
                     .select('*')
                     .eq('user_id', authData.user.id)
                     .maybeSingle();
                 
-                if (!fallbackProfile) {
+                if (profileByUserId) {
+                    profileData = profileByUserId;
+                    console.log('✅ Profile found by user_id');
+                } else {
                     throw new Error('Account not found. Please register first.');
                 }
-                
-                await this.processLogin(fallbackProfile);
-                return;
             }
             
             if (!profileData) {
@@ -381,33 +408,75 @@ window.NCHSMLogin = {
                 throw new Error('Account is pending approval. Please contact administration.');
             }
             
-            // 4. Check if 2FA setup is required
-            const { data: totpSettings } = await this.supabase
+            console.log('✅ Profile loaded:', {
+                name: profileData.full_name,
+                role: profileData.role,
+                status: profileData.status
+            });
+            
+            // 4. Check if 2FA setup is required - FIXED SECTION
+            console.log('🔍 Checking 2FA settings for user_id:', authData.user.id);
+            
+            const { data: totpSettings, error: totpError } = await this.supabase
                 .from('user_2fa_settings')
                 .select('*')
                 .eq('user_id', authData.user.id)
                 .maybeSingle();
             
-            if (!totpSettings || !totpSettings.is_2fa_enabled) {
-                // New user - setup 2FA
-                this.showMethodSelection();
-            } else {
-                // Check for trusted device
-                const deviceId = this.generateDeviceId();
-                if (this.state.trustedDevices[deviceId] && 
-                    new Date(this.state.trustedDevices[deviceId].expires) > new Date()) {
-                    // Trusted device, skip 2FA
-                    await this.completeLogin(profileData);
-                } else {
-                    // Existing user - verify 2FA
-                    this.showVerificationModal(totpSettings.preferred_method || 'authenticator');
+            console.log('📊 2FA query result:', { 
+                hasData: !!totpSettings,
+                data: totpSettings,
+                error: totpError 
+            });
+            
+            // Handle 2FA check
+            if (totpError) {
+                console.error('❌ 2FA query error:', totpError);
+                
+                // If it's a "no rows" error (empty table), treat as new user
+                if (totpError.code === 'PGRST116' || totpError.message.includes('does not exist')) {
+                    console.log('➡️ No 2FA settings found. Showing method selection.');
+                    this.showMethodSelection();
+                    return;
                 }
+                
+                // For any other error, still show method selection as fallback
+                console.log('⚠️ 2FA check error, showing method selection as fallback');
+                this.showMethodSelection();
+                return;
+            }
+            
+            // If no settings found OR 2FA not enabled
+            if (!totpSettings || !totpSettings.is_2fa_enabled) {
+                console.log('➡️ 2FA not configured. Showing method selection.');
+                this.showMethodSelection();
+                return;
+            }
+            
+            // User has 2FA enabled
+            console.log('✅ User has 2FA enabled. Method:', totpSettings.preferred_method);
+            
+            // Check for trusted device
+            const deviceId = this.generateDeviceId();
+            if (this.state.trustedDevices[deviceId] && 
+                new Date(this.state.trustedDevices[deviceId].expires) > new Date()) {
+                // Trusted device, skip 2FA
+                console.log('🔒 Trusted device detected. Skipping 2FA.');
+                await this.completeLogin(profileData);
+            } else {
+                // Show verification modal
+                console.log('📱 Showing verification for method:', totpSettings.preferred_method);
+                this.showVerificationModal(totpSettings.preferred_method || 'authenticator');
             }
             
         } catch (error) {
-            console.error('Login error:', error);
+            console.error('💥 Login error:', error);
             if (this.supabase) {
-                await this.supabase.auth.signOut();
+                try {
+                    await this.supabase.auth.signOut();
+                } catch (signOutError) {
+                    console.error('Sign out error:', signOutError);
+                }
             }
             this.showError(errorMsg, error.message || 'Login failed. Please try again.');
             
@@ -451,7 +520,7 @@ window.NCHSMLogin = {
     // MODAL MANAGEMENT
     // ============================================
     showMethodSelection: function() {
-        console.log('Showing method selection');
+        console.log('🎯 Showing method selection');
         this.hideAllModals();
         const modal = document.getElementById('methodSelectionModal');
         modal.classList.add('active');
@@ -476,6 +545,7 @@ window.NCHSMLogin = {
     },
     
     showVerificationModal: function(method = 'authenticator') {
+        console.log('🔐 Showing verification modal for method:', method);
         this.hideAllModals();
         const modal = document.getElementById('twoFactorModal');
         const methodText = document.getElementById('verificationMethodText');
@@ -527,6 +597,7 @@ window.NCHSMLogin = {
     },
     
     showAuthenticatorSetup: function() {
+        console.log('🔑 Showing authenticator setup');
         this.hideAllModals();
         
         // Check if otplib is available
@@ -543,6 +614,7 @@ window.NCHSMLogin = {
         
         // Generate TOTP secret
         this.state.currentSecret = otplib.authenticator.generateSecret();
+        console.log('🔐 Generated TOTP secret');
         
         // Create URI for QR code
         const uri = otplib.authenticator.keyuri(
@@ -567,13 +639,15 @@ window.NCHSMLogin = {
                 errorCorrectionLevel: 'H'
             }, (error) => {
                 if (error) {
-                    console.error('QR Code generation failed:', error);
+                    console.error('❌ QR Code generation failed:', error);
                     // Still show manual entry
                     this.showManualEntryOption();
+                } else {
+                    console.log('✅ QR Code generated successfully');
                 }
             });
         } catch (error) {
-            console.error('QR Code error:', error);
+            console.error('❌ QR Code error:', error);
             // Show manual entry as fallback
             this.showManualEntryOption();
         }
@@ -675,6 +749,7 @@ window.NCHSMLogin = {
     },
     
     showBackupCodesModal: function(codes) {
+        console.log('📋 Showing backup codes modal');
         this.hideAllModals();
         this.state.backupCodes = codes;
         
@@ -709,6 +784,7 @@ window.NCHSMLogin = {
     // METHOD SELECTION - eCitizen Style
     // ============================================
     selectMethod: function(method) {
+        console.log('✅ Selected method:', method);
         this.state.selectedMethod = method;
         
         // Update UI
@@ -734,6 +810,8 @@ window.NCHSMLogin = {
             return;
         }
         
+        console.log('🚀 Proceeding with method:', this.state.selectedMethod);
+        
         const methodBtn = document.getElementById('proceedMethodBtn');
         const originalText = methodBtn ? methodBtn.innerHTML : 'Continue';
         
@@ -757,7 +835,7 @@ window.NCHSMLogin = {
                 this.showVerificationModal('email');
             }
         } catch (error) {
-            console.error('Error:', error);
+            console.error('❌ Method selection error:', error);
             this.showError(document.getElementById('methodError'), 
                 `Failed: ${error.message}`);
         } finally {
@@ -777,6 +855,8 @@ window.NCHSMLogin = {
             throw new Error('No email address available');
         }
         
+        console.log('📧 Sending email verification to:', this.state.currentUser.email);
+        
         try {
             // Generate a 6-digit OTP
             const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
@@ -795,7 +875,7 @@ window.NCHSMLogin = {
             return true;
             
         } catch (error) {
-            console.error('Email verification error:', error);
+            console.error('❌ Email verification error:', error);
             throw new Error('Failed to send verification email');
         }
     },
@@ -810,6 +890,8 @@ window.NCHSMLogin = {
             if (!phoneNumber) {
                 throw new Error('No phone number found in profile');
             }
+            
+            console.log('📱 Sending SMS verification to:', phoneNumber);
             
             // Generate a 6-digit OTP
             const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
@@ -827,7 +909,7 @@ window.NCHSMLogin = {
             return true;
             
         } catch (error) {
-            console.error('SMS verification error:', error);
+            console.error('❌ SMS verification error:', error);
             throw new Error('Failed to send SMS verification');
         }
     },
@@ -991,6 +1073,8 @@ window.NCHSMLogin = {
     // ============================================
     completeAuthenticatorSetup: async function() {
         const code = this.getOTPCode('authenticator');
+        console.log('🔐 Verifying authenticator code:', code);
+        
         if (code.length !== 6 || !/^\d{6}$/.test(code)) {
             this.showError(document.getElementById('setupError'), 'Please enter a valid 6-digit code');
             return;
@@ -1012,6 +1096,8 @@ window.NCHSMLogin = {
                 throw new Error('No secret key generated. Please refresh and try again.');
             }
             
+            console.log('🔍 Verifying TOTP code with secret...');
+            
             // Verify TOTP code with tolerance for clock skew
             const isValid = otplib.authenticator.check(code, this.state.currentSecret, {
                 window: 1 // Allow 30 seconds clock skew
@@ -1021,10 +1107,14 @@ window.NCHSMLogin = {
                 throw new Error('Invalid code. Please check your authenticator app and try again.');
             }
             
+            console.log('✅ TOTP code verified successfully');
+            
             // Generate backup codes
             const backupCodes = this.generateSecureBackupCodes(10);
+            console.log('📋 Generated backup codes');
             
             // Save to database
+            console.log('💾 Saving 2FA settings to database...');
             const { error } = await this.supabase
                 .from('user_2fa_settings')
                 .upsert({
@@ -1040,9 +1130,9 @@ window.NCHSMLogin = {
                 });
             
             if (error) {
-                console.error('Database error:', error);
+                console.error('❌ Database upsert error:', error);
                 
-                // Try alternative approach
+                // Try alternative approach - insert instead of upsert
                 const { error: insertError } = await this.supabase
                     .from('user_2fa_settings')
                     .insert({
@@ -1055,10 +1145,12 @@ window.NCHSMLogin = {
                     });
                 
                 if (insertError) {
-                    console.error('Insert error:', insertError);
+                    console.error('❌ Insert error:', insertError);
                     throw new Error('Failed to save 2FA settings. Please try again.');
                 }
             }
+            
+            console.log('✅ 2FA settings saved successfully');
             
             // Store backup locally
             localStorage.setItem(`2fa_backup_${this.state.currentUser.userId}`, 
@@ -1072,7 +1164,7 @@ window.NCHSMLogin = {
             this.showBackupCodesModal(backupCodes);
             
         } catch (error) {
-            console.error('Setup error:', error);
+            console.error('❌ Setup error:', error);
             
             let errorMessage = error.message;
             if (error.message.includes('Invalid code')) {
@@ -1116,6 +1208,8 @@ window.NCHSMLogin = {
     // ============================================
     verify2FACode: async function() {
         const code = this.getOTPCode('verify');
+        console.log('🔐 Verifying 2FA code:', code);
+        
         if (code.length !== 6 || !/^\d{6}$/.test(code)) {
             this.showError(document.getElementById('2faError'), 'Please enter a valid 6-digit code');
             return;
@@ -1130,6 +1224,7 @@ window.NCHSMLogin = {
         try {
             // Determine verification method
             const method = this.getCurrentVerificationMethod();
+            console.log('🔍 Verifying with method:', method);
             
             if (method === 'authenticator') {
                 await this.verifyAuthenticatorCode(code);
@@ -1139,8 +1234,11 @@ window.NCHSMLogin = {
                 await this.verifySMSCode(code);
             }
             
+            console.log('✅ 2FA verification successful');
+            
             // Trust device if selected
             if (document.getElementById('trustDevice')?.checked) {
+                console.log('🔒 Adding device to trusted devices');
                 await this.trustDevice(this.state.currentUser.userId);
             }
             
@@ -1156,7 +1254,7 @@ window.NCHSMLogin = {
             await this.completeLogin(profileData);
             
         } catch (error) {
-            console.error('Verification error:', error);
+            console.error('❌ Verification error:', error);
             this.showError(document.getElementById('2faError'), error.message);
             this.clearOTPInputs('verify');
             const otpInput = document.getElementById('otpInput');
@@ -1170,6 +1268,8 @@ window.NCHSMLogin = {
     // Verify authenticator code
     verifyAuthenticatorCode: async function(code) {
         try {
+            console.log('🔍 Getting TOTP secret from database...');
+            
             // Get TOTP secret from database
             const { data: totpData } = await this.supabase
                 .from('user_2fa_settings')
@@ -1177,18 +1277,24 @@ window.NCHSMLogin = {
                 .eq('user_id', this.state.currentUser.userId)
                 .single();
             
+            console.log('📊 TOTP data:', totpData);
+            
             if (!totpData?.totp_secret) {
                 // Try local storage as fallback
+                console.log('⚠️ No TOTP secret in DB, checking local storage...');
                 const localBackup = localStorage.getItem(`2fa_backup_${this.state.currentUser.userId}`);
                 if (localBackup) {
                     const backupData = JSON.parse(localBackup);
                     if (backupData.secret) {
+                        console.log('✅ Found secret in local storage');
                         const isValid = otplib.authenticator.check(code, backupData.secret, { window: 1 });
                         if (isValid) return true;
                     }
                 }
                 throw new Error('2FA not configured. Please set up authenticator first.');
             }
+            
+            console.log('🔐 Verifying TOTP code...');
             
             // Verify with tolerance for clock skew
             const isValid = otplib.authenticator.check(code, totpData.totp_secret, {
@@ -1197,6 +1303,7 @@ window.NCHSMLogin = {
             
             if (!isValid) {
                 this.state.otpAttempts++;
+                console.log(`❌ Invalid code. Attempt ${this.state.otpAttempts} of ${this.state.maxOtpAttempts}`);
                 
                 if (this.state.otpAttempts >= this.state.maxOtpAttempts) {
                     await this.supabase.auth.signOut();
@@ -1214,9 +1321,11 @@ window.NCHSMLogin = {
             
             // Reset attempts on success
             this.state.otpAttempts = 0;
+            console.log('✅ TOTP code verified successfully');
             return true;
             
         } catch (error) {
+            console.error('❌ TOTP verification error:', error);
             throw error;
         }
     },
@@ -1259,6 +1368,8 @@ window.NCHSMLogin = {
     },
     
     resendVerificationCode: async function(method) {
+        console.log('🔄 Resending verification code for method:', method);
+        
         try {
             if (method === 'email') {
                 await this.sendEmailVerification();
@@ -1274,7 +1385,7 @@ window.NCHSMLogin = {
                 `New code sent to your ${method}`, 'success');
             
         } catch (error) {
-            console.error('Resend error:', error);
+            console.error('❌ Resend error:', error);
             this.showError(document.getElementById('2faError'), 
                 `Failed to resend: ${error.message}`);
         }
@@ -1284,6 +1395,8 @@ window.NCHSMLogin = {
     // COMPLETE LOGIN
     // ============================================
     completeLogin: async function(profileData) {
+        console.log('🎉 Completing login for:', profileData.email);
+        
         try {
             // Store profile
             localStorage.setItem('currentUserProfile', JSON.stringify(profileData));
@@ -1298,7 +1411,7 @@ window.NCHSMLogin = {
             this.redirectToDashboard(profileData);
             
         } catch (error) {
-            console.error('Complete login error:', error);
+            console.error('❌ Complete login error:', error);
             if (this.supabase) {
                 await this.supabase.auth.signOut();
             }
@@ -1319,9 +1432,12 @@ window.NCHSMLogin = {
         };
         
         localStorage.setItem('trusted_devices', JSON.stringify(this.state.trustedDevices));
+        console.log('✅ Device trusted until:', expires.toISOString());
     },
     
     redirectToDashboard: function(profileData) {
+        console.log('🚀 Redirecting to dashboard...');
+        
         const redirects = {
             'student': 'index.html',
             'lecturer': 'lecturer.html',
@@ -1334,6 +1450,8 @@ window.NCHSMLogin = {
         const role = profileData.role?.toLowerCase() || 'student';
         const redirectUrl = redirects[role] || 'index.html';
         
+        console.log(`🎯 Role: ${role}, Redirecting to: ${redirectUrl}`);
+        
         // Add fade-out animation
         document.body.style.opacity = '0';
         document.body.style.transition = 'opacity 0.3s ease';
@@ -1344,6 +1462,7 @@ window.NCHSMLogin = {
     },
     
     proceedToDashboard: function() {
+        console.log('🏠 Proceeding to dashboard...');
         this.hideAllModals();
         
         const storedProfile = localStorage.getItem('currentUserProfile');
@@ -1458,6 +1577,8 @@ window.NCHSMLogin = {
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
+        
+        console.log('✅ Backup codes downloaded');
     },
     
     showError: function(element, message, type = 'error') {
@@ -1488,6 +1609,7 @@ window.NCHSMLogin = {
     },
     
     goBackToLogin: function() {
+        console.log('🔙 Going back to login');
         this.hideAllModals();
         if (this.supabase) {
             this.supabase.auth.signOut();
@@ -1590,12 +1712,21 @@ window.resendVerificationCode = (method) => window.NCHSMLogin.resendVerification
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('📄 DOM loaded, initializing...');
     window.NCHSMLogin.init();
     
     // Offline detection
-    window.addEventListener('online', () => window.NCHSMLogin.updateOnlineStatus());
-    window.addEventListener('offline', () => window.NCHSMLogin.updateOnlineStatus());
+    window.addEventListener('online', () => {
+        console.log('🌐 Online');
+        window.NCHSMLogin.updateOnlineStatus();
+    });
+    window.addEventListener('offline', () => {
+        console.log('📴 Offline');
+        window.NCHSMLogin.updateOnlineStatus();
+    });
     
     // Initialize online status
     window.NCHSMLogin.updateOnlineStatus();
+    
+    console.log('✅ Application ready');
 });
