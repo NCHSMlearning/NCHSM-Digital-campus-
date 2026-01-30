@@ -77,6 +77,9 @@ window.NCHSMLogin = {
                         auth: {
                             persistSession: true,
                             autoRefreshToken: true
+                        },
+                        db: {
+                            schema: 'public'
                         }
                     }
                 );
@@ -417,56 +420,68 @@ window.NCHSMLogin = {
             // 4. Check if 2FA setup is required - FIXED SECTION
             console.log('🔍 Checking 2FA settings for user_id:', authData.user.id);
             
-            const { data: totpSettings, error: totpError } = await this.supabase
-                .from('user_2fa_settings')
-                .select('*')
-                .eq('user_id', authData.user.id)
-                .maybeSingle();
+            // FIX: Add a small delay to ensure authentication is complete
+            await new Promise(resolve => setTimeout(resolve, 100));
             
-            console.log('📊 2FA query result:', { 
-                hasData: !!totpSettings,
-                data: totpSettings,
-                error: totpError 
-            });
-            
-            // Handle 2FA check
-            if (totpError) {
-                console.error('❌ 2FA query error:', totpError);
+            try {
+                const { data: totpSettings, error: totpError } = await this.supabase
+                    .from('user_2fa_settings')
+                    .select('*')
+                    .eq('user_id', authData.user.id)
+                    .maybeSingle();
                 
-                // If it's a "no rows" error (empty table), treat as new user
-                if (totpError.code === 'PGRST116' || totpError.message.includes('does not exist')) {
-                    console.log('➡️ No 2FA settings found. Showing method selection.');
+                console.log('📊 2FA query result:', { 
+                    hasData: !!totpSettings,
+                    data: totpSettings,
+                    error: totpError 
+                });
+                
+                // Handle the response
+                if (totpError) {
+                    console.error('❌ 2FA query error:', totpError);
+                    
+                    // If the table exists but is empty, treat as new user
+                    if (totpError.code === 'PGRST116' || 
+                        totpError.message?.includes('does not exist') ||
+                        totpError.message?.includes('No rows found')) {
+                        console.log('➡️ No 2FA settings found. Showing method selection.');
+                        this.showMethodSelection();
+                        return;
+                    }
+                    
+                    // For any other error, still show method selection as fallback
+                    console.log('⚠️ 2FA check error, showing method selection as fallback');
                     this.showMethodSelection();
                     return;
                 }
                 
-                // For any other error, still show method selection as fallback
-                console.log('⚠️ 2FA check error, showing method selection as fallback');
+                // If no settings found OR 2FA not enabled
+                if (!totpSettings || !totpSettings.is_2fa_enabled) {
+                    console.log('➡️ 2FA not configured. Showing method selection.');
+                    this.showMethodSelection();
+                    return;
+                }
+                
+                // User has 2FA enabled
+                console.log('✅ User has 2FA enabled. Method:', totpSettings.preferred_method);
+                
+                // Check for trusted device
+                const deviceId = this.generateDeviceId();
+                if (this.state.trustedDevices[deviceId] && 
+                    new Date(this.state.trustedDevices[deviceId].expires) > new Date()) {
+                    // Trusted device, skip 2FA
+                    console.log('🔒 Trusted device detected. Skipping 2FA.');
+                    await this.completeLogin(profileData);
+                } else {
+                    // Show verification modal
+                    console.log('📱 Showing verification for method:', totpSettings.preferred_method);
+                    this.showVerificationModal(totpSettings.preferred_method || 'authenticator');
+                }
+                
+            } catch (queryError) {
+                console.error('❌ Error in 2FA query:', queryError);
+                // If there's any error in the 2FA check, still show method selection
                 this.showMethodSelection();
-                return;
-            }
-            
-            // If no settings found OR 2FA not enabled
-            if (!totpSettings || !totpSettings.is_2fa_enabled) {
-                console.log('➡️ 2FA not configured. Showing method selection.');
-                this.showMethodSelection();
-                return;
-            }
-            
-            // User has 2FA enabled
-            console.log('✅ User has 2FA enabled. Method:', totpSettings.preferred_method);
-            
-            // Check for trusted device
-            const deviceId = this.generateDeviceId();
-            if (this.state.trustedDevices[deviceId] && 
-                new Date(this.state.trustedDevices[deviceId].expires) > new Date()) {
-                // Trusted device, skip 2FA
-                console.log('🔒 Trusted device detected. Skipping 2FA.');
-                await this.completeLogin(profileData);
-            } else {
-                // Show verification modal
-                console.log('📱 Showing verification for method:', totpSettings.preferred_method);
-                this.showVerificationModal(totpSettings.preferred_method || 'authenticator');
             }
             
         } catch (error) {
@@ -1271,13 +1286,14 @@ window.NCHSMLogin = {
             console.log('🔍 Getting TOTP secret from database...');
             
             // Get TOTP secret from database
-            const { data: totpData } = await this.supabase
+            const { data: totpData, error: totpQueryError } = await this.supabase
                 .from('user_2fa_settings')
                 .select('totp_secret')
                 .eq('user_id', this.state.currentUser.userId)
-                .single();
+                .maybeSingle();
             
             console.log('📊 TOTP data:', totpData);
+            if (totpQueryError) console.error('TOTP query error:', totpQueryError);
             
             if (!totpData?.totp_secret) {
                 // Try local storage as fallback
