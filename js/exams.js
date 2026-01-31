@@ -1,4 +1,4 @@
-// exams.js - COMPLETE VERSION with Dashboard Integration
+// js/exams.js - COMPLETE FIXED VERSION
 (function() {
     'use strict';
     
@@ -352,6 +352,90 @@
             }
         }
         
+        // 🔥 FIXED: Correct exam completion logic
+        processExamsData(exams, grades) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            this.allExams = exams.map(exam => {
+                const grade = grades.find(g => String(g.exam_id) === String(exam.id));
+                
+                // 🔥 FIX 1: Check multiple completion indicators
+                let isCompleted = false;
+                let totalPercentage = null;
+                let gradeText = 'Pending Grade';
+                let gradeClass = 'pending';
+                
+                // Method 1: Check if already graded
+                if (grade && grade.is_graded) {
+                    isCompleted = true;
+                    totalPercentage = grade.total_percentage || 0;
+                    
+                    if (totalPercentage >= 85) {
+                        gradeText = 'Distinction';
+                        gradeClass = 'distinction';
+                    } else if (totalPercentage >= 75) {
+                        gradeText = 'Credit';
+                        gradeClass = 'credit';
+                    } else if (totalPercentage >= 60) {
+                        gradeText = 'Pass';
+                        gradeClass = 'pass';
+                    } else {
+                        gradeText = 'Fail';
+                        gradeClass = 'fail';
+                    }
+                }
+                // Method 2: Check status field from database
+                else if (exam.status === 'Completed' || exam.status === 'completed') {
+                    isCompleted = true;
+                    // Keep as "Pending Grade" since not graded yet
+                }
+                // Method 3: Check if exam date is in past (more than 1 day ago)
+                else {
+                    const examDate = exam.exam_date ? new Date(exam.exam_date) : null;
+                    
+                    if (examDate) {
+                        const oneDayAgo = new Date(today);
+                        oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+                        
+                        // If exam date was more than 1 day ago, mark as completed
+                        if (examDate < oneDayAgo) {
+                            isCompleted = true;
+                            // Still "Pending Grade" since not graded
+                        }
+                    }
+                }
+                
+                const hasExamLink = exam.exam_link && exam.exam_link.trim() !== '';
+                
+                return {
+                    ...exam,
+                    isCompleted,  // 🔥 Now correctly identifies completed exams
+                    totalPercentage,
+                    gradeText,
+                    gradeClass,
+                    hasExamLink,
+                    cat1Score: grade?.cat_1_score !== null && grade?.cat_1_score !== undefined ? 
+                        `${grade.cat_1_score}%` : '--',
+                    cat2Score: grade?.cat_2_score !== null && grade?.cat_2_score !== undefined ? 
+                        `${grade.cat_2_score}%` : '--',
+                    finalScore: grade?.exam_score !== null && grade?.exam_score !== undefined ? 
+                        `${grade.exam_score}%` : '--',
+                    formattedExamDate: exam.exam_date ? 
+                        new Date(exam.exam_date).toLocaleDateString('en-US', { 
+                            year: 'numeric', month: 'short', day: 'numeric' 
+                        }) : '--',
+                    formattedGradedDate: grade?.graded_at ? 
+                        new Date(grade.graded_at).toLocaleDateString('en-US', { 
+                            year: 'numeric', month: 'short', day: 'numeric' 
+                        }) : '--'
+                };
+            });
+            
+            const completedCount = this.allExams.filter(e => e.isCompleted).length;
+            console.log(`✅ Processed ${this.allExams.length} exams (${completedCount} completed)`);
+        }
+        
         // 🔥 NEW: Dispatch event for dashboard
         dispatchDashboardEvent() {
             const event = new CustomEvent('examsModuleReady', {
@@ -377,63 +461,6 @@
             const tvetPrograms = ['TVET', 'TVET NURSING', 'TVET NURSING(A)', 'TVET NURSING(B)', 
                                 'CRAFT CERTIFICATE', 'ARTISAN', 'DIPLOMA IN TVET'];
             return tvetPrograms.some(tvet => program.toUpperCase().includes(tvet));
-        }
-        
-        processExamsData(exams, grades) {
-            this.allExams = exams.map(exam => {
-                const grade = grades.find(g => String(g.exam_id) === String(exam.id));
-                
-                let isCompleted = false;
-                let totalPercentage = null;
-                let gradeText = '--';
-                let gradeClass = '';
-                
-                if (grade && grade.is_graded) {
-                    isCompleted = true;
-                    totalPercentage = grade.total_percentage;
-                    
-                    if (totalPercentage >= 85) {
-                        gradeText = 'Distinction';
-                        gradeClass = 'distinction';
-                    } else if (totalPercentage >= 75) {
-                        gradeText = 'Credit';
-                        gradeClass = 'credit';
-                    } else if (totalPercentage >= 60) {
-                        gradeText = 'Pass';
-                        gradeClass = 'pass';
-                    } else {
-                        gradeText = 'Fail';
-                        gradeClass = 'fail';
-                    }
-                }
-                
-                const hasExamLink = exam.exam_link && exam.exam_link.trim() !== '';
-                
-                return {
-                    ...exam,
-                    isCompleted,
-                    totalPercentage,
-                    gradeText,
-                    gradeClass,
-                    hasExamLink,
-                    cat1Score: grade?.cat_1_score !== null && grade?.cat_1_score !== undefined ? 
-                        `${grade.cat_1_score}%` : '--',
-                    cat2Score: grade?.cat_2_score !== null && grade?.cat_2_score !== undefined ? 
-                        `${grade.cat_2_score}%` : '--',
-                    finalScore: grade?.exam_score !== null && grade?.exam_score !== undefined ? 
-                        `${grade.exam_score}%` : '--',
-                    formattedExamDate: exam.exam_date ? 
-                        new Date(exam.exam_date).toLocaleDateString('en-US', { 
-                            year: 'numeric', month: 'short', day: 'numeric' 
-                        }) : '--',
-                    formattedGradedDate: grade?.graded_at ? 
-                        new Date(grade.graded_at).toLocaleDateString('en-US', { 
-                            year: 'numeric', month: 'short', day: 'numeric' 
-                        }) : '--'
-                };
-            });
-            
-            console.log(`✅ Processed ${this.allExams.length} exams`);
         }
         
         displayTables() {
@@ -515,7 +542,7 @@
                         ${exam.exam_type?.includes('CAT') ? 'CAT' : 'Exam'}
                     </span></td>
                     <td>${this.escapeHtml(exam.course_name || 'General')}</td>
-                   <td class="text-center">${exam.block_term || 'General'}</td>
+                    <td class="text-center">${exam.block_term || 'General'}</td>
                     <td>${exam.formattedGradedDate}</td>
                     <td><span class="status-badge ${exam.gradeClass}">${exam.gradeText}</span></td>
                     <td class="text-center">${exam.cat1Score}</td>
@@ -577,6 +604,8 @@
                     this.overallAverage.textContent = '--';
                 }
             }
+            
+            console.log(`📊 Counts: ${this.currentExams.length} current, ${this.completedExams.length} completed`);
         }
         
         updateEmptyStates() {
@@ -664,25 +693,33 @@
             return div.innerHTML;
         }
         
+        // 🔥 FIXED: Correct active exams calculation
         calculateActiveExams() {
             const now = new Date();
+            now.setHours(0, 0, 0, 0);
+            
             const activeExams = this.allExams.filter(exam => {
-                if (exam.isCompleted) return false;
+                // Don't include completed exams
+                if (exam.isCompleted) {
+                    return false;
+                }
                 
                 const examDate = exam.exam_date ? new Date(exam.exam_date) : null;
-                const dueDate = exam.due_date ? new Date(exam.due_date) : null;
                 
-                if (examDate && dueDate) {
-                    return now >= examDate && now <= dueDate;
-                }
-                
+                // Only include exams from today onward
                 if (examDate) {
-                    return now >= examDate || (examDate - now) < (24 * 60 * 60 * 1000);
+                    const yesterday = new Date(now);
+                    yesterday.setDate(yesterday.getDate() - 1);
+                    
+                    // Include exams from yesterday onward (gives 1 day grace period)
+                    return examDate >= yesterday;
                 }
                 
-                return true;
+                // If no date, check status
+                return exam.status === 'Upcoming' || !exam.status;
             });
             
+            console.log(`📊 Active exams calculated: ${activeExams.length}`);
             return activeExams;
         }
         
