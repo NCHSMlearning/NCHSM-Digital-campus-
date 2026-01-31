@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Redirecting...</title>
+    <script>
+        // Get the current path
+        const path = window.location.pathname;
+        const hash = window.location.hash;
+        const search = window.location.search;
+        
+        // Map paths to hash URLs
+        const pathMap = {
+            '/': '',
+            '/profile': '#profile',
+            '/calendar': '#calendar',
+            '/courses': '#courses',
+            '/attendance': '#attendance',
+            '/exams': '#cats',
+            '/resources': '#resources',
+            '/messages': '#messages',
+            '/support-tickets': '#support-tickets',
+            '/nurseiq': '#nurseiq'
+        };
+        
+        // Redirect to index.html with proper hash
+        if (path in pathMap) {
+            window.location.href = '/index.html' + pathMap[path] + search + hash;
+        } else {
+            // For unknown paths, go to dashboard
+            window.location.href = '/index.html' + search + hash;
+        }
+    </script>
+</head>
+<body>
+    <p>Redirecting to the portal...</p>
+</body>
+</html>
