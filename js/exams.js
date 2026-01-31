@@ -14,13 +14,13 @@
             this.completedExams = [];
             this.currentFilter = 'all';
             
-            // Get user profile
-            this.userProfile = window.db?.currentUserProfile || {};
-            this.program = this.userProfile.program || 'KRCHN';
-            this.intakeYear = this.userProfile.intake_year || 2025;
-            this.block = this.userProfile.block || 'A';
-            this.term = this.userProfile.term || 'Term 1';
-            this.userId = window.db?.currentUserId;
+            // Initialize user profile data
+            this.userProfile = {};
+            this.program = 'KRCHN';
+            this.intakeYear = 2025;
+            this.block = 'A';
+            this.term = 'Term 1';
+            this.userId = null;
             
             // Cache DOM elements
             this.cacheElements();
@@ -28,7 +28,9 @@
             // Initialize
             this.initializeEventListeners();
             this.updateFilterButtons();
-            this.loadExams();
+            
+            // Try to load user data with retry mechanism
+            this.initializeUserData();
             
             // Setup auto-refresh when returning from exam
             this.setupAutoRefresh();
@@ -54,6 +56,72 @@
             this.overallAverage = document.getElementById('overall-average');
             
             console.log('✅ Cached DOM elements');
+        }
+        
+        initializeUserData() {
+            console.log('👤 Initializing user data for exams...');
+            
+            // Try to get user data immediately
+            this.updateUserData();
+            
+            // If not available, wait for global user to be set
+            if (!this.userId) {
+                console.log('⏳ User data not ready, waiting...');
+                
+                // Method 1: Listen for user data events
+                document.addEventListener('userDataLoaded', () => {
+                    console.log('📥 User data loaded event received');
+                    this.updateUserData();
+                    this.loadExams();
+                });
+                
+                // Method 2: Listen for app ready event
+                document.addEventListener('appReady', () => {
+                    console.log('📱 App ready event received');
+                    this.updateUserData();
+                    this.loadExams();
+                });
+                
+                // Method 3: Poll for user data
+                const userCheckInterval = setInterval(() => {
+                    if (window.db?.currentUserId) {
+                        console.log('✅ User data found via polling');
+                        this.updateUserData();
+                        this.loadExams();
+                        clearInterval(userCheckInterval);
+                    }
+                }, 1000);
+                
+                // Method 4: Fallback after 3 seconds
+                setTimeout(() => {
+                    if (!this.userId) {
+                        console.log('⚠️ Using default user data (timeout)');
+                        this.loadExams();
+                    }
+                }, 3000);
+            }
+        }
+        
+        updateUserData() {
+            if (window.db?.currentUserProfile) {
+                this.userProfile = window.db.currentUserProfile;
+                this.program = this.userProfile.program || 'KRCHN';
+                this.intakeYear = this.userProfile.intake_year || 2025;
+                this.block = this.userProfile.block || 'A';
+                this.term = this.userProfile.term || 'Term 1';
+                this.userId = window.db.currentUserId;
+                
+                console.log('🎯 Updated user data for exams:', {
+                    program: this.program,
+                    intakeYear: this.intakeYear,
+                    block: this.block,
+                    term: this.term,
+                    userId: this.userId
+                });
+                
+                return true;
+            }
+            return false;
         }
         
         setupAutoRefresh() {
@@ -208,61 +276,67 @@
             this.showLoading();
             
             try {
-                if (!window.db?.currentUserProfile) {
-                    throw new Error('User profile not available');
+                // Ensure we have user data
+                if (!this.userId && !this.updateUserData()) {
+                    console.warn('⚠️ User profile not available yet, retrying in 1 second...');
+                    setTimeout(() => this.loadExams(), 1000);
+                    return;
                 }
                 
                 if (!window.db?.supabase) {
                     throw new Error('Database connection not available');
                 }
                 
-                const userProfile = window.db.currentUserProfile;
-                const program = userProfile.program || 'KRCHN';
-                const intakeYear = userProfile.intake_year || 2025;
-                const block = userProfile.block || 'A';
-                const term = userProfile.term || 'Term 1';
-                const userId = window.db.currentUserId;
-                
-                console.log('🎯 Loading exams for:', { program, intakeYear, block, term });
+                console.log('🎯 Loading exams for:', { 
+                    program: this.program, 
+                    intakeYear: this.intakeYear, 
+                    block: this.block, 
+                    term: this.term,
+                    userId: this.userId 
+                });
                 
                 const supabase = window.db.supabase;
                 
                 // Check if TVET program
-                const isTVET = this.isTVETProgram(program);
+                const isTVET = this.isTVETProgram(this.program);
                 
                 // 1. Fetch exams
                 let query = supabase
                     .from('exams_with_courses')
                     .select('*')
-                    .eq('intake_year', intakeYear)
+                    .eq('intake_year', this.intakeYear)
                     .order('exam_date', { ascending: true });
                 
                 if (isTVET) {
                     query = query
-                        .eq('program_type', program)
-                        .or(`block_term.eq.${term},block_term.eq.General,block_term.is.null`);
+                        .eq('program_type', this.program)
+                        .or(`block_term.eq.${this.term},block_term.eq.General,block_term.is.null`);
                 } else {
                     query = query
-                        .or(`program_type.eq.${program},program_type.eq.General`)
-                        .or(`block_term.eq.${block},block_term.is.null,block_term.eq.General`);
+                        .or(`program_type.eq.${this.program},program_type.eq.General`)
+                        .or(`block_term.eq.${this.block},block_term.is.null,block_term.eq.General`);
                 }
                 
                 const { data: exams, error: examsError } = await query;
                 if (examsError) throw examsError;
                 
-                // 2. Fetch grades for this student
-                const { data: grades, error: gradesError } = await supabase
-                    .from('exam_grades')
-                    .select('*')
-                    .eq('student_id', userId)
-                    .order('graded_at', { ascending: false });
+                // 2. Fetch grades for this student (if we have userId)
+                let grades = [];
+                if (this.userId) {
+                    const { data: gradesData, error: gradesError } = await supabase
+                        .from('exam_grades')
+                        .select('*')
+                        .eq('student_id', this.userId)
+                        .order('graded_at', { ascending: false });
+                    
+                    if (gradesError) throw gradesError;
+                    grades = gradesData || [];
+                }
                 
-                if (gradesError) throw gradesError;
-                
-                console.log(`📊 Found ${exams?.length || 0} exams and ${grades?.length || 0} grades`);
+                console.log(`📊 Found ${exams?.length || 0} exams and ${grades.length} grades`);
                 
                 // 3. Process exams data
-                this.processExamsData(exams || [], grades || []);
+                this.processExamsData(exams || [], grades);
                 
                 // 4. Apply filter and display
                 this.applyDataFilter();
@@ -276,9 +350,10 @@
         }
         
         isTVETProgram(program) {
+            if (!program) return false;
             const tvetPrograms = ['TVET', 'TVET NURSING', 'TVET NURSING(A)', 'TVET NURSING(B)', 
                                 'CRAFT CERTIFICATE', 'ARTISAN', 'DIPLOMA IN TVET'];
-            return tvetPrograms.some(tvet => program?.toUpperCase().includes(tvet));
+            return tvetPrograms.some(tvet => program.toUpperCase().includes(tvet));
         }
         
         processExamsData(exams, grades) {
@@ -566,12 +641,6 @@
             return div.innerHTML;
         }
         
-        // Public methods
-        refresh() {
-            this.loadExams();
-        }
-        
-        // 🔥 Dashboard metrics functions (INSIDE THE CLASS)
         calculateActiveExams() {
             const now = new Date();
             const activeExams = this.allExams.filter(exam => {
@@ -697,16 +766,33 @@
             return this.calculateDashboardMetrics();
         }
         
-    } // 🔥 END OF CLASS - THIS WAS MISSING!
+        refresh() {
+            this.loadExams();
+        }
+        
+    } // End of class
     
-    // Create global instance
-    window.examsModule = new ExamsModule();
+    // Wait for DOM to be ready before initializing
+    function initializeExamsModule() {
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                console.log('📄 DOM loaded, initializing exams module...');
+                window.examsModule = new ExamsModule();
+            });
+        } else {
+            console.log('📄 DOM already loaded, initializing exams module...');
+            window.examsModule = new ExamsModule();
+        }
+    }
+    
+    // Initialize the module
+    initializeExamsModule();
     
     // Global functions
     window.loadExams = () => window.examsModule?.refresh();
     window.refreshAssessments = () => window.examsModule?.refresh();
     
-    // 🔥 Global function for dashboard to get metrics
+    // Global function for dashboard to get metrics
     window.getExamsDashboardMetrics = function() {
         if (window.examsModule) {
             return window.examsModule.getDashboardData();
