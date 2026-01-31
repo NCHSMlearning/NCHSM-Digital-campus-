@@ -539,233 +539,151 @@ class UIModule {
         console.log('✅ All event listeners setup complete');
     }
     
-    // ===== FIXED DROPDOWN METHOD =====
-    setupProfileDropdown() {
-        console.log('🎯 Setting up profile dropdown (FIXED)...');
-        
-        setTimeout(() => {
-            // Find elements
-            this.findDropdownElements();
-            
-            if (!this.profileTrigger || !this.dropdownMenu) {
-                console.error('❌ Dropdown elements not found');
-                return;
-            }
-            
-            console.log('✅ Found dropdown elements');
-            
-            // 1. Remove problematic CSS hover effects
-            this.removeProblematicCSS();
-            
-            // 2. Clone to remove existing listeners
-            const cleanTrigger = this.profileTrigger.cloneNode(true);
-            const cleanMenu = this.dropdownMenu.cloneNode(true);
-            
-            this.profileTrigger.parentNode.replaceChild(cleanTrigger, this.profileTrigger);
-            this.dropdownMenu.parentNode.replaceChild(cleanMenu, this.dropdownMenu);
-            
-            this.profileTrigger = cleanTrigger;
-            this.dropdownMenu = cleanMenu;
-            
-            // 3. Set initial state - HIDDEN
-            this.dropdownMenu.style.display = 'none';
-            
-            // 4. Apply styling for visibility
-            this.applyDropdownStyles();
-            
-            // 5. Setup click handler (SINGLE - no conflicts)
-            this.setupDropdownClickHandler();
-            
-            // 6. Setup menu items
-            this.setupDropdownMenuItems();
-            
-            // 7. Close on click outside
-            this.setupDropdownCloseHandler();
-            
-            console.log('✅ Dropdown setup complete - Should work properly now');
-            
-        }, 1000);
-    }
+setupProfileDropdown() {
+    console.log('🎯 Setting up SIMPLE working dropdown...');
     
-    removeProblematicCSS() {
-        // Create and immediately remove style to override hover effects
-        const style = document.createElement('style');
-        style.textContent = `
-            /* Cancel all problematic hover effects */
-            .user-profile-dropdown:hover .dropdown-menu,
-            .profile-trigger:hover ~ .dropdown-menu,
-            [class*="dropdown"]:hover [class*="menu"],
-            .dropdown-menu:hover {
-                display: none !important;
-            }
-            
-            /* Make text visible */
-            .dropdown-menu a {
-                color: #000000 !important;
-            }
-            
-            .dropdown-menu #header-logout {
-                color: #ef4444 !important;
-            }
+    setTimeout(() => {
+        // 1. Remove old problematic dropdown if exists
+        const oldDropdown = document.querySelector('.dropdown-menu');
+        if (oldDropdown) {
+            oldDropdown.remove();
+        }
+        
+        // 2. Create NEW simple dropdown
+        this.createSimpleDropdown();
+        
+        // 3. Setup trigger with simple click handler
+        this.setupSimpleTrigger();
+        
+        console.log('✅ SIMPLE dropdown setup complete - Guaranteed to work');
+        
+    }, 1000);
+}
+
+createSimpleDropdown() {
+    // Create fresh dropdown with different class name
+    this.dropdownMenu = document.createElement('div');
+    this.dropdownMenu.className = 'simple-dropdown-menu'; // Different class!
+    this.dropdownMenu.id = 'simple-profile-dropdown';
+    
+    // Simple HTML structure
+    this.dropdownMenu.innerHTML = `
+        <a href="#" class="simple-menu-item" data-action="profile">
+            <i class="fas fa-user"></i> My Profile
+        </a>
+        <div class="simple-menu-divider"></div>
+        <a href="#" class="simple-menu-item" data-action="logout">
+            <i class="fas fa-sign-out-alt"></i> Logout
+        </a>
+    `;
+    
+    // SIMPLE CSS - Direct inline styling
+    this.dropdownMenu.style.cssText = `
+        display: none;
+        position: absolute;
+        top: 50px;
+        right: 0;
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        min-width: 200px;
+        z-index: 1001;
+        padding: 8px 0;
+    `;
+    
+    // Style menu items
+    const items = this.dropdownMenu.querySelectorAll('.simple-menu-item');
+    items.forEach(item => {
+        item.style.cssText = `
+            display: block;
+            padding: 10px 16px;
+            color: #374151;
+            text-decoration: none;
+            border-bottom: 1px solid #f3f4f6;
+            font-size: 14px;
+            cursor: pointer;
         `;
-        document.head.appendChild(style);
-        setTimeout(() => style.remove(), 100);
-    }
-    
-    applyDropdownStyles() {
-        // Apply guaranteed visible styling
-        Object.assign(this.dropdownMenu.style, {
-            position: 'absolute',
-            top: '50px',
-            right: '0',
-            background: 'white',
-            border: '2px solid #4C1D95',
-            borderRadius: '8px',
-            boxShadow: '0 10px 25px rgba(0,0,0,0.15)',
-            minWidth: '200px',
-            zIndex: '1001',
-            padding: '0',
-            opacity: '1',
-            visibility: 'visible'
-        });
         
-        // Ensure all text is visible
-        const allElements = this.dropdownMenu.querySelectorAll('*');
-        allElements.forEach(el => {
-            if (el.tagName === 'A' || el.tagName === 'SPAN' || el.tagName === 'DIV') {
-                el.style.color = el.id === 'header-logout' ? '#ef4444' : '#000000';
-            }
-        });
-    }
-    
-    setupDropdownClickHandler() {
-        // Remove all existing handlers by replacing element
-        const newTrigger = this.profileTrigger.cloneNode(true);
-        this.profileTrigger.parentNode.replaceChild(newTrigger, this.profileTrigger);
-        this.profileTrigger = newTrigger;
+        // Hover effect
+        item.onmouseenter = () => item.style.background = '#f9fafb';
+        item.onmouseleave = () => item.style.background = 'transparent';
         
-        // Add SINGLE clean handler
-        this.profileTrigger.addEventListener('click', (e) => {
+        // Click handler
+        item.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            e.stopImmediatePropagation();
             
-            console.log('🎯 DROPDOWN CLICK - Toggling');
+            this.dropdownMenu.style.display = 'none';
             
-            if (this.dropdownMenu.style.display === 'block') {
-                this.dropdownMenu.style.display = 'none';
-                console.log('📋 Hidden');
-            } else {
-                this.dropdownMenu.style.display = 'block';
-                console.log('📋 Shown');
-            }
-            
-            return false;
-        }, true);
-    }
-    
-    setupDropdownCloseHandler() {
-        document.addEventListener('click', (e) => {
-            if (this.dropdownMenu.style.display === 'block' &&
-                !this.profileTrigger.contains(e.target) && 
-                !this.dropdownMenu.contains(e.target)) {
-                
-                this.dropdownMenu.style.display = 'none';
-                console.log('📋 Closed (clicked outside)');
+            if (item.dataset.action === 'logout') {
+                this.logout();
+            } else if (item.dataset.action === 'profile') {
+                this.showTab('profile');
             }
         });
+    });
+    
+    // Style logout specifically
+    const logoutItem = this.dropdownMenu.querySelector('[data-action="logout"]');
+    if (logoutItem) {
+        logoutItem.style.color = '#ef4444';
     }
     
-    findDropdownElements() {
-        // Find trigger
-        const triggerSelectors = [
-            '.profile-trigger',
-            '.header-profile',
-            '.user-profile',
-            '[data-profile]',
-            '.header-user',
-            '.user-menu-trigger'
-        ];
+    // Add to DOM
+    const dropdownContainer = document.querySelector('.user-profile-dropdown, .header-right');
+    if (dropdownContainer) {
+        dropdownContainer.appendChild(this.dropdownMenu);
+    } else {
+        document.body.appendChild(this.dropdownMenu);
+    }
+}
+
+setupSimpleTrigger() {
+    // Find trigger
+    this.profileTrigger = document.querySelector('.profile-trigger, .header-profile, [data-profile]');
+    
+    if (!this.profileTrigger) {
+        console.error('❌ No profile trigger found');
+        return;
+    }
+    
+    // Clone to remove existing listeners
+    const cleanTrigger = this.profileTrigger.cloneNode(true);
+    this.profileTrigger.parentNode.replaceChild(cleanTrigger, this.profileTrigger);
+    this.profileTrigger = cleanTrigger;
+    
+    // SIMPLE click handler - NO hover, NO conflicts
+    this.profileTrigger.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
         
-        // Find menu
-        const menuSelectors = [
-            '.dropdown-menu',
-            '.profile-dropdown',
-            '.user-dropdown',
-            '.menu-dropdown',
-            '[data-dropdown]',
-            '.dropdown-content'
-        ];
+        console.log('🎯 Profile clicked - Toggling dropdown');
         
-        for (const selector of triggerSelectors) {
-            const element = document.querySelector(selector);
-            if (element) {
-                this.profileTrigger = element;
-                break;
-            }
+        if (this.dropdownMenu.style.display === 'block') {
+            this.dropdownMenu.style.display = 'none';
+            console.log('📋 Hidden');
+        } else {
+            this.dropdownMenu.style.display = 'block';
+            console.log('📋 Shown');
         }
-        
-        for (const selector of menuSelectors) {
-            const element = document.querySelector(selector);
-            if (element) {
-                this.dropdownMenu = element;
-                break;
-            }
+    });
+    
+    // Close when clicking outside
+    document.addEventListener('click', (e) => {
+        if (this.dropdownMenu.style.display === 'block' &&
+            !this.profileTrigger.contains(e.target) && 
+            !this.dropdownMenu.contains(e.target)) {
+            
+            this.dropdownMenu.style.display = 'none';
         }
-    }
+    });
     
-    setupDropdownMenuItems() {
-        if (!this.dropdownMenu) return;
-        
-        console.log('🔧 Setting up dropdown menu items...');
-        
-        const menuItems = this.dropdownMenu.querySelectorAll('a, button, [data-action]');
-        
-        menuItems.forEach((item, index) => {
-            const text = item.textContent?.trim() || '';
-            const tag = item.tagName;
-            const id = item.id || '';
-            
-            console.log(`📋 Menu item ${index + 1}:`, { text, tag, id });
-            
-            // Clone to remove existing listeners
-            const cleanItem = item.cloneNode(true);
-            item.parentNode.replaceChild(cleanItem, item);
-            
-            // Setup click handlers
-            cleanItem.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                
-                if (text.toLowerCase().includes('logout') || id.includes('logout')) {
-                    console.log('🔐 Logout clicked');
-                    this.dropdownMenu.style.display = 'none';
-                    this.logout();
-                } else if (text.toLowerCase().includes('profile') || id.includes('profile')) {
-                    console.log('👤 Profile clicked');
-                    this.dropdownMenu.style.display = 'none';
-                    this.showTab('profile');
-                } else {
-                    console.log(`📋 "${text}" clicked`);
-                    this.dropdownMenu.style.display = 'none';
-                }
-            });
-            
-            if (id === 'header-logout') {
-                this.dropdownLogoutBtn = cleanItem;
-            }
-        });
-        
-        console.log(`✅ Setup ${menuItems.length} menu items`);
-    }
-    
-    setupTabChangeListener() {
-        window.addEventListener('tabChanged', (e) => {
-            console.log(`🔄 Tab changed to: ${e.detail.tabId}`);
-            this.loadTabModule(e.detail.tabId);
-        });
-    }
-    
+    // Remove any hover effects from trigger
+    this.profileTrigger.onmouseenter = null;
+    this.profileTrigger.onmouseover = null;
+    this.profileTrigger.onmouseleave = null;
+}
     loadTabModule(tabId) {
         console.log(`📦 Loading module for tab: ${tabId}`);
         
