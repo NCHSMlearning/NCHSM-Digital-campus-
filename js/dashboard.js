@@ -897,44 +897,80 @@ class DashboardModule {
         return tvetPrograms.some(tvet => program.toUpperCase().includes(tvet));
     }
     
-    // Update exams UI
-    updateExamsUI(metrics) {
-        if (!metrics) return;
+   updateExamsUI(metrics) {
+    if (!metrics) return;
+    
+    const upcomingText = metrics.upcomingExam || 'No upcoming exams';
+    const upcomingName = metrics.upcomingExamName || 'None';
+    const upcomingCount = metrics.upcomingCount || 0;
+    
+    if (this.elements.upcomingExam) {
+        // OPTION 1: Show exam name with smart formatting
+        let displayText = upcomingText;
         
-        const upcomingExam = metrics.upcomingExam || 'None';
-        const upcomingCount = metrics.upcomingCount || 0;
-        
-        if (this.elements.upcomingExam) {
-            this.elements.upcomingExam.textContent = upcomingExam;
-            
-            // Add tooltip with more info
-            let tooltipText = '';
-            if (upcomingExam === 'None') {
-                tooltipText = 'No active exams';
-            } else if (upcomingExam.includes('Ongoing')) {
-                tooltipText = `${upcomingCount} exam${upcomingCount > 1 ? 's' : ''} currently active`;
+        // If it's just a count like "Today (+7)", extract the exam name
+        if (displayText.includes('+') && upcomingName && upcomingName !== 'None') {
+            // Show the actual exam name instead of count
+            if (upcomingCount === 1) {
+                displayText = upcomingName;
             } else {
-                tooltipText = `${upcomingCount} active exam${upcomingCount > 1 ? 's' : ''}`;
-            }
-            this.elements.upcomingExam.title = tooltipText;
-            
-            // Apply color classes
-            if (upcomingExam === 'Today' || upcomingExam === 'Ongoing') {
-                this.elements.upcomingExam.classList.add('dashboard-stat-low');
-                this.elements.upcomingExam.classList.remove('dashboard-stat-medium', 'dashboard-stat-high');
-            } else if (upcomingExam.includes('d') || upcomingExam.includes('w')) {
-                this.elements.upcomingExam.classList.add('dashboard-stat-medium');
-                this.elements.upcomingExam.classList.remove('dashboard-stat-low', 'dashboard-stat-high');
-            } else {
-                this.elements.upcomingExam.classList.remove('dashboard-stat-low', 'dashboard-stat-medium', 'dashboard-stat-high');
+                displayText = `${upcomingName} (+${upcomingCount - 1})`;
             }
         }
         
-        // Update card appearance
-        this.updateCardAppearance('exams', upcomingCount > 0 ? 1 : 0);
+        // Truncate long exam names for better display
+        const maxLength = 25;
+        if (displayText.length > maxLength) {
+            displayText = displayText.substring(0, maxLength - 3) + '...';
+        }
         
-        console.log(`✅ Exams UI Updated: ${upcomingExam} (${upcomingCount} active)`);
+        this.elements.upcomingExam.textContent = displayText;
+        this.elements.upcomingExam.title = upcomingText; // Full text on hover
+        
+        // Add tooltip with more info
+        let tooltipText = '';
+        if (upcomingCount === 0) {
+            tooltipText = 'No upcoming exams';
+        } else if (upcomingCount === 1) {
+            tooltipText = `${upcomingName}`;
+            if (upcomingText.includes('Today')) tooltipText += ' (Today)';
+            if (upcomingText.includes('Tomorrow')) tooltipText += ' (Tomorrow)';
+        } else {
+            tooltipText = `${upcomingCount} upcoming exams - Next: ${upcomingName}`;
+        }
+        this.elements.upcomingExam.title = tooltipText;
+        
+        // Apply color classes based on urgency
+        if (upcomingText.includes('Today') || displayText.includes('Today')) {
+            this.elements.upcomingExam.classList.add('dashboard-stat-low');
+            this.elements.upcomingExam.classList.remove('dashboard-stat-medium', 'dashboard-stat-high');
+            
+            // Add urgent indicator
+            if (!this.elements.upcomingExam.querySelector('.urgent-dot')) {
+                const dot = document.createElement('span');
+                dot.className = 'urgent-dot';
+                dot.style.display = 'inline-block';
+                dot.style.width = '8px';
+                dot.style.height = '8px';
+                dot.style.background = '#ef4444';
+                dot.style.borderRadius = '50%';
+                dot.style.marginLeft = '5px';
+                dot.style.animation = 'pulse 1.5s infinite';
+                this.elements.upcomingExam.appendChild(dot);
+            }
+        } else if (upcomingText.includes('Tomorrow') || upcomingText.includes('1d') || upcomingText.includes('2d')) {
+            this.elements.upcomingExam.classList.add('dashboard-stat-medium');
+            this.elements.upcomingExam.classList.remove('dashboard-stat-low', 'dashboard-stat-high');
+        } else {
+            this.elements.upcomingExam.classList.remove('dashboard-stat-low', 'dashboard-stat-medium', 'dashboard-stat-high');
+        }
     }
+    
+    // Update card appearance
+    this.updateCardAppearance('exams', upcomingCount > 0 ? 1 : 0);
+    
+    console.log(`✅ Exams UI Updated: ${displayText || upcomingText} (${upcomingCount} active)`);
+}
     
     // Load resource metrics
     async loadResourceMetrics(allResources = true) {
