@@ -1,4 +1,4 @@
-// profile.js - Simplified and Working Profile Management Module
+// profile.js - Complete Profile Management Module
 class ProfileModule {
     constructor() {
         this.userId = null;
@@ -17,7 +17,9 @@ class ProfileModule {
         // Profile photo section
         this.passportPreview = document.getElementById('passport-preview');
         this.passportFileInput = document.getElementById('passport-file-input');
-        this.uploadButton = document.getElementById('upload-button');
+        
+        // Upload button - from your HTML, it's a label
+        this.uploadButton = document.querySelector('label[for="passport-file-input"]');
         
         // Form fields
         this.profileName = document.getElementById('profile-name');
@@ -33,14 +35,16 @@ class ProfileModule {
         this.saveProfileButton = document.getElementById('save-profile-button');
         this.cancelEditButton = document.getElementById('cancel-edit-button');
         
-        // Setup event listeners
         this.setupEventListeners();
     }
     
     setupEventListeners() {
-        // Edit profile button - FIXED: Check if button exists
+        // Edit profile button
         if (this.editProfileButton) {
-            this.editProfileButton.addEventListener('click', () => this.enableEditing());
+            this.editProfileButton.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.enableEditing();
+            });
         }
         
         // Save profile button
@@ -53,7 +57,10 @@ class ProfileModule {
         
         // Cancel edit button
         if (this.cancelEditButton) {
-            this.cancelEditButton.addEventListener('click', () => this.cancelEditing());
+            this.cancelEditButton.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.cancelEditing();
+            });
         }
         
         // Profile form submission
@@ -67,10 +74,6 @@ class ProfileModule {
         // Passport photo upload
         if (this.passportFileInput) {
             this.passportFileInput.addEventListener('change', (e) => this.handlePassportFileSelect(e));
-        }
-        
-        if (this.uploadButton) {
-            this.uploadButton.addEventListener('click', () => this.uploadPassportPhoto());
         }
         
         // Click on passport preview to upload
@@ -173,22 +176,6 @@ class ProfileModule {
         if (this.profileProgram) this.profileProgram.value = this.userProfile.program || this.userProfile.department || '';
         if (this.profileBlock) this.profileBlock.value = this.userProfile.block || this.userProfile.current_block || '';
         if (this.profileIntakeYear) this.profileIntakeYear.value = this.userProfile.intake_year || this.userProfile.year_of_intake || '';
-        
-        this.updateSidebarUserInfo();
-    }
-    
-    updateSidebarUserInfo() {
-        if (!this.userProfile) return;
-        
-        const sidebarUserName = document.getElementById('sidebar-user-name');
-        if (sidebarUserName && this.userProfile.full_name) {
-            sidebarUserName.textContent = this.userProfile.full_name;
-        }
-        
-        const sidebarUserEmail = document.getElementById('sidebar-user-email');
-        if (sidebarUserEmail && this.userProfile.email) {
-            sidebarUserEmail.textContent = this.userProfile.email;
-        }
     }
     
     async loadProfilePhoto() {
@@ -244,13 +231,21 @@ class ProfileModule {
         if (this.cancelEditButton) this.cancelEditButton.style.display = 'none';
         if (this.uploadButton) this.uploadButton.style.display = 'none';
         
+        // Remove editing class
+        if (this.profileForm) {
+            this.profileForm.classList.remove('editing');
+        }
+        
         // Make fields readonly
         this.setFieldsReadonly(true);
         
-        // Reset photo preview if needed
+        // Reset photo if needed
         if (this.passportFileInput && this.passportFileInput.files.length > 0) {
             this.passportFileInput.value = '';
+            this.loadProfilePhoto();
         }
+        
+        this.clearStatus();
     }
     
     updateEditMode() {
@@ -262,16 +257,29 @@ class ProfileModule {
         if (this.cancelEditButton) this.cancelEditButton.style.display = 'flex';
         if (this.uploadButton) this.uploadButton.style.display = 'flex';
         
+        // Add editing class
+        if (this.profileForm) {
+            this.profileForm.classList.add('editing');
+        }
+        
         // Make fields editable
         this.setFieldsReadonly(false);
         
         this.showStatus('Edit mode enabled. Make your changes and click Save.', 'info');
+        
+        // Focus on first editable field
+        setTimeout(() => {
+            if (this.profileName) {
+                this.profileName.focus();
+            }
+        }, 100);
     }
     
     updateSavingMode() {
         if (this.saveProfileButton) {
             this.saveProfileButton.disabled = true;
-            this.saveProfileButton.innerHTML = '<span class="spinner"></span>Saving...';
+            this.saveProfileButton.classList.add('button-loading');
+            this.saveProfileButton.innerHTML = 'Saving...';
         }
     }
     
@@ -281,7 +289,11 @@ class ProfileModule {
         editableFields.forEach(field => {
             if (field) {
                 field.readOnly = readonly;
-                field.classList.toggle('editable', !readonly);
+                if (!readonly) {
+                    field.classList.add('editable');
+                } else {
+                    field.classList.remove('editable');
+                }
             }
         });
         
@@ -317,14 +329,6 @@ class ProfileModule {
         }
         
         this.updateUIState('view');
-        this.clearStatus();
-        
-        if (this.photoObjectURL) {
-            URL.revokeObjectURL(this.photoObjectURL);
-            this.photoObjectURL = null;
-        }
-        
-        this.showNotification('Changes canceled', 'info');
     }
     
     async saveProfile() {
@@ -380,24 +384,26 @@ class ProfileModule {
         this.loadProfile();
         
         this.showStatus('Profile updated successfully!', 'success');
-        this.showNotification('✅ Profile saved successfully!', 'success');
         
         this.updateUIState('view');
     }
     
     onSaveError(error) {
         this.showStatus(`Error: ${error.message}`, 'error');
-        this.showNotification(`❌ ${error.message}`, 'error');
         
         // Re-enable save button
         if (this.saveProfileButton) {
             this.saveProfileButton.disabled = false;
+            this.saveProfileButton.classList.remove('button-loading');
             this.saveProfileButton.innerHTML = '<span class="button-icon">💾</span>Save Changes';
         }
     }
     
     validateForm() {
         let isValid = true;
+        
+        // Clear previous errors
+        this.clearAllErrors();
         
         // Validate name
         if (this.profileName && !this.profileName.value.trim()) {
@@ -419,25 +425,23 @@ class ProfileModule {
     
     showFieldError(field, message) {
         field.classList.add('error');
-        const errorElement = field.parentNode.querySelector('.field-error') || 
-                            document.createElement('div');
-        errorElement.className = 'field-error';
-        errorElement.textContent = message;
-        errorElement.style.color = '#ef4444';
-        errorElement.style.fontSize = '0.875rem';
-        errorElement.style.marginTop = '0.25rem';
         
-        if (!field.parentNode.querySelector('.field-error')) {
-            field.parentNode.appendChild(errorElement);
+        // Create or update error message
+        let errorElement = field.parentElement.querySelector('.field-error');
+        if (!errorElement) {
+            errorElement = document.createElement('div');
+            errorElement.className = 'field-error';
+            field.parentElement.appendChild(errorElement);
         }
+        errorElement.textContent = message;
     }
     
-    clearFieldError(field) {
-        field.classList.remove('error');
-        const errorElement = field.parentNode.querySelector('.field-error');
-        if (errorElement) {
-            errorElement.remove();
-        }
+    clearAllErrors() {
+        const errorElements = document.querySelectorAll('.field-error');
+        errorElements.forEach(element => element.remove());
+        
+        const errorInputs = document.querySelectorAll('.form-field input.error');
+        errorInputs.forEach(input => input.classList.remove('error'));
     }
     
     handlePassportFileSelect(event) {
@@ -459,10 +463,6 @@ class ProfileModule {
         
         if (this.passportPreview) {
             this.passportPreview.src = this.photoObjectURL;
-        }
-        
-        if (this.uploadButton) {
-            this.uploadButton.disabled = false;
         }
         
         const fileSize = (file.size / 1024 / 1024).toFixed(2);
@@ -500,10 +500,6 @@ class ProfileModule {
         }
         
         this.showStatus('Uploading photo...', 'info');
-        
-        if (this.uploadButton) {
-            this.uploadButton.disabled = true;
-        }
         
         try {
             const supabase = this.getSupabaseClient();
@@ -546,11 +542,13 @@ class ProfileModule {
             this.onSaveSuccess();
             
         } catch (error) {
-            if (this.uploadButton) {
-                this.uploadButton.disabled = false;
-            }
-            
             this.showStatus(`Error: ${error.message}`, 'error');
+            
+            if (this.saveProfileButton) {
+                this.saveProfileButton.disabled = false;
+                this.saveProfileButton.classList.remove('button-loading');
+                this.saveProfileButton.innerHTML = '<span class="button-icon">💾</span>Save Changes';
+            }
         }
     }
     
@@ -560,31 +558,12 @@ class ProfileModule {
         this.profileStatus.textContent = message;
         this.profileStatus.className = `form-status form-status-${type}`;
         
-        // Style the status message
-        this.profileStatus.style.padding = '0.75rem';
-        this.profileStatus.style.borderRadius = '0.5rem';
-        this.profileStatus.style.marginTop = '1rem';
-        
-        if (type === 'success') {
-            this.profileStatus.style.backgroundColor = '#d1fae5';
-            this.profileStatus.style.color = '#065f46';
-            this.profileStatus.style.border = '1px solid #a7f3d0';
-        } else if (type === 'error') {
-            this.profileStatus.style.backgroundColor = '#fee2e2';
-            this.profileStatus.style.color = '#991b1b';
-            this.profileStatus.style.border = '1px solid #fecaca';
-        } else {
-            this.profileStatus.style.backgroundColor = '#dbeafe';
-            this.profileStatus.style.color = '#1e40af';
-            this.profileStatus.style.border = '1px solid #bfdbfe';
-        }
-        
         if (type === 'success') {
             setTimeout(() => {
                 if (this.profileStatus && this.profileStatus.textContent === message) {
                     this.clearStatus();
                 }
-            }, 5000);
+            }, 3000);
         }
     }
     
@@ -592,54 +571,7 @@ class ProfileModule {
         if (this.profileStatus) {
             this.profileStatus.textContent = '';
             this.profileStatus.className = '';
-            this.profileStatus.style.cssText = '';
         }
-    }
-    
-    showNotification(message, type = 'success') {
-        if (window.showToast) {
-            showToast(message, type);
-            return;
-        }
-        
-        const notification = document.createElement('div');
-        notification.className = `notification notification-${type}`;
-        notification.setAttribute('role', 'alert');
-        notification.setAttribute('aria-live', 'assertive');
-        
-        const icons = {
-            success: '✅',
-            error: '❌',
-            info: 'ℹ️',
-            warning: '⚠️'
-        };
-        
-        notification.innerHTML = `
-            <span class="notification-icon">${icons[type] || icons.info}</span>
-            <span class="notification-message">${message}</span>
-        `;
-        
-        notification.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 12px 24px;
-            background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#3b82f6'};
-            color: white;
-            border-radius: 8px;
-            z-index: 1000;
-            animation: slideIn 0.3s ease-out;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        `;
-        
-        document.body.appendChild(notification);
-        
-        setTimeout(() => {
-            notification.style.animation = 'slideOut 0.3s ease-out';
-            setTimeout(() => notification.remove(), 300);
-        }, 3000);
     }
 }
 
@@ -686,14 +618,15 @@ document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => {
                 if (!profileModule) {
                     initProfileModule();
+                } else {
+                    profileModule.loadProfile();
                 }
             }, 300);
         });
     }
     
     // Also initialize if profile form is already visible
-    const profileForm = document.getElementById('profile-form');
-    if (profileForm && profileForm.offsetParent !== null) {
+    if (document.getElementById('profile-form')) {
         setTimeout(() => {
             initProfileModule();
         }, 1000);
