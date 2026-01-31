@@ -842,3 +842,71 @@
         font-style: normal;
     }
 }
+/* ===== Additional CSS fixes ===== */
+#edit-profile-button,
+#save-profile-button,
+#cancel-edit-button,
+#upload-button {
+    display: inline-flex !important;
+}
+
+/* Button visibility fixes */
+#save-profile-button[style*="display: none"] {
+    display: none !important;
+}
+
+#cancel-edit-button[style*="display: none"] {
+    display: none !important;
+}
+
+#upload-button[style*="display: none"] {
+    display: none !important;
+}
+
+#edit-profile-button[style*="display: none"] {
+    display: none !important;
+}
+
+/* Make sure form status is visible */
+.form-status {
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+/* Photo upload button fix */
+label[for="passport-file-input"] {
+    display: inline-flex !important;
+}
+
+/* Form state classes */
+.profile-form.editing {
+    border: 2px solid var(--profile-primary-light);
+}
+
+.profile-form.editing .form-field input:not([readonly]) {
+    background-color: #f8fafc;
+}
+
+/* Button loading state */
+.button-loading {
+    position: relative;
+    pointer-events: none;
+}
+
+.button-loading::before {
+    content: '';
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 1s linear infinite;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.button-loading span {
+    visibility: hidden;
+}
