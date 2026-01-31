@@ -1,4 +1,4 @@
-// js/ui.js - COMPLETE User Interface Management with App-Style Loading
+// js/ui.js - COMPLETELY FIXED UI Module
 class UIModule {
     constructor() {
         console.log('🚀 Initializing UIModule...');
@@ -13,7 +13,7 @@ class UIModule {
         this.headerLogout = document.getElementById('header-logout');
         this.currentTab = 'dashboard';
         
-        // Store tab state in localStorage for persistence
+        // Store tab state
         this.storageKey = 'nchsm_last_tab';
         
         // Define valid tabs
@@ -23,7 +23,7 @@ class UIModule {
             'support-tickets', 'nurseiq'
         ];
         
-        // Define clean URL paths for each tab
+        // Define clean URL paths
         this.tabPaths = {
             'dashboard': '/',
             'profile': '/profile', 
@@ -37,19 +37,11 @@ class UIModule {
             'nurseiq': '/nurseiq'
         };
         
-        // Reverse lookup for paths
-        this.pathToTab = {
-            '/': 'dashboard',
-            '/profile': 'profile',
-            '/calendar': 'calendar',
-            '/courses': 'courses',
-            '/attendance': 'attendance',
-            '/exams': 'cats',
-            '/resources': 'resources',
-            '/messages': 'messages',
-            '/support-tickets': 'support-tickets',
-            '/nurseiq': 'nurseiq'
-        };
+        // Reverse lookup
+        this.pathToTab = {};
+        for (const [tabId, path] of Object.entries(this.tabPaths)) {
+            this.pathToTab[path] = tabId;
+        }
         
         // Footer buttons
         this.clearCacheBtn = document.getElementById('clearCacheBtn');
@@ -72,8 +64,8 @@ class UIModule {
         this.mobileReader = document.getElementById('mobile-reader');
         
         // Profile dropdown elements
-        this.profileTrigger = document.querySelector('.profile-trigger');
-        this.dropdownMenu = document.querySelector('.dropdown-menu');
+        this.profileTrigger = null;
+        this.dropdownMenu = null;
         
         // Loading screen elements
         this.loadingScreen = document.getElementById('loading-screen');
@@ -90,29 +82,29 @@ class UIModule {
     }
     
     async initialize() {
-        console.log('🔧 Initializing UI with app-style loading...');
+        console.log('🔧 Initializing UI...');
         
-        // 🔥 STEP 1: Start app-style loading
+        // Step 1: Start loading
         this.setupAppLoading();
         this.updateLoadingProgress(0, 5);
         
-        // 🔥 STEP 2: Clean up styles
+        // Step 2: Clean up styles
         await this.delay(300);
         this.cleanupInitialStyles();
         this.updateLoadingProgress(1, 5);
         
-        // 🔥 STEP 3: Setup event listeners
+        // Step 3: Setup event listeners
         await this.delay(300);
         this.setupEventListeners();
         this.updateLoadingProgress(2, 5);
         
-        // 🔥 STEP 4: Setup proper URL navigation
+        // Step 4: Setup URL navigation
         await this.delay(400);
         this.setupUrlNavigation();
         this.setupTabChangeListener();
         this.updateLoadingProgress(3, 5);
         
-        // 🔥 STEP 5: Initialize utilities
+        // Step 5: Initialize utilities
         await this.delay(300);
         this.initializeDateTime();
         this.setupOfflineIndicator();
@@ -120,12 +112,12 @@ class UIModule {
         this.loadLastTab();
         this.updateLoadingProgress(4, 5);
         
-        // 🔥 STEP 6: Load user data
+        // Step 6: Load user data
         await this.delay(500);
         await this.loadInitialUserData();
         this.updateLoadingProgress(5, 5);
         
-        // 🔥 STEP 7: Hide loading screen
+        // Step 7: Hide loading screen
         await this.delay(800);
         await this.hideLoadingScreen();
         
@@ -285,6 +277,10 @@ class UIModule {
             link.classList.remove('active');
         });
         
+        // Get fresh dropdown elements
+        this.profileTrigger = document.querySelector('.profile-trigger');
+        this.dropdownMenu = document.querySelector('.dropdown-menu');
+        
         if (this.dropdownMenu) {
             this.dropdownMenu.style.display = 'none';
             this.dropdownMenu.classList.remove('show');
@@ -297,67 +293,129 @@ class UIModule {
         console.log('✅ Styles cleaned up');
     }
     
-    // FIXED: Setup URL navigation that works with server
+    // FIXED URL NAVIGATION: Smart detection with hash fallback
     setupUrlNavigation() {
         console.log('🔗 Setting up URL navigation...');
         
-        // Check if we're coming from login redirect
+        // Check current URL state
+        const currentPath = this.getCurrentPath();
         const hasHash = window.location.hash;
-        if (hasHash) {
-            const tabId = hasHash.replace('#', '');
-            console.log(`🔗 Found hash in URL: ${tabId}`);
+        
+        console.log('🔗 URL State Check:', {
+            path: currentPath,
+            hash: hasHash,
+            pathname: window.location.pathname
+        });
+        
+        // If we have a hash or are at root, use hash routing
+        // If we have a clean path that's not root, try clean URLs
+        if (hasHash || currentPath === '/') {
+            console.log('🔗 Using HASH routing');
+            this.setupHashNavigation();
+        } else {
+            console.log('🔗 Using CLEAN URL routing');
+            this.setupCleanUrlNavigation();
+        }
+    }
+    
+    setupHashNavigation() {
+        console.log('🔗 Setting up hash-based navigation...');
+        
+        const handleHashChange = () => {
+            const hash = window.location.hash.replace('#', '');
+            console.log('🔗 Hash changed:', hash || '(empty)');
+            
+            let tabId = hash || 'dashboard';
             
             if (this.isValidTab(tabId)) {
-                // Clean the URL by replacing hash with clean path
-                setTimeout(() => {
-                    this.showTab(tabId);
-                    this.updateUrlForTab(tabId);
-                }, 100);
-                return;
+                console.log(`🎯 Showing tab from hash: ${tabId}`);
+                this.showTab(tabId, true); // true = from navigation
+            } else {
+                console.warn(`⚠️ Invalid tab in hash: ${tabId}`);
+                tabId = 'dashboard';
+                window.location.hash = '#dashboard';
+                this.showTab(tabId, true);
             }
+            
+            // Save to localStorage
+            localStorage.setItem(this.storageKey, tabId);
+        };
+        
+        // Listen for hash changes
+        window.addEventListener('hashchange', handleHashChange);
+        
+        // Handle initial load
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', handleHashChange);
+        } else {
+            setTimeout(handleHashChange, 100);
         }
         
-        // Handle normal page load
-        window.addEventListener('load', () => {
-            const path = this.getCurrentPath();
-            console.log('🔗 Initial path:', path);
+        // Override showTab to update hash
+        const originalShowTab = this.showTab.bind(this);
+        this.showTab = function(tabId, fromNavigation = false) {
+            if (this.currentTab === tabId) return;
             
-            let tabId = this.getTabFromPath(path);
-            console.log(`📊 Determined tab from path: ${tabId}`);
+            // Call original
+            originalShowTab(tabId, fromNavigation);
             
-            if (tabId && this.isValidTab(tabId)) {
-                console.log(`🎯 Showing tab from path: ${tabId}`);
-                this.showTab(tabId);
-            } else {
-                const lastTab = localStorage.getItem(this.storageKey);
-                console.log(`💾 Saved last tab: ${lastTab}`);
-                
-                if (lastTab && this.isValidTab(lastTab)) {
-                    tabId = lastTab;
-                    this.showTab(tabId);
-                    this.updateUrlForTab(tabId);
-                } else {
-                    console.log('🎯 Defaulting to dashboard');
-                    tabId = 'dashboard';
-                    this.showTab(tabId);
-                    this.updateUrlForTab(tabId);
+            // Update hash if not from navigation event
+            if (!fromNavigation) {
+                const newHash = tabId === 'dashboard' ? '' : `#${tabId}`;
+                if (window.location.hash !== newHash) {
+                    console.log(`🔗 Updating hash to: ${newHash}`);
+                    window.location.hash = newHash;
                 }
             }
-        });
+        }.bind(this);
+    }
+    
+    setupCleanUrlNavigation() {
+        console.log('🔗 Setting up clean URL navigation...');
         
-        // Handle browser back/forward
-        window.addEventListener('popstate', (event) => {
-            console.log('🔗 Popstate event triggered');
-            const newPath = this.getCurrentPath();
-            console.log('🔗 New path from popstate:', newPath);
+        const handlePathChange = () => {
+            const path = this.getCurrentPath();
+            console.log('🔗 Path changed:', path);
             
-            const newTabId = this.getTabFromPath(newPath);
-            if (newTabId && this.isValidTab(newTabId)) {
-                console.log(`🎯 Popstate showing tab: ${newTabId}`);
-                this.showTab(newTabId, true);
-                localStorage.setItem(this.storageKey, newTabId);
+            let tabId = this.getTabFromPath(path) || 'dashboard';
+            
+            if (this.isValidTab(tabId)) {
+                console.log(`🎯 Showing tab from path: ${tabId}`);
+                this.showTab(tabId, true); // true = from navigation
+            } else {
+                console.warn(`⚠️ Invalid tab from path: ${tabId}`);
+                tabId = 'dashboard';
+                this.updateUrlForTab(tabId);
+                this.showTab(tabId, true);
             }
-        });
+            
+            // Save to localStorage
+            localStorage.setItem(this.storageKey, tabId);
+        };
+        
+        // Listen for popstate (browser back/forward)
+        window.addEventListener('popstate', handlePathChange);
+        
+        // Handle initial load
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', handlePathChange);
+        } else {
+            setTimeout(handlePathChange, 100);
+        }
+        
+        // Override showTab to update URL
+        const originalShowTab = this.showTab.bind(this);
+        this.showTab = function(tabId, fromNavigation = false) {
+            if (this.currentTab === tabId) return;
+            
+            // Call original
+            originalShowTab(tabId, fromNavigation);
+            
+            // Update URL if not from navigation event
+            if (!fromNavigation) {
+                this.updateUrlForTab(tabId);
+            }
+        }.bind(this);
     }
     
     getCurrentPath() {
@@ -369,41 +427,33 @@ class UIModule {
         // Remove trailing slash
         path = path.replace(/\/$/, '');
         
-        // Handle root path
-        if (path === '' || path === '/index' || path === '/') {
-            console.log('🏠 Root path detected');
-            return '/';
+        // Handle empty path
+        if (path === '' || path === '/index') {
+            path = '/';
+        }
+        
+        // Ensure path starts with slash
+        if (!path.startsWith('/')) {
+            path = '/' + path;
         }
         
         return path;
     }
     
     getTabFromPath(path) {
-        // Remove leading slash for comparison
-        const cleanPath = path.startsWith('/') ? path.substring(1) : path;
-        
-        // Handle root path
-        if (path === '/' || cleanPath === '') {
-            return 'dashboard';
-        }
-        
-        // Check pathToTab mapping
+        // Direct mapping from pathToTab
         if (this.pathToTab[path]) {
             return this.pathToTab[path];
         }
         
-        // Try with leading slash
-        const pathWithSlash = path.startsWith('/') ? path : `/${path}`;
-        if (this.pathToTab[pathWithSlash]) {
-            return this.pathToTab[pathWithSlash];
+        // Try removing leading slash
+        const pathWithoutSlash = path.startsWith('/') ? path.substring(1) : path;
+        
+        // Check if it's a valid tab ID
+        if (this.isValidTab(pathWithoutSlash)) {
+            return pathWithoutSlash;
         }
         
-        // Try tab ID directly
-        if (this.isValidTab(cleanPath)) {
-            return cleanPath;
-        }
-        
-        console.log(`❓ No tab found for path: ${cleanPath}`);
         return null;
     }
     
@@ -413,17 +463,12 @@ class UIModule {
         const path = this.tabPaths[tabId] || '/';
         const currentPath = this.getCurrentPath();
         
-        // Remove any hash from current URL
-        if (window.location.hash) {
-            window.location.hash = '';
-        }
-        
         // Only update if different
         if (path !== currentPath) {
             const newUrl = `${window.location.origin}${path}`;
             console.log(`🔗 Updating URL to: ${newUrl}`);
             
-            // Use replaceState instead of pushState on initial load
+            // Use replaceState to keep history clean
             window.history.replaceState({ tabId }, '', newUrl);
         }
     }
@@ -439,28 +484,29 @@ class UIModule {
         return this.validTabs.includes(tabId);
     }
     
-    showTab(tabId, fromPopstate = false) {
-        console.log(`📱 showTab(${tabId}, fromPopstate: ${fromPopstate}) called`);
+    showTab(tabId, fromNavigation = false) {
+        console.log(`📱 showTab(${tabId}, fromNavigation: ${fromNavigation})`);
         
         if (!this.isValidTab(tabId)) {
             console.warn(`⚠️ Invalid tab: ${tabId}, defaulting to dashboard`);
             tabId = 'dashboard';
         }
         
-        if (this.currentTab === tabId && !fromPopstate) {
+        if (this.currentTab === tabId) {
             console.log(`⚠️ Tab ${tabId} is already active`);
             return;
         }
         
         // Hide all tabs
         this.tabs.forEach(tab => {
-            tab.style.removeProperty('display');
+            tab.style.display = 'none';
             tab.classList.remove('active');
         });
         
         // Show selected tab
         const selectedTab = document.getElementById(tabId);
         if (selectedTab) {
+            selectedTab.style.display = 'block';
             selectedTab.classList.add('active');
             console.log(`✅ Tab ${tabId} activated`);
         } else {
@@ -476,12 +522,7 @@ class UIModule {
             }
         });
         
-        // Update URL if not from popstate
-        if (!fromPopstate) {
-            this.updateUrlForTab(tabId);
-        }
-        
-        // Save tab state
+        // Save state
         localStorage.setItem(this.storageKey, tabId);
         this.closeMenu();
         
@@ -493,7 +534,7 @@ class UIModule {
             detail: { 
                 tabId, 
                 previousTab,
-                fromPopstate
+                fromNavigation
             }
         }));
         
@@ -562,8 +603,6 @@ class UIModule {
                 console.log('🔐 Logout clicked');
                 this.logout();
             });
-        } else {
-            console.error('❌ Header logout button not found!');
         }
         
         // Header refresh button
@@ -618,8 +657,8 @@ class UIModule {
             this.readerBackBtn.addEventListener('click', () => this.closeReader());
         }
         
-        // Setup profile dropdown - FIXED VERSION
-        this.setupProfileDropdown();
+        // FIXED: Setup profile dropdown (NO CONFLICTS)
+        this.setupProfileDropdownSafe();
         
         // Dashboard card clicks
         setTimeout(() => {
@@ -641,47 +680,59 @@ class UIModule {
         console.log('✅ All event listeners setup complete');
     }
     
-    // FIXED: Profile dropdown with proper event handling
-    setupProfileDropdown() {
-        console.log('📋 Setting up profile dropdown...');
+    // COMPLETELY FIXED: Profile dropdown with zero conflicts
+    setupProfileDropdownSafe() {
+        console.log('📋 Setting up profile dropdown (SAFE MODE)...');
+        
+        // Get fresh references
+        this.profileTrigger = document.querySelector('.profile-trigger');
+        this.dropdownMenu = document.querySelector('.dropdown-menu');
         
         if (!this.profileTrigger || !this.dropdownMenu) {
             console.error('❌ Profile dropdown elements not found!');
-            console.log('- Profile trigger exists:', !!this.profileTrigger);
-            console.log('- Dropdown menu exists:', !!this.dropdownMenu);
+            console.log('- Trigger found:', !!this.profileTrigger);
+            console.log('- Menu found:', !!this.dropdownMenu);
             return;
         }
         
         console.log('✅ Found dropdown elements');
         
-        // Clone to remove existing listeners
-        const newProfileTrigger = this.profileTrigger.cloneNode(true);
-        this.profileTrigger.parentNode.replaceChild(newProfileTrigger, this.profileTrigger);
-        this.profileTrigger = newProfileTrigger;
+        // CRITICAL: Clone elements to remove ALL existing event listeners
+        const cleanTrigger = this.profileTrigger.cloneNode(true);
+        const cleanMenu = this.dropdownMenu.cloneNode(true);
         
-        // Reset dropdown
+        this.profileTrigger.parentNode.replaceChild(cleanTrigger, this.profileTrigger);
+        this.dropdownMenu.parentNode.replaceChild(cleanMenu, this.dropdownMenu);
+        
+        this.profileTrigger = cleanTrigger;
+        this.dropdownMenu = cleanMenu;
+        
+        // Ensure dropdown starts hidden
         this.dropdownMenu.style.display = 'none';
         
-        // Add event handler
+        // ========== SINGLE EVENT HANDLER ==========
         this.profileTrigger.addEventListener('click', (e) => {
+            console.log('👤 Profile dropdown clicked (SINGLE HANDLER)');
+            
+            // Stop everything
             e.preventDefault();
             e.stopPropagation();
+            e.stopImmediatePropagation();
             
-            console.log('👤 Profile dropdown clicked (UI.js)');
-            
+            // Toggle dropdown
             const isVisible = this.dropdownMenu.style.display === 'block';
             this.dropdownMenu.style.display = isVisible ? 'none' : 'block';
             
+            // Rotate arrow
             const arrow = this.profileTrigger.querySelector('.dropdown-icon');
             if (arrow) {
                 arrow.style.transform = isVisible ? 'rotate(0deg)' : 'rotate(180deg)';
-                arrow.style.transition = 'transform 0.3s ease';
             }
             
             console.log(`📋 Dropdown ${isVisible ? 'hidden' : 'shown'}`);
-        });
+        }, true); // Use capture phase to ensure we get it first
         
-        // Close when clicking outside
+        // ========== CLOSE WHEN CLICKING OUTSIDE ==========
         document.addEventListener('click', (e) => {
             if (this.dropdownMenu && 
                 !this.profileTrigger.contains(e.target) && 
@@ -695,33 +746,32 @@ class UIModule {
             }
         });
         
-        // Handle dropdown links
-        const profileLink = this.dropdownMenu.querySelector('a[data-tab="profile"]');
-        if (profileLink) {
-            profileLink.addEventListener('click', (e) => {
-                e.preventDefault();
-                console.log('👤 Profile link clicked in dropdown');
-                this.showTab('profile');
-                this.dropdownMenu.style.display = 'none';
+        // ========== HANDLE DROPDOWN ITEMS ==========
+        const menuItems = this.dropdownMenu.querySelectorAll('a, button');
+        menuItems.forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.stopPropagation(); // Don't bubble to document handler
                 
+                console.log('📋 Dropdown item clicked:', item.textContent.trim());
+                
+                // Hide dropdown
+                this.dropdownMenu.style.display = 'none';
                 const arrow = this.profileTrigger.querySelector('.dropdown-icon');
-                if (arrow) {
-                    arrow.style.transform = 'rotate(0deg)';
+                if (arrow) arrow.style.transform = 'rotate(0deg)';
+                
+                // Handle specific actions
+                if (item.hasAttribute('data-tab')) {
+                    const tabId = item.getAttribute('data-tab');
+                    console.log(`📋 Switching to tab: ${tabId}`);
+                    this.showTab(tabId);
+                } else if (item.id === 'header-logout' || item.textContent.includes('Logout')) {
+                    console.log('🔐 Logout initiated from dropdown');
+                    setTimeout(() => this.logout(), 100); // Small delay
                 }
             });
-        }
+        });
         
-        // Handle logout in dropdown
-        const dropdownLogout = this.dropdownMenu.querySelector('#header-logout');
-        if (dropdownLogout) {
-            dropdownLogout.addEventListener('click', (e) => {
-                e.preventDefault();
-                console.log('🔐 Logout from dropdown clicked');
-                this.logout();
-            });
-        }
-        
-        console.log('✅ Profile dropdown setup complete');
+        console.log('✅ Profile dropdown setup complete - NO CONFLICTS');
     }
     
     setupTabChangeListener() {
@@ -1382,12 +1432,24 @@ class UIModule {
         
         console.log(`✅ Force show complete: ${tabId}`);
     }
+    
+    // Debug function
+    debugAll() {
+        console.log('🔍 UI DEBUG INFO:');
+        console.log('- Current tab:', this.currentTab);
+        console.log('- Profile trigger:', !!this.profileTrigger);
+        console.log('- Dropdown menu:', !!this.dropdownMenu);
+        console.log('- Dropdown display:', this.dropdownMenu?.style.display);
+        console.log('- URL path:', this.getCurrentPath());
+        console.log('- URL hash:', window.location.hash);
+        console.log('- Current user ID:', window.currentUserId);
+    }
 }
 
 // Create global instance
 window.ui = new UIModule();
 
-// Export functions to window for backward compatibility
+// Export functions to window
 window.toggleMenu = () => window.ui?.toggleMenu();
 window.closeMenu = () => window.ui?.closeMenu();
 window.showTab = (tabId) => window.ui?.showTab(tabId);
@@ -1395,7 +1457,9 @@ window.showToast = (message, type, duration) => window.ui?.showToast(message, ty
 window.logout = () => window.ui?.logout();
 window.forceShowTab = (tabId) => window.ui?.forceShowTab(tabId);
 window.refreshDashboard = () => window.ui?.refreshDashboard();
+window.debugUI = () => window.ui?.debugAll();
 
+// Event listeners
 document.addEventListener('DOMContentLoaded', function() {
     console.log('📱 DOM fully loaded');
     
@@ -1411,7 +1475,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 document.addEventListener('appReady', function(e) {
-    console.log('🎉 App ready event received', e.detail);
+    console.log('🎉 App ready event received');
     
     if (window.ui && e.detail?.userProfile) {
         window.ui.updateAllUserInfo(e.detail.userProfile);
@@ -1419,7 +1483,7 @@ document.addEventListener('appReady', function(e) {
 });
 
 document.addEventListener('profilePhotoUpdated', function(e) {
-    console.log('📸 Profile photo updated event received', e.detail);
+    console.log('📸 Profile photo updated event received');
     if (window.ui && e.detail?.photoUrl) {
         localStorage.setItem('userProfilePhoto', e.detail.photoUrl);
         if (window.ui.headerProfilePhoto) {
@@ -1429,45 +1493,25 @@ document.addEventListener('profilePhotoUpdated', function(e) {
 });
 
 document.addEventListener('userProfileUpdated', function(e) {
-    console.log('👤 User profile updated event received', e.detail);
+    console.log('👤 User profile updated event received');
     if (window.ui && e.detail?.userProfile) {
         window.ui.updateAllUserInfo(e.detail.userProfile);
     }
 });
 
-window.debugUI = function() {
-    console.log('🔍 UI Debug Info:');
-    console.log('- Current tab:', window.ui?.currentTab);
-    console.log('- Profile trigger:', !!window.ui?.profileTrigger);
-    console.log('- Dropdown menu:', !!window.ui?.dropdownMenu);
-    console.log('- Header photo:', window.ui?.headerProfilePhoto?.src);
-    console.log('- Header name:', window.ui?.headerUserName?.textContent);
-    console.log('- Current user ID:', window.currentUserId);
-    console.log('- Current user profile:', window.currentUserProfile);
-};
+console.log('✅ UI Module loaded successfully');
 
-console.log('✅ UI Module loaded successfully with App-Style Loading');
-
+// Emergency dashboard loader
 window.addEventListener('load', function() {
-    console.log('📱 Page fully loaded - checking dashboard...');
+    console.log('📱 Page fully loaded');
     
     setTimeout(() => {
         const dashboardTab = document.getElementById('dashboard');
         const isDashboardActive = dashboardTab && dashboardTab.classList.contains('active');
         
         if (!isDashboardActive && window.ui) {
-            console.log('🎯 Dashboard not active - forcing it...');
+            console.log('🎯 Dashboard not active - ensuring it loads...');
             window.ui.showTab('dashboard');
         }
-    }, 1000);
-});
-
-document.addEventListener('appReady', function() {
-    console.log('🎉 App ready - ensuring dashboard is shown...');
-    
-    setTimeout(() => {
-        if (window.ui) {
-            window.ui.showTab('dashboard');
-        }
-    }, 500);
+    }, 1500);
 });
