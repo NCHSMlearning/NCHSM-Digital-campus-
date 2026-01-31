@@ -880,8 +880,6 @@ class DashboardModule {
             : `New resources (last 7 days): ${resourceCount}`;
         this.updateCardAppearance('resources', resourceCount);
     }
-}
-
             
             // Also update card label if we're showing all resources
             if (allResources && this.elements.resourcesCard) {
