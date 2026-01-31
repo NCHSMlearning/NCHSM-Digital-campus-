@@ -502,47 +502,46 @@ window.NCHSMLogin = {
         }
     },
     
-    // ============================================
-    // EMAIL SENDING FUNCTION
-    // ============================================
-   // ============================================
-// EMAIL SENDING FUNCTION - FINAL FIX
+    
+  // ============================================
+// EMAIL SENDING FUNCTION - SUPER SIMPLE
 // ============================================
 sendEmailWithCode: async function(email, otpCode, userName) {
     return new Promise((resolve) => {
-        console.log(`📧 Sending OTP ${otpCode} to ${email}...`);
+        console.log(`📧 Sending OTP to ${email}...`);
         
-        const scriptUrl = 'https://script.google.com/macros/s/AKfycbyKjUvpJMXlWiDG2toP3o-C3EUo4xWxYj-sU28aJPbKf9YvzZz3awDISnpQhw6YLwQr-g/exec';
+        // ✅ NEW GOOGLE SCRIPT URL
+        const scriptUrl = 'https://script.google.com/macros/s/AKfycbxlAtib12dMRdA4o6VspTlVd6RjWb-ILJ8pDtGsD-xdwxa-L4UxvrYVRnRuWhkbcLNExQ/exec';
         
-        // ✅ USE YOUR BEAUTIFUL TEMPLATE
-        const emailHtml = this.generateEmailTemplate(otpCode);
+        // ✅ NO HTML GENERATION - JUST BASIC DATA
+        const params = new URLSearchParams({
+            to: email,
+            otp: otpCode,
+            userName: userName || email.split('@')[0]
+            // NO 'html' parameter!
+        });
         
-        // ✅ ADD 'html' PARAMETER
-        const fullUrl = scriptUrl + '?' +
-            'to=' + encodeURIComponent(email) + '&' +
-            'otp=' + encodeURIComponent(otpCode) + '&' +
-            'userName=' + encodeURIComponent(userName || email.split('@')[0]) + '&' +
-            'html=' + encodeURIComponent(emailHtml); // ← ADD THIS!
+        const fullUrl = scriptUrl + '?' + params.toString();
+        console.log('📡 Sending:', fullUrl.substring(0, 100) + '...');
         
-        console.log('📡 Sending beautifully styled email...');
-        
-        // ONE method only (no duplicates)
+        // Simple image method
         const img = new Image();
         img.src = fullUrl;
         img.style.display = 'none';
         
         img.onload = function() {
-            console.log('✅ Beautiful email sent!');
+            console.log('✅ Email sent!');
             resolve(true);
         };
         
         img.onerror = function() {
-            console.log('✅ Email request completed');
+            console.log('✅ Request completed');
             resolve(true);
         };
         
         document.body.appendChild(img);
         
+        // Timeout fallback
         setTimeout(() => resolve(true), 2000);
     });
 },
