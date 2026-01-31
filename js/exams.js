@@ -515,7 +515,7 @@
                         ${exam.exam_type?.includes('CAT') ? 'CAT' : 'Exam'}
                     </span></td>
                     <td>${this.escapeHtml(exam.course_name || 'General')}</td>
-                    <td class="text-center">${exam.block_term || 'General')}</td>
+                   <td class="text-center">${exam.block_term || 'General'}</td>
                     <td>${exam.formattedGradedDate}</td>
                     <td><span class="status-badge ${exam.gradeClass}">${exam.gradeText}</span></td>
                     <td class="text-center">${exam.cat1Score}</td>
