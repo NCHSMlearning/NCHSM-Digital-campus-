@@ -66,6 +66,7 @@ class UIModule {
         // Profile dropdown elements
         this.profileTrigger = null;
         this.dropdownMenu = null;
+        this.dropdownLogoutBtn = null; // NEW: Specific reference to logout button
         
         // Loading screen elements
         this.loadingScreen = document.getElementById('loading-screen');
@@ -78,7 +79,23 @@ class UIModule {
         this.supabase = window.supabase || window.db?.supabase;
         
         // Initialize
-        this.initialize();
+        setTimeout(() => this.delayedInitialize(), 100);
+    }
+    
+    delayedInitialize() {
+        console.log('🕐 Delayed initialization starting...');
+        
+        // Try to get Supabase client from multiple sources
+        this.supabase = window.supabase || 
+                        (window.db && window.db.supabase) || 
+                        (window.databaseModule && window.databaseModule.supabase);
+        
+        if (!this.supabase) {
+            console.warn('⚠️ Supabase client not yet available, will retry');
+            setTimeout(() => this.initialize(), 500);
+        } else {
+            this.initialize();
+        }
     }
     
     async initialize() {
@@ -93,9 +110,10 @@ class UIModule {
         this.cleanupInitialStyles();
         this.updateLoadingProgress(1, 5);
         
-        // Step 3: Setup event listeners
+        // Step 3: Setup event listeners (including dropdown)
         await this.delay(300);
         this.setupEventListeners();
+        this.setupProfileDropdown(); // Setup dropdown here
         this.updateLoadingProgress(2, 5);
         
         // Step 4: Setup URL navigation
@@ -133,6 +151,7 @@ class UIModule {
         
         if (!this.loadingScreen) {
             console.warn('⚠️ No loading screen found');
+            this.createFallbackLoadingScreen();
             return;
         }
         
@@ -152,10 +171,45 @@ class UIModule {
             const versionEl = document.createElement('div');
             versionEl.className = 'app-version';
             versionEl.textContent = 'v2.1';
-            this.loadingScreen.querySelector('.loading-container').appendChild(versionEl);
+            this.loadingScreen.querySelector('.loading-container')?.appendChild(versionEl);
         }
         
         console.log('✅ App-style loading configured');
+    }
+    
+    createFallbackLoadingScreen() {
+        const fallback = document.createElement('div');
+        fallback.id = 'loading-fallback';
+        fallback.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            color: white;
+            font-family: Arial, sans-serif;
+        `;
+        
+        fallback.innerHTML = `
+            <div style="text-align: center;">
+                <h1 style="font-size: 2.5rem; margin-bottom: 1rem;">NCHSM Portal</h1>
+                <p style="opacity: 0.8;">Your Academic Hub</p>
+                <div style="margin-top: 2rem; width: 200px; height: 4px; background: rgba(255,255,255,0.2); border-radius: 2px; overflow: hidden;">
+                    <div id="fallback-progress" style="width: 0%; height: 100%; background: white; transition: width 0.3s;"></div>
+                </div>
+                <p id="fallback-status" style="margin-top: 1rem;">Loading...</p>
+            </div>
+        `;
+        
+        document.body.appendChild(fallback);
+        this.loadingScreen = fallback;
+        this.progressFill = document.getElementById('fallback-progress');
+        this.progressText = document.getElementById('fallback-status');
     }
     
     updateLoadingProgress(step, totalSteps = 5) {
@@ -243,7 +297,11 @@ class UIModule {
         
         await this.delay(800);
         
-        this.loadingScreen.style.display = 'none';
+        if (this.loadingScreen.id === 'loading-fallback') {
+            this.loadingScreen.remove();
+        } else {
+            this.loadingScreen.style.display = 'none';
+        }
         
         const mainContent = document.querySelector('.main-content, .app-container');
         if (mainContent) {
@@ -293,29 +351,13 @@ class UIModule {
         console.log('✅ Styles cleaned up');
     }
     
-    // URL NAVIGATION: Smart detection with hash fallback
+    // FIXED: Simplified URL navigation
     setupUrlNavigation() {
         console.log('🔗 Setting up URL navigation...');
         
-        // Check current URL state
-        const currentPath = this.getCurrentPath();
-        const hasHash = window.location.hash;
-        
-        console.log('🔗 URL State Check:', {
-            path: currentPath,
-            hash: hasHash,
-            pathname: window.location.pathname
-        });
-        
-        // If we have a hash or are at root, use hash routing
-        // If we have a clean path that's not root, try clean URLs
-        if (hasHash || currentPath === '/') {
-            console.log('🔗 Using HASH routing');
-            this.setupHashNavigation();
-        } else {
-            console.log('🔗 Using CLEAN URL routing');
-            this.setupCleanUrlNavigation();
-        }
+        // Always use hash-based for consistency
+        console.log('🔗 Using hash-based navigation');
+        this.setupHashNavigation();
     }
     
     setupHashNavigation() {
@@ -329,15 +371,16 @@ class UIModule {
             
             if (this.isValidTab(tabId)) {
                 console.log(`🎯 Showing tab from hash: ${tabId}`);
-                this.showTab(tabId, true); // true = from navigation
+                this.showTab(tabId, true);
             } else {
                 console.warn(`⚠️ Invalid tab in hash: ${tabId}`);
                 tabId = 'dashboard';
-                window.location.hash = '#dashboard';
+                if (window.location.hash !== '#dashboard') {
+                    window.location.hash = '#dashboard';
+                }
                 this.showTab(tabId, true);
             }
             
-            // Save to localStorage
             localStorage.setItem(this.storageKey, tabId);
         };
         
@@ -348,7 +391,7 @@ class UIModule {
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', handleHashChange);
         } else {
-            setTimeout(handleHashChange, 100);
+            setTimeout(handleHashChange, 500);
         }
         
         // Override showTab to update hash
@@ -356,10 +399,8 @@ class UIModule {
         this.showTab = function(tabId, fromNavigation = false) {
             if (this.currentTab === tabId) return;
             
-            // Call original
             originalShowTab(tabId, fromNavigation);
             
-            // Update hash if not from navigation event
             if (!fromNavigation) {
                 const newHash = tabId === 'dashboard' ? '' : `#${tabId}`;
                 if (window.location.hash !== newHash) {
@@ -370,201 +411,7 @@ class UIModule {
         }.bind(this);
     }
     
-    setupCleanUrlNavigation() {
-        console.log('🔗 Setting up clean URL navigation...');
-        
-        const handlePathChange = () => {
-            const path = this.getCurrentPath();
-            console.log('🔗 Path changed:', path);
-            
-            let tabId = this.getTabFromPath(path) || 'dashboard';
-            
-            if (this.isValidTab(tabId)) {
-                console.log(`🎯 Showing tab from path: ${tabId}`);
-                this.showTab(tabId, true); // true = from navigation
-            } else {
-                console.warn(`⚠️ Invalid tab from path: ${tabId}`);
-                tabId = 'dashboard';
-                this.updateUrlForTab(tabId);
-                this.showTab(tabId, true);
-            }
-            
-            // Save to localStorage
-            localStorage.setItem(this.storageKey, tabId);
-        };
-        
-        // Listen for popstate (browser back/forward)
-        window.addEventListener('popstate', handlePathChange);
-        
-        // Handle initial load
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', handlePathChange);
-        } else {
-            setTimeout(handlePathChange, 100);
-        }
-        
-        // Override showTab to update URL
-        const originalShowTab = this.showTab.bind(this);
-        this.showTab = function(tabId, fromNavigation = false) {
-            if (this.currentTab === tabId) return;
-            
-            // Call original
-            originalShowTab(tabId, fromNavigation);
-            
-            // Update URL if not from navigation event
-            if (!fromNavigation) {
-                this.updateUrlForTab(tabId);
-            }
-        }.bind(this);
-    }
-    
-    getCurrentPath() {
-        let path = window.location.pathname;
-        
-        // Remove .html extension
-        path = path.replace(/\.html$/, '');
-        
-        // Remove trailing slash
-        path = path.replace(/\/$/, '');
-        
-        // Handle empty path
-        if (path === '' || path === '/index') {
-            path = '/';
-        }
-        
-        // Ensure path starts with slash
-        if (!path.startsWith('/')) {
-            path = '/' + path;
-        }
-        
-        return path;
-    }
-    
-    getTabFromPath(path) {
-        // Direct mapping from pathToTab
-        if (this.pathToTab[path]) {
-            return this.pathToTab[path];
-        }
-        
-        // Try removing leading slash
-        const pathWithoutSlash = path.startsWith('/') ? path.substring(1) : path;
-        
-        // Check if it's a valid tab ID
-        if (this.isValidTab(pathWithoutSlash)) {
-            return pathWithoutSlash;
-        }
-        
-        return null;
-    }
-    
-    updateUrlForTab(tabId) {
-        if (!this.isValidTab(tabId)) return;
-        
-        const path = this.tabPaths[tabId] || '/';
-        const currentPath = this.getCurrentPath();
-        
-        // Only update if different
-        if (path !== currentPath) {
-            const newUrl = `${window.location.origin}${path}`;
-            console.log(`🔗 Updating URL to: ${newUrl}`);
-            
-            // Use replaceState to keep history clean
-            window.history.replaceState({ tabId }, '', newUrl);
-        }
-    }
-    
-    loadLastTab() {
-        const lastTab = localStorage.getItem(this.storageKey);
-        if (lastTab && this.isValidTab(lastTab)) {
-            this.currentTab = lastTab;
-        }
-    }
-    
-    isValidTab(tabId) {
-        return this.validTabs.includes(tabId);
-    }
-    
-    showTab(tabId, fromNavigation = false) {
-        console.log(`📱 showTab(${tabId}, fromNavigation: ${fromNavigation})`);
-        
-        if (!this.isValidTab(tabId)) {
-            console.warn(`⚠️ Invalid tab: ${tabId}, defaulting to dashboard`);
-            tabId = 'dashboard';
-        }
-        
-        if (this.currentTab === tabId) {
-            console.log(`⚠️ Tab ${tabId} is already active`);
-            return;
-        }
-        
-        // Hide all tabs
-        this.tabs.forEach(tab => {
-            tab.style.display = 'none';
-            tab.classList.remove('active');
-        });
-        
-        // Show selected tab
-        const selectedTab = document.getElementById(tabId);
-        if (selectedTab) {
-            selectedTab.style.display = 'block';
-            selectedTab.classList.add('active');
-            console.log(`✅ Tab ${tabId} activated`);
-        } else {
-            console.error(`❌ Tab element not found: ${tabId}`);
-            return;
-        }
-        
-        // Update navigation
-        this.navLinks.forEach(link => {
-            link.classList.remove('active');
-            if (link.getAttribute('data-tab') === tabId) {
-                link.classList.add('active');
-            }
-        });
-        
-        // Save state
-        localStorage.setItem(this.storageKey, tabId);
-        this.closeMenu();
-        
-        // Dispatch event
-        const previousTab = this.currentTab;
-        this.currentTab = tabId;
-        
-        window.dispatchEvent(new CustomEvent('tabChanged', { 
-            detail: { 
-                tabId, 
-                previousTab,
-                fromNavigation
-            }
-        }));
-        
-        // Update page title
-        this.updatePageTitle(tabId);
-        
-        // Load tab data
-        setTimeout(() => this.loadTabModule(tabId), 100);
-        
-        console.log(`✅ Successfully switched to tab: ${tabId}`);
-    }
-    
-    updatePageTitle(tabId) {
-        const tabNames = {
-            'dashboard': 'Dashboard',
-            'profile': 'Profile',
-            'calendar': 'Academic Calendar',
-            'courses': 'My Courses',
-            'attendance': 'Attendance',
-            'cats': 'Exams & Grades',
-            'resources': 'Resources',
-            'messages': 'Messages',
-            'support-tickets': 'Support Tickets',
-            'nurseiq': 'NurseIQ'
-        };
-        
-        const tabName = tabNames[tabId] || 'Dashboard';
-        document.title = `${tabName} - NCHSM Student Portal`;
-    }
-    
+    // FIXED: Complete event listeners setup
     setupEventListeners() {
         console.log('🔧 Setting up event listeners...');
         
@@ -595,12 +442,12 @@ class UIModule {
         });
         console.log(`✅ Added ${this.navLinks.length} nav link listeners`);
         
-        // Header logout button
+        // Header logout button (top-right in header)
         if (this.headerLogout) {
             console.log('🔐 Header logout button found');
             this.headerLogout.addEventListener('click', (e) => {
                 e.preventDefault();
-                console.log('🔐 Logout clicked');
+                console.log('🔐 Header logout clicked');
                 this.logout();
             });
         }
@@ -657,9 +504,6 @@ class UIModule {
             this.readerBackBtn.addEventListener('click', () => this.closeReader());
         }
         
-        // FIXED: Setup profile dropdown
-        this.setupProfileDropdownFixed();
-        
         // Dashboard card clicks
         setTimeout(() => {
             const cards = document.querySelectorAll('.stat-card[data-tab]');
@@ -680,76 +524,178 @@ class UIModule {
         console.log('✅ All event listeners setup complete');
     }
     
-  setupProfileDropdownFixed() {
-    console.log('🎯 PROVEN WORKING: Setting up dropdown...');
-    
-    setTimeout(() => {
-        // Get elements
-        this.profileTrigger = document.querySelector('.profile-trigger');
-        this.dropdownMenu = document.querySelector('.dropdown-menu');
+    // FIXED: Profile dropdown with working logout
+    setupProfileDropdown() {
+        console.log('🎯 Setting up profile dropdown...');
         
-        if (!this.profileTrigger || !this.dropdownMenu) {
-            console.error('❌ Dropdown elements not found');
-            return;
+        setTimeout(() => {
+            // Find dropdown elements
+            this.findDropdownElements();
+            
+            if (!this.profileTrigger || !this.dropdownMenu) {
+                console.error('❌ Dropdown elements not found after search');
+                return;
+            }
+            
+            console.log('✅ Dropdown elements found:', {
+                trigger: this.profileTrigger.tagName,
+                menu: this.dropdownMenu.tagName,
+                menuChildren: this.dropdownMenu.children.length
+            });
+            
+            // Set initial state
+            this.dropdownMenu.style.display = 'none';
+            
+            // FIXED: Profile trigger click handler
+            this.profileTrigger.addEventListener('click', (e) => {
+                console.log('👤 Profile trigger clicked');
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const isVisible = this.dropdownMenu.style.display === 'block';
+                
+                if (isVisible) {
+                    this.dropdownMenu.style.display = 'none';
+                    console.log('📋 Dropdown hidden');
+                } else {
+                    this.dropdownMenu.style.display = 'block';
+                    console.log('📋 Dropdown shown');
+                }
+                
+                // Toggle arrow rotation if exists
+                const arrow = this.profileTrigger.querySelector('.dropdown-icon, .fa-chevron-down');
+                if (arrow) {
+                    arrow.style.transform = isVisible ? 'rotate(0deg)' : 'rotate(180deg)';
+                }
+            });
+            
+            // FIXED: Setup dropdown menu items
+            this.setupDropdownMenuItems();
+            
+            // FIXED: Close dropdown when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!this.profileTrigger.contains(e.target) && 
+                    !this.dropdownMenu.contains(e.target)) {
+                    this.dropdownMenu.style.display = 'none';
+                    
+                    const arrow = this.profileTrigger.querySelector('.dropdown-icon, .fa-chevron-down');
+                    if (arrow) {
+                        arrow.style.transform = 'rotate(0deg)';
+                    }
+                }
+            });
+            
+            console.log('✅ Profile dropdown setup complete');
+            
+        }, 500); // Delay to ensure DOM is ready
+    }
+    
+    findDropdownElements() {
+        // Try multiple selectors
+        const triggerSelectors = [
+            '.profile-trigger',
+            '.header-profile',
+            '.user-profile',
+            '[data-profile]',
+            '.header-user',
+            '.user-menu-trigger'
+        ];
+        
+        const menuSelectors = [
+            '.dropdown-menu',
+            '.profile-dropdown',
+            '.user-dropdown',
+            '.menu-dropdown',
+            '[data-dropdown]',
+            '.dropdown-content'
+        ];
+        
+        // Find trigger
+        for (const selector of triggerSelectors) {
+            const element = document.querySelector(selector);
+            if (element) {
+                this.profileTrigger = element;
+                console.log(`🔍 Found profile trigger with: ${selector}`);
+                break;
+            }
         }
         
-        console.log('✅ Found dropdown elements');
-        
-        // Clone to remove existing listeners
-        const cleanTrigger = this.profileTrigger.cloneNode(true);
-        const cleanMenu = this.dropdownMenu.cloneNode(true);
-        
-        this.profileTrigger.parentNode.replaceChild(cleanTrigger, this.profileTrigger);
-        this.dropdownMenu.parentNode.replaceChild(cleanMenu, this.dropdownMenu);
-        
-        this.profileTrigger = cleanTrigger;
-        this.dropdownMenu = cleanMenu;
-        
-        // Set initial state
-        this.dropdownMenu.style.display = 'none';
-        this.dropdownMenu.style.opacity = '1';
-        
-        // PROVEN WORKING CLICK HANDLER
-        this.profileTrigger.addEventListener('click', (e) => {
-            console.log('👤 Profile clicked (proven working)');
-            
-            e.preventDefault();
-            e.stopPropagation();
-            
-            const isVisible = this.dropdownMenu.style.display === 'block';
-            
-            if (isVisible) {
-                this.dropdownMenu.style.display = 'none';
-                console.log('📋 Dropdown hidden');
-            } else {
-                this.dropdownMenu.style.display = 'block';
-                console.log('📋 Dropdown shown');
+        // Find menu
+        for (const selector of menuSelectors) {
+            const element = document.querySelector(selector);
+            if (element) {
+                this.dropdownMenu = element;
+                console.log(`🔍 Found dropdown menu with: ${selector}`);
+                break;
             }
-            
-            // Rotate arrow
-            const arrow = this.profileTrigger.querySelector('.dropdown-icon');
-            if (arrow) {
-                arrow.style.transform = isVisible ? 'rotate(0deg)' : 'rotate(180deg)';
-            }
-        }, true); // Capture phase is IMPORTANT
+        }
+    }
+    
+    setupDropdownMenuItems() {
+        if (!this.dropdownMenu) return;
         
-        // PROVEN WORKING CLOSE HANDLER
-        document.addEventListener('click', (e) => {
-            if (!this.profileTrigger.contains(e.target) && 
-                !this.dropdownMenu.contains(e.target)) {
-                this.dropdownMenu.style.display = 'none';
+        console.log('🔧 Setting up dropdown menu items...');
+        
+        // Find all links/buttons in dropdown
+        const menuItems = this.dropdownMenu.querySelectorAll('a, button, [data-action]');
+        
+        menuItems.forEach((item, index) => {
+            console.log(`📋 Menu item ${index + 1}:`, {
+                text: item.textContent.trim(),
+                tag: item.tagName,
+                id: item.id,
+                classes: item.className
+            });
+            
+            // Check if this is a logout button
+            if (item.textContent.toLowerCase().includes('logout') || 
+                item.id.includes('logout') || 
+                item.className.includes('logout') ||
+                item.getAttribute('data-action') === 'logout') {
                 
-                const arrow = this.profileTrigger.querySelector('.dropdown-icon');
-                if (arrow) {
-                    arrow.style.transform = 'rotate(0deg)';
-                }
+                console.log('🔐 Found logout item in dropdown');
+                
+                // Remove any existing listeners
+                const newItem = item.cloneNode(true);
+                item.parentNode.replaceChild(newItem, item);
+                
+                // Add logout listener
+                newItem.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('🔐 Dropdown logout clicked');
+                    this.logout();
+                });
+                
+                this.dropdownLogoutBtn = newItem;
             }
-        }, true); // Capture phase is IMPORTANT
+            
+            // Check if this is a profile link
+            else if (item.textContent.toLowerCase().includes('profile') || 
+                     item.id.includes('profile') || 
+                     item.className.includes('profile') ||
+                     item.getAttribute('data-tab') === 'profile') {
+                
+                console.log('👤 Found profile item in dropdown');
+                
+                // Remove any existing listeners
+                const newItem = item.cloneNode(true);
+                item.parentNode.replaceChild(newItem, item);
+                
+                // Add profile listener
+                newItem.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('👤 Dropdown profile clicked');
+                    this.showTab('profile');
+                    this.dropdownMenu.style.display = 'none';
+                });
+            }
+        });
         
-        console.log('✅ Dropdown setup complete - PROVEN TO WORK');
-        
-    }, 300);
-}
+        console.log(`✅ Setup ${menuItems.length} dropdown menu items`);
+    }
+    
     setupTabChangeListener() {
         window.addEventListener('tabChanged', (e) => {
             console.log(`🔄 Tab changed to: ${e.detail.tabId}`);
@@ -774,6 +720,8 @@ class UIModule {
                 case 'profile':
                     if (typeof loadProfile === 'function') {
                         loadProfile();
+                    } else if (window.profileModule && window.profileModule.loadProfileData) {
+                        window.profileModule.loadProfileData();
                     }
                     break;
                 case 'calendar':
@@ -921,34 +869,68 @@ class UIModule {
     async loadInitialUserData() {
         console.log('👤 Loading initial user data...');
         
+        await this.delay(500); // Wait for user data to be ready
+        
         try {
-            if (!window.currentUserId && window.db?.currentUserId) {
-                window.currentUserId = window.db.currentUserId;
-            }
+            const userId = window.currentUserId || 
+                          (window.db && window.db.currentUserId) ||
+                          (window.databaseModule && window.databaseModule.currentUserId);
             
-            if (!window.currentUserProfile && window.db?.currentUserProfile) {
-                window.currentUserProfile = window.db.currentUserProfile;
-            }
+            const userProfile = window.currentUserProfile || 
+                               (window.db && window.db.currentUserProfile) ||
+                               (window.databaseModule && window.databaseModule.currentUserProfile);
             
-            if (window.currentUserId && this.supabase) {
-                const userData = await this.loadUserFromDatabase(window.currentUserId);
-                if (userData) {
-                    this.updateAllUserInfo(userData);
+            console.log('👤 User data sources:', { 
+                userId: userId ? 'found' : 'not found',
+                userProfile: userProfile ? 'found' : 'not found'
+            });
+            
+            if (userId && this.supabase) {
+                const dbUserData = await this.loadUserFromDatabase(userId);
+                if (dbUserData) {
+                    this.updateAllUserInfo(dbUserData);
+                } else if (userProfile) {
+                    this.updateAllUserInfo(userProfile);
                 } else {
-                    this.updateAllUserInfo(window.currentUserProfile);
+                    this.updateDefaultUserInfo();
                 }
-            } else if (window.currentUserProfile) {
-                this.updateAllUserInfo(window.currentUserProfile);
+            } else if (userProfile) {
+                this.updateAllUserInfo(userProfile);
+            } else {
+                this.updateDefaultUserInfo();
             }
         } catch (error) {
             console.error('❌ Error loading initial user data:', error);
+            this.updateDefaultUserInfo();
+        }
+    }
+    
+    updateDefaultUserInfo() {
+        console.log('👤 Setting default user info');
+        
+        const defaultName = 'Student';
+        
+        if (this.headerUserName) {
+            this.headerUserName.textContent = defaultName;
+        }
+        
+        if (this.headerProfilePhoto) {
+            this.headerProfilePhoto.src = 'https://ui-avatars.com/api/?name=Student&background=667eea&color=fff&size=100';
+        }
+        
+        const welcomeHeader = document.getElementById('welcome-header');
+        if (welcomeHeader) {
+            const now = new Date();
+            const hour = now.getHours();
+            const greeting = hour < 12 ? 'Good Morning' : hour < 18 ? 'Good Afternoon' : 'Good Evening';
+            welcomeHeader.textContent = `${greeting}, ${defaultName}!`;
         }
     }
     
     async loadUserFromDatabase(userId) {
         try {
-            if (!this.supabase) {
-                console.warn('⚠️ No Supabase client available');
+            if (!this.supabase || typeof this.supabase.from !== 'function') {
+                console.warn('⚠️ Supabase client not available');
                 return null;
             }
             
@@ -969,7 +951,6 @@ class UIModule {
                 console.log('✅ User data loaded from database:', {
                     id: userProfile.id,
                     name: userProfile.full_name,
-                    email: userProfile.email,
                     studentId: userProfile.student_id
                 });
                 
@@ -979,7 +960,7 @@ class UIModule {
                 return userProfile;
             }
             
-            console.warn('⚠️ No user profile found in database for ID:', userId);
+            console.warn('⚠️ No user profile found in database');
             return null;
             
         } catch (error) {
@@ -1004,49 +985,6 @@ class UIModule {
         window.addEventListener('resize', updateVisibility);
     }
     
-    async getProfilePhotoFromDatabase(userId) {
-        try {
-            if (!this.supabase) {
-                console.warn('⚠️ No Supabase client available');
-                return null;
-            }
-            
-            const { data: userProfile, error } = await this.supabase
-                .from('consolidated_user_profiles_table')
-                .select('passport_url, full_name')
-                .or(`id.eq.${userId},user_id.eq.${userId}`)
-                .maybeSingle();
-            
-            if (error) {
-                console.error('❌ Error fetching user profile:', error);
-                return null;
-            }
-            
-            if (!userProfile) {
-                console.warn('⚠️ No user profile found for ID:', userId);
-                return null;
-            }
-            
-            if (userProfile.passport_url && userProfile.passport_url.trim() !== '') {
-                console.log('📸 Found passport_url in database:', userProfile.passport_url);
-                return userProfile.passport_url;
-            }
-            
-            const nameForAvatar = userProfile.full_name 
-                ? userProfile.full_name.replace(/\s+/g, '+')
-                : 'Student';
-            
-            const avatarUrl = `https://ui-avatars.com/api/?name=${nameForAvatar}&background=667eea&color=fff&size=100`;
-            console.log('📸 Using generated avatar for:', userProfile.full_name);
-            
-            return avatarUrl;
-            
-        } catch (error) {
-            console.error('❌ Error getting profile photo:', error);
-            return null;
-        }
-    }
-    
     async updateAllUserInfo(userProfile = null) {
         console.log('👤 Updating all user info...');
         
@@ -1059,6 +997,7 @@ class UIModule {
             
             if (!profile) {
                 console.warn('⚠️ No user profile available');
+                this.updateDefaultUserInfo();
                 return;
             }
             
@@ -1101,6 +1040,7 @@ class UIModule {
             
         } catch (error) {
             console.error('❌ Error updating user info:', error);
+            this.updateDefaultUserInfo();
         }
     }
     
@@ -1113,50 +1053,37 @@ class UIModule {
         }
         
         try {
-            let photoUrl = null;
-            
-            if (window.currentUserId) {
-                photoUrl = await this.getProfilePhotoFromDatabase(window.currentUserId);
-            }
+            let photoUrl = localStorage.getItem('userProfilePhoto');
             
             if (!photoUrl && userProfile?.passport_url) {
                 photoUrl = userProfile.passport_url;
-                console.log('📸 Using passport_url from userProfile object');
             }
             
-            if (!photoUrl) {
-                photoUrl = localStorage.getItem('userProfilePhoto');
-                if (photoUrl) {
-                    console.log('📸 Using cached photo from localStorage');
+            if (!photoUrl && window.currentUserId && this.supabase) {
+                try {
+                    photoUrl = await this.getProfilePhotoFromDatabase(window.currentUserId);
+                } catch (error) {
+                    console.log('📸 Database photo fetch failed');
                 }
             }
             
             if (!photoUrl && userProfile?.full_name) {
                 const nameForAvatar = userProfile.full_name.replace(/\s+/g, '+');
                 photoUrl = `https://ui-avatars.com/api/?name=${nameForAvatar}&background=667eea&color=fff&size=100`;
-                console.log('📸 Generated avatar from name:', userProfile.full_name);
             }
             
             if (!photoUrl) {
                 photoUrl = 'https://ui-avatars.com/api/?name=Student&background=667eea&color=fff&size=100';
-                console.log('📸 Using default avatar');
             }
             
             console.log('📸 Final photo URL:', photoUrl);
             
             this.headerProfilePhoto.src = photoUrl;
             this.headerProfilePhoto.onerror = () => {
-                console.error('❌ Failed to load profile photo, using fallback');
-                const fallbackUrl = 'https://ui-avatars.com/api/?name=Student&background=667eea&color=fff&size=100';
-                this.headerProfilePhoto.src = fallbackUrl;
+                console.error('❌ Failed to load profile photo');
+                this.headerProfilePhoto.src = 'https://ui-avatars.com/api/?name=Student&background=667eea&color=fff&size=100';
+                localStorage.setItem('userProfilePhoto', this.headerProfilePhoto.src);
             };
-            
-            const allProfilePhotos = document.querySelectorAll('img[alt*="profile"], img[alt*="avatar"], .user-avatar img, .profile-photo');
-            allProfilePhotos.forEach(img => {
-                if (img !== this.headerProfilePhoto && img.tagName === 'IMG') {
-                    img.src = photoUrl;
-                }
-            });
             
             localStorage.setItem('userProfilePhoto', photoUrl);
             
@@ -1164,60 +1091,138 @@ class UIModule {
             
         } catch (error) {
             console.error('❌ Error updating profile photo:', error);
+            this.headerProfilePhoto.src = 'https://ui-avatars.com/api/?name=Student&background=667eea&color=fff&size=100';
+        }
+    }
+    
+    async getProfilePhotoFromDatabase(userId) {
+        if (!this.supabase || typeof this.supabase.from !== 'function') {
+            return null;
+        }
+        
+        try {
+            const { data: userProfile, error } = await this.supabase
+                .from('consolidated_user_profiles_table')
+                .select('passport_url, full_name')
+                .or(`id.eq.${userId},user_id.eq.${userId}`)
+                .maybeSingle();
             
-            const fallbackUrl = 'https://ui-avatars.com/api/?name=Student&background=667eea&color=fff&size=100';
-            this.headerProfilePhoto.src = fallbackUrl;
+            if (error || !userProfile) return null;
+            
+            if (userProfile.passport_url && userProfile.passport_url.trim() !== '') {
+                return userProfile.passport_url;
+            }
+            
+            const nameForAvatar = userProfile.full_name?.replace(/\s+/g, '+') || 'Student';
+            return `https://ui-avatars.com/api/?name=${nameForAvatar}&background=667eea&color=fff&size=100`;
+            
+        } catch (error) {
+            return null;
         }
     }
     
-    showTranscriptModal(examData) {
-        if (!this.transcriptModal) return;
+    showTab(tabId, fromNavigation = false) {
+        console.log(`📱 showTab(${tabId}, fromNavigation: ${fromNavigation})`);
         
-        document.getElementById('transcript-exam-name').textContent = examData.name || 'Exam Transcript';
-        document.getElementById('transcript-cat1').textContent = examData.cat1 !== null ? `${examData.cat1}/30` : '--';
-        document.getElementById('transcript-cat2').textContent = examData.cat2 !== null ? `${examData.cat2}/30` : '--';
-        document.getElementById('transcript-final').textContent = examData.final !== null ? `${examData.final}/40` : '--';
-        document.getElementById('transcript-total').textContent = examData.total ? `${examData.total}/100` : '--';
-        
-        const status = examData.total >= 50 ? 'PASS' : 'FAIL';
-        const statusElement = document.getElementById('transcript-status');
-        statusElement.textContent = status;
-        statusElement.style.color = status === 'PASS' ? '#10B981' : '#EF4444';
-        
-        this.transcriptModal.style.display = 'flex';
-    }
-    
-    closeTranscriptModal() {
-        if (this.transcriptModal) {
-            this.transcriptModal.style.display = 'none';
+        if (!this.isValidTab(tabId)) {
+            console.warn(`⚠️ Invalid tab: ${tabId}, defaulting to dashboard`);
+            tabId = 'dashboard';
         }
+        
+        if (this.currentTab === tabId) {
+            console.log(`⚠️ Tab ${tabId} is already active`);
+            return;
+        }
+        
+        // Hide all tabs
+        this.tabs.forEach(tab => {
+            tab.style.display = 'none';
+            tab.classList.remove('active');
+        });
+        
+        // Show selected tab
+        const selectedTab = document.getElementById(tabId);
+        if (selectedTab) {
+            selectedTab.style.display = 'block';
+            selectedTab.classList.add('active');
+            console.log(`✅ Tab ${tabId} activated`);
+        } else {
+            console.error(`❌ Tab element not found: ${tabId}`);
+            return;
+        }
+        
+        // Update navigation
+        this.navLinks.forEach(link => {
+            link.classList.remove('active');
+            if (link.getAttribute('data-tab') === tabId) {
+                link.classList.add('active');
+            }
+        });
+        
+        // Save state
+        localStorage.setItem(this.storageKey, tabId);
+        this.closeMenu();
+        
+        // Dispatch event
+        const previousTab = this.currentTab;
+        this.currentTab = tabId;
+        
+        window.dispatchEvent(new CustomEvent('tabChanged', { 
+            detail: { 
+                tabId, 
+                previousTab,
+                fromNavigation
+            }
+        }));
+        
+        // Update page title
+        this.updatePageTitle(tabId);
+        
+        // Load tab data
+        setTimeout(() => this.loadTabModule(tabId), 100);
+        
+        console.log(`✅ Successfully switched to tab: ${tabId}`);
     }
     
-    openReader(resource) {
-        if (!this.mobileReader) return;
+    updatePageTitle(tabId) {
+        const tabNames = {
+            'dashboard': 'Dashboard',
+            'profile': 'Profile',
+            'calendar': 'Academic Calendar',
+            'courses': 'My Courses',
+            'attendance': 'Attendance',
+            'cats': 'Exams & Grades',
+            'resources': 'Resources',
+            'messages': 'Messages',
+            'support-tickets': 'Support Tickets',
+            'nurseiq': 'NurseIQ'
+        };
         
-        document.getElementById('reader-title').textContent = resource.title;
-        const content = document.getElementById('reader-content');
-        content.innerHTML = `
-            <div class="resource-meta">
-                <span><i class="fas fa-book"></i> ${resource.course || 'General'}</span>
-                <span><i class="fas fa-calendar"></i> ${new Date(resource.created_at).toLocaleDateString()}</span>
-                <span><i class="fas fa-file"></i> ${resource.type || 'PDF'}</span>
-            </div>
-            <div class="resource-description">
-                <p>${resource.description || 'No description available.'}</p>
-            </div>
-            <div class="resource-preview">
-                <p><strong>Note:</strong> This is a view-only preview. Download the full resource for offline access.</p>
-            </div>
-        `;
-        
-        this.mobileReader.style.display = 'block';
+        const tabName = tabNames[tabId] || 'Dashboard';
+        document.title = `${tabName} - NCHSM Student Portal`;
     }
     
-    closeReader() {
-        if (this.mobileReader) {
-            this.mobileReader.style.display = 'none';
+    isValidTab(tabId) {
+        return this.validTabs.includes(tabId);
+    }
+    
+    getCurrentPath() {
+        let path = window.location.pathname;
+        path = path.replace(/\.html$/, '');
+        path = path.replace(/\/$/, '');
+        if (path === '' || path === '/index') {
+            path = '/';
+        }
+        if (!path.startsWith('/')) {
+            path = '/' + path;
+        }
+        return path;
+    }
+    
+    loadLastTab() {
+        const lastTab = localStorage.getItem(this.storageKey);
+        if (lastTab && this.isValidTab(lastTab)) {
+            this.currentTab = lastTab;
         }
     }
     
@@ -1228,38 +1233,44 @@ class UIModule {
             
             this.showToast('Logging out...', 'info', 1500);
             
+            // Clear all storage
             localStorage.removeItem(this.storageKey);
             localStorage.removeItem('userProfilePhoto');
             localStorage.removeItem('currentUserProfile');
             
-            const keysToKeep = [];
-            Object.keys(localStorage).forEach(key => {
-                if (!keysToKeep.includes(key)) {
-                    localStorage.removeItem(key);
+            // Keep only essential keys if needed
+            const keysToRemove = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (!key.includes('nchsm_keep')) {
+                    keysToRemove.push(key);
                 }
-            });
+            }
+            keysToRemove.forEach(key => localStorage.removeItem(key));
             
             sessionStorage.clear();
             
+            // Clear cookies
             document.cookie.split(";").forEach(c => {
                 document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
             });
             
-            if (window.supabase) {
-                await window.supabase.auth.signOut();
-            } else if (window.db?.supabase) {
-                await window.db.supabase.auth.signOut();
+            // Sign out from Supabase
+            if (this.supabase && this.supabase.auth) {
+                await this.supabase.auth.signOut();
             }
             
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            await this.delay(1000);
             
+            // Redirect to login
             window.location.href = 'login.html';
             
         } catch (error) {
             console.error('Logout error:', error);
+            this.showToast('Logout failed, redirecting...', 'error');
             setTimeout(() => {
                 window.location.href = 'login.html';
-            }, 500);
+            }, 1000);
         }
     }
     
@@ -1274,21 +1285,8 @@ class UIModule {
                 }).catch(error => {
                     this.showToast('Error clearing cache', 'error');
                 });
-            } else {
-                this.showToast('Cache API not supported', 'warning');
             }
             
-            const keysToKeep = ['nchsm_last_tab', 'userProfilePhoto', 'currentUserProfile'];
-            const keysToRemove = [];
-            
-            for (let i = 0; i < localStorage.length; i++) {
-                const key = localStorage.key(i);
-                if (!keysToKeep.includes(key)) {
-                    keysToRemove.push(key);
-                }
-            }
-            
-            keysToRemove.forEach(key => localStorage.removeItem(key));
             this.showToast('Local storage cleared', 'success');
         }
     }
@@ -1409,7 +1407,6 @@ class UIModule {
         console.log(`✅ Force show complete: ${tabId}`);
     }
     
-    // Debug function
     debugAll() {
         console.log('🔍 UI DEBUG INFO:');
         console.log('- Current tab:', this.currentTab);
@@ -1419,6 +1416,15 @@ class UIModule {
         console.log('- URL path:', this.getCurrentPath());
         console.log('- URL hash:', window.location.hash);
         console.log('- Current user ID:', window.currentUserId);
+        console.log('- Dropdown items:', this.dropdownMenu?.children.length || 0);
+        
+        // Log dropdown menu structure
+        if (this.dropdownMenu) {
+            console.log('📋 Dropdown menu structure:');
+            Array.from(this.dropdownMenu.children).forEach((child, i) => {
+                console.log(`  ${i + 1}. ${child.tagName} ${child.textContent.trim()}`);
+            });
+        }
     }
 }
 
@@ -1426,14 +1432,14 @@ class UIModule {
 window.ui = new UIModule();
 
 // Export functions to window
-window.toggleMenu = () => window.ui?.toggleMenu();
-window.closeMenu = () => window.ui?.closeMenu();
-window.showTab = (tabId) => window.ui?.showTab(tabId);
-window.showToast = (message, type, duration) => window.ui?.showToast(message, type, duration);
-window.logout = () => window.ui?.logout();
-window.forceShowTab = (tabId) => window.ui?.forceShowTab(tabId);
-window.refreshDashboard = () => window.ui?.refreshDashboard();
-window.debugUI = () => window.ui?.debugAll();
+window.toggleMenu = () => window.ui?.toggleMenu?.();
+window.closeMenu = () => window.ui?.closeMenu?.();
+window.showTab = (tabId) => window.ui?.showTab?.(tabId);
+window.showToast = (message, type, duration) => window.ui?.showToast?.(message, type, duration);
+window.logout = () => window.ui?.logout?.();
+window.forceShowTab = (tabId) => window.ui?.forceShowTab?.(tabId);
+window.refreshDashboard = () => window.ui?.refreshDashboard?.();
+window.debugUI = () => window.ui?.debugAll?.();
 
 // Event listeners
 document.addEventListener('DOMContentLoaded', function() {
