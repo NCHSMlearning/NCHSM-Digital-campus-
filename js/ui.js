@@ -1,4 +1,4 @@
-// js/ui.js - COMPLETE FIXED VERSION
+// js/ui.js - COMPLETE FIXED VERSION WITH CLEAN URLS
 class UIModule {
     constructor() {
         console.log('🚀 Initializing UIModule...');
@@ -151,7 +151,7 @@ class UIModule {
         
         await this.delay(300);
         this.setupEventListeners();
-        this.setupProfileDropdown(); // FIXED DROPDOWN
+        this.setupProfileDropdown();
         this.updateLoadingProgress(2, 5);
         
         await this.delay(400);
@@ -379,27 +379,29 @@ class UIModule {
     }
     
     setupUrlNavigation() {
-        console.log('🔗 Setting up URL navigation...');
-        this.setupHashNavigation();
+        console.log('🔗 Setting up clean URL navigation...');
+        this.setupHistoryNavigation();
     }
     
-    setupHashNavigation() {
-        console.log('🔗 Setting up hash-based navigation...');
+    setupHistoryNavigation() {
+        console.log('🔗 Setting up history-based navigation...');
         
-        const handleHashChange = () => {
-            const hash = window.location.hash.replace('#', '');
-            console.log('🔗 Hash changed:', hash || '(empty)');
+        // Function to handle URL changes
+        const handleRoute = () => {
+            const path = this.getCurrentPath();
+            console.log('📍 Current path:', path);
             
-            let tabId = hash || 'dashboard';
+            // Determine tab from path
+            let tabId = this.pathToTab[path] || 'dashboard';
             
             if (this.isValidTab(tabId)) {
-                console.log(`🎯 Showing tab from hash: ${tabId}`);
+                console.log(`🎯 Showing tab from path: ${tabId} (${path})`);
                 this.showTab(tabId, true);
             } else {
-                console.warn(`⚠️ Invalid tab in hash: ${tabId}`);
+                console.warn(`⚠️ Invalid path: ${path}, defaulting to dashboard`);
                 tabId = 'dashboard';
-                if (window.location.hash !== '#dashboard') {
-                    window.location.hash = '#dashboard';
+                if (path !== '/') {
+                    this.updateBrowserUrl('/');
                 }
                 this.showTab(tabId, true);
             }
@@ -407,15 +409,7 @@ class UIModule {
             localStorage.setItem(this.storageKey, tabId);
         };
         
-        window.addEventListener('hashchange', handleHashChange);
-        
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', handleHashChange);
-        } else {
-            setTimeout(handleHashChange, 500);
-        }
-        
-        // Override showTab to update hash
+        // Override showTab to update URL
         const originalShowTab = this.showTab.bind(this);
         this.showTab = function(tabId, fromNavigation = false) {
             if (this.currentTab === tabId) return;
@@ -423,13 +417,82 @@ class UIModule {
             originalShowTab(tabId, fromNavigation);
             
             if (!fromNavigation) {
-                const newHash = tabId === 'dashboard' ? '' : `#${tabId}`;
-                if (window.location.hash !== newHash) {
-                    console.log(`🔗 Updating hash to: ${newHash}`);
-                    window.location.hash = newHash;
-                }
+                const path = this.tabPaths[tabId] || '/';
+                this.updateBrowserUrl(path);
             }
         }.bind(this);
+        
+        // Listen for back/forward navigation
+        window.addEventListener('popstate', handleRoute);
+        
+        // Handle navigation link clicks
+        document.addEventListener('click', (e) => {
+            const link = e.target.closest('a[data-tab]');
+            if (!link || link.target === '_blank' || link.hasAttribute('download')) return;
+            
+            const href = link.getAttribute('href');
+            if (href && (href === '#' || href.startsWith('#'))) {
+                e.preventDefault();
+                const tabId = link.getAttribute('data-tab');
+                if (tabId && this.isValidTab(tabId)) {
+                    this.navigateToTab(tabId);
+                }
+            }
+        });
+        
+        // Initial route handling - IMPORTANT: This ensures tab persistence on refresh
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                // Small delay to ensure everything is ready
+                setTimeout(handleRoute, 100);
+            });
+        } else {
+            setTimeout(handleRoute, 100);
+        }
+    }
+    
+    navigateToTab(tabId) {
+        console.log(`🚀 Navigating to tab: ${tabId}`);
+        
+        if (!this.isValidTab(tabId)) {
+            console.warn(`⚠️ Invalid tab: ${tabId}`);
+            tabId = 'dashboard';
+        }
+        
+        // Update browser URL
+        const path = this.tabPaths[tabId] || '/';
+        this.updateBrowserUrl(path);
+        
+        // Show the tab
+        this.showTab(tabId, true);
+    }
+    
+    updateBrowserUrl(path) {
+        const fullPath = window.location.origin + path;
+        if (window.location.pathname !== path) {
+            console.log(`📝 Updating URL to: ${path}`);
+            window.history.pushState({}, '', fullPath);
+        }
+    }
+    
+    getCurrentPath() {
+        let path = window.location.pathname;
+        
+        // Clean up the path
+        path = path.replace(/\.html$/, '');
+        path = path.replace(/\/$/, '');
+        
+        // Handle index/root
+        if (path === '' || path === '/index' || path === '/dashboard') {
+            path = '/';
+        }
+        
+        // Ensure leading slash
+        if (!path.startsWith('/')) {
+            path = '/' + path;
+        }
+        
+        return path;
     }
     
     setupEventListeners() {
@@ -445,7 +508,7 @@ class UIModule {
             this.overlay.addEventListener('click', () => this.closeMenu());
         }
         
-        // Navigation links
+        // Navigation links - UPDATED FOR CLEAN URLS
         this.navLinks.forEach(link => {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -453,7 +516,7 @@ class UIModule {
                 console.log(`📱 Nav clicked: ${tabId}`);
                 
                 if (tabId && this.isValidTab(tabId)) {
-                    this.showTab(tabId);
+                    this.navigateToTab(tabId);
                     this.closeMenu();
                 }
             });
@@ -530,7 +593,7 @@ class UIModule {
                     console.log(`📱 Card clicked: ${tabId}`);
                     
                     if (tabId && this.isValidTab(tabId)) {
-                        this.showTab(tabId);
+                        this.navigateToTab(tabId);
                     }
                 });
             });
@@ -539,151 +602,152 @@ class UIModule {
         console.log('✅ All event listeners setup complete');
     }
     
-setupProfileDropdown() {
-    console.log('🎯 Setting up SIMPLE working dropdown...');
-    
-    setTimeout(() => {
-        // 1. Remove old problematic dropdown if exists
-        const oldDropdown = document.querySelector('.dropdown-menu');
-        if (oldDropdown) {
-            oldDropdown.remove();
-        }
+    setupProfileDropdown() {
+        console.log('🎯 Setting up SIMPLE working dropdown...');
         
-        // 2. Create NEW simple dropdown
-        this.createSimpleDropdown();
-        
-        // 3. Setup trigger with simple click handler
-        this.setupSimpleTrigger();
-        
-        console.log('✅ SIMPLE dropdown setup complete - Guaranteed to work');
-        
-    }, 1000);
-}
-
-createSimpleDropdown() {
-    // Create fresh dropdown with different class name
-    this.dropdownMenu = document.createElement('div');
-    this.dropdownMenu.className = 'simple-dropdown-menu'; // Different class!
-    this.dropdownMenu.id = 'simple-profile-dropdown';
+        setTimeout(() => {
+            // 1. Remove old problematic dropdown if exists
+            const oldDropdown = document.querySelector('.dropdown-menu');
+            if (oldDropdown) {
+                oldDropdown.remove();
+            }
+            
+            // 2. Create NEW simple dropdown
+            this.createSimpleDropdown();
+            
+            // 3. Setup trigger with simple click handler
+            this.setupSimpleTrigger();
+            
+            console.log('✅ SIMPLE dropdown setup complete - Guaranteed to work');
+            
+        }, 1000);
+    }
     
-    // Simple HTML structure
-    this.dropdownMenu.innerHTML = `
-        <a href="#" class="simple-menu-item" data-action="profile">
-            <i class="fas fa-user"></i> My Profile
-        </a>
-        <div class="simple-menu-divider"></div>
-        <a href="#" class="simple-menu-item" data-action="logout">
-            <i class="fas fa-sign-out-alt"></i> Logout
-        </a>
-    `;
-    
-    // SIMPLE CSS - Direct inline styling
-    this.dropdownMenu.style.cssText = `
-        display: none;
-        position: absolute;
-        top: 50px;
-        right: 0;
-        background: white;
-        border: 1px solid #e5e7eb;
-        border-radius: 8px;
-        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-        min-width: 200px;
-        z-index: 1001;
-        padding: 8px 0;
-    `;
-    
-    // Style menu items
-    const items = this.dropdownMenu.querySelectorAll('.simple-menu-item');
-    items.forEach(item => {
-        item.style.cssText = `
-            display: block;
-            padding: 10px 16px;
-            color: #374151;
-            text-decoration: none;
-            border-bottom: 1px solid #f3f4f6;
-            font-size: 14px;
-            cursor: pointer;
+    createSimpleDropdown() {
+        // Create fresh dropdown with different class name
+        this.dropdownMenu = document.createElement('div');
+        this.dropdownMenu.className = 'simple-dropdown-menu'; // Different class!
+        this.dropdownMenu.id = 'simple-profile-dropdown';
+        
+        // Simple HTML structure
+        this.dropdownMenu.innerHTML = `
+            <a href="#" class="simple-menu-item" data-action="profile">
+                <i class="fas fa-user"></i> My Profile
+            </a>
+            <div class="simple-menu-divider"></div>
+            <a href="#" class="simple-menu-item" data-action="logout">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </a>
         `;
         
-        // Hover effect
-        item.onmouseenter = () => item.style.background = '#f9fafb';
-        item.onmouseleave = () => item.style.background = 'transparent';
+        // SIMPLE CSS - Direct inline styling
+        this.dropdownMenu.style.cssText = `
+            display: none;
+            position: absolute;
+            top: 50px;
+            right: 0;
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            min-width: 200px;
+            z-index: 1001;
+            padding: 8px 0;
+        `;
         
-        // Click handler
-        item.addEventListener('click', (e) => {
+        // Style menu items
+        const items = this.dropdownMenu.querySelectorAll('.simple-menu-item');
+        items.forEach(item => {
+            item.style.cssText = `
+                display: block;
+                padding: 10px 16px;
+                color: #374151;
+                text-decoration: none;
+                border-bottom: 1px solid #f3f4f6;
+                font-size: 14px;
+                cursor: pointer;
+            `;
+            
+            // Hover effect
+            item.onmouseenter = () => item.style.background = '#f9fafb';
+            item.onmouseleave = () => item.style.background = 'transparent';
+            
+            // Click handler
+            item.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                this.dropdownMenu.style.display = 'none';
+                
+                if (item.dataset.action === 'logout') {
+                    this.logout();
+                } else if (item.dataset.action === 'profile') {
+                    this.navigateToTab('profile');
+                }
+            });
+        });
+        
+        // Style logout specifically
+        const logoutItem = this.dropdownMenu.querySelector('[data-action="logout"]');
+        if (logoutItem) {
+            logoutItem.style.color = '#ef4444';
+        }
+        
+        // Add to DOM
+        const dropdownContainer = document.querySelector('.user-profile-dropdown, .header-right');
+        if (dropdownContainer) {
+            dropdownContainer.appendChild(this.dropdownMenu);
+        } else {
+            document.body.appendChild(this.dropdownMenu);
+        }
+    }
+    
+    setupSimpleTrigger() {
+        // Find trigger
+        this.profileTrigger = document.querySelector('.profile-trigger, .header-profile, [data-profile]');
+        
+        if (!this.profileTrigger) {
+            console.error('❌ No profile trigger found');
+            return;
+        }
+        
+        // Clone to remove existing listeners
+        const cleanTrigger = this.profileTrigger.cloneNode(true);
+        this.profileTrigger.parentNode.replaceChild(cleanTrigger, this.profileTrigger);
+        this.profileTrigger = cleanTrigger;
+        
+        // SIMPLE click handler - NO hover, NO conflicts
+        this.profileTrigger.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
             
-            this.dropdownMenu.style.display = 'none';
+            console.log('🎯 Profile clicked - Toggling dropdown');
             
-            if (item.dataset.action === 'logout') {
-                this.logout();
-            } else if (item.dataset.action === 'profile') {
-                this.showTab('profile');
+            if (this.dropdownMenu.style.display === 'block') {
+                this.dropdownMenu.style.display = 'none';
+                console.log('📋 Hidden');
+            } else {
+                this.dropdownMenu.style.display = 'block';
+                console.log('📋 Shown');
             }
         });
-    });
-    
-    // Style logout specifically
-    const logoutItem = this.dropdownMenu.querySelector('[data-action="logout"]');
-    if (logoutItem) {
-        logoutItem.style.color = '#ef4444';
-    }
-    
-    // Add to DOM
-    const dropdownContainer = document.querySelector('.user-profile-dropdown, .header-right');
-    if (dropdownContainer) {
-        dropdownContainer.appendChild(this.dropdownMenu);
-    } else {
-        document.body.appendChild(this.dropdownMenu);
-    }
-}
-
-setupSimpleTrigger() {
-    // Find trigger
-    this.profileTrigger = document.querySelector('.profile-trigger, .header-profile, [data-profile]');
-    
-    if (!this.profileTrigger) {
-        console.error('❌ No profile trigger found');
-        return;
-    }
-    
-    // Clone to remove existing listeners
-    const cleanTrigger = this.profileTrigger.cloneNode(true);
-    this.profileTrigger.parentNode.replaceChild(cleanTrigger, this.profileTrigger);
-    this.profileTrigger = cleanTrigger;
-    
-    // SIMPLE click handler - NO hover, NO conflicts
-    this.profileTrigger.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
         
-        console.log('🎯 Profile clicked - Toggling dropdown');
+        // Close when clicking outside
+        document.addEventListener('click', (e) => {
+            if (this.dropdownMenu.style.display === 'block' &&
+                !this.profileTrigger.contains(e.target) && 
+                !this.dropdownMenu.contains(e.target)) {
+                
+                this.dropdownMenu.style.display = 'none';
+            }
+        });
         
-        if (this.dropdownMenu.style.display === 'block') {
-            this.dropdownMenu.style.display = 'none';
-            console.log('📋 Hidden');
-        } else {
-            this.dropdownMenu.style.display = 'block';
-            console.log('📋 Shown');
-        }
-    });
+        // Remove any hover effects from trigger
+        this.profileTrigger.onmouseenter = null;
+        this.profileTrigger.onmouseover = null;
+        this.profileTrigger.onmouseleave = null;
+    }
     
-    // Close when clicking outside
-    document.addEventListener('click', (e) => {
-        if (this.dropdownMenu.style.display === 'block' &&
-            !this.profileTrigger.contains(e.target) && 
-            !this.dropdownMenu.contains(e.target)) {
-            
-            this.dropdownMenu.style.display = 'none';
-        }
-    });
-    
-    // Remove any hover effects from trigger
-    this.profileTrigger.onmouseenter = null;
-    this.profileTrigger.onmouseover = null;
-    this.profileTrigger.onmouseleave = null;
-}
     loadTabModule(tabId) {
         console.log(`📦 Loading module for tab: ${tabId}`);
         
@@ -1165,19 +1229,6 @@ setupSimpleTrigger() {
         return this.validTabs.includes(tabId);
     }
     
-    getCurrentPath() {
-        let path = window.location.pathname;
-        path = path.replace(/\.html$/, '');
-        path = path.replace(/\/$/, '');
-        if (path === '' || path === '/index') {
-            path = '/';
-        }
-        if (!path.startsWith('/')) {
-            path = '/' + path;
-        }
-        return path;
-    }
-    
     loadLastTab() {
         const lastTab = localStorage.getItem(this.storageKey);
         if (lastTab && this.isValidTab(lastTab)) {
@@ -1343,6 +1394,12 @@ setupSimpleTrigger() {
         updateOnlineStatus();
     }
     
+    setupTabChangeListener() {
+        window.addEventListener('tabChanged', (e) => {
+            console.log(`🔄 Tab changed from ${e.detail.previousTab} to ${e.detail.tabId}`);
+        });
+    }
+    
     forceShowTab(tabId) {
         console.log(`🚨 Force showing tab: ${tabId}`);
         
@@ -1377,8 +1434,8 @@ setupSimpleTrigger() {
         console.log('- Dropdown menu:', !!this.dropdownMenu);
         console.log('- Dropdown display:', this.dropdownMenu?.style.display);
         console.log('- URL path:', this.getCurrentPath());
-        console.log('- URL hash:', window.location.hash);
         console.log('- Current user ID:', window.currentUserId);
+        console.log('- History length:', window.history.length);
     }
 }
 
@@ -1431,17 +1488,21 @@ document.addEventListener('userProfileUpdated', function(e) {
 
 console.log('✅ UI Module loaded successfully');
 
-// Emergency dashboard loader
+// Ensure tab persistence on page refresh
 window.addEventListener('load', function() {
-    console.log('📱 Page fully loaded');
+    console.log('📱 Page fully loaded - Ensuring URL persistence');
     
     setTimeout(() => {
-        const dashboardTab = document.getElementById('dashboard');
-        const isDashboardActive = dashboardTab && dashboardTab.classList.contains('active');
-        
-        if (!isDashboardActive && window.ui) {
-            console.log('🎯 Dashboard not active - ensuring it loads...');
-            window.ui.showTab('dashboard');
+        if (window.ui) {
+            const path = window.ui.getCurrentPath();
+            console.log('📍 Initial path on load:', path);
+            
+            // If URL doesn't match current tab, navigate properly
+            const currentTabFromPath = window.ui.pathToTab[path];
+            if (currentTabFromPath && currentTabFromPath !== window.ui.currentTab) {
+                console.log(`🔄 URL suggests ${currentTabFromPath}, updating UI`);
+                window.ui.showTab(currentTabFromPath, true);
+            }
         }
-    }, 1500);
+    }, 500);
 });
