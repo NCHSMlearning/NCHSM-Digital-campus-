@@ -1,4 +1,4 @@
-// js/exams.js - COMPLETE & SIMPLIFIED VERSION
+// js/exams.js - COMPLETE & CORRECTED VERSION
 (function() {
     'use strict';
     
@@ -63,11 +63,11 @@
                 console.log('🔄 Returning from exam portal - refreshing data...');
                 setTimeout(() => {
                     this.loadExams();
-                }, 2000); // Wait 2 seconds for auto-grading to complete
+                }, 2000);
                 sessionStorage.removeItem('returningFromExam');
             }
             
-            // Also refresh on page focus (when user returns to tab)
+            // Also refresh on page focus
             window.addEventListener('focus', () => {
                 console.log('🔍 Page focused - checking for updates...');
                 setTimeout(() => {
@@ -122,10 +122,8 @@
         }
         
         trackExamAccess(linkElement) {
-            // Mark that we're going to exam portal
             sessionStorage.setItem('returningFromExam', 'true');
             
-            // Optional: Log exam access
             const examId = linkElement.dataset.examId;
             const examName = linkElement.dataset.examName;
             
@@ -140,9 +138,6 @@
                         accessed_at: new Date().toISOString(),
                         status: 'started'
                     }])
-                    .then(() => {
-                        console.log('✅ Exam access logged');
-                    })
                     .catch(error => {
                         console.error('❌ Failed to log exam access:', error);
                     });
@@ -243,12 +238,10 @@
                     .order('exam_date', { ascending: true });
                 
                 if (isTVET) {
-                    // TVET filtering
                     query = query
                         .eq('program_type', program)
                         .or(`block_term.eq.${term},block_term.eq.General,block_term.is.null`);
                 } else {
-                    // KRCHN filtering
                     query = query
                         .or(`program_type.eq.${program},program_type.eq.General`)
                         .or(`block_term.eq.${block},block_term.is.null,block_term.eq.General`);
@@ -274,7 +267,6 @@
                 // 4. Apply filter and display
                 this.applyDataFilter();
                 
-                // 5. Show success
                 console.log('✅ Exams loaded successfully');
                 
             } catch (error) {
@@ -291,10 +283,8 @@
         
         processExamsData(exams, grades) {
             this.allExams = exams.map(exam => {
-                // Find grade for this exam
                 const grade = grades.find(g => String(g.exam_id) === String(exam.id));
                 
-                // Check if exam is completed
                 let isCompleted = false;
                 let totalPercentage = null;
                 let gradeText = '--';
@@ -304,7 +294,6 @@
                     isCompleted = true;
                     totalPercentage = grade.total_percentage;
                     
-                    // Determine grade text and class
                     if (totalPercentage >= 85) {
                         gradeText = 'Distinction';
                         gradeClass = 'distinction';
@@ -320,7 +309,6 @@
                     }
                 }
                 
-                // Check if exam link exists
                 const hasExamLink = exam.exam_link && exam.exam_link.trim() !== '';
                 
                 return {
@@ -330,7 +318,6 @@
                     gradeText,
                     gradeClass,
                     hasExamLink,
-                    // Display scores
                     cat1Score: grade?.cat_1_score !== null && grade?.cat_1_score !== undefined ? 
                         `${grade.cat_1_score}%` : '--',
                     cat2Score: grade?.cat_2_score !== null && grade?.cat_2_score !== undefined ? 
@@ -368,7 +355,6 @@
             }
             
             const html = this.currentExams.map(exam => {
-                // Determine button text and status
                 let buttonText = 'Start Exam';
                 let buttonClass = 'primary';
                 let buttonIcon = 'fas fa-external-link-alt';
@@ -422,7 +408,6 @@
             }
             
             const html = this.completedExams.map(exam => {
-                // Check if this exam has a retake link
                 const hasRetakeLink = exam.retake_link && exam.retake_link.trim() !== '';
                 
                 return `
@@ -458,7 +443,6 @@
         }
         
         updateCounts() {
-            // Update section counts
             if (this.currentCount) {
                 this.currentCount.textContent = `${this.currentExams.length} pending`;
             }
@@ -467,7 +451,6 @@
                 this.completedCount.textContent = `${this.completedExams.length} graded`;
             }
             
-            // Update header counts
             if (this.currentHeaderCount) {
                 this.currentHeaderCount.textContent = this.currentExams.length;
             }
@@ -476,7 +459,6 @@
                 this.completedHeaderCount.textContent = this.completedExams.length;
             }
             
-            // Calculate and update average
             const scoredExams = this.completedExams.filter(exam => exam.totalPercentage !== null);
             if (scoredExams.length > 0) {
                 const total = scoredExams.reduce((sum, exam) => sum + exam.totalPercentage, 0);
@@ -510,12 +492,10 @@
         }
         
         updatePerformanceSummary() {
-            // This updates the performance cards at the bottom
-            // You can add logic here if needed
+            // Performance summary logic here
         }
         
         showTranscriptModal() {
-            // Simple transcript modal
             const modal = document.createElement('div');
             modal.className = 'modal-overlay';
             modal.innerHTML = `
@@ -532,7 +512,6 @@
             
             document.body.appendChild(modal);
             
-            // Close modal
             modal.querySelector('.close-modal').onclick = () => modal.remove();
             modal.onclick = (e) => {
                 if (e.target === modal) modal.remove();
@@ -591,158 +570,157 @@
         refresh() {
             this.loadExams();
         }
-    }
-    // 🔥 Add this to calculate active exams for dashboard
-calculateActiveExams() {
-    const now = new Date();
-    const activeExams = this.allExams.filter(exam => {
-        if (exam.isCompleted) return false;
         
-        const examDate = exam.exam_date ? new Date(exam.exam_date) : null;
-        const dueDate = exam.due_date ? new Date(exam.due_date) : null;
-        
-        // If exam date exists and is in past, but due date is in future = ongoing
-        if (examDate && dueDate) {
-            return now >= examDate && now <= dueDate;
-        }
-        
-        // If only exam date exists, check if it's today or future
-        if (examDate) {
-            return now >= examDate || (examDate - now) < (24 * 60 * 60 * 1000);
-        }
-        
-        // If no dates, consider it active
-        return true;
-    });
-    
-    return activeExams;
-}
-
-// 🔥 Update the dashboard metrics function
-calculateDashboardMetrics() {
-    try {
-        // Count completed (graded) exams
-        const completedExams = this.allExams.filter(exam => exam.isCompleted && exam.totalPercentage !== null);
-        const totalCompleted = completedExams.length;
-        
-        // 🔥 NEW: Get ACTIVE exams (ongoing + upcoming)
-        const activeExams = this.calculateActiveExams();
-        const upcomingExams = activeExams.filter(exam => {
-            const examDate = exam.exam_date ? new Date(exam.exam_date) : null;
-            return examDate && examDate > new Date();
-        });
-        
-        // Default metrics if no exams
-        const defaultMetrics = {
-            upcomingExam: 'None',
-            upcomingCount: 0,
-            gradedExams: 0,
-            averageScore: 0,
-            bestScore: 0,
-            passRate: 0,
-            lastUpdated: new Date().toISOString()
-        };
-        
-        if (activeExams.length === 0) {
-            this.dashboardMetrics = defaultMetrics;
-            return defaultMetrics;
-        }
-        
-        // Find the most urgent active exam
-        let upcomingText = 'None';
-        if (activeExams.length > 0) {
-            // Sort by urgency (ongoing first, then nearest date)
-            activeExams.sort((a, b) => {
-                const aDate = a.exam_date ? new Date(a.exam_date) : new Date(0);
-                const bDate = b.exam_date ? new Date(b.exam_date) : new Date(0);
-                const now = new Date();
+        // 🔥 Dashboard metrics functions (INSIDE THE CLASS)
+        calculateActiveExams() {
+            const now = new Date();
+            const activeExams = this.allExams.filter(exam => {
+                if (exam.isCompleted) return false;
                 
-                // Ongoing exams first
-                if (aDate <= now && bDate > now) return -1;
-                if (aDate > now && bDate <= now) return 1;
+                const examDate = exam.exam_date ? new Date(exam.exam_date) : null;
+                const dueDate = exam.due_date ? new Date(exam.due_date) : null;
                 
-                // Then by closest date
-                return aDate - bDate;
+                if (examDate && dueDate) {
+                    return now >= examDate && now <= dueDate;
+                }
+                
+                if (examDate) {
+                    return now >= examDate || (examDate - now) < (24 * 60 * 60 * 1000);
+                }
+                
+                return true;
             });
             
-            const nextExam = activeExams[0];
-            const examDate = nextExam.exam_date ? new Date(nextExam.exam_date) : null;
-            
-            if (examDate) {
-                const now = new Date();
-                const diffDays = Math.ceil((examDate - now) / (1000 * 60 * 60 * 24));
+            return activeExams;
+        }
+        
+        calculateDashboardMetrics() {
+            try {
+                const completedExams = this.allExams.filter(exam => exam.isCompleted && exam.totalPercentage !== null);
+                const totalCompleted = completedExams.length;
                 
-                if (diffDays <= 0) {
-                    upcomingText = 'Today';
-                } else if (diffDays === 1) {
-                    upcomingText = 'Tomorrow';
-                } else if (diffDays <= 7) {
-                    upcomingText = `${diffDays}d`;
-                } else if (diffDays <= 30) {
-                    const weeks = Math.floor(diffDays / 7);
-                    upcomingText = `${weeks}w`;
-                } else {
-                    upcomingText = 'Future';
+                const activeExams = this.calculateActiveExams();
+                
+                const defaultMetrics = {
+                    upcomingExam: 'None',
+                    upcomingCount: 0,
+                    gradedExams: 0,
+                    averageScore: 0,
+                    bestScore: 0,
+                    passRate: 0,
+                    lastUpdated: new Date().toISOString()
+                };
+                
+                if (activeExams.length === 0) {
+                    return defaultMetrics;
                 }
-            } else {
-                // No date, just show as active
-                upcomingText = 'Active';
-            }
-            
-            // Add count if multiple
-            if (activeExams.length > 1) {
-                upcomingText += ` (+${activeExams.length - 1})`;
+                
+                let upcomingText = 'None';
+                if (activeExams.length > 0) {
+                    activeExams.sort((a, b) => {
+                        const aDate = a.exam_date ? new Date(a.exam_date) : new Date(0);
+                        const bDate = b.exam_date ? new Date(b.exam_date) : new Date(0);
+                        const now = new Date();
+                        
+                        if (aDate <= now && bDate > now) return -1;
+                        if (aDate > now && bDate <= now) return 1;
+                        
+                        return aDate - bDate;
+                    });
+                    
+                    const nextExam = activeExams[0];
+                    const examDate = nextExam.exam_date ? new Date(nextExam.exam_date) : null;
+                    
+                    if (examDate) {
+                        const now = new Date();
+                        const diffDays = Math.ceil((examDate - now) / (1000 * 60 * 60 * 24));
+                        
+                        if (diffDays <= 0) {
+                            upcomingText = 'Today';
+                        } else if (diffDays === 1) {
+                            upcomingText = 'Tomorrow';
+                        } else if (diffDays <= 7) {
+                            upcomingText = `${diffDays}d`;
+                        } else if (diffDays <= 30) {
+                            const weeks = Math.floor(diffDays / 7);
+                            upcomingText = `${weeks}w`;
+                        } else {
+                            upcomingText = 'Future';
+                        }
+                    } else {
+                        upcomingText = 'Active';
+                    }
+                    
+                    if (activeExams.length > 1) {
+                        upcomingText += ` (+${activeExams.length - 1})`;
+                    }
+                }
+                
+                let averageScore = 0;
+                let bestScore = 0;
+                let passRate = 0;
+                
+                if (totalCompleted > 0) {
+                    const scores = completedExams.map(exam => exam.totalPercentage);
+                    averageScore = scores.reduce((sum, score) => sum + score, 0) / scores.length;
+                    bestScore = Math.max(...scores);
+                    const passedExams = completedExams.filter(exam => exam.totalPercentage >= 60).length;
+                    passRate = (passedExams / totalCompleted) * 100;
+                }
+                
+                const metrics = {
+                    upcomingExam: upcomingText,
+                    upcomingCount: activeExams.length,
+                    gradedExams: totalCompleted,
+                    averageScore: Math.round(averageScore * 10) / 10,
+                    bestScore: Math.round(bestScore * 10) / 10,
+                    passRate: Math.round(passRate),
+                    lastUpdated: new Date().toISOString()
+                };
+                
+                return metrics;
+            } catch (error) {
+                console.error('❌ Error calculating dashboard metrics:', error);
+                return {
+                    upcomingExam: 'None',
+                    upcomingCount: 0,
+                    gradedExams: 0,
+                    averageScore: 0,
+                    bestScore: 0,
+                    passRate: 0,
+                    lastUpdated: new Date().toISOString()
+                };
             }
         }
         
-        // Calculate performance metrics (if any completed)
-        let averageScore = 0;
-        let bestScore = 0;
-        let passRate = 0;
-        
-        if (totalCompleted > 0) {
-            const scores = completedExams.map(exam => exam.totalPercentage);
-            averageScore = scores.reduce((sum, score) => sum + score, 0) / scores.length;
-            bestScore = Math.max(...scores);
-            const passedExams = completedExams.filter(exam => exam.totalPercentage >= 60).length;
-            passRate = (passedExams / totalCompleted) * 100;
+        getDashboardData() {
+            return this.calculateDashboardMetrics();
         }
         
-        const metrics = {
-            upcomingExam: upcomingText,
-            upcomingCount: activeExams.length,
-            gradedExams: totalCompleted,
-            averageScore: Math.round(averageScore * 10) / 10,
-            bestScore: Math.round(bestScore * 10) / 10,
-            passRate: Math.round(passRate),
-            lastUpdated: new Date().toISOString()
-        };
-        
-        this.dashboardMetrics = metrics;
-        console.log('📊 Calculated dashboard metrics from exams:', metrics);
-        
-        return metrics;
-    } catch (error) {
-        console.error('❌ Error calculating dashboard metrics:', error);
-        return this.dashboardMetrics || {
-            upcomingExam: 'None',
-            upcomingCount: 0,
-            gradedExams: 0,
-            averageScore: 0,
-            bestScore: 0,
-            passRate: 0,
-            lastUpdated: new Date().toISOString()
-        };
-    }
-}
-} 
+    } // 🔥 END OF CLASS - THIS WAS MISSING!
     
     // Create global instance
     window.examsModule = new ExamsModule();
     
-    // Global functions for backward compatibility
+    // Global functions
     window.loadExams = () => window.examsModule?.refresh();
     window.refreshAssessments = () => window.examsModule?.refresh();
+    
+    // 🔥 Global function for dashboard to get metrics
+    window.getExamsDashboardMetrics = function() {
+        if (window.examsModule) {
+            return window.examsModule.getDashboardData();
+        }
+        return {
+            upcomingExam: 'None',
+            upcomingCount: 0,
+            gradedExams: 0,
+            averageScore: 0,
+            bestScore: 0,
+            passRate: 0,
+            lastUpdated: new Date().toISOString()
+        };
+    };
     
     console.log('✅ Exams module ready with Exam Portal Links!');
 })();
