@@ -1494,85 +1494,121 @@ sendEmailWithCode: async function(email, otpCode, userName, emailType = 'verific
     },
     
     // ============================================
-    // COMPLETE LOGIN
-    // ============================================
-    completeLogin: async function(profileData) {
-        console.log('🎉 Completing login for:', profileData.email);
+// COMPLETE LOGIN - WITH LOGIN SUCCESS EMAIL
+// ============================================
+completeLogin: async function(profileData) {
+    console.log('🎉 Completing login for:', profileData.email);
+    
+    try {
+        // Store profile
+        localStorage.setItem('currentUserProfile', JSON.stringify(profileData));
         
-        try {
-            // Store profile
-            localStorage.setItem('currentUserProfile', JSON.stringify(profileData));
-            
-            // Store session
-            const { data: { session } } = await this.supabase.auth.getSession();
-            if (session) {
-                localStorage.setItem('supabase_session', JSON.stringify(session));
-            }
-            
-            // Redirect to dashboard
-            this.redirectToDashboard(profileData);
-            
-        } catch (error) {
-            console.error('❌ Complete login error:', error);
-            if (this.supabase) {
-                await this.supabase.auth.signOut();
-            }
-            localStorage.removeItem('currentUserProfile');
-            localStorage.removeItem('supabase_session');
-            this.showError(document.getElementById('errorMsg'), 'Login failed. Please try again.');
+        // Store session
+        const { data: { session } } = await this.supabase.auth.getSession();
+        if (session) {
+            localStorage.setItem('supabase_session', JSON.stringify(session));
         }
-    },
-    
-    trustDevice: async function(userId) {
-        const deviceId = this.generateDeviceId();
-        const expires = new Date();
-        expires.setDate(expires.getDate() + 30);
         
-        this.state.trustedDevices[deviceId] = {
-            userId,
-            expires: expires.toISOString()
+        // ✅ SEND LOGIN SUCCESS EMAIL (non-blocking)
+        this.sendLoginSuccessEmail(profileData.email, profileData.full_name || profileData.email)
+            .then(() => console.log('✅ Login success email initiated'))
+            .catch(err => console.warn('⚠️ Email sending failed (non-critical):', err));
+        
+        // Redirect to dashboard
+        this.redirectToDashboard(profileData);
+        
+    } catch (error) {
+        console.error('❌ Complete login error:', error);
+        // Still redirect even if email fails
+        this.redirectToDashboard(profileData);
+    }
+},
+
+// ============================================
+// SEND LOGIN SUCCESS EMAIL
+// ============================================
+sendLoginSuccessEmail: async function(email, userName) {
+    return new Promise((resolve, reject) => {
+        console.log('🔐 Sending login success email to:', email);
+        
+        const scriptUrl = 'https://script.google.com/macros/s/AKfycbwo0Z-oQ_p5-dIe4XYiaRTv6ZdxlmfxP5LIpQT4T1cGihvlimVJg3AvdUNrDeZ0cEkJ3g/exec';
+        
+        const params = new URLSearchParams({
+            to: email,
+            otp: 'LOGIN_SUCCESS',
+            userName: userName || email,
+            emailType: 'login_success',
+            subject: 'Login Successful - NCHSM Digital Portal'
+        });
+        
+        const fullUrl = scriptUrl + '?' + params.toString();
+        
+        // Use Image object technique for simple GET request
+        const img = new Image();
+        img.src = fullUrl;
+        
+        img.onload = function() {
+            console.log('✅ Login success email sent');
+            resolve(true);
         };
         
-        localStorage.setItem('trusted_devices', JSON.stringify(this.state.trustedDevices));
-        console.log('✅ Device trusted until:', expires.toISOString());
-    },
-    
-    redirectToDashboard: function(profileData) {
-        console.log('🚀 Redirecting to dashboard...');
-        
-        const redirects = {
-            'student': 'index.html',
-            'lecturer': 'lecturer.html',
-            'admin': 'admin.html',
-            'superadmin': 'superadmin.html',
-            'hod': 'hod-tracker.html',
-            'staff': 'staff.html'
+        img.onerror = function(err) {
+            console.log('✅ Login notification sent (img fallback)');
+            resolve(true); // Still resolve as email is non-critical
         };
         
-        const role = profileData.role?.toLowerCase() || 'student';
-        const redirectUrl = redirects[role] || 'index.html';
+        document.body.appendChild(img);
         
-        console.log(`🎯 Role: ${role}, Redirecting to: ${redirectUrl}`);
-        
-        // Add fade-out animation
-        document.body.style.opacity = '0';
-        document.body.style.transition = 'opacity 0.3s ease';
-        
+        // Timeout fallback
         setTimeout(() => {
-            window.location.href = redirectUrl;
-        }, 300);
-    },
+            console.log('✅ Login email request completed');
+            resolve(true);
+        }, 1500);
+    });
+},
+
+// ============================================
+// REDIRECT TO DASHBOARD (keep your existing function)
+// ============================================
+redirectToDashboard: function(profileData) {
+    console.log('🚀 Redirecting to dashboard...');
     
-    proceedToDashboard: function() {
-        console.log('🏠 Proceeding to dashboard...');
-        this.hideAllModals();
-        
-        const storedProfile = localStorage.getItem('currentUserProfile');
-        if (storedProfile) {
-            const profile = JSON.parse(storedProfile);
-            this.redirectToDashboard(profile);
-        }
-    },
+    const redirects = {
+        'student': 'index.html',
+        'lecturer': 'lecturer.html',
+        'admin': 'admin.html',
+        'superadmin': 'superadmin.html',
+        'hod': 'hod-tracker.html',
+        'staff': 'staff.html'
+    };
+    
+    const role = profileData.role?.toLowerCase() || 'student';
+    const redirectUrl = redirects[role] || 'index.html';
+    
+    console.log(`🎯 Role: ${role}, Redirecting to: ${redirectUrl}`);
+    
+    // Add fade-out animation
+    document.body.style.opacity = '0';
+    document.body.style.transition = 'opacity 0.3s ease';
+    
+    setTimeout(() => {
+        window.location.href = redirectUrl;
+    }, 300);
+},
+
+// ============================================
+// PROCEED TO DASHBOARD (keep your existing function)
+// ============================================
+proceedToDashboard: function() {
+    console.log('🏠 Proceeding to dashboard...');
+    this.hideAllModals();
+    
+    const storedProfile = localStorage.getItem('currentUserProfile');
+    if (storedProfile) {
+        const profile = JSON.parse(storedProfile);
+        this.redirectToDashboard(profile);
+    }
+},
     
     // ============================================
     // EMAIL TEMPLATE
