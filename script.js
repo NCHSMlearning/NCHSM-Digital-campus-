@@ -1604,26 +1604,51 @@ async function loadAttendance() {
  *******************************************************/
 async function populateExamCourseSelects(courses = null) {
     const courseSelect = $('exam_course_id');
-    const program = $('exam_program').value;
+    const selectedProgram = $('exam_program').value;
 
-    let filteredCourses = [];
-    if (!program) filteredCourses = [];
-    else {
-        if (!courses) {
-            const { data } = await fetchData(
-                'courses',
-                'id, course_name, target_program',
-                { target_program: program },
-                'course_name',
-                true
-            );
-            filteredCourses = data || [];
-        } else {
-            filteredCourses = courses.filter(c => c.target_program === program);
-        }
+    if (!courseSelect) return;
+
+    // Clear existing options
+    courseSelect.innerHTML = '<option value="">-- Optional: Select Course --</option>';
+    
+    if (!selectedProgram) {
+        console.log('⚠️ No program selected, showing no courses');
+        return;
     }
 
-    populateSelect(courseSelect, filteredCourses, 'id', 'course_name', 'Select Course');
+    console.log(`🔍 Filtering courses for program: ${selectedProgram}`);
+    
+    try {
+        let filteredCourses = [];
+        
+        if (!courses) {
+            // Fetch courses for the selected program
+            const { data, error } = await sb
+                .from('courses')
+                .select('id, course_name, target_program, unit_code')
+                .eq('target_program', selectedProgram)  // 🔥 Filter by selected program
+                .order('course_name', { ascending: true });
+            
+            if (error) throw error;
+            filteredCourses = data || [];
+        } else {
+            // Filter provided courses by program
+            filteredCourses = courses.filter(c => c.target_program === selectedProgram);
+        }
+
+        console.log(`✅ Found ${filteredCourses.length} courses for ${selectedProgram}`);
+        
+        // Add filtered courses to dropdown
+        filteredCourses.forEach(course => {
+            const option = document.createElement('option');
+            option.value = course.id;
+            option.textContent = `${course.course_name} (${course.unit_code || 'N/A'})`;
+            courseSelect.appendChild(option);
+        });
+        
+    } catch (error) {
+        console.error('Error filtering courses:', error);
+    }
 }
 
 async function handleAddExam(e) {
@@ -1641,7 +1666,10 @@ async function handleAddExam(e) {
     const exam_link = $('exam_link')?.value.trim() || null;
     const exam_duration_minutes = parseInt($('exam_duration_minutes')?.value);
     const exam_start_time = $('exam_start_time')?.value;
-    const program = $('exam_program')?.value;
+    
+    // 🔥 CRITICAL: Get program FROM THE DROPDOWN (your selection)
+    const selected_program = $('exam_program')?.value;
+    
     const course_id = $('exam_course_id')?.value || null;
     const exam_title = $('exam_title')?.value.trim();
     const exam_date = $('exam_date')?.value;
@@ -1650,7 +1678,7 @@ async function handleAddExam(e) {
     const block_term = $('exam_block_term')?.value;
 
     if (
-        !program || !exam_title || !exam_date ||
+        !selected_program || !exam_title || !exam_date ||
         !intake || !block_term || !exam_type || isNaN(exam_duration_minutes)
     ) {
         showFeedback(
@@ -1662,7 +1690,25 @@ async function handleAddExam(e) {
     }
 
     try {
-        const { error, data } = await sb.from('exams').insert({
+        // 🔥 VALIDATION: Check if selected program matches course's program
+        if (course_id) {
+            const { data: course, error: courseError } = await sb
+                .from('courses')
+                .select('target_program')
+                .eq('id', course_id)
+                .single();
+                
+            if (!courseError && course && course.target_program !== selected_program) {
+                // Show warning but proceed with user's selection
+                console.warn(`⚠️ Program mismatch: Course is ${course.target_program}, but you selected ${selected_program}`);
+                if (!confirm(`Warning: Course "${course_id}" is actually a ${course.target_program} course, but you selected ${selected_program}. Continue anyway?`)) {
+                    setButtonLoading(submitButton, false, originalText);
+                    return;
+                }
+            }
+        }
+
+        const examData = {
             exam_name: exam_title,
             course_id: course_id,
             exam_date,
@@ -1670,16 +1716,22 @@ async function handleAddExam(e) {
             exam_type,
             online_link: exam_link, 
             duration_minutes: exam_duration_minutes,
-            target_program: program,
+            // 🔥 USE THE SELECTED PROGRAM FROM DROPDOWN
+            target_program: selected_program,
+            program_type: selected_program, // Also set program_type to match
             intake_year: intake,
             block_term,
             status: exam_status
-        }).select('id');
+        };
+
+        console.log('📤 Creating exam with data:', examData);
+
+        const { error, data } = await sb.from('exams').insert(examData).select('id');
 
         if (error) throw error;
 
-        await logAudit('EXAM_ADD', `Posted new ${exam_type}: ${exam_title}.`, data?.[0]?.id, 'SUCCESS');
-        showFeedback('Assessment added successfully!', 'success');
+        await logAudit('EXAM_ADD', `Posted new ${exam_type}: ${exam_title} (Program: ${selected_program}).`, data?.[0]?.id, 'SUCCESS');
+        showFeedback(`✅ Assessment added successfully! Program: ${selected_program}`, 'success');
         e.target.reset();
         loadExams();
         renderFullCalendar();
