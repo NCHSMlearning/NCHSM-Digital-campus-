@@ -503,26 +503,40 @@ window.NCHSMLogin = {
     },
     
     
-  // ============================================
-// EMAIL SENDING FUNCTION - SUPER SIMPLE
 // ============================================
-sendEmailWithCode: async function(email, otpCode, userName) {
+// EMAIL SENDING FUNCTION - USING NEW URL
+// ============================================
+sendEmailWithCode: async function(email, otpCode, userName, emailType = 'verification') {
     return new Promise((resolve) => {
-        console.log(`📧 Sending OTP to ${email}...`);
+        console.log(`📧 Sending ${emailType} email to ${email}...`);
         
-        // ✅ NEW GOOGLE SCRIPT URL
-        const scriptUrl = 'https://script.google.com/macros/s/AKfycbxlAtib12dMRdA4o6VspTlVd6RjWb-ILJ8pDtGsD-xdwxa-L4UxvrYVRnRuWhkbcLNExQ/exec';
+        // ✅ USE YOUR NEW ALL-IN-ONE GOOGLE SCRIPT URL
+        const scriptUrl = 'https://script.google.com/macros/s/AKfycbwo0Z-oQ_p5-dIe4XYiaRTv6ZdxlmfxP5LIpQT4T1cGihvlimVJg3AvdUNrDeZ0cEkJ3g/exec';
         
-        // ✅ NO HTML GENERATION - JUST BASIC DATA
+        // Determine subject based on email type
+        let subject;
+        switch(emailType) {
+            case 'welcome':
+                subject = 'Welcome to NCHSM Digital Portal';
+                break;
+            case 'login_success':
+                subject = 'Login Successful - NCHSM Digital Portal';
+                break;
+            default:
+                subject = 'NCHSM: Your Verification Code';
+        }
+        
+        // Send parameters - NO HTML needed, Google Script creates everything!
         const params = new URLSearchParams({
             to: email,
-            otp: otpCode,
-            userName: userName || email.split('@')[0]
-            // NO 'html' parameter!
+            otp: otpCode || 'N/A',
+            userName: userName || email.split('@')[0],
+            emailType: emailType,
+            subject: subject
         });
         
         const fullUrl = scriptUrl + '?' + params.toString();
-        console.log('📡 Sending:', fullUrl.substring(0, 100) + '...');
+        console.log(`📡 Sending ${emailType} email...`);
         
         // Simple image method
         const img = new Image();
@@ -530,22 +544,20 @@ sendEmailWithCode: async function(email, otpCode, userName) {
         img.style.display = 'none';
         
         img.onload = function() {
-            console.log('✅ Email sent!');
+            console.log(`✅ ${emailType} email sent!`);
             resolve(true);
         };
         
         img.onerror = function() {
-            console.log('✅ Request completed');
+            console.log(`✅ ${emailType} request completed`);
             resolve(true);
         };
         
         document.body.appendChild(img);
         
-        // Timeout fallback
         setTimeout(() => resolve(true), 2000);
     });
 },
-    
     // ============================================
     // EMAIL VERIFICATION FUNCTION
     // ============================================
