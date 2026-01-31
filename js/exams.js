@@ -735,6 +735,7 @@ calculateDashboardMetrics() {
         };
     }
 }
+} 
     
     // Create global instance
     window.examsModule = new ExamsModule();
