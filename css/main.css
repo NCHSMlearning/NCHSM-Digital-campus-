@@ -853,7 +853,7 @@ body {
 }
 /* DROPDOWN PROVEN WORKING STYLES */
 .dropdown-menu {
-    display: none !important;
+    display: none; /* Remove !important */
     opacity: 1 !important;
     visibility: visible !important;
     position: absolute !important;
@@ -867,6 +867,12 @@ body {
     width: 220px !important;
     padding: 10px 0 !important;
     margin-top: 5px !important;
+}
+
+/* Add this class for when dropdown is shown */
+.dropdown-menu.show,
+.dropdown-menu[style*="display: block"] {
+    display: block !important;
 }
 
 /* Make trigger clickable */
