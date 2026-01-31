@@ -1,4 +1,4 @@
-// js/ui.js - COMPLETELY FIXED UI Module
+// js/ui.js - COMPLETE FIXED VERSION
 class UIModule {
     constructor() {
         console.log('🚀 Initializing UIModule...');
@@ -293,7 +293,7 @@ class UIModule {
         console.log('✅ Styles cleaned up');
     }
     
-    // FIXED URL NAVIGATION: Smart detection with hash fallback
+    // URL NAVIGATION: Smart detection with hash fallback
     setupUrlNavigation() {
         console.log('🔗 Setting up URL navigation...');
         
@@ -657,8 +657,8 @@ class UIModule {
             this.readerBackBtn.addEventListener('click', () => this.closeReader());
         }
         
-        // FIXED: Setup profile dropdown (NO CONFLICTS)
-        this.setupProfileDropdownSafe();
+        // FIXED: Setup profile dropdown
+        this.setupProfileDropdownFixed();
         
         // Dashboard card clicks
         setTimeout(() => {
@@ -680,9 +680,9 @@ class UIModule {
         console.log('✅ All event listeners setup complete');
     }
     
-    // COMPLETELY FIXED: Profile dropdown with zero conflicts
-    setupProfileDropdownSafe() {
-        console.log('📋 Setting up profile dropdown (SAFE MODE)...');
+    // COMPLETELY FIXED: Profile dropdown - NO CONFLICTS
+    setupProfileDropdownFixed() {
+        console.log('📋 Setting up profile dropdown (FIXED VERSION)...');
         
         // Get fresh references
         this.profileTrigger = document.querySelector('.profile-trigger');
@@ -690,8 +690,6 @@ class UIModule {
         
         if (!this.profileTrigger || !this.dropdownMenu) {
             console.error('❌ Profile dropdown elements not found!');
-            console.log('- Trigger found:', !!this.profileTrigger);
-            console.log('- Menu found:', !!this.dropdownMenu);
             return;
         }
         
@@ -730,7 +728,7 @@ class UIModule {
             }
             
             console.log(`📋 Dropdown ${isVisible ? 'hidden' : 'shown'}`);
-        }, true); // Use capture phase to ensure we get it first
+        }, true); // Use capture phase
         
         // ========== CLOSE WHEN CLICKING OUTSIDE ==========
         document.addEventListener('click', (e) => {
@@ -747,7 +745,7 @@ class UIModule {
         });
         
         // ========== HANDLE DROPDOWN ITEMS ==========
-        const menuItems = this.dropdownMenu.querySelectorAll('a, button');
+        const menuItems = this.dropdownMenu.querySelectorAll('a');
         menuItems.forEach(item => {
             item.addEventListener('click', (e) => {
                 e.stopPropagation(); // Don't bubble to document handler
@@ -766,7 +764,7 @@ class UIModule {
                     this.showTab(tabId);
                 } else if (item.id === 'header-logout' || item.textContent.includes('Logout')) {
                     console.log('🔐 Logout initiated from dropdown');
-                    setTimeout(() => this.logout(), 100); // Small delay
+                    setTimeout(() => this.logout(), 100);
                 }
             });
         });
