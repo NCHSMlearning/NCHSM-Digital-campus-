@@ -75,29 +75,27 @@ class UIModule {
         this.statusSteps = document.getElementById('status-steps');
         this.funFact = document.getElementById('fun-fact');
         
-        // Supabase client reference - FIXED: Don't initialize here
+        // Supabase client reference
         this.supabase = null;
         
-        // Initialize with delay to ensure other modules are loaded
+        // Initialize with delay
         setTimeout(() => this.safeInitialize(), 500);
     }
     
     async safeInitialize() {
         console.log('🛡️ Safe initialization starting...');
         
-        // Wait for database module to be ready
+        // Wait for database module
         await this.waitForDatabase();
         
-        // Get Supabase client safely
+        // Get Supabase client
         this.supabase = this.getSupabaseClient();
         
         if (!this.supabase) {
             console.warn('⚠️ Supabase client not available, using limited mode');
-        } else {
-            console.log('✅ Supabase client obtained');
         }
         
-        // Now initialize normally
+        // Initialize
         this.initialize();
     }
     
@@ -108,14 +106,11 @@ class UIModule {
             
             const checkDb = () => {
                 attempts++;
-                
-                // Check multiple possible sources
                 const hasDb = window.supabase || 
                              (window.db && window.db.supabase) ||
                              (window.databaseModule && window.databaseModule.supabase);
                 
                 if (hasDb || attempts >= maxAttempts) {
-                    console.log(`🔍 Database check: ${hasDb ? 'found' : 'not found'} after ${attempts} attempts`);
                     resolve();
                 } else {
                     setTimeout(checkDb, 300);
@@ -127,19 +122,15 @@ class UIModule {
     }
     
     getSupabaseClient() {
-        // Try multiple sources
         if (window.supabase && typeof window.supabase.from === 'function') {
-            console.log('✅ Using window.supabase');
             return window.supabase;
         }
         
         if (window.db && window.db.supabase && typeof window.db.supabase.from === 'function') {
-            console.log('✅ Using window.db.supabase');
             return window.db.supabase;
         }
         
         if (window.databaseModule && window.databaseModule.supabase && typeof window.databaseModule.supabase.from === 'function') {
-            console.log('✅ Using databaseModule.supabase');
             return window.databaseModule.supabase;
         }
         
@@ -150,28 +141,24 @@ class UIModule {
     async initialize() {
         console.log('🔧 Initializing UI...');
         
-        // Step 1: Start loading
+        // Setup loading
         this.setupAppLoading();
         this.updateLoadingProgress(0, 5);
         
-        // Step 2: Clean up styles
         await this.delay(300);
         this.cleanupInitialStyles();
         this.updateLoadingProgress(1, 5);
         
-        // Step 3: Setup event listeners (including dropdown)
         await this.delay(300);
         this.setupEventListeners();
-        this.setupProfileDropdown();
+        this.setupProfileDropdown(); // FIXED DROPDOWN
         this.updateLoadingProgress(2, 5);
         
-        // Step 4: Setup URL navigation
         await this.delay(400);
         this.setupUrlNavigation();
         this.setupTabChangeListener();
         this.updateLoadingProgress(3, 5);
         
-        // Step 5: Initialize utilities
         await this.delay(300);
         this.initializeDateTime();
         this.setupOfflineIndicator();
@@ -179,12 +166,10 @@ class UIModule {
         this.loadLastTab();
         this.updateLoadingProgress(4, 5);
         
-        // Step 6: Load user data (with better timing)
         await this.delay(800);
         await this.loadInitialUserData();
         this.updateLoadingProgress(5, 5);
         
-        // Step 7: Hide loading screen
         await this.delay(800);
         await this.hideLoadingScreen();
         
@@ -268,7 +253,6 @@ class UIModule {
         if (!this.loadingScreen || !this.progressFill || !this.progressText) return;
         
         const percentage = Math.min((step / totalSteps) * 100, 100);
-        
         this.progressFill.style.transition = 'width 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
         this.progressFill.style.width = `${percentage}%`;
         
@@ -396,9 +380,6 @@ class UIModule {
     
     setupUrlNavigation() {
         console.log('🔗 Setting up URL navigation...');
-        
-        // Always use hash-based for consistency
-        console.log('🔗 Using hash-based navigation');
         this.setupHashNavigation();
     }
     
@@ -426,10 +407,8 @@ class UIModule {
             localStorage.setItem(this.storageKey, tabId);
         };
         
-        // Listen for hash changes
         window.addEventListener('hashchange', handleHashChange);
         
-        // Handle initial load
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', handleHashChange);
         } else {
@@ -459,13 +438,11 @@ class UIModule {
         // Mobile menu toggle
         if (this.mobileMenuToggle) {
             this.mobileMenuToggle.addEventListener('click', () => this.toggleMenu());
-            console.log('✅ Mobile menu toggle listener added');
         }
         
         // Overlay click to close menu
         if (this.overlay) {
             this.overlay.addEventListener('click', () => this.closeMenu());
-            console.log('✅ Overlay listener added');
         }
         
         // Navigation links
@@ -481,11 +458,9 @@ class UIModule {
                 }
             });
         });
-        console.log(`✅ Added ${this.navLinks.length} nav link listeners`);
         
         // Header logout button
         if (this.headerLogout) {
-            console.log('🔐 Header logout button found');
             this.headerLogout.addEventListener('click', (e) => {
                 e.preventDefault();
                 console.log('🔐 Header logout clicked');
@@ -559,35 +534,30 @@ class UIModule {
                     }
                 });
             });
-            console.log(`✅ Added ${cards.length} card click listeners`);
         }, 1000);
         
         console.log('✅ All event listeners setup complete');
     }
     
+    // ===== FIXED DROPDOWN METHOD =====
     setupProfileDropdown() {
-        console.log('🎯 Setting up profile dropdown...');
+        console.log('🎯 Setting up profile dropdown (FIXED)...');
         
         setTimeout(() => {
-            // Find dropdown elements
+            // Find elements
             this.findDropdownElements();
             
             if (!this.profileTrigger || !this.dropdownMenu) {
                 console.error('❌ Dropdown elements not found');
-                this.debugDropdownElements();
                 return;
             }
             
-            console.log('✅ Dropdown elements found:', {
-                trigger: this.profileTrigger.tagName,
-                menu: this.dropdownMenu.tagName,
-                menuChildren: this.dropdownMenu.children.length
-            });
+            console.log('✅ Found dropdown elements');
             
-            // Set initial state
-            this.dropdownMenu.style.display = 'none';
+            // 1. Remove problematic CSS hover effects
+            this.removeProblematicCSS();
             
-            // Clean existing event listeners by cloning
+            // 2. Clone to remove existing listeners
             const cleanTrigger = this.profileTrigger.cloneNode(true);
             const cleanMenu = this.dropdownMenu.cloneNode(true);
             
@@ -596,114 +566,152 @@ class UIModule {
             
             this.profileTrigger = cleanTrigger;
             this.dropdownMenu = cleanMenu;
+            
+            // 3. Set initial state - HIDDEN
             this.dropdownMenu.style.display = 'none';
             
-            // Profile trigger click handler
-            this.profileTrigger.addEventListener('click', (e) => {
-                console.log('👤 Profile trigger clicked');
-                e.preventDefault();
-                e.stopPropagation();
-                
-                const isVisible = this.dropdownMenu.style.display === 'block';
-                
-                if (isVisible) {
-                    this.dropdownMenu.style.display = 'none';
-                    console.log('📋 Dropdown hidden');
-                } else {
-                    this.dropdownMenu.style.display = 'block';
-                    console.log('📋 Dropdown shown');
-                }
-                
-                // Toggle arrow rotation
-                const arrow = this.profileTrigger.querySelector('.dropdown-icon, .fa-chevron-down');
-                if (arrow) {
-                    arrow.style.transform = isVisible ? 'rotate(0deg)' : 'rotate(180deg)';
-                }
-            });
+            // 4. Apply styling for visibility
+            this.applyDropdownStyles();
             
-            // Setup dropdown menu items
+            // 5. Setup click handler (SINGLE - no conflicts)
+            this.setupDropdownClickHandler();
+            
+            // 6. Setup menu items
             this.setupDropdownMenuItems();
             
-            // Close dropdown when clicking outside
-            document.addEventListener('click', (e) => {
-                if (this.dropdownMenu.style.display === 'block' &&
-                    !this.profileTrigger.contains(e.target) && 
-                    !this.dropdownMenu.contains(e.target)) {
-                    
-                    this.dropdownMenu.style.display = 'none';
-                    
-                    const arrow = this.profileTrigger.querySelector('.dropdown-icon, .fa-chevron-down');
-                    if (arrow) {
-                        arrow.style.transform = 'rotate(0deg)';
-                    }
-                }
-            });
+            // 7. Close on click outside
+            this.setupDropdownCloseHandler();
             
-            console.log('✅ Profile dropdown setup complete');
+            console.log('✅ Dropdown setup complete - Should work properly now');
             
         }, 1000);
     }
     
+    removeProblematicCSS() {
+        // Create and immediately remove style to override hover effects
+        const style = document.createElement('style');
+        style.textContent = `
+            /* Cancel all problematic hover effects */
+            .user-profile-dropdown:hover .dropdown-menu,
+            .profile-trigger:hover ~ .dropdown-menu,
+            [class*="dropdown"]:hover [class*="menu"],
+            .dropdown-menu:hover {
+                display: none !important;
+            }
+            
+            /* Make text visible */
+            .dropdown-menu a {
+                color: #000000 !important;
+            }
+            
+            .dropdown-menu #header-logout {
+                color: #ef4444 !important;
+            }
+        `;
+        document.head.appendChild(style);
+        setTimeout(() => style.remove(), 100);
+    }
+    
+    applyDropdownStyles() {
+        // Apply guaranteed visible styling
+        Object.assign(this.dropdownMenu.style, {
+            position: 'absolute',
+            top: '50px',
+            right: '0',
+            background: 'white',
+            border: '2px solid #4C1D95',
+            borderRadius: '8px',
+            boxShadow: '0 10px 25px rgba(0,0,0,0.15)',
+            minWidth: '200px',
+            zIndex: '1001',
+            padding: '0',
+            opacity: '1',
+            visibility: 'visible'
+        });
+        
+        // Ensure all text is visible
+        const allElements = this.dropdownMenu.querySelectorAll('*');
+        allElements.forEach(el => {
+            if (el.tagName === 'A' || el.tagName === 'SPAN' || el.tagName === 'DIV') {
+                el.style.color = el.id === 'header-logout' ? '#ef4444' : '#000000';
+            }
+        });
+    }
+    
+    setupDropdownClickHandler() {
+        // Remove all existing handlers by replacing element
+        const newTrigger = this.profileTrigger.cloneNode(true);
+        this.profileTrigger.parentNode.replaceChild(newTrigger, this.profileTrigger);
+        this.profileTrigger = newTrigger;
+        
+        // Add SINGLE clean handler
+        this.profileTrigger.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            
+            console.log('🎯 DROPDOWN CLICK - Toggling');
+            
+            if (this.dropdownMenu.style.display === 'block') {
+                this.dropdownMenu.style.display = 'none';
+                console.log('📋 Hidden');
+            } else {
+                this.dropdownMenu.style.display = 'block';
+                console.log('📋 Shown');
+            }
+            
+            return false;
+        }, true);
+    }
+    
+    setupDropdownCloseHandler() {
+        document.addEventListener('click', (e) => {
+            if (this.dropdownMenu.style.display === 'block' &&
+                !this.profileTrigger.contains(e.target) && 
+                !this.dropdownMenu.contains(e.target)) {
+                
+                this.dropdownMenu.style.display = 'none';
+                console.log('📋 Closed (clicked outside)');
+            }
+        });
+    }
+    
     findDropdownElements() {
-        // Try multiple selectors for trigger
+        // Find trigger
         const triggerSelectors = [
             '.profile-trigger',
             '.header-profile',
             '.user-profile',
             '[data-profile]',
             '.header-user',
-            '.user-menu-trigger',
-            '.profile-dropdown-trigger'
+            '.user-menu-trigger'
         ];
         
-        // Try multiple selectors for menu
+        // Find menu
         const menuSelectors = [
             '.dropdown-menu',
             '.profile-dropdown',
             '.user-dropdown',
             '.menu-dropdown',
             '[data-dropdown]',
-            '.dropdown-content',
-            '.profile-menu'
+            '.dropdown-content'
         ];
         
-        // Find trigger
         for (const selector of triggerSelectors) {
             const element = document.querySelector(selector);
             if (element) {
                 this.profileTrigger = element;
-                console.log(`🔍 Found profile trigger with: ${selector}`);
                 break;
             }
         }
         
-        // Find menu
         for (const selector of menuSelectors) {
             const element = document.querySelector(selector);
             if (element) {
                 this.dropdownMenu = element;
-                console.log(`🔍 Found dropdown menu with: ${selector}`);
                 break;
             }
         }
-    }
-    
-    debugDropdownElements() {
-        console.log('🔍 Debugging dropdown elements...');
-        
-        // Log all potential dropdown elements
-        const allElements = document.querySelectorAll('*');
-        allElements.forEach((el, i) => {
-            const classList = Array.from(el.classList);
-            if (classList.some(cls => cls.includes('dropdown') || cls.includes('profile') || cls.includes('menu'))) {
-                console.log(`Element ${i}:`, {
-                    tag: el.tagName,
-                    classes: classList,
-                    id: el.id,
-                    children: el.children.length
-                });
-            }
-        });
     }
     
     setupDropdownMenuItems() {
@@ -711,91 +719,44 @@ class UIModule {
         
         console.log('🔧 Setting up dropdown menu items...');
         
-        // Find all interactive elements in dropdown
-        const menuItems = this.dropdownMenu.querySelectorAll('a, button, [data-action], li');
+        const menuItems = this.dropdownMenu.querySelectorAll('a, button, [data-action]');
         
         menuItems.forEach((item, index) => {
             const text = item.textContent?.trim() || '';
             const tag = item.tagName;
             const id = item.id || '';
-            const classes = item.className || '';
             
-            console.log(`📋 Menu item ${index + 1}:`, {
-                text: text,
-                tag: tag,
-                id: id,
-                classes: classes
-            });
+            console.log(`📋 Menu item ${index + 1}:`, { text, tag, id });
             
             // Clone to remove existing listeners
             const cleanItem = item.cloneNode(true);
             item.parentNode.replaceChild(cleanItem, item);
             
-            // Check for logout item
-            if (text.toLowerCase().includes('logout') || 
-                id.includes('logout') || 
-                classes.includes('logout') ||
-                cleanItem.getAttribute('data-action') === 'logout') {
+            // Setup click handlers
+            cleanItem.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 
-                console.log('🔐 Setting up logout item');
-                cleanItem.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    console.log('🔐 Dropdown logout clicked');
+                if (text.toLowerCase().includes('logout') || id.includes('logout')) {
+                    console.log('🔐 Logout clicked');
                     this.dropdownMenu.style.display = 'none';
                     this.logout();
-                });
-                
-                this.dropdownLogoutBtn = cleanItem;
-            }
-            
-            // Check for profile item
-            else if (text.toLowerCase().includes('profile') || 
-                     id.includes('profile') || 
-                     classes.includes('profile') ||
-                     cleanItem.getAttribute('data-tab') === 'profile') {
-                
-                console.log('👤 Setting up profile item');
-                cleanItem.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    console.log('👤 Dropdown profile clicked');
+                } else if (text.toLowerCase().includes('profile') || id.includes('profile')) {
+                    console.log('👤 Profile clicked');
                     this.dropdownMenu.style.display = 'none';
                     this.showTab('profile');
-                });
-            }
-            
-            // Check for settings item
-            else if (text.toLowerCase().includes('setting') || 
-                     id.includes('setting') || 
-                     classes.includes('setting')) {
-                
-                console.log('⚙️ Setting up settings item');
-                cleanItem.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    console.log('⚙️ Dropdown settings clicked');
+                } else {
+                    console.log(`📋 "${text}" clicked`);
                     this.dropdownMenu.style.display = 'none';
-                    this.showToast('Settings feature coming soon', 'info');
-                });
-            }
+                }
+            });
             
-            // Default click handler for other items
-            else if (cleanItem.tagName === 'A' || cleanItem.tagName === 'BUTTON') {
-                cleanItem.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    console.log(`📋 Dropdown item clicked: ${text}`);
-                    this.dropdownMenu.style.display = 'none';
-                    
-                    if (text) {
-                        this.showToast(`${text} clicked`, 'info');
-                    }
-                });
+            if (id === 'header-logout') {
+                this.dropdownLogoutBtn = cleanItem;
             }
         });
         
-        console.log(`✅ Setup ${menuItems.length} dropdown menu items`);
+        console.log(`✅ Setup ${menuItems.length} menu items`);
     }
     
     setupTabChangeListener() {
@@ -971,11 +932,9 @@ class UIModule {
     async loadInitialUserData() {
         console.log('👤 Loading initial user data...');
         
-        // Wait longer for user data
         await this.delay(1000);
         
         try {
-            // Get user data from multiple sources
             const userId = window.currentUserId || 
                           (window.db && window.db.currentUserId) ||
                           (window.databaseModule && window.databaseModule.currentUserId);
@@ -1000,7 +959,7 @@ class UIModule {
                         this.updateDefaultUserInfo();
                     }
                 } catch (dbError) {
-                    console.warn('⚠️ Database load failed, using cached data:', dbError.message);
+                    console.warn('⚠️ Database load failed, using cached data');
                     if (userProfile) {
                         this.updateAllUserInfo(userProfile);
                     } else {
@@ -1041,7 +1000,6 @@ class UIModule {
     }
     
     async loadUserFromDatabase(userId) {
-        // FIXED: Check if supabase is available and has the .from method
         if (!this.supabase || typeof this.supabase.from !== 'function') {
             console.warn('⚠️ Supabase client not available for database query');
             return null;
@@ -1050,7 +1008,6 @@ class UIModule {
         try {
             console.log('🔍 Querying consolidated_user_profiles_table for user:', userId);
             
-            // Use safe query method
             const { data: userProfile, error } = await this.supabase
                 .from('consolidated_user_profiles_table')
                 .select('*')
@@ -1504,22 +1461,13 @@ class UIModule {
         console.log('- URL path:', this.getCurrentPath());
         console.log('- URL hash:', window.location.hash);
         console.log('- Current user ID:', window.currentUserId);
-        console.log('- Supabase client:', !!this.supabase);
-        
-        // Log dropdown menu structure
-        if (this.dropdownMenu) {
-            console.log('📋 Dropdown menu structure:');
-            Array.from(this.dropdownMenu.children).forEach((child, i) => {
-                console.log(`  ${i + 1}. ${child.tagName} "${child.textContent?.trim()}"`);
-            });
-        }
     }
 }
 
 // Create global instance
 window.ui = new UIModule();
 
-// Export functions to window
+// Export functions
 window.toggleMenu = () => window.ui?.toggleMenu?.();
 window.closeMenu = () => window.ui?.closeMenu?.();
 window.showTab = (tabId) => window.ui?.showTab?.(tabId);
