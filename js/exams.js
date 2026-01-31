@@ -1,4 +1,4 @@
-// js/exams.js - COMPLETE & CORRECTED VERSION
+// exams.js - COMPLETE VERSION with Dashboard Integration
 (function() {
     'use strict';
     
@@ -343,10 +343,33 @@
                 
                 console.log('✅ Exams loaded successfully');
                 
+                // 🔥 CRITICAL: Dispatch event for dashboard
+                this.dispatchDashboardEvent();
+                
             } catch (error) {
                 console.error('❌ Error loading exams:', error);
                 this.showError(error.message);
             }
+        }
+        
+        // 🔥 NEW: Dispatch event for dashboard
+        dispatchDashboardEvent() {
+            const event = new CustomEvent('examsModuleReady', {
+                detail: {
+                    metrics: this.getDashboardData(),
+                    count: this.allExams.length,
+                    timestamp: new Date().toISOString()
+                }
+            });
+            document.dispatchEvent(event);
+            console.log('📢 Dispatched examsModuleReady event for dashboard');
+            
+            // Also update window object for immediate access
+            window.examsData = {
+                allExams: this.allExams,
+                metrics: this.getDashboardData(),
+                loaded: true
+            };
         }
         
         isTVETProgram(program) {
@@ -492,7 +515,7 @@
                         ${exam.exam_type?.includes('CAT') ? 'CAT' : 'Exam'}
                     </span></td>
                     <td>${this.escapeHtml(exam.course_name || 'General')}</td>
-                    <td class="text-center">${exam.block_term || 'General'}</td>
+                    <td class="text-center">${exam.block_term || 'General')}</td>
                     <td>${exam.formattedGradedDate}</td>
                     <td><span class="status-badge ${exam.gradeClass}">${exam.gradeText}</span></td>
                     <td class="text-center">${exam.cat1Score}</td>
