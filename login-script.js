@@ -503,6 +503,152 @@ window.NCHSMLogin = {
     },
     
     // ============================================
+    // EMAIL SENDING FUNCTION
+    // ============================================
+    sendEmailWithCode: async function(email, otpCode, userName) {
+        return new Promise((resolve) => {
+            console.log(`📧 [NCHSMLogin] Sending OTP ${otpCode} to ${email}...`);
+            
+            // Your deployed Google Apps Script URL
+            const scriptUrl = 'https://script.google.com/macros/s/AKfycbzmvrOI4Fb7xGolkP8hhPmzOhhPs0XwUTzQWHmMlkfzvgYUyS_2TnOAps2RThvFK9pZew/exec';
+            
+            // Build URL with parameters
+            const fullUrl = scriptUrl + '?' +
+                'to=' + encodeURIComponent(email) + '&' +
+                'otp=' + encodeURIComponent(otpCode) + '&' +
+                'userName=' + encodeURIComponent(userName || email.split('@')[0]);
+            
+            console.log('📡 Email URL:', fullUrl);
+            
+            // Method 1: Image pixel technique (most reliable, no CORS)
+            const img = new Image();
+            img.src = fullUrl;
+            img.style.display = 'none';
+            
+            img.onload = function() {
+                console.log('✅ Email sent via image pixel');
+                resolve(true);
+            };
+            
+            img.onerror = function() {
+                // Even if image errors, request was made
+                console.log('⚠️ Image error, but request sent');
+                resolve(true);
+            };
+            
+            document.body.appendChild(img);
+            
+            // Method 2: Fetch as backup
+            fetch(fullUrl, { mode: 'no-cors' })
+                .then(() => console.log('✅ Fetch backup successful'))
+                .catch(() => console.log('⚠️ Fetch backup failed'));
+            
+            // Always resolve after 2 seconds
+            setTimeout(() => {
+                console.log('✅ Email process complete');
+                resolve(true);
+            }, 2000);
+        });
+    },
+    
+    // ============================================
+    // EMAIL VERIFICATION FUNCTION
+    // ============================================
+    sendEmailVerification: async function() {
+        try {
+            if (!this.state.currentUser?.email) {
+                throw new Error('No email address available');
+            }
+            
+            console.log('📧 Sending email verification to:', this.state.currentUser.email);
+            
+            // Generate a 6-digit OTP
+            const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+            
+            // Store the code temporarily for verification
+            this.state.verificationCodes.email = {
+                code: otpCode,
+                expires: Date.now() + (5 * 60 * 1000), // 5 minutes
+                attempts: 0
+            };
+            
+            // Send the email
+            await this.sendEmailWithCode(
+                this.state.currentUser.email,
+                otpCode,
+                this.state.currentUser.email.split('@')[0]
+            );
+            
+            console.log('✅ Email verification sent successfully');
+            return true;
+            
+        } catch (error) {
+            console.error('❌ Email verification error:', error);
+            throw new Error('Failed to send email verification');
+        }
+    },
+    
+    // ============================================
+    // SMS VERIFICATION FUNCTION
+    // ============================================
+    sendSMSWithCode: async function(phoneNumber, otpCode) {
+        return new Promise((resolve) => {
+            console.log(`📱 [SIMULATION] Sending SMS OTP ${otpCode} to ${phoneNumber}`);
+            
+            // This is a simulation - in production, integrate with Twilio, AWS SNS, etc.
+            // Example with Twilio:
+            /*
+            fetch('/api/send-sms', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    to: phoneNumber,
+                    body: `Your NCHSM verification code is: ${otpCode}. Valid for 5 minutes.`
+                })
+            })
+            */
+            
+            // Simulate successful SMS send
+            setTimeout(() => {
+                console.log('✅ SMS simulation complete');
+                resolve(true);
+            }, 1000);
+        });
+    },
+    
+    sendSMSVerification: async function() {
+        try {
+            // Get user's phone number from profile
+            const phoneNumber = await this.getUserPhone();
+            if (!phoneNumber) {
+                throw new Error('No phone number found in profile');
+            }
+            
+            console.log('📱 Sending SMS verification to:', phoneNumber);
+            
+            // Generate a 6-digit OTP
+            const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+            
+            // Store the code temporarily for verification
+            this.state.verificationCodes.sms = {
+                code: otpCode,
+                expires: Date.now() + (5 * 60 * 1000), // 5 minutes
+                attempts: 0
+            };
+            
+            // Send SMS
+            await this.sendSMSWithCode(phoneNumber, otpCode);
+            
+            console.log('✅ SMS verification sent successfully');
+            return true;
+            
+        } catch (error) {
+            console.error('❌ SMS verification error:', error);
+            throw new Error('Failed to send SMS verification');
+        }
+    },
+    
+    // ============================================
     // PROCESS LOGIN HELPER
     // ============================================
     processLogin: async function(profileData) {
@@ -861,92 +1007,6 @@ window.NCHSMLogin = {
             }
         }
     },
-    
-// ============================================
-// EMAIL SENDING FUNCTION - WORKING VERSION
-// ============================================
-sendEmailWithCode: async function(email, otpCode, userName) {
-    return new Promise((resolve) => {
-        console.log(`📧 Sending OTP ${otpCode} to ${email}...`);
-        
-        // Your deployed Google Apps Script URL
-        const scriptUrl = 'https://script.google.com/macros/s/AKfycbzmvrOI4Fb7xGolkP8hhPmzOhhPs0XwUTzQWHmMlkfzvgYUyS_2TnOAps2RThvFK9pZew/exec';
-        
-        // Build URL with parameters
-        const fullUrl = scriptUrl + '?' +
-            'to=' + encodeURIComponent(email) + '&' +
-            'otp=' + encodeURIComponent(otpCode) + '&' +
-            'userName=' + encodeURIComponent(userName || email.split('@')[0]);
-        
-        console.log('📡 Email URL:', fullUrl);
-        
-        // Method 1: Image pixel technique (most reliable, no CORS)
-        const img = new Image();
-        img.src = fullUrl;
-        img.style.display = 'none';
-        
-        img.onload = function() {
-            console.log('✅ Email sent via image pixel');
-            resolve(true);
-        };
-        
-        img.onerror = function() {
-            // Even if image errors, request was made
-            console.log('⚠️ Image error, but request sent');
-            resolve(true);
-        };
-        
-        document.body.appendChild(img);
-        
-        // Method 2: Fetch as backup
-        fetch(fullUrl, { mode: 'no-cors' })
-            .then(() => console.log('✅ Fetch backup successful'))
-            .catch(() => console.log('⚠️ Fetch backup failed'));
-        
-        // Always resolve after 2 seconds
-        setTimeout(() => {
-            console.log('✅ Email process complete');
-            resolve(true);
-        }, 2000);
-    });
-},
-
-// ============================================
-// SMS VERIFICATION - LIVE VERSION
-// ============================================
-sendSMSVerification: async function() {
-    try {
-        // Get user's phone number from profile
-        const phoneNumber = await this.getUserPhone();
-        if (!phoneNumber) {
-            throw new Error('No phone number found in profile');
-        }
-        
-        console.log('📱 Sending SMS verification to:', phoneNumber);
-        
-        // Generate a 6-digit OTP
-        const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-        
-        // Store the code temporarily for verification
-        this.state.verificationCodes.sms = {
-            code: otpCode,
-            expires: Date.now() + (5 * 60 * 1000), // 5 minutes
-            attempts: 0
-        };
-        
-        // ACTUAL SMS SENDING - Add your SMS service here
-        await this.sendSMSWithCode(phoneNumber, otpCode);
-        
-        console.log('✅ SMS verification sent successfully');
-        return true;
-        
-    } catch (error) {
-        console.error('❌ SMS verification error:', error);
-        throw new Error('Failed to send SMS verification');
-    }
-},
-    
-
     
     // ============================================
     // USER INFO DISPLAY
