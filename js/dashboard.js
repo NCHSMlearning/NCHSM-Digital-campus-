@@ -1,4 +1,4 @@
-// dashboard.js - COMPLETE Dashboard Module WITHOUT Dropdown Conflicts
+// dashboard.js - COMPLETE UPDATED VERSION with Immediate Updates
 class DashboardModule {
     constructor(supabaseClient) {
         console.log('🚀 Initializing DashboardModule...');
@@ -107,32 +107,16 @@ class DashboardModule {
             this.loadAttendanceMetrics();
         });
         
-        // Listen for courses events
-        document.addEventListener('coursesUpdated', (e) => {
-            console.log('📚 Dashboard: coursesUpdated event received with data:', e.detail);
-            
-            if (e.detail && e.detail.activeCount !== undefined) {
-                this.cachedCourses = e.detail.courses || [];
-                
-                // Update dashboard count
-                if (this.elements.activeCourses) {
-                    this.elements.activeCourses.textContent = e.detail.activeCount;
-                    this.updateCardAppearance('courses', e.detail.activeCount);
-                }
-                
-                console.log(`✅ Courses updated from event: ${e.detail.activeCount} active`);
-            } else {
-                console.log('⚠️ No detail in event, falling back to query');
-                this.loadCourseMetrics();
-            }
+        // 🔥 NEW: Listen for courses module ready event
+        document.addEventListener('coursesModuleReady', (e) => {
+            console.log('📚 Dashboard: coursesModuleReady event received with data:', e.detail);
+            this.handleCoursesReady(e.detail);
         });
         
-        // Listen for courses module initialization
-        document.addEventListener('coursesModuleReady', () => {
-            console.log('📚 Dashboard: coursesModuleReady event received');
-            if (window.coursesModule) {
-                this.syncWithCoursesModule();
-            }
+        // 🔥 NEW: Listen for exams module ready event
+        document.addEventListener('examsModuleReady', (e) => {
+            console.log('📝 Dashboard: examsModuleReady event received with data:', e.detail);
+            this.handleExamsReady(e.detail);
         });
         
         // Listen for profile photo updates
@@ -147,14 +131,6 @@ class DashboardModule {
             if (window.currentUserProfile) {
                 this.userProfile = window.currentUserProfile;
                 this.updateAllUserInfo();
-            }
-        });
-        
-        // 🔥 Listen for exams metrics updates
-        document.addEventListener('examsMetricsUpdated', (e) => {
-            console.log('📝 Dashboard: Exams metrics updated event received', e.detail);
-            if (e.detail) {
-                this.updateExamsUI(e.detail);
             }
         });
         
@@ -187,8 +163,80 @@ class DashboardModule {
         console.log('✅ Event listeners setup complete');
     }
     
-    // 🔥 REMOVED: setupDropdownBehavior() method completely!
-    // The dropdown is handled by ui.js ONLY
+    // 🔥 NEW: Handle courses when they're ready
+    handleCoursesReady(detail = null) {
+        console.log('📚 Handling courses ready...');
+        
+        let activeCount = 0;
+        
+        if (detail && detail.activeCount !== undefined) {
+            activeCount = detail.activeCount;
+            console.log(`✅ Got active count from event: ${activeCount}`);
+        } else if (window.coursesModule && window.coursesModule.getActiveCourseCount) {
+            activeCount = window.coursesModule.getActiveCourseCount();
+            console.log(`✅ Got active count from module: ${activeCount}`);
+        } else if (window.coursesModule?.courses?.length > 0) {
+            activeCount = window.coursesModule.courses.filter(c => 
+                !c.status || !c.status.includes('Completed')
+            ).length;
+            console.log(`✅ Calculated active count: ${activeCount}`);
+        }
+        
+        // Update UI immediately
+        if (this.elements.activeCourses) {
+            this.elements.activeCourses.textContent = activeCount;
+            this.updateCardAppearance('courses', activeCount);
+            
+            // Dispatch update event
+            const event = new CustomEvent('dashboardCoursesUpdated', {
+                detail: { activeCount: activeCount }
+            });
+            document.dispatchEvent(event);
+        }
+        
+        console.log(`✅ Courses updated: ${activeCount} active`);
+    }
+    
+    // 🔥 NEW: Handle exams when they're ready
+    handleExamsReady(detail = null) {
+        console.log('📝 Handling exams ready...');
+        
+        let metrics = null;
+        
+        if (detail && detail.metrics) {
+            metrics = detail.metrics;
+            console.log('✅ Got metrics from event:', metrics);
+        } else if (typeof window.getExamsDashboardMetrics === 'function') {
+            try {
+                metrics = window.getExamsDashboardMetrics();
+                console.log('✅ Got metrics from global function:', metrics);
+            } catch (error) {
+                console.warn('❌ Could not get exams metrics:', error);
+            }
+        }
+        
+        if (metrics) {
+            this.updateExamsUI(metrics);
+            
+            // Cache the metrics
+            try {
+                localStorage.setItem('exams_dashboard_metrics', JSON.stringify({
+                    ...metrics,
+                    timestamp: new Date().toISOString()
+                }));
+            } catch (e) {
+                console.warn('Could not cache metrics:', e);
+            }
+            
+            // Dispatch update event
+            const event = new CustomEvent('dashboardExamsUpdated', {
+                detail: metrics
+            });
+            document.dispatchEvent(event);
+        }
+        
+        console.log('✅ Exams metrics updated');
+    }
     
     addCardClickHandlers() {
         // Add click handlers to all stat cards
@@ -315,14 +363,12 @@ class DashboardModule {
         // 🔥 NEW: Start auto-refresh for real-time updates
         this.startAutoRefresh();
         
-        // Load all dashboard data WITHOUT waiting
-        console.log('📊 Loading ALL dashboard data automatically...');
-        await this.loadDashboard();
+        // 🔥 NEW: Load dashboard with SMART timing
+        console.log('📊 Loading ALL dashboard data with smart timing...');
+        await this.initializeDashboardWithSmartTiming();
         
-        // Try to sync with courses module
-        setTimeout(() => {
-            this.syncWithCoursesModule();
-        }, 1000);
+        // 🔥 NEW: Schedule delayed updates for modules that take time
+        this.scheduleDelayedUpdates();
         
         // Re-add click handlers after content loads
         setTimeout(() => {
@@ -332,7 +378,154 @@ class DashboardModule {
         return true;
     }
     
-    // 🔥 NEW: Update ALL user information (name, photo, dropdown, etc.)
+    // 🔥 NEW: Initialize dashboard with smart timing
+    async initializeDashboardWithSmartTiming() {
+        console.log('🔄 Initializing dashboard with smart timing...');
+        
+        // PHASE 1: Load IMMEDIATE data (fast)
+        console.log('⚡ Phase 1: Loading immediate data...');
+        await Promise.allSettled([
+            this.loadWelcomeDetails(),
+            this.loadStudentMessage(),
+            this.loadLatestOfficialAnnouncement(),
+            this.loadAttendanceMetrics(),
+            this.loadResourceMetrics(true)
+        ]);
+        
+        // PHASE 2: Try to load courses (might be ready)
+        console.log('📚 Phase 2: Trying to load courses...');
+        await this.tryLoadCourses();
+        
+        // PHASE 3: Try to load exams (might be ready)
+        console.log('📝 Phase 3: Trying to load exams...');
+        await this.tryLoadExams();
+        
+        // PHASE 4: Load NurseIQ
+        console.log('🧠 Phase 4: Loading NurseIQ...');
+        await this.loadNurseIQMetrics();
+        
+        // PHASE 5: Final UI updates
+        console.log('🎨 Phase 5: Final UI updates...');
+        this.animateGridCards();
+        this.updateAllCardsAppearance();
+        
+        console.log('✅ Dashboard initialization complete');
+    }
+    
+    // 🔥 NEW: Try to load courses with multiple attempts
+    async tryLoadCourses() {
+        console.log('🔄 Trying to load courses...');
+        
+        // ATTEMPT 1: Check if courses module is already ready
+        if (window.coursesModule && window.coursesModule.courses && window.coursesModule.courses.length > 0) {
+            console.log('✅ Courses module already loaded, using it');
+            this.handleCoursesReady();
+            return;
+        }
+        
+        // ATTEMPT 2: Wait a bit for courses module
+        console.log('⏳ Waiting 1 second for courses module...');
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        if (window.coursesModule && window.coursesModule.courses && window.coursesModule.courses.length > 0) {
+            console.log('✅ Courses module loaded after 1s');
+            this.handleCoursesReady();
+            return;
+        }
+        
+        // ATTEMPT 3: Try direct database query (fallback)
+        console.log('📡 Falling back to database query for courses...');
+        await this.loadCourseMetricsFromDB();
+    }
+    
+    // 🔥 NEW: Try to load exams with multiple attempts
+    async tryLoadExams() {
+        console.log('🔄 Trying to load exams...');
+        
+        // ATTEMPT 1: Check if exams module is already ready
+        if (window.examsModule && window.examsModule.allExams && window.examsModule.allExams.length > 0) {
+            console.log('✅ Exams module already loaded, using it');
+            this.handleExamsReady();
+            return;
+        }
+        
+        // ATTEMPT 2: Wait a bit for exams module
+        console.log('⏳ Waiting 1 second for exams module...');
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        if (window.examsModule && window.examsModule.allExams && window.examsModule.allExams.length > 0) {
+            console.log('✅ Exams module loaded after 1s');
+            this.handleExamsReady();
+            return;
+        }
+        
+        // ATTEMPT 3: Try cached metrics
+        console.log('💾 Trying cached exam metrics...');
+        const cached = this.getCachedExamMetrics();
+        if (cached) {
+            console.log('✅ Using cached exam metrics');
+            this.updateExamsUI(cached);
+            return;
+        }
+        
+        // ATTEMPT 4: Try direct database query (fallback)
+        console.log('📡 Falling back to database query for exams...');
+        await this.loadExamMetricsFromDB();
+    }
+    
+    // 🔥 NEW: Schedule delayed updates for modules that take longer
+    scheduleDelayedUpdates() {
+        console.log('⏰ Scheduling delayed updates...');
+        
+        // Update after 2 seconds (courses might be loading)
+        setTimeout(() => {
+            console.log('🔄 2s delayed update: Checking courses...');
+            if (window.coursesModule && window.coursesModule.courses && window.coursesModule.courses.length > 0) {
+                console.log('✅ Courses now available, updating dashboard');
+                this.handleCoursesReady();
+            }
+        }, 2000);
+        
+        // Update after 3 seconds (exams might be loading)
+        setTimeout(() => {
+            console.log('🔄 3s delayed update: Checking exams...');
+            if (window.examsModule && window.examsModule.allExams && window.examsModule.allExams.length > 0) {
+                console.log('✅ Exams now available, updating dashboard');
+                this.handleExamsReady();
+            } else if (typeof window.getExamsDashboardMetrics === 'function') {
+                try {
+                    const metrics = window.getExamsDashboardMetrics();
+                    if (metrics && metrics.upcomingExam !== undefined) {
+                        console.log('✅ Got exams metrics after 3s');
+                        this.updateExamsUI(metrics);
+                    }
+                } catch (error) {
+                    console.warn('Could not get exams metrics:', error);
+                }
+            }
+        }, 3000);
+        
+        // Final update after 5 seconds
+        setTimeout(() => {
+            console.log('🔄 5s final update: Refreshing all metrics...');
+            this.updateAllCardsAppearance();
+            
+            // Force check one more time
+            if (window.coursesModule) {
+                this.handleCoursesReady();
+            }
+            if (typeof window.getExamsDashboardMetrics === 'function') {
+                try {
+                    const metrics = window.getExamsDashboardMetrics();
+                    this.updateExamsUI(metrics);
+                } catch (error) {
+                    console.warn('Final exam check failed:', error);
+                }
+            }
+        }, 5000);
+    }
+    
+    // Update ALL user information (name, photo, dropdown, etc.)
     updateAllUserInfo() {
         console.log('👤 Updating ALL user information...');
         
@@ -342,7 +535,6 @@ class DashboardModule {
         }
         
         const studentName = this.userProfile.full_name || 'Student';
-        const studentRole = 'Student'; // Hardcoded or could be from profile
         console.log('📝 Setting name to:', studentName);
         
         // Update header user name (EXACT selector from your HTML)
@@ -369,7 +561,7 @@ class DashboardModule {
         this.updateAllProfilePhotos();
     }
     
-    // 🔥 NEW: Update ALL profile photo elements
+    // Update ALL profile photo elements
     updateAllProfilePhotos(photoUrl = null) {
         console.log('📸 Updating ALL profile photos...');
         
@@ -377,19 +569,8 @@ class DashboardModule {
         
         // Determine which photo URL to use
         if (!finalPhotoUrl) {
-            // Priority chain for photo URL
-            if (this.userProfile?.profile_photo_url) {
-                finalPhotoUrl = this.userProfile.profile_photo_url;
-            } else if (this.userProfile?.passport_url) {
-                finalPhotoUrl = this.userProfile.passport_url;
-            } else if (localStorage.getItem('userProfilePhoto')) {
-                finalPhotoUrl = localStorage.getItem('userProfilePhoto');
-            } else if (window.currentUserProfile?.profile_photo_url) {
-                finalPhotoUrl = window.currentUserProfile.profile_photo_url;
-            } else {
-                const nameForAvatar = this.userProfile?.full_name?.replace(/\s+/g, '+') || 'Student';
-                finalPhotoUrl = `https://ui-avatars.com/api/?name=${nameForAvatar}&background=667eea&color=fff&size=100`;
-            }
+            const nameForAvatar = this.userProfile?.full_name?.replace(/\s+/g, '+') || 'Student';
+            finalPhotoUrl = `https://ui-avatars.com/api/?name=${nameForAvatar}&background=667eea&color=fff&size=100`;
         }
         
         console.log('✅ Using photo URL:', finalPhotoUrl);
@@ -411,68 +592,157 @@ class DashboardModule {
         localStorage.setItem('userProfilePhoto', finalPhotoUrl);
     }
     
-    async loadDashboard() {
-        console.log('📊 Loading complete dashboard data...');
+    // 🔥 NEW: Get cached exam metrics
+    getCachedExamMetrics() {
+        try {
+            const cached = localStorage.getItem('exams_dashboard_metrics');
+            if (cached) {
+                const metrics = JSON.parse(cached);
+                const cachedTime = new Date(metrics.timestamp || 0);
+                const now = new Date();
+                const hoursDiff = (now - cachedTime) / (1000 * 60 * 60);
+                
+                // Use if less than 2 hours old
+                if (hoursDiff < 2) {
+                    console.log('💾 Using cached exam metrics (', hoursDiff.toFixed(1), 'hours old)');
+                    return metrics;
+                }
+            }
+        } catch (error) {
+            console.warn('Could not parse cached metrics:', error);
+        }
+        return null;
+    }
+    
+    // Load course metrics from database (fallback)
+    async loadCourseMetricsFromDB() {
+        if (!this.userProfile || !this.sb) {
+            console.warn('⚠️ Cannot load courses: No user profile or Supabase');
+            this.showErrorState('courses');
+            return;
+        }
         
         try {
-            // 🔥 UPDATED: Load ALL metrics in parallel WITHOUT waiting
-            const promises = [
-                this.loadWelcomeDetails(),
-                this.loadStudentMessage(),
-                this.loadLatestOfficialAnnouncement(),
-                this.loadAttendanceMetrics(),
-                this.loadCourseMetrics(),
-                this.loadExamMetrics(),
-                this.loadResourceMetrics(true), // 🔥 Get ALL resources, not just new ones
-                this.loadNurseIQMetrics()
-            ];
+            const program = this.userProfile.program || 'KRCHN';
+            const intakeYear = this.userProfile.intake_year || 2025;
+            const block = this.userProfile.block || 'A';
             
-            // Wait for all promises but don't fail if one fails
-            const results = await Promise.allSettled(promises);
+            let query = this.sb
+                .from('courses')
+                .select('*')
+                .eq('intake_year', intakeYear)
+                .order('course_name', { ascending: true });
             
-            // Log results
-            results.forEach((result, index) => {
-                if (result.status === 'rejected') {
-                    console.warn(`⚠️ Metric ${index} failed:`, result.reason);
-                }
-            });
+            const isTVET = this.isTVETProgram(program);
             
-            console.log('✅ Dashboard loaded successfully');
+            if (isTVET) {
+                query = query
+                    .eq('target_program', program)
+                    .or(`block.eq.${this.userProfile.term || 'Term 1'},block.eq.General,block.is.null`);
+            } else {
+                query = query
+                    .or(`target_program.eq.${program},target_program.eq.General`)
+                    .or(`block.eq.${block},block.is.null,block.eq.General`);
+            }
             
-            // Apply grid animations after data loads
-            this.animateGridCards();
+            const { data: courses, error } = await query;
             
-            // 🔥 NEW: Update all cards appearance
-            this.updateAllCardsAppearance();
+            if (error) throw error;
+            
+            const activeCount = courses?.filter(course => {
+                const isCompleted = course.status === 'Completed' || course.status === 'Passed';
+                return !isCompleted && course.status !== 'Completed';
+            }).length || 0;
+            
+            if (this.elements.activeCourses) {
+                this.elements.activeCourses.textContent = activeCount;
+                this.updateCardAppearance('courses', activeCount);
+            }
+            
+            console.log(`✅ Courses (DB): ${activeCount} active`);
             
         } catch (error) {
-            console.error('❌ Error loading dashboard:', error);
-            this.showErrorStates();
+            console.error('❌ Error loading courses from DB:', error);
+            this.showErrorState('courses');
         }
     }
     
-    // 🔥 NEW: Start auto-refresh for real-time updates
-    startAutoRefresh() {
-        console.log('⏰ Starting auto-refresh (every 2 minutes)...');
-        
-        // Clear any existing interval
-        if (this.autoRefreshInterval) {
-            clearInterval(this.autoRefreshInterval);
+    // Load exam metrics from database (fallback)
+    async loadExamMetricsFromDB() {
+        if (!this.userProfile || !this.sb) {
+            console.warn('⚠️ Cannot load exams: No user profile or Supabase');
+            this.showErrorState('exams');
+            return;
         }
         
-        // Refresh dashboard every 2 minutes (120000 ms)
-        this.autoRefreshInterval = setInterval(() => {
-            console.log('🔄 Auto-refreshing dashboard...');
-            this.refreshDashboard(false); // Silent refresh
-        }, 120000); // 2 minutes
-        
-        // Also refresh when tab becomes visible
-        document.addEventListener('visibilitychange', () => {
-            if (!document.hidden) {
-                console.log('👁️ Tab became visible, refreshing dashboard...');
-                this.refreshDashboard(false);
+        try {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            const { data: exams, error } = await this.sb
+                .from('exams_with_courses')
+                .select('exam_name, exam_date, due_date, status, exam_type')
+                .eq('intake_year', this.userProfile.intake_year)
+                .or(`program_type.eq.${this.userProfile.program},program_type.is.null,program_type.eq.General`)
+                .or(`block_term.eq.${this.userProfile.block},block_term.is.null,block_term.eq.General`)
+                .order('exam_date', { ascending: true })
+                .limit(5);
+            
+            if (error) throw error;
+            
+            let upcomingText = 'None';
+            let upcomingCount = 0;
+            
+            if (exams && exams.length > 0) {
+                upcomingCount = exams.length;
+                
+                // Find upcoming exams
+                const upcomingExams = exams.filter(exam => {
+                    const examDate = new Date(exam.exam_date || exam.due_date);
+                    return examDate >= today;
+                });
+                
+                if (upcomingExams.length > 0) {
+                    upcomingExams.sort((a, b) => {
+                        const dateA = new Date(a.exam_date || a.due_date);
+                        const dateB = new Date(b.exam_date || b.due_date);
+                        return dateA - dateB;
+                    });
+                    
+                    const nextExam = upcomingExams[0];
+                    const examDate = new Date(nextExam.exam_date || nextExam.due_date);
+                    const diffDays = Math.ceil((examDate - today) / (1000 * 60 * 60 * 24));
+                    
+                    if (diffDays <= 0) upcomingText = 'Today';
+                    else if (diffDays === 1) upcomingText = 'Tomorrow';
+                    else if (diffDays <= 7) upcomingText = `${diffDays}d`;
+                    else if (diffDays <= 30) upcomingText = `${Math.floor(diffDays / 7)}w`;
+                    else upcomingText = examDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    
+                    if (upcomingCount > 1) {
+                        upcomingText += ` (+${upcomingCount - 1})`;
+                    }
+                }
             }
-        });
+            
+            const metrics = {
+                upcomingExam: upcomingText,
+                upcomingCount: upcomingCount,
+                gradedExams: 0,
+                averageScore: 0,
+                bestScore: 0,
+                passRate: 0,
+                lastUpdated: new Date().toISOString()
+            };
+            
+            this.updateExamsUI(metrics);
+            
+            console.log(`✅ Exams (DB): ${upcomingText} (${upcomingCount} active)`);
+            
+        } catch (error) {
+            console.error('❌ Error loading exams from DB:', error);
+            this.showErrorState('exams');
+        }
     }
     
     // Animate grid cards appearance
@@ -490,7 +760,7 @@ class DashboardModule {
         });
     }
     
-    // 🔥 NEW: Update ALL cards appearance
+    // Update ALL cards appearance
     updateAllCardsAppearance() {
         console.log('🎨 Updating all cards appearance...');
         
@@ -517,7 +787,7 @@ class DashboardModule {
                 this.elements.examsCard.classList.add('card-danger');
                 this.elements.examsCard.classList.remove('card-warning', 'card-success');
             }
-        } else if (upcomingExam && upcomingExam.includes('d') && parseInt(upcomingExam) <= 7) {
+        } else if (upcomingExam && (upcomingExam.includes('d') || upcomingExam.includes('w'))) {
             if (this.elements.examsCard) {
                 this.elements.examsCard.classList.add('card-warning');
                 this.elements.examsCard.classList.remove('card-danger', 'card-success');
@@ -547,11 +817,6 @@ class DashboardModule {
             case 'courses':
                 if (value === 0) {
                     card.classList.add('card-warning');
-                    // Add warning icon
-                    const valueEl = card.querySelector('.stat-value');
-                    if (valueEl && !valueEl.querySelector('.warning-icon')) {
-                        valueEl.innerHTML = `<i class="fas fa-exclamation-triangle warning-icon mr-1"></i>${value}`;
-                    }
                 } else if (value >= 5) {
                     card.classList.add('card-success');
                 }
@@ -598,7 +863,6 @@ class DashboardModule {
             // Update UI
             if (this.elements.attendanceRate) {
                 this.elements.attendanceRate.textContent = `${attendanceRate}%`;
-                // Apply color classes for value display
                 if (attendanceRate >= 80) {
                     this.elements.attendanceRate.classList.add('dashboard-stat-high');
                     this.elements.attendanceRate.classList.remove('dashboard-stat-medium', 'dashboard-stat-low');
@@ -626,98 +890,6 @@ class DashboardModule {
         }
     }
     
-    async loadCourseMetrics() {
-        console.log('📚 Loading course metrics...');
-        
-        // Try to get data from courses.js module first
-        if (window.coursesModule && window.coursesModule.getActiveCourseCount) {
-            const activeCount = window.coursesModule.getActiveCourseCount();
-            console.log(`📚 Got active courses from coursesModule: ${activeCount}`);
-            
-            if (this.elements.activeCourses) {
-                this.elements.activeCourses.textContent = activeCount;
-                this.updateCardAppearance('courses', activeCount);
-            }
-            return;
-        }
-        
-        // Try cached data
-        if (this.cachedCourses.length > 0) {
-            const activeCount = this.cachedCourses.filter(course => {
-                const isCompleted = course.status === 'Completed' || course.status === 'Passed';
-                return !isCompleted && course.status !== 'Completed';
-            }).length;
-            
-            console.log(`📚 Using cached courses: ${activeCount} active`);
-            
-            if (this.elements.activeCourses) {
-                this.elements.activeCourses.textContent = activeCount;
-                this.updateCardAppearance('courses', activeCount);
-            }
-            return;
-        }
-        
-        // Fallback to query
-        if (!this.userProfile || !this.sb) {
-            console.warn('⚠️ Cannot load courses: No user profile or Supabase');
-            this.showErrorState('courses');
-            return;
-        }
-        
-        try {
-            const program = this.userProfile.program || 'KRCHN';
-            const intakeYear = this.userProfile.intake_year || 2025;
-            const block = this.userProfile.block || 'A';
-            const term = this.userProfile.term || 'Term 1';
-            
-            console.log('🎯 Loading courses for:', { program, intakeYear, block, term });
-            
-            let query = this.sb
-                .from('courses')
-                .select('*')
-                .eq('intake_year', intakeYear)
-                .order('course_name', { ascending: true });
-            
-            const isTVET = this.isTVETProgram(program);
-            
-            if (isTVET) {
-                query = query
-                    .eq('target_program', program)
-                    .or(`block.eq.${term},block.eq.General,block.is.null`);
-            } else {
-                query = query
-                    .or(`target_program.eq.${program},target_program.eq.General`)
-                    .or(`block.eq.${block},block.is.null,block.eq.General`);
-            }
-            
-            const { data: courses, error } = await query;
-            
-            if (error) {
-                console.error('❌ Courses query error:', error);
-                this.showErrorState('courses');
-                return;
-            }
-            
-            const activeCourses = courses?.filter(course => {
-                const isCompleted = course.status === 'Completed' || course.status === 'Passed';
-                return !isCompleted && course.status !== 'Completed';
-            }) || [];
-            
-            const activeCount = activeCourses.length;
-            
-            if (this.elements.activeCourses) {
-                this.elements.activeCourses.textContent = activeCount;
-                this.updateCardAppearance('courses', activeCount);
-            }
-            
-            console.log(`✅ Courses: ${activeCount} active`);
-            
-        } catch (error) {
-            console.error('❌ Error loading courses:', error);
-            this.showErrorState('courses');
-        }
-    }
-    
     isTVETProgram(program) {
         if (!program) return false;
         const tvetPrograms = ['TVET', 'TVET NURSING', 'TVET NURSING(A)', 'TVET NURSING(B)', 
@@ -725,169 +897,12 @@ class DashboardModule {
         return tvetPrograms.some(tvet => program.toUpperCase().includes(tvet));
     }
     
-    // 🔥 FIXED: Load exam metrics - NOW checks for ACTIVE exams (current + future)
-    async loadExamMetrics() {
-        console.log('📝 Loading exam metrics...');
-        
-        // METHOD 1: Try to get from exams module (preferred)
-        if (typeof window.getExamsDashboardMetrics === 'function') {
-            try {
-                const metrics = window.getExamsDashboardMetrics();
-                console.log('📊 Got metrics from exams module:', metrics);
-                this.updateExamsUI(metrics);
-                return;
-            } catch (error) {
-                console.warn('Could not get metrics from exams module:', error);
-            }
-        }
-        
-        // METHOD 2: Try to get from localStorage
-        try {
-            const cachedMetrics = localStorage.getItem('exams_dashboard_metrics');
-            if (cachedMetrics) {
-                const metrics = JSON.parse(cachedMetrics);
-                console.log('📊 Using cached exams metrics:', metrics);
-                this.updateExamsUI(metrics);
-                return;
-            }
-        } catch (error) {
-            console.warn('Could not parse cached metrics:', error);
-        }
-        
-        // 🔥 METHOD 3: FIXED DATABASE QUERY - Get ACTIVE exams (ongoing + upcoming)
-        if (!this.userProfile || !this.sb) {
-            console.warn('⚠️ Cannot load exams: No user profile or Supabase');
-            this.showErrorState('exams');
-            return;
-        }
-        
-        try {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0); // Start of today
-            
-            const { data: exams, error } = await this.sb
-                .from('exams_with_courses')
-                .select(`
-                    exam_name, 
-                    exam_date, 
-                    due_date,
-                    status,
-                    exam_type,
-                    course_name
-                `)
-                .eq('intake_year', this.userProfile.intake_year)
-                .or(`program_type.eq.${this.userProfile.program},program_type.is.null,program_type.eq.General`)
-                .or(`block_term.eq.${this.userProfile.block},block_term.is.null,block_term.eq.General`)
-                // 🔥 IMPORTANT: Get exams that are ongoing OR upcoming
-                .or(`and(exam_date.gte.${today.toISOString()},status.is.null),and(exam_date.lte.${today.toISOString()},due_date.gte.${today.toISOString()}),status.eq.active,status.eq.pending,status.is.null`)
-                .order('exam_date', { ascending: true })
-                .limit(5); // Get up to 5 active exams
-            
-            if (error) {
-                console.error('❌ Exams query error:', error);
-                this.showErrorState('exams');
-                return;
-            }
-            
-            console.log('📊 Active exams found:', exams);
-            
-            let upcomingText = 'None';
-            let upcomingCount = 0;
-            
-            if (exams && exams.length > 0) {
-                upcomingCount = exams.length;
-                
-                // Find the NEXT exam (nearest date)
-                const upcomingExams = exams.filter(exam => {
-                    const examDate = new Date(exam.exam_date || exam.due_date);
-                    return examDate >= today;
-                });
-                
-                if (upcomingExams.length > 0) {
-                    // Sort by date
-                    upcomingExams.sort((a, b) => {
-                        const dateA = new Date(a.exam_date || a.due_date);
-                        const dateB = new Date(b.exam_date || b.due_date);
-                        return dateA - dateB;
-                    });
-                    
-                    const nextExam = upcomingExams[0];
-                    const examDate = new Date(nextExam.exam_date || nextExam.due_date);
-                    const diffDays = Math.ceil((examDate - today) / (1000 * 60 * 60 * 24));
-                    
-                    if (diffDays <= 0) {
-                        upcomingText = 'Today';
-                    } else if (diffDays === 1) {
-                        upcomingText = 'Tomorrow';
-                    } else if (diffDays <= 7) {
-                        upcomingText = `${diffDays}d`;
-                    } else if (diffDays <= 30) {
-                        const weeks = Math.floor(diffDays / 7);
-                        upcomingText = `${weeks}w`;
-                    } else {
-                        upcomingText = examDate.toLocaleDateString('en-US', { 
-                            month: 'short', 
-                            day: 'numeric' 
-                        });
-                    }
-                    
-                    // Add exam type/count info if multiple
-                    if (upcomingCount > 1) {
-                        upcomingText += ` (+${upcomingCount - 1})`;
-                    }
-                } else {
-                    // Exams are ongoing (current date is between exam_date and due_date)
-                    const ongoingExams = exams.filter(exam => {
-                        const startDate = new Date(exam.exam_date || 0);
-                        const endDate = new Date(exam.due_date || '9999-12-31');
-                        return today >= startDate && today <= endDate;
-                    });
-                    
-                    if (ongoingExams.length > 0) {
-                        upcomingText = 'Ongoing';
-                        if (ongoingExams.length > 1) {
-                            upcomingText += ` (${ongoingExams.length})`;
-                        }
-                    }
-                }
-            }
-            
-            // Also get recent graded exams count
-            const { data: grades } = await this.sb
-                .from('exam_grades')
-                .select('id')
-                .eq('student_id', window.currentUserId)
-                .not('graded_at', 'is', null);
-            
-            const gradedExams = grades?.length || 0;
-            
-            const metrics = {
-                upcomingExam: upcomingText,
-                upcomingCount: upcomingCount,
-                gradedExams: gradedExams,
-                averageScore: 0,
-                bestScore: 0,
-                passRate: 0,
-                lastUpdated: new Date().toISOString()
-            };
-            
-            this.updateExamsUI(metrics);
-            
-            console.log(`✅ Exams: ${upcomingText} (${upcomingCount} active)`);
-            
-        } catch (error) {
-            console.error('❌ Error loading exams:', error);
-            this.showErrorState('exams');
-        }
-    }
-    
-    // 🔥 Also update the UI update function to show counts
+    // Update exams UI
     updateExamsUI(metrics) {
         if (!metrics) return;
         
         const upcomingExam = metrics.upcomingExam || 'None';
         const upcomingCount = metrics.upcomingCount || 0;
-        const gradedExams = metrics.gradedExams || 0;
         
         if (this.elements.upcomingExam) {
             this.elements.upcomingExam.textContent = upcomingExam;
@@ -899,7 +914,7 @@ class DashboardModule {
             } else if (upcomingExam.includes('Ongoing')) {
                 tooltipText = `${upcomingCount} exam${upcomingCount > 1 ? 's' : ''} currently active`;
             } else {
-                tooltipText = `${upcomingCount} active exam${upcomingCount > 1 ? 's' : ''} (${gradedExams} graded)`;
+                tooltipText = `${upcomingCount} active exam${upcomingCount > 1 ? 's' : ''}`;
             }
             this.elements.upcomingExam.title = tooltipText;
             
@@ -907,22 +922,6 @@ class DashboardModule {
             if (upcomingExam === 'Today' || upcomingExam === 'Ongoing') {
                 this.elements.upcomingExam.classList.add('dashboard-stat-low');
                 this.elements.upcomingExam.classList.remove('dashboard-stat-medium', 'dashboard-stat-high');
-                
-                // Add urgent indicator
-                if (!this.elements.upcomingExam.querySelector('.urgent-dot')) {
-                    const dot = document.createElement('span');
-                    dot.className = 'urgent-dot';
-                    
-                    // 🔥 FIXED: Set styles individually
-                    dot.style.display = 'inline-block';
-                    dot.style.width = '8px';
-                    dot.style.height = '8px';
-                    dot.style.background = '#ef4444';
-                    dot.style.borderRadius = '50%';
-                    dot.style.marginLeft = '5px';
-                    
-                    this.elements.upcomingExam.appendChild(dot);
-                }
             } else if (upcomingExam.includes('d') || upcomingExam.includes('w')) {
                 this.elements.upcomingExam.classList.add('dashboard-stat-medium');
                 this.elements.upcomingExam.classList.remove('dashboard-stat-low', 'dashboard-stat-high');
@@ -937,7 +936,7 @@ class DashboardModule {
         console.log(`✅ Exams UI Updated: ${upcomingExam} (${upcomingCount} active)`);
     }
     
-    // 🔥 UPDATED: Load resource metrics - ALL resources, not just new ones
+    // Load resource metrics
     async loadResourceMetrics(allResources = true) {
         console.log('📁 Loading resource metrics...');
         
@@ -950,17 +949,10 @@ class DashboardModule {
         try {
             let query = this.sb
                 .from('resources')
-                .select('id, created_at, resource_type')
+                .select('id')
                 .eq('target_program', this.userProfile.program)
                 .eq('block', this.userProfile.block)
                 .eq('intake_year', this.userProfile.intake_year);
-            
-            // If we want ALL resources, don't filter by date
-            if (!allResources) {
-                const oneWeekAgo = new Date();
-                oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-                query = query.gte('created_at', oneWeekAgo.toISOString());
-            }
             
             const { data: resources, error } = await query;
             
@@ -980,15 +972,7 @@ class DashboardModule {
                 this.updateCardAppearance('resources', resourceCount);
             }
             
-            // Also update card label if we're showing all resources
-            if (allResources && this.elements.resourcesCard) {
-                const labelElement = this.elements.resourcesCard.querySelector('.stat-label');
-                if (labelElement && !labelElement.textContent.includes('Available')) {
-                    labelElement.textContent = 'Available Resources';
-                }
-            }
-            
-            console.log(`✅ Resources: ${resourceCount} ${allResources ? 'total available' : 'new'}`);
+            console.log(`✅ Resources: ${resourceCount} total available`);
             
         } catch (error) {
             console.error('❌ Error loading resources:', error);
@@ -1025,49 +1009,19 @@ class DashboardModule {
             }
         }
         
-        // METHOD 3: Fallback to database query
-        if (!this.userId || !this.sb) {
-            console.warn('⚠️ Cannot load NurseIQ: No user ID or Supabase');
-            this.showErrorState('nurseiq');
-            return;
-        }
+        // METHOD 3: Fallback to default
+        const metrics = {
+            totalAnswered: 0,
+            totalCorrect: 0,
+            accuracy: 0,
+            progress: 0,
+            recentActivity: 0,
+            streak: 0,
+            lastUpdated: new Date().toISOString()
+        };
         
-        try {
-            const { data: assessments, error } = await this.sb
-                .from('user_assessment_progress')
-                .select('is_correct')
-                .eq('user_id', this.userId);
-            
-            if (error) {
-                console.error('❌ NurseIQ query error:', error);
-                this.showErrorState('nurseiq');
-                return;
-            }
-            
-            const totalQuestions = assessments?.length || 0;
-            const correctAnswers = assessments?.filter(a => a.is_correct === true).length || 0;
-            const accuracy = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
-            const targetQuestions = 100;
-            const progress = Math.min(Math.round((totalQuestions / targetQuestions) * 100), 100);
-            
-            const metrics = {
-                totalAnswered: totalQuestions,
-                totalCorrect: correctAnswers,
-                accuracy: accuracy,
-                progress: progress,
-                recentActivity: 0,
-                streak: 0,
-                lastUpdated: new Date().toISOString()
-            };
-            
-            this.updateNurseIQUI(metrics);
-            
-            console.log(`✅ NurseIQ (DB): ${progress}% progress, ${accuracy}% accuracy`);
-            
-        } catch (error) {
-            console.error('❌ Error loading NurseIQ:', error);
-            this.showErrorState('nurseiq');
-        }
+        this.updateNurseIQUI(metrics);
+        console.log('✅ NurseIQ: Using default metrics');
     }
     
     // Update NurseIQ UI with metrics
@@ -1080,7 +1034,6 @@ class DashboardModule {
         
         if (this.elements.nurseiqProgress) {
             this.elements.nurseiqProgress.textContent = `${progress}%`;
-            // Apply color classes
             if (progress >= 75) {
                 this.elements.nurseiqProgress.classList.add('dashboard-stat-high');
                 this.elements.nurseiqProgress.classList.remove('dashboard-stat-medium', 'dashboard-stat-low');
@@ -1124,7 +1077,6 @@ class DashboardModule {
             
             if (data && data.length > 0) {
                 this.elements.studentAnnouncement.textContent = data[0].message;
-                // Add timestamp
                 const date = new Date(data[0].created_at);
                 this.elements.studentAnnouncement.title = `Posted on ${date.toLocaleDateString()} at ${date.toLocaleTimeString()}`;
             } else {
@@ -1178,32 +1130,6 @@ class DashboardModule {
         } catch (error) {
             console.error('❌ Failed to load student message:', error);
             this.elements.welcomeMessage.textContent = 'Welcome back! Check your courses and attendance.';
-        }
-    }
-    
-    // Sync directly with courses module
-    syncWithCoursesModule() {
-        console.log('🔄 Syncing dashboard with courses module...');
-        
-        if (window.coursesModule) {
-            const activeCount = window.coursesModule.getActiveCourseCount 
-                ? window.coursesModule.getActiveCourseCount() 
-                : 0;
-            
-            if (this.elements.activeCourses) {
-                this.elements.activeCourses.textContent = activeCount;
-                this.updateCardAppearance('courses', activeCount);
-            }
-            
-            console.log(`✅ Synced: ${activeCount} active courses from coursesModule`);
-            
-            if (window.coursesModule.getAllCourses) {
-                this.cachedCourses = window.coursesModule.getAllCourses();
-            }
-            
-        } else {
-            console.log('⚠️ coursesModule not available yet, will retry...');
-            setTimeout(() => this.syncWithCoursesModule(), 2000);
         }
     }
     
@@ -1327,6 +1253,30 @@ class DashboardModule {
         }
     }
     
+    // 🔥 NEW: Start auto-refresh for real-time updates
+    startAutoRefresh() {
+        console.log('⏰ Starting auto-refresh (every 2 minutes)...');
+        
+        // Clear any existing interval
+        if (this.autoRefreshInterval) {
+            clearInterval(this.autoRefreshInterval);
+        }
+        
+        // Refresh dashboard every 2 minutes (120000 ms)
+        this.autoRefreshInterval = setInterval(() => {
+            console.log('🔄 Auto-refreshing dashboard...');
+            this.refreshDashboard(false); // Silent refresh
+        }, 120000);
+        
+        // Also refresh when tab becomes visible
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                console.log('👁️ Tab became visible, refreshing dashboard...');
+                this.refreshDashboard(false);
+            }
+        });
+    }
+    
     async refreshDashboard(silent = false) {
         if (!silent) {
             console.log('🔄 Manually refreshing dashboard...');
@@ -1335,11 +1285,19 @@ class DashboardModule {
         
         await Promise.allSettled([
             this.loadAttendanceMetrics(),
-            this.loadCourseMetrics(),
-            this.loadExamMetrics(),
-            this.loadResourceMetrics(true), // 🔥 Get ALL resources
+            this.loadResourceMetrics(true),
             this.loadNurseIQMetrics()
         ]);
+        
+        // Also try to update courses and exams if modules are ready
+        if (window.coursesModule) {
+            this.handleCoursesReady();
+        }
+        if (window.examsModule) {
+            this.handleExamsReady();
+        }
+        
+        this.updateAllCardsAppearance();
         
         if (!silent) {
             console.log('✅ Dashboard refreshed');
@@ -1423,12 +1381,19 @@ document.addEventListener('DOMContentLoaded', function() {
         setTimeout(tryInit, 1000);
         setTimeout(tryInit, 3000);
         
-        document.addEventListener('coursesModuleReady', tryInit);
-        
-        document.addEventListener('profilePhotoUpdated', (e) => {
-            console.log('📸 Profile photo updated globally', e.detail);
+        // Listen for courses module ready
+        document.addEventListener('coursesModuleReady', (e) => {
+            console.log('📚 coursesModuleReady event globally received');
             if (dashboardModule) {
-                dashboardModule.updateAllProfilePhotos(e.detail?.photoUrl);
+                dashboardModule.handleCoursesReady(e.detail);
+            }
+        });
+        
+        // Listen for exams module ready
+        document.addEventListener('examsModuleReady', (e) => {
+            console.log('📝 examsModuleReady event globally received');
+            if (dashboardModule) {
+                dashboardModule.handleExamsReady(e.detail);
             }
         });
     }
@@ -1461,7 +1426,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 tab.classList.remove('active');
             });
         }
-    }, 1500); // Wait 1.5 seconds for everything to load
+    }, 1500);
 });
 
 // 🔥 ALSO: Listen for appReady event and force dashboard
@@ -1498,42 +1463,3 @@ setTimeout(() => {
         });
     }
 }, 3000);
-
-// 🔥 Add CSS styles for urgent dot animation
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes pulse {
-        0%, 100% { opacity: 1; transform: scale(1); }
-        50% { opacity: 0.5; transform: scale(1.2); }
-    }
-    
-    .urgent-dot {
-        display: inline-block;
-        width: 8px;
-        height: 8px;
-        background: #ef4444;
-        border-radius: 50%;
-        margin-left: 5px;
-        animation: pulse 1.5s infinite;
-    }
-    
-    .exam-count-badge {
-        font-size: 0.75rem;
-        padding: 2px 6px;
-        border-radius: 10px;
-        margin-left: 5px;
-        background: #e5e7eb;
-        color: #374151;
-    }
-    
-    .exam-count-badge.today {
-        background: #fee2e2;
-        color: #991b1b;
-    }
-`;
-
-// Only add the style once
-if (!document.getElementById('dashboard-styles')) {
-    style.id = 'dashboard-styles';
-    document.head.appendChild(style);
-}
