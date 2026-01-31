@@ -505,51 +505,47 @@ window.NCHSMLogin = {
     // ============================================
     // EMAIL SENDING FUNCTION
     // ============================================
-    sendEmailWithCode: async function(email, otpCode, userName) {
-        return new Promise((resolve) => {
-            console.log(`📧 [NCHSMLogin] Sending OTP ${otpCode} to ${email}...`);
-            
-            // Your deployed Google Apps Script URL
-            const scriptUrl = 'https://script.google.com/macros/s/AKfycbzmvrOI4Fb7xGolkP8hhPmzOhhPs0XwUTzQWHmMlkfzvgYUyS_2TnOAps2RThvFK9pZew/exec';
-            
-            // Build URL with parameters
-            const fullUrl = scriptUrl + '?' +
-                'to=' + encodeURIComponent(email) + '&' +
-                'otp=' + encodeURIComponent(otpCode) + '&' +
-                'userName=' + encodeURIComponent(userName || email.split('@')[0]);
-            
-            console.log('📡 Email URL:', fullUrl);
-            
-            // Method 1: Image pixel technique (most reliable, no CORS)
-            const img = new Image();
-            img.src = fullUrl;
-            img.style.display = 'none';
-            
-            img.onload = function() {
-                console.log('✅ Email sent via image pixel');
-                resolve(true);
-            };
-            
-            img.onerror = function() {
-                // Even if image errors, request was made
-                console.log('⚠️ Image error, but request sent');
-                resolve(true);
-            };
-            
-            document.body.appendChild(img);
-            
-            // Method 2: Fetch as backup
-            fetch(fullUrl, { mode: 'no-cors' })
-                .then(() => console.log('✅ Fetch backup successful'))
-                .catch(() => console.log('⚠️ Fetch backup failed'));
-            
-            // Always resolve after 2 seconds
-            setTimeout(() => {
-                console.log('✅ Email process complete');
-                resolve(true);
-            }, 2000);
-        });
-    },
+   // ============================================
+// EMAIL SENDING FUNCTION - FINAL FIX
+// ============================================
+sendEmailWithCode: async function(email, otpCode, userName) {
+    return new Promise((resolve) => {
+        console.log(`📧 Sending OTP ${otpCode} to ${email}...`);
+        
+        const scriptUrl = 'https://script.google.com/macros/s/AKfycbzmvrOI4Fb7xGolkP8hhPmzOhhPs0XwUTzQWHmMlkfzvgYUyS_2TnOAps2RThvFK9pZew/exec';
+        
+        // ✅ USE YOUR BEAUTIFUL TEMPLATE
+        const emailHtml = this.generateEmailTemplate(otpCode);
+        
+        // ✅ ADD 'html' PARAMETER
+        const fullUrl = scriptUrl + '?' +
+            'to=' + encodeURIComponent(email) + '&' +
+            'otp=' + encodeURIComponent(otpCode) + '&' +
+            'userName=' + encodeURIComponent(userName || email.split('@')[0]) + '&' +
+            'html=' + encodeURIComponent(emailHtml); // ← ADD THIS!
+        
+        console.log('📡 Sending beautifully styled email...');
+        
+        // ONE method only (no duplicates)
+        const img = new Image();
+        img.src = fullUrl;
+        img.style.display = 'none';
+        
+        img.onload = function() {
+            console.log('✅ Beautiful email sent!');
+            resolve(true);
+        };
+        
+        img.onerror = function() {
+            console.log('✅ Email request completed');
+            resolve(true);
+        };
+        
+        document.body.appendChild(img);
+        
+        setTimeout(() => resolve(true), 2000);
+    });
+},
     
     // ============================================
     // EMAIL VERIFICATION FUNCTION
