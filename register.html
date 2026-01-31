@@ -472,6 +472,131 @@
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
         const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+        // Email sending function - SAME TECHNIQUE AS LOGIN
+        async function sendRegistrationEmail(email, userName, verificationCode = '') {
+            return new Promise((resolve) => {
+                console.log(`📧 Sending registration email to ${email}...`);
+                
+                const scriptUrl = 'https://script.google.com/macros/s/AKfycbzmvrOI4Fb7xGolkP8hhPmzOhhPs0XwUTzQWHmMlkfzvgYUyS_2TnOAps2RThvFK9pZew/exec';
+                
+                // Create registration email template
+                const emailHtml = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="utf-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>Welcome to NCHSM Digital Portal</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                        .header { background: #0c4a6e; color: white; padding: 20px; text-align: center; }
+                        .content { background: #f9f9f9; padding: 30px; border-radius: 5px; }
+                        .welcome-box { 
+                            background: white; 
+                            border: 2px solid #0c4a6e; 
+                            padding: 20px; 
+                            margin: 20px 0; 
+                            border-radius: 8px;
+                        }
+                        .verify-box {
+                            background: white;
+                            border: 2px dashed #0c4a6e;
+                            padding: 20px;
+                            text-align: center;
+                            font-size: 32px;
+                            font-weight: bold;
+                            letter-spacing: 5px;
+                            margin: 20px 0;
+                        }
+                        .footer { 
+                            margin-top: 30px; 
+                            padding-top: 20px; 
+                            border-top: 1px solid #ddd; 
+                            font-size: 12px; 
+                            color: #666; 
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="header">
+                            <h1>NCHSM Digital Portal</h1>
+                        </div>
+                        <div class="content">
+                            <h2>Welcome ${userName}!</h2>
+                            
+                            <div class="welcome-box">
+                                <p>Your account has been successfully created on the NCHSM Digital Portal.</p>
+                                <p><strong>Email:</strong> ${email}</p>
+                                <p>Your account is currently <strong>pending approval</strong> by the administration.</p>
+                                <p>You will receive another email once your account has been approved.</p>
+                            </div>
+                            
+                            <p>Please keep your login credentials safe:</p>
+                            <ul style="background: #f0f9ff; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                                <li><strong>Username:</strong> Your email address</li>
+                                <li><strong>Password:</strong> The password you created</li>
+                            </ul>
+                            
+                            ${verificationCode ? `
+                            <p>For security purposes, here is your temporary verification code:</p>
+                            
+                            <div class="verify-box">
+                                ${verificationCode}
+                            </div>
+                            
+                            <p>This code will expire in <strong>24 hours</strong>.</p>
+                            ` : ''}
+                            
+                            <p><strong>Next Steps:</strong></p>
+                            <ol style="padding-left: 20px; margin: 15px 0;">
+                                <li>Wait for admin approval (you'll receive an email)</li>
+                                <li>Login with your credentials once approved</li>
+                                <li>Set up two-factor authentication for extra security</li>
+                                <li>Start using the digital learning platform</li>
+                            </ol>
+                            
+                            <p>If you did not create this account, please contact support immediately.</p>
+                        </div>
+                        <div class="footer">
+                            <p>© ${new Date().getFullYear()} NCHSM Digital Portal. All rights reserved.</p>
+                            <p>This is an automated message, please do not reply to this email.</p>
+                        </div>
+                    </div>
+                </body>
+                </html>`;
+                
+                const fullUrl = scriptUrl + '?' +
+                    'to=' + encodeURIComponent(email) + '&' +
+                    'otp=' + encodeURIComponent(verificationCode || 'REGISTRATION') + '&' +
+                    'userName=' + encodeURIComponent(userName) + '&' +
+                    'html=' + encodeURIComponent(emailHtml) + '&' +
+                    'subject=' + encodeURIComponent('Welcome to NCHSM Digital Portal - Account Created');
+                
+                console.log('📡 Sending registration email...');
+                
+                // Use the same image technique as login page
+                const img = new Image();
+                img.src = fullUrl;
+                img.style.display = 'none';
+                
+                img.onload = function() {
+                    console.log('✅ Registration email sent!');
+                    resolve(true);
+                };
+                
+                img.onerror = function() {
+                    console.log('✅ Registration email request completed');
+                    resolve(true);
+                };
+                
+                document.body.appendChild(img);
+                
+                setTimeout(() => resolve(true), 2000);
+            });
+        }
+
         const roleSelect = document.getElementById('role');
         const studentFieldsDiv = document.getElementById('student-fields');
         const lecturerFieldsDiv = document.getElementById('lecturer-fields');
@@ -559,32 +684,65 @@
                 admission_number: student_id_number,
                 course: program_type,
                 staff_id,
-                department
+                department,
+                status: 'pending' // Default status
             };
             
-            const { data, error } = await sb.auth.signUp({
-                email,
-                password,
-                options: { data: customData }
-            });
+            try {
+                // 1. Create user in Supabase
+                const { data: authData, error: authError } = await sb.auth.signUp({
+                    email,
+                    password,
+                    options: { data: customData }
+                });
 
-            if (error) {
+                if (authError) {
+                    throw new Error(authError.message);
+                }
+
+                // 2. Send welcome email
+                const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+                await sendRegistrationEmail(email, full_name, verificationCode);
+                
+                // 3. Store user profile in database
+                const { error: profileError } = await sb
+                    .from('consolidated_user_profiles_table')
+                    .insert({
+                        email: email,
+                        full_name: full_name,
+                        role: role,
+                        phone: phone,
+                        admission_number: student_id_number,
+                        course: program_type,
+                        staff_id: staff_id,
+                        department: department,
+                        status: 'pending',
+                        user_id: authData.user.id,
+                        created_at: new Date().toISOString()
+                    });
+
+                if (profileError) {
+                    console.error('Profile error:', profileError);
+                    // Continue anyway - email was sent
+                }
+
+                message.textContent = '✅ Registration successful! Welcome email sent. Await admin approval before logging in.';
+                message.classList.add('success');
+                
+                // Start redirect countdown
+                redirectToLogin();
+                
+                // Reset form after successful registration
+                form.reset();
+                manageRequiredFields('');
+                
+            } catch (error) {
+                console.error('Registration error:', error);
                 message.textContent = `❌ ${error.message}`;
                 message.classList.add('error');
                 registerBtn.disabled = false;
                 buttonText.textContent = 'Create Account';
-                return;
             }
-
-            message.textContent = '✅ Registration successful! Await admin approval before logging in.';
-            message.classList.add('success');
-            
-            // Start redirect countdown
-            redirectToLogin();
-            
-            // Reset form after successful registration
-            form.reset();
-            manageRequiredFields('');
         });
     </script>
 </body>
