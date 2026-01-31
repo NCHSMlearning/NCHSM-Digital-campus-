@@ -851,38 +851,52 @@ body {
     font-size: 0.8rem;
     opacity: 0.6;
 }
-/* DROPDOWN PROVEN WORKING STYLES */
-.dropdown-menu {
-    display: none; /* Remove !important */
-    opacity: 1 !important;
-    visibility: visible !important;
-    position: absolute !important;
-    top: 100% !important;
-    right: 0 !important;
-    z-index: 1001 !important;
-    background: #ffffff !important;
-    border: 1px solid #e5e7eb !important;
-    border-radius: 8px !important;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.1) !important;
-    width: 220px !important;
-    padding: 10px 0 !important;
-    margin-top: 5px !important;
+/* ===== DROPDOWN FINAL FIX ===== */
+
+/* Remove ALL hover effects that interfere */
+.user-profile-dropdown:hover .dropdown-menu,
+.profile-trigger:hover ~ .dropdown-menu,
+.dropdown-menu:hover {
+    display: none !important; /* ❌ REMOVE THIS LINE OR COMMENT IT OUT */
 }
 
-/* Add this class for when dropdown is shown */
+/* Instead, use this: */
+.dropdown-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    width: 220px;
+    padding: 10px 0;
+    margin-top: 5px;
+    z-index: 1001;
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Only show when explicitly triggered */
 .dropdown-menu.show,
 .dropdown-menu[style*="display: block"] {
     display: block !important;
 }
 
-/* Make trigger clickable */
-.profile-trigger {
-    cursor: pointer !important;
-    user-select: none !important;
-    -webkit-user-select: none !important;
+/* Make text always visible */
+.dropdown-menu a {
+    display: block;
+    padding: 12px 20px;
+    color: #000000 !important; /* Force black text */
+    text-decoration: none;
+    border-bottom: 1px solid #f3f4f6;
 }
 
-/* Remove any hover effects */
-.user-profile-dropdown:hover .dropdown-menu {
-    display: none !important;
+.dropdown-menu a:hover {
+    background: #f9fafb;
+}
+
+#header-logout {
+    color: #ef4444 !important;
 }
