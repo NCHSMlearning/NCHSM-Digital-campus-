@@ -1,4 +1,4 @@
-// courses.js - COMPLETE FIXED VERSION with Dashboard Integration
+// courses.js - FIXED VERSION
 (function() {
     'use strict';
     
@@ -56,14 +56,6 @@
                 console.log('🚀 App ready event received');
                 this.tryLoadIfLoggedIn();
             });
-            
-            // Listen for tab change to courses
-            document.addEventListener('tabChanged', (e) => {
-                if (e.detail?.tabId === 'courses' && !this.loaded && this.userProfile) {
-                    console.log('📱 Switched to courses tab, loading...');
-                    this.loadCourses();
-                }
-            });
         }
         
         tryLoadIfLoggedIn() {
@@ -87,19 +79,7 @@
             const sources = [
                 () => window.db?.currentUserProfile,
                 () => window.currentUserProfile,
-                () => {
-                    try {
-                        const stored = localStorage.getItem('currentUserProfile');
-                        return stored ? JSON.parse(stored) : null;
-                    } catch (e) {
-                        return null;
-                    }
-                },
-                () => window.ui?.userProfile,
-                () => {
-                    const profileElement = document.getElementById('user-profile-data');
-                    return profileElement ? JSON.parse(profileElement.dataset.profile || '{}') : null;
-                }
+                () => window.databaseModule?.currentUserProfile
             ];
             
             for (const source of sources) {
@@ -117,26 +97,6 @@
             return null;
         }
         
-        showWaitingForLogin() {
-            const coursesContainer = document.getElementById('courses-container');
-            if (coursesContainer && !this.loaded) {
-                coursesContainer.innerHTML = `
-                    <div style="text-align: center; padding: 60px 20px;">
-                        <div class="waiting-icon" style="font-size: 48px; color: #667eea; margin-bottom: 20px;">
-                            <i class="fas fa-user-clock"></i>
-                        </div>
-                        <h3 style="margin-bottom: 10px;">Waiting for Login</h3>
-                        <p style="color: #6b7280; margin-bottom: 30px;">
-                            Please log in to view your courses
-                        </p>
-                        <div class="loading-dots">
-                            <span></span><span></span><span></span>
-                        </div>
-                    </div>
-                `;
-            }
-        }
-        
         cacheElements() {
             console.log('🔍 Caching DOM elements...');
             
@@ -152,7 +112,6 @@
             this.activeCount = document.getElementById('active-count');
             this.completedCount = document.getElementById('completed-count');
             
-            // Add this debug to check if elements exist
             console.log('Active grid found:', !!this.activeGrid);
             console.log('Completed table found:', !!this.completedTable);
         }
@@ -220,11 +179,11 @@
                     name: userProfile.full_name 
                 });
                 
-                // Get Supabase client
-                const supabase = window.db?.supabase || window.supabase;
+                // Get Supabase client - FIXED: Use window.db.supabase
+                const supabase = window.db?.supabase;
                 
                 if (!supabase) {
-                    throw new Error('Database connection not available');
+                    throw new Error('Database connection not available. supabase is:', typeof supabase);
                 }
                 
                 // Build query
@@ -259,13 +218,13 @@
                 // Apply current filter and display
                 this.applyDataFilter();
                 
-                // 🔥 CRITICAL: Trigger dashboard update IMMEDIATELY
+                // Trigger dashboard update
                 this.triggerDashboardUpdate();
                 
                 // Mark as loaded
                 this.loaded = true;
                 
-                // 🔥 NEW: Dispatch module ready event for dashboard
+                // Dispatch module ready event for dashboard
                 this.dispatchModuleReadyEvent();
                 
                 console.log('✅ Courses loaded successfully');
@@ -276,7 +235,6 @@
             }
         }
         
-        // 🔥 NEW: Dispatch module ready event
         dispatchModuleReadyEvent() {
             const event = new CustomEvent('coursesModuleReady', {
                 detail: {
@@ -490,7 +448,6 @@
             return tvetPrograms.some(tvet => program.toUpperCase().includes(tvet));
         }
         
-        // 🔥 CRITICAL: Trigger dashboard update
         triggerDashboardUpdate() {
             console.log('📊 Sending courses data to dashboard...');
             
@@ -504,7 +461,6 @@
             });
             document.dispatchEvent(event);
             
-            // Also update global variable for immediate access
             window.coursesData = {
                 allCourses: this.allCourses,
                 activeCount: this.activeCourses.length,
@@ -512,7 +468,6 @@
             };
         }
         
-        // Public methods for dashboard to access
         getActiveCourseCount() {
             return this.activeCourses.length;
         }
@@ -530,6 +485,23 @@
             const div = document.createElement('div');
             div.textContent = str;
             return div.innerHTML;
+        }
+        
+        showWaitingForLogin() {
+            const coursesContainer = document.getElementById('courses-container');
+            if (coursesContainer && !this.loaded) {
+                coursesContainer.innerHTML = `
+                    <div style="text-align: center; padding: 60px 20px;">
+                        <div class="waiting-icon" style="font-size: 48px; color: #667eea; margin-bottom: 20px;">
+                            <i class="fas fa-user-clock"></i>
+                        </div>
+                        <h3 style="margin-bottom: 10px;">Waiting for Login</h3>
+                        <p style="color: #6b7280; margin-bottom: 30px;">
+                            Please log in to view your courses
+                        </p>
+                    </div>
+                `;
+            }
         }
     }
     
