@@ -1,8 +1,8 @@
-// js/exams.js - COMPLETE FIXED VERSION
+// js/exams.js - UPDATED WITH STRICT TVET FILTERING
 (function() {
     'use strict';
     
-    console.log('✅ exams.js - Complete with Auto-Grading Exam Links');
+    console.log('✅ exams.js - Complete with TVET Program Support');
     
     class ExamsModule {
         constructor() {
@@ -21,6 +21,7 @@
             this.block = 'A';
             this.term = 'Term 1';
             this.userId = null;
+            this.isTVETStudent = false; // 🔥 NEW: Track if student is in TVET
             
             // Cache DOM elements
             this.cacheElements();
@@ -55,6 +56,9 @@
             this.completedHeaderCount = document.getElementById('completed-assessments-count');
             this.overallAverage = document.getElementById('overall-average');
             
+            // Program indicator (optional)
+            this.programIndicator = document.getElementById('program-indicator');
+            
             console.log('✅ Cached DOM elements');
         }
         
@@ -68,21 +72,21 @@
             if (!this.userId) {
                 console.log('⏳ User data not ready, waiting...');
                 
-                // Method 1: Listen for user data events
+                // Listen for user data events
                 document.addEventListener('userDataLoaded', () => {
                     console.log('📥 User data loaded event received');
                     this.updateUserData();
                     this.loadExams();
                 });
                 
-                // Method 2: Listen for app ready event
+                // Listen for app ready event
                 document.addEventListener('appReady', () => {
                     console.log('📱 App ready event received');
                     this.updateUserData();
                     this.loadExams();
                 });
                 
-                // Method 3: Poll for user data
+                // Poll for user data
                 const userCheckInterval = setInterval(() => {
                     if (window.db?.currentUserId) {
                         console.log('✅ User data found via polling');
@@ -92,7 +96,7 @@
                     }
                 }, 1000);
                 
-                // Method 4: Fallback after 3 seconds
+                // Fallback after 3 seconds
                 setTimeout(() => {
                     if (!this.userId) {
                         console.log('⚠️ Using default user data (timeout)');
@@ -111,17 +115,83 @@
                 this.term = this.userProfile.term || 'Term 1';
                 this.userId = window.db.currentUserId;
                 
+                // 🔥 DETERMINE IF STUDENT IS IN TVET PROGRAM
+                this.isTVETStudent = this.checkIfTVETStudent(this.program);
+                
                 console.log('🎯 Updated user data for exams:', {
                     program: this.program,
+                    isTVET: this.isTVETStudent,
                     intakeYear: this.intakeYear,
                     block: this.block,
                     term: this.term,
                     userId: this.userId
                 });
                 
+                // Update UI to show program type
+                this.updateProgramIndicator();
+                
                 return true;
             }
             return false;
+        }
+        
+        // 🔥 NEW: Check if student is in TVET program
+        checkIfTVETStudent(program) {
+            if (!program) return false;
+            
+            const programUpper = program.toUpperCase().trim();
+            
+            // TVET program identifiers (case-insensitive)
+            const tvetIdentifiers = [
+                'TVET',
+                'TIVET', // Old typo
+                'TECHNICAL',
+                'VOCATIONAL',
+                'CRAFT',
+                'ARTISAN',
+                'DIPLOMA',
+                'CERTIFICATE',
+                'SKILLS',
+                'TRADE'
+            ];
+            
+            // Course-specific TVET indicators
+            const tvetCourseIndicators = [
+                'BASIC NURSING SKILLS',
+                'NURSING SKILLS',
+                'PRACTICAL',
+                'WORKSHOP',
+                'LAB',
+                'CLINICAL'
+            ];
+            
+            // Check if program name contains any TVET identifier
+            const isTVETProgram = tvetIdentifiers.some(identifier => 
+                programUpper.includes(identifier)
+            );
+            
+            // Also check if program name indicates TVET based on keywords
+            const hasTVETKeywords = tvetCourseIndicators.some(keyword =>
+                programUpper.includes(keyword)
+            );
+            
+            return isTVETProgram || hasTVETKeywords;
+        }
+        
+        // 🔥 NEW: Update UI to show program type
+        updateProgramIndicator() {
+            if (this.programIndicator) {
+                const programText = this.program || 'Unknown Program';
+                const programType = this.isTVETStudent ? 'TVET' : 'KRCHN';
+                const badgeClass = this.isTVETStudent ? 'badge-tvet' : 'badge-krchn';
+                
+                this.programIndicator.innerHTML = `
+                    <span class="badge ${badgeClass}">
+                        <i class="fas ${this.isTVETStudent ? 'fa-tools' : 'fa-graduation-cap'}"></i>
+                        ${programType}: ${programText}
+                    </span>
+                `;
+            }
         }
         
         setupAutoRefresh() {
@@ -176,6 +246,22 @@
                 this.showTranscriptModal();
             });
             
+            // Program filter buttons (if any)
+            document.getElementById('filter-tvet')?.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.filterByProgram('TVET');
+            });
+            
+            document.getElementById('filter-krchn')?.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.filterByProgram('KRCHN');
+            });
+            
+            document.getElementById('filter-all-programs')?.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.filterByProgram('ALL');
+            });
+            
             // Handle exam link clicks
             document.addEventListener('click', (e) => {
                 const examLink = e.target.closest('.exam-link-btn');
@@ -217,6 +303,35 @@
             this.updateFilterButtons();
             this.showFilteredSections();
             this.applyDataFilter();
+        }
+        
+        // 🔥 NEW: Filter by program type
+        filterByProgram(programType) {
+            console.log(`🎯 Filtering by program: ${programType}`);
+            
+            // Update active button
+            document.querySelectorAll('.program-filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.getElementById(`filter-${programType.toLowerCase()}`)?.classList.add('active');
+            
+            // Apply filter
+            if (programType === 'ALL') {
+                this.currentExams = this.allExams.filter(exam => !exam.isCompleted);
+                this.completedExams = this.allExams.filter(exam => exam.isCompleted);
+            } else {
+                this.currentExams = this.allExams.filter(exam => 
+                    !exam.isCompleted && exam.program_type === programType
+                );
+                this.completedExams = this.allExams.filter(exam => 
+                    exam.isCompleted && exam.program_type === programType
+                );
+            }
+            
+            // Update display
+            this.displayTables();
+            this.updateCounts();
+            this.updateEmptyStates();
         }
         
         updateFilterButtons() {
@@ -289,6 +404,7 @@
                 
                 console.log('🎯 Loading exams for:', { 
                     program: this.program, 
+                    isTVET: this.isTVETStudent,
                     intakeYear: this.intakeYear, 
                     block: this.block, 
                     term: this.term,
@@ -297,30 +413,64 @@
                 
                 const supabase = window.db.supabase;
                 
-                // Check if TVET program
-                const isTVET = this.isTVETProgram(this.program);
-                
-                // 1. Fetch exams
+                // 🔥 STRICT FILTERING: Build query based on student type
                 let query = supabase
                     .from('exams_with_courses')
                     .select('*')
-                    .eq('intake_year', this.intakeYear)
                     .order('exam_date', { ascending: true });
                 
-                if (isTVET) {
-                    query = query
-                        .eq('program_type', this.program)
-                        .or(`block_term.eq.${this.term},block_term.eq.General,block_term.is.null`);
+                // 1. Filter by intake year
+                query = query.eq('intake_year', this.intakeYear);
+                
+                // 2. 🔥 CRITICAL: Filter by program_type based on student type
+                if (this.isTVETStudent) {
+                    // TVET students see TVET exams
+                    console.log('🎯 Loading TVET exams for TVET student');
+                    query = query.eq('program_type', 'TVET');
                 } else {
-                    query = query
-                        .or(`program_type.eq.${this.program},program_type.eq.General`)
-                        .or(`block_term.eq.${this.block},block_term.is.null,block_term.eq.General`);
+                    // KRCHN students see KRCHN exams
+                    console.log('🎯 Loading KRCHN exams for KRCHN student');
+                    query = query.eq('program_type', 'KRCHN');
                 }
+                
+                // 3. Filter by block/term (more flexible)
+                query = query.or(
+                    `block_term.eq.${this.block},block_term.eq.${this.term},block_term.is.null,block_term.eq.General`
+                );
                 
                 const { data: exams, error: examsError } = await query;
                 if (examsError) throw examsError;
                 
-                // 2. Fetch grades for this student (if we have userId)
+                console.log(`📊 Found ${exams?.length || 0} exams with strict filtering`);
+                
+                // If no exams found, try alternative approach
+                if (!exams || exams.length === 0) {
+                    console.log('⚠️ No exams found with strict filter, trying by enrolled courses...');
+                    
+                    // Get student's enrolled courses
+                    const { data: enrolledCourses } = await supabase
+                        .from('student_courses')
+                        .select('course_id')
+                        .eq('student_id', this.userId);
+                    
+                    if (enrolledCourses && enrolledCourses.length > 0) {
+                        const courseIds = enrolledCourses.map(c => c.course_id);
+                        const { data: courseExams, error: courseExamsError } = await supabase
+                            .from('exams_with_courses')
+                            .select('*')
+                            .in('course_id', courseIds)
+                            .order('exam_date', { ascending: true });
+                        
+                        if (courseExamsError) throw courseExamsError;
+                        
+                        if (courseExams && courseExams.length > 0) {
+                            exams = courseExams;
+                            console.log(`📊 Found ${exams.length} exams via enrolled courses`);
+                        }
+                    }
+                }
+                
+                // 4. Fetch grades for this student
                 let grades = [];
                 if (this.userId) {
                     const { data: gradesData, error: gradesError } = await supabase
@@ -333,17 +483,17 @@
                     grades = gradesData || [];
                 }
                 
-                console.log(`📊 Found ${exams?.length || 0} exams and ${grades.length} grades`);
+                console.log(`📊 Processing ${exams?.length || 0} exams with ${grades.length} grades`);
                 
-                // 3. Process exams data
+                // 5. Process exams data
                 this.processExamsData(exams || [], grades);
                 
-                // 4. Apply filter and display
+                // 6. Apply filter and display
                 this.applyDataFilter();
                 
-                console.log('✅ Exams loaded successfully');
+                console.log('✅ Exams loaded successfully with strict filtering');
                 
-                // 🔥 CRITICAL: Dispatch event for dashboard
+                // Dispatch event for dashboard
                 this.dispatchDashboardEvent();
                 
             } catch (error) {
@@ -352,7 +502,6 @@
             }
         }
         
-        // 🔥 FIXED: Correct exam completion logic
         processExamsData(exams, grades) {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
@@ -360,17 +509,18 @@
             this.allExams = exams.map(exam => {
                 const grade = grades.find(g => String(g.exam_id) === String(exam.id));
                 
-                // 🔥 FIX 1: Check multiple completion indicators
+                // Determine if exam is completed
                 let isCompleted = false;
                 let totalPercentage = null;
                 let gradeText = 'Pending Grade';
                 let gradeClass = 'pending';
                 
-                // Method 1: Check if already graded
+                // Check multiple completion indicators
                 if (grade && grade.is_graded) {
                     isCompleted = true;
                     totalPercentage = grade.total_percentage || 0;
                     
+                    // Determine grade category
                     if (totalPercentage >= 85) {
                         gradeText = 'Distinction';
                         gradeClass = 'distinction';
@@ -384,24 +534,18 @@
                         gradeText = 'Fail';
                         gradeClass = 'fail';
                     }
-                }
-                // Method 2: Check status field from database
-                else if (exam.status === 'Completed' || exam.status === 'completed') {
+                } else if (exam.status === 'Completed' || exam.status === 'completed') {
                     isCompleted = true;
-                    // Keep as "Pending Grade" since not graded yet
-                }
-                // Method 3: Check if exam date is in past (more than 1 day ago)
-                else {
+                    // Keep as "Pending Grade"
+                } else {
+                    // Check if exam date is in past
                     const examDate = exam.exam_date ? new Date(exam.exam_date) : null;
-                    
                     if (examDate) {
                         const oneDayAgo = new Date(today);
                         oneDayAgo.setDate(oneDayAgo.getDate() - 1);
                         
-                        // If exam date was more than 1 day ago, mark as completed
                         if (examDate < oneDayAgo) {
                             isCompleted = true;
-                            // Still "Pending Grade" since not graded
                         }
                     }
                 }
@@ -410,7 +554,7 @@
                 
                 return {
                     ...exam,
-                    isCompleted,  // 🔥 Now correctly identifies completed exams
+                    isCompleted,
                     totalPercentage,
                     gradeText,
                     gradeClass,
@@ -428,39 +572,40 @@
                     formattedGradedDate: grade?.graded_at ? 
                         new Date(grade.graded_at).toLocaleDateString('en-US', { 
                             year: 'numeric', month: 'short', day: 'numeric' 
-                        }) : '--'
+                        }) : '--',
+                    programBadgeClass: exam.program_type === 'TVET' ? 'badge-tvet' : 'badge-krchn',
+                    programIcon: exam.program_type === 'TVET' ? 'fa-tools' : 'fa-graduation-cap'
                 };
             });
             
+            // Log program distribution
+            const tvetCount = this.allExams.filter(e => e.program_type === 'TVET').length;
+            const krchnCount = this.allExams.filter(e => e.program_type === 'KRCHN').length;
             const completedCount = this.allExams.filter(e => e.isCompleted).length;
-            console.log(`✅ Processed ${this.allExams.length} exams (${completedCount} completed)`);
+            
+            console.log(`✅ Processed ${this.allExams.length} exams (TVET: ${tvetCount}, KRCHN: ${krchnCount}, Completed: ${completedCount})`);
         }
         
-        // 🔥 NEW: Dispatch event for dashboard
         dispatchDashboardEvent() {
             const event = new CustomEvent('examsModuleReady', {
                 detail: {
                     metrics: this.getDashboardData(),
                     count: this.allExams.length,
+                    tvetCount: this.allExams.filter(e => e.program_type === 'TVET').length,
+                    krchnCount: this.allExams.filter(e => e.program_type === 'KRCHN').length,
                     timestamp: new Date().toISOString()
                 }
             });
             document.dispatchEvent(event);
             console.log('📢 Dispatched examsModuleReady event for dashboard');
             
-            // Also update window object for immediate access
+            // Also update window object
             window.examsData = {
                 allExams: this.allExams,
                 metrics: this.getDashboardData(),
-                loaded: true
+                loaded: true,
+                isTVETStudent: this.isTVETStudent
             };
-        }
-        
-        isTVETProgram(program) {
-            if (!program) return false;
-            const tvetPrograms = ['TVET', 'TVET NURSING', 'TVET NURSING(A)', 'TVET NURSING(B)', 
-                                'CRAFT CERTIFICATE', 'ARTISAN', 'DIPLOMA IN TVET'];
-            return tvetPrograms.some(tvet => program.toUpperCase().includes(tvet));
         }
         
         displayTables() {
@@ -492,7 +637,15 @@
                 
                 return `
                 <tr>
-                    <td>${this.escapeHtml(exam.exam_name || 'N/A')}</td>
+                    <td>
+                        ${this.escapeHtml(exam.exam_name || 'N/A')}
+                        <br>
+                        <small class="text-muted">
+                            <span class="badge ${exam.programBadgeClass}">
+                                <i class="fas ${exam.programIcon}"></i> ${exam.program_type}
+                            </span>
+                        </small>
+                    </td>
                     <td><span class="badge ${exam.exam_type?.includes('CAT') ? 'badge-cat' : 'badge-final'}">
                         ${exam.exam_type?.includes('CAT') ? 'CAT' : 'Exam'}
                     </span></td>
@@ -537,7 +690,15 @@
                 
                 return `
                 <tr>
-                    <td>${this.escapeHtml(exam.exam_name || 'N/A')}</td>
+                    <td>
+                        ${this.escapeHtml(exam.exam_name || 'N/A')}
+                        <br>
+                        <small class="text-muted">
+                            <span class="badge ${exam.programBadgeClass}">
+                                <i class="fas ${exam.programIcon}"></i> ${exam.program_type}
+                            </span>
+                        </small>
+                    </td>
                     <td><span class="badge ${exam.exam_type?.includes('CAT') ? 'badge-cat' : 'badge-final'}">
                         ${exam.exam_type?.includes('CAT') ? 'CAT' : 'Exam'}
                     </span></td>
@@ -632,7 +793,15 @@
                         <button class="close-modal">&times;</button>
                     </div>
                     <div class="modal-body">
-                        <p>Transcript feature will be available soon.</p>
+                        <div class="program-info">
+                            <span class="badge ${this.isTVETStudent ? 'badge-tvet' : 'badge-krchn'}">
+                                <i class="fas ${this.isTVETStudent ? 'fa-tools' : 'fa-graduation-cap'}"></i>
+                                ${this.isTVETStudent ? 'TVET' : 'KRCHN'} Student
+                            </span>
+                            <p>Program: ${this.program}</p>
+                            <p>Intake Year: ${this.intakeYear}</p>
+                        </div>
+                        <p>Detailed transcript feature will be available soon.</p>
                     </div>
                 </div>
             `;
@@ -652,6 +821,7 @@
                         <div class="loading-content">
                             <div class="loading-spinner"></div>
                             <p>Loading assessments...</p>
+                            <small class="text-muted">Program: ${this.program} (${this.isTVETStudent ? 'TVET' : 'KRCHN'})</small>
                         </div>
                     </td>
                 </tr>`;
@@ -671,6 +841,8 @@
                         <div class="error-content">
                             <i class="fas fa-exclamation-circle"></i>
                             <p>${message}</p>
+                            <small class="text-muted">Program: ${this.program} (${this.isTVETStudent ? 'TVET' : 'KRCHN'})</small>
+                            <br>
                             <button onclick="window.examsModule.loadExams()" class="btn btn-sm">
                                 <i class="fas fa-redo"></i> Retry
                             </button>
@@ -693,148 +865,145 @@
             return div.innerHTML;
         }
         
-        // 🔥 FIXED: Correct active exams calculation
         calculateActiveExams() {
             const now = new Date();
             now.setHours(0, 0, 0, 0);
             
             const activeExams = this.allExams.filter(exam => {
-                // Don't include completed exams
                 if (exam.isCompleted) {
                     return false;
                 }
                 
                 const examDate = exam.exam_date ? new Date(exam.exam_date) : null;
                 
-                // Only include exams from today onward
                 if (examDate) {
                     const yesterday = new Date(now);
                     yesterday.setDate(yesterday.getDate() - 1);
-                    
-                    // Include exams from yesterday onward (gives 1 day grace period)
                     return examDate >= yesterday;
                 }
                 
-                // If no date, check status
                 return exam.status === 'Upcoming' || !exam.status;
             });
             
-            console.log(`📊 Active exams calculated: ${activeExams.length}`);
             return activeExams;
         }
-    calculateDashboardMetrics() {
-    try {
-        const completedExams = this.allExams.filter(exam => exam.isCompleted && exam.totalPercentage !== null);
-        const totalCompleted = completedExams.length;
         
-        const activeExams = this.calculateActiveExams();
-        
-        const defaultMetrics = {
-            upcomingExam: 'No upcoming exams',
-            upcomingExamName: 'None',
-            upcomingCount: 0,
-            gradedExams: 0,
-            averageScore: 0,
-            bestScore: 0,
-            passRate: 0,
-            lastUpdated: new Date().toISOString()
-        };
-        
-        if (activeExams.length === 0) {
-            return defaultMetrics;
-        }
-        
-        let upcomingText = 'No upcoming exams';
-        let upcomingName = 'None';
-        
-        if (activeExams.length > 0) {
-            // Sort by date
-            activeExams.sort((a, b) => {
-                const aDate = a.exam_date ? new Date(a.exam_date) : new Date(0);
-                const bDate = b.exam_date ? new Date(b.exam_date) : new Date(0);
-                const now = new Date();
+        calculateDashboardMetrics() {
+            try {
+                const completedExams = this.allExams.filter(exam => exam.isCompleted && exam.totalPercentage !== null);
+                const totalCompleted = completedExams.length;
                 
-                if (aDate <= now && bDate > now) return -1;
-                if (aDate > now && bDate <= now) return 1;
+                const activeExams = this.calculateActiveExams();
                 
-                return aDate - bDate;
-            });
-            
-            const nextExam = activeExams[0];
-            const examDate = nextExam.exam_date ? new Date(nextExam.exam_date) : null;
-            
-            upcomingName = nextExam.exam_name || 'Untitled Exam';
-            
-            if (examDate) {
-                const now = new Date();
-                const diffDays = Math.ceil((examDate - now) / (1000 * 60 * 60 * 24));
+                const defaultMetrics = {
+                    upcomingExam: 'No upcoming exams',
+                    upcomingExamName: 'None',
+                    upcomingCount: 0,
+                    gradedExams: 0,
+                    averageScore: 0,
+                    bestScore: 0,
+                    passRate: 0,
+                    programType: this.isTVETStudent ? 'TVET' : 'KRCHN',
+                    programName: this.program,
+                    lastUpdated: new Date().toISOString()
+                };
                 
-                if (diffDays <= 0) {
-                    upcomingText = `Today: ${upcomingName}`;
-                } else if (diffDays === 1) {
-                    upcomingText = `Tomorrow: ${upcomingName}`;
-                } else if (diffDays <= 7) {
-                    upcomingText = `${diffDays}d: ${upcomingName}`;
-                } else if (diffDays <= 30) {
-                    const weeks = Math.floor(diffDays / 7);
-                    upcomingText = `${weeks}w: ${upcomingName}`;
-                } else {
-                    upcomingText = `Future: ${upcomingName}`;
+                if (activeExams.length === 0) {
+                    return defaultMetrics;
                 }
-            } else {
-                upcomingText = `Active: ${upcomingName}`;
-            }
-            
-            // If multiple exams, show count in parentheses
-            if (activeExams.length > 1) {
-                const otherExams = activeExams.slice(1);
-                const otherNames = otherExams.map(exam => exam.exam_name || 'Untitled').slice(0, 2); // Limit to 2
-                if (otherExams.length > 2) {
-                    upcomingText += ` (+${otherExams.length - 1} more)`;
-                } else if (otherExams.length > 0) {
-                    upcomingText += ` & ${otherExams.length} more`;
+                
+                let upcomingText = 'No upcoming exams';
+                let upcomingName = 'None';
+                
+                if (activeExams.length > 0) {
+                    activeExams.sort((a, b) => {
+                        const aDate = a.exam_date ? new Date(a.exam_date) : new Date(0);
+                        const bDate = b.exam_date ? new Date(b.exam_date) : new Date(0);
+                        const now = new Date();
+                        
+                        if (aDate <= now && bDate > now) return -1;
+                        if (aDate > now && bDate <= now) return 1;
+                        
+                        return aDate - bDate;
+                    });
+                    
+                    const nextExam = activeExams[0];
+                    const examDate = nextExam.exam_date ? new Date(nextExam.exam_date) : null;
+                    
+                    upcomingName = nextExam.exam_name || 'Untitled Exam';
+                    
+                    if (examDate) {
+                        const now = new Date();
+                        const diffDays = Math.ceil((examDate - now) / (1000 * 60 * 60 * 24));
+                        
+                        if (diffDays <= 0) {
+                            upcomingText = `Today: ${upcomingName}`;
+                        } else if (diffDays === 1) {
+                            upcomingText = `Tomorrow: ${upcomingName}`;
+                        } else if (diffDays <= 7) {
+                            upcomingText = `${diffDays}d: ${upcomingName}`;
+                        } else if (diffDays <= 30) {
+                            const weeks = Math.floor(diffDays / 7);
+                            upcomingText = `${weeks}w: ${upcomingName}`;
+                        } else {
+                            upcomingText = `Future: ${upcomingName}`;
+                        }
+                    } else {
+                        upcomingText = `Active: ${upcomingName}`;
+                    }
+                    
+                    if (activeExams.length > 1) {
+                        const otherExams = activeExams.slice(1);
+                        if (otherExams.length > 2) {
+                            upcomingText += ` (+${otherExams.length - 1} more)`;
+                        } else if (otherExams.length > 0) {
+                            upcomingText += ` & ${otherExams.length} more`;
+                        }
+                    }
                 }
+                
+                let averageScore = 0;
+                let bestScore = 0;
+                let passRate = 0;
+                
+                if (totalCompleted > 0) {
+                    const scores = completedExams.map(exam => exam.totalPercentage);
+                    averageScore = scores.reduce((sum, score) => sum + score, 0) / scores.length;
+                    bestScore = Math.max(...scores);
+                    const passedExams = completedExams.filter(exam => exam.totalPercentage >= 60).length;
+                    passRate = (passedExams / totalCompleted) * 100;
+                }
+                
+                const metrics = {
+                    upcomingExam: upcomingText,
+                    upcomingExamName: upcomingName,
+                    upcomingCount: activeExams.length,
+                    gradedExams: totalCompleted,
+                    averageScore: Math.round(averageScore * 10) / 10,
+                    bestScore: Math.round(bestScore * 10) / 10,
+                    passRate: Math.round(passRate),
+                    programType: this.isTVETStudent ? 'TVET' : 'KRCHN',
+                    programName: this.program,
+                    lastUpdated: new Date().toISOString()
+                };
+                
+                return metrics;
+            } catch (error) {
+                console.error('❌ Error calculating dashboard metrics:', error);
+                return {
+                    upcomingExam: 'No upcoming exams',
+                    upcomingExamName: 'None',
+                    upcomingCount: 0,
+                    gradedExams: 0,
+                    averageScore: 0,
+                    bestScore: 0,
+                    passRate: 0,
+                    programType: this.isTVETStudent ? 'TVET' : 'KRCHN',
+                    programName: this.program,
+                    lastUpdated: new Date().toISOString()
+                };
             }
         }
-        
-        let averageScore = 0;
-        let bestScore = 0;
-        let passRate = 0;
-        
-        if (totalCompleted > 0) {
-            const scores = completedExams.map(exam => exam.totalPercentage);
-            averageScore = scores.reduce((sum, score) => sum + score, 0) / scores.length;
-            bestScore = Math.max(...scores);
-            const passedExams = completedExams.filter(exam => exam.totalPercentage >= 60).length;
-            passRate = (passedExams / totalCompleted) * 100;
-        }
-        
-        const metrics = {
-            upcomingExam: upcomingText,
-            upcomingExamName: upcomingName,
-            upcomingCount: activeExams.length,
-            gradedExams: totalCompleted,
-            averageScore: Math.round(averageScore * 10) / 10,
-            bestScore: Math.round(bestScore * 10) / 10,
-            passRate: Math.round(passRate),
-            lastUpdated: new Date().toISOString()
-        };
-        
-        return metrics;
-    } catch (error) {
-        console.error('❌ Error calculating dashboard metrics:', error);
-        return {
-            upcomingExam: 'No upcoming exams',
-            upcomingExamName: 'None',
-            upcomingCount: 0,
-            gradedExams: 0,
-            averageScore: 0,
-            bestScore: 0,
-            passRate: 0,
-            lastUpdated: new Date().toISOString()
-        };
-    }
-}
         
         getDashboardData() {
             return this.calculateDashboardMetrics();
@@ -878,9 +1047,11 @@
             averageScore: 0,
             bestScore: 0,
             passRate: 0,
+            programType: 'Unknown',
+            programName: 'Unknown',
             lastUpdated: new Date().toISOString()
         };
     };
     
-    console.log('✅ Exams module ready with Exam Portal Links!');
+    console.log('✅ Exams module ready with STRICT TVET FILTERING!');
 })();
