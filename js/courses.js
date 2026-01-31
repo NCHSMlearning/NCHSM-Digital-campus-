@@ -1,26 +1,151 @@
-// courses.js - ENHANCED WITH DASHBOARD INTEGRATION
+// courses.js - FIXED VERSION - WAITS FOR LOGIN EVENTS
 (function() {
     'use strict';
     
-    console.log('✅ courses.js - Loading with Dashboard Integration...');
+    console.log('✅ courses.js - Loading with login event listening...');
     
     class CoursesModule {
         constructor() {
-            console.log('📚 CoursesModule initialized with Dashboard Integration');
+            console.log('📚 CoursesModule initialized - WAITING for login events');
             
             // Store course data
             this.allCourses = [];
             this.activeCourses = [];
             this.completedCourses = [];
             this.currentFilter = 'all';
+            this.userProfile = null;
+            this.loaded = false;
             
             // Cache DOM elements
             this.cacheElements();
             
-            // Initialize
+            // Initialize event listeners
             this.initializeEventListeners();
             this.updateFilterButtons();
-            this.loadCourses();
+            
+            // ✅ CRITICAL FIX: Set up login event listeners
+            this.setupEventListeners();
+            
+            // Try to load if user is already logged in
+            setTimeout(() => this.tryLoadIfLoggedIn(), 1500);
+        }
+        
+        setupEventListeners() {
+            console.log('👂 Setting up login event listeners...');
+            
+            // 1. Listen for user login events
+            document.addEventListener('userLoggedIn', (e) => {
+                console.log('🎉 USER LOGGED IN EVENT RECEIVED!');
+                console.log('User profile:', e.detail?.userProfile);
+                this.userProfile = e.detail?.userProfile;
+                this.loadCourses();
+            });
+            
+            // 2. Listen for profile updates
+            document.addEventListener('userProfileUpdated', (e) => {
+                console.log('🔄 User profile updated event received');
+                if (e.detail?.userProfile) {
+                    this.userProfile = e.detail.userProfile;
+                    if (!this.loaded) {
+                        this.loadCourses();
+                    }
+                }
+            });
+            
+            // 3. Listen for app ready events
+            document.addEventListener('appReady', (e) => {
+                console.log('🚀 App ready event received');
+                if (e.detail?.userProfile && !this.userProfile) {
+                    this.userProfile = e.detail.userProfile;
+                    this.loadCourses();
+                }
+            });
+            
+            // 4. Listen for tab change to courses
+            document.addEventListener('tabChanged', (e) => {
+                if (e.detail?.tabId === 'courses' && !this.loaded && this.userProfile) {
+                    console.log('📱 Switched to courses tab, loading...');
+                    this.loadCourses();
+                }
+            });
+        }
+        
+        tryLoadIfLoggedIn() {
+            console.log('🔍 Checking if user is already logged in...');
+            
+            // Check all possible sources for user profile
+            const profile = this.getUserProfileFromAnySource();
+            
+            if (profile) {
+                console.log('✅ User already logged in:', profile.full_name || profile.email);
+                this.userProfile = profile;
+                this.loadCourses();
+            } else {
+                console.log('⏳ No user profile found yet, waiting for login...');
+                // Show waiting message
+                this.showWaitingForLogin();
+            }
+        }
+        
+        getUserProfileFromAnySource() {
+            // Check all possible sources in order
+            const sources = [
+                () => window.databaseModule?.currentUserProfile,
+                () => window.currentUserProfile,
+                () => window.db?.currentUserProfile,
+                () => {
+                    try {
+                        const stored = localStorage.getItem('currentUserProfile');
+                        return stored ? JSON.parse(stored) : null;
+                    } catch (e) {
+                        return null;
+                    }
+                },
+                () => {
+                    try {
+                        const stored = sessionStorage.getItem('currentUserProfile');
+                        return stored ? JSON.parse(stored) : null;
+                    } catch (e) {
+                        return null;
+                    }
+                },
+                () => window.profileModule?.userProfile
+            ];
+            
+            for (const source of sources) {
+                try {
+                    const profile = source();
+                    if (profile && (profile.full_name || profile.email || profile.id || profile.user_id)) {
+                        console.log('📋 Found profile in source');
+                        return profile;
+                    }
+                } catch (e) {
+                    // Continue
+                }
+            }
+            
+            return null;
+        }
+        
+        showWaitingForLogin() {
+            // Show waiting message in courses container
+            const coursesContainer = document.getElementById('courses-container');
+            if (coursesContainer && !this.loaded) {
+                coursesContainer.innerHTML = `
+                    <div style="text-align: center; padding: 60px 20px;">
+                        <div class="waiting-icon" style="font-size: 48px; color: #667eea; margin-bottom: 20px;">
+                            <i class="fas fa-user-clock"></i>
+                        </div>
+                        <h3 style="margin-bottom: 10px;">Waiting for Login</h3>
+                        <p style="color: #6b7280; margin-bottom: 30px;">
+                            Please log in to view your courses
+                        </p>
+                        <div class="loading-dots">
+                            <span></span><span></span><span></span>
+                        </div>
+                    </div>
+                `;
+            }
         }
         
         cacheElements() {
@@ -51,16 +176,6 @@
             this.firstCourseDate = document.getElementById('first-course-date');
             this.latestCourseDate = document.getElementById('latest-course-date');
             this.completionRate = document.getElementById('completion-rate');
-            
-            console.log('✅ Cached all DOM elements');
-            
-            // Log what we found
-            console.log({
-                activeGrid: !!this.activeGrid,
-                completedTable: !!this.completedTable,
-                activeEmpty: !!this.activeEmpty,
-                completedEmpty: !!this.completedEmpty
-            });
         }
         
         initializeEventListeners() {
@@ -78,7 +193,10 @@
                 if (button) {
                     button.addEventListener('click', (e) => {
                         e.preventDefault();
-                        console.log(`🔍 ${id} clicked, filter: ${filter}`);
+                        if (!this.userProfile) {
+                            this.showError('Please log in first');
+                            return;
+                        }
                         this.applyFilter(filter);
                     });
                 }
@@ -89,126 +207,55 @@
             if (refreshBtn) {
                 refreshBtn.addEventListener('click', (e) => {
                     e.preventDefault();
-                    console.log('🔄 Refresh button clicked');
+                    if (!this.userProfile) {
+                        this.showError('Please log in first');
+                        return;
+                    }
                     this.loadCourses();
                 });
             }
             
             // Listen for dashboard events
             document.addEventListener('refreshCourses', () => {
-                console.log('📊 Dashboard requested courses refresh');
-                this.loadCourses();
+                if (this.userProfile) {
+                    this.loadCourses();
+                }
             });
-            
-            console.log('✅ All event listeners initialized');
-        }
-        
-        applyFilter(filterType) {
-            console.log(`🔍 Applying filter: ${filterType}`);
-            this.currentFilter = filterType;
-            
-            // Update button states
-            this.updateFilterButtons();
-            
-            // Show/hide sections
-            this.showFilteredSections();
-            
-            // Apply filter to data and display
-            this.applyDataFilter();
-        }
-        
-        updateFilterButtons() {
-            // Get all filter buttons
-            const buttons = {
-                'all': document.getElementById('view-all-courses'),
-                'active': document.getElementById('view-active-only'),
-                'completed': document.getElementById('view-completed-only')
-            };
-            
-            // Remove active class from all
-            Object.values(buttons).forEach(button => {
-                if (button) button.classList.remove('active');
-            });
-            
-            // Add active class to current filter button
-            const currentButton = buttons[this.currentFilter];
-            if (currentButton) {
-                currentButton.classList.add('active');
-            }
-        }
-        
-        showFilteredSections() {
-            const activeSection = document.querySelector('.courses-section:not(.completed-section)');
-            const completedSection = document.querySelector('.completed-section');
-            
-            console.log('🔍 Sections:', {
-                activeSection: !!activeSection,
-                completedSection: !!completedSection
-            });
-            
-            if (!activeSection || !completedSection) return;
-            
-            switch(this.currentFilter) {
-                case 'active':
-                    activeSection.style.display = 'block';
-                    completedSection.style.display = 'none';
-                    break;
-                case 'completed':
-                    activeSection.style.display = 'none';
-                    completedSection.style.display = 'block';
-                    break;
-                default: // 'all'
-                    activeSection.style.display = 'block';
-                    completedSection.style.display = 'block';
-            }
-        }
-        
-        applyDataFilter() {
-            // Filter the data based on current filter
-            this.activeCourses = this.allCourses.filter(course => 
-                !course.isCompleted && course.status !== 'Completed'
-            );
-            this.completedCourses = this.allCourses.filter(course => 
-                course.isCompleted || course.status === 'Completed'
-            );
-            
-            // Apply additional filter if needed
-            if (this.currentFilter === 'active') {
-                this.completedCourses = [];
-            } else if (this.currentFilter === 'completed') {
-                this.activeCourses = [];
-            }
-            
-            // Display the filtered data
-            this.displayTables();
         }
         
         async loadCourses() {
             console.log('📥 Loading courses...');
             
+            if (!this.userProfile) {
+                console.error('❌ Cannot load courses: No user profile');
+                this.showError('Please log in to view courses');
+                return;
+            }
+            
             // Show loading state
             this.showLoading();
             
             try {
-                // Check for required data
-                if (!window.db?.currentUserProfile) {
-                    throw new Error('User profile not available. Please log in again.');
-                }
-                
-                if (!window.db?.supabase) {
-                    throw new Error('Database connection not available.');
-                }
-                
-                const userProfile = window.db.currentUserProfile;
+                const userProfile = this.userProfile;
                 const program = userProfile.program || 'KRCHN';
                 const intakeYear = userProfile.intake_year || 2025;
                 const block = userProfile.block || 'A';
                 const term = userProfile.term || 'Term 1';
-                const userId = window.db.currentUserId;
                 
-                console.log('🎯 Loading courses for:', { program, intakeYear, block, term });
+                console.log('🎯 Loading courses for:', { 
+                    program, 
+                    intakeYear, 
+                    name: userProfile.full_name 
+                });
                 
-                const supabase = window.db.supabase;
+                // Get Supabase client
+                const supabase = window.databaseModule?.supabase || 
+                               window.db?.supabase || 
+                               window.supabase;
+                
+                if (!supabase) {
+                    throw new Error('Database connection not available');
+                }
                 
                 // Build query based on program type
                 let query = supabase
@@ -220,12 +267,10 @@
                 const isTVET = this.isTVETProgram(program);
                 
                 if (isTVET) {
-                    // TVET filtering: match program AND (term OR General)
                     query = query
                         .eq('target_program', program)
                         .or(`block.eq.${term},block.eq.General,block.is.null`);
                 } else {
-                    // KRCHN filtering: match program OR General, AND block OR General
                     query = query
                         .or(`target_program.eq.${program},target_program.eq.General`)
                         .or(`block.eq.${block},block.is.null,block.eq.General`);
@@ -244,10 +289,13 @@
                 // Apply current filter and display
                 this.applyDataFilter();
                 
-                // 🔥 CRITICAL: TRIGGER DASHBOARD UPDATE
+                // Update dashboard
                 this.triggerDashboardUpdate();
                 
-                // Show success message
+                // Mark as loaded
+                this.loaded = true;
+                
+                // Show success
                 if (window.AppUtils?.showToast) {
                     window.AppUtils.showToast('Courses loaded successfully', 'success');
                 }
@@ -255,51 +303,79 @@
             } catch (error) {
                 console.error('❌ Error loading courses:', error);
                 this.showError(error.message);
-                
-                if (window.AppUtils?.showToast) {
-                    window.AppUtils.showToast('Failed to load courses: ' + error.message, 'error');
-                }
             }
         }
         
-        // 🔥 NEW: Trigger dashboard update
-        triggerDashboardUpdate() {
-            console.log('🎯 Triggering dashboard courses update...');
+        applyFilter(filterType) {
+            if (!this.userProfile) {
+                this.showError('Please log in first');
+                return;
+            }
             
-            // Dispatch event to update dashboard
-            const event = new CustomEvent('coursesUpdated', {
-                detail: {
-                    courses: this.allCourses,
-                    activeCount: this.activeCourses.length,
-                    completedCount: this.completedCourses.length,
-                    timestamp: new Date().toISOString()
-                }
+            this.currentFilter = filterType;
+            this.updateFilterButtons();
+            this.showFilteredSections();
+            this.applyDataFilter();
+        }
+        
+        updateFilterButtons() {
+            const buttons = {
+                'all': document.getElementById('view-all-courses'),
+                'active': document.getElementById('view-active-only'),
+                'completed': document.getElementById('view-completed-only')
+            };
+            
+            Object.values(buttons).forEach(button => {
+                if (button) button.classList.remove('active');
             });
             
-            // Dispatch on both document and window for maximum compatibility
-            document.dispatchEvent(event);
-            window.dispatchEvent(event);
-            
-            // Also try the global helper function if available
-            if (window.triggerDashboardUpdate) {
-                window.triggerDashboardUpdate('courses');
+            const currentButton = buttons[this.currentFilter];
+            if (currentButton) {
+                currentButton.classList.add('active');
             }
-            
-            console.log('✅ Dashboard courses update triggered');
         }
         
-        isTVETProgram(program) {
-            const tvetPrograms = ['TVET', 'TVET NURSING', 'TVET NURSING(A)', 'TVET NURSING(B)', 
-                                'CRAFT CERTIFICATE', 'ARTISAN', 'DIPLOMA IN TVET'];
-            return tvetPrograms.some(tvet => program?.toUpperCase().includes(tvet));
+        showFilteredSections() {
+            const activeSection = document.querySelector('.courses-section:not(.completed-section)');
+            const completedSection = document.querySelector('.completed-section');
+            
+            if (!activeSection || !completedSection) return;
+            
+            switch(this.currentFilter) {
+                case 'active':
+                    activeSection.style.display = 'block';
+                    completedSection.style.display = 'none';
+                    break;
+                case 'completed':
+                    activeSection.style.display = 'none';
+                    completedSection.style.display = 'block';
+                    break;
+                default:
+                    activeSection.style.display = 'block';
+                    completedSection.style.display = 'block';
+            }
+        }
+        
+        applyDataFilter() {
+            this.activeCourses = this.allCourses.filter(course => 
+                !course.isCompleted && course.status !== 'Completed'
+            );
+            this.completedCourses = this.allCourses.filter(course => 
+                course.isCompleted || course.status === 'Completed'
+            );
+            
+            if (this.currentFilter === 'active') {
+                this.completedCourses = [];
+            } else if (this.currentFilter === 'completed') {
+                this.activeCourses = [];
+            }
+            
+            this.displayTables();
         }
         
         processCoursesData(courses) {
             this.allCourses = courses.map(course => {
-                // Check if course is completed
                 const isCompleted = course.status === 'Completed' || course.status === 'Passed';
-                
-                // Format dates
                 const createdAt = course.created_at ? new Date(course.created_at) : null;
                 const completedDate = course.completed_date ? new Date(course.completed_date) : null;
                 
@@ -318,32 +394,18 @@
             });
             
             console.log(`✅ Processed ${this.allCourses.length} courses`);
-            console.log(`📊 Active courses: ${this.allCourses.filter(c => !c.isCompleted).length}`);
-            console.log(`📊 Completed courses: ${this.allCourses.filter(c => c.isCompleted).length}`);
         }
         
         displayTables() {
-            // Display active courses
             this.displayActiveCourses();
-            
-            // Display completed courses
             this.displayCompletedCourses();
-            
-            // Update counts
             this.updateCounts();
-            
-            // Update empty states
             this.updateEmptyStates();
-            
-            // Update summary
             this.updateSummary();
         }
         
         displayActiveCourses() {
-            if (!this.activeGrid) {
-                console.error('❌ active-courses-grid element not found');
-                return;
-            }
+            if (!this.activeGrid) return;
             
             if (this.activeCourses.length === 0) {
                 this.activeGrid.innerHTML = '';
@@ -359,7 +421,7 @@
                         </span>
                     </div>
                     <h4 class="course-title">${this.escapeHtml(course.course_name || 'Unnamed Course')}</h4>
-                    <p class="course-description">${this.escapeHtml(this.truncateText(course.description || 'No description available', 120))}</p>
+                    <p class="course-description">${this.escapeHtml(this.truncateText(course.description || 'No description', 120))}</p>
                     <div class="course-footer">
                         <div class="course-credits">
                             <i class="fas fa-star"></i>
@@ -384,41 +446,35 @@
         }
         
         displayCompletedCourses() {
-            if (!this.completedTable) {
-                console.error('❌ completed-courses-table element not found');
-                return;
-            }
+            if (!this.completedTable) return;
             
             if (this.completedCourses.length === 0) {
                 this.completedTable.innerHTML = '';
                 return;
             }
             
-            const html = this.completedCourses.map(course => {
-                return `
-                    <tr>
-                        <td>
-                            <strong>${this.escapeHtml(course.course_name || 'Unnamed Course')}</strong>
-                            ${course.description ? `<br><small class="text-muted">${this.escapeHtml(this.truncateText(course.description, 80))}</small>` : ''}
-                        </td>
-                        <td><code>${this.escapeHtml(course.unit_code || 'N/A')}</code></td>
-                        <td class="text-center">${course.credits || 3}</td>
-                        <td class="text-center">${this.escapeHtml(course.block || 'General')}</td>
-                        <td>${course.formattedCompletedDate}</td>
-                        <td class="text-center">
-                            <span class="status-badge completed">
-                                <i class="fas fa-check-circle"></i> ${this.escapeHtml(course.status || 'Completed')}
-                            </span>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
+            const html = this.completedCourses.map(course => `
+                <tr>
+                    <td>
+                        <strong>${this.escapeHtml(course.course_name || 'Unnamed Course')}</strong>
+                        ${course.description ? `<br><small class="text-muted">${this.escapeHtml(this.truncateText(course.description, 80))}</small>` : ''}
+                    </td>
+                    <td><code>${this.escapeHtml(course.unit_code || 'N/A')}</code></td>
+                    <td class="text-center">${course.credits || 3}</td>
+                    <td class="text-center">${this.escapeHtml(course.block || 'General')}</td>
+                    <td>${course.formattedCompletedDate}</td>
+                    <td class="text-center">
+                        <span class="status-badge completed">
+                            <i class="fas fa-check-circle"></i> ${this.escapeHtml(course.status || 'Completed')}
+                        </span>
+                    </td>
+                </tr>
+            `).join('');
             
             this.completedTable.innerHTML = html;
         }
         
         updateCounts() {
-            // Update section counts
             if (this.activeCount) {
                 this.activeCount.textContent = `${this.activeCourses.length} course${this.activeCourses.length !== 1 ? 's' : ''}`;
             }
@@ -427,7 +483,6 @@
                 this.completedCount.textContent = `${this.completedCourses.length} course${this.completedCourses.length !== 1 ? 's' : ''}`;
             }
             
-            // Update header counts
             if (this.activeHeaderCount) {
                 this.activeHeaderCount.textContent = this.activeCourses.length;
             }
@@ -436,7 +491,6 @@
                 this.completedHeaderCount.textContent = this.completedCourses.length;
             }
             
-            // Calculate and update credits
             const totalCredits = this.allCourses.reduce((sum, course) => sum + (course.credits || 0), 0);
             const completedCredits = this.completedCourses.reduce((sum, course) => sum + (course.credits || 0), 0);
             
@@ -461,7 +515,6 @@
         
         updateSummary() {
             if (this.completedCourses.length === 0) {
-                // Reset all summary values
                 if (this.completedGPA) this.completedGPA.textContent = '--';
                 if (this.highestGrade) this.highestGrade.textContent = '--';
                 if (this.averageGrade) this.averageGrade.textContent = '--';
@@ -471,7 +524,6 @@
                 return;
             }
             
-            // Get completion dates
             const dates = this.completedCourses
                 .filter(c => c.completedDate || c.createdAt)
                 .map(c => c.completedDate || c.createdAt)
@@ -490,12 +542,6 @@
                 }
             }
             
-            // Since we don't have grades
-            if (this.completedGPA) this.completedGPA.textContent = '--';
-            if (this.highestGrade) this.highestGrade.textContent = '--';
-            if (this.averageGrade) this.averageGrade.textContent = '--';
-            
-            // Calculate completion rate
             if (this.completionRate) {
                 const totalExpectedCourses = this.allCourses.length || 1;
                 const completionRate = Math.round((this.completedCourses.length / totalExpectedCourses) * 100);
@@ -503,28 +549,7 @@
             }
         }
         
-        viewCourseMaterials(courseId) {
-            const course = this.allCourses.find(c => c.id === courseId);
-            if (course) {
-                if (window.AppUtils?.showToast) {
-                    window.AppUtils.showToast(`Opening materials for ${course.course_name}`, 'info');
-                }
-                // In real app, this would open a modal or navigate to materials page
-            }
-        }
-        
-        viewCourseSchedule(courseId) {
-            const course = this.allCourses.find(c => c.id === courseId);
-            if (course) {
-                if (window.AppUtils?.showToast) {
-                    window.AppUtils.showToast(`Viewing schedule for ${course.course_name}`, 'info');
-                }
-                // In real app, this would open a modal with schedule
-            }
-        }
-        
         showLoading() {
-            // Show loading in active grid
             if (this.activeGrid) {
                 this.activeGrid.innerHTML = `
                     <div class="course-card loading">
@@ -536,7 +561,6 @@
                 `;
             }
             
-            // Show loading in completed table
             if (this.completedTable) {
                 this.completedTable.innerHTML = `
                     <tr class="loading">
@@ -552,7 +576,6 @@
         }
         
         showError(message) {
-            // Show error in active grid
             if (this.activeGrid) {
                 this.activeGrid.innerHTML = `
                     <div class="course-card error">
@@ -566,23 +589,24 @@
                     </div>
                 `;
             }
-            
-            // Show error in completed table
-            if (this.completedTable) {
-                this.completedTable.innerHTML = `
-                    <tr class="error">
-                        <td colspan="6">
-                            <div class="error-content">
-                                <i class="fas fa-exclamation-circle"></i>
-                                <p>${message}</p>
-                                <button onclick="window.coursesModule.loadCourses()" class="btn btn-sm btn-primary">
-                                    <i class="fas fa-redo"></i> Retry
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-            }
+        }
+        
+        isTVETProgram(program) {
+            const tvetPrograms = ['TVET', 'TVET NURSING', 'TVET NURSING(A)', 'TVET NURSING(B)', 
+                                'CRAFT CERTIFICATE', 'ARTISAN', 'DIPLOMA IN TVET'];
+            return tvetPrograms.some(tvet => program?.toUpperCase().includes(tvet));
+        }
+        
+        triggerDashboardUpdate() {
+            const event = new CustomEvent('coursesUpdated', {
+                detail: {
+                    courses: this.allCourses,
+                    activeCount: this.activeCourses.length,
+                    completedCount: this.completedCourses.length,
+                    timestamp: new Date().toISOString()
+                }
+            });
+            document.dispatchEvent(event);
         }
         
         truncateText(text, maxLength) {
@@ -600,86 +624,23 @@
         
         // Public methods
         refresh() {
-            console.log('🔄 Manual refresh requested');
-            this.loadCourses();
-        }
-        
-        // 🔥 NEW: Get course count for dashboard
-        getActiveCourseCount() {
-            return this.activeCourses.length;
-        }
-        
-        // 🔥 NEW: Get all courses for other modules
-        getAllCourses() {
-            return this.allCourses;
-        }
-        
-        // 🔥 NEW: Manual trigger for dashboard update
-        updateDashboard() {
-            this.triggerDashboardUpdate();
+            if (this.userProfile) {
+                this.loadCourses();
+            } else {
+                this.showError('Please log in first');
+            }
         }
     }
     
     // Create global instance
     window.coursesModule = new CoursesModule();
     
-    // Global functions for backward compatibility
+    // Global functions
     window.loadCourses = () => {
-        console.log('🌍 Global loadCourses() called');
         if (window.coursesModule) {
             window.coursesModule.refresh();
         }
     };
     
-    window.refreshCourses = () => {
-        console.log('🌍 Global refreshCourses() called');
-        if (window.coursesModule) {
-            window.coursesModule.refresh();
-        }
-    };
-    
-    window.switchToActiveCourses = () => {
-        console.log('🌍 Global switchToActiveCourses() called');
-        if (window.coursesModule) {
-            window.coursesModule.applyFilter('active');
-        }
-    };
-    
-    window.switchToCompletedCourses = () => {
-        console.log('🌍 Global switchToCompletedCourses() called');
-        if (window.coursesModule) {
-            window.coursesModule.applyFilter('completed');
-        }
-    };
-    
-    window.switchToAllCourses = () => {
-        console.log('🌍 Global switchToAllCourses() called');
-        if (window.coursesModule) {
-            window.coursesModule.applyFilter('all');
-        }
-    };
-    
-    window.filterCourses = (filterType) => {
-        if (window.coursesModule) {
-            window.coursesModule.applyFilter(filterType);
-        }
-    };
-    
-    // 🔥 NEW: Global function for dashboard integration
-    window.updateCoursesDashboard = () => {
-        console.log('🌍 Global updateCoursesDashboard() called');
-        if (window.coursesModule) {
-            window.coursesModule.triggerDashboardUpdate();
-        }
-    };
-    
-    // 🔥 NEW: Get course count for dashboard
-    window.getDashboardCourseCount = () => {
-        if (window.coursesModule) {
-            return window.coursesModule.getActiveCourseCount();
-        }
-        return 0;
-    };
-    
-    console.log('✅ Courses module ready with Dashboard Integration!');
+    console.log('✅ Courses module ready - Listening for login events!');
 })();
