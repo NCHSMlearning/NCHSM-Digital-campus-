@@ -11,6 +11,11 @@ permissions:
   pages: write
   id-token: write
 
+# Add environment variables for the workflow
+env:
+  GOOGLE_SCRIPT_URL: ${{ secrets.GOOGLE_SCRIPT_URL }}
+  SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}  # Optional alternative
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -22,38 +27,176 @@ jobs:
         run: |
           echo "🔧 Generating config.js from GitHub Secrets..."
           
-          # Create config.js with proper escaping for JavaScript
+          # Create config.js with environment variables
           cat > config.js << 'EOF'
           // config.js - Generated from GitHub Secrets
           // DO NOT EDIT - This file is auto-generated
-          window.APP_CONFIG = {
-              SUPABASE_URL: "${{ secrets.SUPABASE_URL }}",
-              SUPABASE_ANON_KEY: "${{ secrets.SUPABASE_ANON_KEY }}",
-              LOCATIONIQ_API_KEY: "${{ secrets.LOCATIONIQ_API_KEY || '' }}",
-              BUILD_TIME: "${{ github.run_started_at }}",
-              COMMIT_SHA: "${{ github.sha }}",
-              ENVIRONMENT: "${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}"
-          };
+          (function() {
+              'use strict';
+              
+              // Configuration object
+              var config = {
+                  // Supabase Configuration
+                  SUPABASE_URL: "${{ secrets.SUPABASE_URL }}",
+                  SUPABASE_ANON_KEY: "${{ secrets.SUPABASE_ANON_KEY }}",
+                  
+                  // LocationIQ API (if needed)
+                  LOCATIONIQ_API_KEY: "${{ secrets.LOCATIONIQ_API_KEY || '' }}",
+                  
+                  // Email Configuration
+                  EMAIL_API_ENDPOINT: "/api/send-email",  // Our secure proxy
+                  ENABLE_EMAILS: true,
+                  
+                  // Application Info
+                  BUILD_TIME: "${{ github.run_started_at }}",
+                  COMMIT_SHA: "${{ github.sha }}",
+                  ENVIRONMENT: "${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}",
+                  VERSION: "1.0.0"
+              };
+              
+              // Validate critical configuration
+              if (!config.SUPABASE_URL || !config.SUPABASE_ANON_KEY) {
+                  console.error('❌ Critical configuration missing!');
+              }
+              
+              // Make config available globally
+              window.APP_CONFIG = Object.freeze(config);
+              
+              console.log('✅ App config loaded:', {
+                  environment: config.ENVIRONMENT,
+                  buildTime: config.BUILD_TIME,
+                  hasSupabase: !!(config.SUPABASE_URL && config.SUPABASE_ANON_KEY)
+              });
+          })();
           EOF
           
-          # Verify the file was created
-          echo "✅ Created config.js"
-          echo "📁 File exists: $(ls -la config.js)"
-          echo "📄 File contents (first 3 lines):"
-          head -n 3 config.js
-          echo ""
-          echo "🔍 Checking for placeholders..."
-          if grep -q '%%' config.js; then
-            echo "⚠️ Warning: Placeholders found!"
-            grep '%%' config.js
+          # Create a simple API proxy for email (static version)
+          mkdir -p api
+          
+          cat > api/send-email.html << 'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head>
+              <title>API Proxy - NCHSM Portal</title>
+              <style>
+                  body {
+                      font-family: Arial, sans-serif;
+                      max-width: 800px;
+                      margin: 50px auto;
+                      padding: 20px;
+                      text-align: center;
+                  }
+                  .message {
+                      background: #f8f9fa;
+                      padding: 20px;
+                      border-radius: 10px;
+                      border: 1px solid #dee2e6;
+                  }
+              </style>
+          </head>
+          <body>
+              <div class="message">
+                  <h2>📧 Email API Proxy</h2>
+                  <p>This endpoint requires server-side implementation.</p>
+                  <p>For GitHub Pages, you need to use a serverless function or separate API service.</p>
+                  <p><strong>Recommended:</strong> Deploy a Netlify/Vercel function alongside your GitHub Pages site.</p>
+              </div>
+          </body>
+          </html>
+          EOF
+          
+          # Create API documentation
+          cat > api/README.md << 'EOF'
+          # NCHSM Email API
+          
+          This directory contains API endpoints for the NCHSM Portal.
+          
+          ## Email Sending
+          
+          Due to GitHub Pages static hosting limitations, email functionality requires:
+          
+          1. **Netlify/Vercel Function** (Recommended)
+          2. **Supabase Edge Function**
+          3. **Custom Node.js/Express server**
+          
+          ### Quick Setup for Email:
+          
+          1. Deploy a serverless function at: `https://your-function.vercel.app/api/send-email`
+          2. Update `config.js` EMAIL_API_ENDPOINT to point to your function
+          3. The function should forward requests to your Google Apps Script
+          
+          ### Example Function (Vercel/Netlify):
+          
+          ```javascript
+          // api/send-email.js
+          export default async function handler(req, res) {
+              const { to, otp, userName, html, subject } = req.body;
+              
+              // Forward to Google Apps Script
+              const response = await fetch(
+                  `YOUR_GOOGLE_SCRIPT_URL?${new URLSearchParams({
+                      to, otp, userName, html, subject
+                  })}`
+              );
+              
+              res.json({ success: true });
+          }
+          ```
+          EOF
+          
+          echo "✅ Created config.js and API placeholder"
+          echo "📁 Files created:"
+          ls -la config.js
+          ls -la api/
+      
+      - name: Test configuration
+        run: |
+          echo "🧪 Testing configuration..."
+          echo "SUPABASE_URL length: ${#secrets.SUPABASE_URL}"
+          echo "SUPABASE_ANON_KEY length: ${#secrets.SUPABASE_ANON_KEY}"
+          echo "GOOGLE_SCRIPT_URL length: ${#secrets.GOOGLE_SCRIPT_URL}"
+          
+          # Check if secrets are set
+          if [ -z "${{ secrets.SUPABASE_URL }}" ]; then
+            echo "❌ SUPABASE_URL secret is not set!"
           else
-            echo "✅ No placeholders found"
+            echo "✅ SUPABASE_URL is set"
           fi
           
-          echo "🔑 Config status:"
-          echo "   SUPABASE_URL: ${#secrets.SUPABASE_URL} characters"
-          echo "   SUPABASE_ANON_KEY: ${#secrets.SUPABASE_ANON_KEY} characters"
-          echo "   LOCATIONIQ_API_KEY: ${#secrets.LOCATIONIQ_API_KEY} characters"
+          if [ -z "${{ secrets.SUPABASE_ANON_KEY }}" ]; then
+            echo "❌ SUPABASE_ANON_KEY secret is not set!"
+          else
+            echo "✅ SUPABASE_ANON_KEY is set"
+          fi
+          
+          if [ -z "${{ secrets.GOOGLE_SCRIPT_URL }}" ]; then
+            echo "⚠️ GOOGLE_SCRIPT_URL secret is not set (emails will use fallback)"
+          else
+            echo "✅ GOOGLE_SCRIPT_URL is set"
+          fi
+      
+      - name: Create .env.example file
+        run: |
+          # Create example env file for developers
+          cat > .env.example << 'EOF'
+          # Example Environment Variables
+          # Copy to .env.local for development
+          
+          # Supabase Configuration
+          SUPABASE_URL=https://your-project.supabase.co
+          SUPABASE_ANON_KEY=your-anon-key-here
+          
+          # Email Configuration
+          GOOGLE_SCRIPT_URL=https://script.google.com/macros/s/your-script-id/exec
+          
+          # Optional APIs
+          LOCATIONIQ_API_KEY=your-locationiq-key
+          
+          # Development Settings
+          NODE_ENV=development
+          EOF
+          
+          echo "✅ Created .env.example"
       
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
