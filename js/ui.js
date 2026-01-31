@@ -25,7 +25,7 @@ class UIModule {
         
         // Define clean URL paths for each tab
         this.tabPaths = {
-            'dashboard': '/dashboard',
+            'dashboard': '/',
             'profile': '/profile', 
             'calendar': '/calendar',
             'courses': '/courses',
@@ -35,6 +35,20 @@ class UIModule {
             'messages': '/messages',
             'support-tickets': '/support-tickets',
             'nurseiq': '/nurseiq'
+        };
+        
+        // Reverse lookup for paths
+        this.pathToTab = {
+            '/': 'dashboard',
+            '/profile': 'profile',
+            '/calendar': 'calendar',
+            '/courses': 'courses',
+            '/attendance': 'attendance',
+            '/exams': 'cats',
+            '/resources': 'resources',
+            '/messages': 'messages',
+            '/support-tickets': 'support-tickets',
+            '/nurseiq': 'nurseiq'
         };
         
         // Footer buttons
@@ -57,7 +71,7 @@ class UIModule {
         this.readerBackBtn = document.getElementById('readerBackBtn');
         this.mobileReader = document.getElementById('mobile-reader');
         
-        // Profile dropdown elements - CRITICAL FIX
+        // Profile dropdown elements
         this.profileTrigger = document.querySelector('.profile-trigger');
         this.dropdownMenu = document.querySelector('.dropdown-menu');
         
@@ -67,14 +81,6 @@ class UIModule {
         this.progressText = document.getElementById('progress-text');
         this.statusSteps = document.getElementById('status-steps');
         this.funFact = document.getElementById('fun-fact');
-        
-        // Log found elements
-        console.log('📋 UI Elements found:');
-        console.log('- Profile trigger:', !!this.profileTrigger);
-        console.log('- Dropdown menu:', !!this.dropdownMenu);
-        console.log('- Loading screen:', !!this.loadingScreen);
-        console.log('- Header user name:', !!this.headerUserName);
-        console.log('- Header profile photo:', !!this.headerProfilePhoto);
         
         // Supabase client reference
         this.supabase = window.supabase || window.db?.supabase;
@@ -100,9 +106,9 @@ class UIModule {
         this.setupEventListeners();
         this.updateLoadingProgress(2, 5);
         
-        // 🔥 STEP 4: Setup clean URL navigation
+        // 🔥 STEP 4: Setup proper URL navigation
         await this.delay(400);
-        this.setupCleanUrlNavigation();
+        this.setupUrlNavigation();
         this.setupTabChangeListener();
         this.updateLoadingProgress(3, 5);
         
@@ -126,12 +132,10 @@ class UIModule {
         console.log('✅ UIModule fully initialized');
     }
     
-    // Helper for delays
     delay(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
     
-    // 🔥 APP-STYLE LOADING: Modern app loading experience
     setupAppLoading() {
         console.log('📱 Setting up app-style loading...');
         
@@ -140,10 +144,8 @@ class UIModule {
             return;
         }
         
-        // Make it look like a modern app splash screen
         this.loadingScreen.classList.add('app-splash');
         
-        // Update welcome text to be more app-like
         const welcomeText = this.loadingScreen.querySelector('.welcome-text h1');
         if (welcomeText) {
             welcomeText.textContent = 'NCHSM Portal';
@@ -154,7 +156,6 @@ class UIModule {
             subtitle.textContent = 'Your Academic Hub';
         }
         
-        // Add app version
         if (!this.loadingScreen.querySelector('.app-version')) {
             const versionEl = document.createElement('div');
             versionEl.className = 'app-version';
@@ -165,18 +166,14 @@ class UIModule {
         console.log('✅ App-style loading configured');
     }
     
-    // 🔥 Update loading progress with smooth animations
     updateLoadingProgress(step, totalSteps = 5) {
         if (!this.loadingScreen || !this.progressFill || !this.progressText) return;
         
-        // Calculate percentage with smooth animation
         const percentage = Math.min((step / totalSteps) * 100, 100);
         
-        // Animate progress bar
         this.progressFill.style.transition = 'width 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
         this.progressFill.style.width = `${percentage}%`;
         
-        // Update progress text with app-like messages
         const loadingMessages = [
             'Launching Portal...',
             'Loading Your Profile...',
@@ -189,7 +186,6 @@ class UIModule {
         if (step >= 0 && step < loadingMessages.length) {
             this.progressText.textContent = loadingMessages[step];
             
-            // Add typing effect
             this.progressText.style.opacity = '0';
             this.progressText.style.transform = 'translateY(5px)';
             setTimeout(() => {
@@ -199,7 +195,6 @@ class UIModule {
             }, 50);
         }
         
-        // Update status steps if available
         if (this.statusSteps) {
             const steps = [
                 { text: 'System Check', icon: 'fa-cogs' },
@@ -221,7 +216,6 @@ class UIModule {
             });
         }
         
-        // Update fun facts
         if (this.funFact) {
             const funFacts = [
                 'Pro Tip: Bookmark important resources for quick access.',
@@ -234,7 +228,6 @@ class UIModule {
             if (step < funFacts.length) {
                 this.funFact.innerHTML = `<i class="fas fa-lightbulb"></i><span>${funFacts[step]}</span>`;
                 
-                // Fade in animation
                 this.funFact.style.opacity = '0';
                 setTimeout(() => {
                     this.funFact.style.opacity = '1';
@@ -246,7 +239,6 @@ class UIModule {
         console.log(`📊 Loading progress: ${step}/${totalSteps} (${percentage}%)`);
     }
     
-    // 🔥 Hide loading screen with professional animation
     async hideLoadingScreen() {
         console.log('🎬 Hiding loading screen...');
         
@@ -255,16 +247,12 @@ class UIModule {
             return;
         }
         
-        // Add exit animation class
         this.loadingScreen.classList.add('loading-exit');
         
-        // Wait for animation to complete
         await this.delay(800);
         
-        // Hide completely
         this.loadingScreen.style.display = 'none';
         
-        // Show main content with fade in
         const mainContent = document.querySelector('.main-content, .app-container');
         if (mainContent) {
             mainContent.style.opacity = '0';
@@ -275,7 +263,6 @@ class UIModule {
             }, 100);
         }
         
-        // Show welcome toast
         setTimeout(() => {
             this.showToast('Welcome to NCHSM Student Portal!', 'success', 3000);
         }, 500);
@@ -283,11 +270,9 @@ class UIModule {
         console.log('✅ Loading screen hidden gracefully');
     }
     
-    // CRITICAL FIX: Remove all inline styles first
     cleanupInitialStyles() {
         console.log('🧹 Cleaning up initial styles...');
         
-        // Remove all inline styles from tabs
         this.tabs.forEach(tab => {
             tab.style.removeProperty('display');
             tab.style.removeProperty('opacity');
@@ -296,18 +281,15 @@ class UIModule {
             tab.classList.remove('active');
         });
         
-        // Remove active class from all nav links
         this.navLinks.forEach(link => {
             link.classList.remove('active');
         });
         
-        // Initialize dropdown menu properly
         if (this.dropdownMenu) {
-            this.dropdownMenu.style.display = 'none'; // Start hidden
+            this.dropdownMenu.style.display = 'none';
             this.dropdownMenu.classList.remove('show');
         }
         
-        // Ensure sidebar starts closed on mobile
         if (window.innerWidth <= 768 && this.sidebar) {
             this.sidebar.classList.remove('active');
         }
@@ -315,16 +297,31 @@ class UIModule {
         console.log('✅ Styles cleaned up');
     }
     
-    // NEW: Setup clean URL navigation (no hash)
-    setupCleanUrlNavigation() {
-        console.log('🔗 Setting up clean URL navigation...');
+    // FIXED: Setup URL navigation that works with server
+    setupUrlNavigation() {
+        console.log('🔗 Setting up URL navigation...');
         
-        // Handle initial page load
+        // Check if we're coming from login redirect
+        const hasHash = window.location.hash;
+        if (hasHash) {
+            const tabId = hasHash.replace('#', '');
+            console.log(`🔗 Found hash in URL: ${tabId}`);
+            
+            if (this.isValidTab(tabId)) {
+                // Clean the URL by replacing hash with clean path
+                setTimeout(() => {
+                    this.showTab(tabId);
+                    this.updateUrlForTab(tabId);
+                }, 100);
+                return;
+            }
+        }
+        
+        // Handle normal page load
         window.addEventListener('load', () => {
             const path = this.getCurrentPath();
             console.log('🔗 Initial path:', path);
             
-            // Determine tab from path
             let tabId = this.getTabFromPath(path);
             console.log(`📊 Determined tab from path: ${tabId}`);
             
@@ -338,7 +335,6 @@ class UIModule {
                 if (lastTab && this.isValidTab(lastTab)) {
                     tabId = lastTab;
                     this.showTab(tabId);
-                    // Update URL to match the tab (clean URL)
                     this.updateUrlForTab(tabId);
                 } else {
                     console.log('🎯 Defaulting to dashboard');
@@ -349,7 +345,7 @@ class UIModule {
             }
         });
         
-        // Handle browser back/forward buttons
+        // Handle browser back/forward
         window.addEventListener('popstate', (event) => {
             console.log('🔗 Popstate event triggered');
             const newPath = this.getCurrentPath();
@@ -358,46 +354,51 @@ class UIModule {
             const newTabId = this.getTabFromPath(newPath);
             if (newTabId && this.isValidTab(newTabId)) {
                 console.log(`🎯 Popstate showing tab: ${newTabId}`);
-                this.showTab(newTabId, true); // true = from popstate (no URL update)
+                this.showTab(newTabId, true);
                 localStorage.setItem(this.storageKey, newTabId);
             }
         });
     }
     
-    // Get current clean path (no hash, no .html)
     getCurrentPath() {
-        // Get current pathname
         let path = window.location.pathname;
         
-        // Remove .html extension if present
+        // Remove .html extension
         path = path.replace(/\.html$/, '');
         
         // Remove trailing slash
         path = path.replace(/\/$/, '');
         
-        // Handle root path - redirect to dashboard
+        // Handle root path
         if (path === '' || path === '/index' || path === '/') {
-            console.log('🏠 Root path detected, defaulting to dashboard');
-            return '/dashboard';
+            console.log('🏠 Root path detected');
+            return '/';
         }
         
         return path;
     }
     
-    // Get tab ID from path
     getTabFromPath(path) {
-        // Remove leading slash
+        // Remove leading slash for comparison
         const cleanPath = path.startsWith('/') ? path.substring(1) : path;
         
-        // Find matching tab in tabPaths
-        for (const [tabId, tabPath] of Object.entries(this.tabPaths)) {
-            const cleanTabPath = tabPath.startsWith('/') ? tabPath.substring(1) : tabPath;
-            if (cleanPath === cleanTabPath) {
-                return tabId;
-            }
+        // Handle root path
+        if (path === '/' || cleanPath === '') {
+            return 'dashboard';
         }
         
-        // Try direct match with tab ID (for backward compatibility)
+        // Check pathToTab mapping
+        if (this.pathToTab[path]) {
+            return this.pathToTab[path];
+        }
+        
+        // Try with leading slash
+        const pathWithSlash = path.startsWith('/') ? path : `/${path}`;
+        if (this.pathToTab[pathWithSlash]) {
+            return this.pathToTab[pathWithSlash];
+        }
+        
+        // Try tab ID directly
         if (this.isValidTab(cleanPath)) {
             return cleanPath;
         }
@@ -406,22 +407,24 @@ class UIModule {
         return null;
     }
     
-    // Update URL to clean path for a tab
     updateUrlForTab(tabId) {
         if (!this.isValidTab(tabId)) return;
         
-        const path = this.tabPaths[tabId] || '/dashboard';
+        const path = this.tabPaths[tabId] || '/';
         const currentPath = this.getCurrentPath();
-        const expectedPath = path.startsWith('/') ? path.substring(1) : path;
-        const currentCleanPath = currentPath.startsWith('/') ? currentPath.substring(1) : currentPath;
         
-        // Only update if current path doesn't match
-        if (expectedPath !== currentCleanPath) {
+        // Remove any hash from current URL
+        if (window.location.hash) {
+            window.location.hash = '';
+        }
+        
+        // Only update if different
+        if (path !== currentPath) {
             const newUrl = `${window.location.origin}${path}`;
             console.log(`🔗 Updating URL to: ${newUrl}`);
             
-            // Use pushState to update URL without reload (clean URL, no hash)
-            window.history.pushState({ tabId }, '', newUrl);
+            // Use replaceState instead of pushState on initial load
+            window.history.replaceState({ tabId }, '', newUrl);
         }
     }
     
@@ -473,7 +476,7 @@ class UIModule {
             }
         });
         
-        // Update URL if not from popstate (browser navigation)
+        // Update URL if not from popstate
         if (!fromPopstate) {
             this.updateUrlForTab(tabId);
         }
@@ -536,7 +539,7 @@ class UIModule {
             console.log('✅ Overlay listener added');
         }
         
-        // Navigation links - UPDATED for clean URLs
+        // Navigation links
         this.navLinks.forEach(link => {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -551,7 +554,7 @@ class UIModule {
         });
         console.log(`✅ Added ${this.navLinks.length} nav link listeners`);
         
-        // Header logout button - CRITICAL FIX
+        // Header logout button
         if (this.headerLogout) {
             console.log('🔐 Header logout button found');
             this.headerLogout.addEventListener('click', (e) => {
@@ -615,7 +618,7 @@ class UIModule {
             this.readerBackBtn.addEventListener('click', () => this.closeReader());
         }
         
-        // Setup profile dropdown - CRITICAL FIX
+        // Setup profile dropdown - FIXED VERSION
         this.setupProfileDropdown();
         
         // Dashboard card clicks
@@ -638,7 +641,7 @@ class UIModule {
         console.log('✅ All event listeners setup complete');
     }
     
-    // FIXED PROFILE DROPDOWN - Works with your HTML
+    // FIXED: Profile dropdown with proper event handling
     setupProfileDropdown() {
         console.log('📋 Setting up profile dropdown...');
         
@@ -651,21 +654,24 @@ class UIModule {
         
         console.log('✅ Found dropdown elements');
         
-        // CRITICAL: Remove inline style first
+        // Clone to remove existing listeners
+        const newProfileTrigger = this.profileTrigger.cloneNode(true);
+        this.profileTrigger.parentNode.replaceChild(newProfileTrigger, this.profileTrigger);
+        this.profileTrigger = newProfileTrigger;
+        
+        // Reset dropdown
         this.dropdownMenu.style.display = 'none';
         
-        // Add click handler to profile trigger
+        // Add event handler
         this.profileTrigger.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
             
-            console.log('👤 Profile dropdown clicked');
+            console.log('👤 Profile dropdown clicked (UI.js)');
             
-            // Toggle dropdown visibility
             const isVisible = this.dropdownMenu.style.display === 'block';
             this.dropdownMenu.style.display = isVisible ? 'none' : 'block';
             
-            // Rotate arrow icon
             const arrow = this.profileTrigger.querySelector('.dropdown-icon');
             if (arrow) {
                 arrow.style.transform = isVisible ? 'rotate(0deg)' : 'rotate(180deg)';
@@ -675,12 +681,13 @@ class UIModule {
             console.log(`📋 Dropdown ${isVisible ? 'hidden' : 'shown'}`);
         });
         
-        // Close dropdown when clicking elsewhere
+        // Close when clicking outside
         document.addEventListener('click', (e) => {
-            if (!this.profileTrigger.contains(e.target) && !this.dropdownMenu.contains(e.target)) {
+            if (this.dropdownMenu && 
+                !this.profileTrigger.contains(e.target) && 
+                !this.dropdownMenu.contains(e.target)) {
                 this.dropdownMenu.style.display = 'none';
                 
-                // Reset arrow rotation
                 const arrow = this.profileTrigger.querySelector('.dropdown-icon');
                 if (arrow) {
                     arrow.style.transform = 'rotate(0deg)';
@@ -697,7 +704,6 @@ class UIModule {
                 this.showTab('profile');
                 this.dropdownMenu.style.display = 'none';
                 
-                // Reset arrow
                 const arrow = this.profileTrigger.querySelector('.dropdown-icon');
                 if (arrow) {
                     arrow.style.transform = 'rotate(0deg)';
@@ -730,7 +736,6 @@ class UIModule {
         
         window.dispatchEvent(new CustomEvent('loadModule', { detail: { tabId } }));
         
-        // Load specific tab data based on available functions
         setTimeout(() => {
             switch(tabId) {
                 case 'dashboard':
@@ -810,12 +815,10 @@ class UIModule {
         console.log('🔄 Refreshing dashboard...');
         this.showToast('Refreshing dashboard...', 'info', 1500);
         
-        // Clear dashboard cache
         if (window.db && window.db.clearCache) {
             window.db.clearCache('dashboard');
         }
         
-        // Reload dashboard data
         if (window.dashboardModule && window.dashboardModule.refreshDashboard) {
             window.dashboardModule.refreshDashboard();
         } else if (typeof loadDashboard === 'function') {
@@ -823,17 +826,13 @@ class UIModule {
         }
     }
     
-    // Toast notifications
     showToast(message, type = 'info', duration = 3000) {
-        // Remove existing toasts
         const existingToasts = document.querySelectorAll('.custom-toast');
         existingToasts.forEach(toast => toast.remove());
         
-        // Create toast
         const toast = document.createElement('div');
         toast.className = `custom-toast toast-${type}`;
         
-        // Truncate long messages
         const maxLength = 100;
         const displayMessage = message.length > maxLength 
             ? message.substring(0, maxLength) + '...' 
@@ -841,7 +840,6 @@ class UIModule {
         
         toast.textContent = displayMessage;
         
-        // Apply styling
         toast.style.cssText = `
             position: fixed;
             bottom: 20px;
@@ -868,13 +866,11 @@ class UIModule {
         
         document.body.appendChild(toast);
         
-        // Animate in
         setTimeout(() => {
             toast.style.opacity = '1';
             toast.style.transform = 'translateY(0)';
         }, 10);
         
-        // Remove after duration
         setTimeout(() => {
             toast.style.opacity = '0';
             toast.style.transform = 'translateY(20px)';
@@ -896,12 +892,10 @@ class UIModule {
         return colors[type] || colors.info;
     }
     
-    // NEW: Load initial user data from database
     async loadInitialUserData() {
         console.log('👤 Loading initial user data...');
         
         try {
-            // Wait for user to be authenticated
             if (!window.currentUserId && window.db?.currentUserId) {
                 window.currentUserId = window.db.currentUserId;
             }
@@ -911,16 +905,13 @@ class UIModule {
             }
             
             if (window.currentUserId && this.supabase) {
-                // Load fresh data from consolidated_user_profiles_table
                 const userData = await this.loadUserFromDatabase(window.currentUserId);
                 if (userData) {
                     this.updateAllUserInfo(userData);
                 } else {
-                    // Fallback to cached data
                     this.updateAllUserInfo(window.currentUserProfile);
                 }
             } else if (window.currentUserProfile) {
-                // Use cached profile
                 this.updateAllUserInfo(window.currentUserProfile);
             }
         } catch (error) {
@@ -928,7 +919,6 @@ class UIModule {
         }
     }
     
-    // NEW: Load user data from consolidated_user_profiles_table
     async loadUserFromDatabase(userId) {
         try {
             if (!this.supabase) {
@@ -957,7 +947,6 @@ class UIModule {
                     studentId: userProfile.student_id
                 });
                 
-                // Cache the data
                 window.currentUserProfile = userProfile;
                 localStorage.setItem('currentUserProfile', JSON.stringify(userProfile));
                 
@@ -989,7 +978,6 @@ class UIModule {
         window.addEventListener('resize', updateVisibility);
     }
     
-    // UPDATED: Get profile photo from database
     async getProfilePhotoFromDatabase(userId) {
         try {
             if (!this.supabase) {
@@ -997,7 +985,6 @@ class UIModule {
                 return null;
             }
             
-            // Query consolidated_user_profiles_table
             const { data: userProfile, error } = await this.supabase
                 .from('consolidated_user_profiles_table')
                 .select('passport_url, full_name')
@@ -1014,13 +1001,11 @@ class UIModule {
                 return null;
             }
             
-            // Check if passport_url exists and is valid
             if (userProfile.passport_url && userProfile.passport_url.trim() !== '') {
                 console.log('📸 Found passport_url in database:', userProfile.passport_url);
                 return userProfile.passport_url;
             }
             
-            // Fallback to generated avatar
             const nameForAvatar = userProfile.full_name 
                 ? userProfile.full_name.replace(/\s+/g, '+')
                 : 'Student';
@@ -1036,7 +1021,6 @@ class UIModule {
         }
     }
     
-    // UPDATED: Update ALL user information
     async updateAllUserInfo(userProfile = null) {
         console.log('👤 Updating all user info...');
         
@@ -1044,7 +1028,6 @@ class UIModule {
             let profile = userProfile || window.currentUserProfile || window.db?.currentUserProfile;
             
             if (!profile && window.currentUserId) {
-                // Load from database
                 profile = await this.loadUserFromDatabase(window.currentUserId);
             }
             
@@ -1057,16 +1040,13 @@ class UIModule {
             
             const studentName = profile.full_name || 'Student';
             
-            // Update header user name
             if (this.headerUserName) {
                 this.headerUserName.textContent = studentName;
                 console.log(`✅ Header name updated: ${studentName}`);
             }
             
-            // Update profile photo
             await this.updateProfilePhoto(profile);
             
-            // Update welcome header
             const welcomeHeader = document.getElementById('welcome-header');
             if (welcomeHeader) {
                 const getGreeting = (hour) => {
@@ -1081,13 +1061,11 @@ class UIModule {
                 welcomeHeader.textContent = `${getGreeting(hour)}, ${studentName}!`;
             }
             
-            // Update profile page name field
             const profileName = document.getElementById('profile-name');
             if (profileName && !profileName.value && studentName !== 'Student') {
                 profileName.value = studentName;
             }
             
-            // Update student ID in profile page
             const studentIdField = document.getElementById('profile-student-id');
             if (studentIdField && profile.student_id && !studentIdField.value) {
                 studentIdField.value = profile.student_id;
@@ -1100,7 +1078,6 @@ class UIModule {
         }
     }
     
-    // UPDATED: Profile photo loading with database priority
     async updateProfilePhoto(userProfile = null) {
         console.log('📸 Updating profile photo...');
         
@@ -1112,18 +1089,15 @@ class UIModule {
         try {
             let photoUrl = null;
             
-            // 1. Try to get from database first
             if (window.currentUserId) {
                 photoUrl = await this.getProfilePhotoFromDatabase(window.currentUserId);
             }
             
-            // 2. Try from userProfile object
             if (!photoUrl && userProfile?.passport_url) {
                 photoUrl = userProfile.passport_url;
                 console.log('📸 Using passport_url from userProfile object');
             }
             
-            // 3. Try localStorage cache
             if (!photoUrl) {
                 photoUrl = localStorage.getItem('userProfilePhoto');
                 if (photoUrl) {
@@ -1131,14 +1105,12 @@ class UIModule {
                 }
             }
             
-            // 4. Generate from name
             if (!photoUrl && userProfile?.full_name) {
                 const nameForAvatar = userProfile.full_name.replace(/\s+/g, '+');
                 photoUrl = `https://ui-avatars.com/api/?name=${nameForAvatar}&background=667eea&color=fff&size=100`;
                 console.log('📸 Generated avatar from name:', userProfile.full_name);
             }
             
-            // 5. Default avatar
             if (!photoUrl) {
                 photoUrl = 'https://ui-avatars.com/api/?name=Student&background=667eea&color=fff&size=100';
                 console.log('📸 Using default avatar');
@@ -1146,7 +1118,6 @@ class UIModule {
             
             console.log('📸 Final photo URL:', photoUrl);
             
-            // Update header photo
             this.headerProfilePhoto.src = photoUrl;
             this.headerProfilePhoto.onerror = () => {
                 console.error('❌ Failed to load profile photo, using fallback');
@@ -1154,7 +1125,6 @@ class UIModule {
                 this.headerProfilePhoto.src = fallbackUrl;
             };
             
-            // Update all other profile photos
             const allProfilePhotos = document.querySelectorAll('img[alt*="profile"], img[alt*="avatar"], .user-avatar img, .profile-photo');
             allProfilePhotos.forEach(img => {
                 if (img !== this.headerProfilePhoto && img.tagName === 'IMG') {
@@ -1162,7 +1132,6 @@ class UIModule {
                 }
             });
             
-            // Cache the photo URL
             localStorage.setItem('userProfilePhoto', photoUrl);
             
             console.log('✅ Profile photo updated');
@@ -1170,7 +1139,6 @@ class UIModule {
         } catch (error) {
             console.error('❌ Error updating profile photo:', error);
             
-            // Emergency fallback
             const fallbackUrl = 'https://ui-avatars.com/api/?name=Student&background=667eea&color=fff&size=100';
             this.headerProfilePhoto.src = fallbackUrl;
         }
@@ -1229,18 +1197,15 @@ class UIModule {
     
     async logout() {
         try {
-            // Confirmation
             const confirmLogout = confirm('Are you sure you want to logout?\n\nYou will need to sign in again to access the portal.');
             if (!confirmLogout) return;
             
             this.showToast('Logging out...', 'info', 1500);
             
-            // Clear data
             localStorage.removeItem(this.storageKey);
             localStorage.removeItem('userProfilePhoto');
             localStorage.removeItem('currentUserProfile');
             
-            // Clear all localStorage except maybe some settings
             const keysToKeep = [];
             Object.keys(localStorage).forEach(key => {
                 if (!keysToKeep.includes(key)) {
@@ -1250,27 +1215,22 @@ class UIModule {
             
             sessionStorage.clear();
             
-            // Clear cookies
             document.cookie.split(";").forEach(c => {
                 document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
             });
             
-            // Sign out from Supabase
             if (window.supabase) {
                 await window.supabase.auth.signOut();
             } else if (window.db?.supabase) {
                 await window.db.supabase.auth.signOut();
             }
             
-            // Wait for toast to show
             await new Promise(resolve => setTimeout(resolve, 1000));
             
-            // Redirect to login
             window.location.href = 'login.html';
             
         } catch (error) {
             console.error('Logout error:', error);
-            // Fallback redirect
             setTimeout(() => {
                 window.location.href = 'login.html';
             }, 500);
@@ -1292,7 +1252,6 @@ class UIModule {
                 this.showToast('Cache API not supported', 'warning');
             }
             
-            // Clear localStorage but keep essential data
             const keysToKeep = ['nchsm_last_tab', 'userProfilePhoto', 'currentUserProfile'];
             const keysToRemove = [];
             
@@ -1397,7 +1356,6 @@ class UIModule {
         updateOnlineStatus();
     }
     
-    // Force show tab (emergency fallback)
     forceShowTab(tabId) {
         console.log(`🚨 Force showing tab: ${tabId}`);
         
@@ -1438,16 +1396,13 @@ window.logout = () => window.ui?.logout();
 window.forceShowTab = (tabId) => window.ui?.forceShowTab(tabId);
 window.refreshDashboard = () => window.ui?.refreshDashboard();
 
-// Event listeners for user updates
 document.addEventListener('DOMContentLoaded', function() {
     console.log('📱 DOM fully loaded');
     
-    // Ensure UI is ready
     if (!window.ui) {
         window.ui = new UIModule();
     }
     
-    // Load user data after a short delay
     setTimeout(() => {
         if (window.ui && window.currentUserId) {
             window.ui.updateAllUserInfo();
@@ -1455,7 +1410,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 1000);
 });
 
-// Listen for app ready event
 document.addEventListener('appReady', function(e) {
     console.log('🎉 App ready event received', e.detail);
     
@@ -1464,7 +1418,6 @@ document.addEventListener('appReady', function(e) {
     }
 });
 
-// Listen for profile photo updates
 document.addEventListener('profilePhotoUpdated', function(e) {
     console.log('📸 Profile photo updated event received', e.detail);
     if (window.ui && e.detail?.photoUrl) {
@@ -1475,7 +1428,6 @@ document.addEventListener('profilePhotoUpdated', function(e) {
     }
 });
 
-// Listen for user profile updates
 document.addEventListener('userProfileUpdated', function(e) {
     console.log('👤 User profile updated event received', e.detail);
     if (window.ui && e.detail?.userProfile) {
@@ -1483,7 +1435,6 @@ document.addEventListener('userProfileUpdated', function(e) {
     }
 });
 
-// Debug helper
 window.debugUI = function() {
     console.log('🔍 UI Debug Info:');
     console.log('- Current tab:', window.ui?.currentTab);
@@ -1497,11 +1448,9 @@ window.debugUI = function() {
 
 console.log('✅ UI Module loaded successfully with App-Style Loading');
 
-// Force dashboard to load on first app start
 window.addEventListener('load', function() {
     console.log('📱 Page fully loaded - checking dashboard...');
     
-    // Wait for everything to settle
     setTimeout(() => {
         const dashboardTab = document.getElementById('dashboard');
         const isDashboardActive = dashboardTab && dashboardTab.classList.contains('active');
@@ -1513,7 +1462,6 @@ window.addEventListener('load', function() {
     }, 1000);
 });
 
-// Also force dashboard when appReady event fires
 document.addEventListener('appReady', function() {
     console.log('🎉 App ready - ensuring dashboard is shown...');
     
@@ -1523,44 +1471,3 @@ document.addEventListener('appReady', function() {
         }
     }, 500);
 });
-
-// Add this CSS to your styles.css for app-style loading:
-/*
-.app-splash {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-}
-
-.loading-exit {
-    opacity: 0;
-    transform: scale(1.1);
-    transition: opacity 0.8s ease, transform 0.8s ease;
-}
-
-.status-step {
-    display: flex;
-    align-items: center;
-    margin: 8px 0;
-    opacity: 0.7;
-    transition: opacity 0.3s ease;
-}
-
-.status-step.completed {
-    opacity: 1;
-    color: #10B981;
-}
-
-.status-step i {
-    margin-right: 10px;
-    font-size: 14px;
-}
-
-.app-version {
-    position: absolute;
-    bottom: 20px;
-    left: 0;
-    right: 0;
-    text-align: center;
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 12px;
-}
-*/
