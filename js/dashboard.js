@@ -725,263 +725,217 @@ class DashboardModule {
         return tvetPrograms.some(tvet => program.toUpperCase().includes(tvet));
     }
     
-   // 🔥 FIXED: Load exam metrics - NOW checks for ACTIVE exams (current + future)
-async loadExamMetrics() {
-    console.log('📝 Loading exam metrics...');
-    
-    // METHOD 1: Try to get from exams module (preferred)
-    if (typeof window.getExamsDashboardMetrics === 'function') {
+    // 🔥 FIXED: Load exam metrics - NOW checks for ACTIVE exams (current + future)
+    async loadExamMetrics() {
+        console.log('📝 Loading exam metrics...');
+        
+        // METHOD 1: Try to get from exams module (preferred)
+        if (typeof window.getExamsDashboardMetrics === 'function') {
+            try {
+                const metrics = window.getExamsDashboardMetrics();
+                console.log('📊 Got metrics from exams module:', metrics);
+                this.updateExamsUI(metrics);
+                return;
+            } catch (error) {
+                console.warn('Could not get metrics from exams module:', error);
+            }
+        }
+        
+        // METHOD 2: Try to get from localStorage
         try {
-            const metrics = window.getExamsDashboardMetrics();
-            console.log('📊 Got metrics from exams module:', metrics);
-            this.updateExamsUI(metrics);
-            return;
+            const cachedMetrics = localStorage.getItem('exams_dashboard_metrics');
+            if (cachedMetrics) {
+                const metrics = JSON.parse(cachedMetrics);
+                console.log('📊 Using cached exams metrics:', metrics);
+                this.updateExamsUI(metrics);
+                return;
+            }
         } catch (error) {
-            console.warn('Could not get metrics from exams module:', error);
+            console.warn('Could not parse cached metrics:', error);
         }
-    }
-    
-    // METHOD 2: Try to get from localStorage
-    try {
-        const cachedMetrics = localStorage.getItem('exams_dashboard_metrics');
-        if (cachedMetrics) {
-            const metrics = JSON.parse(cachedMetrics);
-            console.log('📊 Using cached exams metrics:', metrics);
-            this.updateExamsUI(metrics);
-            return;
-        }
-    } catch (error) {
-        console.warn('Could not parse cached metrics:', error);
-    }
-    
-    // 🔥 METHOD 3: FIXED DATABASE QUERY - Get ACTIVE exams (ongoing + upcoming)
-    if (!this.userProfile || !this.sb) {
-        console.warn('⚠️ Cannot load exams: No user profile or Supabase');
-        this.showErrorState('exams');
-        return;
-    }
-    
-    try {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0); // Start of today
         
-        const { data: exams, error } = await this.sb
-            .from('exams_with_courses')
-            .select(`
-                exam_name, 
-                exam_date, 
-                due_date,
-                status,
-                exam_type,
-                course_name
-            `)
-            .eq('intake_year', this.userProfile.intake_year)
-            .or(`program_type.eq.${this.userProfile.program},program_type.is.null,program_type.eq.General`)
-            .or(`block_term.eq.${this.userProfile.block},block_term.is.null,block_term.eq.General`)
-            // 🔥 IMPORTANT: Get exams that are ongoing OR upcoming
-            .or(`
-                and(
-                    exam_date.gte.${today.toISOString()},
-                    status.is.null
-                ),
-                and(
-                    exam_date.lte.${today.toISOString()},
-                    due_date.gte.${today.toISOString()}
-                ),
-                status.eq.active,
-                status.eq.pending,
-                status.is.null
-            `)
-            .order('exam_date', { ascending: true })
-            .limit(5); // Get up to 5 active exams
-        
-        if (error) {
-            console.error('❌ Exams query error:', error);
+        // 🔥 METHOD 3: FIXED DATABASE QUERY - Get ACTIVE exams (ongoing + upcoming)
+        if (!this.userProfile || !this.sb) {
+            console.warn('⚠️ Cannot load exams: No user profile or Supabase');
             this.showErrorState('exams');
             return;
         }
         
-        console.log('📊 Active exams found:', exams);
-        
-        let upcomingText = 'None';
-        let upcomingCount = 0;
-        
-        if (exams && exams.length > 0) {
-            upcomingCount = exams.length;
+        try {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0); // Start of today
             
-            // Find the NEXT exam (nearest date)
-            const upcomingExams = exams.filter(exam => {
-                const examDate = new Date(exam.exam_date || exam.due_date);
-                return examDate >= today;
-            });
+            const { data: exams, error } = await this.sb
+                .from('exams_with_courses')
+                .select(`
+                    exam_name, 
+                    exam_date, 
+                    due_date,
+                    status,
+                    exam_type,
+                    course_name
+                `)
+                .eq('intake_year', this.userProfile.intake_year)
+                .or(`program_type.eq.${this.userProfile.program},program_type.is.null,program_type.eq.General`)
+                .or(`block_term.eq.${this.userProfile.block},block_term.is.null,block_term.eq.General`)
+                // 🔥 IMPORTANT: Get exams that are ongoing OR upcoming
+                .or(`and(exam_date.gte.${today.toISOString()},status.is.null),and(exam_date.lte.${today.toISOString()},due_date.gte.${today.toISOString()}),status.eq.active,status.eq.pending,status.is.null`)
+                .order('exam_date', { ascending: true })
+                .limit(5); // Get up to 5 active exams
             
-            if (upcomingExams.length > 0) {
-                // Sort by date
-                upcomingExams.sort((a, b) => {
-                    const dateA = new Date(a.exam_date || a.due_date);
-                    const dateB = new Date(b.exam_date || b.due_date);
-                    return dateA - dateB;
+            if (error) {
+                console.error('❌ Exams query error:', error);
+                this.showErrorState('exams');
+                return;
+            }
+            
+            console.log('📊 Active exams found:', exams);
+            
+            let upcomingText = 'None';
+            let upcomingCount = 0;
+            
+            if (exams && exams.length > 0) {
+                upcomingCount = exams.length;
+                
+                // Find the NEXT exam (nearest date)
+                const upcomingExams = exams.filter(exam => {
+                    const examDate = new Date(exam.exam_date || exam.due_date);
+                    return examDate >= today;
                 });
                 
-                const nextExam = upcomingExams[0];
-                const examDate = new Date(nextExam.exam_date || nextExam.due_date);
-                const diffDays = Math.ceil((examDate - today) / (1000 * 60 * 60 * 24));
-                
-                if (diffDays <= 0) {
-                    upcomingText = 'Today';
-                } else if (diffDays === 1) {
-                    upcomingText = 'Tomorrow';
-                } else if (diffDays <= 7) {
-                    upcomingText = `${diffDays}d`;
-                } else if (diffDays <= 30) {
-                    const weeks = Math.floor(diffDays / 7);
-                    upcomingText = `${weeks}w`;
-                } else {
-                    upcomingText = examDate.toLocaleDateString('en-US', { 
-                        month: 'short', 
-                        day: 'numeric' 
+                if (upcomingExams.length > 0) {
+                    // Sort by date
+                    upcomingExams.sort((a, b) => {
+                        const dateA = new Date(a.exam_date || a.due_date);
+                        const dateB = new Date(b.exam_date || b.due_date);
+                        return dateA - dateB;
                     });
-                }
-                
-                // Add exam type/count info if multiple
-                if (upcomingCount > 1) {
-                    upcomingText += ` (+${upcomingCount - 1})`;
-                }
-            } else {
-                // Exams are ongoing (current date is between exam_date and due_date)
-                const ongoingExams = exams.filter(exam => {
-                    const startDate = new Date(exam.exam_date || 0);
-                    const endDate = new Date(exam.due_date || '9999-12-31');
-                    return today >= startDate && today <= endDate;
-                });
-                
-                if (ongoingExams.length > 0) {
-                    upcomingText = 'Ongoing';
-                    if (ongoingExams.length > 1) {
-                        upcomingText += ` (${ongoingExams.length})`;
+                    
+                    const nextExam = upcomingExams[0];
+                    const examDate = new Date(nextExam.exam_date || nextExam.due_date);
+                    const diffDays = Math.ceil((examDate - today) / (1000 * 60 * 60 * 24));
+                    
+                    if (diffDays <= 0) {
+                        upcomingText = 'Today';
+                    } else if (diffDays === 1) {
+                        upcomingText = 'Tomorrow';
+                    } else if (diffDays <= 7) {
+                        upcomingText = `${diffDays}d`;
+                    } else if (diffDays <= 30) {
+                        const weeks = Math.floor(diffDays / 7);
+                        upcomingText = `${weeks}w`;
+                    } else {
+                        upcomingText = examDate.toLocaleDateString('en-US', { 
+                            month: 'short', 
+                            day: 'numeric' 
+                        });
+                    }
+                    
+                    // Add exam type/count info if multiple
+                    if (upcomingCount > 1) {
+                        upcomingText += ` (+${upcomingCount - 1})`;
+                    }
+                } else {
+                    // Exams are ongoing (current date is between exam_date and due_date)
+                    const ongoingExams = exams.filter(exam => {
+                        const startDate = new Date(exam.exam_date || 0);
+                        const endDate = new Date(exam.due_date || '9999-12-31');
+                        return today >= startDate && today <= endDate;
+                    });
+                    
+                    if (ongoingExams.length > 0) {
+                        upcomingText = 'Ongoing';
+                        if (ongoingExams.length > 1) {
+                            upcomingText += ` (${ongoingExams.length})`;
+                        }
                     }
                 }
             }
-        }
-        
-        // Also get recent graded exams count
-        const { data: grades } = await this.sb
-            .from('exam_grades')
-            .select('id')
-            .eq('student_id', window.currentUserId)
-            .not('graded_at', 'is', null);
-        
-        const gradedExams = grades?.length || 0;
-        
-        const metrics = {
-            upcomingExam: upcomingText,
-            upcomingCount: upcomingCount,
-            gradedExams: gradedExams,
-            averageScore: 0,
-            bestScore: 0,
-            passRate: 0,
-            lastUpdated: new Date().toISOString()
-        };
-        
-        this.updateExamsUI(metrics);
-        
-        console.log(`✅ Exams: ${upcomingText} (${upcomingCount} active)`);
-        
-    } catch (error) {
-        console.error('❌ Error loading exams:', error);
-        this.showErrorState('exams');
-    }
-}
-
-// 🔥 Also update the UI update function to show counts
-updateExamsUI(metrics) {
-    if (!metrics) return;
-    
-    const upcomingExam = metrics.upcomingExam || 'None';
-    const upcomingCount = metrics.upcomingCount || 0;
-    const gradedExams = metrics.gradedExams || 0;
-    
-    if (this.elements.upcomingExam) {
-        this.elements.upcomingExam.textContent = upcomingExam;
-        
-        // Add tooltip with more info
-        let tooltipText = '';
-        if (upcomingExam === 'None') {
-            tooltipText = 'No active exams';
-        } else if (upcomingExam.includes('Ongoing')) {
-            tooltipText = `${upcomingCount} exam${upcomingCount > 1 ? 's' : ''} currently active`;
-        } else {
-            tooltipText = `${upcomingCount} active exam${upcomingCount > 1 ? 's' : ''} (${gradedExams} graded)`;
-        }
-        this.elements.upcomingExam.title = tooltipText;
-        
-        // Apply color classes
-        if (upcomingExam === 'Today' || upcomingExam === 'Ongoing') {
-            this.elements.upcomingExam.classList.add('dashboard-stat-low');
-            this.elements.upcomingExam.classList.remove('dashboard-stat-medium', 'dashboard-stat-high');
             
-            // Add urgent indicator
-            if (!this.elements.upcomingExam.querySelector('.urgent-dot')) {
-                const dot = document.createElement('span');
-                dot.className = 'urgent-dot';
-                dot.style.cssText = `
-                    display: inline-block;
-                    width: 8px;
-                    height: 8px;
-                    background: #ef4444;
-                    border-radius: 50%;
-                    margin-left: 5px;
-                    animation: pulse 1.5s infinite;
-                `;
-                this.elements.upcomingExam.appendChild(dot);
-            }
-        } else if (upcomingExam.includes('d') || upcomingExam.includes('w')) {
-            this.elements.upcomingExam.classList.add('dashboard-stat-medium');
-            this.elements.upcomingExam.classList.remove('dashboard-stat-low', 'dashboard-stat-high');
-        } else {
-            this.elements.upcomingExam.classList.remove('dashboard-stat-low', 'dashboard-stat-medium', 'dashboard-stat-high');
+            // Also get recent graded exams count
+            const { data: grades } = await this.sb
+                .from('exam_grades')
+                .select('id')
+                .eq('student_id', window.currentUserId)
+                .not('graded_at', 'is', null);
+            
+            const gradedExams = grades?.length || 0;
+            
+            const metrics = {
+                upcomingExam: upcomingText,
+                upcomingCount: upcomingCount,
+                gradedExams: gradedExams,
+                averageScore: 0,
+                bestScore: 0,
+                passRate: 0,
+                lastUpdated: new Date().toISOString()
+            };
+            
+            this.updateExamsUI(metrics);
+            
+            console.log(`✅ Exams: ${upcomingText} (${upcomingCount} active)`);
+            
+        } catch (error) {
+            console.error('❌ Error loading exams:', error);
+            this.showErrorState('exams');
         }
     }
     
-    // Update card appearance
-    this.updateCardAppearance('exams', upcomingCount > 0 ? 1 : 0);
-    
-    console.log(`✅ Exams UI Updated: ${upcomingExam} (${upcomingCount} active)`);
-}
-
-// 🔥 Also add this CSS animation for the urgent dot
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes pulse {
-        0%, 100% { opacity: 1; transform: scale(1); }
-        50% { opacity: 0.5; transform: scale(1.2); }
+    // 🔥 Also update the UI update function to show counts
+    updateExamsUI(metrics) {
+        if (!metrics) return;
+        
+        const upcomingExam = metrics.upcomingExam || 'None';
+        const upcomingCount = metrics.upcomingCount || 0;
+        const gradedExams = metrics.gradedExams || 0;
+        
+        if (this.elements.upcomingExam) {
+            this.elements.upcomingExam.textContent = upcomingExam;
+            
+            // Add tooltip with more info
+            let tooltipText = '';
+            if (upcomingExam === 'None') {
+                tooltipText = 'No active exams';
+            } else if (upcomingExam.includes('Ongoing')) {
+                tooltipText = `${upcomingCount} exam${upcomingCount > 1 ? 's' : ''} currently active`;
+            } else {
+                tooltipText = `${upcomingCount} active exam${upcomingCount > 1 ? 's' : ''} (${gradedExams} graded)`;
+            }
+            this.elements.upcomingExam.title = tooltipText;
+            
+            // Apply color classes
+            if (upcomingExam === 'Today' || upcomingExam === 'Ongoing') {
+                this.elements.upcomingExam.classList.add('dashboard-stat-low');
+                this.elements.upcomingExam.classList.remove('dashboard-stat-medium', 'dashboard-stat-high');
+                
+                // Add urgent indicator
+                if (!this.elements.upcomingExam.querySelector('.urgent-dot')) {
+                    const dot = document.createElement('span');
+                    dot.className = 'urgent-dot';
+                    
+                    // 🔥 FIXED: Set styles individually
+                    dot.style.display = 'inline-block';
+                    dot.style.width = '8px';
+                    dot.style.height = '8px';
+                    dot.style.background = '#ef4444';
+                    dot.style.borderRadius = '50%';
+                    dot.style.marginLeft = '5px';
+                    
+                    this.elements.upcomingExam.appendChild(dot);
+                }
+            } else if (upcomingExam.includes('d') || upcomingExam.includes('w')) {
+                this.elements.upcomingExam.classList.add('dashboard-stat-medium');
+                this.elements.upcomingExam.classList.remove('dashboard-stat-low', 'dashboard-stat-high');
+            } else {
+                this.elements.upcomingExam.classList.remove('dashboard-stat-low', 'dashboard-stat-medium', 'dashboard-stat-high');
+            }
+        }
+        
+        // Update card appearance
+        this.updateCardAppearance('exams', upcomingCount > 0 ? 1 : 0);
+        
+        console.log(`✅ Exams UI Updated: ${upcomingExam} (${upcomingCount} active)`);
     }
-    
-    .urgent-dot {
-        display: inline-block;
-        width: 8px;
-        height: 8px;
-        background: #ef4444;
-        border-radius: 50%;
-        margin-left: 5px;
-        animation: pulse 1.5s infinite;
-    }
-    
-    .exam-count-badge {
-        font-size: 0.75rem;
-        padding: 2px 6px;
-        border-radius: 10px;
-        margin-left: 5px;
-        background: #e5e7eb;
-        color: #374151;
-    }
-    
-    .exam-count-badge.today {
-        background: #fee2e2;
-        color: #991b1b;
-    }
-`;
-document.head.appendChild(style);
     
     // 🔥 UPDATED: Load resource metrics - ALL resources, not just new ones
     async loadResourceMetrics(allResources = true) {
@@ -993,38 +947,38 @@ document.head.appendChild(style);
             return;
         }
         
-      try {
-    let query = this.sb
-        .from('resources')
-        .select('id, created_at, resource_type')
-        .eq('target_program', this.userProfile.program)
-        .eq('block', this.userProfile.block)
-        .eq('intake_year', this.userProfile.intake_year);
-
-    // If we want ALL resources, don't filter by date
-    if (!allResources) {
-        const oneWeekAgo = new Date();
-        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-        query = query.gte('created_at', oneWeekAgo.toISOString());
-    }
-
-    const { data: resources, error } = await query;
-
-    if (error) {
-        console.error('❌ Resources query error:', error);
-        this.showErrorState('resources');
-        return;
-    }
-
-    const resourceCount = resources?.length || 0;
-
-    if (this.elements.newResources) {
-        this.elements.newResources.textContent = resourceCount;
-        this.elements.newResources.title = allResources
-            ? `Total available resources: ${resourceCount}`
-            : `New resources (last 7 days): ${resourceCount}`;
-        this.updateCardAppearance('resources', resourceCount);
-    }
+        try {
+            let query = this.sb
+                .from('resources')
+                .select('id, created_at, resource_type')
+                .eq('target_program', this.userProfile.program)
+                .eq('block', this.userProfile.block)
+                .eq('intake_year', this.userProfile.intake_year);
+            
+            // If we want ALL resources, don't filter by date
+            if (!allResources) {
+                const oneWeekAgo = new Date();
+                oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+                query = query.gte('created_at', oneWeekAgo.toISOString());
+            }
+            
+            const { data: resources, error } = await query;
+            
+            if (error) {
+                console.error('❌ Resources query error:', error);
+                this.showErrorState('resources');
+                return;
+            }
+            
+            const resourceCount = resources?.length || 0;
+            
+            if (this.elements.newResources) {
+                this.elements.newResources.textContent = resourceCount;
+                this.elements.newResources.title = allResources
+                    ? `Total available resources: ${resourceCount}`
+                    : `New resources (last 7 days): ${resourceCount}`;
+                this.updateCardAppearance('resources', resourceCount);
+            }
             
             // Also update card label if we're showing all resources
             if (allResources && this.elements.resourcesCard) {
@@ -1544,3 +1498,42 @@ setTimeout(() => {
         });
     }
 }, 3000);
+
+// 🔥 Add CSS styles for urgent dot animation
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes pulse {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.5; transform: scale(1.2); }
+    }
+    
+    .urgent-dot {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        background: #ef4444;
+        border-radius: 50%;
+        margin-left: 5px;
+        animation: pulse 1.5s infinite;
+    }
+    
+    .exam-count-badge {
+        font-size: 0.75rem;
+        padding: 2px 6px;
+        border-radius: 10px;
+        margin-left: 5px;
+        background: #e5e7eb;
+        color: #374151;
+    }
+    
+    .exam-count-badge.today {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+`;
+
+// Only add the style once
+if (!document.getElementById('dashboard-styles')) {
+    style.id = 'dashboard-styles';
+    document.head.appendChild(style);
+}
