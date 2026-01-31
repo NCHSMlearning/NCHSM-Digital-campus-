@@ -851,52 +851,46 @@ body {
     font-size: 0.8rem;
     opacity: 0.6;
 }
-/* ===== DROPDOWN FINAL FIX ===== */
-
-/* Remove ALL hover effects that interfere */
-.user-profile-dropdown:hover .dropdown-menu,
-.profile-trigger:hover ~ .dropdown-menu,
-.dropdown-menu:hover {
-    display: none !important; /* ❌ REMOVE THIS LINE OR COMMENT IT OUT */
-}
-
-/* Instead, use this: */
-.dropdown-menu {
+/* SIMPLE DROPDOWN - No flashing, no conflicts */
+.simple-dropdown-menu {
     display: none;
     position: absolute;
-    top: 100%;
+    top: 50px;
     right: 0;
     background: white;
     border: 1px solid #e5e7eb;
     border-radius: 8px;
     box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-    width: 220px;
-    padding: 10px 0;
-    margin-top: 5px;
+    min-width: 200px;
     z-index: 1001;
-    opacity: 1;
-    visibility: visible;
+    padding: 8px 0;
 }
 
-/* Only show when explicitly triggered */
-.dropdown-menu.show,
-.dropdown-menu[style*="display: block"] {
-    display: block !important;
-}
-
-/* Make text always visible */
-.dropdown-menu a {
+.simple-dropdown-menu.show {
     display: block;
-    padding: 12px 20px;
-    color: #000000 !important; /* Force black text */
+}
+
+.simple-menu-item {
+    display: block;
+    padding: 10px 16px;
+    color: #374151;
     text-decoration: none;
     border-bottom: 1px solid #f3f4f6;
+    font-size: 14px;
+    cursor: pointer;
 }
 
-.dropdown-menu a:hover {
+.simple-menu-item:hover {
     background: #f9fafb;
 }
 
-#header-logout {
-    color: #ef4444 !important;
+.simple-menu-item:last-child {
+    border-bottom: none;
+    color: #ef4444;
+}
+
+.simple-menu-divider {
+    height: 1px;
+    background: #e5e7eb;
+    margin: 4px 0;
 }
