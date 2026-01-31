@@ -680,24 +680,22 @@ class UIModule {
         console.log('✅ All event listeners setup complete');
     }
     
-    // PROVEN WORKING VERSION - Based on console fix that worked
-setupProfileDropdownFixed() {
-    console.log('🎯 PROVEN: Setting up profile dropdown (CONSOLE-FIXED VERSION)...');
+  setupProfileDropdownFixed() {
+    console.log('🎯 PROVEN WORKING: Setting up dropdown...');
     
-    // Use setTimeout to ensure DOM is fully loaded
     setTimeout(() => {
-        // Get fresh references
+        // Get elements
         this.profileTrigger = document.querySelector('.profile-trigger');
         this.dropdownMenu = document.querySelector('.dropdown-menu');
         
         if (!this.profileTrigger || !this.dropdownMenu) {
-            console.error('❌ Dropdown elements not found!');
+            console.error('❌ Dropdown elements not found');
             return;
         }
         
-        console.log('✅ Found dropdown elements for setup');
+        console.log('✅ Found dropdown elements');
         
-        // CRITICAL: Clone elements to remove ALL existing event listeners
+        // Clone to remove existing listeners
         const cleanTrigger = this.profileTrigger.cloneNode(true);
         const cleanMenu = this.dropdownMenu.cloneNode(true);
         
@@ -707,48 +705,24 @@ setupProfileDropdownFixed() {
         this.profileTrigger = cleanTrigger;
         this.dropdownMenu = cleanMenu;
         
-        // CRITICAL: Force CSS to ensure visibility
-        this.drodownMenu.style.cssText = `
-            display: none;
-            opacity: 1 !important;
-            visibility: visible !important;
-            position: absolute !important;
-            top: 100% !important;
-            right: 0 !important;
-            z-index: 9999 !important;
-            background: #ffffff !important;
-            border: 1px solid #e5e7eb !important;
-            border-radius: 8px !important;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1) !important;
-            width: 220px !important;
-            padding: 10px 0 !important;
-            margin-top: 5px !important;
-        `;
+        // Set initial state
+        this.dropdownMenu.style.display = 'none';
+        this.dropdownMenu.style.opacity = '1';
         
-        // Remove any existing 'show' class
-        this.dropdownMenu.classList.remove('show');
-        
-        // ========== SINGLE EVENT HANDLER (PROVEN) ==========
+        // PROVEN WORKING CLICK HANDLER
         this.profileTrigger.addEventListener('click', (e) => {
-            console.log('👤 Profile clicked (PROVEN handler)');
+            console.log('👤 Profile clicked (proven working)');
             
-            // Stop everything - MORE AGGRESSIVE
             e.preventDefault();
             e.stopPropagation();
-            e.stopImmediatePropagation();
             
-            // Get current state
             const isVisible = this.dropdownMenu.style.display === 'block';
             
             if (isVisible) {
-                // Hide dropdown
                 this.dropdownMenu.style.display = 'none';
-                this.dropdownMenu.classList.remove('show');
                 console.log('📋 Dropdown hidden');
             } else {
-                // Show dropdown
                 this.dropdownMenu.style.display = 'block';
-                this.dropdownMenu.classList.add('show');
                 console.log('📋 Dropdown shown');
             }
             
@@ -756,59 +730,25 @@ setupProfileDropdownFixed() {
             const arrow = this.profileTrigger.querySelector('.dropdown-icon');
             if (arrow) {
                 arrow.style.transform = isVisible ? 'rotate(0deg)' : 'rotate(180deg)';
-                arrow.style.transition = 'transform 0.3s ease';
             }
-        }, true); // Capture phase - handles FIRST
+        }, true); // Capture phase is IMPORTANT
         
-        // ========== CLOSE WHEN CLICKING OUTSIDE ==========
-        const closeHandler = (e) => {
-            if (this.dropdownMenu && 
-                !this.profileTrigger.contains(e.target) && 
+        // PROVEN WORKING CLOSE HANDLER
+        document.addEventListener('click', (e) => {
+            if (!this.profileTrigger.contains(e.target) && 
                 !this.dropdownMenu.contains(e.target)) {
-                
                 this.dropdownMenu.style.display = 'none';
-                this.dropdownMenu.classList.remove('show');
                 
                 const arrow = this.profileTrigger.querySelector('.dropdown-icon');
                 if (arrow) {
                     arrow.style.transform = 'rotate(0deg)';
                 }
             }
-        };
+        }, true); // Capture phase is IMPORTANT
         
-        document.addEventListener('click', closeHandler);
+        console.log('✅ Dropdown setup complete - PROVEN TO WORK');
         
-        // ========== HANDLE DROPDOWN ITEMS ==========
-        const menuItems = this.dropdownMenu.querySelectorAll('a');
-        menuItems.forEach(item => {
-            item.addEventListener('click', (e) => {
-                e.stopPropagation();
-                e.stopImmediatePropagation();
-                
-                console.log('📋 Menu item clicked:', item.textContent.trim());
-                
-                // Hide dropdown
-                this.dropdownMenu.style.display = 'none';
-                this.dropdownMenu.classList.remove('show');
-                
-                const arrow = this.profileTrigger.querySelector('.dropdown-icon');
-                if (arrow) arrow.style.transform = 'rotate(0deg)';
-                
-                // Handle actions
-                if (item.hasAttribute('data-tab')) {
-                    const tabId = item.getAttribute('data-tab');
-                    console.log(`📋 Switching to tab: ${tabId}`);
-                    this.showTab(tabId);
-                } else if (item.id === 'header-logout') {
-                    console.log('🔐 Logout initiated');
-                    setTimeout(() => this.logout(), 100);
-                }
-            }, true); // Capture phase
-        });
-        
-        console.log('✅ PROVEN dropdown setup complete');
-        
-    }, 500); // Wait 500ms for DOM to be ready
+    }, 300);
 }
     setupTabChangeListener() {
         window.addEventListener('tabChanged', (e) => {
