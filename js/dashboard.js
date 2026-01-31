@@ -848,40 +848,40 @@ class DashboardModule {
             return;
         }
         
-        try {
-            let query = this.sb
-                .from('resources')
-                .select('id, created_at, resource_type')
-                .eq('target_program', this.userProfile.program)
-                .eq('block', this.userProfile.block)
-                .eq('intake_year', this.userProfile.intake_year)
-                .eq('is_published', true);
-            
-            // If we want ALL resources, don't filter by date
-            if (!allResources) {
-                const oneWeekAgo = new Date();
-                oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-                query = query.gte('created_at', oneWeekAgo.toISOString());
-            }
-            
-            const { data: resources, error } = await query;
-            
-            if (error) {
-                console.error('❌ Resources query error:', error);
-                this.showErrorState('resources');
-                return;
-            }
-            
-            const resourceCount = resources?.length || 0;
-            
-            if (this.elements.newResources) {
-                this.elements.newResources.textContent = resourceCount;
-                // Add tooltip to show what this number represents
-                this.elements.newResources.title = allResources 
-                    ? `Total available resources: ${resourceCount}`
-                    : `New resources (last 7 days): ${resourceCount}`;
-                this.updateCardAppearance('resources', resourceCount);
-            }
+      try {
+    let query = this.sb
+        .from('resources')
+        .select('id, created_at, resource_type')
+        .eq('target_program', this.userProfile.program)
+        .eq('block', this.userProfile.block)
+        .eq('intake_year', this.userProfile.intake_year);
+
+    // If we want ALL resources, don't filter by date
+    if (!allResources) {
+        const oneWeekAgo = new Date();
+        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+        query = query.gte('created_at', oneWeekAgo.toISOString());
+    }
+
+    const { data: resources, error } = await query;
+
+    if (error) {
+        console.error('❌ Resources query error:', error);
+        this.showErrorState('resources');
+        return;
+    }
+
+    const resourceCount = resources?.length || 0;
+
+    if (this.elements.newResources) {
+        this.elements.newResources.textContent = resourceCount;
+        this.elements.newResources.title = allResources
+            ? `Total available resources: ${resourceCount}`
+            : `New resources (last 7 days): ${resourceCount}`;
+        this.updateCardAppearance('resources', resourceCount);
+    }
+}
+
             
             // Also update card label if we're showing all resources
             if (allResources && this.elements.resourcesCard) {
@@ -1019,7 +1019,7 @@ class DashboardModule {
                 .from('notifications')
                 .select('*')
                 .eq('subject', 'Official Announcement')
-                .eq('is_active', true)
+                .eq('message_type', true)
                 .order('created_at', { ascending: false })
                 .limit(1);
             
