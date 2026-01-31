@@ -863,71 +863,74 @@ window.NCHSMLogin = {
     },
     
     // ============================================
-    // EMAIL VERIFICATION
-    // ============================================
-    sendEmailVerification: async function() {
-        if (!this.state.currentUser?.email) {
-            throw new Error('No email address available');
-        }
-        
-        console.log('📧 Sending email verification to:', this.state.currentUser.email);
-        
-        try {
-            // Generate a 6-digit OTP
-            const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-            
-            // Store the code temporarily for verification
-            this.state.verificationCodes.email = {
-                code: otpCode,
-                expires: Date.now() + (5 * 60 * 1000), // 5 minutes
-                attempts: 0
-            };
-            
-            // For demo - show the code (in production, send via email)
-            console.log(`📧 DEMO: Email OTP for ${this.state.currentUser.email}: ${otpCode}`);
-            
-            // Show success
-            return true;
-            
-        } catch (error) {
-            console.error('❌ Email verification error:', error);
-            throw new Error('Failed to send verification email');
-        }
-    },
+// EMAIL VERIFICATION - LIVE VERSION
+// ============================================
+sendEmailVerification: async function() {
+    if (!this.state.currentUser?.email) {
+        throw new Error('No email address available');
+    }
     
-    // ============================================
-    // SMS VERIFICATION
-    // ============================================
-    sendSMSVerification: async function() {
-        try {
-            // Get user's phone number from profile
-            const phoneNumber = await this.getUserPhone();
-            if (!phoneNumber) {
-                throw new Error('No phone number found in profile');
-            }
-            
-            console.log('📱 Sending SMS verification to:', phoneNumber);
-            
-            // Generate a 6-digit OTP
-            const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-            
-            // Store the code temporarily for verification
-            this.state.verificationCodes.sms = {
-                code: otpCode,
-                expires: Date.now() + (5 * 60 * 1000), // 5 minutes
-                attempts: 0
-            };
-            
-            // For demo purposes
-            console.log(`📱 DEMO: SMS OTP for ${phoneNumber}: ${otpCode}`);
-            
-            return true;
-            
-        } catch (error) {
-            console.error('❌ SMS verification error:', error);
-            throw new Error('Failed to send SMS verification');
+    console.log('📧 Sending email verification to:', this.state.currentUser.email);
+    
+    try {
+        // Generate a 6-digit OTP
+        const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+        
+        // Store the code temporarily for verification
+        this.state.verificationCodes.email = {
+            code: otpCode,
+            expires: Date.now() + (5 * 60 * 1000), // 5 minutes
+            attempts: 0
+        };
+        
+        // ACTUAL EMAIL SENDING - Add your email service here
+        await this.sendEmailWithCode(this.state.currentUser.email, otpCode);
+        
+        console.log('✅ Email verification sent successfully');
+        return true;
+        
+    } catch (error) {
+        console.error('❌ Email verification error:', error);
+        throw new Error('Failed to send verification email');
+    }
+},
+
+// ============================================
+// SMS VERIFICATION - LIVE VERSION
+// ============================================
+sendSMSVerification: async function() {
+    try {
+        // Get user's phone number from profile
+        const phoneNumber = await this.getUserPhone();
+        if (!phoneNumber) {
+            throw new Error('No phone number found in profile');
         }
-    },
+        
+        console.log('📱 Sending SMS verification to:', phoneNumber);
+        
+        // Generate a 6-digit OTP
+        const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+        
+        // Store the code temporarily for verification
+        this.state.verificationCodes.sms = {
+            code: otpCode,
+            expires: Date.now() + (5 * 60 * 1000), // 5 minutes
+            attempts: 0
+        };
+        
+        // ACTUAL SMS SENDING - Add your SMS service here
+        await this.sendSMSWithCode(phoneNumber, otpCode);
+        
+        console.log('✅ SMS verification sent successfully');
+        return true;
+        
+    } catch (error) {
+        console.error('❌ SMS verification error:', error);
+        throw new Error('Failed to send SMS verification');
+    }
+},
+    
+
     
     // ============================================
     // USER INFO DISPLAY
