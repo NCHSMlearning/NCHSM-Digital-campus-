@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>NCHSM Digital Student Dashboard</title>
     
     <!-- External Libraries -->
@@ -20,19 +20,44 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="css/main.css">
     
+    <!-- ===== ESSENTIAL PWA METADATA ===== -->
+    
+    <!-- Primary PWA Tags -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="NCHSM Portal">
+    <meta name="apple-mobile-web-app-title" content="NCHSM Portal">
+    
+    <!-- Theme Color (Use ONE consistent color) -->
+    <meta name="theme-color" content="#4C1D95">
+    <meta name="msapplication-TileColor" content="#4C1D95">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
     <!-- PWA Manifest -->
     <link rel="manifest" href="./manifest.json">
-    <meta name="theme-color" content="#4C1D95">
     
-    <!-- iOS PWA Support -->
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="NCHSM Portal">
-    <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png">
+    <!-- ===== ICONS ===== -->
     
-    <!-- Windows PWA Support -->
-    <meta name="msapplication-TileColor" content="#4C1D95">
+    <!-- For Manifest -->
+    <link rel="icon" type="image/png" sizes="192x192" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png">
+    
+    <!-- Apple Touch Icons - CORRECT SIZE ORDER -->
+    <link rel="apple-touch-icon" sizes="180x180" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png">
+    <link rel="apple-touch-icon" sizes="120x120" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png">
+    
+    <!-- Windows Metro -->
     <meta name="msapplication-TileImage" content="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png">
+    
+    <!-- ===== APP SCREEN OPTIMIZATION ===== -->
+    <meta name="format-detection" content="telephone=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    
+    <!-- ===== SPLASH SCREENS (OPTIONAL - Remove if not needed) ===== -->
+    <!--
+    <link rel="apple-touch-startup-image" href="/splash/splash-640x1136.png" media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2)">
+    -->
 </head>
 <body>
     <!-- Loading Screen -->
