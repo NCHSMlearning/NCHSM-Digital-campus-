@@ -512,7 +512,7 @@ sendEmailWithCode: async function(email, otpCode, userName) {
     return new Promise((resolve) => {
         console.log(`📧 Sending OTP ${otpCode} to ${email}...`);
         
-        const scriptUrl = 'https://script.google.com/macros/s/AKfycbzmvrOI4Fb7xGolkP8hhPmzOhhPs0XwUTzQWHmMlkfzvgYUyS_2TnOAps2RThvFK9pZew/exec';
+        const scriptUrl = 'https://script.google.com/macros/s/AKfycbyKjUvpJMXlWiDG2toP3o-C3EUo4xWxYj-sU28aJPbKf9YvzZz3awDISnpQhw6YLwQr-g/exec';
         
         // ✅ USE YOUR BEAUTIFUL TEMPLATE
         const emailHtml = this.generateEmailTemplate(otpCode);
