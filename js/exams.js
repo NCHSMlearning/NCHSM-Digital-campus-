@@ -1,8 +1,8 @@
-// js/exams.js - COMPLETE UPDATED VERSION with KRCHN & TVET filtering + DASHBOARD INTEGRATION
+// js/exams.js - COMPLETE & SIMPLIFIED VERSION
 (function() {
     'use strict';
     
-    console.log('✅ exams.js - Updated Version with KRCHN & TVET Support + Dashboard Integration');
+    console.log('✅ exams.js - Complete with Auto-Grading Exam Links');
     
     class ExamsModule {
         constructor() {
@@ -19,22 +19,8 @@
             this.program = this.userProfile.program || 'KRCHN';
             this.intakeYear = this.userProfile.intake_year || 2025;
             this.block = this.userProfile.block || 'A';
-            this.term = this.userProfile.term || 'Term 1'; // For TVET programs
+            this.term = this.userProfile.term || 'Term 1';
             this.userId = window.db?.currentUserId;
-            
-            // Dashboard metrics storage
-            this.dashboardMetrics = {
-                upcomingExam: 'None',
-                gradedExams: 0,
-                averageScore: 0,
-                bestScore: 0,
-                passRate: 0,
-                lastUpdated: null
-            };
-            
-            // Check if TVET program
-            this.isTVET = this.isTVETProgram(this.program);
-            console.log(`🎓 Program: ${this.program}, TVET: ${this.isTVET}, Block: ${this.block}, Term: ${this.term}`);
             
             // Cache DOM elements
             this.cacheElements();
@@ -44,15 +30,8 @@
             this.updateFilterButtons();
             this.loadExams();
             
-            // 🔥 NEW: Initialize dashboard connection
-            this.setupDashboardConnection();
-        }
-        
-        isTVETProgram(program) {
-            // TVET programs include TVET, TVET Nursing, and other TVET variants
-            const tvetPrograms = ['TVET', 'TVET NURSING', 'TVET NURSING(A)', 'TVET NURSING(B)', 
-                                'CRAFT CERTIFICATE', 'ARTISAN', 'DIPLOMA IN TVET'];
-            return tvetPrograms.some(tvet => program?.toUpperCase().includes(tvet));
+            // Setup auto-refresh when returning from exam
+            this.setupAutoRefresh();
         }
         
         cacheElements() {
@@ -74,50 +53,33 @@
             this.completedHeaderCount = document.getElementById('completed-assessments-count');
             this.overallAverage = document.getElementById('overall-average');
             
-            // Performance summary elements
-            this.bestScore = document.getElementById('best-score');
-            this.lowestScore = document.getElementById('lowest-score');
-            this.passRate = document.getElementById('pass-rate');
-            this.distinctionCount = document.getElementById('distinction-count');
-            this.creditCount = document.getElementById('credit-count');
-            this.passCount = document.getElementById('pass-count');
-            this.failCount = document.getElementById('fail-count');
-            
-            // Distribution bars
-            this.distinctionBar = document.getElementById('distinction-bar');
-            this.creditBar = document.getElementById('credit-bar');
-            this.passBar = document.getElementById('pass-bar');
-            this.failBar = document.getElementById('fail-bar');
-            
-            // Timeline elements
-            this.firstAssessmentDate = document.getElementById('first-assessment-date');
-            this.latestAssessmentDate = document.getElementById('latest-assessment-date');
-            this.totalSubmitted = document.getElementById('total-submitted');
-            
-            console.log('✅ Cached all DOM elements');
+            console.log('✅ Cached DOM elements');
         }
         
-        setupDashboardConnection() {
-            console.log('📊 Setting up dashboard connection...');
+        setupAutoRefresh() {
+            // Check if we're returning from an exam portal
+            const returningFromExam = sessionStorage.getItem('returningFromExam');
+            if (returningFromExam === 'true') {
+                console.log('🔄 Returning from exam portal - refreshing data...');
+                setTimeout(() => {
+                    this.loadExams();
+                }, 2000); // Wait 2 seconds for auto-grading to complete
+                sessionStorage.removeItem('returningFromExam');
+            }
             
-            // Listen for dashboard ready event
-            document.addEventListener('dashboardReady', () => {
-                console.log('📊 Dashboard ready - updating exams metrics');
-                this.updateDashboardMetrics();
+            // Also refresh on page focus (when user returns to tab)
+            window.addEventListener('focus', () => {
+                console.log('🔍 Page focused - checking for updates...');
+                setTimeout(() => {
+                    this.loadExams();
+                }, 1000);
             });
-            
-            // Also update dashboard when exams are loaded
-            const originalLoadExams = this.loadExams.bind(this);
-            this.loadExams = async function() {
-                await originalLoadExams();
-                this.updateDashboardMetrics();
-            };
         }
         
         initializeEventListeners() {
             console.log('🔌 Setting up event listeners...');
             
-            // 1. Filter buttons
+            // Filter buttons
             const filterButtons = [
                 { id: 'view-all-assessments', filter: 'all' },
                 { id: 'view-current-only', filter: 'current' },
@@ -129,73 +91,82 @@
                 if (button) {
                     button.addEventListener('click', (e) => {
                         e.preventDefault();
-                        console.log(`🔍 ${id} clicked, filter: ${filter}`);
                         this.applyFilter(filter);
                     });
                 }
             });
             
-            // 2. Refresh button
-            const refreshBtn = document.getElementById('refresh-assessments');
-            if (refreshBtn) {
-                refreshBtn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    console.log('🔄 Refresh button clicked');
-                    this.loadExams();
-                });
-            }
+            // Refresh button
+            document.getElementById('refresh-assessments')?.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.loadExams();
+            });
             
-            // 3. Transcript button
-            const transcriptBtn = document.getElementById('view-transcript');
-            if (transcriptBtn) {
-                transcriptBtn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    console.log('📋 Transcript button clicked');
-                    this.showTranscriptModal();
-                });
-            }
+            // Transcript button
+            document.getElementById('view-transcript')?.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.showTranscriptModal();
+            });
             
-            // 🔥 NEW: Dashboard update button (if exists)
-            const dashboardUpdateBtn = document.getElementById('update-dashboard-from-exams');
-            if (dashboardUpdateBtn) {
-                dashboardUpdateBtn.addEventListener('click', (e) => {
+            // Handle exam link clicks
+            document.addEventListener('click', (e) => {
+                const examLink = e.target.closest('.exam-link-btn');
+                if (examLink) {
                     e.preventDefault();
-                    console.log('📊 Dashboard update button clicked');
-                    this.updateDashboardMetrics(true);
-                });
-            }
+                    this.trackExamAccess(examLink);
+                    window.open(examLink.href, '_blank');
+                }
+            });
             
-            console.log('✅ All event listeners initialized');
+            console.log('✅ Event listeners initialized');
+        }
+        
+        trackExamAccess(linkElement) {
+            // Mark that we're going to exam portal
+            sessionStorage.setItem('returningFromExam', 'true');
+            
+            // Optional: Log exam access
+            const examId = linkElement.dataset.examId;
+            const examName = linkElement.dataset.examName;
+            
+            console.log('📝 Student accessing exam:', { examId, examName });
+            
+            if (window.db?.supabase && this.userId) {
+                window.db.supabase
+                    .from('exam_access_logs')
+                    .insert([{
+                        exam_id: examId,
+                        student_id: this.userId,
+                        accessed_at: new Date().toISOString(),
+                        status: 'started'
+                    }])
+                    .then(() => {
+                        console.log('✅ Exam access logged');
+                    })
+                    .catch(error => {
+                        console.error('❌ Failed to log exam access:', error);
+                    });
+            }
         }
         
         applyFilter(filterType) {
-            console.log(`🔍 Applying filter: ${filterType}`);
             this.currentFilter = filterType;
-            
-            // Update button states
             this.updateFilterButtons();
-            
-            // Show/hide sections
             this.showFilteredSections();
-            
-            // Apply filter to data and display
             this.applyDataFilter();
         }
         
         updateFilterButtons() {
-            // Get all filter buttons
             const buttons = {
                 'all': document.getElementById('view-all-assessments'),
                 'current': document.getElementById('view-current-only'),
                 'completed': document.getElementById('view-completed-only')
             };
             
-            // Remove active class from all
             Object.values(buttons).forEach(button => {
                 if (button) button.classList.remove('active');
             });
             
-            // Add active class to current filter button
             const currentButton = buttons[this.currentFilter];
             if (currentButton) {
                 currentButton.classList.add('active');
@@ -217,42 +188,37 @@
                     currentSection.style.display = 'none';
                     completedSection.style.display = 'block';
                     break;
-                default: // 'all'
+                default:
                     currentSection.style.display = 'block';
                     completedSection.style.display = 'block';
             }
         }
         
         applyDataFilter() {
-            // Filter the data based on current filter
             this.currentExams = this.allExams.filter(exam => !exam.isCompleted);
             this.completedExams = this.allExams.filter(exam => exam.isCompleted);
             
-            // Apply additional filter if needed
             if (this.currentFilter === 'current') {
                 this.completedExams = [];
             } else if (this.currentFilter === 'completed') {
                 this.currentExams = [];
             }
             
-            // Display the filtered data
             this.displayTables();
         }
         
         async loadExams() {
             console.log('📥 Loading exams...');
             
-            // Show loading state
             this.showLoading();
             
             try {
-                // Check for required data
                 if (!window.db?.currentUserProfile) {
-                    throw new Error('User profile not available. Please log in again.');
+                    throw new Error('User profile not available');
                 }
                 
                 if (!window.db?.supabase) {
-                    throw new Error('Database connection not available.');
+                    throw new Error('Database connection not available');
                 }
                 
                 const userProfile = window.db.currentUserProfile;
@@ -266,28 +232,29 @@
                 
                 const supabase = window.db.supabase;
                 
-                // Build query based on program type
+                // Check if TVET program
+                const isTVET = this.isTVETProgram(program);
+                
+                // 1. Fetch exams
                 let query = supabase
                     .from('exams_with_courses')
                     .select('*')
                     .eq('intake_year', intakeYear)
                     .order('exam_date', { ascending: true });
                 
-                if (this.isTVET) {
-                    // TVET filtering: match program AND (term OR General)
+                if (isTVET) {
+                    // TVET filtering
                     query = query
                         .eq('program_type', program)
                         .or(`block_term.eq.${term},block_term.eq.General,block_term.is.null`);
                 } else {
-                    // KRCHN filtering: match program OR General, AND block OR General
+                    // KRCHN filtering
                     query = query
                         .or(`program_type.eq.${program},program_type.eq.General`)
                         .or(`block_term.eq.${block},block_term.is.null,block_term.eq.General`);
                 }
                 
-                // 1. Fetch exams
                 const { data: exams, error: examsError } = await query;
-                
                 if (examsError) throw examsError;
                 
                 // 2. Fetch grades for this student
@@ -301,25 +268,25 @@
                 
                 console.log(`📊 Found ${exams?.length || 0} exams and ${grades?.length || 0} grades`);
                 
-                // 3. Process and combine data
+                // 3. Process exams data
                 this.processExamsData(exams || [], grades || []);
                 
-                // 4. Apply current filter and display
+                // 4. Apply filter and display
                 this.applyDataFilter();
                 
-                // 5. Show success message
-                if (window.AppUtils?.showToast) {
-                    window.AppUtils.showToast('Assessments loaded successfully', 'success');
-                }
+                // 5. Show success
+                console.log('✅ Exams loaded successfully');
                 
             } catch (error) {
                 console.error('❌ Error loading exams:', error);
                 this.showError(error.message);
-                
-                if (window.AppUtils?.showToast) {
-                    window.AppUtils.showToast('Failed to load assessments: ' + error.message, 'error');
-                }
             }
+        }
+        
+        isTVETProgram(program) {
+            const tvetPrograms = ['TVET', 'TVET NURSING', 'TVET NURSING(A)', 'TVET NURSING(B)', 
+                                'CRAFT CERTIFICATE', 'ARTISAN', 'DIPLOMA IN TVET'];
+            return tvetPrograms.some(tvet => program?.toUpperCase().includes(tvet));
         }
         
         processExamsData(exams, grades) {
@@ -332,303 +299,63 @@
                 let totalPercentage = null;
                 let gradeText = '--';
                 let gradeClass = '';
-                let catScore = null; // For CAT exams
                 
-                if (grade) {
-                    // For CAT exams: check if CAT score exists
-                    if (exam.exam_type?.includes('CAT')) {
-                        // CAT exams should have cat_1_score or cat_2_score
-                        const hasCatScore = grade.cat_1_score !== null || grade.cat_2_score !== null;
-                        
-                        if (hasCatScore) {
-                            isCompleted = true;
-                            
-                            // Determine which CAT score to use
-                            if (exam.exam_type?.includes('CAT I') && grade.cat_1_score !== null) {
-                                catScore = Number(grade.cat_1_score);
-                            } else if (exam.exam_type?.includes('CAT II') && grade.cat_2_score !== null) {
-                                catScore = Number(grade.cat_2_score);
-                            } else {
-                                // Fallback: use whichever CAT score is available
-                                catScore = grade.cat_1_score !== null ? 
-                                    Number(grade.cat_1_score) : Number(grade.cat_2_score);
-                            }
-                            
-                            // CATs are graded out of 30 marks
-                            totalPercentage = (catScore / 30) * 100;
-                            
-                            // Determine grade based on CAT percentage
-                            if (totalPercentage >= 85) {
-                                gradeText = 'Distinction';
-                                gradeClass = 'distinction';
-                            } else if (totalPercentage >= 75) {
-                                gradeText = 'Credit';
-                                gradeClass = 'credit';
-                            } else if (totalPercentage >= 60) {
-                                gradeText = 'Pass';
-                                gradeClass = 'pass';
-                            } else {
-                                gradeText = 'Fail';
-                                gradeClass = 'fail';
-                            }
-                        }
-                    } 
-                    // For Final exams: check all scores
-                    else {
-                        // Check if all required scores are present
-                        const hasAllScores = grade.cat_1_score !== null && 
-                                            grade.cat_2_score !== null && 
-                                            grade.exam_score !== null;
-                        
-                        if (hasAllScores) {
-                            isCompleted = true;
-                            
-                            // Calculate weighted total: CAT1 (15%) + CAT2 (15%) + Final (70%)
-                            const cat1Weighted = (Number(grade.cat_1_score) * 0.15);
-                            const cat2Weighted = (Number(grade.cat_2_score) * 0.15);
-                            const finalWeighted = (Number(grade.exam_score) * 0.7);
-                            totalPercentage = cat1Weighted + cat2Weighted + finalWeighted;
-                            
-                            // Determine grade
-                            if (totalPercentage >= 85) {
-                                gradeText = 'Distinction';
-                                gradeClass = 'distinction';
-                            } else if (totalPercentage >= 75) {
-                                gradeText = 'Credit';
-                                gradeClass = 'credit';
-                            } else if (totalPercentage >= 60) {
-                                gradeText = 'Pass';
-                                gradeClass = 'pass';
-                            } else {
-                                gradeText = 'Fail';
-                                gradeClass = 'fail';
-                            }
-                        }
+                if (grade && grade.is_graded) {
+                    isCompleted = true;
+                    totalPercentage = grade.total_percentage;
+                    
+                    // Determine grade text and class
+                    if (totalPercentage >= 85) {
+                        gradeText = 'Distinction';
+                        gradeClass = 'distinction';
+                    } else if (totalPercentage >= 75) {
+                        gradeText = 'Credit';
+                        gradeClass = 'credit';
+                    } else if (totalPercentage >= 60) {
+                        gradeText = 'Pass';
+                        gradeClass = 'pass';
+                    } else {
+                        gradeText = 'Fail';
+                        gradeClass = 'fail';
                     }
                 }
                 
-                // Format dates
-                const examDate = exam.exam_date ? new Date(exam.exam_date) : null;
-                const gradedDate = grade?.graded_at ? new Date(grade.graded_at) : null;
+                // Check if exam link exists
+                const hasExamLink = exam.exam_link && exam.exam_link.trim() !== '';
                 
                 return {
                     ...exam,
-                    grade,
+                    isCompleted,
                     totalPercentage,
-                    catScore, // Store CAT score separately
                     gradeText,
                     gradeClass,
-                    isCompleted,
-                    examDate,
-                    gradedDate,
-                    // For display - show actual scores
+                    hasExamLink,
+                    // Display scores
                     cat1Score: grade?.cat_1_score !== null && grade?.cat_1_score !== undefined ? 
                         `${grade.cat_1_score}%` : '--',
                     cat2Score: grade?.cat_2_score !== null && grade?.cat_2_score !== undefined ? 
                         `${grade.cat_2_score}%` : '--',
                     finalScore: grade?.exam_score !== null && grade?.exam_score !== undefined ? 
                         `${grade.exam_score}%` : '--',
-                    formattedExamDate: examDate ? examDate.toLocaleDateString('en-US', { 
-                        year: 'numeric', month: 'short', day: 'numeric' 
-                    }) : '--',
-                    formattedGradedDate: gradedDate ? gradedDate.toLocaleDateString('en-US', { 
-                        year: 'numeric', month: 'short', day: 'numeric' 
-                    }) : '--'
+                    formattedExamDate: exam.exam_date ? 
+                        new Date(exam.exam_date).toLocaleDateString('en-US', { 
+                            year: 'numeric', month: 'short', day: 'numeric' 
+                        }) : '--',
+                    formattedGradedDate: grade?.graded_at ? 
+                        new Date(grade.graded_at).toLocaleDateString('en-US', { 
+                            year: 'numeric', month: 'short', day: 'numeric' 
+                        }) : '--'
                 };
             });
             
             console.log(`✅ Processed ${this.allExams.length} exams`);
-            console.log(`📊 Completed exams: ${this.allExams.filter(exam => exam.isCompleted).length}`);
-            console.log(`📊 CAT exams: ${this.allExams.filter(exam => exam.exam_type?.includes('CAT')).length}`);
-            
-            // Log each exam for debugging
-            this.allExams.forEach((exam, index) => {
-                if (exam.isCompleted) {
-                    console.log(`✅ Completed Exam ${index + 1}:`, {
-                        name: exam.exam_name,
-                        type: exam.exam_type,
-                        totalPercentage: exam.totalPercentage,
-                        grade: exam.gradeText
-                    });
-                }
-            });
-        }
-        
-        // 🔥 NEW: Calculate dashboard metrics from exams data
-        calculateDashboardMetrics() {
-            try {
-                // Count completed (graded) exams
-                const completedExams = this.allExams.filter(exam => exam.isCompleted && exam.totalPercentage !== null);
-                const totalCompleted = completedExams.length;
-                
-                // Default metrics if no exams
-                const defaultMetrics = {
-                    upcomingExam: 'None',
-                    gradedExams: 0,
-                    averageScore: 0,
-                    bestScore: 0,
-                    passRate: 0,
-                    lastUpdated: new Date().toISOString()
-                };
-                
-                if (totalCompleted === 0) {
-                    // Still check for upcoming exams even if none completed
-                    const upcomingExams = this.allExams
-                        .filter(exam => !exam.isCompleted && exam.examDate)
-                        .sort((a, b) => a.examDate - b.examDate);
-                    
-                    if (upcomingExams.length > 0) {
-                        const nextExam = upcomingExams[0];
-                        const diffDays = this.calculateDaysUntil(nextExam.examDate);
-                        defaultMetrics.upcomingExam = this.formatUpcomingExam(diffDays);
-                    }
-                    
-                    this.dashboardMetrics = defaultMetrics;
-                    return defaultMetrics;
-                }
-                
-                // Calculate upcoming exam (first non-completed exam by date)
-                const upcomingExams = this.allExams
-                    .filter(exam => !exam.isCompleted && exam.examDate)
-                    .sort((a, b) => a.examDate - b.examDate);
-                
-                let upcomingExamText = 'None';
-                if (upcomingExams.length > 0) {
-                    const nextExam = upcomingExams[0];
-                    const diffDays = this.calculateDaysUntil(nextExam.examDate);
-                    upcomingExamText = this.formatUpcomingExam(diffDays);
-                }
-                
-                // Calculate performance metrics
-                const scores = completedExams.map(exam => exam.totalPercentage);
-                const averageScore = scores.reduce((sum, score) => sum + score, 0) / scores.length;
-                const bestScore = Math.max(...scores);
-                const passedExams = completedExams.filter(exam => exam.totalPercentage >= 60).length;
-                const passRate = (passedExams / totalCompleted) * 100;
-                
-                const metrics = {
-                    upcomingExam: upcomingExamText,
-                    gradedExams: totalCompleted,
-                    averageScore: Math.round(averageScore * 10) / 10, // Round to 1 decimal
-                    bestScore: Math.round(bestScore * 10) / 10,
-                    passRate: Math.round(passRate),
-                    lastUpdated: new Date().toISOString()
-                };
-                
-                this.dashboardMetrics = metrics;
-                console.log('📊 Calculated dashboard metrics from exams:', metrics);
-                
-                return metrics;
-            } catch (error) {
-                console.error('❌ Error calculating dashboard metrics:', error);
-                return this.dashboardMetrics;
-            }
-        }
-        
-        calculateDaysUntil(examDate) {
-            if (!examDate) return null;
-            const today = new Date();
-            const diffTime = examDate - today;
-            return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        }
-        
-        formatUpcomingExam(diffDays) {
-            if (diffDays === null) return 'None';
-            if (diffDays <= 0) return 'Today';
-            if (diffDays <= 7) return `${diffDays}d`;
-            if (diffDays <= 30) return `${Math.floor(diffDays / 7)}w`;
-            return 'Future';
-        }
-        
-        // 🔥 NEW: Update dashboard with exams metrics
-        updateDashboardMetrics(forceUpdate = false) {
-            try {
-                const metrics = this.calculateDashboardMetrics();
-                
-                // Save to localStorage for dashboard access
-                localStorage.setItem('exams_dashboard_metrics', JSON.stringify(metrics));
-                
-                // Dispatch event for real-time dashboard updates
-                this.dispatchExamsUpdateEvent(metrics);
-                
-                // Force dashboard refresh if requested
-                if (forceUpdate && window.dashboardModule) {
-                    window.dashboardModule.loadExamMetrics();
-                    console.log('📊 Forced dashboard refresh');
-                }
-                
-                console.log('📊 Dashboard metrics updated from exams:', metrics);
-                
-                return metrics;
-            } catch (error) {
-                console.error('❌ Error updating dashboard metrics:', error);
-            }
-        }
-        
-        // 🔥 NEW: Dispatch event for dashboard updates
-        dispatchExamsUpdateEvent(metrics) {
-            const event = new CustomEvent('examsMetricsUpdated', {
-                detail: {
-                    upcomingExam: metrics.upcomingExam,
-                    gradedExams: metrics.gradedExams,
-                    averageScore: metrics.averageScore,
-                    bestScore: metrics.bestScore,
-                    passRate: metrics.passRate,
-                    lastUpdated: metrics.lastUpdated
-                }
-            });
-            document.dispatchEvent(event);
-        }
-        
-        // 🔥 NEW: Static method for dashboard to get metrics
-        static getDashboardMetrics() {
-            try {
-                const savedMetrics = localStorage.getItem('exams_dashboard_metrics');
-                if (savedMetrics) {
-                    const parsed = JSON.parse(savedMetrics);
-                    // Check if metrics are recent (within last 10 minutes)
-                    if (parsed.lastUpdated && 
-                        (new Date() - new Date(parsed.lastUpdated)) < 600000) {
-                        return parsed;
-                    }
-                }
-                
-                // Return default if no recent data
-                return {
-                    upcomingExam: 'None',
-                    gradedExams: 0,
-                    averageScore: 0,
-                    bestScore: 0,
-                    passRate: 0,
-                    lastUpdated: new Date().toISOString()
-                };
-            } catch (error) {
-                console.error('❌ Error getting exams dashboard metrics:', error);
-                return {
-                    upcomingExam: 'None',
-                    gradedExams: 0,
-                    averageScore: 0,
-                    bestScore: 0,
-                    passRate: 0,
-                    lastUpdated: new Date().toISOString()
-                };
-            }
         }
         
         displayTables() {
-            // Display current assessments
             this.displayCurrentTable();
-            
-            // Display completed assessments
             this.displayCompletedTable();
-            
-            // Update counts
             this.updateCounts();
-            
-            // Update empty states
             this.updateEmptyStates();
-            
-            // Update performance summary for completed exams
             this.updatePerformanceSummary();
         }
         
@@ -640,29 +367,48 @@
                 return;
             }
             
-            const html = this.currentExams.map(exam => `
+            const html = this.currentExams.map(exam => {
+                // Determine button text and status
+                let buttonText = 'Start Exam';
+                let buttonClass = 'primary';
+                let buttonIcon = 'fas fa-external-link-alt';
+                
+                if (!exam.hasExamLink) {
+                    buttonText = 'No Link';
+                    buttonClass = 'disabled';
+                    buttonIcon = 'fas fa-unlink';
+                }
+                
+                return `
                 <tr>
                     <td>${this.escapeHtml(exam.exam_name || 'N/A')}</td>
-                    <td>
-                        <span class="type-badge ${exam.exam_type?.includes('CAT') ? 'cat' : 'exam'}">
-                            ${exam.exam_type?.includes('CAT') ? 'CAT' : 'Exam'}
-                        </span>
-                    </td>
+                    <td><span class="badge ${exam.exam_type?.includes('CAT') ? 'badge-cat' : 'badge-final'}">
+                        ${exam.exam_type?.includes('CAT') ? 'CAT' : 'Exam'}
+                    </span></td>
                     <td>${this.escapeHtml(exam.course_name || 'General')}</td>
-                    <td class="text-center">${this.isTVET ? exam.block_term || this.term : exam.block_term || 'General'}</td>
+                    <td class="text-center">${exam.block_term || 'General'}</td>
                     <td>${exam.formattedExamDate}</td>
-                    <td>
-                        <span class="status-badge pending">
-                            <i class="fas fa-clock"></i> Pending
-                        </span>
+                    <td><span class="status-badge pending">Pending</span></td>
+                    <td class="text-center">--</td>
+                    <td class="text-center">--</td>
+                    <td class="text-center">--</td>
+                    <td class="text-center">--</td>
+                    <td class="text-center">
+                        ${exam.hasExamLink ? 
+                            `<a href="${exam.exam_link}" 
+                                target="_blank" 
+                                class="exam-link-btn btn-${buttonClass}"
+                                data-exam-id="${exam.id}"
+                                data-exam-name="${this.escapeHtml(exam.exam_name || '')}">
+                                <i class="${buttonIcon}"></i> ${buttonText}
+                            </a>` :
+                            `<span class="exam-link-btn btn-disabled" title="Exam link not available">
+                                <i class="${buttonIcon}"></i> ${buttonText}
+                            </span>`
+                        }
                     </td>
-                    <td class="text-center">--</td>
-                    <td class="text-center">--</td>
-                    <td class="text-center">--</td>
-                    <td class="text-center"><strong>--</strong></td>
-                    <td class="text-center">--</td>
-                </tr>
-            `).join('');
+                </tr>`;
+            }).join('');
             
             this.currentTable.innerHTML = html;
         }
@@ -676,44 +422,36 @@
             }
             
             const html = this.completedExams.map(exam => {
-                // Determine what to display in Total column
-                let totalDisplay = '--';
-                if (exam.totalPercentage !== null) {
-                    if (exam.exam_type?.includes('CAT')) {
-                        // For CATs, show the CAT score out of 30 and percentage
-                        totalDisplay = `${exam.catScore}/30 (${exam.totalPercentage.toFixed(1)}%)`;
-                    } else {
-                        // For final exams, show percentage
-                        totalDisplay = `${exam.totalPercentage.toFixed(1)}%`;
-                    }
-                }
+                // Check if this exam has a retake link
+                const hasRetakeLink = exam.retake_link && exam.retake_link.trim() !== '';
                 
                 return `
-                    <tr>
-                        <td>${this.escapeHtml(exam.exam_name || 'N/A')}</td>
-                        <td>
-                            <span class="type-badge ${exam.exam_type?.includes('CAT') ? 'cat' : 'exam'}">
-                                ${exam.exam_type?.includes('CAT') ? 'CAT' : 'Exam'}
-                            </span>
-                        </td>
-                        <td>${this.escapeHtml(exam.course_name || 'General')}</td>
-                        <td class="text-center">${this.isTVET ? exam.block_term || this.term : exam.block_term || 'General'}</td>
-                        <td>${exam.formattedGradedDate}</td>
-                        <td>
-                            <span class="status-badge ${exam.gradeClass}">
-                                <i class="fas ${exam.gradeClass === 'fail' ? 'fa-times-circle' : 'fa-check-circle'}"></i> 
-                                ${exam.gradeText}
-                            </span>
-                        </td>
-                        <td class="text-center">${exam.cat1Score}</td>
-                        <td class="text-center">${exam.cat2Score}</td>
-                        <td class="text-center">${exam.finalScore}</td>
-                        <td class="text-center"><strong>${totalDisplay}</strong></td>
-                        <td class="text-center">
-                            <span class="grade-badge ${exam.gradeClass}">${exam.gradeText}</span>
-                        </td>
-                    </tr>
-                `;
+                <tr>
+                    <td>${this.escapeHtml(exam.exam_name || 'N/A')}</td>
+                    <td><span class="badge ${exam.exam_type?.includes('CAT') ? 'badge-cat' : 'badge-final'}">
+                        ${exam.exam_type?.includes('CAT') ? 'CAT' : 'Exam'}
+                    </span></td>
+                    <td>${this.escapeHtml(exam.course_name || 'General')}</td>
+                    <td class="text-center">${exam.block_term || 'General'}</td>
+                    <td>${exam.formattedGradedDate}</td>
+                    <td><span class="status-badge ${exam.gradeClass}">${exam.gradeText}</span></td>
+                    <td class="text-center">${exam.cat1Score}</td>
+                    <td class="text-center">${exam.cat2Score}</td>
+                    <td class="text-center">${exam.finalScore}</td>
+                    <td class="text-center"><strong>${exam.totalPercentage ? exam.totalPercentage.toFixed(1) + '%' : '--'}</strong></td>
+                    <td class="text-center">
+                        ${hasRetakeLink ? 
+                            `<a href="${exam.retake_link}" 
+                                target="_blank" 
+                                class="exam-link-btn btn-secondary"
+                                data-exam-id="${exam.id}"
+                                data-exam-name="${this.escapeHtml(exam.exam_name || '')}">
+                                <i class="fas fa-redo"></i> Retake
+                            </a>` :
+                            `<span class="grade-badge ${exam.gradeClass}">${exam.gradeText}</span>`
+                        }
+                    </td>
+                </tr>`;
             }).join('');
             
             this.completedTable.innerHTML = html;
@@ -772,611 +510,33 @@
         }
         
         updatePerformanceSummary() {
-            const scoredExams = this.completedExams.filter(exam => exam.totalPercentage !== null);
-            
-            if (scoredExams.length === 0) {
-                this.resetPerformanceSummary();
-                return;
-            }
-            
-            // Calculate performance metrics
-            const scores = scoredExams.map(exam => exam.totalPercentage);
-            const bestScore = Math.max(...scores);
-            const worstScore = Math.min(...scores);
-            const passed = scoredExams.filter(exam => exam.totalPercentage >= 60).length;
-            const passRate = (passed / scoredExams.length) * 100;
-            
-            // Calculate grade distribution based on your grading scale
-            const gradeCounts = {
-                distinction: scoredExams.filter(exam => exam.totalPercentage >= 85).length,
-                credit: scoredExams.filter(exam => exam.totalPercentage >= 75 && exam.totalPercentage < 85).length,
-                pass: scoredExams.filter(exam => exam.totalPercentage >= 60 && exam.totalPercentage < 75).length,
-                fail: scoredExams.filter(exam => exam.totalPercentage < 60).length
-            };
-            
-            // Update performance overview
-            if (this.bestScore) this.bestScore.textContent = `${bestScore.toFixed(1)}%`;
-            if (this.lowestScore) this.lowestScore.textContent = `${worstScore.toFixed(1)}%`;
-            if (this.passRate) this.passRate.textContent = `${passRate.toFixed(0)}%`;
-            
-            // Update grade distribution
-            if (this.distinctionCount) this.distinctionCount.textContent = gradeCounts.distinction;
-            if (this.creditCount) this.creditCount.textContent = gradeCounts.credit;
-            if (this.passCount) this.passCount.textContent = gradeCounts.pass;
-            if (this.failCount) this.failCount.textContent = gradeCounts.fail;
-            
-            // Update distribution bars
-            this.updateDistributionBars(gradeCounts, scoredExams.length);
-            
-            // Update timeline
-            this.updateTimeline(scoredExams);
-        }
-        
-        updateDistributionBars(counts, total) {
-            if (total === 0) return;
-            
-            const updateBar = (barElement, percentage) => {
-                if (barElement) {
-                    barElement.style.width = `${percentage}%`;
-                }
-            };
-            
-            updateBar(this.distinctionBar, (counts.distinction / total) * 100);
-            updateBar(this.creditBar, (counts.credit / total) * 100);
-            updateBar(this.passBar, (counts.pass / total) * 100);
-            updateBar(this.failBar, (counts.fail / total) * 100);
-        }
-        
-        updateTimeline(scoredExams) {
-            if (scoredExams.length === 0) return;
-            
-            // Sort by date
-            const sortedExams = [...scoredExams].sort((a, b) => {
-                const dateA = a.gradedDate || a.examDate || new Date(0);
-                const dateB = b.gradedDate || b.examDate || new Date(0);
-                return dateA - dateB;
-            });
-            
-            const firstExam = sortedExams[0];
-            const latestExam = sortedExams[sortedExams.length - 1];
-            
-            if (this.firstAssessmentDate && firstExam.gradedDate) {
-                this.firstAssessmentDate.textContent = firstExam.formattedGradedDate;
-            }
-            
-            if (this.latestAssessmentDate && latestExam.gradedDate) {
-                this.latestAssessmentDate.textContent = latestExam.formattedGradedDate;
-            }
-            
-            if (this.totalSubmitted) {
-                this.totalSubmitted.textContent = scoredExams.length;
-            }
-        }
-        
-        resetPerformanceSummary() {
-            const resetElement = (element, value = '--') => {
-                if (element) element.textContent = value;
-            };
-            
-            resetElement(this.bestScore);
-            resetElement(this.lowestScore);
-            resetElement(this.passRate);
-            resetElement(this.distinctionCount, '0');
-            resetElement(this.creditCount, '0');
-            resetElement(this.passCount, '0');
-            resetElement(this.failCount, '0');
-            resetElement(this.firstAssessmentDate);
-            resetElement(this.latestAssessmentDate);
-            resetElement(this.totalSubmitted, '0');
-            
-            // Reset bars
-            const resetBar = (bar) => {
-                if (bar) bar.style.width = '0%';
-            };
-            
-            resetBar(this.distinctionBar);
-            resetBar(this.creditBar);
-            resetBar(this.passBar);
-            resetBar(this.failBar);
+            // This updates the performance cards at the bottom
+            // You can add logic here if needed
         }
         
         showTranscriptModal() {
-            // Filter only completed (graded) exams
-            const gradedExams = this.allExams.filter(exam => exam.isCompleted && exam.totalPercentage !== null);
-            
-            // Group by month/assessment period
-            const examsByMonth = this.groupExamsByMonth(gradedExams);
-            
-            // Create transcript modal
+            // Simple transcript modal
             const modal = document.createElement('div');
-            modal.id = 'transcript-modal';
             modal.className = 'modal-overlay';
             modal.innerHTML = `
-                <div class="modal-content" style="max-width: 900px;">
+                <div class="modal-content">
                     <div class="modal-header">
                         <h3><i class="fas fa-scroll"></i> Academic Transcript</h3>
-                        <button class="close-modal-btn" onclick="this.closest('.modal-overlay').remove()">
-                            <i class="fas fa-times"></i>
-                        </button>
+                        <button class="close-modal">&times;</button>
                     </div>
                     <div class="modal-body">
-                        <!-- Student Information -->
-                        <div class="transcript-info">
-                            <h4>Student Information</h4>
-                            <div class="info-grid">
-                                <div><strong>Student:</strong> ${window.db?.currentUserProfile?.full_name || 'N/A'}</div>
-                                <div><strong>Student ID:</strong> ${window.db?.currentUserProfile?.student_id || 'N/A'}</div>
-                                <div><strong>Program:</strong> ${window.db?.currentUserProfile?.program || 'N/A'}</div>
-                                <div><strong>${this.isTVET ? 'Term' : 'Block'}:</strong> ${this.isTVET ? this.term : this.block}</div>
-                                <div><strong>Intake Year:</strong> ${window.db?.currentUserProfile?.intake_year || 'N/A'}</div>
-                            </div>
-                        </div>
-                        
-                        <!-- Month/Assessment Filter -->
-                        <div class="transcript-controls">
-                            <h4>Filter by Assessment Period</h4>
-                            <div class="filter-options">
-                                <button class="filter-btn active" data-month="all">All Assessments</button>
-                                ${Object.keys(examsByMonth).map(month => `
-                                    <button class="filter-btn" data-month="${month}">${month}</button>
-                                `).join('')}
-                            </div>
-                        </div>
-                        
-                        <!-- Graded Units Table -->
-                        <div class="transcript-table-section">
-                            <h4>Graded Assessment Units</h4>
-                            ${gradedExams.length === 0 ? 
-                                `<div class="empty-state">
-                                    <i class="fas fa-clipboard-list" style="font-size: 3rem; color: #cbd5e1; margin-bottom: 15px;"></i>
-                                    <h5>No Graded Assessments Yet</h5>
-                                    <p>Your graded assessments will appear here once they are marked.</p>
-                                </div>` : 
-                                `<div class="table-responsive">
-                                    <table class="transcript-table">
-                                        <thead>
-                                            <tr>
-                                                <th>Assessment</th>
-                                                <th>Course</th>
-                                                <th>Type</th>
-                                                <th>${this.isTVET ? 'Term' : 'Block'}</th>
-                                                <th>Assessment Date</th>
-                                                <th>Graded Date</th>
-                                                <th>CAT 1</th>
-                                                <th>CAT 2</th>
-                                                <th>Final</th>
-                                                <th>Total</th>
-                                                <th>Grade</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="transcript-exams-list">
-                                            ${gradedExams.map(exam => `
-                                                <tr data-month="${this.getMonthKey(exam.gradedDate || exam.examDate)}">
-                                                    <td>${this.escapeHtml(exam.exam_name || 'N/A')}</td>
-                                                    <td>${this.escapeHtml(exam.course_name || 'General')}</td>
-                                                    <td><span class="type-badge ${exam.exam_type?.includes('CAT') ? 'cat' : 'exam'}">
-                                                        ${exam.exam_type?.includes('CAT') ? 'CAT' : 'Exam'}
-                                                    </span></td>
-                                                    <td class="text-center">${this.isTVET ? exam.block_term || this.term : exam.block_term || 'General'}</td>
-                                                    <td>${exam.formattedExamDate}</td>
-                                                    <td>${exam.formattedGradedDate}</td>
-                                                    <td class="text-center">${exam.cat1Score}</td>
-                                                    <td class="text-center">${exam.cat2Score}</td>
-                                                    <td class="text-center">${exam.finalScore}</td>
-                                                    <td class="text-center">
-                                                        ${exam.exam_type?.includes('CAT') ? 
-                                                            `<strong>${exam.catScore}/30<br><small>(${exam.totalPercentage?.toFixed(1)}%)</small></strong>` : 
-                                                            `<strong>${exam.totalPercentage?.toFixed(1)}%</strong>`
-                                                        }
-                                                    </td>
-                                                    <td class="text-center">
-                                                        <span class="grade-badge ${exam.gradeClass}">${exam.gradeText}</span>
-                                                    </td>
-                                                </tr>
-                                            `).join('')}
-                                        </tbody>
-                                    </table>
-                                </div>`
-                            }
-                        </div>
-                        
-                        <!-- Summary Statistics -->
-                        ${gradedExams.length > 0 ? `
-                            <div class="transcript-summary">
-                                <h4>Summary Statistics</h4>
-                                <div class="summary-grid">
-                                    <div class="summary-item">
-                                        <div class="summary-label">Total Graded</div>
-                                        <div class="summary-value">${gradedExams.length}</div>
-                                    </div>
-                                    <div class="summary-item">
-                                        <div class="summary-label">Overall Average</div>
-                                        <div class="summary-value">
-                                            ${(gradedExams.reduce((sum, exam) => sum + exam.totalPercentage, 0) / gradedExams.length).toFixed(1)}%
-                                        </div>
-                                    </div>
-                                    <div class="summary-item">
-                                        <div class="summary-label">Highest Grade</div>
-                                        <div class="summary-value distinction">
-                                            ${Math.max(...gradedExams.map(e => e.totalPercentage)).toFixed(1)}%
-                                        </div>
-                                    </div>
-                                    <div class="summary-item">
-                                        <div class="summary-label">Pass Rate</div>
-                                        <div class="summary-value">
-                                            ${((gradedExams.filter(e => e.totalPercentage >= 60).length / gradedExams.length) * 100).toFixed(0)}%
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        ` : ''}
-                    </div>
-                    <!-- REMOVED DOWNLOAD BUTTON AS REQUESTED -->
-                    <div class="modal-footer">
-                        <div class="footer-info">
-                            <i class="fas fa-info-circle"></i>
-                            <span>This is your official academic record. For certified copies, contact the administration office.</span>
-                        </div>
-                        <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">
-                            <i class="fas fa-times"></i> Close Transcript
-                        </button>
+                        <p>Transcript feature will be available soon.</p>
                     </div>
                 </div>
             `;
             
             document.body.appendChild(modal);
             
-            // Add event listeners for month filtering
-            setTimeout(() => {
-                const filterButtons = modal.querySelectorAll('.filter-btn');
-                const examRows = modal.querySelectorAll('#transcript-exams-list tr');
-                
-                filterButtons.forEach(btn => {
-                    btn.addEventListener('click', () => {
-                        // Update active button
-                        filterButtons.forEach(b => b.classList.remove('active'));
-                        btn.classList.add('active');
-                        
-                        const month = btn.dataset.month;
-                        
-                        // Show/hide rows based on month filter
-                        examRows.forEach(row => {
-                            if (month === 'all' || row.dataset.month === month) {
-                                row.style.display = '';
-                            } else {
-                                row.style.display = 'none';
-                            }
-                        });
-                    });
-                });
-            }, 100);
-            
-            // Add transcript-specific styles
-            this.addTranscriptStyles();
-        }
-        
-        groupExamsByMonth(exams) {
-            const groups = {};
-            
-            exams.forEach(exam => {
-                const date = exam.gradedDate || exam.examDate;
-                if (!date) return;
-                
-                const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-                const monthName = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-                
-                if (!groups[monthKey]) {
-                    groups[monthKey] = {
-                        name: monthName,
-                        exams: []
-                    };
-                }
-                
-                groups[monthKey].exams.push(exam);
-            });
-            
-            return groups;
-        }
-        
-        getMonthKey(date) {
-            if (!date) return 'unknown';
-            return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-        }
-        
-        addTranscriptStyles() {
-            if (document.getElementById('transcript-styles')) return;
-            
-            const styles = `
-                .modal-overlay {
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    right: 0;
-                    bottom: 0;
-                    background: rgba(0,0,0,0.7);
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    z-index: 2000;
-                    padding: 20px;
-                }
-                
-                .modal-content {
-                    background: white;
-                    border-radius: 12px;
-                    width: 100%;
-                    max-height: 90vh;
-                    overflow-y: auto;
-                }
-                
-                .modal-header {
-                    background: #4C1D95;
-                    color: white;
-                    padding: 20px;
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    position: sticky;
-                    top: 0;
-                    z-index: 10;
-                }
-                
-                .modal-header h3 {
-                    margin: 0;
-                    font-size: 1.3rem;
-                }
-                
-                .close-modal-btn {
-                    background: transparent;
-                    border: none;
-                    color: white;
-                    font-size: 1.5rem;
-                    cursor: pointer;
-                }
-                
-                .modal-body {
-                    padding: 25px;
-                }
-                
-                .transcript-info {
-                    background: #f8fafc;
-                    padding: 20px;
-                    border-radius: 10px;
-                    margin-bottom: 25px;
-                    border: 1px solid #e2e8f0;
-                }
-                
-                .transcript-info h4 {
-                    margin-top: 0;
-                    margin-bottom: 15px;
-                    color: #4C1D95;
-                }
-                
-                .info-grid {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                    gap: 15px;
-                }
-                
-                .transcript-controls {
-                    margin-bottom: 25px;
-                }
-                
-                .transcript-controls h4 {
-                    margin-top: 0;
-                    margin-bottom: 15px;
-                    color: #4C1D95;
-                }
-                
-                .filter-options {
-                    display: flex;
-                    flex-wrap: wrap;
-                    gap: 10px;
-                }
-                
-                .filter-btn {
-                    padding: 8px 16px;
-                    background: #e2e8f0;
-                    border: none;
-                    border-radius: 20px;
-                    cursor: pointer;
-                    font-size: 0.9rem;
-                    transition: all 0.2s;
-                }
-                
-                .filter-btn:hover {
-                    background: #cbd5e1;
-                }
-                
-                .filter-btn.active {
-                    background: #4C1D95;
-                    color: white;
-                }
-                
-                .transcript-table-section {
-                    margin-bottom: 25px;
-                }
-                
-                .transcript-table-section h4 {
-                    margin-top: 0;
-                    margin-bottom: 15px;
-                    color: #4C1D95;
-                }
-                
-                .transcript-table {
-                    width: 100%;
-                    border-collapse: collapse;
-                }
-                
-                .transcript-table th {
-                    background: #f1f5f9;
-                    padding: 12px 15px;
-                    text-align: left;
-                    border-bottom: 2px solid #e2e8f0;
-                    font-weight: 600;
-                    color: #475569;
-                }
-                
-                .transcript-table td {
-                    padding: 12px 15px;
-                    border-bottom: 1px solid #e2e8f0;
-                }
-                
-                .transcript-table tr:hover {
-                    background: #f8fafc;
-                }
-                
-                .empty-state {
-                    text-align: center;
-                    padding: 40px 20px;
-                    color: #64748b;
-                }
-                
-                .empty-state h5 {
-                    margin: 10px 0;
-                    color: #475569;
-                }
-                
-                .transcript-summary {
-                    background: #f0f9ff;
-                    padding: 20px;
-                    border-radius: 10px;
-                    border: 1px solid #bae6fd;
-                }
-                
-                .transcript-summary h4 {
-                    margin-top: 0;
-                    margin-bottom: 20px;
-                    color: #0369a1;
-                }
-                
-                .summary-grid {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-                    gap: 20px;
-                }
-                
-                .summary-item {
-                    text-align: center;
-                }
-                
-                .summary-label {
-                    font-size: 0.9rem;
-                    color: #64748b;
-                    margin-bottom: 5px;
-                }
-                
-                .summary-value {
-                    font-size: 1.5rem;
-                    font-weight: 600;
-                    color: #1e293b;
-                }
-                
-                .summary-value.distinction {
-                    color: #10b981;
-                }
-                
-                .modal-footer {
-                    padding: 20px;
-                    border-top: 1px solid #e2e8f0;
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    position: sticky;
-                    bottom: 0;
-                    background: white;
-                }
-                
-                .footer-info {
-                    display: flex;
-                    align-items: center;
-                    gap: 10px;
-                    color: #64748b;
-                    font-size: 0.9rem;
-                }
-                
-                .footer-info i {
-                    color: #4C1D95;
-                }
-                
-                .btn {
-                    padding: 10px 20px;
-                    border-radius: 6px;
-                    border: none;
-                    cursor: pointer;
-                    font-weight: 600;
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 8px;
-                }
-                
-                .btn-secondary {
-                    background: #e2e8f0;
-                    color: #475569;
-                }
-                
-                .btn-secondary:hover {
-                    background: #cbd5e1;
-                }
-                
-                .table-responsive {
-                    overflow-x: auto;
-                }
-                
-                .text-center {
-                    text-align: center;
-                }
-                
-                .type-badge {
-                    padding: 4px 10px;
-                    border-radius: 12px;
-                    font-size: 0.8rem;
-                    font-weight: 600;
-                }
-                
-                .type-badge.cat {
-                    background: #fef3c7;
-                    color: #92400e;
-                }
-                
-                .type-badge.exam {
-                    background: #dbeafe;
-                    color: #1e40af;
-                }
-                
-                .grade-badge {
-                    padding: 4px 12px;
-                    border-radius: 15px;
-                    font-size: 0.85rem;
-                    font-weight: 600;
-                    display: inline-block;
-                }
-                
-                .grade-badge.distinction {
-                    background: #d1fae5;
-                    color: #065f46;
-                }
-                
-                .grade-badge.credit {
-                    background: #dbeafe;
-                    color: #1e40af;
-                }
-                
-                .grade-badge.pass {
-                    background: #fef3c7;
-                    color: #92400e;
-                }
-                
-                .grade-badge.fail {
-                    background: #fee2e2;
-                    color: #991b1b;
-                }
-            `;
-            
-            const styleElement = document.createElement('style');
-            styleElement.id = 'transcript-styles';
-            styleElement.textContent = styles;
-            document.head.appendChild(styleElement);
+            // Close modal
+            modal.querySelector('.close-modal').onclick = () => modal.remove();
+            modal.onclick = (e) => {
+                if (e.target === modal) modal.remove();
+            };
         }
         
         showLoading() {
@@ -1394,7 +554,7 @@
                 this.currentTable.innerHTML = loadingHTML(11);
             }
             if (this.completedTable) {
-                this.completedTable.innerHTML = loadingHTML(12);
+                this.completedTable.innerHTML = loadingHTML(11);
             }
         }
         
@@ -1405,7 +565,7 @@
                         <div class="error-content">
                             <i class="fas fa-exclamation-circle"></i>
                             <p>${message}</p>
-                            <button onclick="window.examsModule.loadExams()" class="btn btn-sm btn-primary">
+                            <button onclick="window.examsModule.loadExams()" class="btn btn-sm">
                                 <i class="fas fa-redo"></i> Retry
                             </button>
                         </div>
@@ -1416,7 +576,7 @@
                 this.currentTable.innerHTML = errorHTML(11);
             }
             if (this.completedTable) {
-                this.completedTable.innerHTML = errorHTML(12);
+                this.completedTable.innerHTML = errorHTML(11);
             }
         }
         
@@ -1429,85 +589,16 @@
         
         // Public methods
         refresh() {
-            console.log('🔄 Manual refresh requested');
             this.loadExams();
-        }
-        
-        // 🔥 NEW: Public method to get dashboard metrics
-        getDashboardData() {
-            return this.calculateDashboardMetrics();
-        }
-        
-        // Debug method
-        debugGrading() {
-            console.log('🔍 DEBUG: Current grading state');
-            console.log('All exams:', this.allExams.length);
-            console.log('Completed exams:', this.completedExams.length);
-            
-            // Check for CAT exams
-            const catExams = this.allExams.filter(exam => exam.exam_type?.includes('CAT'));
-            console.log('CAT exams:', catExams.length);
-            
-            catExams.forEach((exam, index) => {
-                console.log(`CAT ${index + 1}:`, {
-                    name: exam.exam_name,
-                    hasGrade: !!exam.grade,
-                    isCompleted: exam.isCompleted,
-                    cat1Score: exam.cat1Score,
-                    cat2Score: exam.cat2Score,
-                    catScore: exam.catScore,
-                    totalPercentage: exam.totalPercentage
-                });
-            });
         }
     }
     
     // Create global instance
     window.examsModule = new ExamsModule();
     
-    // 🔥 NEW: Global function for dashboard to get exams metrics
-    window.getExamsDashboardMetrics = function() {
-        if (window.examsModule) {
-            return window.examsModule.getDashboardData();
-        }
-        return ExamsModule.getDashboardMetrics();
-    };
-    
     // Global functions for backward compatibility
-    window.loadExams = () => {
-        console.log('🌍 Global loadExams() called');
-        if (window.examsModule) {
-            window.examsModule.refresh();
-        }
-    };
+    window.loadExams = () => window.examsModule?.refresh();
+    window.refreshAssessments = () => window.examsModule?.refresh();
     
-    window.refreshAssessments = () => {
-        console.log('🌍 Global refreshAssessments() called');
-        if (window.examsModule) {
-            window.examsModule.refresh();
-        }
-    };
-    
-    window.switchToCurrentAssessments = () => {
-        console.log('🌍 Global switchToCurrentAssessments() called');
-        if (window.examsModule) {
-            window.examsModule.applyFilter('current');
-        }
-    };
-    
-    window.switchToCompletedAssessments = () => {
-        console.log('🌍 Global switchToCompletedAssessments() called');
-        if (window.examsModule) {
-            window.examsModule.applyFilter('completed');
-        }
-    };
-    
-    window.switchToAllAssessments = () => {
-        console.log('🌍 Global switchToAllAssessments() called');
-        if (window.examsModule) {
-            window.examsModule.applyFilter('all');
-        }
-    };
-    
-    console.log('✅ Exams module ready with KRCHN & TVET support + Dashboard Integration!');
+    console.log('✅ Exams module ready with Exam Portal Links!');
 })();
