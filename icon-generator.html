@@ -1,0 +1,66 @@
+<!-- icon-generator.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Icon Generator</title>
+    <style>
+        canvas { border: 1px solid #ccc; margin: 10px; }
+        .output { margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <h2>Generate PWA Icons</h2>
+    <input type="file" id="imageInput" accept="image/*">
+    <div id="canvases" class="output"></div>
+    
+    <script>
+        const sizes = [72, 96, 128, 144, 152, 180, 192, 512];
+        
+        document.getElementById('imageInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+                    sizes.forEach(size => {
+                        // Create canvas
+                        const canvas = document.createElement('canvas');
+                        canvas.width = size;
+                        canvas.height = size;
+                        canvas.style.display = 'block';
+                        canvas.style.margin = '10px';
+                        
+                        const ctx = canvas.getContext('2d');
+                        
+                        // Fill with theme color
+                        ctx.fillStyle = '#4C1D95';
+                        ctx.fillRect(0, 0, size, size);
+                        
+                        // Draw logo (scaled to 80% of canvas)
+                        const scale = Math.min(size / img.width, size / img.height) * 0.8;
+                        const x = (size - img.width * scale) / 2;
+                        const y = (size - img.height * scale) / 2;
+                        
+                        ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
+                        
+                        // Add to page
+                        document.getElementById('canvases').appendChild(canvas);
+                        
+                        // Create download link
+                        const link = document.createElement('a');
+                        link.download = `icon-${size}x${size}.png`;
+                        link.href = canvas.toDataURL('image/png');
+                        link.textContent = `Download ${size}x${size}`;
+                        link.style.display = 'block';
+                        link.style.marginBottom = '20px';
+                        document.getElementById('canvases').appendChild(link);
+                    });
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+    </script>
+</body>
+</html>
