@@ -397,17 +397,58 @@
                     <label for="student_id_number"><i data-feather="id"></i> Admission / Student ID</label>
                     <input type="text" id="student_id_number" name="student_id_number" placeholder="e.g. NCHSM2025/001">
                 </div>
-                <div class="form-group">
-                    <label for="program_type"><i data-feather="book"></i> Program</label>
-                    <select id="program_type" name="program_type">
-                        <option value="">-- Select Your Program --</option>
-                        <option value="KRCHN">KRCHN Nursing</option>
-                        <option value="TVET">TVET Program</option>
-                        <option value="Community Health">Community Health</option>
-                        <option value="Health Records">Health Records</option>
-                    </select>
-                </div>
-            </div>
+                <!-- IN register.html - Replace the program dropdown with this: -->
+<div class="form-group">
+    <label for="program_type"><i data-feather="book"></i> Program</label>
+    <select id="program_type" name="program_type" required>
+        <option value="">-- Select Your Program --</option>
+        
+        <!-- KRCHN PROGRAMS -->
+        <optgroup label="KRCHN Programs">
+            <option value="KRCHN">KRCHN Nursing</option>
+        </optgroup>
+        
+        <!-- TVET - DIPLOMA PROGRAMS (6-24 months) -->
+        <optgroup label="TVET Diploma Programs">
+            <option value="DPOTT">Diploma in Perioperative Theatre Technology</option>
+            <option value="DCH">Diploma in Community Health</option>
+            <option value="DHRIT">Diploma in Health Records and IT</option>
+            <option value="DSL">Diploma in Science Lab</option>
+            <option value="DSW">Diploma in Social Work and Community Development</option>
+            <option value="DCJS">Diploma in Criminal Justice</option>
+            <option value="DHSS">Diploma in Health Support Services</option>
+            <option value="DICT">Diploma in Information & Communication Technology</option>
+            <option value="DME">Diploma in Medical Engineering</option>
+        </optgroup>
+        
+        <!-- TVET - CERTIFICATE PROGRAMS (3-12 months) -->
+        <optgroup label="TVET Certificate Programs">
+            <option value="CPOTT">Certificate in Perioperative Theatre Technology</option>
+            <option value="CCH">Certificate in Community Health</option>
+            <option value="CHRIT">Certificate in Health Records and IT</option>
+            <option value="CPC">Certificate in Patient Care</option>
+            <option value="CSL">Certificate in Science Lab</option>
+            <option value="CSW">Certificate in Social Work and Community Development</option>
+            <option value="CCJS">Certificate in Criminal Justice</option>
+            <option value="CAG">Certificate in Agriculture</option>
+            <option value="CHSS">Certificate in Health Support Services</option>
+            <option value="CICT">Certificate in Information & Communication Technology</option>
+        </optgroup>
+        
+        <!-- TVET - ARTISAN PROGRAMS (2-12 months) -->
+        <optgroup label="TVET Artisan Programs">
+            <option value="ACH">Artisan in Community Health</option>
+            <option value="AAG">Artisan in Agriculture</option>
+            <option value="ASW">Artisan in Social Work and Community Development</option>
+        </optgroup>
+        
+        <!-- OTHER TVET -->
+        <optgroup label="Other TVET Programs">
+            <option value="CCA">Certificate in Computer Applications (CCA)</option>
+            <option value="PTE">TVET/CDACC (PTE)</option>
+        </optgroup>
+    </select>
+</div>
 
             <div id="lecturer-fields" class="role-fields">
                 <div class="form-group">
