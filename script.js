@@ -1509,7 +1509,397 @@ async function logAudit(action, details, userId = null, status = 'SUCCESS') {
         console.error('❌ Audit logging failed:', err);
     }
 }
+/*******************************************************
+ * DELETE PROFILE FUNCTION - Add to admin-script.js
+ *******************************************************/
 
+async function deleteProfile(userId, fullName, isRejection = false) {
+    console.log('🗑️ Deleting profile:', { userId, fullName, isRejection });
+    
+    const action = isRejection ? 'Reject' : 'Delete';
+    const message = isRejection 
+        ? `Reject (delete) user ${fullName}? This will permanently remove their account.`
+        : `CRITICAL: Permanently delete profile and user ${fullName}?`;
+    
+    if (!confirm(`${action}: ${message}`)) return;
+
+    try {
+        // 1. First delete from user_profiles table
+        const { error: profileError } = await sb
+            .from(USER_PROFILE_TABLE)
+            .delete()
+            .eq('user_id', userId);
+
+        if (profileError) {
+            console.error('❌ Error deleting profile:', profileError);
+            await logAudit(
+                'USER_DELETE',
+                `Failed to delete profile for ${fullName}. Reason: ${profileError.message}`,
+                userId,
+                'FAILURE'
+            );
+            showFeedback(`Failed to delete profile: ${profileError.message}`, 'error');
+            return;
+        }
+
+        console.log('✅ Profile deleted from table');
+
+        // 2. Try to delete auth user (admin only)
+        let authDeleted = false;
+        try {
+            const { error: authErr } = await sb.auth.admin.deleteUser(userId);
+            if (authErr) {
+                console.warn('⚠️ Auth deletion failed (may need manual cleanup):', authErr);
+                // Continue anyway - profile is already deleted
+            } else {
+                authDeleted = true;
+                console.log('✅ Auth user deleted');
+            }
+        } catch (authError) {
+            console.warn('⚠️ Auth deletion error:', authError);
+        }
+
+        // 3. Log the audit
+        const auditDetails = isRejection 
+            ? `Rejected user ${fullName} (pending approval)`
+            : `Deleted user ${fullName}`;
+        
+        const auditStatus = authDeleted ? 'SUCCESS' : 'WARNING';
+        const auditMessage = authDeleted 
+            ? `User ${fullName} deleted successfully from both profile and auth.`
+            : `Profile for ${fullName} deleted, but auth deletion may need manual cleanup.`;
+
+        await logAudit(
+            'USER_DELETE',
+            auditDetails,
+            userId,
+            auditStatus
+        );
+
+        // 4. Show feedback
+        if (authDeleted) {
+            showFeedback(`✅ ${action} successful! User ${fullName} has been removed.`, 'success');
+        } else {
+            showFeedback(`⚠️ Profile deleted, but auth cleanup may be needed for ${fullName}.`, 'warning');
+        }
+
+        // 5. Refresh all user tables
+        loadPendingApprovals();
+        loadAllUsers();
+        loadStudents();
+        
+        // 6. Refresh dashboard if exists
+        if (typeof loadDashboardData === 'function') {
+            loadDashboardData();
+        }
+
+    } catch (err) {
+        console.error('❌ Unexpected error in deleteProfile:', err);
+        
+        await logAudit(
+            'USER_DELETE',
+            `Unexpected error deleting ${fullName}: ${err.message}`,
+            userId,
+            'FAILURE'
+        );
+        
+        showFeedback(`Unexpected error: ${err.message}`, 'error');
+    }
+}
+
+/*******************************************************
+ * UPDATE THE loadPendingApprovals FUNCTION
+ * Make sure it calls deleteProfile correctly for rejections
+ *******************************************************/
+
+async function loadPendingApprovals() {
+    const tbody = $('pending-table');
+    if (!tbody) {
+        console.error("Missing <tbody id='pending-table'> element in your HTML.");
+        return;
+    }
+
+    tbody.innerHTML = '<tr><td colspan="7">Loading pending approvals...</td></tr>';
+
+    const { data: pending, error } = await sb
+        .from(USER_PROFILE_TABLE)
+        .select('*')
+        .eq('status', 'pending')
+        .order('created_at', { ascending: true });
+
+    if (error) {
+        tbody.innerHTML = `<tr><td colspan="7">Error: ${error.message}</td></tr>`;
+        return;
+    }
+
+    if (!pending || pending.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7">No pending approvals.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = '';
+
+    pending.forEach(u => {
+        // Escape HTML for security
+        const escapedName = escapeHtml(u.full_name);
+        const escapedUserId = escapeHtml(u.user_id);
+        const escapedStudentId = escapeHtml(u.student_id || '');
+        const escapedEmail = escapeHtml(u.email || '');
+        const escapedRole = escapeHtml(u.role || 'student');
+        const escapedProgram = escapeHtml(u.program || 'N/A');
+        
+        // Get program info for display
+        const programName = getProgramDisplayName(u.program);
+        const programType = getProgramType(u.program);
+        const programBadgeClass = programType === 'TVET' ? 'badge-tvet' : 'badge-krchn';
+        const programIcon = programType === 'TVET' ? 'fa-tools' : 'fa-graduation-cap';
+        
+        tbody.innerHTML += `
+            <tr>
+                <td>${escapedName}</td>
+                <td>${escapedEmail}</td>
+                <td>${escapedRole}</td>
+                <td>
+                    ${escapeHtml(programName)}
+                    <div class="program-badge ${programBadgeClass}">
+                        <i class="fas ${programIcon}"></i> ${programType}
+                    </div>
+                </td>
+                <td>${escapedStudentId || 'N/A'}</td>
+                <td>${new Date(u.created_at).toLocaleDateString()}</td>
+                <td>
+                    <button class="btn btn-approve" 
+                            onclick="approveUser('${escapedUserId}', '${escapedName}', '${escapedStudentId}', '${escapedEmail}', '${escapedRole}', '${escapedProgram}')">
+                        Approve
+                    </button>
+                    <button class="btn btn-delete" 
+                            onclick="deleteProfile('${escapedUserId}', '${escapedName}', true)">
+                        Reject
+                    </button>
+                </td>
+            </tr>`;
+    });
+}
+
+/*******************************************************
+ * UPDATE THE loadAllUsers FUNCTION
+ * Make sure deleteProfile calls don't have the third parameter (not rejection)
+ *******************************************************/
+
+async function loadAllUsers() {
+    const tbody = $('users-table');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '<tr><td colspan="7">Loading all users...</td></tr>';
+
+    const { data: users, error } = await sb.from(USER_PROFILE_TABLE)
+        .select('*')
+        .order('full_name', { ascending: true });
+    
+    if (error) {
+        tbody.innerHTML = `<tr><td colspan="7">Error loading users: ${error.message}</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = '';
+    
+    users.forEach(u => {
+        const roleOptions = ['student', 'lecturer', 'admin', 'superadmin']
+            .map(r => `<option value="${r}" ${u.role === r ? 'selected' : ''}>${r}</option>`).join('');
+
+        const isBlocked = u.block_program_year === true;
+        const isApproved = u.status === 'approved';
+        const statusText = isBlocked ? 'BLOCKED' : (isApproved ? 'Approved' : 'Pending');
+        const statusClass = isBlocked ? 'status-danger' : (isApproved ? 'status-approved' : 'status-pending');
+        
+        // Get program info
+        const programName = getProgramDisplayName(u.program);
+        const programType = getProgramType(u.program);
+        const programBadgeClass = programType === 'TVET' ? 'badge-tvet' : 'badge-krchn';
+        const programIcon = programType === 'TVET' ? 'fa-tools' : 'fa-graduation-cap';
+
+        // Escape for security
+        const escapedUserId = escapeHtml(u.user_id);
+        const escapedName = escapeHtml(u.full_name);
+
+        tbody.innerHTML += `
+            <tr>
+                <td>${escapeHtml(u.user_id.substring(0, 8))}...</td>
+                <td>${escapeHtml(u.full_name)}</td>
+                <td>${escapeHtml(u.email)}</td>
+                <td>
+                    <select class="btn" onchange="updateUserRole('${escapedUserId}', this.value, '${escapedName}')" ${u.role === 'superadmin' ? 'disabled' : ''}>
+                        ${roleOptions}
+                    </select>
+                </td>
+                <td>
+                    ${escapeHtml(programName)}
+                    <div class="program-badge ${programBadgeClass}">
+                        <i class="fas ${programIcon}"></i> ${programType}
+                    </div>
+                </td>
+                <td class="${statusClass}">${statusText}</td>
+                <td>
+                    <button class="btn btn-map" onclick="openEditUserModal('${escapedUserId}')">Edit</button>
+                    ${!isApproved ? `<button class="btn btn-approve" onclick="approveUser('${escapedUserId}', '${escapedName}')">Approve</button>` : ''}
+                    <button class="btn btn-delete" onclick="deleteProfile('${escapedUserId}', '${escapedName}')">Delete</button>
+                </td>
+            </tr>`;
+    });
+
+    filterTable('user-search', 'users-table', [1, 2, 4]);
+}
+
+/*******************************************************
+ * UPDATE THE loadStudents FUNCTION
+ *******************************************************/
+
+async function loadStudents() {
+    const tbody = $('students-table');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '<tr><td colspan="9">Loading students...</td></tr>';
+
+    const { data: students, error } = await sb.from(USER_PROFILE_TABLE)
+        .select('*')
+        .eq('role', 'student')
+        .order('full_name', { ascending: true });
+    
+    if (error) {
+        tbody.innerHTML = `<tr><td colspan="9">Error loading students: ${error.message}</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = '';
+    
+    students.forEach(s => {
+        const isBlocked = s.block_program_year === true;
+        const statusText = isBlocked ? 'BLOCKED' : (s.status === 'approved' ? 'Active' : 'Pending');
+        const statusClass = isBlocked ? 'status-danger' : (s.status === 'approved' ? 'status-approved' : 'status-pending');
+        
+        // Get program info
+        const programName = getProgramDisplayName(s.program);
+        const programType = getProgramType(s.program);
+        const programLevel = getProgramLevel(s.program);
+        const programBadgeClass = programType === 'TVET' ? 'badge-tvet' : 'badge-krchn';
+        const programIcon = programType === 'TVET' ? 'fa-tools' : 'fa-graduation-cap';
+        
+        // Format block/term display
+        const blockTermDisplay = s.block || 'Not Assigned';
+        const blockTermLabel = programType === 'TVET' ? 'Term' : 'Block';
+
+        // Escape for security
+        const escapedUserId = escapeHtml(s.user_id);
+        const escapedName = escapeHtml(s.full_name);
+
+        tbody.innerHTML += `
+            <tr>
+                <td>${escapeHtml(s.user_id.substring(0, 8))}...</td>
+                <td>${escapeHtml(s.full_name)}</td>
+                <td>${escapeHtml(s.email)}</td>
+                <td>
+                    <strong>${escapeHtml(programName)}</strong>
+                    ${programType === 'TVET' ? `<br><small class="text-muted">${programLevel}</small>` : ''}
+                    <div class="program-badge ${programBadgeClass}">
+                        <i class="fas ${programIcon}"></i> ${programType}
+                    </div>
+                </td>
+                <td>${escapeHtml(s.intake_year || 'N/A')}</td>
+                <td><strong>${blockTermLabel}:</strong> ${escapeHtml(blockTermDisplay)}</td>
+                <td>${escapeHtml(s.phone)}</td>
+                <td class="${statusClass}">${statusText}</td>
+                <td>
+                    <button class="btn btn-map" onclick="openEditUserModal('${escapedUserId}')">Edit</button>
+                    <button class="btn btn-delete" onclick="deleteProfile('${escapedUserId}', '${escapedName}')">Delete</button>
+                </td>
+            </tr>`;
+    });
+
+    filterTable('student-search', 'students-table', [1, 3, 5]);
+}
+
+/*******************************************************
+ * CSS STYLES FOR BUTTONS (Add to your admin.css)
+ *******************************************************/
+
+const deleteButtonStyles = document.createElement('style');
+deleteButtonStyles.textContent = `
+    .btn {
+        padding: 6px 12px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+    
+    .btn-approve {
+        background-color: #10B981;
+        color: white;
+    }
+    
+    .btn-approve:hover {
+        background-color: #059669;
+    }
+    
+    .btn-delete {
+        background-color: #EF4444;
+        color: white;
+    }
+    
+    .btn-delete:hover {
+        background-color: #DC2626;
+    }
+    
+    .btn-map {
+        background-color: #3B82F6;
+        color: white;
+    }
+    
+    .btn-map:hover {
+        background-color: #2563EB;
+    }
+    
+    .status-danger {
+        color: #DC2626;
+        font-weight: bold;
+    }
+    
+    .status-approved {
+        color: #10B981;
+        font-weight: bold;
+    }
+    
+    .status-pending {
+        color: #F59E0B;
+        font-weight: bold;
+    }
+    
+    .program-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        margin-top: 4px;
+    }
+    
+    .badge-tvet {
+        background-color: #e0f2fe;
+        color: #0369a1;
+        border: 1px solid #bae6fd;
+    }
+    
+    .badge-krchn {
+        background-color: #f0f9ff;
+        color: #0c4a6e;
+        border: 1px solid #e0f2fe;
+    }
+`;
+document.head.appendChild(deleteButtonStyles);
 /*******************************************************
  * 8. COURSES MANAGEMENT
  *******************************************************/
