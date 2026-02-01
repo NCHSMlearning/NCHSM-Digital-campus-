@@ -1217,6 +1217,298 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
+/*******************************************************
+ * APPROVE USER FUNCTION - Add to your admin-script.js
+ *******************************************************/
+
+async function approveUser(userId, fullName, studentId = '', email = '', role = 'student', program = 'N/A') {
+    console.log('🎯 Approving user:', { userId, fullName, studentId });
+    
+    if (!confirm(`Approve user ${fullName}?`)) return;
+
+    try {
+        // First, update the user profile status
+        const { data, error } = await sb
+            .from(USER_PROFILE_TABLE)
+            .update({
+                status: 'approved',
+                student_id: studentId || ''
+            })
+            .eq('user_id', userId)
+            .select('*');
+
+        if (error) {
+            console.error('❌ Error approving user:', error);
+            await logAudit(
+                'USER_APPROVE',
+                `Failed to approve user ${fullName} (Student ID: ${studentId}). Reason: ${error.message}`,
+                userId,
+                'FAILURE'
+            );
+            showFeedback(`Failed: ${error.message}`, 'error');
+            return;
+        }
+
+        // Send approval email if we have email
+        if (email) {
+            try {
+                await sendApprovalEmail(email, fullName, role);
+            } catch (emailError) {
+                console.warn('⚠️ Approval email failed:', emailError);
+                // Continue anyway - approval succeeded even if email failed
+            }
+        }
+
+        showFeedback(`✅ User ${fullName} approved successfully!`, 'success');
+        
+        await logAudit(
+            'USER_APPROVE',
+            `User ${fullName} (Student ID: ${studentId}) approved successfully.`,
+            userId,
+            'SUCCESS'
+        );
+
+        // Refresh all user tables
+        loadPendingApprovals();
+        loadAllUsers();
+        loadStudents();
+        
+        // Also refresh dashboard if it exists
+        if (typeof loadDashboardData === 'function') {
+            loadDashboardData();
+        }
+
+    } catch (err) {
+        console.error('❌ Unexpected error in approveUser:', err);
+        showFeedback(`Unexpected error: ${err.message}`, 'error');
+    }
+}
+
+/*******************************************************
+ * HELPER FUNCTION: Send Approval Email
+ *******************************************************/
+
+async function sendApprovalEmail(email, userName, role) {
+    console.log('📧 Sending approval email to:', email);
+    
+    // Your email sending logic here (adapt to your email system)
+    const scriptUrl = 'https://script.google.com/macros/s/AKfycbwo0Z-oQ_p5-dIe4XYiaRTv6ZdxlmfxP5LIpQT4T1cGihvlimVJg3AvdUNrDeZ0cEkJ3g/exec';
+    
+    const params = new URLSearchParams({
+        to: email,
+        userName: userName,
+        role: role,
+        emailType: 'approval',
+        subject: 'Account Approved - NCHSM Digital Portal'
+    });
+    
+    console.log('📡 Sending approval email...');
+    
+    // Using Image technique to avoid CORS
+    const img = new Image();
+    img.src = scriptUrl + '?' + params.toString();
+    img.style.display = 'none';
+    
+    return new Promise((resolve, reject) => {
+        img.onload = function() {
+            console.log('✅ Approval email sent!');
+            resolve(true);
+        };
+        
+        img.onerror = function() {
+            console.log('✅ Email request completed (may not have sent)');
+            resolve(false);
+        };
+        
+        document.body.appendChild(img);
+    });
+}
+
+/*******************************************************
+ * UPDATE THE loadPendingApprovals FUNCTION
+ * Make sure it calls approveUser correctly
+ *******************************************************/
+
+async function loadPendingApprovals() {
+    const tbody = $('pending-table');
+    if (!tbody) {
+        console.error("Missing <tbody id='pending-table'> element in your HTML.");
+        return;
+    }
+
+    tbody.innerHTML = '<tr><td colspan="7">Loading pending approvals...</td></tr>';
+
+    const { data: pending, error } = await sb
+        .from(USER_PROFILE_TABLE)
+        .select('*')
+        .eq('status', 'pending')
+        .order('created_at', { ascending: true });
+
+    if (error) {
+        tbody.innerHTML = `<tr><td colspan="7">Error: ${error.message}</td></tr>`;
+        return;
+    }
+
+    if (!pending || pending.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7">No pending approvals.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = '';
+
+    pending.forEach(u => {
+        // Escape HTML for security
+        const escapedName = escapeHtml(u.full_name);
+        const escapedUserId = escapeHtml(u.user_id);
+        const escapedStudentId = escapeHtml(u.student_id || '');
+        const escapedEmail = escapeHtml(u.email || '');
+        const escapedRole = escapeHtml(u.role || 'student');
+        const escapedProgram = escapeHtml(u.program || 'N/A');
+        
+        // Get program info for display
+        const programName = getProgramDisplayName(u.program);
+        const programType = getProgramType(u.program);
+        const programBadgeClass = programType === 'TVET' ? 'badge-tvet' : 'badge-krchn';
+        const programIcon = programType === 'TVET' ? 'fa-tools' : 'fa-graduation-cap';
+        
+        tbody.innerHTML += `
+            <tr>
+                <td>${escapedName}</td>
+                <td>${escapedEmail}</td>
+                <td>${escapedRole}</td>
+                <td>
+                    ${escapeHtml(programName)}
+                    <div class="program-badge ${programBadgeClass}">
+                        <i class="fas ${programIcon}"></i> ${programType}
+                    </div>
+                </td>
+                <td>${escapedStudentId || 'N/A'}</td>
+                <td>${new Date(u.created_at).toLocaleDateString()}</td>
+                <td>
+                    <button class="btn btn-approve" 
+                            onclick="approveUser('${escapedUserId}', '${escapedName}', '${escapedStudentId}', '${escapedEmail}', '${escapedRole}', '${escapedProgram}')">
+                        Approve
+                    </button>
+                    <button class="btn btn-delete" 
+                            onclick="deleteProfile('${escapedUserId}', '${escapedName}')">
+                        Reject
+                    </button>
+                </td>
+            </tr>`;
+    });
+}
+
+/*******************************************************
+ * ADD THESE FUNCTIONS IF THEY DON'T EXIST
+ *******************************************************/
+
+// Helper function for $ selector (if not already defined)
+function $(id) {
+    return document.getElementById(id);
+}
+
+// Escape HTML function (if not already defined)
+function escapeHtml(str, forAttribute = false) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    const escaped = div.innerHTML;
+    
+    if (forAttribute) {
+        // Extra escaping for attribute values
+        return escaped
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#x27;')
+            .replace(/`/g, '&#x60;');
+    }
+    
+    return escaped;
+}
+
+// Show feedback function (if not already defined)
+function showFeedback(message, type = 'info') {
+    // Create or find feedback element
+    let feedbackEl = document.getElementById('feedback-message');
+    if (!feedbackEl) {
+        feedbackEl = document.createElement('div');
+        feedbackEl.id = 'feedback-message';
+        feedbackEl.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            z-index: 10000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            animation: slideIn 0.3s ease;
+        `;
+        document.body.appendChild(feedbackEl);
+    }
+    
+    // Set colors based on type
+    const colors = {
+        success: '#10B981',
+        error: '#EF4444',
+        warning: '#F59E0B',
+        info: '#3B82F6'
+    };
+    
+    feedbackEl.style.backgroundColor = colors[type] || colors.info;
+    feedbackEl.textContent = message;
+    
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        if (feedbackEl.parentNode) {
+            feedbackEl.style.animation = 'slideOut 0.3s ease';
+            setTimeout(() => {
+                if (feedbackEl.parentNode) {
+                    feedbackEl.parentNode.removeChild(feedbackEl);
+                }
+            }, 300);
+        }
+    }, 5000);
+    
+    // Add CSS for animations if not present
+    if (!document.getElementById('feedback-styles')) {
+        const style = document.createElement('style');
+        style.id = 'feedback-styles';
+        style.textContent = `
+            @keyframes slideIn {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+            @keyframes slideOut {
+                from { transform: translateX(0); opacity: 1; }
+                to { transform: translateX(100%); opacity: 0; }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+}
+
+// Log audit function (if not already defined)
+async function logAudit(action, details, userId = null, status = 'SUCCESS') {
+    try {
+        const { error } = await sb
+            .from('admin_audit_logs')
+            .insert([{
+                action,
+                details,
+                user_id: userId,
+                status,
+                performed_by: window.currentAdminId || 'system',
+                performed_at: new Date().toISOString()
+            }]);
+        
+        if (error) {
+            console.error('❌ Failed to log audit:', error);
+        }
+    } catch (err) {
+        console.error('❌ Audit logging failed:', err);
+    }
+}
 
 /*******************************************************
  * 8. COURSES MANAGEMENT
