@@ -1,12 +1,65 @@
-// courses.js - FINAL PERFECTED VERSION
+// courses.js - COMPLETE VERSION WITH PERFECT COLUMN ARRANGEMENT
 (function() {
     'use strict';
     
-    console.log('✅ courses.js - Loading with PERFECT TVET/KRCHN logic...');
+    console.log('✅ courses.js - Loading with perfect column arrangement...');
     
     class CoursesModule {
         constructor() {
             console.log('📚 CoursesModule initialized');
+            
+            // Define ALL TVET program codes from your school
+            this.TVET_PROGRAMS = [
+                // Diploma Programs (6-24 months)
+                'DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME',
+                
+                // Certificate Programs (3-12 months)
+                'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT',
+                
+                // Artisan Programs (2-12 months)
+                'ACH', 'AAG', 'ASW',
+                
+                // Other TVET Programs
+                'CCA', 'PTE'
+            ];
+            
+            // Program display names mapping
+            this.PROGRAM_DISPLAY_NAMES = {
+                // KRCHN
+                'KRCHN': 'KRCHN Nursing',
+                
+                // TVET Diplomas
+                'DPOTT': 'Diploma in Perioperative Theatre Technology',
+                'DCH': 'Diploma in Community Health',
+                'DHRIT': 'Diploma in Health Records and IT',
+                'DSL': 'Diploma in Science Lab',
+                'DSW': 'Diploma in Social Work and Community Development',
+                'DCJS': 'Diploma in Criminal Justice',
+                'DHSS': 'Diploma in Health Support Services',
+                'DICT': 'Diploma in Information & Communication Technology',
+                'DME': 'Diploma in Medical Engineering',
+                
+                // TVET Certificates
+                'CPOTT': 'Certificate in Perioperative Theatre Technology',
+                'CCH': 'Certificate in Community Health',
+                'CHRIT': 'Certificate in Health Records and IT',
+                'CPC': 'Certificate in Patient Care',
+                'CSL': 'Certificate in Science Lab',
+                'CSW': 'Certificate in Social Work and Community Development',
+                'CCJS': 'Certificate in Criminal Justice',
+                'CAG': 'Certificate in Agriculture',
+                'CHSS': 'Certificate in Health Support Services',
+                'CICT': 'Certificate in Information & Communication Technology',
+                
+                // TVET Artisan
+                'ACH': 'Artisan in Community Health',
+                'AAG': 'Artisan in Agriculture',
+                'ASW': 'Artisan in Social Work and Community Development',
+                
+                // Other TVET
+                'CCA': 'Certificate in Computer Applications (CCA)',
+                'PTE': 'TVET/CDACC (PTE)'
+            };
             
             // Store course data
             this.allCourses = [];
@@ -17,23 +70,32 @@
             this.loaded = false;
             
             // User data
-            this.program = null;
+            this.programCode = null;
+            this.programName = null;
+            this.programType = null;
+            this.programLevel = null;
             this.intakeYear = null;
-            this.userBlock = null;      // User's block from profile
-            this.userTerm = null;       // User's term from profile
+            this.userBlock = null;
+            this.userTerm = null;
             this.isTVETStudent = false;
-            this.programType = null;    // 'TVET' or 'KRCHN'
             
+            // Cache DOM elements
             this.cacheElements();
+            
+            // Initialize event listeners
             this.initializeEventListeners();
             this.updateFilterButtons();
+            
+            // Set up login event listeners
             this.setupLoginListeners();
             
+            // Try to load if user is already logged in
             setTimeout(() => this.tryLoadIfLoggedIn(), 1500);
         }
         
         setupLoginListeners() {
             document.addEventListener('userLoggedIn', (e) => {
+                console.log('🎉 USER LOGGED IN EVENT RECEIVED!');
                 this.userProfile = e.detail?.userProfile;
                 this.updateUserData();
                 this.loadCourses();
@@ -50,6 +112,7 @@
             });
             
             document.addEventListener('appReady', () => {
+                console.log('🚀 App ready event received');
                 this.tryLoadIfLoggedIn();
             });
         }
@@ -58,46 +121,79 @@
             const profile = this.getUserProfileFromAnySource();
             
             if (profile) {
+                console.log('✅ User already logged in:', profile.full_name || profile.email);
                 this.userProfile = profile;
                 this.updateUserData();
                 this.loadCourses();
             } else {
+                console.log('⏳ No user profile found yet, waiting for login...');
                 this.showWaitingForLogin();
             }
         }
         
+        determineProgramType(programCode) {
+            if (!programCode) return { type: 'KRCHN', level: 'KRCHN' };
+            
+            const code = String(programCode).toUpperCase().trim();
+            
+            if (this.TVET_PROGRAMS.includes(code)) {
+                let level = 'CERTIFICATE';
+                if (code.startsWith('D')) level = 'DIPLOMA';
+                if (code.startsWith('A')) level = 'ARTISAN';
+                if (code === 'CCA' || code === 'PTE') level = 'OTHER';
+                
+                return {
+                    type: 'TVET',
+                    level: level,
+                    code: code
+                };
+            }
+            
+            if (code === 'KRCHN') {
+                return { type: 'KRCHN', level: 'KRCHN', code: 'KRCHN' };
+            }
+            
+            return { type: 'KRCHN', level: 'KRCHN', code: 'KRCHN' };
+        }
+        
         updateUserData() {
             if (this.userProfile) {
-                // Get program and determine type
-                this.program = this.userProfile.program || this.userProfile.course || 'KRCHN';
-                this.intakeYear = this.userProfile.intake_year || this.userProfile.year || 2025;
+                const programFromProfile = this.userProfile.program || 
+                                         this.userProfile.course || 
+                                         'KRCHN';
                 
-                // 🔥 DETERMINE PROGRAM TYPE
-                const programStr = String(this.program).toUpperCase().trim();
-                this.isTVETStudent = programStr.includes('TVET');
-                this.programType = this.isTVETStudent ? 'TVET' : 'KRCHN';
+                this.intakeYear = this.userProfile.intake_year || 
+                                 this.userProfile.year || 
+                                 2025;
                 
-                // 🔥 GET BLOCK/TERM BASED ON PROGRAM TYPE
+                const programInfo = this.determineProgramType(programFromProfile);
+                
+                this.programCode = programInfo.code;
+                this.programType = programInfo.type;
+                this.programLevel = programInfo.level;
+                this.isTVETStudent = (this.programType === 'TVET');
+                this.programName = this.PROGRAM_DISPLAY_NAMES[this.programCode] || programFromProfile;
+                
                 if (this.isTVETStudent) {
-                    // TVET students: Use term from profile, fallback to block
-                    this.userTerm = this.userProfile.term || this.userProfile.block || 'Term1';
-                    this.userBlock = null; // Not used for TVET
-                    console.log('🎯 TVET student - Term:', this.userTerm);
+                    this.userTerm = this.userProfile.term || 
+                                   this.userProfile.block || 
+                                   'Term1';
+                    this.userBlock = null;
+                    console.log('🎯 TVET Student:', {
+                        code: this.programCode,
+                        level: this.programLevel,
+                        name: this.programName,
+                        term: this.userTerm
+                    });
                 } else {
-                    // KRCHN students: Use block from profile
                     this.userBlock = this.userProfile.block || 'A';
-                    this.userTerm = null; // Not used for KRCHN
-                    console.log('🎯 KRCHN student - Block:', this.userBlock);
+                    this.userTerm = null;
+                    console.log('🎯 KRCHN Student:', {
+                        code: this.programCode,
+                        name: this.programName,
+                        block: this.userBlock
+                    });
                 }
-                
-                console.log('✅ User data updated:', {
-                    program: this.program,
-                    programType: this.programType,
-                    isTVET: this.isTVETStudent,
-                    intakeYear: this.intakeYear,
-                    block: this.userBlock,
-                    term: this.userTerm
-                });
                 
                 return true;
             }
@@ -125,9 +221,10 @@
                         return profile;
                     }
                 } catch (e) {
-                    // Continue
+                    console.log('⚠️ Profile source error:', e.message);
                 }
             }
+            
             return null;
         }
         
@@ -139,29 +236,45 @@
             this.activeCount = document.getElementById('active-count');
             this.completedCount = document.getElementById('completed-count');
             this.programIndicator = document.getElementById('courses-program-indicator');
+            
+            this.filterAllBtn = document.getElementById('view-all-courses');
+            this.filterActiveBtn = document.getElementById('view-active-only');
+            this.filterCompletedBtn = document.getElementById('view-completed-only');
         }
         
         initializeEventListeners() {
-            // Filter buttons
-            const filterButtons = [
-                { id: 'view-all-courses', filter: 'all' },
-                { id: 'view-active-only', filter: 'active' },
-                { id: 'view-completed-only', filter: 'completed' }
-            ];
+            if (this.filterAllBtn) {
+                this.filterAllBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    if (!this.userProfile) {
+                        this.showError('Please log in first');
+                        return;
+                    }
+                    this.applyFilter('all');
+                });
+            }
             
-            filterButtons.forEach(({ id, filter }) => {
-                const button = document.getElementById(id);
-                if (button) {
-                    button.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        if (!this.userProfile) {
-                            this.showError('Please log in first');
-                            return;
-                        }
-                        this.applyFilter(filter);
-                    });
-                }
-            });
+            if (this.filterActiveBtn) {
+                this.filterActiveBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    if (!this.userProfile) {
+                        this.showError('Please log in first');
+                        return;
+                    }
+                    this.applyFilter('active');
+                });
+            }
+            
+            if (this.filterCompletedBtn) {
+                this.filterCompletedBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    if (!this.userProfile) {
+                        this.showError('Please log in first');
+                        return;
+                    }
+                    this.applyFilter('completed');
+                });
+            }
             
             const refreshBtn = document.getElementById('refresh-courses-btn');
             if (refreshBtn) {
@@ -198,33 +311,27 @@
                 }
                 
                 console.log('🔍 Fetching courses for:', {
+                    programCode: this.programCode,
                     programType: this.programType,
-                    intakeYear: this.intakeYear,
-                    block: this.userBlock,
-                    term: this.userTerm
+                    level: this.programLevel,
+                    intakeYear: this.intakeYear
                 });
                 
-                // 🔥 STEP 1: Build base query
                 let query = supabase
                     .from('courses')
                     .select('*')
                     .eq('intake_year', String(this.intakeYear))
                     .order('course_name', { ascending: true });
                 
-                // 🔥 STEP 2: Filter by target_program
-                if (this.programType === 'TVET') {
+                if (this.isTVETStudent) {
                     query = query.eq('target_program', 'TVET');
                 } else {
-                    // KRCHN or other non-TVET programs
                     query = query.or('target_program.eq.KRCHN,target_program.is.null');
                 }
                 
-                // 🔥 STEP 3: Filter by block/term based on program type
-                if (this.programType === 'TVET' && this.userTerm) {
-                    // TVET: Match block field with term value (e.g., block = 'Term1')
+                if (this.isTVETStudent && this.userTerm) {
                     query = query.eq('block', this.userTerm);
-                } else if (this.programType === 'KRCHN' && this.userBlock) {
-                    // KRCHN: Match block field with block value (e.g., block = 'A')
+                } else if (!this.isTVETStudent && this.userBlock) {
                     query = query.eq('block', this.userBlock);
                 }
                 
@@ -234,18 +341,16 @@
                 
                 console.log(`📊 Found ${courses?.length || 0} courses with primary filter`);
                 
-                // 🔥 STEP 4: If no courses found, try fallback
                 if (!courses || courses.length === 0) {
-                    console.log('⚠️ No courses found, trying fallback...');
+                    console.log('⚠️ No courses found with strict filter, trying fallback...');
                     
-                    // Fallback: Same program filter but no block/term restriction
                     let fallbackQuery = supabase
                         .from('courses')
                         .select('*')
                         .eq('intake_year', String(this.intakeYear))
                         .order('course_name', { ascending: true });
                     
-                    if (this.programType === 'TVET') {
+                    if (this.isTVETStudent) {
                         fallbackQuery = fallbackQuery.eq('target_program', 'TVET');
                     } else {
                         fallbackQuery = fallbackQuery.or('target_program.eq.KRCHN,target_program.is.null');
@@ -259,7 +364,6 @@
                     console.log(`📊 Found ${courses?.length || 0} courses via fallback`);
                 }
                 
-                // 🔥 STEP 5: Process and display courses
                 if (courses && courses.length > 0) {
                     this.processCoursesData(courses);
                     this.applyDataFilter();
@@ -284,16 +388,30 @@
             this.allCourses = courses.map(course => {
                 const isCompleted = course.status === 'Completed' || course.status === 'Passed';
                 const isTVETCourse = course.target_program === 'TVET';
-                const programType = course.target_program || 'General';
                 
-                // 🔥 Format the block/term display based on program type
-                let blockDisplay = course.block || 'General';
+                let programDisplay, programBadgeClass, programIcon, levelText;
+                
                 if (isTVETCourse) {
-                    // For TVET courses, show "Term: X"
-                    blockDisplay = `Term: ${course.block || 'General'}`;
+                    programDisplay = 'TVET Program';
+                    programBadgeClass = 'badge-tvet';
+                    programIcon = 'fa-tools';
+                    levelText = ` (${this.programLevel})`;
                 } else {
-                    // For KRCHN courses, show "Block: X"
-                    blockDisplay = `Block: ${course.block || 'General'}`;
+                    programDisplay = 'KRCHN Program';
+                    programBadgeClass = 'badge-krchn';
+                    programIcon = 'fa-graduation-cap';
+                    levelText = '';
+                }
+                
+                let durationDisplay = '';
+                if (course.duration_minutes) {
+                    const hours = Math.floor(course.duration_minutes / 60);
+                    const minutes = course.duration_minutes % 60;
+                    if (hours > 0) {
+                        durationDisplay = `${hours}h ${minutes > 0 ? `${minutes}m` : ''}`;
+                    } else {
+                        durationDisplay = `${minutes}m`;
+                    }
                 }
                 
                 return {
@@ -301,27 +419,26 @@
                     isCompleted,
                     isTVETCourse,
                     displayName: course.course_name || 'Unnamed Course',
-                    programType: programType,
-                    blockDisplay: blockDisplay,
+                    programDisplay: programDisplay + levelText,
+                    programBadgeClass,
+                    programIcon,
+                    programLevel: this.programLevel,
+                    durationDisplay,
                     formattedCreatedAt: course.created_at ? 
                         new Date(course.created_at).toLocaleDateString('en-US', { 
                             year: 'numeric', month: 'short', day: 'numeric' 
                         }) : '--',
-                    programBadgeClass: isTVETCourse ? 'badge-tvet' : 'badge-krchn',
-                    programIcon: isTVETCourse ? 'fa-tools' : 'fa-graduation-cap',
-                    programText: isTVETCourse ? 'TVET Program' : 'KRCHN Program'
+                    credits: course.credits || 3
                 };
             });
             
-            // Log the distribution
             const tvetCount = this.allCourses.filter(c => c.target_program === 'TVET').length;
             const krchnCount = this.allCourses.filter(c => c.target_program === 'KRCHN').length;
-            const otherCount = this.allCourses.filter(c => !c.target_program || !['TVET', 'KRCHN'].includes(c.target_program)).length;
             
             console.log(`✅ Processed ${this.allCourses.length} courses:`, {
                 TVET: tvetCount,
                 KRCHN: krchnCount,
-                Other: otherCount
+                program: this.programName
             });
         }
         
@@ -329,7 +446,12 @@
             if (this.programIndicator) {
                 const badgeClass = this.isTVETStudent ? 'badge-tvet' : 'badge-krchn';
                 const icon = this.isTVETStudent ? 'fa-tools' : 'fa-graduation-cap';
-                const typeText = this.isTVETStudent ? 'TVET' : 'KRCHN';
+                
+                let programText = this.programName;
+                if (this.isTVETStudent && this.programLevel !== 'OTHER') {
+                    programText = `${this.programLevel} - ${this.programName}`;
+                }
+                
                 const blockTermText = this.isTVETStudent ? 
                     `Term: ${this.userTerm}` : 
                     `Block: ${this.userBlock}`;
@@ -337,7 +459,7 @@
                 this.programIndicator.innerHTML = `
                     <span class="badge ${badgeClass}">
                         <i class="fas ${icon}"></i>
-                        ${typeText} Student
+                        ${this.escapeHtml(programText)}
                         <span class="ms-2">${blockTermText}</span>
                         <small class="ms-2 opacity-75">
                             (${this.allCourses.length} courses)
@@ -355,19 +477,20 @@
         }
         
         updateFilterButtons() {
-            const buttons = {
-                'all': document.getElementById('view-all-courses'),
-                'active': document.getElementById('view-active-only'),
-                'completed': document.getElementById('view-completed-only')
-            };
+            if (this.filterAllBtn) this.filterAllBtn.classList.remove('active');
+            if (this.filterActiveBtn) this.filterActiveBtn.classList.remove('active');
+            if (this.filterCompletedBtn) this.filterCompletedBtn.classList.remove('active');
             
-            Object.values(buttons).forEach(button => {
-                if (button) button.classList.remove('active');
-            });
-            
-            const currentButton = buttons[this.currentFilter];
-            if (currentButton) {
-                currentButton.classList.add('active');
+            switch(this.currentFilter) {
+                case 'all':
+                    if (this.filterAllBtn) this.filterAllBtn.classList.add('active');
+                    break;
+                case 'active':
+                    if (this.filterActiveBtn) this.filterActiveBtn.classList.add('active');
+                    break;
+                case 'completed':
+                    if (this.filterCompletedBtn) this.filterCompletedBtn.classList.add('active');
+                    break;
             }
         }
         
@@ -433,26 +556,33 @@
                         </span>
                     </div>
                     
-                    <!-- 🔥 Course name with program UNDERNEATH -->
+                    <!-- COURSE NAME -->
                     <h4 class="course-title">${this.escapeHtml(course.displayName)}</h4>
+                    
+                    <!-- 🔥 PROGRAM UNDER COURSE NAME -->
                     <div class="course-program-display">
                         <span class="program-badge ${course.programBadgeClass}">
                             <i class="fas ${course.programIcon}"></i> 
-                            ${this.escapeHtml(course.programText)}
+                            ${this.escapeHtml(course.programDisplay)}
                         </span>
-                        <span class="course-block-term ms-2">
-                            <i class="fas ${course.isTVETCourse ? 'fa-calendar-alt' : 'fa-th-large'}"></i>
-                            ${this.escapeHtml(course.blockDisplay)}
-                        </span>
+                        ${this.isTVETStudent && course.programLevel && course.programLevel !== 'OTHER' ? `
+                            <span class="program-level">
+                                <i class="fas fa-certificate"></i> ${this.escapeHtml(course.programLevel)}
+                            </span>
+                        ` : ''}
                     </div>
                     
                     <div class="course-meta">
-                        <span class="course-intake">
-                            <i class="far fa-calendar"></i> Intake: ${this.escapeHtml(course.intake_year || 'N/A')}
+                        <span class="course-term-block">
+                            <i class="fas ${course.isTVETCourse ? 'fa-calendar-alt' : 'fa-th-large'}"></i>
+                            ${this.escapeHtml(course.block || 'General')}
                         </span>
-                        ${course.duration_minutes ? `
+                        <span class="course-intake">
+                            <i class="far fa-calendar"></i> ${this.escapeHtml(course.intake_year || 'N/A')}
+                        </span>
+                        ${course.durationDisplay ? `
                             <span class="course-duration">
-                                <i class="far fa-clock"></i> ${course.duration_minutes} min
+                                <i class="far fa-clock"></i> ${course.durationDisplay}
                             </span>
                         ` : ''}
                     </div>
@@ -474,32 +604,71 @@
                 return;
             }
             
+            // 🔥 PERFECT COLUMN ARRANGEMENT:
+            // 1. Course Name (with Program UNDER it)
+            // 2. Unit Code
+            // 3. Credits
+            // 4. Term Column (Block A or Term1 goes here)
+            // 5. Completion Date
+            // 6. Status
+            
             const html = this.completedCourses.map(course => `
                 <tr>
-                    <!-- 🔥 Single column with course name and program -->
+                    <!-- COLUMN 1: COURSE NAME WITH PROGRAM UNDERNEATH -->
                     <td>
-                        <div>
-                            <strong>${this.escapeHtml(course.displayName)}</strong>
-                            <div class="program-display ${course.programBadgeClass}">
+                        <div class="course-name-with-program">
+                            <strong class="course-name-title">${this.escapeHtml(course.displayName)}</strong>
+                            <div class="program-under-name ${course.programBadgeClass}">
                                 <i class="fas ${course.programIcon}"></i> 
-                                ${this.escapeHtml(course.programText)}
-                                <span class="ms-2">
-                                    <i class="fas ${course.isTVETCourse ? 'fa-calendar-alt' : 'fa-th-large'}"></i>
-                                    ${this.escapeHtml(course.blockDisplay)}
-                                </span>
+                                ${this.escapeHtml(course.programDisplay)}
                             </div>
                         </div>
                     </td>
-                    <td><code>${this.escapeHtml(course.unit_code || 'N/A')}</code></td>
-                    <td class="text-center">${this.escapeHtml(course.intake_year || 'N/A')}</td>
-                    <td class="text-center">${course.formattedCreatedAt}</td>
-                    <td class="text-center">
+                    
+                    <!-- COLUMN 2: UNIT CODE -->
+                    <td>
+                        <code class="unit-code-display">${this.escapeHtml(course.unit_code || 'N/A')}</code>
+                    </td>
+                    
+                    <!-- COLUMN 3: CREDITS -->
+                    <td class="text-center credits-column">
+                        <span class="credits-badge">${course.credits || 3}</span>
+                    </td>
+                    
+                    <!-- 🔥 COLUMN 4: TERM COLUMN (Block A or Term1 goes here) -->
+                    <td class="text-center term-column">
+                        <span class="term-block-display">
+                            <i class="fas ${course.isTVETCourse ? 'fa-calendar-alt' : 'fa-th-large'}"></i>
+                            ${this.escapeHtml(course.block || 'General')}
+                        </span>
+                    </td>
+                    
+                    <!-- COLUMN 5: COMPLETION DATE -->
+                    <td class="text-center completion-date">
+                        ${course.formattedCreatedAt}
+                    </td>
+                    
+                    <!-- COLUMN 6: STATUS -->
+                    <td class="text-center status-column">
                         <span class="status-badge completed">Completed</span>
                     </td>
                 </tr>
             `).join('');
             
             this.completedTable.innerHTML = html;
+            
+            // 🔥 Update credits earned
+            this.updateCreditsEarned();
+        }
+        
+        updateCreditsEarned() {
+            const creditsEarnedElement = document.getElementById('credits-earned');
+            if (creditsEarnedElement) {
+                const totalCredits = this.completedCourses.reduce((sum, course) => {
+                    return sum + (course.credits || 0);
+                }, 0);
+                creditsEarnedElement.textContent = `${totalCredits} credits earned`;
+            }
         }
         
         updateCounts() {
@@ -525,11 +694,12 @@
         showLoading() {
             const programType = this.isTVETStudent ? 'TVET' : 'KRCHN';
             const blockTerm = this.isTVETStudent ? `Term: ${this.userTerm}` : `Block: ${this.userBlock}`;
+            const programText = this.programName ? ` for ${this.programName}` : '';
             
             const loadingHTML = `
                 <div style="text-align: center; padding: 40px;">
                     <div class="loading-spinner"></div>
-                    <p>Loading ${programType} courses...</p>
+                    <p>Loading ${programType} courses${programText}...</p>
                     <small class="text-muted">
                         ${blockTerm} | Intake: ${this.intakeYear}
                     </small>
@@ -539,7 +709,7 @@
             if (this.activeGrid) this.activeGrid.innerHTML = loadingHTML;
             if (this.completedTable) {
                 this.completedTable.innerHTML = `
-                    <tr><td colspan="5">${loadingHTML}</td></tr>
+                    <tr><td colspan="6">${loadingHTML}</td></tr>
                 `;
             }
         }
@@ -547,6 +717,7 @@
         showNoCoursesFound() {
             const programType = this.isTVETStudent ? 'TVET' : 'KRCHN';
             const blockTerm = this.isTVETStudent ? `Term: ${this.userTerm}` : `Block: ${this.userBlock}`;
+            const programText = this.programName ? ` for ${this.programName}` : '';
             
             const noCoursesHTML = `
                 <div style="text-align: center; padding: 40px;">
@@ -555,10 +726,10 @@
                     </div>
                     <h4>No Courses Found</h4>
                     <p class="text-muted">
-                        No ${programType} courses found for:<br>
+                        No ${programType} courses found${programText}<br>
                         • Intake Year: ${this.intakeYear}<br>
                         • ${blockTerm}<br>
-                        • Program: ${this.program}
+                        • Program Code: ${this.programCode}
                     </p>
                     <button onclick="window.coursesModule.loadCourses()" class="btn btn-primary mt-3">
                         <i class="fas fa-sync-alt"></i> Try Again
@@ -569,7 +740,7 @@
             if (this.activeGrid) this.activeGrid.innerHTML = noCoursesHTML;
             if (this.completedTable) {
                 this.completedTable.innerHTML = `
-                    <tr><td colspan="5">${noCoursesHTML}</td></tr>
+                    <tr><td colspan="6">${noCoursesHTML}</td></tr>
                 `;
             }
         }
@@ -580,7 +751,7 @@
                     <i class="fas fa-exclamation-triangle"></i>
                     <p>${message}</p>
                     <small class="text-muted">
-                        Program: ${this.program} (${this.isTVETStudent ? 'TVET' : 'KRCHN'})
+                        Program: ${this.programName || this.programCode} (${this.isTVETStudent ? 'TVET' : 'KRCHN'})
                     </small>
                     <br>
                     <button onclick="window.coursesModule.loadCourses()" class="btn btn-sm btn-outline-primary mt-2">
@@ -592,7 +763,7 @@
             if (this.activeGrid) this.activeGrid.innerHTML = errorHTML;
             if (this.completedTable) {
                 this.completedTable.innerHTML = `
-                    <tr><td colspan="5">${errorHTML}</td></tr>
+                    <tr><td colspan="6">${errorHTML}</td></tr>
                 `;
             }
         }
@@ -604,8 +775,10 @@
                     activeCount: this.activeCourses.length,
                     completedCount: this.completedCourses.length,
                     isTVETStudent: this.isTVETStudent,
-                    program: this.program,
-                    programType: this.programType,
+                    programCode: this.programCode,
+                    programName: this.programName,
+                    programLevel: this.programLevel,
+                    intakeYear: this.intakeYear,
                     timestamp: new Date().toISOString()
                 }
             });
@@ -619,7 +792,8 @@
                     activeCount: this.activeCourses.length,
                     completedCount: this.completedCourses.length,
                     isTVETStudent: this.isTVETStudent,
-                    program: this.program,
+                    programCode: this.programCode,
+                    programName: this.programName,
                     timestamp: new Date().toISOString()
                 }
             });
@@ -628,9 +802,13 @@
             window.coursesData = {
                 allCourses: this.allCourses,
                 activeCount: this.activeCourses.length,
+                completedCount: this.completedCourses.length,
                 loaded: this.loaded,
                 isTVETStudent: this.isTVETStudent,
-                programType: this.programType
+                programCode: this.programCode,
+                programName: this.programName,
+                programLevel: this.programLevel,
+                intakeYear: this.intakeYear
             };
         }
         
@@ -668,15 +846,28 @@
                         </p>
                         <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; display: inline-block;">
                             <p style="margin: 0; color: #4b5563;">
-                                <strong>Course Filtering Logic:</strong><br>
-                                • TVET students: See TVET courses filtered by Term<br>
-                                • KRCHN students: See KRCHN courses filtered by Block<br>
-                                • Program shown under course name
+                                <strong>Course Display Format:</strong><br>
+                                • Course Name with Program underneath<br>
+                                • Term/Block in separate column<br>
+                                • Perfect column arrangement for completed courses
                             </p>
                         </div>
                     </div>
                 `;
             }
+        }
+        
+        getStudentProgramInfo() {
+            return {
+                programCode: this.programCode,
+                programName: this.programName,
+                programType: this.programType,
+                programLevel: this.programLevel,
+                isTVETStudent: this.isTVETStudent,
+                intakeYear: this.intakeYear,
+                block: this.userBlock,
+                term: this.userTerm
+            };
         }
     }
     
@@ -687,22 +878,17 @@
     window.getActiveCourseCount = () => window.coursesModule?.getActiveCourseCount() || 0;
     window.getAllCourses = () => window.coursesModule?.getAllCourses() || [];
     window.loadCourses = () => window.coursesModule?.refresh();
-    window.getCoursesProgramInfo = () => {
-        if (window.coursesModule) {
-            return {
-                isTVETStudent: window.coursesModule.isTVETStudent,
-                programType: window.coursesModule.programType,
-                program: window.coursesModule.program,
-                activeCount: window.coursesModule.activeCourses?.length || 0
-            };
-        }
-        return {
-            isTVETStudent: false,
-            programType: 'Unknown',
-            program: 'Unknown',
-            activeCount: 0
-        };
+    window.getCoursesProgramInfo = () => window.coursesModule?.getStudentProgramInfo() || {
+        programCode: 'Unknown',
+        programName: 'Unknown Program',
+        programType: 'Unknown',
+        programLevel: 'Unknown',
+        isTVETStudent: false,
+        intakeYear: 2025,
+        block: null,
+        term: null
     };
+    window.getTVETPrograms = () => window.coursesModule?.TVET_PROGRAMS || [];
     
-    console.log('✅ Courses module ready with PERFECT TVET/KRCHN logic!');
+    console.log('✅ Courses module ready with PERFECT COLUMN ARRANGEMENT!');
 })();
