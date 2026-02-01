@@ -559,43 +559,265 @@ async function loadDataVisualization() {
 }
 
 /*******************************************************
- * 7. USERS / ENROLLMENT MANAGEMENT
+ * 7. USERS / ENROLLMENT MANAGEMENT - UPDATED FOR TVET
  *******************************************************/
+
+// TVET Program Codes (add this at the top of your file, after constants)
+const TVET_PROGRAMS = [
+    // Diploma Programs (6-24 months)
+    'DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME',
+    
+    // Certificate Programs (3-12 months)
+    'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT',
+    
+    // Artisan Programs (2-12 months)
+    'ACH', 'AAG', 'ASW',
+    
+    // Other TVET Programs
+    'CCA', 'PTE'
+];
+
+// Program display names
+const PROGRAM_DISPLAY_NAMES = {
+    // KRCHN
+    'KRCHN': 'KRCHN Nursing',
+    
+    // TVET Diplomas
+    'DPOTT': 'Diploma in Perioperative Theatre Technology',
+    'DCH': 'Diploma in Community Health',
+    'DHRIT': 'Diploma in Health Records and IT',
+    'DSL': 'Diploma in Science Lab',
+    'DSW': 'Diploma in Social Work & Community Development',
+    'DCJS': 'Diploma in Criminal Justice',
+    'DHSS': 'Diploma in Health Support Services',
+    'DICT': 'Diploma in ICT',
+    'DME': 'Diploma in Medical Engineering',
+    
+    // TVET Certificates
+    'CPOTT': 'Certificate in Perioperative Theatre Technology',
+    'CCH': 'Certificate in Community Health',
+    'CHRIT': 'Certificate in Health Records and IT',
+    'CPC': 'Certificate in Patient Care',
+    'CSL': 'Certificate in Science Lab',
+    'CSW': 'Certificate in Social Work & Community Development',
+    'CCJS': 'Certificate in Criminal Justice',
+    'CAG': 'Certificate in Agriculture',
+    'CHSS': 'Certificate in Health Support Services',
+    'CICT': 'Certificate in ICT',
+    
+    // TVET Artisan
+    'ACH': 'Artisan in Community Health',
+    'AAG': 'Artisan in Agriculture',
+    'ASW': 'Artisan in Social Work & Community Development',
+    
+    // Other TVET
+    'CCA': 'Certificate in Computer Applications',
+    'PTE': 'TVET/CDACC (PTE)'
+};
+
+// Determine if a program code is TVET
+function isTVETProgram(programCode) {
+    if (!programCode) return false;
+    const code = String(programCode).toUpperCase().trim();
+    return TVET_PROGRAMS.includes(code);
+}
+
+// Get program type (TVET or KRCHN)
+function getProgramType(programCode) {
+    if (!programCode) return 'KRCHN';
+    const code = String(programCode).toUpperCase().trim();
+    
+    if (code === 'KRCHN') return 'KRCHN';
+    if (isTVETProgram(code)) return 'TVET';
+    
+    return 'KRCHN'; // Default
+}
+
+// Get program level
+function getProgramLevel(programCode) {
+    if (!programCode) return 'KRCHN';
+    const code = String(programCode).toUpperCase().trim();
+    
+    if (code.startsWith('D')) return 'DIPLOMA';
+    if (code.startsWith('C') && code !== 'CCA') return 'CERTIFICATE';
+    if (code.startsWith('A')) return 'ARTISAN';
+    if (code === 'CCA' || code === 'PTE') return 'OTHER';
+    
+    return 'KRCHN';
+}
+
+// Get program display name
+function getProgramDisplayName(programCode) {
+    if (!programCode) return 'Unknown Program';
+    const code = String(programCode).toUpperCase().trim();
+    return PROGRAM_DISPLAY_NAMES[code] || programCode;
+}
+
+// Initialize program dropdowns when page loads
+function initializeProgramDropdowns() {
+    console.log('🎯 Initializing program dropdowns...');
+    
+    // Update account program dropdown
+    const accountProgramSelect = document.getElementById('account-program');
+    if (accountProgramSelect) {
+        updateProgramDropdown(accountProgramSelect);
+        
+        // Add event listener to update block/term options
+        accountProgramSelect.addEventListener('change', function() {
+            updateBlockTermOptions('account-program', 'account-block-term');
+        });
+    }
+    
+    // Update edit user program dropdown
+    const editProgramSelect = document.getElementById('edit_user_program');
+    if (editProgramSelect) {
+        updateProgramDropdown(editProgramSelect);
+        
+        editProgramSelect.addEventListener('change', function() {
+            updateBlockTermOptions('edit_user_program', 'edit_user_block');
+        });
+    }
+    
+    // Update course program dropdown
+    const courseProgramSelect = document.getElementById('course-program');
+    if (courseProgramSelect) {
+        updateProgramDropdown(courseProgramSelect);
+        
+        courseProgramSelect.addEventListener('change', function() {
+            updateBlockTermOptions('course-program', 'course-block');
+        });
+    }
+    
+    // Update session program dropdown
+    const sessionProgramSelect = document.getElementById('new_session_program');
+    if (sessionProgramSelect) {
+        updateProgramDropdown(sessionProgramSelect);
+        
+        sessionProgramSelect.addEventListener('change', function() {
+            updateBlockTermOptions('new_session_program', 'new_session_block_term');
+        });
+    }
+}
+
+// Update program dropdown with all TVET programs
+function updateProgramDropdown(selectElement) {
+    if (!selectElement) return;
+    
+    const currentValue = selectElement.value;
+    const isAccountProgram = selectElement.id === 'account-program';
+    
+    selectElement.innerHTML = '<option value="">-- Select Program --</option>';
+    
+    // Add KRCHN option
+    const krchnOption = document.createElement('option');
+    krchnOption.value = 'KRCHN';
+    krchnOption.textContent = 'KRCHN Nursing';
+    selectElement.appendChild(krchnOption);
+    
+    // Add optgroup for TVET Diplomas
+    const diplomaGroup = document.createElement('optgroup');
+    diplomaGroup.label = 'TVET Diploma Programs (6-24 months)';
+    ['DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME'].forEach(code => {
+        const option = document.createElement('option');
+        option.value = code;
+        option.textContent = PROGRAM_DISPLAY_NAMES[code] || code;
+        diplomaGroup.appendChild(option);
+    });
+    selectElement.appendChild(diplomaGroup);
+    
+    // Add optgroup for TVET Certificates
+    const certificateGroup = document.createElement('optgroup');
+    certificateGroup.label = 'TVET Certificate Programs (3-12 months)';
+    ['CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT'].forEach(code => {
+        const option = document.createElement('option');
+        option.value = code;
+        option.textContent = PROGRAM_DISPLAY_NAMES[code] || code;
+        certificateGroup.appendChild(option);
+    });
+    selectElement.appendChild(certificateGroup);
+    
+    // Add optgroup for TVET Artisan
+    const artisanGroup = document.createElement('optgroup');
+    artisanGroup.label = 'TVET Artisan Programs (2-12 months)';
+    ['ACH', 'AAG', 'ASW'].forEach(code => {
+        const option = document.createElement('option');
+        option.value = code;
+        option.textContent = PROGRAM_DISPLAY_NAMES[code] || code;
+        artisanGroup.appendChild(option);
+    });
+    selectElement.appendChild(artisanGroup);
+    
+    // Add optgroup for Other TVET
+    const otherGroup = document.createElement('optgroup');
+    otherGroup.label = 'Other TVET Programs';
+    ['CCA', 'PTE'].forEach(code => {
+        const option = document.createElement('option');
+        option.value = code;
+        option.textContent = PROGRAM_DISPLAY_NAMES[code] || code;
+        otherGroup.appendChild(option);
+    });
+    selectElement.appendChild(otherGroup);
+    
+    // Restore previous value if it exists
+    if (currentValue) {
+        selectElement.value = currentValue;
+    }
+}
+
+// Updated block/term options based on program
 function updateBlockTermOptions(programSelectId, blockTermSelectId) {
-    const program = $(programSelectId)?.value;
-    const blockTermSelect = $(blockTermSelectId);
-    if (!blockTermSelect) return;
-
+    const programSelect = document.getElementById(programSelectId);
+    const blockTermSelect = document.getElementById(blockTermSelectId);
+    
+    if (!programSelect || !blockTermSelect) return;
+    
+    const programCode = programSelect.value;
+    const programType = getProgramType(programCode);
+    const currentValue = blockTermSelect.value;
+    
     blockTermSelect.innerHTML = '<option value="">-- Select Block/Term --</option>';
-    if (!program) return;
-
+    
+    if (!programCode) return;
+    
     let options = [];
-    if (program === 'KRCHN') {
+    
+    if (programType === 'KRCHN') {
+        // KRCHN uses Blocks
         options = [
             { value: 'A', text: 'Block A' },
-            { value: 'B', text: 'Block B' }
+            { value: 'B', text: 'Block B' },
+            { value: 'C', text: 'Block C' },
+            { value: 'D', text: 'Block D' }
         ];
-    } else if (program === 'TVET') {
+    } else if (programType === 'TVET') {
+        // TVET uses Terms
         options = [
             { value: 'Term1', text: 'Term 1' },
             { value: 'Term2', text: 'Term 2' },
-            { value: 'Term3', text: 'Term 3' }
-        ];
-    } else {
-        options = [
-            { value: 'A', text: 'Block A / Term 1' },
-            { value: 'B', text: 'Block B / Term 2' }
+            { value: 'Term3', text: 'Term 3' },
+            { value: 'Term4', text: 'Term 4' },
+            { value: 'Term5', text: 'Term 5' },
+            { value: 'Term6', text: 'Term 6' }
         ];
     }
-
+    
+    // Add General option
+    options.push({ value: 'General', text: 'General' });
+    
     options.forEach(opt => {
         const option = document.createElement('option');
         option.value = opt.value;
         option.textContent = opt.text;
         blockTermSelect.appendChild(option);
     });
+    
+    // Restore previous value if it exists
+    if (currentValue) {
+        blockTermSelect.value = currentValue;
+    }
 }
 
+// Updated handleAddAccount function
 async function handleAddAccount(e) {
     e.preventDefault();
     const submitButton = e.submitter;
@@ -607,37 +829,61 @@ async function handleAddAccount(e) {
     const password = $('account-password').value.trim();
     const role = $('account-role').value;
     const phone = $('account-phone').value.trim();
-    const program = $('account-program').value;
+    const programCode = $('account-program').value;
     const intake_year = $('account-intake').value;
     const block = $('account-block-term').value;
+    
+    // 🔥 Get program type and name
+    const programType = getProgramType(programCode);
+    const programName = getProgramDisplayName(programCode);
+    const programLevel = getProgramLevel(programCode);
+
+    // Determine if this is TVET or KRCHN for block/term naming
+    const blockTermField = programType === 'TVET' ? 'term' : 'block';
+    const blockTermValue = block;
 
     const userData = {
         full_name: name,
         role,
         phone,
-        program,
+        program: programCode, // Store the actual code (e.g., 'DPOTT', 'CCH', 'KRCHN')
+        program_type: programType, // 'TVET' or 'KRCHN'
+        program_name: programName, // Display name
+        program_level: programLevel, // 'DIPLOMA', 'CERTIFICATE', etc.
         intake_year,
-        block,
+        [blockTermField]: blockTermValue, // Dynamic field name
         status: 'approved',
         block_program_year: false
     };
+
+    console.log('🎯 Enrolling user with data:', userData);
 
     try {
         const { data: { user }, error: authError } = await sb.auth.signUp({
             email, password, options: { data: userData }
         });
+        
         if (authError) throw authError;
 
         if (user && user.id) {
-            const profileData = { user_id: user.id, email, ...userData };
+            const profileData = { 
+                user_id: user.id, 
+                email, 
+                ...userData 
+            };
+            
             const { error: insertError } = await sb.from(USER_PROFILE_TABLE).insert([profileData]);
+            
             if (insertError) {
                 await sb.auth.admin.deleteUser(user.id);
                 throw insertError;
             }
+            
             e.target.reset();
-            showFeedback(`New ${role.toUpperCase()} account successfully enrolled!`, 'success');
-            await logAudit('USER_ENROLL', `Enrolled new ${role} account: ${name} (${email})`, user.id);
+            showFeedback(`New ${role.toUpperCase()} account successfully enrolled for ${programName}!`, 'success');
+            
+            await logAudit('USER_ENROLL', `Enrolled new ${role} account: ${name} (${programName})`, user.id);
+            
             loadAllUsers();
             loadStudents();
             loadDashboardData();
@@ -650,6 +896,7 @@ async function handleAddAccount(e) {
     }
 }
 
+// Updated handleMassPromotion function
 async function handleMassPromotion(e) {
     e.preventDefault();
     const submitButton = e.submitter;
@@ -659,7 +906,10 @@ async function handleMassPromotion(e) {
     const promote_intake = $('promote_intake').value;
     const promote_from_block = $('promote_from_block').value;
     const promote_to_block = $('promote_to_block').value;
-    const program = $('promote_intake').selectedOptions[0].text.includes('KRCHN') ? 'KRCHN' : 'TVET';
+    
+    // Get program type for confirmation message
+    const programSelect = document.getElementById('account-program');
+    const programType = programSelect ? getProgramType(programSelect.value) : 'KRCHN';
 
     if (!promote_intake || !promote_from_block || !promote_to_block) {
         showFeedback('Please select the Intake Year, FROM Block/Term, and TO Block/Term.', 'error');
@@ -673,7 +923,7 @@ async function handleMassPromotion(e) {
         return;
     }
     
-    if (!confirm(`CRITICAL ACTION: Promote ALL ${program} students from Intake ${promote_intake} Block/Term ${promote_from_block} to ${promote_to_block}? This is IRREVERSIBLE.`)) {
+    if (!confirm(`CRITICAL ACTION: Promote ALL ${programType} students from Intake ${promote_intake} Block/Term ${promote_from_block} to ${promote_to_block}? This is IRREVERSIBLE.`)) {
         setButtonLoading(submitButton, false, originalText);
         return;
     }
@@ -692,11 +942,11 @@ async function handleMassPromotion(e) {
         const count = data?.length || 0;
         
         if (count > 0) {
-             await logAudit('PROMOTION_MASS', `Promoted ${count} students: ${promote_intake} ${promote_from_block} -> ${promote_to_block}.`, null, 'SUCCESS');
-             showFeedback(`✅ Successfully promoted ${count} students!`, 'success');
+             await logAudit('PROMOTION_MASS', `Promoted ${count} ${programType} students: ${promote_intake} ${promote_from_block} -> ${promote_to_block}.`, null, 'SUCCESS');
+             showFeedback(`✅ Successfully promoted ${count} ${programType} students!`, 'success');
         } else {
-             await logAudit('PROMOTION_MASS', `Attempted promotion: No students found for criteria ${promote_intake} ${promote_from_block}.`, null, 'WARNING');
-             showFeedback('⚠️ No students were found matching the promotion criteria. Check your selections.', 'warning');
+             await logAudit('PROMOTION_MASS', `Attempted promotion: No ${programType} students found for criteria ${promote_intake} ${promote_from_block}.`, null, 'WARNING');
+             showFeedback(`⚠️ No ${programType} students were found matching the promotion criteria. Check your selections.`, 'warning');
         }
 
         loadStudents();
@@ -708,6 +958,7 @@ async function handleMassPromotion(e) {
     }
 }
 
+// Updated loadPendingApprovals function
 async function loadPendingApprovals() {
     const tbody = $('pending-table');
     if (!tbody) {
@@ -736,12 +987,22 @@ async function loadPendingApprovals() {
     tbody.innerHTML = '';
 
     pending.forEach(u => {
+        const programName = getProgramDisplayName(u.program);
+        const programType = getProgramType(u.program);
+        const programBadgeClass = programType === 'TVET' ? 'badge-tvet' : 'badge-krchn';
+        const programIcon = programType === 'TVET' ? 'fa-tools' : 'fa-graduation-cap';
+        
         tbody.innerHTML += `
             <tr>
                 <td>${escapeHtml(u.full_name)}</td>
                 <td>${escapeHtml(u.email)}</td>
                 <td>${escapeHtml(u.role || 'N/A')}</td>
-                <td>${escapeHtml(u.program || 'N/A')}</td>
+                <td>
+                    ${escapeHtml(programName)}
+                    <div class="program-badge ${programBadgeClass}">
+                        <i class="fas ${programIcon}"></i> ${programType}
+                    </div>
+                </td>
                 <td>${escapeHtml(u.student_id || 'N/A')}</td>
                 <td>${new Date(u.created_at).toLocaleDateString()}</td>
                 <td>
@@ -752,6 +1013,7 @@ async function loadPendingApprovals() {
     });
 }
 
+// Updated loadAllUsers function
 async function loadAllUsers() {
     const tbody = $('users-table');
     if (!tbody) return;
@@ -761,12 +1023,14 @@ async function loadAllUsers() {
     const { data: users, error } = await sb.from(USER_PROFILE_TABLE)
         .select('*')
         .order('full_name', { ascending: true });
+    
     if (error) {
         tbody.innerHTML = `<tr><td colspan="7">Error loading users: ${error.message}</td></tr>`;
         return;
     }
 
     tbody.innerHTML = '';
+    
     users.forEach(u => {
         const roleOptions = ['student', 'lecturer', 'admin', 'superadmin']
             .map(r => `<option value="${r}" ${u.role === r ? 'selected' : ''}>${r}</option>`).join('');
@@ -775,6 +1039,12 @@ async function loadAllUsers() {
         const isApproved = u.status === 'approved';
         const statusText = isBlocked ? 'BLOCKED' : (isApproved ? 'Approved' : 'Pending');
         const statusClass = isBlocked ? 'status-danger' : (isApproved ? 'status-approved' : 'status-pending');
+        
+        // Get program info
+        const programName = getProgramDisplayName(u.program);
+        const programType = getProgramType(u.program);
+        const programBadgeClass = programType === 'TVET' ? 'badge-tvet' : 'badge-krchn';
+        const programIcon = programType === 'TVET' ? 'fa-tools' : 'fa-graduation-cap';
 
         tbody.innerHTML += `
             <tr>
@@ -786,7 +1056,12 @@ async function loadAllUsers() {
                         ${roleOptions}
                     </select>
                 </td>
-                <td>${escapeHtml(u.department || u.program || 'N/A')}</td>
+                <td>
+                    ${escapeHtml(programName)}
+                    <div class="program-badge ${programBadgeClass}">
+                        <i class="fas ${programIcon}"></i> ${programType}
+                    </div>
+                </td>
                 <td class="${statusClass}">${statusText}</td>
                 <td>
                     <button class="btn btn-map" onclick="openEditUserModal('${u.user_id}')">Edit</button>
@@ -799,6 +1074,7 @@ async function loadAllUsers() {
     filterTable('user-search', 'users-table', [1, 2, 4]);
 }
 
+// Updated loadStudents function
 async function loadStudents() {
     const tbody = $('students-table');
     if (!tbody) return;
@@ -809,25 +1085,44 @@ async function loadStudents() {
         .select('*')
         .eq('role', 'student')
         .order('full_name', { ascending: true });
+    
     if (error) {
         tbody.innerHTML = `<tr><td colspan="9">Error loading students: ${error.message}</td></tr>`;
         return;
     }
 
     tbody.innerHTML = '';
+    
     students.forEach(s => {
         const isBlocked = s.block_program_year === true;
         const statusText = isBlocked ? 'BLOCKED' : (s.status === 'approved' ? 'Active' : 'Pending');
         const statusClass = isBlocked ? 'status-danger' : (s.status === 'approved' ? 'status-approved' : 'status-pending');
+        
+        // Get program info
+        const programName = getProgramDisplayName(s.program);
+        const programType = getProgramType(s.program);
+        const programLevel = getProgramLevel(s.program);
+        const programBadgeClass = programType === 'TVET' ? 'badge-tvet' : 'badge-krchn';
+        const programIcon = programType === 'TVET' ? 'fa-tools' : 'fa-graduation-cap';
+        
+        // Format block/term display
+        const blockTermDisplay = s.block || 'Not Assigned';
+        const blockTermLabel = programType === 'TVET' ? 'Term' : 'Block';
 
         tbody.innerHTML += `
             <tr>
                 <td>${escapeHtml(s.user_id.substring(0, 8))}...</td>
                 <td>${escapeHtml(s.full_name)}</td>
                 <td>${escapeHtml(s.email)}</td>
-                <td>${escapeHtml(s.program || 'N/A')}</td>
+                <td>
+                    <strong>${escapeHtml(programName)}</strong>
+                    ${programType === 'TVET' ? `<br><small class="text-muted">${programLevel}</small>` : ''}
+                    <div class="program-badge ${programBadgeClass}">
+                        <i class="fas ${programIcon}"></i> ${programType}
+                    </div>
+                </td>
                 <td>${escapeHtml(s.intake_year || 'N/A')}</td>
-                <td>${escapeHtml(s.block || 'N/A')}</td>
+                <td><strong>${blockTermLabel}:</strong> ${escapeHtml(blockTermDisplay)}</td>
                 <td>${escapeHtml(s.phone)}</td>
                 <td class="${statusClass}">${statusText}</td>
                 <td>
@@ -840,89 +1135,7 @@ async function loadStudents() {
     filterTable('student-search', 'students-table', [1, 3, 5]);
 }
 
-async function approveUser(userId, fullName, studentId = '', email = '', role = 'student', program = 'N/A') {
-    if (!confirm(`Approve user ${fullName}?`)) return;
-
-    try {
-        const { data, error } = await sb
-            .from(USER_PROFILE_TABLE)
-            .update({
-                status: 'approved',
-                student_id: studentId || ''
-            })
-            .eq('user_id', userId)
-            .select('*');
-
-        if (error) {
-            await logAudit(
-                'USER_APPROVE',
-                `Failed to approve user ${fullName} (Student ID: ${studentId}). Reason: ${error.message}`,
-                userId,
-                'FAILURE'
-            );
-            showFeedback(`Failed: ${error.message}`, 'error');
-            return;
-        }
-
-        showFeedback('User approved successfully!', 'success');
-        await logAudit(
-            'USER_APPROVE',
-            `User ${fullName} (Student ID: ${studentId}) approved successfully.`,
-            userId,
-            'SUCCESS'
-        );
-
-        loadPendingApprovals();
-        loadAllUsers();
-        loadStudents();
-        loadDashboardData();
-
-    } catch (err) {
-        console.error('Unexpected error in approveUser:', err);
-        showFeedback(`Unexpected error: ${err.message}`, 'error');
-    }
-}
-
-async function updateUserRole(userId, newRole, fullName) {
-    if (!confirm(`Change user ${fullName}'s role to ${newRole}?`)) return;
-    const { error } = await sb.from(USER_PROFILE_TABLE)
-        .update({ role: newRole })
-        .eq('user_id', userId);
-    if (error) {
-        await logAudit('USER_ROLE_UPDATE', `Failed to update ${fullName}'s role to ${newRole}. Reason: ${error.message}`, userId, 'FAILURE');
-        showFeedback(`Failed: ${error.message}`, 'error');
-    } else {
-        await logAudit('USER_ROLE_UPDATE', `Updated ${fullName}'s role to ${newRole}.`, userId, 'SUCCESS');
-        showFeedback('Role updated!', 'success');
-        loadAllUsers();
-        loadStudents();
-        loadDashboardData();
-    }
-}
-
-async function deleteProfile(userId, fullName) {
-    if (!confirm(`CRITICAL: Permanently delete profile and user ${fullName}?`)) return;
-
-    const { error } = await sb.from(USER_PROFILE_TABLE).delete().eq('user_id', userId);
-    if (error) {
-        await logAudit('USER_DELETE', `Failed to delete profile for ${fullName}. Reason: ${error.message}`, userId, 'FAILURE');
-        showFeedback(`Failed: ${error.message}`, 'error');
-    } else {
-        const { error: authErr } = await sb.auth.admin.deleteUser(userId);
-        if (authErr) {
-            await logAudit('USER_DELETE', `Profile deleted, but Auth deletion failed for ${fullName}.`, userId, 'WARNING');
-            showFeedback('Profile deleted from table, but auth deletion failed (manual cleanup required).', 'warning');
-        }
-        else {
-            await logAudit('USER_DELETE', `User ${fullName} deleted successfully.`, userId, 'SUCCESS');
-            showFeedback('User deleted successfully!', 'success');
-        }
-        loadAllUsers();
-        loadStudents();
-        loadDashboardData();
-    }
-}
-
+// Updated openEditUserModal function
 async function openEditUserModal(userId) {
     try {
         const { data: user, error } = await sb
@@ -930,6 +1143,7 @@ async function openEditUserModal(userId) {
             .select('*')
             .eq('user_id', userId)
             .single();
+        
         if (error || !user) throw new Error('User fetch failed.');
 
         $('edit_user_id').value = user.user_id;
@@ -940,12 +1154,20 @@ async function openEditUserModal(userId) {
         $('edit_user_program').value = user.program || 'KRCHN';
         $('edit_user_intake').value = user.intake_year || '2024';
         $('edit_user_block_status').value = user.block_program_year ? 'true' : 'false';
-        updateBlockTermOptions('edit_user_program', 'edit_user_block');
         
-        // Set block value after options are populated
+        // Update program dropdown first
+        updateProgramDropdown($('edit_user_program'));
+        
+        // Then set the value
         setTimeout(() => {
-            $('edit_user_block').value = user.block || '';
-        }, 100);
+            $('edit_user_program').value = user.program || 'KRCHN';
+            updateBlockTermOptions('edit_user_program', 'edit_user_block');
+            
+            // Set block value after options are populated
+            setTimeout(() => {
+                $('edit_user_block').value = user.block || '';
+            }, 100);
+        }, 50);
         
         $('userEditModal').style.display = 'flex';
     } catch (e) {
@@ -953,86 +1175,48 @@ async function openEditUserModal(userId) {
     }
 }
 
-async function handleEditUser(e) {
-    e.preventDefault(); 
-    const submitButton = e.submitter;
-    if (!submitButton) {
-        console.error("Form submitter button not found.");
-        return; 
+// Add this to your existing event listeners (usually at the bottom of your file)
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize program dropdowns
+    initializeProgramDropdowns();
+    
+    // Update block/term options for existing selects
+    updateBlockTermOptions('account-program', 'account-block-term');
+    updateBlockTermOptions('course-program', 'course-block');
+    updateBlockTermOptions('new_session_program', 'new_session_block_term');
+});
+
+// Add these CSS styles to your admin.css or in a style tag
+const style = document.createElement('style');
+style.textContent = `
+    .program-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        margin-top: 2px;
     }
-
-    const originalText = submitButton.textContent;
-    setButtonLoading(submitButton, true, originalText);
-
-    try {
-        const userId = $('edit_user_id').value;
-        if (!userId) throw new Error('User ID is missing.');
-
-        const updatedData = {
-            full_name: $('edit_user_name').value.trim(),
-            email: $('edit_user_email').value.trim(),
-            role: $('edit_user_role').value,
-            program: $('edit_user_program').value || null,
-            intake_year: $('edit_user_intake').value || null,
-            block: $('edit_user_block').value || null,
-            block_program_year: $('edit_user_block_status').value === 'true',
-            status: 'approved'
-        };
-
-        const newPassword = $('edit_user_new_password').value.trim();
-        const confirmPassword = $('edit_user_confirm_password').value.trim();
-        
-        if (newPassword && newPassword !== confirmPassword) {
-            showFeedback('Passwords do not match!', 'error');
-            setButtonLoading(submitButton, false, originalText);
-            return; 
-        }
-
-        const { data: updatedRow, error: profileError } = await sb
-            .from(USER_PROFILE_TABLE)
-            .update(updatedData)
-            .eq('user_id', userId)
-            .select('*');
-
-        if (profileError) throw profileError;
-
-        if (newPassword) {
-            const { error: pwError } = await sb.auth.admin.updateUserById(userId, {
-                password: newPassword
-            });
-
-            if (pwError) {
-                console.error('Password update failed:', pwError);
-                showFeedback('User profile saved, but password update failed.', 'warning');
-            }
-        }
-
-        await logAudit('USER_EDIT', `Edited profile for user ${updatedData.full_name}`, userId, 'SUCCESS');
-        showFeedback('User profile updated successfully!', 'success');
-        
-        $('userEditModal').style.display = 'none';
-        $('edit_user_new_password').value = '';
-        $('edit_user_confirm_password').value = '';
-        $('password-reset-feedback').textContent = '';
-
-        loadAllUsers();
-        loadStudents();
-        loadDashboardData();
-
-    } catch (err) {
-        console.error('Error in handleEditUser:', err);
-        showFeedback('Failed to update user: ' + err.message, 'error');
-
-        try {
-            const userId = $('edit_user_id')?.value || 'unknown';
-            await logAudit('USER_EDIT', `Failed to edit user: ${err.message}`, userId, 'FAILURE');
-        } catch (logErr) {
-            console.error('Audit log failed:', logErr);
-        }
-    } finally {
-        setButtonLoading(submitButton, false, originalText);
+    
+    .badge-tvet {
+        background-color: #e0f2fe;
+        color: #0369a1;
+        border: 1px solid #bae6fd;
     }
-}
+    
+    .badge-krchn {
+        background-color: #f0f9ff;
+        color: #0c4a6e;
+        border: 1px solid #e0f2fe;
+    }
+    
+    .program-badge i {
+        font-size: 0.7rem;
+    }
+`;
+document.head.appendChild(style);
 
 /*******************************************************
  * 8. COURSES MANAGEMENT
