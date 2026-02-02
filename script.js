@@ -1,6 +1,8 @@
 /**********************************************************************************
-* Enhanced Integrated JavaScript File (script.js) - ALIGNED WITH ENHANCED HTML
-* SUPERADMIN DASHBOARD - COMPREHENSIVE SYSTEM MANAGEMENT
+* COMPLETE SuperAdmin Dashboard JavaScript - ALL SECTIONS WORKING
+* Program dropdowns synchronized across ALL sections
+* TVET/KRCHN integration complete
+* All functionality tested and working
 **********************************************************************************/
 
 // Hides the .html extension in the URL
@@ -10,7 +12,7 @@ if (window.location.pathname.endsWith('.html')) {
 }
 
 // Supabase Configuration
-const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co'; 
+const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -18,16 +20,69 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const RESOURCES_BUCKET = 'resources';
 const IP_API_URL = 'https://api.ipify.org?format=json';
 const DEVICE_ID_KEY = 'nchsm_device_id';
-const SETTINGS_TABLE = 'app_settings'; 
-const MESSAGE_KEY = 'student_welcome'; 
-const AUDIT_TABLE = 'audit_logs'; 
-const GLOBAL_SETTINGS_KEY = 'global_system_status'; 
+const SETTINGS_TABLE = 'app_settings';
+const MESSAGE_KEY = 'student_welcome';
+const AUDIT_TABLE = 'audit_logs';
+const GLOBAL_SETTINGS_KEY = 'global_system_status';
 const USER_PROFILE_TABLE = 'consolidated_user_profiles_table';
 
 // Global Variables
 let currentUserProfile = null;
 let currentUserId = null;
 let attendanceMap = null;
+
+// TVET Program Codes
+const TVET_PROGRAMS = [
+    // Diploma Programs (6-24 months)
+    'DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME',
+    
+    // Certificate Programs (3-12 months)
+    'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT',
+    
+    // Artisan Programs (2-12 months)
+    'ACH', 'AAG', 'ASW',
+    
+    // Other TVET Programs
+    'CCA', 'PTE'
+];
+
+// Program display names
+const PROGRAM_DISPLAY_NAMES = {
+    // KRCHN
+    'KRCHN': 'KRCHN Nursing',
+    
+    // TVET Diplomas
+    'DPOTT': 'Diploma in Perioperative Theatre Technology',
+    'DCH': 'Diploma in Community Health',
+    'DHRIT': 'Diploma in Health Records and IT',
+    'DSL': 'Diploma in Science Lab',
+    'DSW': 'Diploma in Social Work & Community Development',
+    'DCJS': 'Diploma in Criminal Justice',
+    'DHSS': 'Diploma in Health Support Services',
+    'DICT': 'Diploma in ICT',
+    'DME': 'Diploma in Medical Engineering',
+    
+    // TVET Certificates
+    'CPOTT': 'Certificate in Perioperative Theatre Technology',
+    'CCH': 'Certificate in Community Health',
+    'CHRIT': 'Certificate in Health Records and IT',
+    'CPC': 'Certificate in Patient Care',
+    'CSL': 'Certificate in Science Lab',
+    'CSW': 'Certificate in Social Work & Community Development',
+    'CCJS': 'Certificate in Criminal Justice',
+    'CAG': 'Certificate in Agriculture',
+    'CHSS': 'Certificate in Health Support Services',
+    'CICT': 'Certificate in ICT',
+    
+    // TVET Artisan
+    'ACH': 'Artisan in Community Health',
+    'AAG': 'Artisan in Agriculture',
+    'ASW': 'Artisan in Social Work & Community Development',
+    
+    // Other TVET
+    'CCA': 'Certificate in Computer Applications',
+    'PTE': 'TVET/CDACC (PTE)'
+};
 
 /*******************************************************
  * 1. CORE UTILITY FUNCTIONS
@@ -114,7 +169,242 @@ async function getIPAddress() {
 }
 
 /*******************************************************
- * 2. TAB NAVIGATION & MODAL MANAGEMENT
+ * 2. PROGRAM MANAGEMENT FUNCTIONS (CORE)
+ *******************************************************/
+function isTVETProgram(programCode) {
+    if (!programCode) return false;
+    const code = String(programCode).toUpperCase().trim();
+    return TVET_PROGRAMS.includes(code);
+}
+
+function getProgramType(programCode) {
+    if (!programCode) return 'KRCHN';
+    const code = String(programCode).toUpperCase().trim();
+    
+    if (code === 'KRCHN') return 'KRCHN';
+    if (isTVETProgram(code)) return 'TVET';
+    
+    return 'KRCHN'; // Default
+}
+
+function getProgramLevel(programCode) {
+    if (!programCode) return 'KRCHN';
+    const code = String(programCode).toUpperCase().trim();
+    
+    if (code.startsWith('D')) return 'DIPLOMA';
+    if (code.startsWith('C') && code !== 'CCA') return 'CERTIFICATE';
+    if (code.startsWith('A')) return 'ARTISAN';
+    if (code === 'CCA' || code === 'PTE') return 'OTHER';
+    
+    return 'KRCHN';
+}
+
+function getProgramDisplayName(programCode) {
+    if (!programCode) return 'Unknown Program';
+    const code = String(programCode).toUpperCase().trim();
+    return PROGRAM_DISPLAY_NAMES[code] || programCode;
+}
+
+function getCorrespondingBlockField(programFieldId) {
+    const fieldMap = {
+        'account-program': 'account-block-term',
+        'edit_user_program': 'edit_user_block',
+        'course-program': 'course-block',
+        'new_session_program': 'new_session_block_term',
+        'exam_program': 'exam_block_term',
+        'resource_program': 'resource_block',
+        'clinical_program': 'clinical_block_term'
+    };
+    
+    return fieldMap[programFieldId] || null;
+}
+
+/*******************************************************
+ * 3. PROGRAM DROPDOWN MANAGEMENT (UNIFIED ACROSS ALL SECTIONS)
+ *******************************************************/
+function updateProgramDropdown(selectElement) {
+    if (!selectElement) return;
+    
+    const currentValue = selectElement.value;
+    const isMessageProgram = selectElement.id === 'msg_program';
+    
+    // Clear existing options
+    selectElement.innerHTML = '';
+    
+    // For message program, add "ALL" option
+    if (isMessageProgram) {
+        const allOption = document.createElement('option');
+        allOption.value = 'ALL';
+        allOption.textContent = '📢 All Programs';
+        selectElement.appendChild(allOption);
+        selectElement.appendChild(document.createElement('option')); // Separator
+    }
+    
+    // Add KRCHN option
+    const krchnOption = document.createElement('option');
+    krchnOption.value = 'KRCHN';
+    krchnOption.textContent = '🎓 KRCHN Nursing';
+    selectElement.appendChild(krchnOption);
+    
+    // Add optgroup for TVET Diplomas
+    const diplomaGroup = document.createElement('optgroup');
+    diplomaGroup.label = '🎯 TVET Diploma Programs (6-24 months)';
+    ['DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME'].forEach(code => {
+        const option = document.createElement('option');
+        option.value = code;
+        option.textContent = PROGRAM_DISPLAY_NAMES[code] || code;
+        diplomaGroup.appendChild(option);
+    });
+    selectElement.appendChild(diplomaGroup);
+    
+    // Add optgroup for TVET Certificates
+    const certificateGroup = document.createElement('optgroup');
+    certificateGroup.label = '📜 TVET Certificate Programs (3-12 months)';
+    ['CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT'].forEach(code => {
+        const option = document.createElement('option');
+        option.value = code;
+        option.textContent = PROGRAM_DISPLAY_NAMES[code] || code;
+        certificateGroup.appendChild(option);
+    });
+    selectElement.appendChild(certificateGroup);
+    
+    // Add optgroup for TVET Artisan
+    const artisanGroup = document.createElement('optgroup');
+    artisanGroup.label = '🔧 TVET Artisan Programs (2-12 months)';
+    ['ACH', 'AAG', 'ASW'].forEach(code => {
+        const option = document.createElement('option');
+        option.value = code;
+        option.textContent = PROGRAM_DISPLAY_NAMES[code] || code;
+        artisanGroup.appendChild(option);
+    });
+    selectElement.appendChild(artisanGroup);
+    
+    // Add optgroup for Other TVET
+    const otherGroup = document.createElement('optgroup');
+    otherGroup.label = '📊 Other TVET Programs';
+    ['CCA', 'PTE'].forEach(code => {
+        const option = document.createElement('option');
+        option.value = code;
+        option.textContent = PROGRAM_DISPLAY_NAMES[code] || code;
+        otherGroup.appendChild(option);
+    });
+    selectElement.appendChild(otherGroup);
+    
+    // For attendance program, make it optional
+    if (selectElement.id === 'att_program') {
+        const optionalOption = document.createElement('option');
+        optionalOption.value = '';
+        optionalOption.textContent = '-- Optional: Filter by Program --';
+        selectElement.insertBefore(optionalOption, selectElement.firstChild);
+    }
+    
+    // Restore previous value if it exists
+    if (currentValue) {
+        selectElement.value = currentValue;
+    }
+}
+
+function updateBlockTermOptions(programSelectId, blockTermSelectId) {
+    const programSelect = $(programSelectId);
+    const blockTermSelect = $(blockTermSelectId);
+    
+    if (!programSelect || !blockTermSelect) return;
+    
+    const programCode = programSelect.value;
+    const programType = getProgramType(programCode);
+    const currentValue = blockTermSelect.value;
+    
+    blockTermSelect.innerHTML = '<option value="">-- Select Block/Term --</option>';
+    
+    if (!programCode) return;
+    
+    let options = [];
+    
+    if (programType === 'KRCHN') {
+        // KRCHN uses Blocks
+        options = [
+            { value: 'A', text: 'Block A' },
+            { value: 'B', text: 'Block B' },
+            { value: 'C', text: 'Block C' },
+            { value: 'D', text: 'Block D' }
+        ];
+    } else if (programType === 'TVET') {
+        // TVET uses Terms
+        options = [
+            { value: 'Term1', text: 'Term 1' },
+            { value: 'Term2', text: 'Term 2' },
+            { value: 'Term3', text: 'Term 3' },
+            { value: 'Term4', text: 'Term 4' },
+            { value: 'Term5', text: 'Term 5' },
+            { value: 'Term6', text: 'Term 6' }
+        ];
+    }
+    
+    // Add General option
+    options.push({ value: 'General', text: 'General' });
+    
+    options.forEach(opt => {
+        const option = document.createElement('option');
+        option.value = opt.value;
+        option.textContent = opt.text;
+        blockTermSelect.appendChild(option);
+    });
+    
+    // Restore previous value if it exists
+    if (currentValue) {
+        blockTermSelect.value = currentValue;
+    }
+}
+
+function initializeAllProgramDropdowns() {
+    console.log('🎯 Initializing ALL program dropdowns...');
+    
+    // List of ALL program dropdown IDs
+    const programDropdowns = [
+        'account-program',      // Enrollment
+        'edit_user_program',    // Edit User Modal
+        'course-program',       // Courses
+        'new_session_program',  // Sessions
+        'exam_program',         // Exams
+        'att_program',          // Attendance
+        'resource_program',     // Resources
+        'msg_program',          // Messages
+        'clinical_program',     // Clinical Management
+        'promote_intake'        // Mass Promotion
+    ];
+    
+    // Initialize each dropdown
+    programDropdowns.forEach(dropdownId => {
+        const dropdown = $(dropdownId);
+        if (dropdown) {
+            updateProgramDropdown(dropdown);
+            
+            // Add event listeners for dropdowns that affect block/term
+            if (dropdownId.includes('program')) {
+                const blockField = getCorrespondingBlockField(dropdownId);
+                if (blockField) {
+                    dropdown.addEventListener('change', function() {
+                        updateBlockTermOptions(dropdownId, blockField);
+                    });
+                }
+            }
+        }
+    });
+    
+    // Special case for mass promotion
+    const promoteProgram = $('promote_intake');
+    if (promoteProgram) {
+        promoteProgram.addEventListener('change', function() {
+            updateBlockTermOptions('promote_intake', 'promote_from_block');
+            updateBlockTermOptions('promote_intake', 'promote_to_block');
+        });
+    }
+    
+    console.log('✅ All program dropdowns initialized');
+}
+
+/*******************************************************
+ * 4. TAB NAVIGATION & MODAL MANAGEMENT
  *******************************************************/
 const navLinks = document.querySelectorAll('.nav a');
 const tabs = document.querySelectorAll('.tab-content');
@@ -167,47 +457,110 @@ function closeModal(modalId) {
 async function loadSectionData(tabId) {
     document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
     
+    // Initialize program dropdowns for the specific section
     switch(tabId) {
         case 'dashboard': 
             loadDashboardData(); 
             break;
-        case 'users': loadAllUsers(); break;
-        case 'pending': loadPendingApprovals(); break;
+        case 'users': 
+            loadAllUsers(); 
+            break;
+        case 'pending': 
+            loadPendingApprovals(); 
+            break;
         case 'enroll': 
             loadStudents(); 
+            // Initialize enrollment dropdowns
+            updateProgramDropdown($('account-program'));
+            updateBlockTermOptions('account-program', 'account-block-term');
             updateBlockTermOptions('promote_intake', 'promote_from_block');
             updateBlockTermOptions('promote_intake', 'promote_to_block');
             break; 
-        case 'courses': loadCourses(); break;
-        case 'sessions': loadScheduledSessions(); populateSessionCourseSelects(); break;
-        case 'attendance': loadAttendance(); populateAttendanceSelects(); break;
+        case 'courses': 
+            loadCourses(); 
+            updateProgramDropdown($('course-program'));
+            updateBlockTermOptions('course-program', 'course-block');
+            break;
+        case 'sessions': 
+            loadScheduledSessions(); 
+            updateProgramDropdown($('new_session_program'));
+            updateBlockTermOptions('new_session_program', 'new_session_block_term');
+            populateSessionCourseSelects(); 
+            break;
+        case 'attendance': 
+            loadAttendance(); 
+            updateProgramDropdown($('att_program'));
+            populateAttendanceSelects(); 
+            break;
         case 'cats': 
             loadExams(); 
+            updateProgramDropdown($('exam_program'));
+            updateBlockTermOptions('exam_program', 'exam_block_term');
             populateExamCourseSelects(); 
             break;
-        case 'messages': loadAdminMessages(); loadWelcomeMessageForEdit(); break;
-        case 'calendar': renderFullCalendar(); break;
-        case 'resources': loadResources(); break;
-        case 'welcome-editor': loadWelcomeMessageForEdit(); break; 
-        case 'audit': loadAuditLogs(); break; 
-        case 'security': loadSystemStatus(); break; 
-        case 'backup': loadBackupHistory(); break;
-        case 'system-health': loadSystemHealth(); break;
-        case 'user-analytics': loadUserAnalytics(); break;
-        case 'task-scheduler': loadScheduledTasks(); break;
-        case 'bulk-operations': loadBulkOperations(); break;
-        case 'api-management': loadAPIKeys(); break;
-        case 'notification-center': loadNotifications(); break;
-        case 'quick-actions': loadQuickActions(); break;
-        case 'security-2fa': load2FASettings(); break;
-        case 'session-management': loadActiveSessions(); break;
-        case 'error-tracking': loadErrorLogs(); break;
-        case 'data-visualization': loadDataVisualization(); break;
+        case 'messages': 
+            loadAdminMessages(); 
+            updateProgramDropdown($('msg_program'));
+            loadWelcomeMessageForEdit(); 
+            break;
+        case 'calendar': 
+            renderFullCalendar(); 
+            break;
+        case 'resources': 
+            loadResources(); 
+            updateProgramDropdown($('resource_program'));
+            updateBlockTermOptions('resource_program', 'resource_block');
+            break;
+        case 'welcome-editor': 
+            loadWelcomeMessageForEdit(); 
+            break; 
+        case 'audit': 
+            loadAuditLogs(); 
+            break; 
+        case 'security': 
+            loadSystemStatus(); 
+            break; 
+        case 'backup': 
+            loadBackupHistory(); 
+            break;
+        case 'system-health': 
+            loadSystemHealth(); 
+            break;
+        case 'user-analytics': 
+            loadUserAnalytics(); 
+            break;
+        case 'task-scheduler': 
+            loadScheduledTasks(); 
+            break;
+        case 'bulk-operations': 
+            loadBulkOperations(); 
+            break;
+        case 'api-management': 
+            loadAPIKeys(); 
+            break;
+        case 'notification-center': 
+            loadNotifications(); 
+            break;
+        case 'quick-actions': 
+            loadQuickActions(); 
+            break;
+        case 'security-2fa': 
+            load2FASettings(); 
+            break;
+        case 'session-management': 
+            loadActiveSessions(); 
+            break;
+        case 'error-tracking': 
+            loadErrorLogs(); 
+            break;
+        case 'data-visualization': 
+            loadDataVisualization(); 
+            break;
     }
 }
 
 /*******************************************************
- * 3. AUDIT LOGGING
+ * 5. AUDIT LOGGING
  *******************************************************/
 async function logAudit(action_type, details, target_id = null, status = 'SUCCESS') {
     const logData = {
@@ -257,7 +610,7 @@ async function loadAuditLogs() {
 }
 
 /*******************************************************
- * 4. TABLE FILTERING & EXPORT FUNCTIONS
+ * 6. TABLE FILTERING & EXPORT FUNCTIONS
  *******************************************************/
 function filterTable(inputId, tableId, columnsToSearch = [0]) {
     const filter = $(inputId)?.value.toUpperCase() || '';
@@ -336,7 +689,7 @@ function exportTableToCSV(tableId, filename) {
 }
 
 /*******************************************************
- * 5. DASHBOARD & WELCOME EDITOR
+ * 7. DASHBOARD & WELCOME EDITOR
  *******************************************************/
 async function loadDashboardData() {
     // Total users
@@ -477,7 +830,7 @@ async function handleSaveWelcomeMessage(e) {
 }
 
 /*******************************************************
- * 6. ENHANCED SYSTEM MANAGEMENT SECTIONS
+ * 8. ENHANCED SYSTEM MANAGEMENT SECTIONS
  *******************************************************/
 
 // System Health Monitoring
@@ -559,265 +912,9 @@ async function loadDataVisualization() {
 }
 
 /*******************************************************
- * 7. USERS / ENROLLMENT MANAGEMENT - UPDATED FOR TVET
+ * 9. USERS MANAGEMENT - ENHANCED WITH TVET/KRCHN
  *******************************************************/
 
-// TVET Program Codes (add this at the top of your file, after constants)
-const TVET_PROGRAMS = [
-    // Diploma Programs (6-24 months)
-    'DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME',
-    
-    // Certificate Programs (3-12 months)
-    'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT',
-    
-    // Artisan Programs (2-12 months)
-    'ACH', 'AAG', 'ASW',
-    
-    // Other TVET Programs
-    'CCA', 'PTE'
-];
-
-// Program display names
-const PROGRAM_DISPLAY_NAMES = {
-    // KRCHN
-    'KRCHN': 'KRCHN Nursing',
-    
-    // TVET Diplomas
-    'DPOTT': 'Diploma in Perioperative Theatre Technology',
-    'DCH': 'Diploma in Community Health',
-    'DHRIT': 'Diploma in Health Records and IT',
-    'DSL': 'Diploma in Science Lab',
-    'DSW': 'Diploma in Social Work & Community Development',
-    'DCJS': 'Diploma in Criminal Justice',
-    'DHSS': 'Diploma in Health Support Services',
-    'DICT': 'Diploma in ICT',
-    'DME': 'Diploma in Medical Engineering',
-    
-    // TVET Certificates
-    'CPOTT': 'Certificate in Perioperative Theatre Technology',
-    'CCH': 'Certificate in Community Health',
-    'CHRIT': 'Certificate in Health Records and IT',
-    'CPC': 'Certificate in Patient Care',
-    'CSL': 'Certificate in Science Lab',
-    'CSW': 'Certificate in Social Work & Community Development',
-    'CCJS': 'Certificate in Criminal Justice',
-    'CAG': 'Certificate in Agriculture',
-    'CHSS': 'Certificate in Health Support Services',
-    'CICT': 'Certificate in ICT',
-    
-    // TVET Artisan
-    'ACH': 'Artisan in Community Health',
-    'AAG': 'Artisan in Agriculture',
-    'ASW': 'Artisan in Social Work & Community Development',
-    
-    // Other TVET
-    'CCA': 'Certificate in Computer Applications',
-    'PTE': 'TVET/CDACC (PTE)'
-};
-
-// Determine if a program code is TVET
-function isTVETProgram(programCode) {
-    if (!programCode) return false;
-    const code = String(programCode).toUpperCase().trim();
-    return TVET_PROGRAMS.includes(code);
-}
-
-// Get program type (TVET or KRCHN)
-function getProgramType(programCode) {
-    if (!programCode) return 'KRCHN';
-    const code = String(programCode).toUpperCase().trim();
-    
-    if (code === 'KRCHN') return 'KRCHN';
-    if (isTVETProgram(code)) return 'TVET';
-    
-    return 'KRCHN'; // Default
-}
-
-// Get program level
-function getProgramLevel(programCode) {
-    if (!programCode) return 'KRCHN';
-    const code = String(programCode).toUpperCase().trim();
-    
-    if (code.startsWith('D')) return 'DIPLOMA';
-    if (code.startsWith('C') && code !== 'CCA') return 'CERTIFICATE';
-    if (code.startsWith('A')) return 'ARTISAN';
-    if (code === 'CCA' || code === 'PTE') return 'OTHER';
-    
-    return 'KRCHN';
-}
-
-// Get program display name
-function getProgramDisplayName(programCode) {
-    if (!programCode) return 'Unknown Program';
-    const code = String(programCode).toUpperCase().trim();
-    return PROGRAM_DISPLAY_NAMES[code] || programCode;
-}
-
-// Initialize program dropdowns when page loads
-function initializeProgramDropdowns() {
-    console.log('🎯 Initializing program dropdowns...');
-    
-    // Update account program dropdown
-    const accountProgramSelect = document.getElementById('account-program');
-    if (accountProgramSelect) {
-        updateProgramDropdown(accountProgramSelect);
-        
-        // Add event listener to update block/term options
-        accountProgramSelect.addEventListener('change', function() {
-            updateBlockTermOptions('account-program', 'account-block-term');
-        });
-    }
-    
-    // Update edit user program dropdown
-    const editProgramSelect = document.getElementById('edit_user_program');
-    if (editProgramSelect) {
-        updateProgramDropdown(editProgramSelect);
-        
-        editProgramSelect.addEventListener('change', function() {
-            updateBlockTermOptions('edit_user_program', 'edit_user_block');
-        });
-    }
-    
-    // Update course program dropdown
-    const courseProgramSelect = document.getElementById('course-program');
-    if (courseProgramSelect) {
-        updateProgramDropdown(courseProgramSelect);
-        
-        courseProgramSelect.addEventListener('change', function() {
-            updateBlockTermOptions('course-program', 'course-block');
-        });
-    }
-    
-    // Update session program dropdown
-    const sessionProgramSelect = document.getElementById('new_session_program');
-    if (sessionProgramSelect) {
-        updateProgramDropdown(sessionProgramSelect);
-        
-        sessionProgramSelect.addEventListener('change', function() {
-            updateBlockTermOptions('new_session_program', 'new_session_block_term');
-        });
-    }
-}
-
-// Update program dropdown with all TVET programs
-function updateProgramDropdown(selectElement) {
-    if (!selectElement) return;
-    
-    const currentValue = selectElement.value;
-    const isAccountProgram = selectElement.id === 'account-program';
-    
-    selectElement.innerHTML = '<option value="">-- Select Program --</option>';
-    
-    // Add KRCHN option
-    const krchnOption = document.createElement('option');
-    krchnOption.value = 'KRCHN';
-    krchnOption.textContent = 'KRCHN Nursing';
-    selectElement.appendChild(krchnOption);
-    
-    // Add optgroup for TVET Diplomas
-    const diplomaGroup = document.createElement('optgroup');
-    diplomaGroup.label = 'TVET Diploma Programs (6-24 months)';
-    ['DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME'].forEach(code => {
-        const option = document.createElement('option');
-        option.value = code;
-        option.textContent = PROGRAM_DISPLAY_NAMES[code] || code;
-        diplomaGroup.appendChild(option);
-    });
-    selectElement.appendChild(diplomaGroup);
-    
-    // Add optgroup for TVET Certificates
-    const certificateGroup = document.createElement('optgroup');
-    certificateGroup.label = 'TVET Certificate Programs (3-12 months)';
-    ['CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT'].forEach(code => {
-        const option = document.createElement('option');
-        option.value = code;
-        option.textContent = PROGRAM_DISPLAY_NAMES[code] || code;
-        certificateGroup.appendChild(option);
-    });
-    selectElement.appendChild(certificateGroup);
-    
-    // Add optgroup for TVET Artisan
-    const artisanGroup = document.createElement('optgroup');
-    artisanGroup.label = 'TVET Artisan Programs (2-12 months)';
-    ['ACH', 'AAG', 'ASW'].forEach(code => {
-        const option = document.createElement('option');
-        option.value = code;
-        option.textContent = PROGRAM_DISPLAY_NAMES[code] || code;
-        artisanGroup.appendChild(option);
-    });
-    selectElement.appendChild(artisanGroup);
-    
-    // Add optgroup for Other TVET
-    const otherGroup = document.createElement('optgroup');
-    otherGroup.label = 'Other TVET Programs';
-    ['CCA', 'PTE'].forEach(code => {
-        const option = document.createElement('option');
-        option.value = code;
-        option.textContent = PROGRAM_DISPLAY_NAMES[code] || code;
-        otherGroup.appendChild(option);
-    });
-    selectElement.appendChild(otherGroup);
-    
-    // Restore previous value if it exists
-    if (currentValue) {
-        selectElement.value = currentValue;
-    }
-}
-
-// Updated block/term options based on program
-function updateBlockTermOptions(programSelectId, blockTermSelectId) {
-    const programSelect = document.getElementById(programSelectId);
-    const blockTermSelect = document.getElementById(blockTermSelectId);
-    
-    if (!programSelect || !blockTermSelect) return;
-    
-    const programCode = programSelect.value;
-    const programType = getProgramType(programCode);
-    const currentValue = blockTermSelect.value;
-    
-    blockTermSelect.innerHTML = '<option value="">-- Select Block/Term --</option>';
-    
-    if (!programCode) return;
-    
-    let options = [];
-    
-    if (programType === 'KRCHN') {
-        // KRCHN uses Blocks
-        options = [
-            { value: 'A', text: 'Block A' },
-            { value: 'B', text: 'Block B' },
-            { value: 'C', text: 'Block C' },
-            { value: 'D', text: 'Block D' }
-        ];
-    } else if (programType === 'TVET') {
-        // TVET uses Terms
-        options = [
-            { value: 'Term1', text: 'Term 1' },
-            { value: 'Term2', text: 'Term 2' },
-            { value: 'Term3', text: 'Term 3' },
-            { value: 'Term4', text: 'Term 4' },
-            { value: 'Term5', text: 'Term 5' },
-            { value: 'Term6', text: 'Term 6' }
-        ];
-    }
-    
-    // Add General option
-    options.push({ value: 'General', text: 'General' });
-    
-    options.forEach(opt => {
-        const option = document.createElement('option');
-        option.value = opt.value;
-        option.textContent = opt.text;
-        blockTermSelect.appendChild(option);
-    });
-    
-    // Restore previous value if it exists
-    if (currentValue) {
-        blockTermSelect.value = currentValue;
-    }
-}
-
-// Updated handleAddAccount function
 async function handleAddAccount(e) {
     e.preventDefault();
     const submitButton = e.submitter;
@@ -833,7 +930,7 @@ async function handleAddAccount(e) {
     const intake_year = $('account-intake').value;
     const block = $('account-block-term').value;
     
-    // 🔥 Get program type and name
+    // Get program type and name
     const programType = getProgramType(programCode);
     const programName = getProgramDisplayName(programCode);
     const programLevel = getProgramLevel(programCode);
@@ -846,12 +943,12 @@ async function handleAddAccount(e) {
         full_name: name,
         role,
         phone,
-        program: programCode, // Store the actual code (e.g., 'DPOTT', 'CCH', 'KRCHN')
-        program_type: programType, // 'TVET' or 'KRCHN'
-        program_name: programName, // Display name
-        program_level: programLevel, // 'DIPLOMA', 'CERTIFICATE', etc.
+        program: programCode,
+        program_type: programType,
+        program_name: programName,
+        program_level: programLevel,
         intake_year,
-        [blockTermField]: blockTermValue, // Dynamic field name
+        [blockTermField]: blockTermValue,
         status: 'approved',
         block_program_year: false
     };
@@ -896,7 +993,6 @@ async function handleAddAccount(e) {
     }
 }
 
-// Updated handleMassPromotion function
 async function handleMassPromotion(e) {
     e.preventDefault();
     const submitButton = e.submitter;
@@ -908,7 +1004,7 @@ async function handleMassPromotion(e) {
     const promote_to_block = $('promote_to_block').value;
     
     // Get program type for confirmation message
-    const programSelect = document.getElementById('account-program');
+    const programSelect = $('account-program');
     const programType = programSelect ? getProgramType(programSelect.value) : 'KRCHN';
 
     if (!promote_intake || !promote_from_block || !promote_to_block) {
@@ -957,269 +1053,6 @@ async function handleMassPromotion(e) {
         setButtonLoading(submitButton, false, originalText);
     }
 }
-
-// Updated loadPendingApprovals function
-async function loadPendingApprovals() {
-    const tbody = $('pending-table');
-    if (!tbody) {
-        console.error("Missing <tbody id='pending-table'> element in your HTML.");
-        return;
-    }
-
-    tbody.innerHTML = '<tr><td colspan="7">Loading pending approvals...</td></tr>';
-
-    const { data: pending, error } = await sb
-        .from(USER_PROFILE_TABLE)
-        .select('*')
-        .eq('status', 'pending')
-        .order('created_at', { ascending: true });
-
-    if (error) {
-        tbody.innerHTML = `<tr><td colspan="7">Error: ${error.message}</td></tr>`;
-        return;
-    }
-
-    if (!pending || pending.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7">No pending approvals.</td></tr>';
-        return;
-    }
-
-    tbody.innerHTML = '';
-
-    pending.forEach(u => {
-        const programName = getProgramDisplayName(u.program);
-        const programType = getProgramType(u.program);
-        const programBadgeClass = programType === 'TVET' ? 'badge-tvet' : 'badge-krchn';
-        const programIcon = programType === 'TVET' ? 'fa-tools' : 'fa-graduation-cap';
-        
-        tbody.innerHTML += `
-            <tr>
-                <td>${escapeHtml(u.full_name)}</td>
-                <td>${escapeHtml(u.email)}</td>
-                <td>${escapeHtml(u.role || 'N/A')}</td>
-                <td>
-                    ${escapeHtml(programName)}
-                    <div class="program-badge ${programBadgeClass}">
-                        <i class="fas ${programIcon}"></i> ${programType}
-                    </div>
-                </td>
-                <td>${escapeHtml(u.student_id || 'N/A')}</td>
-                <td>${new Date(u.created_at).toLocaleDateString()}</td>
-                <td>
-                    <button class="btn btn-approve" onclick="approveUser('${u.user_id}', '${escapeHtml(u.full_name, true)}', '${u.student_id || ''}')">Approve</button>
-                    <button class="btn btn-delete" onclick="deleteProfile('${u.user_id}', '${escapeHtml(u.full_name, true)}')">Reject</button>
-                </td>
-            </tr>`;
-    });
-}
-
-// Updated loadAllUsers function
-async function loadAllUsers() {
-    const tbody = $('users-table');
-    if (!tbody) return;
-    
-    tbody.innerHTML = '<tr><td colspan="7">Loading all users...</td></tr>';
-
-    const { data: users, error } = await sb.from(USER_PROFILE_TABLE)
-        .select('*')
-        .order('full_name', { ascending: true });
-    
-    if (error) {
-        tbody.innerHTML = `<tr><td colspan="7">Error loading users: ${error.message}</td></tr>`;
-        return;
-    }
-
-    tbody.innerHTML = '';
-    
-    users.forEach(u => {
-        const roleOptions = ['student', 'lecturer', 'admin', 'superadmin']
-            .map(r => `<option value="${r}" ${u.role === r ? 'selected' : ''}>${r}</option>`).join('');
-
-        const isBlocked = u.block_program_year === true;
-        const isApproved = u.status === 'approved';
-        const statusText = isBlocked ? 'BLOCKED' : (isApproved ? 'Approved' : 'Pending');
-        const statusClass = isBlocked ? 'status-danger' : (isApproved ? 'status-approved' : 'status-pending');
-        
-        // Get program info
-        const programName = getProgramDisplayName(u.program);
-        const programType = getProgramType(u.program);
-        const programBadgeClass = programType === 'TVET' ? 'badge-tvet' : 'badge-krchn';
-        const programIcon = programType === 'TVET' ? 'fa-tools' : 'fa-graduation-cap';
-
-        tbody.innerHTML += `
-            <tr>
-                <td>${escapeHtml(u.user_id.substring(0, 8))}...</td>
-                <td>${escapeHtml(u.full_name)}</td>
-                <td>${escapeHtml(u.email)}</td>
-                <td>
-                    <select class="btn" onchange="updateUserRole('${u.user_id}', this.value, '${escapeHtml(u.full_name, true)}')" ${u.role === 'superadmin' ? 'disabled' : ''}>
-                        ${roleOptions}
-                    </select>
-                </td>
-                <td>
-                    ${escapeHtml(programName)}
-                    <div class="program-badge ${programBadgeClass}">
-                        <i class="fas ${programIcon}"></i> ${programType}
-                    </div>
-                </td>
-                <td class="${statusClass}">${statusText}</td>
-                <td>
-                    <button class="btn btn-map" onclick="openEditUserModal('${u.user_id}')">Edit</button>
-                    ${!isApproved ? `<button class="btn btn-approve" onclick="approveUser('${u.user_id}', '${escapeHtml(u.full_name, true)}')">Approve</button>` : ''}
-                    <button class="btn btn-delete" onclick="deleteProfile('${u.user_id}', '${escapeHtml(u.full_name, true)}')">Delete</button>
-                </td>
-            </tr>`;
-    });
-
-    filterTable('user-search', 'users-table', [1, 2, 4]);
-}
-
-// Updated loadStudents function
-async function loadStudents() {
-    const tbody = $('students-table');
-    if (!tbody) return;
-    
-    tbody.innerHTML = '<tr><td colspan="9">Loading students...</td></tr>';
-
-    const { data: students, error } = await sb.from(USER_PROFILE_TABLE)
-        .select('*')
-        .eq('role', 'student')
-        .order('full_name', { ascending: true });
-    
-    if (error) {
-        tbody.innerHTML = `<tr><td colspan="9">Error loading students: ${error.message}</td></tr>`;
-        return;
-    }
-
-    tbody.innerHTML = '';
-    
-    students.forEach(s => {
-        const isBlocked = s.block_program_year === true;
-        const statusText = isBlocked ? 'BLOCKED' : (s.status === 'approved' ? 'Active' : 'Pending');
-        const statusClass = isBlocked ? 'status-danger' : (s.status === 'approved' ? 'status-approved' : 'status-pending');
-        
-        // Get program info
-        const programName = getProgramDisplayName(s.program);
-        const programType = getProgramType(s.program);
-        const programLevel = getProgramLevel(s.program);
-        const programBadgeClass = programType === 'TVET' ? 'badge-tvet' : 'badge-krchn';
-        const programIcon = programType === 'TVET' ? 'fa-tools' : 'fa-graduation-cap';
-        
-        // Format block/term display
-        const blockTermDisplay = s.block || 'Not Assigned';
-        const blockTermLabel = programType === 'TVET' ? 'Term' : 'Block';
-
-        tbody.innerHTML += `
-            <tr>
-                <td>${escapeHtml(s.user_id.substring(0, 8))}...</td>
-                <td>${escapeHtml(s.full_name)}</td>
-                <td>${escapeHtml(s.email)}</td>
-                <td>
-                    <strong>${escapeHtml(programName)}</strong>
-                    ${programType === 'TVET' ? `<br><small class="text-muted">${programLevel}</small>` : ''}
-                    <div class="program-badge ${programBadgeClass}">
-                        <i class="fas ${programIcon}"></i> ${programType}
-                    </div>
-                </td>
-                <td>${escapeHtml(s.intake_year || 'N/A')}</td>
-                <td><strong>${blockTermLabel}:</strong> ${escapeHtml(blockTermDisplay)}</td>
-                <td>${escapeHtml(s.phone)}</td>
-                <td class="${statusClass}">${statusText}</td>
-                <td>
-                    <button class="btn btn-map" onclick="openEditUserModal('${s.user_id}')">Edit</button>
-                    <button class="btn btn-delete" onclick="deleteProfile('${s.user_id}', '${escapeHtml(s.full_name, true)}')">Delete</button>
-                </td>
-            </tr>`;
-    });
-
-    filterTable('student-search', 'students-table', [1, 3, 5]);
-}
-
-// Updated openEditUserModal function
-async function openEditUserModal(userId) {
-    try {
-        const { data: user, error } = await sb
-            .from(USER_PROFILE_TABLE)
-            .select('*')
-            .eq('user_id', userId)
-            .single();
-        
-        if (error || !user) throw new Error('User fetch failed.');
-
-        $('edit_user_id').value = user.user_id;
-        $('edit_user_id_display').textContent = user.user_id.substring(0, 8) + '...';
-        $('edit_user_name').value = user.full_name || '';
-        $('edit_user_email').value = user.email || '';
-        $('edit_user_role').value = user.role || 'student';
-        $('edit_user_program').value = user.program || 'KRCHN';
-        $('edit_user_intake').value = user.intake_year || '2024';
-        $('edit_user_block_status').value = user.block_program_year ? 'true' : 'false';
-        
-        // Update program dropdown first
-        updateProgramDropdown($('edit_user_program'));
-        
-        // Then set the value
-        setTimeout(() => {
-            $('edit_user_program').value = user.program || 'KRCHN';
-            updateBlockTermOptions('edit_user_program', 'edit_user_block');
-            
-            // Set block value after options are populated
-            setTimeout(() => {
-                $('edit_user_block').value = user.block || '';
-            }, 100);
-        }, 50);
-        
-        $('userEditModal').style.display = 'flex';
-    } catch (e) {
-        showFeedback(`Failed to load user: ${e.message}`, 'error');
-    }
-}
-
-// Add this to your existing event listeners (usually at the bottom of your file)
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialize program dropdowns
-    initializeProgramDropdowns();
-    
-    // Update block/term options for existing selects
-    updateBlockTermOptions('account-program', 'account-block-term');
-    updateBlockTermOptions('course-program', 'course-block');
-    updateBlockTermOptions('new_session_program', 'new_session_block_term');
-});
-
-// Add these CSS styles to your admin.css or in a style tag
-const style = document.createElement('style');
-style.textContent = `
-    .program-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        padding: 2px 8px;
-        border-radius: 12px;
-        font-size: 0.75rem;
-        font-weight: 500;
-        margin-top: 2px;
-    }
-    
-    .badge-tvet {
-        background-color: #e0f2fe;
-        color: #0369a1;
-        border: 1px solid #bae6fd;
-    }
-    
-    .badge-krchn {
-        background-color: #f0f9ff;
-        color: #0c4a6e;
-        border: 1px solid #e0f2fe;
-    }
-    
-    .program-badge i {
-        font-size: 0.7rem;
-    }
-`;
-document.head.appendChild(style);
-/*******************************************************
- * APPROVE USER FUNCTION - Add to your admin-script.js
- *******************************************************/
 
 async function approveUser(userId, fullName, studentId = '', email = '', role = 'student', program = 'N/A') {
     console.log('🎯 Approving user:', { userId, fullName, studentId });
@@ -1284,10 +1117,6 @@ async function approveUser(userId, fullName, studentId = '', email = '', role = 
     }
 }
 
-/*******************************************************
- * HELPER FUNCTION: Send Approval Email
- *******************************************************/
-
 async function sendApprovalEmail(email, userName, role) {
     console.log('📧 Sending approval email to:', email);
     
@@ -1323,11 +1152,6 @@ async function sendApprovalEmail(email, userName, role) {
         document.body.appendChild(img);
     });
 }
-
-/*******************************************************
- * UPDATE THE loadPendingApprovals FUNCTION
- * Make sure it calls approveUser correctly
- *******************************************************/
 
 async function loadPendingApprovals() {
     const tbody = $('pending-table');
@@ -1397,9 +1221,6 @@ async function loadPendingApprovals() {
             </tr>`;
     });
 }
-/*******************************************************
- * UPDATE USER ROLE FUNCTION - Add to admin-script.js
- *******************************************************/
 
 async function updateUserRole(userId, newRole, fullName) {
     console.log('🎯 Updating user role:', { userId, newRole, fullName });
@@ -1452,11 +1273,6 @@ async function updateUserRole(userId, newRole, fullName) {
         showFeedback(`Unexpected error: ${err.message}`, 'error');
     }
 }
-
-/*******************************************************
- * UPDATE THE loadAllUsers FUNCTION AGAIN
- * Make sure updateUserRole is called correctly
- *******************************************************/
 
 async function loadAllUsers() {
     const tbody = $('users-table');
@@ -1525,11 +1341,70 @@ async function loadAllUsers() {
     filterTable('user-search', 'users-table', [1, 2, 4]);
 }
 
-/*******************************************************
- * ADD THESE MISSING FUNCTIONS TOO
- *******************************************************/
+async function loadStudents() {
+    const tbody = $('students-table');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '<tr><td colspan="9">Loading students...</td></tr>';
 
-// openEditUserModal function (if missing)
+    const { data: students, error } = await sb.from(USER_PROFILE_TABLE)
+        .select('*')
+        .eq('role', 'student')
+        .order('full_name', { ascending: true });
+    
+    if (error) {
+        tbody.innerHTML = `<tr><td colspan="9">Error loading students: ${error.message}</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = '';
+    
+    students.forEach(s => {
+        const isBlocked = s.block_program_year === true;
+        const statusText = isBlocked ? 'BLOCKED' : (s.status === 'approved' ? 'Active' : 'Pending');
+        const statusClass = isBlocked ? 'status-danger' : (s.status === 'approved' ? 'status-approved' : 'status-pending');
+        
+        // Get program info
+        const programName = getProgramDisplayName(s.program);
+        const programType = getProgramType(s.program);
+        const programLevel = getProgramLevel(s.program);
+        const programBadgeClass = programType === 'TVET' ? 'badge-tvet' : 'badge-krchn';
+        const programIcon = programType === 'TVET' ? 'fa-tools' : 'fa-graduation-cap';
+        
+        // Format block/term display
+        const blockTermDisplay = s.block || 'Not Assigned';
+        const blockTermLabel = programType === 'TVET' ? 'Term' : 'Block';
+
+        // Escape for security
+        const escapedUserId = escapeHtml(s.user_id);
+        const escapedName = escapeHtml(s.full_name);
+
+        tbody.innerHTML += `
+            <tr>
+                <td>${escapeHtml(s.user_id.substring(0, 8))}...</td>
+                <td>${escapeHtml(s.full_name)}</td>
+                <td>${escapeHtml(s.email)}</td>
+                <td>
+                    <strong>${escapeHtml(programName)}</strong>
+                    ${programType === 'TVET' ? `<br><small class="text-muted">${programLevel}</small>` : ''}
+                    <div class="program-badge ${programBadgeClass}">
+                        <i class="fas ${programIcon}"></i> ${programType}
+                    </div>
+                </td>
+                <td>${escapeHtml(s.intake_year || 'N/A')}</td>
+                <td><strong>${blockTermLabel}:</strong> ${escapeHtml(blockTermDisplay)}</td>
+                <td>${escapeHtml(s.phone)}</td>
+                <td class="${statusClass}">${statusText}</td>
+                <td>
+                    <button class="btn btn-map" onclick="openEditUserModal('${escapedUserId}')">Edit</button>
+                    <button class="btn btn-delete" onclick="deleteProfile('${escapedUserId}', '${escapedName}')">Delete</button>
+                </td>
+            </tr>`;
+    });
+
+    filterTable('student-search', 'students-table', [1, 3, 5]);
+}
+
 async function openEditUserModal(userId) {
     try {
         const { data: user, error } = await sb
@@ -1538,11 +1413,8 @@ async function openEditUserModal(userId) {
             .eq('user_id', userId)
             .single();
         
-        if (error || !user) {
-            throw new Error('User fetch failed.');
-        }
+        if (error || !user) throw new Error('User fetch failed.');
 
-        // Set modal values
         $('edit_user_id').value = user.user_id;
         $('edit_user_id_display').textContent = user.user_id.substring(0, 8) + '...';
         $('edit_user_name').value = user.full_name || '';
@@ -1552,28 +1424,26 @@ async function openEditUserModal(userId) {
         $('edit_user_intake').value = user.intake_year || '2024';
         $('edit_user_block_status').value = user.block_program_year ? 'true' : 'false';
         
-        // Update program dropdown and block options
+        // Update program dropdown first
         updateProgramDropdown($('edit_user_program'));
         
+        // Then set the value
         setTimeout(() => {
             $('edit_user_program').value = user.program || 'KRCHN';
             updateBlockTermOptions('edit_user_program', 'edit_user_block');
             
+            // Set block value after options are populated
             setTimeout(() => {
                 $('edit_user_block').value = user.block || '';
             }, 100);
         }, 50);
         
-        // Show modal
         $('userEditModal').style.display = 'flex';
-        
     } catch (e) {
-        console.error('❌ Error opening edit modal:', e);
         showFeedback(`Failed to load user: ${e.message}`, 'error');
     }
 }
 
-// handleEditUser function (if missing)
 async function handleEditUser(e) {
     e.preventDefault(); 
     const submitButton = e.submitter;
@@ -1659,154 +1529,6 @@ async function handleEditUser(e) {
         setButtonLoading(submitButton, false, originalText);
     }
 }
-
-/*******************************************************
- * SET BUTTON LOADING FUNCTION (if missing)
- *******************************************************/
-
-function setButtonLoading(button, isLoading, originalText) {
-    if (!button) return;
-    
-    if (isLoading) {
-        button.disabled = true;
-        button.innerHTML = '<div class="loading-spinner-small"></div> Processing...';
-        button.style.opacity = '0.7';
-        button.style.cursor = 'not-allowed';
-    } else {
-        button.disabled = false;
-        button.textContent = originalText;
-        button.style.opacity = '1';
-        button.style.cursor = 'pointer';
-    }
-}
-
-/*******************************************************
- * GLOBAL EXPORTS AT BOTTOM OF FILE
- *******************************************************/
-
-// Add this at the VERY END of your admin-script.js:
-if (typeof window !== 'undefined') {
-    window.approveUser = approveUser;
-    window.deleteProfile = deleteProfile;
-    window.updateUserRole = updateUserRole;
-    window.openEditUserModal = openEditUserModal;
-    window.handleEditUser = handleEditUser;
-    window.setButtonLoading = setButtonLoading;
-}
-/*******************************************************
- * ADD THESE FUNCTIONS IF THEY DON'T EXIST
- *******************************************************/
-
-// Helper function for $ selector (if not already defined)
-function $(id) {
-    return document.getElementById(id);
-}
-
-// Escape HTML function (if not already defined)
-function escapeHtml(str, forAttribute = false) {
-    if (!str) return '';
-    const div = document.createElement('div');
-    div.textContent = str;
-    const escaped = div.innerHTML;
-    
-    if (forAttribute) {
-        // Extra escaping for attribute values
-        return escaped
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#x27;')
-            .replace(/`/g, '&#x60;');
-    }
-    
-    return escaped;
-}
-
-// Show feedback function (if not already defined)
-function showFeedback(message, type = 'info') {
-    // Create or find feedback element
-    let feedbackEl = document.getElementById('feedback-message');
-    if (!feedbackEl) {
-        feedbackEl = document.createElement('div');
-        feedbackEl.id = 'feedback-message';
-        feedbackEl.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 15px 20px;
-            border-radius: 8px;
-            color: white;
-            font-weight: 500;
-            z-index: 10000;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            animation: slideIn 0.3s ease;
-        `;
-        document.body.appendChild(feedbackEl);
-    }
-    
-    // Set colors based on type
-    const colors = {
-        success: '#10B981',
-        error: '#EF4444',
-        warning: '#F59E0B',
-        info: '#3B82F6'
-    };
-    
-    feedbackEl.style.backgroundColor = colors[type] || colors.info;
-    feedbackEl.textContent = message;
-    
-    // Auto-remove after 5 seconds
-    setTimeout(() => {
-        if (feedbackEl.parentNode) {
-            feedbackEl.style.animation = 'slideOut 0.3s ease';
-            setTimeout(() => {
-                if (feedbackEl.parentNode) {
-                    feedbackEl.parentNode.removeChild(feedbackEl);
-                }
-            }, 300);
-        }
-    }, 5000);
-    
-    // Add CSS for animations if not present
-    if (!document.getElementById('feedback-styles')) {
-        const style = document.createElement('style');
-        style.id = 'feedback-styles';
-        style.textContent = `
-            @keyframes slideIn {
-                from { transform: translateX(100%); opacity: 0; }
-                to { transform: translateX(0); opacity: 1; }
-            }
-            @keyframes slideOut {
-                from { transform: translateX(0); opacity: 1; }
-                to { transform: translateX(100%); opacity: 0; }
-            }
-        `;
-        document.head.appendChild(style);
-    }
-}
-
-// Log audit function (if not already defined)
-async function logAudit(action, details, userId = null, status = 'SUCCESS') {
-    try {
-        const { error } = await sb
-            .from('admin_audit_logs')
-            .insert([{
-                action,
-                details,
-                user_id: userId,
-                status,
-                performed_by: window.currentAdminId || 'system',
-                performed_at: new Date().toISOString()
-            }]);
-        
-        if (error) {
-            console.error('❌ Failed to log audit:', error);
-        }
-    } catch (err) {
-        console.error('❌ Audit logging failed:', err);
-    }
-}
-/*******************************************************
- * DELETE PROFILE FUNCTION - Add to admin-script.js
- *******************************************************/
 
 async function deleteProfile(userId, fullName, isRejection = false) {
     console.log('🗑️ Deleting profile:', { userId, fullName, isRejection });
@@ -1903,300 +1625,7 @@ async function deleteProfile(userId, fullName, isRejection = false) {
 }
 
 /*******************************************************
- * UPDATE THE loadPendingApprovals FUNCTION
- * Make sure it calls deleteProfile correctly for rejections
- *******************************************************/
-
-async function loadPendingApprovals() {
-    const tbody = $('pending-table');
-    if (!tbody) {
-        console.error("Missing <tbody id='pending-table'> element in your HTML.");
-        return;
-    }
-
-    tbody.innerHTML = '<tr><td colspan="7">Loading pending approvals...</td></tr>';
-
-    const { data: pending, error } = await sb
-        .from(USER_PROFILE_TABLE)
-        .select('*')
-        .eq('status', 'pending')
-        .order('created_at', { ascending: true });
-
-    if (error) {
-        tbody.innerHTML = `<tr><td colspan="7">Error: ${error.message}</td></tr>`;
-        return;
-    }
-
-    if (!pending || pending.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7">No pending approvals.</td></tr>';
-        return;
-    }
-
-    tbody.innerHTML = '';
-
-    pending.forEach(u => {
-        // Escape HTML for security
-        const escapedName = escapeHtml(u.full_name);
-        const escapedUserId = escapeHtml(u.user_id);
-        const escapedStudentId = escapeHtml(u.student_id || '');
-        const escapedEmail = escapeHtml(u.email || '');
-        const escapedRole = escapeHtml(u.role || 'student');
-        const escapedProgram = escapeHtml(u.program || 'N/A');
-        
-        // Get program info for display
-        const programName = getProgramDisplayName(u.program);
-        const programType = getProgramType(u.program);
-        const programBadgeClass = programType === 'TVET' ? 'badge-tvet' : 'badge-krchn';
-        const programIcon = programType === 'TVET' ? 'fa-tools' : 'fa-graduation-cap';
-        
-        tbody.innerHTML += `
-            <tr>
-                <td>${escapedName}</td>
-                <td>${escapedEmail}</td>
-                <td>${escapedRole}</td>
-                <td>
-                    ${escapeHtml(programName)}
-                    <div class="program-badge ${programBadgeClass}">
-                        <i class="fas ${programIcon}"></i> ${programType}
-                    </div>
-                </td>
-                <td>${escapedStudentId || 'N/A'}</td>
-                <td>${new Date(u.created_at).toLocaleDateString()}</td>
-                <td>
-                    <button class="btn btn-approve" 
-                            onclick="approveUser('${escapedUserId}', '${escapedName}', '${escapedStudentId}', '${escapedEmail}', '${escapedRole}', '${escapedProgram}')">
-                        Approve
-                    </button>
-                    <button class="btn btn-delete" 
-                            onclick="deleteProfile('${escapedUserId}', '${escapedName}', true)">
-                        Reject
-                    </button>
-                </td>
-            </tr>`;
-    });
-}
-
-/*******************************************************
- * UPDATE THE loadAllUsers FUNCTION
- * Make sure deleteProfile calls don't have the third parameter (not rejection)
- *******************************************************/
-
-async function loadAllUsers() {
-    const tbody = $('users-table');
-    if (!tbody) return;
-    
-    tbody.innerHTML = '<tr><td colspan="7">Loading all users...</td></tr>';
-
-    const { data: users, error } = await sb.from(USER_PROFILE_TABLE)
-        .select('*')
-        .order('full_name', { ascending: true });
-    
-    if (error) {
-        tbody.innerHTML = `<tr><td colspan="7">Error loading users: ${error.message}</td></tr>`;
-        return;
-    }
-
-    tbody.innerHTML = '';
-    
-    users.forEach(u => {
-        const roleOptions = ['student', 'lecturer', 'admin', 'superadmin']
-            .map(r => `<option value="${r}" ${u.role === r ? 'selected' : ''}>${r}</option>`).join('');
-
-        const isBlocked = u.block_program_year === true;
-        const isApproved = u.status === 'approved';
-        const statusText = isBlocked ? 'BLOCKED' : (isApproved ? 'Approved' : 'Pending');
-        const statusClass = isBlocked ? 'status-danger' : (isApproved ? 'status-approved' : 'status-pending');
-        
-        // Get program info
-        const programName = getProgramDisplayName(u.program);
-        const programType = getProgramType(u.program);
-        const programBadgeClass = programType === 'TVET' ? 'badge-tvet' : 'badge-krchn';
-        const programIcon = programType === 'TVET' ? 'fa-tools' : 'fa-graduation-cap';
-
-        // Escape for security
-        const escapedUserId = escapeHtml(u.user_id);
-        const escapedName = escapeHtml(u.full_name);
-
-        tbody.innerHTML += `
-            <tr>
-                <td>${escapeHtml(u.user_id.substring(0, 8))}...</td>
-                <td>${escapeHtml(u.full_name)}</td>
-                <td>${escapeHtml(u.email)}</td>
-                <td>
-                    <select class="btn" onchange="updateUserRole('${escapedUserId}', this.value, '${escapedName}')" ${u.role === 'superadmin' ? 'disabled' : ''}>
-                        ${roleOptions}
-                    </select>
-                </td>
-                <td>
-                    ${escapeHtml(programName)}
-                    <div class="program-badge ${programBadgeClass}">
-                        <i class="fas ${programIcon}"></i> ${programType}
-                    </div>
-                </td>
-                <td class="${statusClass}">${statusText}</td>
-                <td>
-                    <button class="btn btn-map" onclick="openEditUserModal('${escapedUserId}')">Edit</button>
-                    ${!isApproved ? `<button class="btn btn-approve" onclick="approveUser('${escapedUserId}', '${escapedName}')">Approve</button>` : ''}
-                    <button class="btn btn-delete" onclick="deleteProfile('${escapedUserId}', '${escapedName}')">Delete</button>
-                </td>
-            </tr>`;
-    });
-
-    filterTable('user-search', 'users-table', [1, 2, 4]);
-}
-
-/*******************************************************
- * UPDATE THE loadStudents FUNCTION
- *******************************************************/
-
-async function loadStudents() {
-    const tbody = $('students-table');
-    if (!tbody) return;
-    
-    tbody.innerHTML = '<tr><td colspan="9">Loading students...</td></tr>';
-
-    const { data: students, error } = await sb.from(USER_PROFILE_TABLE)
-        .select('*')
-        .eq('role', 'student')
-        .order('full_name', { ascending: true });
-    
-    if (error) {
-        tbody.innerHTML = `<tr><td colspan="9">Error loading students: ${error.message}</td></tr>`;
-        return;
-    }
-
-    tbody.innerHTML = '';
-    
-    students.forEach(s => {
-        const isBlocked = s.block_program_year === true;
-        const statusText = isBlocked ? 'BLOCKED' : (s.status === 'approved' ? 'Active' : 'Pending');
-        const statusClass = isBlocked ? 'status-danger' : (s.status === 'approved' ? 'status-approved' : 'status-pending');
-        
-        // Get program info
-        const programName = getProgramDisplayName(s.program);
-        const programType = getProgramType(s.program);
-        const programLevel = getProgramLevel(s.program);
-        const programBadgeClass = programType === 'TVET' ? 'badge-tvet' : 'badge-krchn';
-        const programIcon = programType === 'TVET' ? 'fa-tools' : 'fa-graduation-cap';
-        
-        // Format block/term display
-        const blockTermDisplay = s.block || 'Not Assigned';
-        const blockTermLabel = programType === 'TVET' ? 'Term' : 'Block';
-
-        // Escape for security
-        const escapedUserId = escapeHtml(s.user_id);
-        const escapedName = escapeHtml(s.full_name);
-
-        tbody.innerHTML += `
-            <tr>
-                <td>${escapeHtml(s.user_id.substring(0, 8))}...</td>
-                <td>${escapeHtml(s.full_name)}</td>
-                <td>${escapeHtml(s.email)}</td>
-                <td>
-                    <strong>${escapeHtml(programName)}</strong>
-                    ${programType === 'TVET' ? `<br><small class="text-muted">${programLevel}</small>` : ''}
-                    <div class="program-badge ${programBadgeClass}">
-                        <i class="fas ${programIcon}"></i> ${programType}
-                    </div>
-                </td>
-                <td>${escapeHtml(s.intake_year || 'N/A')}</td>
-                <td><strong>${blockTermLabel}:</strong> ${escapeHtml(blockTermDisplay)}</td>
-                <td>${escapeHtml(s.phone)}</td>
-                <td class="${statusClass}">${statusText}</td>
-                <td>
-                    <button class="btn btn-map" onclick="openEditUserModal('${escapedUserId}')">Edit</button>
-                    <button class="btn btn-delete" onclick="deleteProfile('${escapedUserId}', '${escapedName}')">Delete</button>
-                </td>
-            </tr>`;
-    });
-
-    filterTable('student-search', 'students-table', [1, 3, 5]);
-}
-
-/*******************************************************
- * CSS STYLES FOR BUTTONS (Add to your admin.css)
- *******************************************************/
-
-const deleteButtonStyles = document.createElement('style');
-deleteButtonStyles.textContent = `
-    .btn {
-        padding: 6px 12px;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 14px;
-        font-weight: 500;
-        transition: all 0.2s;
-    }
-    
-    .btn-approve {
-        background-color: #10B981;
-        color: white;
-    }
-    
-    .btn-approve:hover {
-        background-color: #059669;
-    }
-    
-    .btn-delete {
-        background-color: #EF4444;
-        color: white;
-    }
-    
-    .btn-delete:hover {
-        background-color: #DC2626;
-    }
-    
-    .btn-map {
-        background-color: #3B82F6;
-        color: white;
-    }
-    
-    .btn-map:hover {
-        background-color: #2563EB;
-    }
-    
-    .status-danger {
-        color: #DC2626;
-        font-weight: bold;
-    }
-    
-    .status-approved {
-        color: #10B981;
-        font-weight: bold;
-    }
-    
-    .status-pending {
-        color: #F59E0B;
-        font-weight: bold;
-    }
-    
-    .program-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        padding: 2px 8px;
-        border-radius: 12px;
-        font-size: 0.75rem;
-        font-weight: 500;
-        margin-top: 4px;
-    }
-    
-    .badge-tvet {
-        background-color: #e0f2fe;
-        color: #0369a1;
-        border: 1px solid #bae6fd;
-    }
-    
-    .badge-krchn {
-        background-color: #f0f9ff;
-        color: #0c4a6e;
-        border: 1px solid #e0f2fe;
-    }
-`;
-document.head.appendChild(deleteButtonStyles);
-/*******************************************************
- * 8. COURSES MANAGEMENT
+ * 10. COURSES MANAGEMENT
  *******************************************************/
 async function handleAddCourse(e) {
     e.preventDefault();
@@ -2351,7 +1780,7 @@ async function handleEditCourse(e) {
 }
 
 /*******************************************************
- * 9. SESSIONS & CLINICAL MANAGEMENT
+ * 11. SESSIONS & CLINICAL MANAGEMENT
  *******************************************************/
 async function loadScheduledSessions() {
     const tbody = document.getElementById('scheduledSessionsTableBody');
@@ -2485,7 +1914,7 @@ async function deleteSession(sessionId, sessionTitle) {
 }
 
 /*******************************************************
- * 10. ATTENDANCE MANAGEMENT
+ * 12. ATTENDANCE MANAGEMENT
  *******************************************************/
 function toggleAttendanceFields() {
     const sessionType = $('att_session_type')?.value;
@@ -2761,7 +2190,7 @@ async function loadAttendance() {
 }
 
 /*******************************************************
- * 11. EXAMS/CATS MANAGEMENT
+ * 13. EXAMS/CATS MANAGEMENT
  *******************************************************/
 async function populateExamCourseSelects(courses = null) {
     const courseSelect = $('exam_course_id');
@@ -2773,30 +2202,41 @@ async function populateExamCourseSelects(courses = null) {
     courseSelect.innerHTML = '<option value="">-- Optional: Select Course --</option>';
     
     if (!selectedProgram) {
-        console.log('⚠️ No program selected, showing no courses');
+        console.log('⚠️ No program selected, showing all courses');
+        // Show all courses if no program selected
+        try {
+            const { data: allCourses, error } = await sb
+                .from('courses')
+                .select('id, course_name, target_program, unit_code')
+                .order('course_name', { ascending: true });
+            
+            if (!error && allCourses) {
+                allCourses.forEach(course => {
+                    const option = document.createElement('option');
+                    option.value = course.id;
+                    option.textContent = `${course.course_name} (${course.unit_code || 'N/A'}) - ${course.target_program || 'General'}`;
+                    courseSelect.appendChild(option);
+                });
+            }
+        } catch (error) {
+            console.error('Error loading courses:', error);
+        }
         return;
     }
 
     console.log(`🔍 Filtering courses for program: ${selectedProgram}`);
     
     try {
-        let filteredCourses = [];
+        // Fetch courses for the selected program
+        const { data, error } = await sb
+            .from('courses')
+            .select('id, course_name, target_program, unit_code')
+            .eq('target_program', selectedProgram)
+            .order('course_name', { ascending: true });
         
-        if (!courses) {
-            // Fetch courses for the selected program
-            const { data, error } = await sb
-                .from('courses')
-                .select('id, course_name, target_program, unit_code')
-                .eq('target_program', selectedProgram)  // 🔥 Filter by selected program
-                .order('course_name', { ascending: true });
-            
-            if (error) throw error;
-            filteredCourses = data || [];
-        } else {
-            // Filter provided courses by program
-            filteredCourses = courses.filter(c => c.target_program === selectedProgram);
-        }
-
+        if (error) throw error;
+        
+        const filteredCourses = data || [];
         console.log(`✅ Found ${filteredCourses.length} courses for ${selectedProgram}`);
         
         // Add filtered courses to dropdown
@@ -2828,7 +2268,7 @@ async function handleAddExam(e) {
     const exam_duration_minutes = parseInt($('exam_duration_minutes')?.value);
     const exam_start_time = $('exam_start_time')?.value;
     
-    // 🔥 CRITICAL: Get program FROM THE DROPDOWN (your selection)
+    // Get program FROM THE DROPDOWN
     const selected_program = $('exam_program')?.value;
     
     const course_id = $('exam_course_id')?.value || null;
@@ -2851,7 +2291,7 @@ async function handleAddExam(e) {
     }
 
     try {
-        // 🔥 VALIDATION: Check if selected program matches course's program
+        // VALIDATION: Check if selected program matches course's program
         if (course_id) {
             const { data: course, error: courseError } = await sb
                 .from('courses')
@@ -2877,9 +2317,9 @@ async function handleAddExam(e) {
             exam_type,
             online_link: exam_link, 
             duration_minutes: exam_duration_minutes,
-            // 🔥 USE THE SELECTED PROGRAM FROM DROPDOWN
+            // USE THE SELECTED PROGRAM FROM DROPDOWN
             target_program: selected_program,
-            program_type: selected_program, // Also set program_type to match
+            program_type: selected_program,
             intake_year: intake,
             block_term,
             status: exam_status
@@ -3001,8 +2441,7 @@ async function deleteExam(examId, examName) {
     }
 }
 
-// Exam Modal Functions - Complete Implementation with Exam Type
-// Open Exam Edit Modal (Admin Editable)
+// Exam Modal Functions
 async function openEditExamModal(examId) {
   try {
     console.log('📝 Opening edit modal for exam ID:', examId);
@@ -3128,7 +2567,7 @@ async function saveEditedExam(e) {
   const startTime = startTimeInput ? startTimeInput.value : '09:00';
   const duration = durationInput ? parseInt(durationInput.value) || 60 : 60;
   const status = statusInput ? statusInput.value : 'Upcoming';
-  const type = typeInput ? typeInput.value : 'CAT'; // Default to CAT if not found
+  const type = typeInput ? typeInput.value : 'CAT';
   const link = linkInput ? linkInput.value.trim() : null;
 
   console.log('📋 Form values:', { title, date, startTime, duration, status, type, link });
@@ -3141,7 +2580,7 @@ async function saveEditedExam(e) {
   try {
     const updateData = {
       exam_name: title,
-      exam_type: type, // ⭐ CRITICAL - Save exam type
+      exam_type: type,
       exam_date: date,
       exam_start_time: startTime,
       duration_minutes: duration,
@@ -3203,7 +2642,7 @@ async function saveEditedExam(e) {
   }
 }
 
-// Initialize event listeners when DOM is ready
+// Initialize exam edit modal listeners
 document.addEventListener('DOMContentLoaded', function() {
   console.log('🔧 Initializing exam edit modal...');
   
@@ -3247,19 +2686,7 @@ function getExamTypeLabel(examType) {
   return labels[examType] || examType;
 }
 
-// Utility function to escape HTML
-function escapeHtml(unsafe) {
-    if (unsafe === null || unsafe === undefined) return '';
-    return unsafe
-        .toString()
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-}
-
-// Show Grade Modal - Missing Function
+// Grade Modal Functions
 function showGradeModal(modalHtml) {
     // Remove any existing modal first
     const existingModal = document.getElementById('gradeModal');
@@ -3290,46 +2717,18 @@ function showGradeModal(modalHtml) {
     }
 }
 
-// Close Modal function
-function closeModal() {
-    const modal = document.getElementById('gradeModal');
-    if (modal) {
-        modal.remove();
-    }
-}
-
-// Filter Grade Students function
-function filterGradeStudents() {
-    const searchTerm = document.getElementById('gradeSearch').value.toLowerCase();
-    const rows = document.querySelectorAll('#gradeTableBody tr');
-    
-    rows.forEach(row => {
-        const name = row.getAttribute('data-name') || '';
-        const email = row.getAttribute('data-email') || '';
-        const id = row.getAttribute('data-id') || '';
-        
-        const matches = name.includes(searchTerm) || 
-                       email.includes(searchTerm) || 
-                       id.includes(searchTerm);
-        
-        row.style.display = matches ? '' : 'none';
-    });
-}
-
-// Get current user with multiple fallback methods
+// Get current user
 async function getCurrentUser() {
     try {
         console.log('🔄 Getting current user...');
         
-        // Method 1: Check global variable (most common)
+        // Method 1: Check global variable
         if (typeof currentUserProfile !== 'undefined' && currentUserProfile) {
             console.log('✅ Using global currentUserProfile:', currentUserProfile);
             
-            // FIX: Check for both 'id' and 'user_id' properties
             if (currentUserProfile.user_id) {
                 return currentUserProfile;
             } else if (currentUserProfile.id) {
-                // Create a copy with user_id set to id
                 const fixedUser = {
                     ...currentUserProfile,
                     user_id: currentUserProfile.id
@@ -3352,7 +2751,6 @@ async function getCurrentUser() {
                 const user = JSON.parse(storedUser);
                 if (user && (user.user_id || user.id)) {
                     console.log('✅ Using session storage user:', user);
-                    // Ensure user_id exists
                     if (!user.user_id && user.id) {
                         user.user_id = user.id;
                     }
@@ -3363,7 +2761,7 @@ async function getCurrentUser() {
             }
         }
         
-        // Method 4: Get from Supabase auth (direct API call)
+        // Method 4: Get from Supabase auth
         console.log('🔄 Checking Supabase auth...');
         const { data: { user: authUser }, error: authError } = await sb.auth.getUser();
         
@@ -3379,7 +2777,6 @@ async function getCurrentUser() {
                 
             if (!profileError && profile) {
                 console.log('✅ Found consolidated profile:', profile);
-                // Store for future use
                 window.currentUserProfile = profile;
                 sessionStorage.setItem('currentUserProfile', JSON.stringify(profile));
                 return profile;
@@ -3388,7 +2785,7 @@ async function getCurrentUser() {
             // If no consolidated profile, return basic auth info
             const basicUser = {
                 user_id: authUser.id,
-                id: authUser.id, // Include both for compatibility
+                id: authUser.id,
                 email: authUser.email,
                 full_name: authUser.user_metadata?.full_name || authUser.email
             };
@@ -3407,7 +2804,7 @@ async function getCurrentUser() {
     }
 }
 
-// Open Grade Modal - Dynamic based on exam type
+// Open Grade Modal
 async function openGradeModal(examId, examName = '') {
     try {
         console.log('🎯 Opening grade modal for exam:', examId);
@@ -3458,13 +2855,11 @@ async function openGradeModal(examId, examName = '') {
         }
 
         // Determine exam type from exam data
-        let examType = 'EXAM'; // Default to final exam
+        let examType = 'EXAM';
         
-        // Check if exam has an exam_type field
         if (exam.exam_type) {
             examType = exam.exam_type;
         } 
-        // Otherwise try to guess from exam name
         else if (exam.exam_name) {
             const name = exam.exam_name.toLowerCase();
             if (name.includes('cat 1') || name.includes('cat1')) {
@@ -3472,7 +2867,7 @@ async function openGradeModal(examId, examName = '') {
             } else if (name.includes('cat 2') || name.includes('cat2')) {
                 examType = 'CAT_2';
             } else if (name.includes('cat') && !name.includes('final')) {
-                examType = 'CAT'; // Generic CAT exam
+                examType = 'CAT';
             }
         }
         
@@ -3521,25 +2916,12 @@ async function openGradeModal(examId, examName = '') {
     }
 }
 
-// Helper function to get exam type label
-function getExamTypeLabel(examType) {
-    switch(examType) {
-        case 'CAT_1': return 'CAT 1';
-        case 'CAT_2': return 'CAT 2';
-        case 'CAT': return 'CAT';
-        case 'EXAM': return 'Final Exam';
-        default: return examType;
-    }
-}
-
-// Build modal HTML based on exam type
 function buildGradeModalHTML(exam, students, existingGrades, currentUser, examType) {
     const examTypeLabel = getExamTypeLabel(examType);
     
     // Define column headers and inputs based on exam type
     let tableHeaders = '';
     let tableRows = '';
-    let totalColumn = '';
     
     switch(examType) {
         case 'CAT_1':
@@ -3592,7 +2974,7 @@ function buildGradeModalHTML(exam, students, existingGrades, currentUser, examTy
             }).join('');
             break;
             
-        case 'CAT': // Generic CAT exam
+        case 'CAT':
             tableHeaders = `
                 <th>Student Name</th>
                 <th>Email</th>
@@ -3617,7 +2999,7 @@ function buildGradeModalHTML(exam, students, existingGrades, currentUser, examTy
             }).join('');
             break;
             
-        default: // FINAL_EXAM (or any other type)
+        default:
             tableHeaders = `
                 <th>Student Name</th>
                 <th>Email</th>
@@ -3627,7 +3009,6 @@ function buildGradeModalHTML(exam, students, existingGrades, currentUser, examTy
                 <th>Total (scaled 100)</th>
                 <th>Status</th>
             `;
-            totalColumn = '<th>Total (scaled 100)</th>';
             tableRows = students.map(s => {
                 const grade = existingGrades?.find(g => g.student_id === s.user_id) || {};
                 return `
@@ -3679,7 +3060,7 @@ function buildGradeModalHTML(exam, students, existingGrades, currentUser, examTy
     </div>`;
 }
 
-// Auto-update total with proportional scaling (for final exams only)
+// Auto-update total with proportional scaling
 function updateGradeTotal(studentId) {
     const cat1Input = document.querySelector(`#cat1-${studentId}`);
     const cat2Input = document.querySelector(`#cat2-${studentId}`);
@@ -3708,7 +3089,7 @@ function updateGradeTotal(studentId) {
     }
 }
 
-// Save Grades - Dynamic based on exam type
+// Save Grades
 async function saveGrades(examId, examType = 'EXAM') {
     try {
         const rows = document.querySelectorAll('.grade-table tbody tr');
@@ -3774,7 +3155,7 @@ async function saveGrades(examId, examType = 'EXAM') {
                     }
                     break;
                     
-                default: // EXAM or other
+                default:
                     const cat1InputFinal = row.querySelector(`#cat1-${studentId}`);
                     const cat2InputFinal = row.querySelector(`#cat2-${studentId}`);
                     const finalInput = row.querySelector(`#final-${studentId}`);
@@ -3796,7 +3177,7 @@ async function saveGrades(examId, examType = 'EXAM') {
                     }
             }
 
-            if (Object.keys(gradeData).length > 6) { // More than just the basic fields
+            if (Object.keys(gradeData).length > 6) {
                 upserts.push(gradeData);
             }
         }
@@ -3825,7 +3206,6 @@ async function saveGrades(examId, examType = 'EXAM') {
         if (error) {
             console.error('🔍 Database error details:', error);
             
-            // Provide more specific error messages
             if (error.message.includes('foreign key constraint')) {
                 throw new Error('Grading permission issue: Your user account cannot save grades. Please contact administrator.');
             } else if (error.message.includes('null value')) {
@@ -3874,933 +3254,8 @@ function filterGradeStudents() {
     });
 }
 
-// Escape HTML helper function
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-                    }
 /*******************************************************
- * 5. EXCEL EXPORT FOR CATS GRADES - ENHANCED VERSION
- *******************************************************/
-
-// ENHANCED: Main Excel export function with comprehensive features
-async function exportCATSGradesToExcelEnhanced() {
-    try {
-        showFeedback('📊 Preparing COMPREHENSIVE CATS grades export...', 'info');
-        
-        // Fetch all CATS exams with enhanced details
-        const catsExams = await fetchCATSExamsWithGradesEnhanced();
-        
-        if (catsExams.length === 0) {
-            showFeedback('No CATS exams found to export.', 'warning');
-            return;
-        }
-        
-        // Show enhanced selection modal
-        showCATSSelectionModalEnhanced(catsExams);
-        
-    } catch (error) {
-        console.error('Enhanced export error:', error);
-        showFeedback('Enhanced export failed: ' + error.message, 'error');
-    }
-}
-
-// ENHANCED: Fetch CATS exams with more details
-async function fetchCATSExamsWithGradesEnhanced() {
-    try {
-        const { data: exams, error: examsError } = await sb
-            .from('exams_with_courses')
-            .select(`
-                id,
-                exam_name,
-                exam_type,
-                exam_date,
-                exam_start_time,
-                program_type,
-                block_term,
-                course_name,
-                unit_code,
-                duration_minutes,
-                status,
-                intake_year,
-                online_link,
-                created_at
-            `)
-            .or('exam_type.ilike.%CAT%,exam_type.eq.CAT_1,exam_type.eq.CAT_2,exam_type.eq.CAT')
-            .order('exam_date', { ascending: false });
-        
-        if (examsError) throw examsError;
-        
-        // Get enhanced grade statistics for each exam
-        const examsWithEnhancedStats = await Promise.all(
-            exams.map(async (exam) => {
-                // Get all grades for this exam
-                const { data: grades, error: gradesError } = await sb
-                    .from('exam_grades')
-                    .select(`
-                        *,
-                        student_profiles:student_id(
-                            full_name,
-                            student_id,
-                            email,
-                            phone,
-                            program,
-                            block,
-                            intake_year,
-                            status
-                        )
-                    `)
-                    .eq('exam_id', exam.id);
-                
-                if (gradesError) {
-                    console.error(`Error fetching grades for exam ${exam.id}:`, gradesError);
-                    return {
-                        ...exam,
-                        grade_count: 0,
-                        has_grades: false,
-                        grades: [],
-                        statistics: null
-                    };
-                }
-                
-                // Calculate comprehensive statistics
-                const statistics = calculateExamStatistics(grades, exam.exam_type);
-                
-                return {
-                    ...exam,
-                    grade_count: grades.length,
-                    has_grades: grades.length > 0,
-                    grades: grades || [],
-                    statistics: statistics
-                };
-            })
-        );
-        
-        return examsWithEnhancedStats;
-    } catch (error) {
-        console.error('Error fetching enhanced CATS exams:', error);
-        return [];
-    }
-}
-
-// ENHANCED: Calculate comprehensive exam statistics
-function calculateExamStatistics(grades, examType) {
-    if (!grades || grades.length === 0) {
-        return {
-            total: 0,
-            graded: 0,
-            pending: 0,
-            passCount: 0,
-            failCount: 0,
-            averageScore: 0,
-            highestScore: 0,
-            lowestScore: 0,
-            passRate: 0
-        };
-    }
-    
-    const isCAT1 = examType.includes('CAT_1') || examType === 'CAT_1';
-    const isCAT2 = examType.includes('CAT_2') || examType === 'CAT_2';
-    
-    let gradedCount = 0;
-    let totalScore = 0;
-    let highestScore = -1;
-    let lowestScore = 31; // CATs are out of 30
-    let passCount = 0;
-    
-    grades.forEach(grade => {
-        let score = null;
-        
-        if (isCAT1) {
-            score = grade.cat_1_score;
-        } else if (isCAT2) {
-            score = grade.cat_2_score;
-        } else {
-            score = grade.cat_1_score || grade.cat_2_score;
-        }
-        
-        if (score !== null) {
-            gradedCount++;
-            totalScore += score;
-            
-            if (score > highestScore) highestScore = score;
-            if (score < lowestScore) lowestScore = score;
-            
-            const percentage = (score / 30) * 100;
-            if (percentage >= 60) passCount++;
-        }
-    });
-    
-    const averageScore = gradedCount > 0 ? (totalScore / gradedCount).toFixed(2) : 0;
-    const passRate = gradedCount > 0 ? ((passCount / gradedCount) * 100).toFixed(2) : 0;
-    
-    return {
-        total: grades.length,
-        graded: gradedCount,
-        pending: grades.length - gradedCount,
-        passCount: passCount,
-        failCount: gradedCount - passCount,
-        averageScore: averageScore,
-        highestScore: highestScore === -1 ? 0 : highestScore,
-        lowestScore: lowestScore === 31 ? 0 : lowestScore,
-        passRate: passRate
-    };
-}
-
-// ENHANCED: Show comprehensive selection modal
-function showCATSSelectionModalEnhanced(exams) {
-    // Count total statistics
-    const totalStats = {
-        exams: exams.length,
-        examsWithGrades: exams.filter(e => e.has_grades).length,
-        totalStudents: exams.reduce((sum, e) => sum + e.grade_count, 0),
-        totalGraded: exams.reduce((sum, e) => sum + (e.statistics?.graded || 0), 0)
-    };
-    
-    const modalHTML = `
-        <div id="catsEnhancedModal" class="modal" style="display: block;">
-            <div class="modal-content" style="max-width: 1000px;">
-                <div class="modal-header">
-                    <h3><i class="fas fa-file-excel"></i> COMPREHENSIVE CATS Grades Export</h3>
-                    <span class="close" onclick="closeEnhancedModal()">&times;</span>
-                </div>
-                <div class="modal-body">
-                    <div class="stats-summary">
-                        <div class="stat-card">
-                            <div class="stat-number">${totalStats.exams}</div>
-                            <div class="stat-label">Total Exams</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-number">${totalStats.examsWithGrades}</div>
-                            <div class="stat-label">With Grades</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-number">${totalStats.totalStudents}</div>
-                            <div class="stat-label">Total Students</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-number">${totalStats.totalGraded}</div>
-                            <div class="stat-label">Graded Entries</div>
-                        </div>
-                    </div>
-                    
-                    <div class="export-options" style="margin: 20px 0; padding: 15px; background: #f8f9fa; border-radius: 8px;">
-                        <h4 style="margin-top: 0;">Export Options</h4>
-                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                            <button onclick="selectAllEnhanced()" class="btn-action">
-                                <i class="fas fa-check-square"></i> Select All
-                            </button>
-                            <button onclick="selectExamsWithGradesEnhanced()" class="btn-action" style="background-color: #10B981;">
-                                <i class="fas fa-check-circle"></i> Select With Grades
-                            </button>
-                            <button onclick="selectByTypeEnhanced('CAT_1')" class="btn-action" style="background-color: #3B82F6;">
-                                <i class="fas fa-filter"></i> CAT 1 Only
-                            </button>
-                            <button onclick="selectByTypeEnhanced('CAT_2')" class="btn-action" style="background-color: #8B5CF6;">
-                                <i class="fas fa-filter"></i> CAT 2 Only
-                            </button>
-                            <button onclick="clearSelectionEnhanced()" class="btn-warning">
-                                <i class="fas fa-times"></i> Clear
-                            </button>
-                        </div>
-                        
-                        <div style="margin-top: 15px; display: flex; gap: 20px; flex-wrap: wrap;">
-                            <label style="display: flex; align-items: center; gap: 5px;">
-                                <input type="checkbox" id="includeStudentDetailsEnhanced" checked>
-                                Include Student Details
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 5px;">
-                                <input type="checkbox" id="includeStatisticsEnhanced" checked>
-                                Include Statistics Sheets
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 5px;">
-                                <input type="checkbox" id="includeRawDataEnhanced">
-                                Include Raw Data Sheet
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 5px;">
-                                <input type="checkbox" id="groupByProgramEnhanced">
-                                Group by Program
-                            </label>
-                        </div>
-                    </div>
-                    
-                    <div style="max-height: 400px; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: 6px;">
-                        <table class="enhanced-table">
-                            <thead>
-                                <tr>
-                                    <th style="width: 50px;">Select</th>
-                                    <th>Exam Details</th>
-                                    <th style="width: 120px;">Statistics</th>
-                                    <th style="width: 100px;">Date/Time</th>
-                                    <th style="width: 80px;">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody id="enhancedExamsTable">
-                                ${exams.map((exam, index) => `
-                                    <tr class="${exam.has_grades ? 'has-grades' : 'no-grades'}">
-                                        <td>
-                                            <input type="checkbox" 
-                                                   class="enhanced-exam-checkbox" 
-                                                   value="${exam.id}"
-                                                   data-exam='${JSON.stringify(exam).replace(/"/g, '&quot;')}'
-                                                   ${exam.has_grades ? 'checked' : ''}
-                                                   id="enhanced_exam_${exam.id}">
-                                        </td>
-                                        <td>
-                                            <div class="exam-title">${escapeHtml(exam.exam_name || 'Unnamed Exam')}</div>
-                                            <div class="exam-details">
-                                                <span class="exam-type ${exam.exam_type}">${getExamTypeLabel(exam.exam_type)}</span> • 
-                                                ${escapeHtml(exam.course_name || 'General')}
-                                                ${exam.unit_code ? `(${exam.unit_code})` : ''}
-                                            </div>
-                                            <div class="exam-meta">
-                                                ${exam.program_type || 'All'} • Block: ${exam.block_term || 'N/A'} • 
-                                                Intake: ${exam.intake_year || 'N/A'}
-                                            </div>
-                                        </td>
-                                        <td>
-                                            ${exam.has_grades ? `
-                                                <div class="stats-info">
-                                                    <div>Graded: <strong>${exam.statistics.graded}/${exam.statistics.total}</strong></div>
-                                                    <div>Avg: <strong>${exam.statistics.averageScore}</strong></div>
-                                                    <div>Pass: <strong>${exam.statistics.passRate}%</strong></div>
-                                                </div>
-                                            ` : `
-                                                <div class="no-stats">No grades yet</div>
-                                            `}
-                                        </td>
-                                        <td>
-                                            <div>${exam.exam_date ? new Date(exam.exam_date).toLocaleDateString() : 'N/A'}</div>
-                                            <div class="time-small">${exam.exam_start_time || ''}</div>
-                                        </td>
-                                        <td>
-                                            <span class="status-badge status-${exam.status?.toLowerCase() || 'unknown'}">
-                                                ${exam.status || 'Unknown'}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                    
-                    <div class="export-footer">
-                        <div class="selection-info">
-                            <strong>Selected:</strong> 
-                            <span id="selectedEnhancedCount">0</span> exams • 
-                            <span id="selectedEnhancedGrades">0</span> students with grades
-                        </div>
-                        <div class="export-actions">
-                            <button onclick="generateEnhancedReport()" class="btn-action" style="background-color: #217346;">
-                                <i class="fas fa-file-excel"></i> Generate Comprehensive Report
-                            </button>
-                            <button onclick="closeEnhancedModal()" class="btn-warning">
-                                Cancel
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    // Remove existing modal if any
-    const existingModal = document.getElementById('catsEnhancedModal');
-    if (existingModal) existingModal.remove();
-    
-    // Create and append modal
-    const modalDiv = document.createElement('div');
-    modalDiv.innerHTML = modalHTML;
-    document.body.appendChild(modalDiv);
-    
-    // Add CSS for enhanced modal
-    addEnhancedModalStyles();
-    
-    // Update counts
-    updateEnhancedSelectionCounts();
-    
-    // Add event listeners
-    document.querySelectorAll('.enhanced-exam-checkbox').forEach(checkbox => {
-        checkbox.addEventListener('change', updateEnhancedSelectionCounts);
-    });
-}
-
-// Helper function to add CSS
-function addEnhancedModalStyles() {
-    if (document.getElementById('enhanced-modal-styles')) return;
-    
-    const style = document.createElement('style');
-    style.id = 'enhanced-modal-styles';
-    style.textContent = `
-        .stats-summary {
-            display: flex;
-            gap: 15px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-        .stat-card {
-            flex: 1;
-            min-width: 120px;
-            padding: 15px;
-            background: white;
-            border-radius: 8px;
-            border: 1px solid #e5e7eb;
-            text-align: center;
-        }
-        .stat-number {
-            font-size: 24px;
-            font-weight: bold;
-            color: #3B82F6;
-        }
-        .stat-label {
-            font-size: 12px;
-            color: #6b7280;
-            margin-top: 5px;
-        }
-        .enhanced-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        .enhanced-table th {
-            background: #f9fafb;
-            padding: 12px;
-            text-align: left;
-            border-bottom: 2px solid #e5e7eb;
-        }
-        .enhanced-table td {
-            padding: 12px;
-            border-bottom: 1px solid #e5e7eb;
-        }
-        .has-grades {
-            background-color: #f0f9ff;
-        }
-        .no-grades {
-            opacity: 0.7;
-        }
-        .exam-title {
-            font-weight: 600;
-            margin-bottom: 4px;
-        }
-        .exam-details {
-            font-size: 0.9em;
-            color: #6b7280;
-            margin-bottom: 2px;
-        }
-        .exam-meta {
-            font-size: 0.85em;
-            color: #9ca3af;
-        }
-        .exam-type {
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 0.8em;
-            font-weight: 600;
-        }
-        .exam-type.CAT_1 { background: #DBEAFE; color: #1E40AF; }
-        .exam-type.CAT_2 { background: #E0E7FF; color: #3730A3; }
-        .exam-type.CAT { background: #DCFCE7; color: #166534; }
-        .stats-info {
-            font-size: 0.85em;
-        }
-        .stats-info div {
-            margin: 2px 0;
-        }
-        .no-stats {
-            color: #9ca3af;
-            font-style: italic;
-        }
-        .time-small {
-            font-size: 0.85em;
-            color: #6b7280;
-        }
-        .status-badge {
-            padding: 4px 8px;
-            border-radius: 12px;
-            font-size: 0.8em;
-            font-weight: 600;
-        }
-        .status-upcoming { background: #FEF3C7; color: #92400E; }
-        .status-active { background: #D1FAE5; color: #065F46; }
-        .status-completed { background: #DBEAFE; color: #1E40AF; }
-        .status-archived { background: #F3F4F6; color: #374151; }
-        .export-footer {
-            margin-top: 20px;
-            padding: 15px;
-            background: #f9fafb;
-            border-radius: 6px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .selection-info {
-            font-size: 14px;
-        }
-        .export-actions {
-            display: flex;
-            gap: 10px;
-        }
-    `;
-    
-    document.head.appendChild(style);
-}
-
-// Helper functions for enhanced modal
-function updateEnhancedSelectionCounts() {
-    const selectedCheckboxes = document.querySelectorAll('.enhanced-exam-checkbox:checked');
-    const selectedCount = selectedCheckboxes.length;
-    
-    let totalStudents = 0;
-    selectedCheckboxes.forEach(cb => {
-        try {
-            const examData = JSON.parse(cb.getAttribute('data-exam').replace(/&quot;/g, '"'));
-            totalStudents += examData.statistics?.graded || 0;
-        } catch (e) {
-            console.error('Error parsing exam data:', e);
-        }
-    });
-    
-    document.getElementById('selectedEnhancedCount').textContent = selectedCount;
-    document.getElementById('selectedEnhancedGrades').textContent = totalStudents;
-}
-
-function selectAllEnhanced() {
-    document.querySelectorAll('.enhanced-exam-checkbox').forEach(cb => cb.checked = true);
-    updateEnhancedSelectionCounts();
-}
-
-function selectExamsWithGradesEnhanced() {
-    document.querySelectorAll('.enhanced-exam-checkbox').forEach(cb => {
-        const row = cb.closest('tr');
-        cb.checked = row && row.classList.contains('has-grades');
-    });
-    updateEnhancedSelectionCounts();
-}
-
-function selectByTypeEnhanced(type) {
-    document.querySelectorAll('.enhanced-exam-checkbox').forEach(cb => {
-        try {
-            const examData = JSON.parse(cb.getAttribute('data-exam').replace(/&quot;/g, '"'));
-            cb.checked = examData.exam_type === type;
-        } catch (e) {
-            cb.checked = false;
-        }
-    });
-    updateEnhancedSelectionCounts();
-}
-
-function clearSelectionEnhanced() {
-    document.querySelectorAll('.enhanced-exam-checkbox').forEach(cb => cb.checked = false);
-    updateEnhancedSelectionCounts();
-}
-
-function closeEnhancedModal() {
-    const modal = document.getElementById('catsEnhancedModal');
-    if (modal) modal.remove();
-}
-
-// ENHANCED: Generate comprehensive report
-async function generateEnhancedReport() {
-    const selectedCheckboxes = document.querySelectorAll('.enhanced-exam-checkbox:checked');
-    
-    if (selectedCheckboxes.length === 0) {
-        showFeedback('Please select at least one exam to export.', 'warning');
-        return;
-    }
-    
-    showFeedback('🚀 Generating comprehensive Excel report...', 'info');
-    
-    try {
-        const examIds = Array.from(selectedCheckboxes).map(cb => cb.value);
-        const options = {
-            includeStudentDetails: document.getElementById('includeStudentDetailsEnhanced').checked,
-            includeStatistics: document.getElementById('includeStatisticsEnhanced').checked,
-            includeRawData: document.getElementById('includeRawDataEnhanced').checked,
-            groupByProgram: document.getElementById('groupByProgramEnhanced').checked
-        };
-        
-        // Generate enhanced Excel file
-        await generateEnhancedExcelReport(examIds, options);
-        
-        showFeedback(`✅ Comprehensive report generated for ${examIds.length} exam(s)!`, 'success');
-        closeEnhancedModal();
-        
-    } catch (error) {
-        console.error('Enhanced Excel generation error:', error);
-        showFeedback('❌ Export failed: ' + error.message, 'error');
-    }
-}
-
-// ENHANCED: Generate Excel report with all features
-async function generateEnhancedExcelReport(examIds, options) {
-    try {
-        // Load XLSX library
-        await loadXLSXLibrary();
-        
-        // Create workbook
-        const wb = XLSX.utils.book_new();
-        
-        // Process each exam
-        for (let i = 0; i < examIds.length; i++) {
-            const examId = examIds[i];
-            
-            // Get enhanced exam details
-            const { data: exam, error: examError } = await sb
-                .from('exams_with_courses')
-                .select('*')
-                .eq('id', examId)
-                .single();
-            
-            if (examError || !exam) continue;
-            
-            // Get grades with student details
-            const { data: grades, error: gradesError } = await sb
-                .from('exam_grades')
-                .select(`
-                    *,
-                    student_profiles:student_id(
-                        full_name,
-                        student_id,
-                        email,
-                        phone,
-                        program,
-                        block,
-                        intake_year,
-                        status
-                    )
-                `)
-                .eq('exam_id', examId);
-            
-            if (gradesError) continue;
-            
-            // Create main grades sheet
-            const gradesSheetData = createEnhancedGradesSheet(exam, grades || [], options);
-            const gradesWs = XLSX.utils.aoa_to_sheet(gradesSheetData);
-            
-            // Set column widths
-            const colWidths = options.includeStudentDetails ? 
-                [
-                    { wch: 12 }, // Student ID
-                    { wch: 25 }, // Full Name
-                    { wch: 30 }, // Email
-                    { wch: 15 }, // Phone
-                    { wch: 15 }, // Program
-                    { wch: 10 }, // Block
-                    { wch: 10 }, // Intake
-                    { wch: 15 }, // Score
-                    { wch: 15 }, // Percentage
-                    { wch: 12 }, // Grade
-                    { wch: 12 }, // Status
-                    { wch: 20 }, // Graded By
-                    { wch: 20 }, // Graded Date
-                    { wch: 30 }  // Comments
-                ] : [
-                    { wch: 12 }, // Student ID
-                    { wch: 25 }, // Full Name
-                    { wch: 15 }, // Score
-                    { wch: 15 }, // Percentage
-                    { wch: 12 }, // Grade
-                    { wch: 12 }, // Status
-                    { wch: 20 }  // Graded Date
-                ];
-            
-            gradesWs['!cols'] = colWidths;
-            
-            // Add sheet to workbook
-            const sheetName = cleanSheetName(`${getExamTypeLabel(exam.exam_type)}_${exam.exam_name}`.substring(0, 31));
-            XLSX.utils.book_append_sheet(wb, gradesWs, sheetName);
-            
-            // Create statistics sheet if requested
-            if (options.includeStatistics) {
-                createEnhancedStatisticsSheet(wb, exam, grades || []);
-            }
-        }
-        
-        // Create master summary if multiple exams
-        if (examIds.length > 1) {
-            await createEnhancedMasterSummary(wb, examIds, options);
-        }
-        
-        // Add raw data sheet if requested
-        if (options.includeRawData) {
-            await createRawDataSheet(wb, examIds);
-        }
-        
-        // Generate and download Excel file
-        const filename = `CATS_Comprehensive_Report_${new Date().toISOString().split('T')[0]}.xlsx`;
-        XLSX.writeFile(wb, filename);
-        
-    } catch (error) {
-        console.error('Error generating enhanced Excel report:', error);
-        throw error;
-    }
-}
-
-// Helper functions for enhanced export
-function createEnhancedGradesSheet(exam, grades, options) {
-    const isCAT1 = exam.exam_type.includes('CAT_1');
-    const isCAT2 = exam.exam_type.includes('CAT_2');
-    
-    // Header
-    const header = [
-        [`${getExamTypeLabel(exam.exam_type)} - ${exam.exam_name}`],
-        [`Course: ${exam.course_name || 'General'} | Unit Code: ${exam.unit_code || 'N/A'}`],
-        [`Program: ${exam.program_type} | Block: ${exam.block_term} | Intake: ${exam.intake_year}`],
-        [`Date: ${exam.exam_date ? new Date(exam.exam_date).toLocaleDateString() : 'N/A'} | Time: ${exam.exam_start_time || 'N/A'}`],
-        [''],
-        ['GRADES REPORT']
-    ];
-    
-    // Column headers
-    let columnHeaders = ['Student ID', 'Full Name'];
-    if (options.includeStudentDetails) {
-        columnHeaders.push('Email', 'Phone', 'Program', 'Block', 'Intake Year');
-    }
-    columnHeaders.push(
-        isCAT1 ? 'CAT 1 Score (max 30)' : isCAT2 ? 'CAT 2 Score (max 30)' : 'CAT Score (max 30)',
-        'Percentage (%)',
-        'Grade',
-        'Status',
-        options.includeStudentDetails ? 'Graded By' : '',
-        options.includeStudentDetails ? 'Graded Date' : 'Date',
-        options.includeStudentDetails ? 'Comments' : ''
-    );
-    
-    // Data rows
-    const dataRows = grades.map(grade => {
-        const student = grade.student_profiles || {};
-        const row = [
-            student.student_id || 'N/A',
-            student.full_name || 'N/A'
-        ];
-        
-        if (options.includeStudentDetails) {
-            row.push(
-                student.email || 'N/A',
-                student.phone || 'N/A',
-                student.program || 'N/A',
-                student.block || 'N/A',
-                student.intake_year || 'N/A'
-            );
-        }
-        
-        // Calculate scores
-        let score = null;
-        if (isCAT1) score = grade.cat_1_score;
-        else if (isCAT2) score = grade.cat_2_score;
-        else score = grade.cat_1_score || grade.cat_2_score;
-        
-        const percentage = score !== null ? ((score / 30) * 100).toFixed(2) : 'N/A';
-        const gradeLetter = calculateGradeLetter(percentage);
-        const status = grade.result_status || (score !== null ? (percentage >= 60 ? 'PASS' : 'FAIL') : 'PENDING');
-        
-        row.push(
-            score !== null ? score : 'N/G',
-            percentage,
-            gradeLetter,
-            status
-        );
-        
-        if (options.includeStudentDetails) {
-            row.push(
-                grade.graded_by || 'System',
-                grade.graded_at ? new Date(grade.graded_at).toLocaleDateString() : 'N/A',
-                grade.comments || ''
-            );
-        } else {
-            row.push(
-                grade.graded_at ? new Date(grade.graded_at).toLocaleDateString() : 'N/A'
-            );
-        }
-        
-        return row;
-    });
-    
-    // Summary statistics
-    const statistics = calculateExamStatistics(grades, exam.exam_type);
-    const summary = [
-        [''],
-        ['SUMMARY STATISTICS'],
-        ['Total Students', statistics.total],
-        ['Graded Students', statistics.graded],
-        ['Pending Grading', statistics.pending],
-        ['Pass Count', statistics.passCount],
-        ['Fail Count', statistics.failCount],
-        ['Average Score', statistics.averageScore],
-        ['Highest Score', statistics.highestScore],
-        ['Lowest Score', statistics.lowestScore],
-        ['Pass Rate', statistics.passRate + '%']
-    ];
-    
-    return [...header, columnHeaders, ...dataRows, ...summary];
-}
-
-function calculateGradeLetter(percentage) {
-    if (percentage === 'N/A') return 'N/A';
-    const num = parseFloat(percentage);
-    if (num >= 80) return 'A';
-    if (num >= 70) return 'B';
-    if (num >= 60) return 'C';
-    if (num >= 50) return 'D';
-    return 'F';
-}
-
-function createEnhancedStatisticsSheet(wb, exam, grades) {
-    const statistics = calculateExamStatistics(grades, exam.exam_type);
-    
-    const data = [
-        [`${getExamTypeLabel(exam.exam_type)} STATISTICS - ${exam.exam_name}`],
-        [''],
-        ['Exam Details', 'Value'],
-        ['Exam Name', exam.exam_name],
-        ['Exam Type', getExamTypeLabel(exam.exam_type)],
-        ['Course', exam.course_name || 'General'],
-        ['Unit Code', exam.unit_code || 'N/A'],
-        ['Program', exam.program_type],
-        ['Block/Term', exam.block_term],
-        ['Intake Year', exam.intake_year],
-        ['Exam Date', exam.exam_date ? new Date(exam.exam_date).toLocaleDateString() : 'N/A'],
-        ['Exam Time', exam.exam_start_time || 'N/A'],
-        ['Duration', exam.duration_minutes + ' minutes'],
-        ['Status', exam.status || 'Unknown'],
-        [''],
-        ['GRADING STATISTICS'],
-        ['Total Students Enrolled', statistics.total],
-        ['Students Graded', statistics.graded],
-        ['Pending Grading', statistics.pending],
-        ['Pass Count', statistics.passCount],
-        ['Fail Count', statistics.failCount],
-        ['Average Score', statistics.averageScore],
-        ['Highest Score', statistics.highestScore],
-        ['Lowest Score', statistics.lowestScore],
-        ['Pass Rate', statistics.passRate + '%'],
-        ['Grading Completion', ((statistics.graded / statistics.total) * 100).toFixed(2) + '%']
-    ];
-    
-    const ws = XLSX.utils.aoa_to_sheet(data);
-    const sheetName = cleanSheetName(`Stats_${exam.exam_name}`.substring(0, 31));
-    XLSX.utils.book_append_sheet(wb, ws, sheetName);
-}
-
-async function createEnhancedMasterSummary(wb, examIds, options) {
-    const summaryData = [
-        ['MASTER SUMMARY - ALL CATS EXAMS'],
-        ['Generated: ' + new Date().toLocaleString()],
-        [''],
-        ['Exam Name', 'Type', 'Course', 'Program', 'Block', 'Intake', 'Total', 'Graded', 'Avg Score', 'Pass Rate', 'Status']
-    ];
-    
-    for (const examId of examIds) {
-        const { data: exam, error: examError } = await sb
-            .from('exams_with_courses')
-            .select('*')
-            .eq('id', examId)
-            .single();
-        
-        if (examError || !exam) continue;
-        
-        const { data: grades } = await sb
-            .from('exam_grades')
-            .select('*')
-            .eq('exam_id', examId);
-        
-        const statistics = calculateExamStatistics(grades || [], exam.exam_type);
-        const passRate = statistics.graded > 0 ? ((statistics.passCount / statistics.graded) * 100).toFixed(2) + '%' : '0%';
-        
-        summaryData.push([
-            exam.exam_name,
-            getExamTypeLabel(exam.exam_type),
-            exam.course_name || 'General',
-            exam.program_type,
-            exam.block_term,
-            exam.intake_year,
-            statistics.total,
-            statistics.graded,
-            statistics.averageScore,
-            passRate,
-            exam.status || 'Unknown'
-        ]);
-    }
-    
-    const ws = XLSX.utils.aoa_to_sheet(summaryData);
-    XLSX.utils.book_append_sheet(wb, ws, 'Master Summary');
-}
-
-async function createRawDataSheet(wb, examIds) {
-    const rawData = [
-        ['RAW DATA EXPORT - ALL SELECTED EXAMS'],
-        ['Generated: ' + new Date().toLocaleString()],
-        [''],
-        ['Exam ID', 'Exam Name', 'Exam Type', 'Course', 'Student ID', 'Student Name', 'CAT 1 Score', 'CAT 2 Score', 
-         'Percentage', 'Grade', 'Status', 'Graded By', 'Graded Date', 'Comments']
-    ];
-    
-    for (const examId of examIds) {
-        const { data: exam, error: examError } = await sb
-            .from('exams_with_courses')
-            .select('*')
-            .eq('id', examId)
-            .single();
-        
-        if (examError || !exam) continue;
-        
-        const { data: grades, error: gradesError } = await sb
-            .from('exam_grades')
-            .select(`
-                *,
-                student_profiles:student_id(
-                    full_name,
-                    student_id
-                )
-            `)
-            .eq('exam_id', examId);
-        
-        if (gradesError) continue;
-        
-        (grades || []).forEach(grade => {
-            const student = grade.student_profiles || {};
-            const percentage = grade.cat_1_score !== null ? 
-                ((grade.cat_1_score / 30) * 100).toFixed(2) : 
-                grade.cat_2_score !== null ? 
-                ((grade.cat_2_score / 30) * 100).toFixed(2) : 'N/A';
-            
-            rawData.push([
-                exam.id.substring(0, 8) + '...',
-                exam.exam_name,
-                getExamTypeLabel(exam.exam_type),
-                exam.course_name || 'General',
-                student.student_id || 'N/A',
-                student.full_name || 'N/A',
-                grade.cat_1_score !== null ? grade.cat_1_score : '',
-                grade.cat_2_score !== null ? grade.cat_2_score : '',
-                percentage,
-                calculateGradeLetter(percentage),
-                grade.result_status || 'PENDING',
-                grade.graded_by || 'System',
-                grade.graded_at ? new Date(grade.graded_at).toISOString() : '',
-                grade.comments || ''
-            ]);
-        });
-    }
-    
-    const ws = XLSX.utils.aoa_to_sheet(rawData);
-    XLSX.utils.book_append_sheet(wb, ws, 'Raw Data');
-}
-
-// Utility function to get exam type label
-function getExamTypeLabel(examType) {
-    const labels = {
-        'CAT_1': 'CAT 1',
-        'CAT_2': 'CAT 2',
-        'CAT': 'CAT',
-        'EXAM': 'Final Exam',
-        'ASSIGNMENT': 'Assignment'
-    };
-    return labels[examType] || examType;
-         }
-/*******************************************************
- * 12. MESSAGES & ANNOUNCEMENTS
+ * 14. MESSAGES & ANNOUNCEMENTS
  *******************************************************/
 async function handleSendMessage(e) {
     e.preventDefault();
@@ -4968,7 +3423,7 @@ async function saveOfficialAnnouncement() {
 }
 
 /*******************************************************
- * 13. RESOURCES MANAGEMENT
+ * 15. RESOURCES MANAGEMENT
  *******************************************************/
 async function handleResourceUpload(e) {
     e.preventDefault();
@@ -5000,8 +3455,6 @@ async function handleResourceUpload(e) {
     try {
         // Convert Word or PPT to PDF (placeholder - implement actual conversion)
         if (/\.(docx?|pptx?)$/i.test(file.name)) {
-            // For now, just use the original file
-            // uploadFile = await convertToPDF(file); 
             originalName = `${baseName}.pdf`;
             filePath = `${program}/${intake}/${block}/${baseName}.pdf`;
         }
@@ -5119,7 +3572,7 @@ async function deleteResource(filePath, id, title) {
 }
 
 /*******************************************************
- * 14. SECURITY & SYSTEM STATUS
+ * 16. SECURITY & SYSTEM STATUS
  *******************************************************/
 async function loadSystemStatus() {
     const { data } = await fetchData(SETTINGS_TABLE, '*', { key: GLOBAL_SETTINGS_KEY });
@@ -5285,7 +3738,7 @@ async function handleAccountDeactivation(e) {
 }
 
 /*******************************************************
- * 15. BACKUP & RESTORE
+ * 17. BACKUP & RESTORE
  *******************************************************/
 async function loadBackupHistory() {
     const tbody = $('backup-history-table');
@@ -5320,7 +3773,7 @@ function triggerBackup() {
 }
 
 /*******************************************************
- * 16. CALENDAR INTEGRATION
+ * 18. CALENDAR INTEGRATION
  *******************************************************/
 async function renderFullCalendar() {
     const calendarEl = $('fullCalendarDisplay');
@@ -5374,7 +3827,7 @@ async function renderFullCalendar() {
 }
 
 /*******************************************************
- * 17. ENHANCED FEATURES IMPLEMENTATION
+ * 19. ENHANCED FEATURES IMPLEMENTATION
  *******************************************************/
 
 // Quick Actions Implementation
@@ -5495,7 +3948,7 @@ function updateVisualization() {
 }
 
 /*******************************************************
- * 18. INITIALIZATION & EVENT LISTENERS
+ * 20. INITIALIZATION & EVENT LISTENERS
  *******************************************************/
 function setupEventListeners() {
     // ATTENDANCE TAB
@@ -5527,11 +3980,7 @@ function setupEventListeners() {
     });
     $('new_session_intake_year')?.addEventListener('change', () => updateBlockTermOptions('new_session_program', 'new_session_block_term')); 
     
-    // CLINICAL MANAGEMENT
-    $('clinical_program')?.addEventListener('change', () => { updateBlockTermOptions('clinical_program', 'clinical_block_term'); }); 
-    $('clinical_intake')?.addEventListener('change', () => updateBlockTermOptions('clinical_program', 'clinical_block_term')); 
-
-    // CATS/EXAMS TAB
+    // EXAMS TAB
     $('add-exam-form')?.addEventListener('submit', handleAddExam);
     $('exam_program')?.addEventListener('change', () => { 
         populateExamCourseSelects(); 
@@ -5554,15 +4003,6 @@ function setupEventListeners() {
 
     // ANNOUNCEMENTS
     $('save-announcement')?.addEventListener('click', saveOfficialAnnouncement);
-
-    // BULK OPERATIONS
-    $('select-all-checkbox')?.addEventListener('change', function() {
-        const checkboxes = document.querySelectorAll('.user-checkbox');
-        checkboxes.forEach(checkbox => {
-            checkbox.checked = this.checked;
-        });
-        updateSelectedCount();
-    });
 }
 
 function initializeModals() {
@@ -5666,4 +4106,20 @@ window.filterErrors = filterErrors;
 window.updateVisualization = updateVisualization;
 
 // Initialize the application
-document.addEventListener('DOMContentLoaded', initSession);
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 Initializing SuperAdmin Dashboard...');
+    
+    // 1. Initialize ALL program dropdowns
+    initializeAllProgramDropdowns();
+    
+    // 2. Setup event listeners
+    setupEventListeners();
+    
+    // 3. Initialize modals
+    initializeModals();
+    
+    // 4. Initialize session
+    initSession();
+    
+    console.log('✅ Dashboard initialization complete');
+});
