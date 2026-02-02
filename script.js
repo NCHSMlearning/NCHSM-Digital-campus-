@@ -1397,7 +1397,302 @@ async function loadPendingApprovals() {
             </tr>`;
     });
 }
+/*******************************************************
+ * UPDATE USER ROLE FUNCTION - Add to admin-script.js
+ *******************************************************/
 
+async function updateUserRole(userId, newRole, fullName) {
+    console.log('🎯 Updating user role:', { userId, newRole, fullName });
+    
+    if (!confirm(`Change user ${fullName}'s role to ${newRole}?`)) return;
+    
+    try {
+        const { error } = await sb
+            .from(USER_PROFILE_TABLE)
+            .update({ 
+                role: newRole,
+                updated_at: new Date().toISOString()
+            })
+            .eq('user_id', userId);
+        
+        if (error) {
+            console.error('❌ Error updating user role:', error);
+            await logAudit(
+                'USER_ROLE_UPDATE', 
+                `Failed to update ${fullName}'s role to ${newRole}. Reason: ${error.message}`, 
+                userId, 
+                'FAILURE'
+            );
+            showFeedback(`Failed: ${error.message}`, 'error');
+            return;
+        }
+        
+        // Log successful update
+        await logAudit(
+            'USER_ROLE_UPDATE', 
+            `Updated ${fullName}'s role to ${newRole}.`, 
+            userId, 
+            'SUCCESS'
+        );
+        
+        showFeedback(`✅ Role updated to ${newRole}!`, 'success');
+        
+        // Refresh all user tables
+        loadAllUsers();
+        loadStudents();
+        loadPendingApprovals();
+        
+        // Refresh dashboard if exists
+        if (typeof loadDashboardData === 'function') {
+            loadDashboardData();
+        }
+        
+    } catch (err) {
+        console.error('❌ Unexpected error in updateUserRole:', err);
+        showFeedback(`Unexpected error: ${err.message}`, 'error');
+    }
+}
+
+/*******************************************************
+ * UPDATE THE loadAllUsers FUNCTION AGAIN
+ * Make sure updateUserRole is called correctly
+ *******************************************************/
+
+async function loadAllUsers() {
+    const tbody = $('users-table');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '<tr><td colspan="7">Loading all users...</td></tr>';
+
+    const { data: users, error } = await sb.from(USER_PROFILE_TABLE)
+        .select('*')
+        .order('full_name', { ascending: true });
+    
+    if (error) {
+        tbody.innerHTML = `<tr><td colspan="7">Error loading users: ${error.message}</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = '';
+    
+    users.forEach(u => {
+        const roleOptions = ['student', 'lecturer', 'admin', 'superadmin']
+            .map(r => `<option value="${r}" ${u.role === r ? 'selected' : ''}>${r}</option>`).join('');
+
+        const isBlocked = u.block_program_year === true;
+        const isApproved = u.status === 'approved';
+        const statusText = isBlocked ? 'BLOCKED' : (isApproved ? 'Approved' : 'Pending');
+        const statusClass = isBlocked ? 'status-danger' : (isApproved ? 'status-approved' : 'status-pending');
+        
+        // Get program info
+        const programName = getProgramDisplayName(u.program);
+        const programType = getProgramType(u.program);
+        const programBadgeClass = programType === 'TVET' ? 'badge-tvet' : 'badge-krchn';
+        const programIcon = programType === 'TVET' ? 'fa-tools' : 'fa-graduation-cap';
+
+        // Escape for security
+        const escapedUserId = escapeHtml(u.user_id);
+        const escapedName = escapeHtml(u.full_name);
+        const escapedRole = escapeHtml(u.role);
+
+        tbody.innerHTML += `
+            <tr>
+                <td>${escapeHtml(u.user_id.substring(0, 8))}...</td>
+                <td>${escapeHtml(u.full_name)}</td>
+                <td>${escapeHtml(u.email)}</td>
+                <td>
+                    <select class="btn" 
+                            onchange="updateUserRole('${escapedUserId}', this.value, '${escapedName}')" 
+                            ${u.role === 'superadmin' ? 'disabled' : ''}>
+                        ${roleOptions}
+                    </select>
+                </td>
+                <td>
+                    ${escapeHtml(programName)}
+                    <div class="program-badge ${programBadgeClass}">
+                        <i class="fas ${programIcon}"></i> ${programType}
+                    </div>
+                </td>
+                <td class="${statusClass}">${statusText}</td>
+                <td>
+                    <button class="btn btn-map" onclick="openEditUserModal('${escapedUserId}')">Edit</button>
+                    ${!isApproved ? `<button class="btn btn-approve" onclick="approveUser('${escapedUserId}', '${escapedName}')">Approve</button>` : ''}
+                    <button class="btn btn-delete" onclick="deleteProfile('${escapedUserId}', '${escapedName}')">Delete</button>
+                </td>
+            </tr>`;
+    });
+
+    filterTable('user-search', 'users-table', [1, 2, 4]);
+}
+
+/*******************************************************
+ * ADD THESE MISSING FUNCTIONS TOO
+ *******************************************************/
+
+// openEditUserModal function (if missing)
+async function openEditUserModal(userId) {
+    try {
+        const { data: user, error } = await sb
+            .from(USER_PROFILE_TABLE)
+            .select('*')
+            .eq('user_id', userId)
+            .single();
+        
+        if (error || !user) {
+            throw new Error('User fetch failed.');
+        }
+
+        // Set modal values
+        $('edit_user_id').value = user.user_id;
+        $('edit_user_id_display').textContent = user.user_id.substring(0, 8) + '...';
+        $('edit_user_name').value = user.full_name || '';
+        $('edit_user_email').value = user.email || '';
+        $('edit_user_role').value = user.role || 'student';
+        $('edit_user_program').value = user.program || 'KRCHN';
+        $('edit_user_intake').value = user.intake_year || '2024';
+        $('edit_user_block_status').value = user.block_program_year ? 'true' : 'false';
+        
+        // Update program dropdown and block options
+        updateProgramDropdown($('edit_user_program'));
+        
+        setTimeout(() => {
+            $('edit_user_program').value = user.program || 'KRCHN';
+            updateBlockTermOptions('edit_user_program', 'edit_user_block');
+            
+            setTimeout(() => {
+                $('edit_user_block').value = user.block || '';
+            }, 100);
+        }, 50);
+        
+        // Show modal
+        $('userEditModal').style.display = 'flex';
+        
+    } catch (e) {
+        console.error('❌ Error opening edit modal:', e);
+        showFeedback(`Failed to load user: ${e.message}`, 'error');
+    }
+}
+
+// handleEditUser function (if missing)
+async function handleEditUser(e) {
+    e.preventDefault(); 
+    const submitButton = e.submitter;
+    if (!submitButton) {
+        console.error("Form submitter button not found.");
+        return; 
+    }
+
+    const originalText = submitButton.textContent;
+    setButtonLoading(submitButton, true, originalText);
+
+    try {
+        const userId = $('edit_user_id').value;
+        if (!userId) throw new Error('User ID is missing.');
+
+        const updatedData = {
+            full_name: $('edit_user_name').value.trim(),
+            email: $('edit_user_email').value.trim(),
+            role: $('edit_user_role').value,
+            program: $('edit_user_program').value || null,
+            intake_year: $('edit_user_intake').value || null,
+            block: $('edit_user_block').value || null,
+            block_program_year: $('edit_user_block_status').value === 'true',
+            status: 'approved',
+            updated_at: new Date().toISOString()
+        };
+
+        const newPassword = $('edit_user_new_password').value.trim();
+        const confirmPassword = $('edit_user_confirm_password').value.trim();
+        
+        if (newPassword && newPassword !== confirmPassword) {
+            showFeedback('Passwords do not match!', 'error');
+            setButtonLoading(submitButton, false, originalText);
+            return; 
+        }
+
+        // Update profile
+        const { data: updatedRow, error: profileError } = await sb
+            .from(USER_PROFILE_TABLE)
+            .update(updatedData)
+            .eq('user_id', userId)
+            .select('*');
+
+        if (profileError) throw profileError;
+
+        // Update password if provided
+        if (newPassword) {
+            const { error: pwError } = await sb.auth.admin.updateUserById(userId, {
+                password: newPassword
+            });
+
+            if (pwError) {
+                console.warn('⚠️ Password update failed:', pwError);
+                showFeedback('User profile saved, but password update failed.', 'warning');
+            }
+        }
+
+        // Log audit
+        await logAudit('USER_EDIT', `Edited profile for user ${updatedData.full_name}`, userId, 'SUCCESS');
+        showFeedback('✅ User profile updated successfully!', 'success');
+        
+        // Close modal and reset
+        $('userEditModal').style.display = 'none';
+        $('edit_user_new_password').value = '';
+        $('edit_user_confirm_password').value = '';
+        
+        // Refresh data
+        loadAllUsers();
+        loadStudents();
+        loadDashboardData?.();
+
+    } catch (err) {
+        console.error('❌ Error in handleEditUser:', err);
+        showFeedback(`Failed to update user: ${err.message}`, 'error');
+        
+        try {
+            const userId = $('edit_user_id')?.value || 'unknown';
+            await logAudit('USER_EDIT', `Failed to edit user: ${err.message}`, userId, 'FAILURE');
+        } catch (logErr) {
+            console.error('Audit log failed:', logErr);
+        }
+    } finally {
+        setButtonLoading(submitButton, false, originalText);
+    }
+}
+
+/*******************************************************
+ * SET BUTTON LOADING FUNCTION (if missing)
+ *******************************************************/
+
+function setButtonLoading(button, isLoading, originalText) {
+    if (!button) return;
+    
+    if (isLoading) {
+        button.disabled = true;
+        button.innerHTML = '<div class="loading-spinner-small"></div> Processing...';
+        button.style.opacity = '0.7';
+        button.style.cursor = 'not-allowed';
+    } else {
+        button.disabled = false;
+        button.textContent = originalText;
+        button.style.opacity = '1';
+        button.style.cursor = 'pointer';
+    }
+}
+
+/*******************************************************
+ * GLOBAL EXPORTS AT BOTTOM OF FILE
+ *******************************************************/
+
+// Add this at the VERY END of your admin-script.js:
+if (typeof window !== 'undefined') {
+    window.approveUser = approveUser;
+    window.deleteProfile = deleteProfile;
+    window.updateUserRole = updateUserRole;
+    window.openEditUserModal = openEditUserModal;
+    window.handleEditUser = handleEditUser;
+    window.setButtonLoading = setButtonLoading;
+}
 /*******************************************************
  * ADD THESE FUNCTIONS IF THEY DON'T EXIST
  *******************************************************/
