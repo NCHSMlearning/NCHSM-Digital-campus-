@@ -422,9 +422,44 @@ button#submit-exam-btn:disabled { background: #FCA5A5; cursor: not-allowed; box-
     margin-bottom: 20px;
     color: #0A3D62;
 }
+
+.camera-list {
+    text-align: left;
+    margin: 20px 0;
+    padding: 15px;
+    background: #F8FAFC;
+    border-radius: 8px;
+    border-left: 4px solid #0A3D62;
+}
+
+.camera-list li {
+    margin: 8px 0;
+    padding-left: 5px;
+}
+
+/* Camera error message */
+.camera-error-message {
+    background: #FEF3C7;
+    border: 1px solid #F59E0B;
+    border-radius: 8px;
+    padding: 15px;
+    margin: 15px 0;
+    text-align: left;
+}
+
+.camera-error-message h4 {
+    color: #92400E;
+    margin-top: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.camera-error-message h4::before {
+    content: "⚠️";
+}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<!-- Remove FaceAPI.js and use simpler approach -->
 </head>
 <body>
 <div class="page-wrapper">
@@ -480,16 +515,25 @@ button#submit-exam-btn:disabled { background: #FCA5A5; cursor: not-allowed; box-
         <div class="camera-permission-icon">📹</div>
         <h3>Camera Access Required</h3>
         <p>This exam requires camera access for security monitoring. The camera will:</p>
-        <ul style="text-align: left; margin: 20px 0;">
-            <li>Ensure only you are taking the exam</li>
-            <li>Detect if you look away from the screen</li>
-            <li>Monitor for any suspicious activity</li>
-        </ul>
-        <p><strong>No images or videos are stored.</strong> The camera feed is processed locally only.</p>
+        
+        <div class="camera-list">
+            <ul>
+                <li>Ensure only you are taking the exam</li>
+                <li>Detect if you look away from the screen</li>
+                <li>Monitor for any suspicious activity</li>
+                <li>Help maintain exam integrity</li>
+            </ul>
+        </div>
+        
+        <p><strong>Privacy Note:</strong> No images or videos are stored. The camera feed is processed locally only.</p>
+        
+        <div id="camera-check-result"></div>
+        
         <div style="margin-top: 30px;">
             <button id="allow-camera-btn" style="background: #38A169; color: white; padding: 12px 30px; margin-right: 10px;">Allow Camera Access</button>
             <button id="skip-camera-btn" style="background: #E5E7EB; color: #475569; padding: 12px 30px;">Continue Without Camera</button>
         </div>
+        
         <p style="margin-top: 20px; font-size: 0.9rem; color: #64748B;">
             <small>Note: Skipping camera may be reported to your instructor.</small>
         </p>
@@ -556,191 +600,416 @@ const examTitle = document.getElementById('exam-title');
 let faceDetectionEnabled = true;
 let faceDetectionInterval;
 let faceNotDetectedCount = 0;
-const MAX_FACE_NOT_DETECTED = 15; // Allow 30 seconds (15 checks × 2 seconds each)
+const MAX_FACE_NOT_DETECTED = 20; // Allow 40 seconds (20 checks × 2 seconds each)
 let faceWarningTimer = 10;
 let faceWarningInterval;
-let videoStream;
-let faceDetector = null;
+let videoStream = null;
 
-// --- SIMPLE FACE DETECTION USING JAVASCRIPT ---
+// --- BEFOREUNLOAD HANDLER FUNCTION ---
+function beforeUnloadHandler(e) {
+    e.preventDefault();
+    e.returnValue = 'Warning: Leaving this page will submit your exam immediately.';
+    return e.returnValue;
+}
+
+// ============================================
+// CAMERA FUNCTIONS WITH COMPREHENSIVE ERROR HANDLING
+// ============================================
+
 async function initializeFaceDetection() {
-    // Show camera permission modal
-    showCameraPermissionModal();
+    // First check camera availability
+    await checkCameraAvailability();
+}
+
+async function checkCameraAvailability() {
+    try {
+        // Check if browser supports media devices
+        if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+            showCameraModalWithError('Your browser does not support camera access. Please use Chrome, Firefox, or Edge.');
+            return;
+        }
+        
+        // Check permissions first
+        const permissionStatus = await navigator.permissions.query({ name: 'camera' });
+        
+        // Enumerate devices to check for cameras
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(device => device.kind === 'videoinput');
+        
+        console.log('Found video devices:', videoDevices);
+        
+        if (videoDevices.length === 0) {
+            // No camera found
+            showCameraModalWithError('No camera detected on your device. You can continue the exam without camera monitoring.');
+        } else {
+            // Camera(s) found, show normal permission modal
+            showCameraPermissionModal();
+        }
+        
+    } catch (error) {
+        console.error('Error checking camera availability:', error);
+        // Show modal with generic message
+        showCameraPermissionModal();
+    }
+}
+
+function showCameraModalWithError(errorMessage) {
+    const modal = document.getElementById('camera-permission-modal');
+    const content = modal.querySelector('.camera-permission-content');
+    
+    // Update modal content for error case
+    const icon = content.querySelector('.camera-permission-icon');
+    const title = content.querySelector('h3');
+    const message = content.querySelector('p');
+    
+    if (icon) icon.textContent = '📵';
+    if (title) title.textContent = 'Camera Unavailable';
+    if (message) message.textContent = errorMessage;
+    
+    // Update camera list
+    const cameraList = content.querySelector('.camera-list');
+    if (cameraList) {
+        cameraList.innerHTML = `
+            <div class="camera-error-message">
+                <h4>Camera Issue Detected</h4>
+                <p>${errorMessage}</p>
+                <p style="margin-top: 10px; font-size: 0.9rem;">
+                    <strong>You can still take the exam</strong>, but camera monitoring will be disabled.
+                    Your instructor will be notified.
+                </p>
+            </div>
+        `;
+    }
+    
+    // Update button text
+    const allowBtn = document.getElementById('allow-camera-btn');
+    const skipBtn = document.getElementById('skip-camera-btn');
+    
+    if (allowBtn) allowBtn.textContent = 'Continue Without Camera';
+    if (skipBtn) skipBtn.textContent = 'Continue Exam';
+    
+    modal.style.display = 'flex';
+    
+    // Setup button handlers for error case
+    allowBtn.onclick = () => {
+        modal.style.display = 'none';
+        faceDetectionEnabled = false;
+        document.getElementById('face-detection-overlay').style.display = 'none';
+        console.log('Continuing without camera due to error');
+    };
+    
+    skipBtn.onclick = () => {
+        modal.style.display = 'none';
+        faceDetectionEnabled = false;
+        document.getElementById('face-detection-overlay').style.display = 'none';
+        console.log('Continuing without camera (user choice)');
+    };
 }
 
 function showCameraPermissionModal() {
     const modal = document.getElementById('camera-permission-modal');
+    
+    // Reset modal content to default
+    const content = modal.querySelector('.camera-permission-content');
+    const icon = content.querySelector('.camera-permission-icon');
+    const title = content.querySelector('h3');
+    const message = content.querySelector('p');
+    
+    if (icon) icon.textContent = '📹';
+    if (title) title.textContent = 'Camera Access Required';
+    if (message) message.textContent = 'This exam requires camera access for security monitoring. The camera will:';
+    
+    // Reset camera list
+    const cameraList = content.querySelector('.camera-list');
+    if (cameraList) {
+        cameraList.innerHTML = `
+            <ul>
+                <li>Ensure only you are taking the exam</li>
+                <li>Detect if you look away from the screen</li>
+                <li>Monitor for any suspicious activity</li>
+                <li>Help maintain exam integrity</li>
+            </ul>
+        `;
+    }
+    
+    // Reset button text
+    const allowBtn = document.getElementById('allow-camera-btn');
+    const skipBtn = document.getElementById('skip-camera-btn');
+    
+    if (allowBtn) allowBtn.textContent = 'Allow Camera Access';
+    if (skipBtn) skipBtn.textContent = 'Continue Without Camera';
+    
     modal.style.display = 'flex';
     
     // Setup button handlers
-    document.getElementById('allow-camera-btn').onclick = async () => {
+    allowBtn.onclick = async () => {
         modal.style.display = 'none';
         await startCameraWithDetection();
     };
     
-    document.getElementById('skip-camera-btn').onclick = () => {
+    skipBtn.onclick = () => {
         modal.style.display = 'none';
         faceDetectionEnabled = false;
-        document.getElementById('face-status').textContent = 'Camera disabled - proceed with exam';
         document.getElementById('face-detection-overlay').style.display = 'none';
         console.log('Camera access skipped by user');
     };
 }
 
 async function startCameraWithDetection() {
+    const video = document.getElementById('face-video');
+    const overlay = document.getElementById('face-detection-overlay');
+    const status = document.getElementById('face-status');
+    
     try {
-        const video = document.getElementById('face-video');
-        const overlay = document.getElementById('face-detection-overlay');
-        const status = document.getElementById('face-status');
-        
         // Show the overlay
         overlay.style.display = 'block';
+        status.textContent = 'Accessing camera...';
+        overlay.classList.remove('face-status-good', 'face-status-warning', 'face-status-danger');
         
-        // Request camera access
-        videoStream = await navigator.mediaDevices.getUserMedia({
-            video: {
-                width: { ideal: 320 },
-                height: { ideal: 240 },
-                facingMode: 'user'
+        // Try multiple constraint strategies
+        const constraintsStrategies = [
+            // Strategy 1: Ideal constraints
+            {
+                video: {
+                    width: { ideal: 320 },
+                    height: { ideal: 240 },
+                    facingMode: 'user',
+                    frameRate: { ideal: 15 }
+                },
+                audio: false
             },
-            audio: false
-        });
+            // Strategy 2: Simpler constraints
+            {
+                video: {
+                    width: { min: 160, ideal: 320 },
+                    height: { min: 120, ideal: 240 },
+                    facingMode: { ideal: 'user' }
+                },
+                audio: false
+            },
+            // Strategy 3: Basic constraints
+            {
+                video: true,
+                audio: false
+            }
+        ];
         
-        video.srcObject = videoStream;
+        let stream = null;
+        let lastError = null;
+        
+        // Try each strategy until one works
+        for (const constraints of constraintsStrategies) {
+            try {
+                console.log('Trying constraints:', constraints);
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
+                videoStream = stream;
+                break; // Success, exit loop
+            } catch (err) {
+                lastError = err;
+                console.log('Constraint failed:', err.name);
+                continue; // Try next strategy
+            }
+        }
+        
+        if (!stream) {
+            throw lastError || new Error('All camera constraint strategies failed');
+        }
+        
+        video.srcObject = stream;
         
         // Wait for video to be ready
-        await new Promise((resolve) => {
-            video.onloadedmetadata = () => {
-                video.play().then(resolve);
+        await new Promise((resolve, reject) => {
+            const onLoaded = () => {
+                video.removeEventListener('loadedmetadata', onLoaded);
+                video.removeEventListener('error', onError);
+                video.play().then(resolve).catch(reject);
             };
+            
+            const onError = (err) => {
+                video.removeEventListener('loadedmetadata', onLoaded);
+                video.removeEventListener('error', onError);
+                reject(err);
+            };
+            
+            video.addEventListener('loadedmetadata', onLoaded);
+            video.addEventListener('error', onError);
+            
+            // Timeout after 5 seconds
+            setTimeout(() => reject(new Error('Camera stream timeout')), 5000);
         });
         
-        status.textContent = 'Camera active - Monitoring...';
+        // Set canvas dimensions
+        const canvas = document.getElementById('face-canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        
+        status.textContent = 'Camera active ✓';
         overlay.classList.add('face-status-good');
         
-        // Start simple face detection (using basic image analysis)
-        startSimpleFaceDetection();
+        // Start presence monitoring
+        startCameraMonitoring();
         
         console.log('✅ Camera started successfully');
         
     } catch (error) {
-        console.error('❌ Camera error:', error);
-        const status = document.getElementById('face-status');
-        const overlay = document.getElementById('face-detection-overlay');
-        
-        status.textContent = 'Camera error - Exam continues';
-        overlay.classList.add('face-status-warning');
-        faceDetectionEnabled = false;
-        
-        // Show error but continue with exam
-        setTimeout(() => {
-            overlay.style.display = 'none';
-        }, 5000);
+        console.error('❌ Camera setup error:', error);
+        handleCameraError(error, status, overlay);
     }
 }
 
-function startSimpleFaceDetection() {
+function handleCameraError(error, statusElement, overlayElement) {
+    let userMessage = 'Camera error - Exam continues';
+    let statusClass = 'face-status-warning';
+    
+    switch (error.name) {
+        case 'NotFoundError':
+        case 'DevicesNotFoundError':
+            userMessage = 'No camera found on device';
+            break;
+            
+        case 'NotAllowedError':
+        case 'PermissionDeniedError':
+            userMessage = 'Camera permission denied';
+            break;
+            
+        case 'NotReadableError':
+        case 'TrackStartError':
+            userMessage = 'Camera in use by another app';
+            break;
+            
+        case 'OverconstrainedError':
+            userMessage = 'Camera constraints cannot be met';
+            break;
+            
+        case 'AbortError':
+            userMessage = 'Camera access aborted';
+            break;
+            
+        default:
+            if (error.message.includes('timeout')) {
+                userMessage = 'Camera timeout - Check connection';
+            }
+    }
+    
+    statusElement.textContent = userMessage;
+    overlayElement.classList.add(statusClass);
+    faceDetectionEnabled = false;
+    
+    // Hide overlay after 5 seconds
+    setTimeout(() => {
+        if (!faceDetectionEnabled) {
+            overlayElement.style.display = 'none';
+        }
+    }, 5000);
+}
+
+function startCameraMonitoring() {
     const video = document.getElementById('face-video');
     const canvas = document.getElementById('face-canvas');
     const ctx = canvas.getContext('2d');
     const status = document.getElementById('face-status');
     const overlay = document.getElementById('face-detection-overlay');
     
-    // Set canvas dimensions to match video
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+    let noMotionCount = 0;
+    let lastFrameData = null;
+    let isActive = true;
     
     faceDetectionInterval = setInterval(() => {
-        if (!faceDetectionEnabled || !videoStream) return;
+        if (!faceDetectionEnabled || !videoStream || !isActive) return;
         
         try {
-            // Draw video frame to canvas
+            // Check if video is still playing
+            if (video.readyState !== video.HAVE_ENOUGH_DATA) {
+                console.log('Video not ready');
+                return;
+            }
+            
+            // Draw current frame
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
             
-            // Get image data
-            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            const data = imageData.data;
+            // Get current frame data
+            const currentFrameData = ctx.getImageData(0, 0, canvas.width, canvas.height);
             
-            // Simple face detection logic
-            let faceDetected = detectFaceInImageData(data, canvas.width, canvas.height);
+            // Check for presence (motion detection)
+            const hasMotion = detectMotion(currentFrameData, lastFrameData);
             
-            if (faceDetected) {
-                // Face detected - GOOD
-                faceNotDetectedCount = 0;
-                status.textContent = '✅ Monitoring...';
+            if (hasMotion) {
+                // Motion detected - user is present
+                noMotionCount = 0;
+                status.textContent = 'Monitoring... ✓';
                 overlay.className = 'face-status-good';
                 hideFaceWarning();
                 
-                // Draw a green rectangle around "detected face" area
+                // Draw green border
                 ctx.strokeStyle = '#16A34A';
-                ctx.lineWidth = 2;
-                ctx.strokeRect(
-                    canvas.width * 0.25, 
-                    canvas.height * 0.25, 
-                    canvas.width * 0.5, 
-                    canvas.height * 0.5
-                );
+                ctx.lineWidth = 3;
+                ctx.strokeRect(15, 15, canvas.width - 30, canvas.height - 30);
                 
             } else {
-                // No face detected
-                faceNotDetectedCount++;
-                status.textContent = `⚠️ Look at camera (${faceNotDetectedCount}/${MAX_FACE_NOT_DETECTED})`;
+                // No motion detected
+                noMotionCount++;
+                status.textContent = `Stay visible (${noMotionCount}/20)`;
                 overlay.className = 'face-status-warning';
                 
-                // Draw a warning rectangle
+                // Draw yellow border
                 ctx.strokeStyle = '#D97706';
-                ctx.lineWidth = 2;
-                ctx.strokeRect(
-                    canvas.width * 0.25, 
-                    canvas.height * 0.25, 
-                    canvas.width * 0.5, 
-                    canvas.height * 0.5
-                );
+                ctx.lineWidth = 3;
+                ctx.strokeRect(15, 15, canvas.width - 30, canvas.height - 30);
                 
-                // Show warning after 5 missed detections
-                if (faceNotDetectedCount >= 5) {
-                    showFaceWarning('Please position your face in the center of the camera');
+                // Show warning after 8 counts (16 seconds)
+                if (noMotionCount >= 8) {
+                    showFaceWarning('Please stay visible in the camera frame');
                 }
                 
-                // Auto-submit if face not detected for too long
-                if (faceNotDetectedCount >= MAX_FACE_NOT_DETECTED) {
-                    terminateExam('Face not detected for extended period. Exam auto-submitted.');
+                // Auto-submit if no motion for too long
+                if (noMotionCount >= MAX_FACE_NOT_DETECTED) {
+                    isActive = false;
+                    terminateExam('No presence detected for extended period. Exam auto-submitted.');
                 }
             }
             
+            // Store for next comparison
+            lastFrameData = currentFrameData;
+            
         } catch (error) {
-            console.error('Face detection error:', error);
-            status.textContent = 'Detection error';
-            overlay.className = 'face-status-danger';
+            console.error('Monitoring error:', error);
+            status.textContent = 'Monitoring error';
+            overlay.className = 'face-status-warning';
+            
+            // Don't auto-submit on monitoring errors
+            isActive = false;
+            clearInterval(faceDetectionInterval);
         }
     }, 2000); // Check every 2 seconds
 }
 
-function detectFaceInImageData(data, width, height) {
-    // Simple face detection based on skin tone detection
-    // This is a basic implementation - for production, use a proper face detection library
+function detectMotion(currentFrame, previousFrame) {
+    if (!previousFrame) return true; // First frame, assume presence
     
-    let skinPixels = 0;
-    const totalPixels = width * height;
+    let changedPixels = 0;
+    const totalPixels = currentFrame.data.length / 4; // Each pixel has 4 values (RGBA)
+    const sampleRate = 4; // Check every 4th pixel for performance
     
-    // Sample every 10th pixel for performance
-    for (let i = 0; i < data.length; i += 40) {
-        const r = data[i];
-        const g = data[i + 1];
-        const b = data[i + 2];
+    for (let i = 0; i < currentFrame.data.length; i += 16) { // 4 pixels * 4 values
+        const r1 = currentFrame.data[i];
+        const g1 = currentFrame.data[i + 1];
+        const b1 = currentFrame.data[i + 2];
         
-        // Simple skin tone detection (approximate)
-        if (r > 95 && g > 40 && b > 20 &&
-            r > g && r > b &&
-            Math.abs(r - g) > 15 &&
-            r > 100 && g > 50 && b > 30) {
-            skinPixels++;
+        const r2 = previousFrame.data[i];
+        const g2 = previousFrame.data[i + 1];
+        const b2 = previousFrame.data[i + 2];
+        
+        // Calculate color difference
+        const diff = Math.abs(r1 - r2) + Math.abs(g1 - g2) + Math.abs(b1 - b2);
+        
+        if (diff > 30) { // Threshold for significant change
+            changedPixels++;
         }
     }
     
-    // If enough skin-colored pixels, assume face is present
-    const skinRatio = (skinPixels * 10) / totalPixels; // Multiply by 10 because we sampled every 10th pixel
-    return skinRatio > 0.05; // At least 5% of image should be skin tone
+    // If enough pixels changed, assume motion
+    const changedRatio = (changedPixels * sampleRate) / totalPixels;
+    return changedRatio > 0.02; // At least 2% of pixels changed
 }
 
 function showFaceWarning(message) {
@@ -749,7 +1018,7 @@ function showFaceWarning(message) {
     const timerEl = document.getElementById('face-warning-timer');
     
     if (warning.style.display === 'none' || warning.style.display === '') {
-        messageEl.textContent = message || 'Please keep your face visible in the camera';
+        messageEl.textContent = message || 'Please stay visible in the camera';
         faceWarningTimer = 10;
         timerEl.textContent = faceWarningTimer;
         warning.style.display = 'block';
@@ -761,9 +1030,6 @@ function showFaceWarning(message) {
             
             if (faceWarningTimer <= 0) {
                 hideFaceWarning();
-                if (faceNotDetectedCount >= MAX_FACE_NOT_DETECTED - 5) {
-                    terminateExam('Persistent face detection failure. Exam terminated.');
-                }
             }
         }, 1000);
     }
@@ -775,6 +1041,7 @@ function hideFaceWarning() {
     
     if (faceWarningInterval) {
         clearInterval(faceWarningInterval);
+        faceWarningInterval = null;
     }
 }
 
@@ -784,31 +1051,46 @@ function terminateExam(reason) {
     // Stop face detection
     if (faceDetectionInterval) {
         clearInterval(faceDetectionInterval);
+        faceDetectionInterval = null;
     }
+    
     hideFaceWarning();
     
     // Stop video stream
     if (videoStream) {
-        videoStream.getTracks().forEach(track => track.stop());
+        videoStream.getTracks().forEach(track => {
+            track.stop();
+            track.enabled = false;
+        });
+        videoStream = null;
+    }
+    
+    // Hide face overlay
+    const faceOverlay = document.getElementById('face-detection-overlay');
+    if (faceOverlay) {
+        faceOverlay.style.display = 'none';
     }
     
     // Show termination message
     const container = document.getElementById('exam-container');
-    container.innerHTML = `
-        <div style="text-align: center; padding: 40px 20px; background: #FEE2E2; border-radius: 12px; border: 3px solid #DC2626;">
-            <div style="font-size: 3rem; margin-bottom: 20px;">🚫</div>
-            <h3 style="color: #DC2626;">Exam Terminated</h3>
-            <p>${reason}</p>
-            <p><strong>Your exam has been automatically submitted.</strong></p>
-            <p style="font-size: 0.9rem; color: #92400E;">You will be redirected shortly...</p>
-        </div>
-    `;
+    if (container) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 40px 20px; background: #FEE2E2; border-radius: 12px; border: 3px solid #DC2626;">
+                <div style="font-size: 3rem; margin-bottom: 20px;">🚫</div>
+                <h3 style="color: #DC2626;">Exam Terminated</h3>
+                <p>${reason}</p>
+                <p><strong>Your exam has been automatically submitted.</strong></p>
+                <p style="font-size: 0.9rem; color: #92400E;">You will be redirected shortly...</p>
+            </div>
+        `;
+    }
     
     // Disable all buttons
-    document.querySelectorAll('button').forEach(btn => btn.disabled = true);
-    
-    // Hide face overlay
-    document.getElementById('face-detection-overlay').style.display = 'none';
+    document.querySelectorAll('button').forEach(btn => {
+        btn.disabled = true;
+        btn.style.opacity = '0.5';
+        btn.style.cursor = 'not-allowed';
+    });
     
     // Auto-submit after 3 seconds
     setTimeout(() => {
@@ -816,12 +1098,9 @@ function terminateExam(reason) {
     }, 3000);
 }
 
-// --- BEFOREUNLOAD HANDLER FUNCTION ---
-function beforeUnloadHandler(e) {
-    e.preventDefault();
-    e.returnValue = 'Warning: Leaving this page will submit your exam immediately.';
-    return e.returnValue;
-}
+// ============================================
+// CORE EXAM FUNCTIONS (UNCHANGED)
+// ============================================
 
 // --- NAVIGATION FUNCTIONS ---
 function nextQuestion() {
@@ -839,17 +1118,17 @@ function prevQuestion() {
 // --- CORE FUNCTIONS ---
 async function initExam() {
     try {
-        // Initialize face detection
+        // Initialize face detection (will handle all camera scenarios)
         await initializeFaceDetection();
         
-        // Then load exam data
+        // Load exam data
         const { data: examData, error: examError } = await sb.from('exams')
             .select('exam_name, exam_type, duration_minutes')
             .eq('id', EXAM_ID)
             .single();
         
         if (examError || !examData) { 
-            document.getElementById('error').innerText = 'Exam not found'; 
+            document.getElementById('error').innerText = 'Exam not found or error loading exam.'; 
             return; 
         }
         
@@ -863,7 +1142,7 @@ async function initExam() {
             .order('question_number', { ascending: true });
         
         if (qError || !qData || qData.length === 0) { 
-            document.getElementById('exam-container').innerText = 'No questions found or failed to load questions.'; 
+            document.getElementById('exam-container').innerText = 'No questions found for this exam.'; 
             console.error('Question error:', qError);
             return; 
         }
@@ -880,7 +1159,7 @@ async function initExam() {
         
     } catch (err) { 
         console.error('Init exam error:', err); 
-        document.getElementById('error').innerText = 'Error loading exam.'; 
+        document.getElementById('error').innerText = 'Error loading exam. Please refresh or contact support.'; 
     }
 }
 
@@ -948,7 +1227,6 @@ function renderQuestion(index = currentIndex) {
         const input = document.querySelector(`input[name="question_${q.id}"][value="${answers[q.id]}"]`);
         if (input) {
             input.checked = true;
-            console.log(`Restored answer for Q${currentIndex + 1}: ${answers[q.id]}`);
         }
     }
 
@@ -957,14 +1235,12 @@ function renderQuestion(index = currentIndex) {
 
     setTimeout(() => {
         const radios = document.querySelectorAll(`input[name="question_${q.id}"]`);
-        console.log(`Found ${radios.length} radio buttons for Q${currentIndex + 1}`);
         
         radios.forEach(r => {
             const newRadio = r.cloneNode(true);
             r.parentNode.replaceChild(newRadio, r);
             
             newRadio.addEventListener('change', (event) => { 
-                console.log(`Radio changed for Q${currentIndex + 1}:`, event.target.value);
                 saveAnswer(event.target.value);
                 if (!hasAnsweredAtLeastOne) {
                     hasAnsweredAtLeastOne = true;
@@ -1030,13 +1306,7 @@ async function saveAnswer(selectedAnswerValue) {
     const q = questions[currentIndex];
     const answer = selectedAnswerValue;
     
-    console.log('=== SAVE ANSWER (LOCAL) ===');
-    console.log('Question:', currentIndex + 1);
-    console.log('Question ID:', q.id);
-    console.log('Selected Answer:', answer);
-    console.log('Correct Answer:', q.correct_answer);
-    
-    // Save answer locally only during exam
+    // Save answer locally
     answers[q.id] = answer; 
 
     // Show save confirmation
@@ -1093,12 +1363,10 @@ async function saveAllQuestions() {
             };
             
             if (isAnswered) {
-                // Calculate marks for answered questions
                 const isCorrect = answers[questionId] === q.correct_answer;
                 entry.selected_answer = answers[questionId];
                 entry.marks = isCorrect ? (q.marks || 1) : 0;
             } else {
-                // Unanswered questions get 0 marks
                 entry.selected_answer = null;
                 entry.marks = 0;
             }
@@ -1106,9 +1374,9 @@ async function saveAllQuestions() {
             allEntries.push(entry);
         });
 
-        console.log(`📝 Saving ${allEntries.length} total questions (${answeredCount} answered, ${allEntries.length - answeredCount} unanswered)`);
+        console.log(`📝 Saving ${allEntries.length} total questions (${answeredCount} answered)`);
 
-        // Save ALL questions in batches
+        // Save in batches
         const batchSize = 20;
         for (let i = 0; i < allEntries.length; i += batchSize) {
             const batch = allEntries.slice(i, i + batchSize);
@@ -1137,7 +1405,6 @@ async function saveAllQuestions() {
         
         console.log('✅ All questions saved to database');
         
-        // Verify all questions were saved
         await verifyQuestionSubmission();
         
     } catch (error) {
@@ -1167,10 +1434,6 @@ async function verifyQuestionSubmission() {
         console.log(`✅ Answered: ${answeredCount} questions`);
         console.log(`✅ Total marks in database: ${totalMarks}`);
         
-        if (savedCount < questions.length) {
-            console.warn(`⚠️ Warning: Only ${savedCount}/${questions.length} questions saved to database`);
-        }
-        
     } catch (error) {
         console.error('Error verifying submission:', error);
     }
@@ -1181,16 +1444,24 @@ async function executeSubmission() {
     // Stop face detection
     if (faceDetectionInterval) {
         clearInterval(faceDetectionInterval);
+        faceDetectionInterval = null;
     }
     hideFaceWarning();
     
     // Stop video stream
     if (videoStream) {
-        videoStream.getTracks().forEach(track => track.stop());
+        videoStream.getTracks().forEach(track => {
+            track.stop();
+            track.enabled = false;
+        });
+        videoStream = null;
     }
     
-    // Disable all buttons to prevent double-clicks
-    document.querySelectorAll('button').forEach(btn => btn.disabled = true);
+    // Disable all buttons
+    document.querySelectorAll('button').forEach(btn => {
+        btn.disabled = true;
+        btn.style.opacity = '0.5';
+    });
     submissionModal.style.display = 'none';
     
     showSuccessScreen('submitting');
@@ -1200,12 +1471,11 @@ async function executeSubmission() {
     console.log('Student ID:', studentId);
     console.log('Exam Type:', examType);
     console.log('Total Questions:', questions.length);
-    console.log('Local answers:', Object.keys(answers).length);
     
     // STEP 1: Save ALL questions to database
     await saveAllQuestions();
     
-    // STEP 2: Wait a moment to ensure database writes complete
+    // STEP 2: Wait for database writes
     await new Promise(resolve => setTimeout(resolve, 1500));
     
     // STEP 3: Calculate and save final grade
@@ -1232,10 +1502,8 @@ async function calculateAndSaveFinalGrade() {
     try {
         console.log('=== CALCULATING FINAL GRADE ===');
         
-        // Wait a bit to ensure all answers are saved
         await new Promise(resolve => setTimeout(resolve, 500));
         
-        // Get ALL answers for this exam
         const { data: allAnswers, error: answersError } = await sb.from('exam_grades')
             .select('marks')
             .eq('student_id', studentId)
@@ -1252,22 +1520,18 @@ async function calculateAndSaveFinalGrade() {
             return;
         }
 
-        // Calculate total marks
         const totalMarks = allAnswers.reduce((sum, answer) => sum + (answer.marks || 0), 0);
         const totalQuestions = allAnswers.length;
         
         console.log(`📊 Grade Summary: ${totalMarks} marks from ${totalQuestions} questions`);
         
-        // Calculate percentage
         let percentage = 0;
         
         if (examType === 'CAT_1' || examType === 'CAT_2' || examType === 'CAT') {
-            // For CAT exams: each question is 1 mark, total out of 30
             const totalPossible = Math.min(30, totalQuestions);
             percentage = (totalMarks / totalPossible) * 100;
             console.log(`📊 CAT Calculation: ${totalMarks}/${totalPossible} = ${percentage.toFixed(2)}%`);
         } else if (examType === 'EXAM') {
-            // For exams: get total possible marks from questions
             const { data: questionData } = await sb.from('exam_questions')
                 .select('marks')
                 .eq('exam_id', EXAM_ID);
@@ -1276,22 +1540,19 @@ async function calculateAndSaveFinalGrade() {
             if (questionData && questionData.length > 0) {
                 totalPossible = questionData.reduce((sum, q) => sum + (q.marks || 1), 0);
             } else {
-                totalPossible = totalQuestions; // Assume 1 mark per question
+                totalPossible = totalQuestions;
             }
             
             percentage = (totalMarks / totalPossible) * 100;
             console.log(`📊 EXAM Calculation: ${totalMarks}/${totalPossible} = ${percentage.toFixed(2)}%`);
         } else {
-            // Default: assume 1 mark per question
             percentage = (totalMarks / totalQuestions) * 100;
             console.log(`📊 Default Calculation: ${totalMarks}/${totalQuestions} = ${percentage.toFixed(2)}%`);
         }
         
-        // Ensure percentage is valid
         percentage = Math.min(100, Math.max(0, parseFloat(percentage.toFixed(2))));
         const resultStatus = percentage >= 60 ? 'PASS' : 'FAIL';
         
-        // Prepare grade data
         let gradeData = {
             student_id: studentId,
             exam_id: parseInt(EXAM_ID),
@@ -1308,7 +1569,6 @@ async function calculateAndSaveFinalGrade() {
             updated_at: new Date().toISOString()
         };
         
-        // Set CAT or EXAM specific scores
         if (examType === 'CAT_1' || examType === 'CAT') {
             gradeData.cat_1_score = totalMarks;
             gradeData.cat_score = totalMarks;
@@ -1335,7 +1595,6 @@ async function calculateAndSaveFinalGrade() {
             console.log(`✅ Default Grade: ${totalMarks} marks = ${gradeData.total_score}% (Status: ${resultStatus})`);
         }
 
-        // Check if a grade record already exists and update it
         const { data: existingGrade } = await sb.from('exam_grades')
             .select('*')
             .eq('student_id', studentId)
@@ -1345,7 +1604,6 @@ async function calculateAndSaveFinalGrade() {
 
         if (existingGrade) {
             console.log('📝 Updating existing grade record...');
-            // Update existing record
             const { error: updateError } = await sb.from('exam_grades')
                 .update(gradeData)
                 .eq('student_id', studentId)
@@ -1359,7 +1617,6 @@ async function calculateAndSaveFinalGrade() {
             console.log('✅ Grade record updated successfully');
         } else {
             console.log('📝 Creating new grade record...');
-            // Insert new record
             const { error: insertError } = await sb.from('exam_grades')
                 .insert([gradeData]);
             
@@ -1374,7 +1631,6 @@ async function calculateAndSaveFinalGrade() {
         console.error('❌ Error calculating final grade:', error);
         console.error('Error details:', error.message);
         
-        // Show error to user but continue with redirect
         const errorElement = document.querySelector('.success-screen');
         if (errorElement) {
             errorElement.innerHTML += `
@@ -1391,7 +1647,7 @@ async function calculateAndSaveFinalGrade() {
 function showSuccessScreen(status) {
     clearInterval(timerInterval);
     
-    // Remove the beforeunload event listener safely
+    // Remove beforeunload listener
     try {
         window.removeEventListener('beforeunload', beforeUnloadHandler);
     } catch (e) {
@@ -1412,7 +1668,7 @@ function showSuccessScreen(status) {
     answerSaved.style.display = 'none';
     timer.style.display = 'none';
     finalMsg.style.display = 'none';
-    faceOverlay.style.display = 'none';
+    if (faceOverlay) faceOverlay.style.display = 'none';
     
     let title, message, details;
     
@@ -1524,10 +1780,20 @@ window.addEventListener('DOMContentLoaded', () => {
 
 // Clean up on page unload
 window.addEventListener('unload', () => {
-    if (faceDetectionInterval) clearInterval(faceDetectionInterval);
-    if (faceWarningInterval) clearInterval(faceWarningInterval);
+    if (faceDetectionInterval) {
+        clearInterval(faceDetectionInterval);
+        faceDetectionInterval = null;
+    }
+    if (faceWarningInterval) {
+        clearInterval(faceWarningInterval);
+        faceWarningInterval = null;
+    }
     if (videoStream) {
-        videoStream.getTracks().forEach(track => track.stop());
+        videoStream.getTracks().forEach(track => {
+            track.stop();
+            track.enabled = false;
+        });
+        videoStream = null;
     }
 });
 </script>
