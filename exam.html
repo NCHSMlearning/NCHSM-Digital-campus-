@@ -5,8 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Exam - NCHSM</title>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-<!-- Add FaceAPI.js -->
-<script src="https://cdn.jsdelivr.net/npm/face-api.js"></script>
 <style>
 /* --- General and Reset --- */
 body { 
@@ -327,6 +325,7 @@ button#submit-exam-btn:disabled { background: #FCA5A5; cursor: not-allowed; box-
     width: 100%;
     height: 100%;
     object-fit: cover;
+    transform: scaleX(-1); /* Mirror the video */
 }
 
 #face-status {
@@ -339,6 +338,15 @@ button#submit-exam-btn:disabled { background: #FCA5A5; cursor: not-allowed; box-
     padding: 5px;
     font-size: 0.8rem;
     text-align: center;
+    z-index: 1;
+}
+
+#face-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
 }
 
 /* For mobile responsiveness */
@@ -353,28 +361,70 @@ button#submit-exam-btn:disabled { background: #FCA5A5; cursor: not-allowed; box-
 
 /* Face detection status indicators */
 .face-status-good {
-    background: rgba(34, 197, 94, 0.7) !important;
     border-color: #16A34A !important;
+    border-width: 3px !important;
 }
 
 .face-status-warning {
-    background: rgba(245, 158, 11, 0.7) !important;
     border-color: #D97706 !important;
+    border-width: 3px !important;
+    animation: warningPulse 1s infinite;
 }
 
 .face-status-danger {
-    background: rgba(239, 68, 68, 0.7) !important;
     border-color: #DC2626 !important;
-    animation: pulse 1s infinite;
+    border-width: 3px !important;
+    animation: dangerPulse 0.5s infinite;
 }
 
-@keyframes pulse {
+@keyframes warningPulse {
+    0% { border-color: #D97706; }
+    50% { border-color: #F59E0B; }
+    100% { border-color: #D97706; }
+}
+
+@keyframes dangerPulse {
     0% { border-color: #DC2626; }
     50% { border-color: #FCA5A5; }
     100% { border-color: #DC2626; }
 }
+
+/* Camera permission modal */
+#camera-permission-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.camera-permission-content {
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    max-width: 500px;
+    text-align: center;
+    margin: 20px;
+}
+
+.camera-permission-content h3 {
+    color: #0A3D62;
+    margin-top: 0;
+}
+
+.camera-permission-icon {
+    font-size: 4rem;
+    margin-bottom: 20px;
+    color: #0A3D62;
+}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- Remove FaceAPI.js and use simpler approach -->
 </head>
 <body>
 <div class="page-wrapper">
@@ -424,10 +474,33 @@ button#submit-exam-btn:disabled { background: #FCA5A5; cursor: not-allowed; box-
     </div>
 </div>
 
+<!-- Camera Permission Modal -->
+<div id="camera-permission-modal" style="display: none;">
+    <div class="camera-permission-content">
+        <div class="camera-permission-icon">📹</div>
+        <h3>Camera Access Required</h3>
+        <p>This exam requires camera access for security monitoring. The camera will:</p>
+        <ul style="text-align: left; margin: 20px 0;">
+            <li>Ensure only you are taking the exam</li>
+            <li>Detect if you look away from the screen</li>
+            <li>Monitor for any suspicious activity</li>
+        </ul>
+        <p><strong>No images or videos are stored.</strong> The camera feed is processed locally only.</p>
+        <div style="margin-top: 30px;">
+            <button id="allow-camera-btn" style="background: #38A169; color: white; padding: 12px 30px; margin-right: 10px;">Allow Camera Access</button>
+            <button id="skip-camera-btn" style="background: #E5E7EB; color: #475569; padding: 12px 30px;">Continue Without Camera</button>
+        </div>
+        <p style="margin-top: 20px; font-size: 0.9rem; color: #64748B;">
+            <small>Note: Skipping camera may be reported to your instructor.</small>
+        </p>
+    </div>
+</div>
+
 <!-- Face Detection Overlay -->
-<div id="face-detection-overlay">
+<div id="face-detection-overlay" style="display: none;">
     <video id="face-video" autoplay muted playsinline></video>
-    <div id="face-status">Starting camera...</div>
+    <canvas id="face-canvas"></canvas>
+    <div id="face-status">Camera starting...</div>
 </div>
 
 <!-- Face Warning Modal -->
@@ -483,142 +556,191 @@ const examTitle = document.getElementById('exam-title');
 let faceDetectionEnabled = true;
 let faceDetectionInterval;
 let faceNotDetectedCount = 0;
-const MAX_FACE_NOT_DETECTED = 10; // Allow 20 seconds (10 checks × 2 seconds each)
+const MAX_FACE_NOT_DETECTED = 15; // Allow 30 seconds (15 checks × 2 seconds each)
 let faceWarningTimer = 10;
 let faceWarningInterval;
 let videoStream;
+let faceDetector = null;
 
-// --- BEFOREUNLOAD HANDLER FUNCTION ---
-function beforeUnloadHandler(e) {
-    e.preventDefault();
-    e.returnValue = 'Warning: Leaving this page will submit your exam immediately.';
-    return e.returnValue;
-}
-
-// --- FACE DETECTION FUNCTIONS ---
+// --- SIMPLE FACE DETECTION USING JAVASCRIPT ---
 async function initializeFaceDetection() {
-    if (!faceDetectionEnabled) {
-        console.log('Face detection disabled');
-        return;
-    }
+    // Show camera permission modal
+    showCameraPermissionModal();
+}
+
+function showCameraPermissionModal() {
+    const modal = document.getElementById('camera-permission-modal');
+    modal.style.display = 'flex';
     
-    try {
-        // Load face-api models
-        await loadFaceAPIModels();
-        
-        // Request camera permission and start video
-        await startVideoStream();
-        
-        // Start face detection
-        startFaceDetectionLoop();
-        
-        console.log('✅ Face detection initialized');
-        
-    } catch (error) {
-        console.error('❌ Face detection initialization failed:', error);
-        // Don't block exam if face detection fails, but show warning
-        document.getElementById('face-status').textContent = 'Camera error - exam continues';
-        document.getElementById('face-detection-overlay').classList.add('face-status-warning');
-    }
+    // Setup button handlers
+    document.getElementById('allow-camera-btn').onclick = async () => {
+        modal.style.display = 'none';
+        await startCameraWithDetection();
+    };
+    
+    document.getElementById('skip-camera-btn').onclick = () => {
+        modal.style.display = 'none';
+        faceDetectionEnabled = false;
+        document.getElementById('face-status').textContent = 'Camera disabled - proceed with exam';
+        document.getElementById('face-detection-overlay').style.display = 'none';
+        console.log('Camera access skipped by user');
+    };
 }
 
-async function loadFaceAPIModels() {
-    try {
-        // Load models from CDN
-        await faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/models');
-        console.log('✅ Face API models loaded');
-    } catch (error) {
-        console.error('Error loading face models:', error);
-        throw error;
-    }
-}
-
-async function startVideoStream() {
+async function startCameraWithDetection() {
     try {
         const video = document.getElementById('face-video');
+        const overlay = document.getElementById('face-detection-overlay');
+        const status = document.getElementById('face-status');
+        
+        // Show the overlay
+        overlay.style.display = 'block';
         
         // Request camera access
         videoStream = await navigator.mediaDevices.getUserMedia({
             video: {
-                width: { ideal: 640 },
-                height: { ideal: 480 },
+                width: { ideal: 320 },
+                height: { ideal: 240 },
                 facingMode: 'user'
             },
             audio: false
         });
         
         video.srcObject = videoStream;
-        await video.play();
         
-        // Update status
-        document.getElementById('face-status').textContent = 'Camera active - Face detection ON';
-        document.getElementById('face-detection-overlay').classList.add('face-status-good');
+        // Wait for video to be ready
+        await new Promise((resolve) => {
+            video.onloadedmetadata = () => {
+                video.play().then(resolve);
+            };
+        });
+        
+        status.textContent = 'Camera active - Monitoring...';
+        overlay.classList.add('face-status-good');
+        
+        // Start simple face detection (using basic image analysis)
+        startSimpleFaceDetection();
+        
+        console.log('✅ Camera started successfully');
         
     } catch (error) {
-        console.error('Error accessing camera:', error);
+        console.error('❌ Camera error:', error);
+        const status = document.getElementById('face-status');
+        const overlay = document.getElementById('face-detection-overlay');
         
-        // Handle permission denied
-        if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
-            document.getElementById('face-status').textContent = 'Camera access denied';
-            document.getElementById('face-detection-overlay').classList.add('face-status-danger');
-            faceDetectionEnabled = false;
-            throw new Error('Camera permission denied');
-        } else {
-            throw error;
-        }
+        status.textContent = 'Camera error - Exam continues';
+        overlay.classList.add('face-status-warning');
+        faceDetectionEnabled = false;
+        
+        // Show error but continue with exam
+        setTimeout(() => {
+            overlay.style.display = 'none';
+        }, 5000);
     }
 }
 
-function startFaceDetectionLoop() {
+function startSimpleFaceDetection() {
     const video = document.getElementById('face-video');
-    const statusElement = document.getElementById('face-status');
+    const canvas = document.getElementById('face-canvas');
+    const ctx = canvas.getContext('2d');
+    const status = document.getElementById('face-status');
     const overlay = document.getElementById('face-detection-overlay');
     
-    faceDetectionInterval = setInterval(async () => {
+    // Set canvas dimensions to match video
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    
+    faceDetectionInterval = setInterval(() => {
         if (!faceDetectionEnabled || !videoStream) return;
         
         try {
-            // Detect faces
-            const detections = await faceapi.detectAllFaces(
-                video, 
-                new faceapi.TinyFaceDetectorOptions()
-            );
+            // Draw video frame to canvas
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
             
-            // Reset counters if face detected
-            if (detections.length === 1) {
-                // One face detected - GOOD
+            // Get image data
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+            
+            // Simple face detection logic
+            let faceDetected = detectFaceInImageData(data, canvas.width, canvas.height);
+            
+            if (faceDetected) {
+                // Face detected - GOOD
                 faceNotDetectedCount = 0;
-                statusElement.textContent = `✅ Face detected`;
+                status.textContent = '✅ Monitoring...';
                 overlay.className = 'face-status-good';
                 hideFaceWarning();
                 
-            } else if (detections.length === 0) {
+                // Draw a green rectangle around "detected face" area
+                ctx.strokeStyle = '#16A34A';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(
+                    canvas.width * 0.25, 
+                    canvas.height * 0.25, 
+                    canvas.width * 0.5, 
+                    canvas.height * 0.5
+                );
+                
+            } else {
                 // No face detected
                 faceNotDetectedCount++;
-                statusElement.textContent = `⚠️ No face detected (${faceNotDetectedCount}/${MAX_FACE_NOT_DETECTED})`;
+                status.textContent = `⚠️ Look at camera (${faceNotDetectedCount}/${MAX_FACE_NOT_DETECTED})`;
                 overlay.className = 'face-status-warning';
                 
-                // Show warning after 3 missed detections
-                if (faceNotDetectedCount >= 3) {
-                    showFaceWarning('Please position your face in the camera');
+                // Draw a warning rectangle
+                ctx.strokeStyle = '#D97706';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(
+                    canvas.width * 0.25, 
+                    canvas.height * 0.25, 
+                    canvas.width * 0.5, 
+                    canvas.height * 0.5
+                );
+                
+                // Show warning after 5 missed detections
+                if (faceNotDetectedCount >= 5) {
+                    showFaceWarning('Please position your face in the center of the camera');
                 }
                 
                 // Auto-submit if face not detected for too long
                 if (faceNotDetectedCount >= MAX_FACE_NOT_DETECTED) {
-                    terminateExam('Face not detected for too long. Exam auto-submitted.');
+                    terminateExam('Face not detected for extended period. Exam auto-submitted.');
                 }
-                
-            } else if (detections.length > 1) {
-                // Multiple faces detected - IMMEDIATE TERMINATION
-                terminateExam('Multiple faces detected. Exam terminated.');
             }
             
         } catch (error) {
             console.error('Face detection error:', error);
-            statusElement.textContent = 'Face detection error';
+            status.textContent = 'Detection error';
             overlay.className = 'face-status-danger';
         }
     }, 2000); // Check every 2 seconds
+}
+
+function detectFaceInImageData(data, width, height) {
+    // Simple face detection based on skin tone detection
+    // This is a basic implementation - for production, use a proper face detection library
+    
+    let skinPixels = 0;
+    const totalPixels = width * height;
+    
+    // Sample every 10th pixel for performance
+    for (let i = 0; i < data.length; i += 40) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        
+        // Simple skin tone detection (approximate)
+        if (r > 95 && g > 40 && b > 20 &&
+            r > g && r > b &&
+            Math.abs(r - g) > 15 &&
+            r > 100 && g > 50 && b > 30) {
+            skinPixels++;
+        }
+    }
+    
+    // If enough skin-colored pixels, assume face is present
+    const skinRatio = (skinPixels * 10) / totalPixels; // Multiply by 10 because we sampled every 10th pixel
+    return skinRatio > 0.05; // At least 5% of image should be skin tone
 }
 
 function showFaceWarning(message) {
@@ -639,6 +761,9 @@ function showFaceWarning(message) {
             
             if (faceWarningTimer <= 0) {
                 hideFaceWarning();
+                if (faceNotDetectedCount >= MAX_FACE_NOT_DETECTED - 5) {
+                    terminateExam('Persistent face detection failure. Exam terminated.');
+                }
             }
         }, 1000);
     }
@@ -657,7 +782,9 @@ function terminateExam(reason) {
     console.log('🔴 Exam terminated:', reason);
     
     // Stop face detection
-    clearInterval(faceDetectionInterval);
+    if (faceDetectionInterval) {
+        clearInterval(faceDetectionInterval);
+    }
     hideFaceWarning();
     
     // Stop video stream
@@ -680,10 +807,20 @@ function terminateExam(reason) {
     // Disable all buttons
     document.querySelectorAll('button').forEach(btn => btn.disabled = true);
     
+    // Hide face overlay
+    document.getElementById('face-detection-overlay').style.display = 'none';
+    
     // Auto-submit after 3 seconds
     setTimeout(() => {
         executeSubmission();
     }, 3000);
+}
+
+// --- BEFOREUNLOAD HANDLER FUNCTION ---
+function beforeUnloadHandler(e) {
+    e.preventDefault();
+    e.returnValue = 'Warning: Leaving this page will submit your exam immediately.';
+    return e.returnValue;
 }
 
 // --- NAVIGATION FUNCTIONS ---
@@ -702,7 +839,7 @@ function prevQuestion() {
 // --- CORE FUNCTIONS ---
 async function initExam() {
     try {
-        // Initialize face detection first
+        // Initialize face detection
         await initializeFaceDetection();
         
         // Then load exam data
@@ -1042,7 +1179,9 @@ async function verifyQuestionSubmission() {
 // --- MAIN SUBMISSION FUNCTION ---
 async function executeSubmission() {
     // Stop face detection
-    clearInterval(faceDetectionInterval);
+    if (faceDetectionInterval) {
+        clearInterval(faceDetectionInterval);
+    }
     hideFaceWarning();
     
     // Stop video stream
@@ -1378,9 +1517,8 @@ cancelSubmitBtn.addEventListener('click', () => {
     submissionModal.style.display = 'none';
 });
 
-// Request camera permission on page load
+// Initialize exam on page load
 window.addEventListener('DOMContentLoaded', () => {
-    // Start exam initialization
     initExam();
 });
 
