@@ -1,8 +1,8 @@
-// exams.js - IMPROVED VERSION WITH PROFESSIONAL TRANSCRIPT
+// exams.js - NAKURU COLLEGE OF HEALTH SCIENCE AND MANAGEMENT VERSION
 (function() {
     'use strict';
     
-    console.log('✅ exams.js - Professional transcript version');
+    console.log('✅ exams.js - Nakuru College of Health Science and Management version');
     
     class ExamsModule {
         constructor() {
@@ -554,129 +554,129 @@
             }
         }
         
-       processExamsData(exams, grades) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    this.allExams = exams.map(exam => {
-        const grade = grades.find(g => String(g.exam_id) === String(exam.id));
-        
-        // Determine if exam is completed
-        let isCompleted = false;
-        let totalPercentage = null;
-        let gradeText = 'Pending Grade';
-        let gradeClass = 'pending';
-        let gradePoint = 0;
-        
-        if (grade && grade.is_graded) {
-            isCompleted = true;
-            totalPercentage = grade.total_percentage || 0;
+        processExamsData(exams, grades) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
             
-            // 🔥 UPDATED GRADING SCALE: Fail = 0-59%
-            if (totalPercentage >= 85) {
-                gradeText = 'Distinction';
-                gradeClass = 'distinction';
-                gradePoint = 5.0;
-            } else if (totalPercentage >= 75) {
-                gradeText = 'Credit';
-                gradeClass = 'credit';
-                gradePoint = 4.0;
-            } else if (totalPercentage >= 60) {
-                gradeText = 'Pass';
-                gradeClass = 'pass';
-                gradePoint = 3.0;
-            } else {
-                // 0-59% = Fail
-                gradeText = 'Fail';
-                gradeClass = 'fail';
-                gradePoint = 0.0;
-            }
-        } else if (exam.status === 'Completed' || exam.status === 'completed') {
-            isCompleted = true;
-        } else {
-            // Check if exam date is in past
-            const examDate = exam.exam_date ? new Date(exam.exam_date) : null;
-            if (examDate) {
-                const oneDayAgo = new Date(today);
-                oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+            this.allExams = exams.map(exam => {
+                const grade = grades.find(g => String(g.exam_id) === String(exam.id));
                 
-                if (examDate < oneDayAgo) {
+                // Determine if exam is completed
+                let isCompleted = false;
+                let totalPercentage = null;
+                let gradeText = 'Pending Grade';
+                let gradeClass = 'pending';
+                let gradePoint = 0;
+                
+                if (grade && grade.is_graded) {
                     isCompleted = true;
+                    totalPercentage = grade.total_percentage || 0;
+                    
+                    // 🔥 UPDATED GRADING SCALE: Fail = 0-59%
+                    if (totalPercentage >= 85) {
+                        gradeText = 'Distinction';
+                        gradeClass = 'distinction';
+                        gradePoint = 5.0;
+                    } else if (totalPercentage >= 75) {
+                        gradeText = 'Credit';
+                        gradeClass = 'credit';
+                        gradePoint = 4.0;
+                    } else if (totalPercentage >= 60) {
+                        gradeText = 'Pass';
+                        gradeClass = 'pass';
+                        gradePoint = 3.0;
+                    } else {
+                        // 0-59% = Fail
+                        gradeText = 'Fail';
+                        gradeClass = 'fail';
+                        gradePoint = 0.0;
+                    }
+                } else if (exam.status === 'Completed' || exam.status === 'completed') {
+                    isCompleted = true;
+                } else {
+                    // Check if exam date is in past
+                    const examDate = exam.exam_date ? new Date(exam.exam_date) : null;
+                    if (examDate) {
+                        const oneDayAgo = new Date(today);
+                        oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+                        
+                        if (examDate < oneDayAgo) {
+                            isCompleted = true;
+                        }
+                    }
                 }
-            }
+                
+                // Check if exam has a valid link
+                const hasValidLink = exam.exam_link && 
+                                   exam.exam_link.trim() !== '' && 
+                                   exam.exam_link !== '#' &&
+                                   (exam.exam_link.startsWith('http://') || exam.exam_link.startsWith('https://'));
+                
+                // Check if retake has a valid link
+                const hasValidRetakeLink = exam.retake_link && 
+                                         exam.retake_link.trim() !== '' && 
+                                         exam.retake_link !== '#' &&
+                                         (exam.retake_link.startsWith('http://') || exam.retake_link.startsWith('https://'));
+                
+                // Determine program info
+                const isTVETExam = exam.program_type === 'TVET';
+                const programBadgeClass = isTVETExam ? 'badge-tvet' : 'badge-krchn';
+                const programIcon = isTVETExam ? 'fa-tools' : 'fa-graduation-cap';
+                const programDisplay = isTVETExam ? 'TVET Program' : 'KRCHN Program';
+                
+                // Add level info for TVET
+                let programDisplayWithLevel = programDisplay;
+                if (isTVETExam && this.isTVETStudent && this.programLevel !== 'OTHER') {
+                    programDisplayWithLevel += ` (${this.programLevel})`;
+                }
+                
+                return {
+                    ...exam,
+                    isCompleted,
+                    totalPercentage,
+                    gradeText,
+                    gradeClass,
+                    gradePoint,
+                    hasValidLink,
+                    hasValidRetakeLink,
+                    cat1Score: grade?.cat_1_score !== null && grade?.cat_1_score !== undefined ? 
+                        grade.cat_1_score : null,
+                    cat2Score: grade?.cat_2_score !== null && grade?.cat_2_score !== undefined ? 
+                        grade.cat_2_score : null,
+                    finalScore: grade?.exam_score !== null && grade?.exam_score !== undefined ? 
+                        grade.exam_score : null,
+                    cat1Display: grade?.cat_1_score !== null && grade?.cat_1_score !== undefined ? 
+                        `${grade.cat_1_score}%` : '--',
+                    cat2Display: grade?.cat_2_score !== null && grade?.cat_2_score !== undefined ? 
+                        `${grade.cat_2_score}%` : '--',
+                    finalDisplay: grade?.exam_score !== null && grade?.exam_score !== undefined ? 
+                        `${grade.exam_score}%` : '--',
+                    formattedExamDate: exam.exam_date ? 
+                        new Date(exam.exam_date).toLocaleDateString('en-US', { 
+                            year: 'numeric', month: 'short', day: 'numeric' 
+                        }) : '--',
+                    formattedGradedDate: grade?.graded_at ? 
+                        new Date(grade.graded_at).toLocaleDateString('en-US', { 
+                            year: 'numeric', month: 'short', day: 'numeric' 
+                        }) : '--',
+                    programBadgeClass,
+                    programIcon,
+                    programDisplay: programDisplayWithLevel,
+                    programType: exam.program_type,
+                    isTVETExam
+                };
+            });
+            
+            const tvetCount = this.allExams.filter(e => e.program_type === 'TVET').length;
+            const krchnCount = this.allExams.filter(e => e.program_type === 'KRCHN').length;
+            const completedCount = this.allExams.filter(e => e.isCompleted).length;
+            
+            console.log(`✅ Processed ${this.allExams.length} exams:`, {
+                TVET: tvetCount,
+                KRCHN: krchnCount,
+                Completed: completedCount
+            });
         }
-        
-        // Check if exam has a valid link
-        const hasValidLink = exam.exam_link && 
-                           exam.exam_link.trim() !== '' && 
-                           exam.exam_link !== '#' &&
-                           (exam.exam_link.startsWith('http://') || exam.exam_link.startsWith('https://'));
-        
-        // Check if retake has a valid link
-        const hasValidRetakeLink = exam.retake_link && 
-                                 exam.retake_link.trim() !== '' && 
-                                 exam.retake_link !== '#' &&
-                                 (exam.retake_link.startsWith('http://') || exam.retake_link.startsWith('https://'));
-        
-        // Determine program info
-        const isTVETExam = exam.program_type === 'TVET';
-        const programBadgeClass = isTVETExam ? 'badge-tvet' : 'badge-krchn';
-        const programIcon = isTVETExam ? 'fa-tools' : 'fa-graduation-cap';
-        const programDisplay = isTVETExam ? 'TVET Program' : 'KRCHN Program';
-        
-        // Add level info for TVET
-        let programDisplayWithLevel = programDisplay;
-        if (isTVETExam && this.isTVETStudent && this.programLevel !== 'OTHER') {
-            programDisplayWithLevel += ` (${this.programLevel})`;
-        }
-        
-        return {
-            ...exam,
-            isCompleted,
-            totalPercentage,
-            gradeText,
-            gradeClass,
-            gradePoint,
-            hasValidLink,
-            hasValidRetakeLink,
-            cat1Score: grade?.cat_1_score !== null && grade?.cat_1_score !== undefined ? 
-                grade.cat_1_score : null,
-            cat2Score: grade?.cat_2_score !== null && grade?.cat_2_score !== undefined ? 
-                grade.cat_2_score : null,
-            finalScore: grade?.exam_score !== null && grade?.exam_score !== undefined ? 
-                grade.exam_score : null,
-            cat1Display: grade?.cat_1_score !== null && grade?.cat_1_score !== undefined ? 
-                `${grade.cat_1_score}%` : '--',
-            cat2Display: grade?.cat_2_score !== null && grade?.cat_2_score !== undefined ? 
-                `${grade.cat_2_score}%` : '--',
-            finalDisplay: grade?.exam_score !== null && grade?.exam_score !== undefined ? 
-                `${grade.exam_score}%` : '--',
-            formattedExamDate: exam.exam_date ? 
-                new Date(exam.exam_date).toLocaleDateString('en-US', { 
-                    year: 'numeric', month: 'short', day: 'numeric' 
-                }) : '--',
-            formattedGradedDate: grade?.graded_at ? 
-                new Date(grade.graded_at).toLocaleDateString('en-US', { 
-                    year: 'numeric', month: 'short', day: 'numeric' 
-                }) : '--',
-            programBadgeClass,
-            programIcon,
-            programDisplay: programDisplayWithLevel,
-            programType: exam.program_type,
-            isTVETExam
-        };
-    });
-    
-    const tvetCount = this.allExams.filter(e => e.program_type === 'TVET').length;
-    const krchnCount = this.allExams.filter(e => e.program_type === 'KRCHN').length;
-    const completedCount = this.allExams.filter(e => e.isCompleted).length;
-    
-    console.log(`✅ Processed ${this.allExams.length} exams:`, {
-        TVET: tvetCount,
-        KRCHN: krchnCount,
-        Completed: completedCount
-    });
-}
         
         dispatchDashboardEvent() {
             const event = new CustomEvent('examsModuleReady', {
@@ -866,221 +866,221 @@
             // Performance summary logic
         }
         
-       showProfessionalTranscript() {
-    const completedExams = this.allExams.filter(exam => exam.isCompleted && exam.totalPercentage !== null);
-    const totalUnits = completedExams.length;
-    const totalPoints = completedExams.reduce((sum, exam) => sum + exam.gradePoint, 0);
-    const gpa = totalUnits > 0 ? (totalPoints / totalUnits).toFixed(2) : '0.00';
-    
-    const transcriptDate = new Date().toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-    });
-    
-    const modal = document.createElement('div');
-    modal.className = 'modal-overlay transcript-modal';
-    modal.innerHTML = `
-        <div class="modal-content transcript-content">
-            <div class="transcript-header">
-                <div class="school-header">
-                    <div class="school-logo">
-                        <i class="fas fa-graduation-cap"></i>
-                    </div>
-                    <div class="school-info">
-                        <h1>KENYA MEDICAL TRAINING COLLEGE</h1>
-                        <h2>OFFICIAL ACADEMIC TRANSCRIPT</h2>
-                        <p class="motto">Excellence in Medical Education</p>
-                    </div>
-                    <div class="transcript-number">
-                        <p>Transcript No: ${String(this.userId).substring(0, 8).toUpperCase()}</p>
-                        <p>Date: ${transcriptDate}</p>
-                    </div>
-                </div>
-            </div>
+        showProfessionalTranscript() {
+            const completedExams = this.allExams.filter(exam => exam.isCompleted && exam.totalPercentage !== null);
+            const totalUnits = completedExams.length;
+            const totalPoints = completedExams.reduce((sum, exam) => sum + exam.gradePoint, 0);
+            const gpa = totalUnits > 0 ? (totalPoints / totalUnits).toFixed(2) : '0.00';
             
-            <div class="student-info-section">
-                <div class="section-title">
-                    <i class="fas fa-user-graduate"></i> STUDENT INFORMATION
-                </div>
-                <div class="info-grid">
-                    <div class="info-item">
-                        <span class="info-label">Full Name:</span>
-                        <span class="info-value">${this.userProfile.full_name || 'Not Provided'}</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Student ID:</span>
-                        <span class="info-value">${this.userId || 'N/A'}</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Program:</span>
-                        <span class="info-value">${this.programName}</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Program Level:</span>
-                        <span class="info-value">${this.programLevel}</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Intake Year:</span>
-                        <span class="info-value">${this.intakeYear}</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">${this.isTVETStudent ? 'Term' : 'Block'}:</span>
-                        <span class="info-value">${this.isTVETStudent ? this.userTerm : this.userBlock}</span>
-                    </div>
-                </div>
-            </div>
+            const transcriptDate = new Date().toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
             
-            <div class="grades-section">
-                <div class="section-title">
-                    <i class="fas fa-chart-line"></i> ACADEMIC PERFORMANCE
-                </div>
-                
-                <div class="performance-summary">
-                    <div class="summary-item">
-                        <div class="summary-label">Total Exams Taken</div>
-                        <div class="summary-value">${completedExams.length}</div>
-                    </div>
-                    <div class="summary-item">
-                        <div class="summary-label">Overall Average</div>
-                        <div class="summary-value">${completedExams.length > 0 ? 
-                            (completedExams.reduce((sum, exam) => sum + exam.totalPercentage, 0) / completedExams.length).toFixed(1) + '%' : 'N/A'}</div>
-                    </div>
-                    <div class="summary-item">
-                        <div class="summary-label">Current GPA</div>
-                        <div class="summary-value">${gpa}</div>
-                    </div>
-                </div>
-                
-                <div class="grades-table-container">
-                    <table class="transcript-table">
-                        <thead>
-                            <tr>
-                                <th>#</th>
-                                <th>Exam Name</th>
-                                <th>Course/Subject</th>
-                                <th>Type</th>
-                                <th>CAT 1</th>
-                                <th>CAT 2</th>
-                                <th>Final Exam</th>
-                                <th>Total %</th>
-                                <th>Grade</th>
-                                <th>Grade Point</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${completedExams.map((exam, index) => `
-                                <tr>
-                                    <td class="text-center">${index + 1}</td>
-                                    <td>${this.escapeHtml(exam.exam_name || 'N/A')}</td>
-                                    <td>${this.escapeHtml(exam.course_name || 'General')}</td>
-                                    <td class="text-center">
-                                        <span class="badge ${exam.exam_type?.includes('CAT') ? 'badge-cat' : 'badge-final'}">
-                                            ${exam.exam_type?.includes('CAT') ? 'CAT' : 'Final'}
-                                        </span>
-                                    </td>
-                                    <td class="text-center">${exam.cat1Display}</td>
-                                    <td class="text-center">${exam.cat2Display}</td>
-                                    <td class="text-center">${exam.finalDisplay}</td>
-                                    <td class="text-center"><strong>${exam.totalPercentage ? exam.totalPercentage.toFixed(1) + '%' : '--'}</strong></td>
-                                    <td class="text-center">
-                                        <span class="grade-badge ${exam.gradeClass}">${exam.gradeText}</span>
-                                    </td>
-                                    <td class="text-center"><strong>${exam.gradePoint.toFixed(1)}</strong></td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                        ${completedExams.length > 0 ? `
-                            <tfoot>
-                                <tr class="summary-row">
-                                    <td colspan="7" class="text-end"><strong>GRADE POINT AVERAGE (GPA):</strong></td>
-                                    <td colspan="3" class="text-center"><strong class="gpa-display">${gpa}</strong></td>
-                                </tr>
-                            </tfoot>
-                        ` : ''}
-                    </table>
-                    
-                    ${completedExams.length === 0 ? `
-                        <div class="no-grades">
-                            <i class="fas fa-clipboard-list"></i>
-                            <p>No graded exams available for transcript</p>
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay transcript-modal';
+            modal.innerHTML = `
+                <div class="modal-content transcript-content">
+                    <div class="transcript-header">
+                        <div class="school-header">
+                            <div class="school-logo">
+                                <i class="fas fa-graduation-cap"></i>
+                            </div>
+                            <div class="school-info">
+                                <h1>NAKURU COLLEGE OF HEALTH SCIENCE AND MANAGEMENT</h1>
+                                <h2>OFFICIAL ACADEMIC TRANSCRIPT</h2>
+                                <p class="motto">Excellence in Health Education and Management</p>
+                            </div>
+                            <div class="transcript-number">
+                                <p>Transcript No: ${String(this.userId).substring(0, 8).toUpperCase()}</p>
+                                <p>Date: ${transcriptDate}</p>
+                            </div>
                         </div>
-                    ` : ''}
+                    </div>
+                    
+                    <div class="student-info-section">
+                        <div class="section-title">
+                            <i class="fas fa-user-graduate"></i> STUDENT INFORMATION
+                        </div>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <span class="info-label">Full Name:</span>
+                                <span class="info-value">${this.userProfile.full_name || 'Not Provided'}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Student ID:</span>
+                                <span class="info-value">${this.userId || 'N/A'}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Program:</span>
+                                <span class="info-value">${this.programName}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Program Level:</span>
+                                <span class="info-value">${this.programLevel}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Intake Year:</span>
+                                <span class="info-value">${this.intakeYear}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">${this.isTVETStudent ? 'Term' : 'Block'}:</span>
+                                <span class="info-value">${this.isTVETStudent ? this.userTerm : this.userBlock}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="grades-section">
+                        <div class="section-title">
+                            <i class="fas fa-chart-line"></i> ACADEMIC PERFORMANCE
+                        </div>
+                        
+                        <div class="performance-summary">
+                            <div class="summary-item">
+                                <div class="summary-label">Total Exams Taken</div>
+                                <div class="summary-value">${completedExams.length}</div>
+                            </div>
+                            <div class="summary-item">
+                                <div class="summary-label">Overall Average</div>
+                                <div class="summary-value">${completedExams.length > 0 ? 
+                                    (completedExams.reduce((sum, exam) => sum + exam.totalPercentage, 0) / completedExams.length).toFixed(1) + '%' : 'N/A'}</div>
+                            </div>
+                            <div class="summary-item">
+                                <div class="summary-label">Current GPA</div>
+                                <div class="summary-value">${gpa}</div>
+                            </div>
+                        </div>
+                        
+                        <div class="grades-table-container">
+                            <table class="transcript-table">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Exam Name</th>
+                                        <th>Course/Subject</th>
+                                        <th>Type</th>
+                                        <th>CAT 1</th>
+                                        <th>CAT 2</th>
+                                        <th>Final Exam</th>
+                                        <th>Total %</th>
+                                        <th>Grade</th>
+                                        <th>Grade Point</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${completedExams.map((exam, index) => `
+                                        <tr>
+                                            <td class="text-center">${index + 1}</td>
+                                            <td>${this.escapeHtml(exam.exam_name || 'N/A')}</td>
+                                            <td>${this.escapeHtml(exam.course_name || 'General')}</td>
+                                            <td class="text-center">
+                                                <span class="badge ${exam.exam_type?.includes('CAT') ? 'badge-cat' : 'badge-final'}">
+                                                    ${exam.exam_type?.includes('CAT') ? 'CAT' : 'Final'}
+                                                </span>
+                                            </td>
+                                            <td class="text-center">${exam.cat1Display}</td>
+                                            <td class="text-center">${exam.cat2Display}</td>
+                                            <td class="text-center">${exam.finalDisplay}</td>
+                                            <td class="text-center"><strong>${exam.totalPercentage ? exam.totalPercentage.toFixed(1) + '%' : '--'}</strong></td>
+                                            <td class="text-center">
+                                                <span class="grade-badge ${exam.gradeClass}">${exam.gradeText}</span>
+                                            </td>
+                                            <td class="text-center"><strong>${exam.gradePoint.toFixed(1)}</strong></td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                                ${completedExams.length > 0 ? `
+                                    <tfoot>
+                                        <tr class="summary-row">
+                                            <td colspan="7" class="text-end"><strong>GRADE POINT AVERAGE (GPA):</strong></td>
+                                            <td colspan="3" class="text-center"><strong class="gpa-display">${gpa}</strong></td>
+                                        </tr>
+                                    </tfoot>
+                                ` : ''}
+                            </table>
+                            
+                            ${completedExams.length === 0 ? `
+                                <div class="no-grades">
+                                    <i class="fas fa-clipboard-list"></i>
+                                    <p>No graded exams available for transcript</p>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                    
+                    <div class="grading-scale-section">
+                        <div class="section-title">
+                            <i class="fas fa-scale-balanced"></i> GRADING SCALE
+                        </div>
+                        <div class="grading-scale-grid">
+                            <div class="grade-item distinction">
+                                <div class="grade-range">85% - 100%</div>
+                                <div class="grade-letter">A</div>
+                                <div class="grade-point">5.0</div>
+                                <div class="grade-description">Distinction</div>
+                            </div>
+                            <div class="grade-item credit">
+                                <div class="grade-range">75% - 84%</div>
+                                <div class="grade-letter">B</div>
+                                <div class="grade-point">4.0</div>
+                                <div class="grade-description">Credit</div>
+                            </div>
+                            <div class="grade-item pass">
+                                <div class="grade-range">60% - 74%</div>
+                                <div class="grade-letter">C</div>
+                                <div class="grade-point">3.0</div>
+                                <div class="grade-description">Pass</div>
+                            </div>
+                            <div class="grade-item fail">
+                                <div class="grade-range">0% - 59%</div>
+                                <div class="grade-letter">F</div>
+                                <div class="grade-point">0.0</div>
+                                <div class="grade-description">Fail</div>
+                            </div>
+                        </div>
+                        <div class="scale-note">
+                            <p><strong>Note:</strong> Passing grade is 60% and above. Grades below 60% are considered Fail.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="transcript-footer">
+                        <div class="signature-section">
+                            <div class="signature-line"></div>
+                            <p>Registrar's Signature</p>
+                        </div>
+                        <div class="footer-info">
+                            <p><strong>Nakuru College of Health Science and Management</strong></p>
+                            <p>P.O. Box 301-20100, Nakuru, Kenya</p>
+                            <p>Email: registrar@nchsm.ac.ke | Website: www.nchsm.ac.ke</p>
+                            <p class="footer-note">This transcript is computer-generated and does not require a signature</p>
+                        </div>
+                    </div>
+                    
+                    <div class="modal-actions">
+                        <button class="btn btn-secondary print-transcript">
+                            <i class="fas fa-print"></i> Print Transcript
+                        </button>
+                        <button class="btn btn-primary close-transcript">
+                            <i class="fas fa-times"></i> Close
+                        </button>
+                    </div>
                 </div>
-            </div>
+            `;
             
-            <div class="grading-scale-section">
-                <div class="section-title">
-                    <i class="fas fa-scale-balanced"></i> GRADING SCALE
-                </div>
-                <div class="grading-scale-grid">
-                    <div class="grade-item distinction">
-                        <div class="grade-range">85% - 100%</div>
-                        <div class="grade-letter">A</div>
-                        <div class="grade-point">5.0</div>
-                        <div class="grade-description">Distinction</div>
-                    </div>
-                    <div class="grade-item credit">
-                        <div class="grade-range">75% - 84%</div>
-                        <div class="grade-letter">B</div>
-                        <div class="grade-point">4.0</div>
-                        <div class="grade-description">Credit</div>
-                    </div>
-                    <div class="grade-item pass">
-                        <div class="grade-range">60% - 74%</div>
-                        <div class="grade-letter">C</div>
-                        <div class="grade-point">3.0</div>
-                        <div class="grade-description">Pass</div>
-                    </div>
-                    <div class="grade-item fail">
-                        <div class="grade-range">0% - 59%</div>
-                        <div class="grade-letter">F</div>
-                        <div class="grade-point">0.0</div>
-                        <div class="grade-description">Fail</div>
-                    </div>
-                </div>
-                <div class="scale-note">
-                    <p><strong>Note:</strong> Passing grade is 60% and above. Grades below 60% are considered Fail.</p>
-                </div>
-            </div>
+            document.body.appendChild(modal);
             
-            <div class="transcript-footer">
-                <div class="signature-section">
-                    <div class="signature-line"></div>
-                    <p>Registrar's Signature</p>
-                </div>
-                <div class="footer-info">
-                    <p><strong>Kenya Medical Training College</strong></p>
-                    <p>P.O. Box 30195-00100, Nairobi, Kenya</p>
-                    <p>Email: registrar@kmtc.ac.ke | Website: www.kmtc.ac.ke</p>
-                    <p class="footer-note">This transcript is computer-generated and does not require a signature</p>
-                </div>
-            </div>
+            // Add styles for transcript
+            this.addTranscriptStyles();
             
-            <div class="modal-actions">
-                <button class="btn btn-secondary print-transcript">
-                    <i class="fas fa-print"></i> Print Transcript
-                </button>
-                <button class="btn btn-primary close-transcript">
-                    <i class="fas fa-times"></i> Close
-                </button>
-            </div>
-        </div>
-    `;
-    
-    document.body.appendChild(modal);
-    
-    // Add styles for transcript
-    this.addTranscriptStyles();
-    
-    // Add event listeners
-    modal.querySelector('.close-transcript').onclick = () => modal.remove();
-    modal.querySelector('.print-transcript').onclick = () => this.printTranscript();
-    
-    modal.onclick = (e) => {
-        if (e.target === modal) modal.remove();
-    };
-}
+            // Add event listeners
+            modal.querySelector('.close-transcript').onclick = () => modal.remove();
+            modal.querySelector('.print-transcript').onclick = () => this.printTranscript();
+            
+            modal.onclick = (e) => {
+                if (e.target === modal) modal.remove();
+            };
+        }
         
         addTranscriptStyles() {
             if (!document.getElementById('transcript-styles')) {
@@ -1102,11 +1102,11 @@
                     }
                     
                     .transcript-header {
-                        background: linear-gradient(135deg, #1a237e, #283593);
+                        background: linear-gradient(135deg, #0066cc, #004d99);
                         color: white;
                         padding: 25px;
                         text-align: center;
-                        border-bottom: 3px solid #ff9800;
+                        border-bottom: 3px solid #ff6600;
                     }
                     
                     .school-header {
@@ -1118,14 +1118,15 @@
                     
                     .school-logo {
                         font-size: 40px;
-                        color: #ff9800;
+                        color: #ff6600;
                     }
                     
                     .school-info h1 {
                         margin: 0;
-                        font-size: 22px;
+                        font-size: 20px;
                         font-weight: bold;
                         letter-spacing: 0.5px;
+                        line-height: 1.3;
                     }
                     
                     .school-info h2 {
@@ -1157,17 +1158,17 @@
                     .section-title {
                         font-size: 18px;
                         font-weight: bold;
-                        color: #1a237e;
+                        color: #0066cc;
                         margin-bottom: 20px;
                         padding-bottom: 8px;
-                        border-bottom: 2px solid #ff9800;
+                        border-bottom: 2px solid #ff6600;
                         display: flex;
                         align-items: center;
                         gap: 10px;
                     }
                     
                     .section-title i {
-                        color: #ff9800;
+                        color: #ff6600;
                     }
                     
                     .info-grid {
@@ -1182,7 +1183,7 @@
                         padding: 10px 15px;
                         background: #f5f5f5;
                         border-radius: 4px;
-                        border-left: 3px solid #1a237e;
+                        border-left: 3px solid #0066cc;
                     }
                     
                     .info-label {
@@ -1191,7 +1192,7 @@
                     }
                     
                     .info-value {
-                        color: #1a237e;
+                        color: #0066cc;
                         font-weight: 600;
                     }
                     
@@ -1221,7 +1222,7 @@
                     .summary-value {
                         font-size: 28px;
                         font-weight: bold;
-                        color: #1a237e;
+                        color: #0066cc;
                     }
                     
                     .grades-table-container {
@@ -1236,12 +1237,12 @@
                     }
                     
                     .transcript-table th {
-                        background: #1a237e;
+                        background: #0066cc;
                         color: white;
                         padding: 12px 8px;
                         text-align: center;
                         font-weight: 600;
-                        border: 1px solid #0d1b6b;
+                        border: 1px solid #004d99;
                     }
                     
                     .transcript-table td {
@@ -1265,14 +1266,15 @@
                     
                     .gpa-display {
                         font-size: 20px;
-                        color: #1a237e;
+                        color: #0066cc;
                     }
                     
                     .grading-scale-grid {
                         display: grid;
-                        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+                        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
                         gap: 15px;
                         margin-top: 15px;
+                        margin-bottom: 15px;
                     }
                     
                     .grade-item {
@@ -1324,6 +1326,20 @@
                     .grade-description {
                         font-size: 14px;
                         font-weight: 500;
+                    }
+                    
+                    .scale-note {
+                        background: #fff8e1;
+                        padding: 12px 15px;
+                        border-radius: 6px;
+                        border-left: 4px solid #ffb300;
+                        font-size: 13px;
+                        color: #5d4037;
+                        margin-top: 15px;
+                    }
+                    
+                    .scale-note p {
+                        margin: 0;
                     }
                     
                     .transcript-footer {
@@ -1596,5 +1612,5 @@
         };
     };
     
-    console.log('✅ Exams module ready with professional transcript!');
+    console.log('✅ Exams module ready with Nakuru College of Health Science and Management branding!');
 })();
