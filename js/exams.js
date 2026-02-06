@@ -1,8 +1,8 @@
-// exams.js - UPDATED WITH MATCHING TVET PROGRAM LOGIC
+// exams.js - FIXED VERSION WITH WORKING EXAM LINKS
 (function() {
     'use strict';
     
-    console.log('✅ exams.js - Updated with matching TVET program logic');
+    console.log('✅ exams.js - Fixed version with working exam links');
     
     class ExamsModule {
         constructor() {
@@ -320,12 +320,16 @@
                 this.showTranscriptModal();
             });
             
-            // Handle exam link clicks
+            // Handle exam link clicks - FIXED VERSION
             document.addEventListener('click', (e) => {
                 const examLink = e.target.closest('.exam-link-btn');
-                if (examLink) {
+                if (examLink && examLink.href && examLink.href !== '#') {
                     e.preventDefault();
+                    
+                    // Track the exam access
                     this.trackExamAccess(examLink);
+                    
+                    // Open exam in new tab/window
                     window.open(examLink.href, '_blank');
                 }
             });
@@ -339,18 +343,36 @@
             
             console.log('📝 Student accessing exam:', { examId, examName });
             
-            if (window.db?.supabase && this.userId) {
-                window.db.supabase
+            // Check if Supabase is available
+            if (!window.db?.supabase) {
+                console.warn('Supabase not available, skipping exam access logging');
+                return;
+            }
+            
+            if (!this.userId) {
+                console.warn('User ID not available, skipping exam access logging');
+                return;
+            }
+            
+            // Log exam access
+            try {
+                const result = window.db.supabase
                     .from('exam_access_logs')
                     .insert([{
                         exam_id: examId,
                         student_id: this.userId,
                         accessed_at: new Date().toISOString(),
                         status: 'started'
-                    }])
-                    .catch(error => {
+                    }]);
+                
+                // Check if result has a promise (catch method)
+                if (result && typeof result.catch === 'function') {
+                    result.catch(error => {
                         console.error('❌ Failed to log exam access:', error);
                     });
+                }
+            } catch (error) {
+                console.error('❌ Error in trackExamAccess:', error);
             }
         }
         
@@ -578,7 +600,17 @@
                     }
                 }
                 
-                const hasExamLink = exam.exam_link && exam.exam_link.trim() !== '';
+                // Check if exam has a valid link
+                const hasValidLink = exam.exam_link && 
+                                   exam.exam_link.trim() !== '' && 
+                                   exam.exam_link !== '#' &&
+                                   (exam.exam_link.startsWith('http://') || exam.exam_link.startsWith('https://'));
+                
+                // Check if retake has a valid link
+                const hasValidRetakeLink = exam.retake_link && 
+                                         exam.retake_link.trim() !== '' && 
+                                         exam.retake_link !== '#' &&
+                                         (exam.retake_link.startsWith('http://') || exam.retake_link.startsWith('https://'));
                 
                 // Determine program info
                 const isTVETExam = exam.program_type === 'TVET';
@@ -598,7 +630,8 @@
                     totalPercentage,
                     gradeText,
                     gradeClass,
-                    hasExamLink,
+                    hasValidLink,
+                    hasValidRetakeLink,
                     cat1Score: grade?.cat_1_score !== null && grade?.cat_1_score !== undefined ? 
                         `${grade.cat_1_score}%` : '--',
                     cat2Score: grade?.cat_2_score !== null && grade?.cat_2_score !== undefined ? 
@@ -673,12 +706,12 @@
             
             const html = this.currentExams.map(exam => {
                 let buttonText = 'Start Exam';
-                let buttonClass = 'primary';
+                let buttonClass = 'btn-primary';
                 let buttonIcon = 'fas fa-external-link-alt';
                 
-                if (!exam.hasExamLink) {
+                if (!exam.hasValidLink) {
                     buttonText = 'No Link';
-                    buttonClass = 'disabled';
+                    buttonClass = 'btn-disabled';
                     buttonIcon = 'fas fa-unlink';
                 }
                 
@@ -702,15 +735,15 @@
                     <td class="text-center">--</td>
                     <td class="text-center">--</td>
                     <td class="text-center">
-                        ${exam.hasExamLink ? 
+                        ${exam.hasValidLink ? 
                             `<a href="${exam.exam_link}" 
                                 target="_blank" 
-                                class="exam-link-btn btn-${buttonClass}"
+                                class="exam-link-btn ${buttonClass}"
                                 data-exam-id="${exam.id}"
                                 data-exam-name="${this.escapeHtml(exam.exam_name || '')}">
                                 <i class="${buttonIcon}"></i> ${buttonText}
                             </a>` :
-                            `<span class="exam-link-btn btn-disabled" title="Exam link not available">
+                            `<span class="exam-link-btn ${buttonClass}" title="Exam link not available">
                                 <i class="${buttonIcon}"></i> ${buttonText}
                             </span>`
                         }
@@ -730,8 +763,6 @@
             }
             
             const html = this.completedExams.map(exam => {
-                const hasRetakeLink = exam.retake_link && exam.retake_link.trim() !== '';
-                
                 return `
                 <tr>
                     <td>
@@ -752,7 +783,7 @@
                     <td class="text-center">${exam.finalScore}</td>
                     <td class="text-center"><strong>${exam.totalPercentage ? exam.totalPercentage.toFixed(1) + '%' : '--'}</strong></td>
                     <td class="text-center">
-                        ${hasRetakeLink ? 
+                        ${exam.hasValidRetakeLink ? 
                             `<a href="${exam.retake_link}" 
                                 target="_blank" 
                                 class="exam-link-btn btn-secondary"
@@ -1041,5 +1072,5 @@
         };
     };
     
-    console.log('✅ Exams module ready with matching TVET program logic!');
+    console.log('✅ Exams module ready with working exam links!');
 })();
