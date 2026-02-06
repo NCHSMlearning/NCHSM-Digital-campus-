@@ -67,6 +67,7 @@ h1 { text-align: center; color: #073450; margin-bottom: 20px; font-size: 1.8rem;
     display: grid;
     grid-template-columns: repeat(6, 1fr); 
     gap: 8px; 
+    margin-bottom: 20px;
 }
 @media (min-width: 576px) {
     #question-status-table {
@@ -100,6 +101,114 @@ h1 { text-align: center; color: #073450; margin-bottom: 20px; font-size: 1.8rem;
 .status-item.answered::after { content: '✓'; font-size: 1.2rem; margin-top: 3px; color: #38A169; }
 .status-number { font-weight: 600; }
 .status-item.answered .status-number { display: none; }
+
+/* --- Camera Preview in Sidebar --- */
+.camera-section {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 2px solid #E2E8F0;
+}
+
+.camera-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #073450;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.camera-title::before {
+    content: "📹";
+}
+
+#face-detection-overlay {
+    width: 100%;
+    height: 150px;
+    background: #000;
+    border-radius: 8px;
+    border: 3px solid #38A169;
+    overflow: hidden;
+    position: relative;
+    margin-bottom: 10px;
+}
+
+#face-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: scaleX(-1);
+}
+
+#face-status {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(0,0,0,0.7);
+    color: white;
+    padding: 5px;
+    font-size: 0.8rem;
+    text-align: center;
+    z-index: 1;
+}
+
+#face-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+/* Camera status indicators */
+.face-status-good {
+    border-color: #16A34A !important;
+    border-width: 3px !important;
+}
+
+.face-status-warning {
+    border-color: #D97706 !important;
+    border-width: 3px !important;
+    animation: warningPulse 1s infinite;
+}
+
+.face-status-danger {
+    border-color: #DC2626 !important;
+    border-width: 3px !important;
+    animation: dangerPulse 0.5s infinite;
+}
+
+@keyframes warningPulse {
+    0% { border-color: #D97706; }
+    50% { border-color: #F59E0B; }
+    100% { border-color: #D97706; }
+}
+
+@keyframes dangerPulse {
+    0% { border-color: #DC2626; }
+    50% { border-color: #FCA5A5; }
+    100% { border-color: #DC2626; }
+}
+
+/* For mobile responsiveness */
+@media (max-width: 768px) {
+    #face-detection-overlay {
+        height: 120px;
+    }
+}
+
+@media (max-width: 576px) {
+    .camera-section {
+        margin-top: 15px;
+        padding-top: 15px;
+    }
+    
+    #face-detection-overlay {
+        height: 100px;
+    }
+}
 
 /* --- Exam Header/Timer --- */
 #timer { font-weight: 600; font-size: 1.1rem; margin-bottom: 15px; color: #DC2626; } 
@@ -237,14 +346,14 @@ button#submit-exam-btn:disabled { background: #FCA5A5; cursor: not-allowed; box-
 /* --- SUBMISSION MODAL STYLES --- */
 /* =============================== */
 .modal-overlay {
-    display: none; /* Hidden by default */
+    display: none;
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
     background-color: rgba(0, 0, 0, 0.6);
-    z-index: 1000; /* Ensure it's above everything */
+    z-index: 1000;
     align-items: center;
     justify-content: center;
 }
@@ -272,7 +381,7 @@ button#submit-exam-btn:disabled { background: #FCA5A5; cursor: not-allowed; box-
     margin: 0 10px;
     padding: 10px 20px;
     font-weight: 600;
-    width: 120px; /* Uniform width */
+    width: 120px;
 }
 #confirm-submit-btn {
     background: #38A169;
@@ -289,107 +398,8 @@ button#submit-exam-btn:disabled { background: #FCA5A5; cursor: not-allowed; box-
 }
 
 /* =============================== */
-/* --- FACE DETECTION UI STYLES --- */
+/* --- CAMERA PERMISSION MODAL STYLES (MANDATORY) --- */
 /* =============================== */
-#face-detection-overlay {
-    position: fixed;
-    top: 10px;
-    right: 10px;
-    width: 200px;
-    height: 150px;
-    background: #000;
-    border-radius: 8px;
-    border: 3px solid #38A169;
-    z-index: 1000;
-    overflow: hidden;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-}
-
-#face-detection-warning {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: rgba(220, 38, 38, 0.95);
-    color: white;
-    padding: 20px;
-    border-radius: 10px;
-    z-index: 1001;
-    text-align: center;
-    display: none;
-    max-width: 400px;
-    box-shadow: 0 8px 32px rgba(220, 38, 38, 0.3);
-}
-
-#face-video {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transform: scaleX(-1); /* Mirror the video */
-}
-
-#face-status {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: rgba(0,0,0,0.7);
-    color: white;
-    padding: 5px;
-    font-size: 0.8rem;
-    text-align: center;
-    z-index: 1;
-}
-
-#face-canvas {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-}
-
-/* For mobile responsiveness */
-@media (max-width: 768px) {
-    #face-detection-overlay {
-        width: 120px;
-        height: 90px;
-        top: 5px;
-        right: 5px;
-    }
-}
-
-/* Face detection status indicators */
-.face-status-good {
-    border-color: #16A34A !important;
-    border-width: 3px !important;
-}
-
-.face-status-warning {
-    border-color: #D97706 !important;
-    border-width: 3px !important;
-    animation: warningPulse 1s infinite;
-}
-
-.face-status-danger {
-    border-color: #DC2626 !important;
-    border-width: 3px !important;
-    animation: dangerPulse 0.5s infinite;
-}
-
-@keyframes warningPulse {
-    0% { border-color: #D97706; }
-    50% { border-color: #F59E0B; }
-    100% { border-color: #D97706; }
-}
-
-@keyframes dangerPulse {
-    0% { border-color: #DC2626; }
-    50% { border-color: #FCA5A5; }
-    100% { border-color: #DC2626; }
-}
-
-/* Camera permission modal */
 #camera-permission-modal {
     position: fixed;
     top: 0;
@@ -437,10 +447,31 @@ button#submit-exam-btn:disabled { background: #FCA5A5; cursor: not-allowed; box-
     padding-left: 5px;
 }
 
-/* Camera error message */
-.camera-error-message {
+.camera-warning {
     background: #FEF3C7;
-    border: 1px solid #F59E0B;
+    border: 2px solid #F59E0B;
+    border-radius: 8px;
+    padding: 15px;
+    margin: 20px 0;
+    text-align: center;
+}
+
+.camera-warning h4 {
+    color: #92400E;
+    margin-top: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.camera-warning h4::before {
+    content: "⚠️";
+}
+
+.camera-error-message {
+    background: #FEE2E2;
+    border: 2px solid #DC2626;
     border-radius: 8px;
     padding: 15px;
     margin: 15px 0;
@@ -448,7 +479,7 @@ button#submit-exam-btn:disabled { background: #FCA5A5; cursor: not-allowed; box-
 }
 
 .camera-error-message h4 {
-    color: #92400E;
+    color: #DC2626;
     margin-top: 0;
     display: flex;
     align-items: center;
@@ -456,17 +487,124 @@ button#submit-exam-btn:disabled { background: #FCA5A5; cursor: not-allowed; box-
 }
 
 .camera-error-message h4::before {
-    content: "⚠️";
+    content: "❌";
+}
+
+/* Camera troubleshooting tips */
+.troubleshooting-tips {
+    background: #EFF6FF;
+    border: 1px solid #60A5FA;
+    border-radius: 8px;
+    padding: 15px;
+    margin: 15px 0;
+    text-align: left;
+}
+
+.troubleshooting-tips h5 {
+    color: #1E40AF;
+    margin-top: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.troubleshooting-tips h5::before {
+    content: "💡";
+}
+
+/* Face Warning Modal */
+#face-detection-warning {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(220, 38, 38, 0.95);
+    color: white;
+    padding: 20px;
+    border-radius: 10px;
+    z-index: 1001;
+    text-align: center;
+    display: none;
+    max-width: 400px;
+    box-shadow: 0 8px 32px rgba(220, 38, 38, 0.3);
+}
+
+/* Blocked screen when camera is mandatory */
+.blocked-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: white;
+    z-index: 3000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 20px;
+}
+
+.blocked-content {
+    max-width: 500px;
+    padding: 30px;
+}
+
+.blocked-icon {
+    font-size: 5rem;
+    margin-bottom: 20px;
+    color: #DC2626;
 }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
+<!-- Blocked Screen (shown when camera access is mandatory but not available) -->
+<div id="blocked-screen" class="blocked-screen" style="display: none;">
+    <div class="blocked-content">
+        <div class="blocked-icon">🚫</div>
+        <h2 style="color: #DC2626;">Camera Access Required</h2>
+        <p>This exam <strong>requires mandatory camera access</strong> for security and integrity purposes.</p>
+        <div class="camera-error-message">
+            <h4>Camera Not Available</h4>
+            <p>Your device does not have a working camera or camera access has been denied.</p>
+        </div>
+        <div class="troubleshooting-tips">
+            <h5>Troubleshooting Steps:</h5>
+            <ol>
+                <li>Connect a webcam to your device</li>
+                <li>Enable camera permissions in browser settings</li>
+                <li>Close other apps that might be using the camera</li>
+                <li>Refresh this page to try again</li>
+            </ol>
+        </div>
+        <p style="margin-top: 20px; color: #64748B;">
+            <small>Without camera access, you cannot proceed with this exam. Please contact your instructor for assistance.</small>
+        </p>
+        <button onclick="window.location.reload()" style="margin-top: 20px; padding: 12px 30px; background: #0A3D62; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
+            Refresh Page to Retry
+        </button>
+    </div>
+</div>
+
 <div class="page-wrapper">
     <div class="sidebar">
         <div id="timer">Loading timer...</div>
         <div class="status-title">Question Status</div>
         <div id="question-status-table"></div>
+        
+        <!-- Camera Preview Section in Sidebar -->
+        <div class="camera-section">
+            <div class="camera-title">Camera Monitor</div>
+            <div id="face-detection-overlay" style="display: none;">
+                <video id="face-video" autoplay muted playsinline></video>
+                <canvas id="face-canvas"></canvas>
+                <div id="face-status">Camera starting...</div>
+            </div>
+            <div id="camera-status-text" style="font-size: 0.85rem; color: #64748B; text-align: center;">
+                Camera monitoring active for exam security
+            </div>
+        </div>
     </div>
     
     <div class="exam-main">
@@ -509,12 +647,16 @@ button#submit-exam-btn:disabled { background: #FCA5A5; cursor: not-allowed; box-
     </div>
 </div>
 
-<!-- Camera Permission Modal -->
+<!-- Camera Permission Modal (MANDATORY - NO SKIP OPTION) -->
 <div id="camera-permission-modal" style="display: none;">
     <div class="camera-permission-content">
         <div class="camera-permission-icon">📹</div>
         <h3>Camera Access Required</h3>
-        <p>This exam requires camera access for security monitoring. The camera will:</p>
+        
+        <div class="camera-warning">
+            <h4>Mandatory Camera Access</h4>
+            <p><strong>This exam requires mandatory camera access.</strong> You cannot proceed without enabling your camera.</p>
+        </div>
         
         <div class="camera-list">
             <ul>
@@ -530,21 +672,27 @@ button#submit-exam-btn:disabled { background: #FCA5A5; cursor: not-allowed; box-
         <div id="camera-check-result"></div>
         
         <div style="margin-top: 30px;">
-            <button id="allow-camera-btn" style="background: #38A169; color: white; padding: 12px 30px; margin-right: 10px;">Allow Camera Access</button>
-            <button id="skip-camera-btn" style="background: #E5E7EB; color: #475569; padding: 12px 30px;">Continue Without Camera</button>
+            <button id="allow-camera-btn" style="background: #38A169; color: white; padding: 12px 30px; width: 200px; font-weight: 600;">
+                Allow Camera Access
+            </button>
+        </div>
+        
+        <div id="troubleshooting-section" style="display: none; margin-top: 20px;">
+            <div class="troubleshooting-tips">
+                <h5>Camera Not Working?</h5>
+                <ol>
+                    <li>Check if camera is connected</li>
+                    <li>Ensure no other app is using the camera</li>
+                    <li>Check browser permissions</li>
+                    <li>Try refreshing the page</li>
+                </ol>
+            </div>
         </div>
         
         <p style="margin-top: 20px; font-size: 0.9rem; color: #64748B;">
-            <small>Note: Skipping camera may be reported to your instructor.</small>
+            <small>Camera access is mandatory for this exam. If you cannot enable camera, please contact your instructor.</small>
         </p>
     </div>
-</div>
-
-<!-- Face Detection Overlay -->
-<div id="face-detection-overlay" style="display: none;">
-    <video id="face-video" autoplay muted playsinline></video>
-    <canvas id="face-canvas"></canvas>
-    <div id="face-status">Camera starting...</div>
 </div>
 
 <!-- Face Warning Modal -->
@@ -595,15 +743,18 @@ const cancelSubmitBtn = document.getElementById('cancel-submit-btn');
 const finalSubmitBtn = document.getElementById('submit-exam-btn');
 const modalMessage = document.getElementById('modal-message');
 const examTitle = document.getElementById('exam-title');
+const blockedScreen = document.getElementById('blocked-screen');
 
 // --- FACE DETECTION VARIABLES ---
 let faceDetectionEnabled = true;
 let faceDetectionInterval;
 let faceNotDetectedCount = 0;
-const MAX_FACE_NOT_DETECTED = 20; // Allow 40 seconds (20 checks × 2 seconds each)
+const MAX_FACE_NOT_DETECTED = 20;
 let faceWarningTimer = 10;
 let faceWarningInterval;
 let videoStream = null;
+let cameraPermissionAttempts = 0;
+const MAX_CAMERA_ATTEMPTS = 3;
 
 // --- BEFOREUNLOAD HANDLER FUNCTION ---
 function beforeUnloadHandler(e) {
@@ -613,7 +764,7 @@ function beforeUnloadHandler(e) {
 }
 
 // ============================================
-// CAMERA FUNCTIONS WITH COMPREHENSIVE ERROR HANDLING
+// MANDATORY CAMERA FUNCTIONS (NO SKIP OPTION)
 // ============================================
 
 async function initializeFaceDetection() {
@@ -625,12 +776,9 @@ async function checkCameraAvailability() {
     try {
         // Check if browser supports media devices
         if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
-            showCameraModalWithError('Your browser does not support camera access. Please use Chrome, Firefox, or Edge.');
+            showBlockedScreen('Your browser does not support camera access. Please use Chrome, Firefox, or Edge.');
             return;
         }
-        
-        // Check permissions first
-        const permissionStatus = await navigator.permissions.query({ name: 'camera' });
         
         // Enumerate devices to check for cameras
         const devices = await navigator.mediaDevices.enumerateDevices();
@@ -639,132 +787,79 @@ async function checkCameraAvailability() {
         console.log('Found video devices:', videoDevices);
         
         if (videoDevices.length === 0) {
-            // No camera found
-            showCameraModalWithError('No camera detected on your device. You can continue the exam without camera monitoring.');
+            // No camera found - BLOCK EXAM
+            showBlockedScreen('No camera detected on your device. Please connect a camera to proceed.');
         } else {
-            // Camera(s) found, show normal permission modal
-            showCameraPermissionModal();
+            // Camera(s) found, show mandatory permission modal
+            showMandatoryCameraPermissionModal();
         }
         
     } catch (error) {
         console.error('Error checking camera availability:', error);
-        // Show modal with generic message
-        showCameraPermissionModal();
+        showBlockedScreen('Error checking camera availability. Please refresh and try again.');
     }
 }
 
-function showCameraModalWithError(errorMessage) {
-    const modal = document.getElementById('camera-permission-modal');
-    const content = modal.querySelector('.camera-permission-content');
+function showBlockedScreen(errorMessage) {
+    // Hide everything and show blocked screen
+    document.querySelector('.page-wrapper').style.display = 'none';
+    blockedScreen.style.display = 'flex';
     
-    // Update modal content for error case
-    const icon = content.querySelector('.camera-permission-icon');
-    const title = content.querySelector('h3');
-    const message = content.querySelector('p');
-    
-    if (icon) icon.textContent = '📵';
-    if (title) title.textContent = 'Camera Unavailable';
-    if (message) message.textContent = errorMessage;
-    
-    // Update camera list
-    const cameraList = content.querySelector('.camera-list');
-    if (cameraList) {
-        cameraList.innerHTML = `
-            <div class="camera-error-message">
-                <h4>Camera Issue Detected</h4>
-                <p>${errorMessage}</p>
-                <p style="margin-top: 10px; font-size: 0.9rem;">
-                    <strong>You can still take the exam</strong>, but camera monitoring will be disabled.
-                    Your instructor will be notified.
-                </p>
-            </div>
-        `;
+    // Update blocked screen message
+    const errorMsg = blockedScreen.querySelector('.camera-error-message p');
+    if (errorMsg) {
+        errorMsg.textContent = errorMessage;
     }
-    
-    // Update button text
-    const allowBtn = document.getElementById('allow-camera-btn');
-    const skipBtn = document.getElementById('skip-camera-btn');
-    
-    if (allowBtn) allowBtn.textContent = 'Continue Without Camera';
-    if (skipBtn) skipBtn.textContent = 'Continue Exam';
-    
-    modal.style.display = 'flex';
-    
-    // Setup button handlers for error case
-    allowBtn.onclick = () => {
-        modal.style.display = 'none';
-        faceDetectionEnabled = false;
-        document.getElementById('face-detection-overlay').style.display = 'none';
-        console.log('Continuing without camera due to error');
-    };
-    
-    skipBtn.onclick = () => {
-        modal.style.display = 'none';
-        faceDetectionEnabled = false;
-        document.getElementById('face-detection-overlay').style.display = 'none';
-        console.log('Continuing without camera (user choice)');
-    };
 }
 
-function showCameraPermissionModal() {
+function showMandatoryCameraPermissionModal() {
     const modal = document.getElementById('camera-permission-modal');
+    const troubleshootingSection = modal.querySelector('#troubleshooting-section');
     
-    // Reset modal content to default
-    const content = modal.querySelector('.camera-permission-content');
-    const icon = content.querySelector('.camera-permission-icon');
-    const title = content.querySelector('h3');
-    const message = content.querySelector('p');
+    // Hide troubleshooting initially
+    troubleshootingSection.style.display = 'none';
+    
+    // Reset modal content
+    const icon = modal.querySelector('.camera-permission-icon');
+    const title = modal.querySelector('h3');
     
     if (icon) icon.textContent = '📹';
     if (title) title.textContent = 'Camera Access Required';
-    if (message) message.textContent = 'This exam requires camera access for security monitoring. The camera will:';
     
-    // Reset camera list
-    const cameraList = content.querySelector('.camera-list');
-    if (cameraList) {
-        cameraList.innerHTML = `
-            <ul>
-                <li>Ensure only you are taking the exam</li>
-                <li>Detect if you look away from the screen</li>
-                <li>Monitor for any suspicious activity</li>
-                <li>Help maintain exam integrity</li>
-            </ul>
-        `;
-    }
-    
-    // Reset button text
+    // Update button text based on attempts
     const allowBtn = document.getElementById('allow-camera-btn');
-    const skipBtn = document.getElementById('skip-camera-btn');
-    
-    if (allowBtn) allowBtn.textContent = 'Allow Camera Access';
-    if (skipBtn) skipBtn.textContent = 'Continue Without Camera';
+    if (allowBtn) {
+        if (cameraPermissionAttempts > 0) {
+            allowBtn.textContent = `Try Again (Attempt ${cameraPermissionAttempts + 1}/${MAX_CAMERA_ATTEMPTS})`;
+            allowBtn.style.background = '#F59E0B';
+            troubleshootingSection.style.display = 'block';
+        } else {
+            allowBtn.textContent = 'Allow Camera Access';
+            allowBtn.style.background = '#38A169';
+        }
+    }
     
     modal.style.display = 'flex';
     
-    // Setup button handlers
+    // Setup button handler - MANDATORY, NO SKIP
     allowBtn.onclick = async () => {
-        modal.style.display = 'none';
-        await startCameraWithDetection();
-    };
-    
-    skipBtn.onclick = () => {
-        modal.style.display = 'none';
-        faceDetectionEnabled = false;
-        document.getElementById('face-detection-overlay').style.display = 'none';
-        console.log('Camera access skipped by user');
+        cameraPermissionAttempts++;
+        await startMandatoryCameraWithDetection();
     };
 }
 
-async function startCameraWithDetection() {
+async function startMandatoryCameraWithDetection() {
     const video = document.getElementById('face-video');
     const overlay = document.getElementById('face-detection-overlay');
     const status = document.getElementById('face-status');
+    const modal = document.getElementById('camera-permission-modal');
     
     try {
-        // Show the overlay
+        // Show the overlay in sidebar
         overlay.style.display = 'block';
         status.textContent = 'Accessing camera...';
         overlay.classList.remove('face-status-good', 'face-status-warning', 'face-status-danger');
+        updateCameraStatusText('Starting camera...');
         
         // Try multiple constraint strategies
         const constraintsStrategies = [
@@ -843,28 +938,71 @@ async function startCameraWithDetection() {
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         
-        status.textContent = 'Camera active ✓';
+        status.textContent = 'Monitoring ✓';
         overlay.classList.add('face-status-good');
+        updateCameraStatusText('Camera monitoring active');
+        
+        // Hide the permission modal
+        modal.style.display = 'none';
         
         // Start presence monitoring
         startCameraMonitoring();
         
         console.log('✅ Camera started successfully');
+        cameraPermissionAttempts = 0; // Reset attempts on success
         
     } catch (error) {
         console.error('❌ Camera setup error:', error);
-        handleCameraError(error, status, overlay);
+        
+        if (cameraPermissionAttempts >= MAX_CAMERA_ATTEMPTS) {
+            // Max attempts reached - BLOCK EXAM
+            handleMandatoryCameraFailure(error);
+        } else {
+            // Show error in modal and let user try again
+            handleMandatoryCameraError(error, status, overlay);
+        }
     }
 }
 
-function handleCameraError(error, statusElement, overlayElement) {
-    let userMessage = 'Camera error - Exam continues';
-    let statusClass = 'face-status-warning';
+function handleMandatoryCameraFailure(error) {
+    let errorMessage = 'Camera setup failed after multiple attempts. ';
     
     switch (error.name) {
         case 'NotFoundError':
         case 'DevicesNotFoundError':
-            userMessage = 'No camera found on device';
+            errorMessage += 'No camera detected on your device.';
+            break;
+            
+        case 'NotAllowedError':
+        case 'PermissionDeniedError':
+            errorMessage += 'Camera permission was denied. Please enable camera access in browser settings.';
+            break;
+            
+        case 'NotReadableError':
+        case 'TrackStartError':
+            errorMessage += 'Camera is in use by another application.';
+            break;
+            
+        case 'OverconstrainedError':
+            errorMessage += 'Camera constraints cannot be met.';
+            break;
+            
+        default:
+            errorMessage += 'Unknown camera error.';
+    }
+    
+    // Show blocked screen
+    showBlockedScreen(errorMessage);
+}
+
+function handleMandatoryCameraError(error, statusElement, overlayElement) {
+    let userMessage = 'Camera error';
+    let statusClass = 'face-status-danger';
+    
+    switch (error.name) {
+        case 'NotFoundError':
+        case 'DevicesNotFoundError':
+            userMessage = 'No camera found';
             break;
             
         case 'NotAllowedError':
@@ -878,29 +1016,33 @@ function handleCameraError(error, statusElement, overlayElement) {
             break;
             
         case 'OverconstrainedError':
-            userMessage = 'Camera constraints cannot be met';
-            break;
-            
-        case 'AbortError':
-            userMessage = 'Camera access aborted';
+            userMessage = 'Camera setup failed';
             break;
             
         default:
-            if (error.message.includes('timeout')) {
-                userMessage = 'Camera timeout - Check connection';
-            }
+            userMessage = 'Camera error';
     }
     
     statusElement.textContent = userMessage;
     overlayElement.classList.add(statusClass);
-    faceDetectionEnabled = false;
+    updateCameraStatusText('Camera error - Please try again');
     
-    // Hide overlay after 5 seconds
-    setTimeout(() => {
-        if (!faceDetectionEnabled) {
-            overlayElement.style.display = 'none';
+    // Show the modal again with updated info
+    showMandatoryCameraPermissionModal();
+}
+
+function updateCameraStatusText(text) {
+    const statusText = document.getElementById('camera-status-text');
+    if (statusText) {
+        statusText.textContent = text;
+        if (text.includes('error') || text.includes('disabled')) {
+            statusText.style.color = '#DC2626';
+        } else if (text.includes('active')) {
+            statusText.style.color = '#16A34A';
+        } else {
+            statusText.style.color = '#64748B';
         }
-    }, 5000);
+    }
 }
 
 function startCameraMonitoring() {
@@ -936,7 +1078,7 @@ function startCameraMonitoring() {
             if (hasMotion) {
                 // Motion detected - user is present
                 noMotionCount = 0;
-                status.textContent = 'Monitoring... ✓';
+                status.textContent = 'Monitoring ✓';
                 overlay.className = 'face-status-good';
                 hideFaceWarning();
                 
@@ -980,17 +1122,17 @@ function startCameraMonitoring() {
             isActive = false;
             clearInterval(faceDetectionInterval);
         }
-    }, 2000); // Check every 2 seconds
+    }, 2000);
 }
 
 function detectMotion(currentFrame, previousFrame) {
     if (!previousFrame) return true; // First frame, assume presence
     
     let changedPixels = 0;
-    const totalPixels = currentFrame.data.length / 4; // Each pixel has 4 values (RGBA)
-    const sampleRate = 4; // Check every 4th pixel for performance
+    const totalPixels = currentFrame.data.length / 4;
+    const sampleRate = 4;
     
-    for (let i = 0; i < currentFrame.data.length; i += 16) { // 4 pixels * 4 values
+    for (let i = 0; i < currentFrame.data.length; i += 16) {
         const r1 = currentFrame.data[i];
         const g1 = currentFrame.data[i + 1];
         const b1 = currentFrame.data[i + 2];
@@ -1002,14 +1144,14 @@ function detectMotion(currentFrame, previousFrame) {
         // Calculate color difference
         const diff = Math.abs(r1 - r2) + Math.abs(g1 - g2) + Math.abs(b1 - b2);
         
-        if (diff > 30) { // Threshold for significant change
+        if (diff > 30) {
             changedPixels++;
         }
     }
     
     // If enough pixels changed, assume motion
     const changedRatio = (changedPixels * sampleRate) / totalPixels;
-    return changedRatio > 0.02; // At least 2% of pixels changed
+    return changedRatio > 0.02;
 }
 
 function showFaceWarning(message) {
@@ -1099,29 +1241,15 @@ function terminateExam(reason) {
 }
 
 // ============================================
-// CORE EXAM FUNCTIONS (UNCHANGED)
+// CORE EXAM FUNCTIONS
 // ============================================
 
-// --- NAVIGATION FUNCTIONS ---
-function nextQuestion() {
-    if (currentIndex < questions.length - 1) {
-        renderQuestion(currentIndex + 1);
-    }
-}
-
-function prevQuestion() {
-    if (currentIndex > 0) {
-        renderQuestion(currentIndex - 1);
-    }
-}
-
-// --- CORE FUNCTIONS ---
 async function initExam() {
     try {
-        // Initialize face detection (will handle all camera scenarios)
+        // Initialize mandatory face detection
         await initializeFaceDetection();
         
-        // Load exam data
+        // Load exam data (this will only proceed if camera is working)
         const { data: examData, error: examError } = await sb.from('exams')
             .select('exam_name, exam_type, duration_minutes')
             .eq('id', EXAM_ID)
@@ -1252,7 +1380,6 @@ function renderQuestion(index = currentIndex) {
     }, 100);
 }
 
-// --- STATUS TABLE FUNCTIONS ---
 function renderQuestionStatusTable() {
     const tableEl = document.getElementById('question-status-table');
     tableEl.innerHTML = '';
@@ -1301,7 +1428,6 @@ function updateProgressUI() {
     document.getElementById('next-btn').disabled = (currentIndex === questions.length - 1);
 }
 
-// --- ANSWER SAVING ---
 async function saveAnswer(selectedAnswerValue) {
     const q = questions[currentIndex];
     const answer = selectedAnswerValue;
@@ -1343,7 +1469,6 @@ function submitExam() {
     submissionModal.style.display = 'flex';
 }
 
-// --- SAVE ALL QUESTIONS TO DATABASE ---
 async function saveAllQuestions() {
     try {
         console.log('=== SAVING ALL QUESTIONS FOR FINAL SUBMISSION ===');
@@ -1412,7 +1537,6 @@ async function saveAllQuestions() {
     }
 }
 
-// Verify that all questions were saved
 async function verifyQuestionSubmission() {
     try {
         const { data: savedQuestions, error } = await sb.from('exam_grades')
@@ -1439,7 +1563,6 @@ async function verifyQuestionSubmission() {
     }
 }
 
-// --- MAIN SUBMISSION FUNCTION ---
 async function executeSubmission() {
     // Stop face detection
     if (faceDetectionInterval) {
@@ -1497,7 +1620,6 @@ async function executeSubmission() {
     }, 1000);
 }
 
-// --- FINAL GRADE CALCULATION ---
 async function calculateAndSaveFinalGrade() {
     try {
         console.log('=== CALCULATING FINAL GRADE ===');
@@ -1643,7 +1765,6 @@ async function calculateAndSaveFinalGrade() {
     }
 }
 
-// --- SUCCESS SCREEN ---
 function showSuccessScreen(status) {
     clearInterval(timerInterval);
     
@@ -1710,7 +1831,6 @@ function redirectToDashboard() {
     window.location.href = `${REDIRECT_URL}?exam_completed=${EXAM_ID}&type=${examType}`;
 }
 
-// --- TIMER AND LOCKDOWN ---
 function startTimer(seconds) {
     const timerEl = document.getElementById('timer');
     function updateTimer() {
