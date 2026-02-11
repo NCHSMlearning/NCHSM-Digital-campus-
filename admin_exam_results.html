@@ -1395,34 +1395,39 @@
                     return;
                 }
 
-                let html = '';
-                pageResults.forEach(exam => {
-                    const status = exam.studentsAssigned > 0 ? 'status-completed' : 'status-pending';
-                    const statusText = exam.studentsAssigned > 0 ? 'Active' : 'Draft';
-                    
-                    html += `
-                        <tr>
-                            <td><small>${exam.id.substring(0, 8)}...</small></td>
-                            <td><strong>${exam.exam_name || 'N/A'}</strong></td>
-                            <td>${exam.exam_type || 'N/A'}</td>
-                            <td>${exam.course || 'N/A'}</td>
-                            <td>${exam.program || 'N/A'}</td>
-                            <td>${exam.duration_minutes || 0} min</td>
-                            <td><strong>${exam.questionsCount || 0}</strong> questions</td>
-                            <td><strong>${exam.studentsAssigned || 0}</strong> students</td>
-                            <td><span class="${status}">${statusText}</span></td>
-                            <td class="action-buttons-cell">
-                                <button class="action-btn btn-view" onclick="viewExamDetails('${exam.id}')">
-                                    👁️ View
-                                </button>
-                                <button class="action-btn btn-assign" onclick="assignStudentsToExam('${exam.id}')">
-                                    👥 Assign Students
-                                </button>
-                            </td>
-                        </tr>
-                    `;
-                });
-
+               let html = '';
+pageResults.forEach(exam => {
+    const status = exam.studentsAssigned > 0 ? 'status-completed' : 'status-pending';
+    const statusText = exam.studentsAssigned > 0 ? 'Active' : 'Draft';
+    
+    // FIXED: Handle both string and number IDs
+    let examIdDisplay = exam.id;
+    if (exam.id && typeof exam.id === 'string') {
+        examIdDisplay = exam.id.substring(0, 8) + '...';
+    }
+    
+    html += `
+        <tr>
+            <td><small>${examIdDisplay}</small></td>
+            <td><strong>${exam.exam_name || 'N/A'}</strong></td>
+            <td>${exam.exam_type || 'N/A'}</td>
+            <td>${exam.course || 'N/A'}</td>
+            <td>${exam.program || 'N/A'}</td>
+            <td>${exam.duration_minutes || 0} min</td>
+            <td><strong>${exam.questionsCount || 0}</strong> questions</td>
+            <td><strong>${exam.studentsAssigned || 0}</strong> students</td>
+            <td><span class="${status}">${statusText}</span></td>
+            <td class="action-buttons-cell">
+                <button class="action-btn btn-view" onclick="viewExamDetails('${exam.id}')">
+                    👁️ View
+                </button>
+                <button class="action-btn btn-assign" onclick="assignStudentsToExam('${exam.id}')">
+                    👥 Assign Students
+                </button>
+            </td>
+        </tr>
+    `;
+});
                 tbody.innerHTML = html;
                 renderPagination('exams', allExams.length);
             }
