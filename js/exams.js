@@ -715,108 +715,132 @@
         }
         
         displayCurrentTable() {
-            if (!this.currentTable) return;
-            
-            if (this.currentExams.length === 0) {
-                this.currentTable.innerHTML = '';
-                return;
-            }
-            
-            const html = this.currentExams.map(exam => {
-                let buttonText = 'Start Exam';
-                let buttonClass = 'btn-primary';
-                let buttonIcon = 'fas fa-external-link-alt';
-                
-                if (!exam.hasValidLink) {
-                    buttonText = 'No Link';
-                    buttonClass = 'btn-disabled';
-                    buttonIcon = 'fas fa-unlink';
-                }
-                
-                return `
-                <tr>
-                    <td>
-                        <strong>${this.escapeHtml(exam.exam_name || 'N/A')}</strong>
-                        <div class="program-indicator ${exam.programBadgeClass}">
-                            <i class="fas ${exam.programIcon}"></i> ${this.escapeHtml(exam.programDisplay)}
-                        </div>
-                    </td>
-                    <td><span class="badge ${exam.exam_type?.includes('CAT') ? 'badge-cat' : 'badge-final'}">
-                        ${exam.exam_type?.includes('CAT') ? 'CAT' : 'Exam'}
-                    </span></td>
-                    <td>${this.escapeHtml(exam.course_name || 'General')}</td>
-                    <td class="text-center">${exam.block_term || 'General'}</td>
-                    <td>${exam.formattedExamDate}</td>
-                    <td><span class="status-badge pending">Pending</span></td>
-                    <td class="text-center">--</td>
-                    <td class="text-center">--</td>
-                    <td class="text-center">--</td>
-                    <td class="text-center">--</td>
-                    <td class="text-center">
-                        ${exam.hasValidLink ? 
-                            `<a href="${exam.exam_link}" 
-                                target="_blank" 
-                                class="exam-link-btn ${buttonClass}"
-                                data-exam-id="${exam.id}"
-                                data-exam-name="${this.escapeHtml(exam.exam_name || '')}">
-                                <i class="${buttonIcon}"></i> ${buttonText}
-                            </a>` :
-                            `<span class="exam-link-btn ${buttonClass}" title="Exam link not available">
-                                <i class="${buttonIcon}"></i> ${buttonText}
-                            </span>`
-                        }
-                    </td>
-                </tr>`;
-            }).join('');
-            
-            this.currentTable.innerHTML = html;
+    if (!this.currentTable) return;
+    
+    if (this.currentExams.length === 0) {
+        this.currentTable.innerHTML = '';
+        return;
+    }
+    
+    const html = this.currentExams.map(exam => {
+        const isCatExam = exam.exam_type?.includes('CAT') || exam.exam_type === 'CAT';
+        
+        let buttonText = 'Start Exam';
+        let buttonClass = 'btn-primary';
+        let buttonIcon = 'fas fa-external-link-alt';
+        
+        if (!exam.hasValidLink) {
+            buttonText = 'No Link';
+            buttonClass = 'btn-disabled';
+            buttonIcon = 'fas fa-unlink';
         }
         
-        displayCompletedTable() {
-            if (!this.completedTable) return;
-            
-            if (this.completedExams.length === 0) {
-                this.completedTable.innerHTML = '';
-                return;
-            }
-            
-            const html = this.completedExams.map(exam => {
-                return `
-                <tr>
-                    <td>
-                        <strong>${this.escapeHtml(exam.exam_name || 'N/A')}</strong>
-                        <div class="program-indicator ${exam.programBadgeClass}">
-                            <i class="fas ${exam.programIcon}"></i> ${this.escapeHtml(exam.programDisplay)}
-                        </div>
-                    </td>
-                    <td><span class="badge ${exam.exam_type?.includes('CAT') ? 'badge-cat' : 'badge-final'}">
-                        ${exam.exam_type?.includes('CAT') ? 'CAT' : 'Exam'}
-                    </span></td>
-                    <td>${this.escapeHtml(exam.course_name || 'General')}</td>
-                    <td class="text-center">${exam.block_term || 'General'}</td>
-                    <td>${exam.formattedGradedDate}</td>
-                    <td><span class="status-badge ${exam.gradeClass}">${exam.gradeText}</span></td>
-                    <td class="text-center">${exam.cat1Display}</td>
-                    <td class="text-center">${exam.cat2Display}</td>
-                    <td class="text-center">${exam.finalDisplay}</td>
-                    <td class="text-center"><strong>${exam.totalPercentage ? exam.totalPercentage.toFixed(1) + '%' : '--'}</strong></td>
-                    <td class="text-center">
-                        ${exam.hasValidRetakeLink ? 
-                            `<a href="${exam.retake_link}" 
-                                target="_blank" 
-                                class="exam-link-btn btn-secondary"
-                                data-exam-id="${exam.id}"
-                                data-exam-name="${this.escapeHtml(exam.exam_name || '')}">
-                                <i class="fas fa-redo"></i> Retake
-                            </a>` :
-                            `<span class="grade-badge ${exam.gradeClass}">${exam.gradeText}</span>`
-                        }
-                    </td>
-                </tr>`;
-            }).join('');
-            
-            this.completedTable.innerHTML = html;
+        // For CAT exams, show different column structure
+        const catColumns = isCatExam ? 
+            `<td class="text-center">--</td>` : // CAT column
+            `<td class="text-center">--</td>
+             <td class="text-center">--</td>
+             <td class="text-center">--</td>`;
+        
+        return `
+        <tr>
+            <td>
+                <strong>${this.escapeHtml(exam.exam_name || 'N/A')}</strong>
+                <div class="program-indicator ${exam.programBadgeClass}">
+                    <i class="fas ${exam.programIcon}"></i> ${this.escapeHtml(exam.programDisplay)}
+                </div>
+            </td>
+            <td><span class="badge ${isCatExam ? 'badge-cat' : 'badge-final'}">
+                ${isCatExam ? 'CAT' : 'Exam'}
+            </span></td>
+            <td>${this.escapeHtml(exam.course_name || 'General')}</td>
+            <td class="text-center">${exam.block_term || 'General'}</td>
+            <td>${exam.formattedExamDate}</td>
+            <td><span class="status-badge pending">Pending</span></td>
+            ${catColumns}
+            <td class="text-center">--</td>
+            <td class="text-center">
+                ${exam.hasValidLink ? 
+                    `<a href="${exam.exam_link}" 
+                        target="_blank" 
+                        class="exam-link-btn ${buttonClass}"
+                        data-exam-id="${exam.id}"
+                        data-exam-name="${this.escapeHtml(exam.exam_name || '')}">
+                        <i class="${buttonIcon}"></i> ${buttonText}
+                    </a>` :
+                    `<span class="exam-link-btn ${buttonClass}" title="Exam link not available">
+                        <i class="${buttonIcon}"></i> ${buttonText}
+                    </span>`
+                }
+            </td>
+        </tr>`;
+    }).join('');
+    
+    this.currentTable.innerHTML = html;
+}
+        
+       displayCompletedTable() {
+    if (!this.completedTable) return;
+    
+    if (this.completedExams.length === 0) {
+        this.completedTable.innerHTML = '';
+        return;
+    }
+    
+    const html = this.completedExams.map(exam => {
+        const isCatExam = exam.exam_type?.includes('CAT') || exam.exam_type === 'CAT';
+        
+        // For CAT exams, show different column structure
+        let catColumns;
+        let catDisplay;
+        
+        if (isCatExam) {
+            // CAT exam: Show only CAT score
+            catColumns = `<td class="text-center">${exam.cat1Display}</td>`;
+            catDisplay = '<td class="text-center">--</td><td class="text-center">--</td>';
+        } else {
+            // Final exam: Show all three columns
+            catColumns = `<td class="text-center">${exam.cat1Display}</td>
+                         <td class="text-center">${exam.cat2Display}</td>
+                         <td class="text-center">${exam.finalDisplay}</td>`;
+            catDisplay = '';
         }
+        
+        return `
+        <tr>
+            <td>
+                <strong>${this.escapeHtml(exam.exam_name || 'N/A')}</strong>
+                <div class="program-indicator ${exam.programBadgeClass}">
+                    <i class="fas ${exam.programIcon}"></i> ${this.escapeHtml(exam.programDisplay)}
+                </div>
+            </td>
+            <td><span class="badge ${isCatExam ? 'badge-cat' : 'badge-final'}">
+                ${isCatExam ? 'CAT' : 'Exam'}
+            </span></td>
+            <td>${this.escapeHtml(exam.course_name || 'General')}</td>
+            <td class="text-center">${exam.block_term || 'General'}</td>
+            <td>${exam.formattedGradedDate}</td>
+            <td><span class="status-badge ${exam.gradeClass}">${exam.gradeText}</span></td>
+            ${catColumns}
+            ${catDisplay}
+            <td class="text-center"><strong>${exam.totalPercentage ? exam.totalPercentage.toFixed(1) + '%' : '--'}</strong></td>
+            <td class="text-center">
+                ${exam.hasValidRetakeLink ? 
+                    `<a href="${exam.retake_link}" 
+                        target="_blank" 
+                        class="exam-link-btn btn-secondary"
+                        data-exam-id="${exam.id}"
+                        data-exam-name="${this.escapeHtml(exam.exam_name || '')}">
+                        <i class="fas fa-redo"></i> Retake
+                    </a>` :
+                    `<span class="grade-badge ${exam.gradeClass}">${exam.gradeText}</span>`
+                }
+            </td>
+        </tr>`;
+    }).join('');
+    
+    this.completedTable.innerHTML = html;
+}
         
         updateCounts() {
             if (this.currentCount) {
