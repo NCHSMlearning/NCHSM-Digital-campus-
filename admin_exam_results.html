@@ -764,30 +764,35 @@
     </div>
 
     <script>
-        // FIXED: Check if supabase is already declared before initializing
+        // ============================================
+        // FIXED: Supabase Initialization - NO REDECLARATION
+        // ============================================
         (function() {
-            // Check if we're in a development environment with hot reload
-            if (typeof window.__SUPABASE_INITIALIZED__ === 'undefined') {
-                
-                const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
-                const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
-                
-                // Create supabase client and attach to window object
-                window.supabase = window.supabase || window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-                
-                // Mark as initialized
-                window.__SUPABASE_INITIALIZED__ = true;
-                
-                console.log('✅ Supabase initialized successfully');
-            } else {
-                console.log('✅ Supabase already initialized, reusing existing instance');
+            // Check if already initialized
+            if (window.__SUPABASE_INITIALIZED__) {
+                console.log('✅ Supabase already initialized, skipping...');
+                return;
             }
+
+            // Supabase configuration
+            const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
+            const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
+            
+            // Create supabase client and attach to window
+            window.supabase = window.supabase || window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            
+            // Mark as initialized
+            window.__SUPABASE_INITIALIZED__ = true;
+            
+            console.log('✅ Supabase initialized successfully');
         })();
 
-        // Use the globally available supabase client
+        // Use the global supabase instance - THIS IS THE ONLY DECLARATION
         const supabase = window.supabase;
         
-        // Global variables
+        // ============================================
+        // Global Variables
+        // ============================================
         let currentTab = 'students';
         let studentsResults = [];
         let allStudents = [];
@@ -799,7 +804,9 @@
         };
         const itemsPerPage = 15;
 
+        // ============================================
         // Tab Switching Function
+        // ============================================
         function switchTab(tabName) {
             currentTab = tabName;
             
@@ -836,7 +843,9 @@
             updateStats();
         }
 
+        // ============================================
         // Admin Authentication
+        // ============================================
         function checkAdminAuth() {
             const adminSession = localStorage.getItem('adminSession');
             if (!adminSession) {
@@ -869,7 +878,9 @@
             }
         }
 
+        // ============================================
         // Update Filters based on Tab
+        // ============================================
         function updateFilters() {
             const filtersContainer = document.getElementById('filtersContainer');
             
@@ -979,7 +990,9 @@
             }
         }
 
+        // ============================================
         // Load Initial Data
+        // ============================================
         async function loadInitialData() {
             if (!checkAdminAuth()) return;
             
@@ -994,7 +1007,9 @@
             updateStats();
         }
 
-        // 1. LOAD STUDENTS WITH RESULTS - FIXED VERSION
+        // ============================================
+        // 1. LOAD STUDENTS WITH RESULTS
+        // ============================================
         async function loadStudentsWithResults() {
             const examId = document.getElementById('examFilter')?.value || '';
             const status = document.getElementById('statusFilter')?.value || '';
@@ -1006,7 +1021,7 @@
             document.getElementById('studentsTable').style.display = 'none';
 
             try {
-                // Get ALL exam results (not just overall grades with non-null status)
+                // Get ALL exam results
                 let query = supabase
                     .from('exam_grades')
                     .select('*')
@@ -1286,7 +1301,7 @@
                 let studentData = null;
                 let dataSource = 'Unknown';
                 
-                // Check consolidated_user_profiles_table by user_id first (for ROTICH333)
+                // Check consolidated_user_profiles_table by user_id first
                 const { data: profileByUserId } = await supabase
                     .from('consolidated_user_profiles_table')
                     .select('*')
@@ -1461,7 +1476,9 @@
             }
         }
 
+        // ============================================
         // 2. LOAD ALL REGISTERED STUDENTS
+        // ============================================
         async function loadAllStudents() {
             const program = document.getElementById('studentProgramFilter')?.value || '';
             const block = document.getElementById('studentBlockFilter')?.value || '';
@@ -1500,7 +1517,7 @@
                     const { count } = await supabase
                         .from('exam_grades')
                         .select('*', { count: 'exact', head: true })
-                        .eq('student_id', student.user_id)  // Use user_id for matching
+                        .eq('student_id', student.user_id)
                         .neq('question_id', '00000000-0000-0000-0000-000000000000');
                     
                     student.examsTaken = count || 0;
@@ -1567,7 +1584,9 @@
             renderPagination('allStudents', allStudents.length);
         }
 
+        // ============================================
         // 3. LOAD ALL EXAMS
+        // ============================================
         async function loadAllExams() {
             const examType = document.getElementById('examTypeFilter')?.value || '';
             const program = document.getElementById('examProgramFilter')?.value || '';
@@ -1697,7 +1716,7 @@
                     });
                 }
 
-                // Load programs - FIXED: Use consolidated_user_profiles_table
+                // Load programs
                 const { data: programs, error: programsError } = await supabase
                     .from('consolidated_user_profiles_table')
                     .select('program, department')
@@ -1736,7 +1755,7 @@
         }
 
         async function loadStudentFilterOptions() {
-            // Load programs - FIXED: Use consolidated_user_profiles_table
+            // Load programs
             const { data: programs } = await supabase
                 .from('consolidated_user_profiles_table')
                 .select('program, department')
@@ -1757,7 +1776,7 @@
                 });
             }
 
-            // Load blocks - FIXED: Use consolidated_user_profiles_table
+            // Load blocks
             const { data: blocks } = await supabase
                 .from('consolidated_user_profiles_table')
                 .select('block')
@@ -1777,7 +1796,7 @@
                 });
             }
 
-            // Load intake years - FIXED: Use intake_year instead of intake
+            // Load intake years
             const { data: intakes } = await supabase
                 .from('consolidated_user_profiles_table')
                 .select('intake_year')
@@ -1798,7 +1817,9 @@
             }
         }
 
+        // ============================================
         // Update Statistics
+        // ============================================
         function updateStats() {
             const totalStudents = allStudents.length;
             const totalExams = allExams.length;
@@ -1834,7 +1855,9 @@
             `;
         }
 
+        // ============================================
         // Pagination
+        // ============================================
         function renderPagination(type, totalItems) {
             const totalPages = Math.ceil(totalItems / itemsPerPage);
             const pagination = document.getElementById(type + 'Pagination');
@@ -1895,7 +1918,7 @@
                         exams!inner(exam_name, exam_type, course),
                         exam_questions!inner(question_text)
                     `)
-                    .eq('student_id', student.user_id)  // Use user_id for matching
+                    .eq('student_id', student.user_id)
                     .order('graded_at', { ascending: false });
 
                 let detailsHTML = `
@@ -2192,7 +2215,9 @@
             }
         }
 
+        // ============================================
         // RESET/ALLOW RETAKE
+        // ============================================
         async function resetStudentExam(studentId, examId) {
             if (!confirm('Are you sure you want to allow this student to retake the exam?\n\n⚠️ This will delete all their current exam data including scores.')) {
                 return;
@@ -2214,7 +2239,7 @@
                 if (currentTab === 'students') {
                     loadStudentsWithResults();
                 }
-                loadAllStudents(); // Refresh all students list too
+                loadAllStudents();
                 
             } catch (error) {
                 console.error('Error resetting exam:', error);
@@ -2222,9 +2247,11 @@
             }
         }
 
+        // ============================================
         // Assign Exam to Student
+        // ============================================
         async function assignExamToStudent(studentId = null) {
-            // Load students dropdown - FIXED: Use consolidated_user_profiles_table
+            // Load students dropdown
             const { data: students } = await supabase
                 .from('consolidated_user_profiles_table')
                 .select('id, full_name, email')
@@ -2333,23 +2360,26 @@
 
         function assignStudentsToExam(examId) {
             alert('Feature: Assign multiple students to exam.\n\nThis would open a modal to select multiple students from the list and assign them to this exam.');
-            // Implementation would be similar to assignExamToStudent but with multiple selection
         }
 
         function createNewExam() {
-            window.location.href = 'create_exam.html'; // You need to create this page
+            window.location.href = 'create_exam.html';
         }
 
         function editExam(examId) {
-            window.location.href = `edit_exam.html?id=${examId}`; // You need to create this page
+            window.location.href = `edit_exam.html?id=${examId}`;
         }
 
+        // ============================================
         // Close Modal
+        // ============================================
         function closeModal() {
             document.getElementById('studentModal').style.display = 'none';
         }
 
+        // ============================================
         // Filter Resets
+        // ============================================
         function resetFilters() {
             document.getElementById('examFilter').value = '';
             document.getElementById('programFilter').value = '';
@@ -2379,7 +2409,9 @@
             loadAllExams();
         }
 
+        // ============================================
         // Export Functions
+        // ============================================
         function exportToExcel(type) {
             let data = [];
             let filename = '';
@@ -2477,7 +2509,9 @@
             printWindow.print();
         }
 
+        // ============================================
         // Initialize
+        // ============================================
         window.addEventListener('DOMContentLoaded', function() {
             // Setup tab click listeners
             const tabButtons = document.querySelectorAll('.tab-btn');
