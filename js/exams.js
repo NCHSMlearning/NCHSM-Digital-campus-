@@ -554,119 +554,124 @@
             }
         }
         
-        processExamsData(exams, grades) {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
+       processExamsData(exams, grades) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    this.allExams = exams.map(exam => {
+        const grade = grades.find(g => String(g.exam_id) === String(exam.id));
+        
+        // Determine if exam is completed
+        let isCompleted = false;
+        let totalPercentage = null;
+        let gradeText = 'Pending Grade';
+        let gradeClass = 'pending';
+        let gradePoint = 0;
+        
+        // 🔥 FIXED: Use correct column names from your database
+        if (grade && (grade.total_score !== null || grade.score !== null)) {
+            isCompleted = true;
             
-            this.allExams = exams.map(exam => {
-                const grade = grades.find(g => String(g.exam_id) === String(exam.id));
+            // Use total_score if available, otherwise use score
+            totalPercentage = grade.total_score || grade.score || 0;
+            
+            // 🔥 UPDATED GRADING SCALE: Fail = 0-59%
+            if (totalPercentage >= 85) {
+                gradeText = 'Distinction';
+                gradeClass = 'distinction';
+                gradePoint = 5.0;
+            } else if (totalPercentage >= 75) {
+                gradeText = 'Credit';
+                gradeClass = 'credit';
+                gradePoint = 4.0;
+            } else if (totalPercentage >= 60) {
+                gradeText = 'Pass';
+                gradeClass = 'pass';
+                gradePoint = 3.0;
+            } else {
+                // 0-59% = Fail
+                gradeText = 'Fail';
+                gradeClass = 'fail';
+                gradePoint = 0.0;
+            }
+        } else if (exam.status === 'Completed' || exam.status === 'completed') {
+            isCompleted = true;
+        } else {
+            // Check if exam date is in past
+            const examDate = exam.exam_date ? new Date(exam.exam_date) : null;
+            if (examDate) {
+                const oneDayAgo = new Date(today);
+                oneDayAgo.setDate(oneDayAgo.getDate() - 1);
                 
-                // Determine if exam is completed
-                let isCompleted = false;
-                let totalPercentage = null;
-                let gradeText = 'Pending Grade';
-                let gradeClass = 'pending';
-                let gradePoint = 0;
-                
-                if (grade && grade.is_graded) {
+                if (examDate < oneDayAgo) {
                     isCompleted = true;
-                    totalPercentage = grade.total_percentage || 0;
-                    
-                    // 🔥 UPDATED GRADING SCALE: Fail = 0-59%
-                    if (totalPercentage >= 85) {
-                        gradeText = 'Distinction';
-                        gradeClass = 'distinction';
-                        gradePoint = 5.0;
-                    } else if (totalPercentage >= 75) {
-                        gradeText = 'Credit';
-                        gradeClass = 'credit';
-                        gradePoint = 4.0;
-                    } else if (totalPercentage >= 60) {
-                        gradeText = 'Pass';
-                        gradeClass = 'pass';
-                        gradePoint = 3.0;
-                    } else {
-                        // 0-59% = Fail
-                        gradeText = 'Fail';
-                        gradeClass = 'fail';
-                        gradePoint = 0.0;
-                    }
-                } else if (exam.status === 'Completed' || exam.status === 'completed') {
-                    isCompleted = true;
-                } else {
-                    // Check if exam date is in past
-                    const examDate = exam.exam_date ? new Date(exam.exam_date) : null;
-                    if (examDate) {
-                        const oneDayAgo = new Date(today);
-                        oneDayAgo.setDate(oneDayAgo.getDate() - 1);
-                        
-                        if (examDate < oneDayAgo) {
-                            isCompleted = true;
-                        }
-                    }
                 }
-                
-                // Check if exam has a valid link
-                const hasValidLink = exam.exam_link && 
-                                   exam.exam_link.trim() !== '' && 
-                                   exam.exam_link !== '#' &&
-                                   (exam.exam_link.startsWith('http://') || exam.exam_link.startsWith('https://'));
-                
-                // Check if retake has a valid link
-                const hasValidRetakeLink = exam.retake_link && 
-                                         exam.retake_link.trim() !== '' && 
-                                         exam.retake_link !== '#' &&
-                                         (exam.retake_link.startsWith('http://') || exam.retake_link.startsWith('https://'));
-                
-                // Determine program info
-                const isTVETExam = exam.program_type === 'TVET';
-                const programBadgeClass = isTVETExam ? 'badge-tvet' : 'badge-krchn';
-                const programIcon = isTVETExam ? 'fa-tools' : 'fa-graduation-cap';
-                const programDisplay = isTVETExam ? 'TVET Program' : 'KRCHN Program';
-                
-                // Add level info for TVET
-                let programDisplayWithLevel = programDisplay;
-                if (isTVETExam && this.isTVETStudent && this.programLevel !== 'OTHER') {
-                    programDisplayWithLevel += ` (${this.programLevel})`;
-                }
-                
-                return {
-                    ...exam,
-                    isCompleted,
-                    totalPercentage,
-                    gradeText,
-                    gradeClass,
-                    gradePoint,
-                    hasValidLink,
-                    hasValidRetakeLink,
-                    cat1Score: grade?.cat_1_score !== null && grade?.cat_1_score !== undefined ? 
-                        grade.cat_1_score : null,
-                    cat2Score: grade?.cat_2_score !== null && grade?.cat_2_score !== undefined ? 
-                        grade.cat_2_score : null,
-                    finalScore: grade?.exam_score !== null && grade?.exam_score !== undefined ? 
-                        grade.exam_score : null,
-                    cat1Display: grade?.cat_1_score !== null && grade?.cat_1_score !== undefined ? 
-                        `${grade.cat_1_score}%` : '--',
-                    cat2Display: grade?.cat_2_score !== null && grade?.cat_2_score !== undefined ? 
+            }
+        }
+        
+        // Check if exam has a valid link
+        const hasValidLink = exam.exam_link && 
+                           exam.exam_link.trim() !== '' && 
+                           exam.exam_link !== '#' &&
+                           (exam.exam_link.startsWith('http://') || exam.exam_link.startsWith('https://'));
+        
+        // Check if retake has a valid link
+        const hasValidRetakeLink = exam.retake_link && 
+                                 exam.retake_link.trim() !== '' && 
+                                 exam.retake_link !== '#' &&
+                                 (exam.retake_link.startsWith('http://') || exam.retake_link.startsWith('https://'));
+        
+        // Determine program info
+        const isTVETExam = exam.program_type === 'TVET';
+        const programBadgeClass = isTVETExam ? 'badge-tvet' : 'badge-krchn';
+        const programIcon = isTVETExam ? 'fa-tools' : 'fa-graduation-cap';
+        const programDisplay = isTVETExam ? 'TVET Program' : 'KRCHN Program';
+        
+        // Add level info for TVET
+        let programDisplayWithLevel = programDisplay;
+        if (isTVETExam && this.isTVETStudent && this.programLevel !== 'OTHER') {
+            programDisplayWithLevel += ` (${this.programLevel})`;
+        }
+        
+        return {
+            ...exam,
+            isCompleted,
+            totalPercentage,
+            gradeText,
+            gradeClass,
+            gradePoint,
+            hasValidLink,
+            hasValidRetakeLink,
+            // 🔥 FIXED: Use correct column names
+            cat1Score: grade?.cat_1_score ?? grade?.cat_score ?? null,
+            cat2Score: grade?.cat_2_score ?? null,
+            finalScore: grade?.exam_score ?? null,
+            cat1Display: (grade?.cat_1_score ?? grade?.cat_score) !== null && 
+                        (grade?.cat_1_score ?? grade?.cat_score) !== undefined ? 
+                        `${(grade?.cat_1_score ?? grade?.cat_score)}%` : '--',
+            cat2Display: grade?.cat_2_score !== null && grade?.cat_2_score !== undefined ? 
                         `${grade.cat_2_score}%` : '--',
-                    finalDisplay: grade?.exam_score !== null && grade?.exam_score !== undefined ? 
+            finalDisplay: grade?.exam_score !== null && grade?.exam_score !== undefined ? 
                         `${grade.exam_score}%` : '--',
-                    formattedExamDate: exam.exam_date ? 
-                        new Date(exam.exam_date).toLocaleDateString('en-US', { 
-                            year: 'numeric', month: 'short', day: 'numeric' 
-                        }) : '--',
-                    formattedGradedDate: grade?.graded_at ? 
-                        new Date(grade.graded_at).toLocaleDateString('en-US', { 
-                            year: 'numeric', month: 'short', day: 'numeric' 
-                        }) : '--',
-                    programBadgeClass,
-                    programIcon,
-                    programDisplay: programDisplayWithLevel,
-                    programType: exam.program_type,
-                    isTVETExam
-                };
-            });
-            
+            formattedExamDate: exam.exam_date ? 
+                new Date(exam.exam_date).toLocaleDateString('en-US', { 
+                    year: 'numeric', month: 'short', day: 'numeric' 
+                }) : '--',
+            formattedGradedDate: grade?.graded_at ? 
+                new Date(grade.graded_at).toLocaleDateString('en-US', { 
+                    year: 'numeric', month: 'short', day: 'numeric' 
+                }) : '--',
+            programBadgeClass,
+            programIcon,
+            programDisplay: programDisplayWithLevel,
+            programType: exam.program_type,
+            isTVETExam
+        };
+    });
+    
+    console.log('✅ Fixed grade processing complete');
+}
+        
             const tvetCount = this.allExams.filter(e => e.program_type === 'TVET').length;
             const krchnCount = this.allExams.filter(e => e.program_type === 'KRCHN').length;
             const completedCount = this.allExams.filter(e => e.isCompleted).length;
