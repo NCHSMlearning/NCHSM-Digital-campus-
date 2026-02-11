@@ -768,7 +768,7 @@ function beforeUnloadHandler(e) {
 // ============================================
 
 async function initializeFaceDetection() {
-    // First check camera availability
+    // Check camera availability
     await checkCameraAvailability();
 }
 
@@ -777,7 +777,7 @@ async function checkCameraAvailability() {
         // Check if browser supports media devices
         if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
             showBlockedScreen('Your browser does not support camera access. Please use Chrome, Firefox, or Edge.');
-            return;
+            return false;
         }
         
         // Enumerate devices to check for cameras
@@ -789,14 +789,17 @@ async function checkCameraAvailability() {
         if (videoDevices.length === 0) {
             // No camera found - BLOCK EXAM
             showBlockedScreen('No camera detected on your device. Please connect a camera to proceed.');
+            return false;
         } else {
             // Camera(s) found, show mandatory permission modal
             showMandatoryCameraPermissionModal();
+            return true;
         }
         
     } catch (error) {
         console.error('Error checking camera availability:', error);
         showBlockedScreen('Error checking camera availability. Please refresh and try again.');
+        return false;
     }
 }
 
@@ -917,7 +920,7 @@ async function startMandatoryCameraWithDetection() {
             const onLoaded = () => {
                 video.removeEventListener('loadedmetadata', onLoaded);
                 video.removeEventListener('error', onError);
-                video.play().then(resolve).catch(reject);
+                resolve();
             };
             
             const onError = (err) => {
@@ -950,6 +953,7 @@ async function startMandatoryCameraWithDetection() {
         
         console.log('✅ Camera started successfully');
         cameraPermissionAttempts = 0; // Reset attempts on success
+        return true;
         
     } catch (error) {
         console.error('❌ Camera setup error:', error);
@@ -961,6 +965,7 @@ async function startMandatoryCameraWithDetection() {
             // Show error in modal and let user try again
             handleMandatoryCameraError(error, status, overlay);
         }
+        return false;
     }
 }
 
@@ -1246,10 +1251,7 @@ function terminateExam(reason) {
 
 async function initExam() {
     try {
-        // Initialize mandatory face detection
-        await initializeFaceDetection();
-        
-        // Load exam data (this will only proceed if camera is working)
+        // Step 1: Load exam data FIRST (independent of camera)
         const { data: examData, error: examError } = await sb.from('exams')
             .select('exam_name, exam_type, duration_minutes')
             .eq('id', EXAM_ID)
@@ -1284,6 +1286,12 @@ async function initExam() {
         renderQuestion();
         startTimer(duration * 60);
         lockDown();
+        
+        // Step 2: Initialize camera AFTER exam is loaded
+        // This runs separately so exam loads even if camera has issues
+        setTimeout(async () => {
+            await initializeFaceDetection();
+        }, 1000);
         
     } catch (err) { 
         console.error('Init exam error:', err); 
@@ -1882,6 +1890,19 @@ function lockDown() {
             }, 1000);
         }
     });
+}
+
+// --- NAVIGATION FUNCTIONS ---
+function prevQuestion() {
+    if (currentIndex > 0) {
+        renderQuestion(currentIndex - 1);
+    }
+}
+
+function nextQuestion() {
+    if (currentIndex < questions.length - 1) {
+        renderQuestion(currentIndex + 1);
+    }
 }
 
 // --- EVENT LISTENERS ---
