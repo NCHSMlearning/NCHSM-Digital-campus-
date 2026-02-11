@@ -764,11 +764,28 @@
     </div>
 
     <script>
-        // Initialize Supabase FIRST
-        const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
-        
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        // FIXED: Check if supabase is already declared before initializing
+        (function() {
+            // Check if we're in a development environment with hot reload
+            if (typeof window.__SUPABASE_INITIALIZED__ === 'undefined') {
+                
+                const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
+                const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
+                
+                // Create supabase client and attach to window object
+                window.supabase = window.supabase || window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                
+                // Mark as initialized
+                window.__SUPABASE_INITIALIZED__ = true;
+                
+                console.log('✅ Supabase initialized successfully');
+            } else {
+                console.log('✅ Supabase already initialized, reusing existing instance');
+            }
+        })();
+
+        // Use the globally available supabase client
+        const supabase = window.supabase;
         
         // Global variables
         let currentTab = 'students';
@@ -977,295 +994,293 @@
             updateStats();
         }
 
-       // 1. LOAD STUDENTS WITH RESULTS - FIXED VERSION
-async function loadStudentsWithResults() {
-    const examId = document.getElementById('examFilter')?.value || '';
-    const status = document.getElementById('statusFilter')?.value || '';
-    const dateFrom = document.getElementById('dateFrom')?.value || '';
-    const dateTo = document.getElementById('dateTo')?.value || '';
-    const search = document.getElementById('searchInput')?.value || '';
+        // 1. LOAD STUDENTS WITH RESULTS - FIXED VERSION
+        async function loadStudentsWithResults() {
+            const examId = document.getElementById('examFilter')?.value || '';
+            const status = document.getElementById('statusFilter')?.value || '';
+            const dateFrom = document.getElementById('dateFrom')?.value || '';
+            const dateTo = document.getElementById('dateTo')?.value || '';
+            const search = document.getElementById('searchInput')?.value || '';
 
-    document.getElementById('studentsLoading').style.display = 'block';
-    document.getElementById('studentsTable').style.display = 'none';
+            document.getElementById('studentsLoading').style.display = 'block';
+            document.getElementById('studentsTable').style.display = 'none';
 
-    try {
-        // Get ALL exam results (not just overall grades with non-null status)
-        let query = supabase
-            .from('exam_grades')
-            .select('*')
-            .order('graded_at', { ascending: false });
+            try {
+                // Get ALL exam results (not just overall grades with non-null status)
+                let query = supabase
+                    .from('exam_grades')
+                    .select('*')
+                    .order('graded_at', { ascending: false });
 
-        // If we want to see overall grades only, but include ALL statuses (including null/Scheduled)
-        // .or('question_id.eq.00000000-0000-0000-0000-000000000000,marks.gt.0')
-
-        if (examId) query = query.eq('exam_id', examId);
-        
-        // Fix the status filter to handle multiple status types
-        if (status) {
-            if (status === 'PASS') {
-                query = query.eq('result_status', 'PASS');
-            } else if (status === 'FAIL') {
-                query = query.or('result_status.eq.FAIL,result_status.eq.Final');
-            } else if (status === 'SCHEDULED') {
-                query = query.or('result_status.eq.Scheduled,result_status.is.null');
-            }
-        }
-        
-        if (dateFrom) query = query.gte('graded_at', dateFrom);
-        if (dateTo) query = query.lte('graded_at', dateTo + ' 23:59:59');
-        if (search) {
-            query = query.or(`
-                student_id.ilike.%${search}%,
-                remarks.ilike.%${search}%
-            `);
-        }
-
-        const { data: allResults, error } = await query;
-        if (error) throw error;
-
-        console.log("📊 All exam grades found:", allResults);
-        
-        // Filter to get ONLY overall grades OR grades with actual marks
-        const completedResults = allResults.filter(result => {
-            // Include if it's an overall grade (special question_id)
-            if (result.question_id === '00000000-0000-0000-0000-000000000000') {
-                return true;
-            }
-            
-            // OR include if it has actual marks (> 0)
-            if (result.marks && result.marks > 0) {
-                return true;
-            }
-            
-            // OR include if it has a result status
-            if (result.result_status && result.result_status !== 'Scheduled') {
-                return true;
-            }
-            
-            return false;
-        });
-        
-        console.log("✅ Filtered results:", completedResults);
-        
-        if (completedResults.length === 0) {
-            studentsResults = [];
-            displayStudentsResults();
-            document.getElementById('studentsLoading').style.display = 'none';
-            document.getElementById('studentsTable').style.display = 'table';
-            return;
-        }
-
-        // Get exam details
-        const examIds = [...new Set(completedResults.map(r => r.exam_id).filter(id => id))];
-        const { data: exams } = await supabase
-            .from('exams')
-            .select('*')
-            .in('id', examIds);
-        
-        const examsMap = {};
-        if (exams) {
-            exams.forEach(exam => examsMap[exam.id] = exam);
-        }
-
-        // Get student data
-        const studentIds = [...new Set(completedResults.map(r => r.student_id).filter(id => id))];
-        let studentsMap = {};
-
-        // Method 1: Try matching by user_id
-        const { data: studentsByUserId, error: userIdError } = await supabase
-            .from('consolidated_user_profiles_table')
-            .select('*')
-            .in('user_id', studentIds);
-
-        if (!userIdError && studentsByUserId) {
-            studentsByUserId.forEach(student => {
-                studentsMap[student.user_id] = {
-                    ...student,
-                    source: 'user_id_match'
-                };
-            });
-        }
-
-        // Method 2: Try matching by student_uuid
-        if (Object.keys(studentsMap).length < studentIds.length) {
-            const { data: studentsByUuid, error: uuidError } = await supabase
-                .from('consolidated_user_profiles_table')
-                .select('*')
-                .in('student_uuid', studentIds);
-
-            if (!uuidError && studentsByUuid) {
-                studentsByUuid.forEach(student => {
-                    if (!studentsMap[student.user_id] && !studentsMap[student.student_uuid]) {
-                        studentsMap[student.student_uuid] = {
-                            ...student,
-                            source: 'student_uuid_match'
-                        };
-                    }
-                });
-            }
-        }
-
-        // Method 3: Try matching by id
-        if (Object.keys(studentsMap).length < studentIds.length) {
-            const { data: studentsById, error: idError } = await supabase
-                .from('consolidated_user_profiles_table')
-                .select('*')
-                .in('id', studentIds);
-
-            if (!idError && studentsById) {
-                studentsById.forEach(student => {
-                    if (!studentsMap[student.user_id] && !studentsMap[student.student_uuid] && !studentsMap[student.id]) {
-                        studentsMap[student.id] = {
-                            ...student,
-                            source: 'id_match'
-                        };
-                    }
-                });
-            }
-        }
-
-        console.log(`✅ Found student profiles: ${Object.keys(studentsMap).length}/${studentIds.length}`);
-
-        // Combine data
-        studentsResults = completedResults.map(result => {
-            const exam = examsMap[result.exam_id];
-            let studentProfile = null;
-            
-            // Try to find student in multiple ways
-            if (studentsMap[result.student_id]) {
-                studentProfile = studentsMap[result.student_id];
-            } else {
-                // Check all map keys for this student
-                for (const [key, student] of Object.entries(studentsMap)) {
-                    if (key === result.student_id || 
-                        student.user_id === result.student_id ||
-                        student.student_uuid === result.student_id ||
-                        student.id === result.student_id) {
-                        studentProfile = student;
-                        break;
+                if (examId) query = query.eq('exam_id', examId);
+                
+                // Fix the status filter to handle multiple status types
+                if (status) {
+                    if (status === 'PASS') {
+                        query = query.eq('result_status', 'PASS');
+                    } else if (status === 'FAIL') {
+                        query = query.or('result_status.eq.FAIL,result_status.eq.Final');
+                    } else if (status === 'SCHEDULED') {
+                        query = query.or('result_status.eq.Scheduled,result_status.is.null');
                     }
                 }
+                
+                if (dateFrom) query = query.gte('graded_at', dateFrom);
+                if (dateTo) query = query.lte('graded_at', dateTo + ' 23:59:59');
+                if (search) {
+                    query = query.or(`
+                        student_id.ilike.%${search}%,
+                        remarks.ilike.%${search}%
+                    `);
+                }
+
+                const { data: allResults, error } = await query;
+                if (error) throw error;
+
+                console.log("📊 All exam grades found:", allResults);
+                
+                // Filter to get ONLY overall grades OR grades with actual marks
+                const completedResults = allResults.filter(result => {
+                    // Include if it's an overall grade (special question_id)
+                    if (result.question_id === '00000000-0000-0000-0000-000000000000') {
+                        return true;
+                    }
+                    
+                    // OR include if it has actual marks (> 0)
+                    if (result.marks && result.marks > 0) {
+                        return true;
+                    }
+                    
+                    // OR include if it has a result status
+                    if (result.result_status && result.result_status !== 'Scheduled') {
+                        return true;
+                    }
+                    
+                    return false;
+                });
+                
+                console.log("✅ Filtered results:", completedResults);
+                
+                if (completedResults.length === 0) {
+                    studentsResults = [];
+                    displayStudentsResults();
+                    document.getElementById('studentsLoading').style.display = 'none';
+                    document.getElementById('studentsTable').style.display = 'table';
+                    return;
+                }
+
+                // Get exam details
+                const examIds = [...new Set(completedResults.map(r => r.exam_id).filter(id => id))];
+                const { data: exams } = await supabase
+                    .from('exams')
+                    .select('*')
+                    .in('id', examIds);
+                
+                const examsMap = {};
+                if (exams) {
+                    exams.forEach(exam => examsMap[exam.id] = exam);
+                }
+
+                // Get student data
+                const studentIds = [...new Set(completedResults.map(r => r.student_id).filter(id => id))];
+                let studentsMap = {};
+
+                // Method 1: Try matching by user_id
+                const { data: studentsByUserId, error: userIdError } = await supabase
+                    .from('consolidated_user_profiles_table')
+                    .select('*')
+                    .in('user_id', studentIds);
+
+                if (!userIdError && studentsByUserId) {
+                    studentsByUserId.forEach(student => {
+                        studentsMap[student.user_id] = {
+                            ...student,
+                            source: 'user_id_match'
+                        };
+                    });
+                }
+
+                // Method 2: Try matching by student_uuid
+                if (Object.keys(studentsMap).length < studentIds.length) {
+                    const { data: studentsByUuid, error: uuidError } = await supabase
+                        .from('consolidated_user_profiles_table')
+                        .select('*')
+                        .in('student_uuid', studentIds);
+
+                    if (!uuidError && studentsByUuid) {
+                        studentsByUuid.forEach(student => {
+                            if (!studentsMap[student.user_id] && !studentsMap[student.student_uuid]) {
+                                studentsMap[student.student_uuid] = {
+                                    ...student,
+                                    source: 'student_uuid_match'
+                                };
+                            }
+                        });
+                    }
+                }
+
+                // Method 3: Try matching by id
+                if (Object.keys(studentsMap).length < studentIds.length) {
+                    const { data: studentsById, error: idError } = await supabase
+                        .from('consolidated_user_profiles_table')
+                        .select('*')
+                        .in('id', studentIds);
+
+                    if (!idError && studentsById) {
+                        studentsById.forEach(student => {
+                            if (!studentsMap[student.user_id] && !studentsMap[student.student_uuid] && !studentsMap[student.id]) {
+                                studentsMap[student.id] = {
+                                    ...student,
+                                    source: 'id_match'
+                                };
+                            }
+                        });
+                    }
+                }
+
+                console.log(`✅ Found student profiles: ${Object.keys(studentsMap).length}/${studentIds.length}`);
+
+                // Combine data
+                studentsResults = completedResults.map(result => {
+                    const exam = examsMap[result.exam_id];
+                    let studentProfile = null;
+                    
+                    // Try to find student in multiple ways
+                    if (studentsMap[result.student_id]) {
+                        studentProfile = studentsMap[result.student_id];
+                    } else {
+                        // Check all map keys for this student
+                        for (const [key, student] of Object.entries(studentsMap)) {
+                            if (key === result.student_id || 
+                                student.user_id === result.student_id ||
+                                student.student_uuid === result.student_id ||
+                                student.id === result.student_id) {
+                                studentProfile = student;
+                                break;
+                            }
+                        }
+                    }
+
+                    // Calculate percentage and status
+                    const totalScore = parseFloat(result.total_score) || 0;
+                    const marks = result.marks || 0;
+                    let displayStatus = result.result_status || 'N/A';
+                    
+                    // Handle different status formats
+                    if (displayStatus === 'Final') {
+                        displayStatus = totalScore >= 60 ? 'PASS' : 'FAIL';
+                    } else if (!displayStatus || displayStatus === 'null' || displayStatus === 'Scheduled') {
+                        displayStatus = marks > 0 ? 'GRADED' : 'SCHEDULED';
+                    }
+                    
+                    return {
+                        ...result,
+                        exam: exam || null,
+                        student_profile: studentProfile || null,
+                        display_status: displayStatus,
+                        parsed_total_score: totalScore,
+                        parsed_marks: marks
+                    };
+                });
+
+                // Sort by: 1. Status (PASS/FAIL first), 2. Exam date
+                studentsResults.sort((a, b) => {
+                    if (a.display_status === 'PASS' && b.display_status !== 'PASS') return -1;
+                    if (a.display_status !== 'PASS' && b.display_status === 'PASS') return 1;
+                    if (a.display_status === 'FAIL' && b.display_status === 'SCHEDULED') return -1;
+                    if (b.display_status === 'FAIL' && a.display_status === 'SCHEDULED') return 1;
+                    return new Date(b.graded_at) - new Date(a.graded_at);
+                });
+
+                displayStudentsResults();
+                
+                document.getElementById('studentsLoading').style.display = 'none';
+                document.getElementById('studentsTable').style.display = 'table';
+                
+            } catch (error) {
+                console.error('Error loading student results:', error);
+                document.getElementById('studentsLoading').innerHTML = 
+                    `<div style="color: #DC2626;">❌ Error: ${error.message}</div>`;
             }
-
-            // Calculate percentage and status
-            const totalScore = parseFloat(result.total_score) || 0;
-            const marks = result.marks || 0;
-            let displayStatus = result.result_status || 'N/A';
-            
-            // Handle different status formats
-            if (displayStatus === 'Final') {
-                displayStatus = totalScore >= 60 ? 'PASS' : 'FAIL';
-            } else if (!displayStatus || displayStatus === 'null' || displayStatus === 'Scheduled') {
-                displayStatus = marks > 0 ? 'GRADED' : 'SCHEDULED';
-            }
-            
-            return {
-                ...result,
-                exam: exam || null,
-                student_profile: studentProfile || null,
-                display_status: displayStatus,
-                parsed_total_score: totalScore,
-                parsed_marks: marks
-            };
-        });
-
-        // Sort by: 1. Status (PASS/FAIL first), 2. Exam date
-        studentsResults.sort((a, b) => {
-            if (a.display_status === 'PASS' && b.display_status !== 'PASS') return -1;
-            if (a.display_status !== 'PASS' && b.display_status === 'PASS') return 1;
-            if (a.display_status === 'FAIL' && b.display_status === 'SCHEDULED') return -1;
-            if (b.display_status === 'FAIL' && a.display_status === 'SCHEDULED') return 1;
-            return new Date(b.graded_at) - new Date(a.graded_at);
-        });
-
-        displayStudentsResults();
-        
-        document.getElementById('studentsLoading').style.display = 'none';
-        document.getElementById('studentsTable').style.display = 'table';
-        
-    } catch (error) {
-        console.error('Error loading student results:', error);
-        document.getElementById('studentsLoading').innerHTML = 
-            `<div style="color: #DC2626;">❌ Error: ${error.message}</div>`;
-    }
-}
-
-       function displayStudentsResults() {
-    const startIndex = (currentPage.students - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    const pageResults = studentsResults.slice(startIndex, endIndex);
-    const tbody = document.getElementById('studentsBody');
-
-    if (pageResults.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="11" style="text-align: center; padding: 40px; color: #64748B;">
-                    No student results found. Try changing your filters.
-                </td>
-            </tr>
-        `;
-        document.getElementById('studentsPagination').innerHTML = '';
-        return;
-    }
-
-    let html = '';
-    pageResults.forEach(result => {
-        const student = result.student_profile;
-        const exam = result.exam;
-        const percentage = result.total_score || result.score || 0;
-        const marks = result.marks || 0;
-        
-        // Determine status class
-        let statusClass = 'status-pending';
-        let displayStatus = result.display_status || 'N/A';
-        
-        if (displayStatus === 'PASS' || displayStatus === 'GRADED') {
-            statusClass = 'status-pass';
-            displayStatus = displayStatus === 'GRADED' ? 'GRADED' : 'PASS';
-        } else if (displayStatus === 'FAIL' || displayStatus === 'Final') {
-            statusClass = 'status-fail';
-            displayStatus = 'FAIL';
-        } else if (displayStatus === 'SCHEDULED') {
-            statusClass = 'status-not-started';
         }
-        
-        const studentId = result.student_id || '';
-        const shortId = studentId.substring(0, 8) + (studentId.length > 8 ? '...' : '');
-        
-        // Determine if this is an actual attempt or just assignment
-        const hasAttempted = marks > 0 || displayStatus === 'PASS' || displayStatus === 'FAIL' || displayStatus === 'GRADED';
-        const scoreDisplay = hasAttempted ? marks : 'N/A';
-        const percentageDisplay = hasAttempted && percentage > 0 ? `${percentage.toFixed(2)}%` : 'N/A';
-        
-        html += `
-            <tr>
-                <td><strong>${student?.full_name || shortId}</strong></td>
-                <td>${student?.email || studentId || 'N/A'}</td>
-                <td>${student?.program || student?.department || exam?.program || 'N/A'}</td>
-                <td>${student?.block || exam?.block || 'N/A'}</td>
-                <td>${exam?.exam_name || 'N/A'}</td>
-                <td>${exam?.exam_type || 'N/A'}</td>
-                <td><strong>${scoreDisplay}</strong></td>
-                <td><strong>${percentageDisplay}</strong></td>
-                <td><span class="${statusClass}">${displayStatus}</span></td>
-                <td>${result.graded_at ? new Date(result.graded_at).toLocaleDateString() : 'N/A'}</td>
-                <td class="action-buttons-cell">
-                    <button class="action-btn btn-view" onclick="viewExamResult('${studentId}', '${result.exam_id}')">
-                        👁️ View
-                    </button>
-                    ${hasAttempted ? `
-                    <button class="action-btn btn-reset" onclick="resetStudentExam('${studentId}', '${result.exam_id}')">
-                        🔄 Retake
-                    </button>
-                    ` : ''}
-                </td>
-            </tr>
-        `;
-    });
 
-    tbody.innerHTML = html;
-    renderPagination('students', studentsResults.length);
-}
+        function displayStudentsResults() {
+            const startIndex = (currentPage.students - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const pageResults = studentsResults.slice(startIndex, endIndex);
+            const tbody = document.getElementById('studentsBody');
+
+            if (pageResults.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="11" style="text-align: center; padding: 40px; color: #64748B;">
+                            No student results found. Try changing your filters.
+                        </td>
+                    </tr>
+                `;
+                document.getElementById('studentsPagination').innerHTML = '';
+                return;
+            }
+
+            let html = '';
+            pageResults.forEach(result => {
+                const student = result.student_profile;
+                const exam = result.exam;
+                const percentage = result.total_score || result.score || 0;
+                const marks = result.marks || 0;
+                
+                // Determine status class
+                let statusClass = 'status-pending';
+                let displayStatus = result.display_status || 'N/A';
+                
+                if (displayStatus === 'PASS' || displayStatus === 'GRADED') {
+                    statusClass = 'status-pass';
+                    displayStatus = displayStatus === 'GRADED' ? 'GRADED' : 'PASS';
+                } else if (displayStatus === 'FAIL' || displayStatus === 'Final') {
+                    statusClass = 'status-fail';
+                    displayStatus = 'FAIL';
+                } else if (displayStatus === 'SCHEDULED') {
+                    statusClass = 'status-not-started';
+                }
+                
+                const studentId = result.student_id || '';
+                const shortId = studentId.substring(0, 8) + (studentId.length > 8 ? '...' : '');
+                
+                // Determine if this is an actual attempt or just assignment
+                const hasAttempted = marks > 0 || displayStatus === 'PASS' || displayStatus === 'FAIL' || displayStatus === 'GRADED';
+                const scoreDisplay = hasAttempted ? marks : 'N/A';
+                const percentageDisplay = hasAttempted && percentage > 0 ? `${percentage.toFixed(2)}%` : 'N/A';
+                
+                html += `
+                    <tr>
+                        <td><strong>${student?.full_name || shortId}</strong></td>
+                        <td>${student?.email || studentId || 'N/A'}</td>
+                        <td>${student?.program || student?.department || exam?.program || 'N/A'}</td>
+                        <td>${student?.block || exam?.block || 'N/A'}</td>
+                        <td>${exam?.exam_name || 'N/A'}</td>
+                        <td>${exam?.exam_type || 'N/A'}</td>
+                        <td><strong>${scoreDisplay}</strong></td>
+                        <td><strong>${percentageDisplay}</strong></td>
+                        <td><span class="${statusClass}">${displayStatus}</span></td>
+                        <td>${result.graded_at ? new Date(result.graded_at).toLocaleDateString() : 'N/A'}</td>
+                        <td class="action-buttons-cell">
+                            <button class="action-btn btn-view" onclick="viewExamResult('${studentId}', '${result.exam_id}')">
+                                👁️ View
+                            </button>
+                            ${hasAttempted ? `
+                            <button class="action-btn btn-reset" onclick="resetStudentExam('${studentId}', '${result.exam_id}')">
+                                🔄 Retake
+                            </button>
+                            ` : ''}
+                        </td>
+                    </tr>
+                `;
+            });
+
+            tbody.innerHTML = html;
+            renderPagination('students', studentsResults.length);
+        }
+
         async function viewExamResult(studentId, examId) {
             try {
                 let studentData = null;
@@ -1465,7 +1480,7 @@ async function loadStudentsWithResults() {
                 // Apply filters
                 if (program) query = query.eq('program', program);
                 if (block) query = query.eq('block', block);
-                if (intake) query = query.eq('intake', intake);
+                if (intake) query = query.eq('intake_year', intake);
                 if (search) {
                     query = query.or(`
                         full_name.ilike.%${search}%,
@@ -1646,10 +1661,10 @@ async function loadStudentsWithResults() {
                         <td><strong>${exam.studentsAssigned || 0}</strong> students</td>
                         <td><span class="${status}">${statusText}</span></td>
                         <td class="action-buttons-cell">
-                            <button class="action-btn btn-view" onclick="viewExamDetails(${exam.id})">
+                            <button class="action-btn btn-view" onclick="viewExamDetails('${exam.id}')">
                                 👁️ View
                             </button>
-                            <button class="action-btn btn-assign" onclick="assignStudentsToExam(${exam.id})">
+                            <button class="action-btn btn-assign" onclick="assignStudentsToExam('${exam.id}')">
                                 👥 Assign Students
                             </button>
                         </td>
@@ -1937,10 +1952,10 @@ async function loadStudentsWithResults() {
                                 <p><strong>Questions Attempted:</strong> ${records.filter(r => r.question_id !== '00000000-0000-0000-0000-000000000000').length}</p>
                                 ${overallGrade ? `<p><strong>Date Taken:</strong> ${new Date(overallGrade.graded_at).toLocaleDateString()}</p>` : ''}
                                 <div style="margin-top: 10px;">
-                                    <button class="action-btn btn-view" onclick="viewStudentDetails('${student.user_id}', ${examId})">
+                                    <button class="action-btn btn-view" onclick="viewStudentDetails('${student.user_id}', '${examId}')">
                                         View Exam Details
                                     </button>
-                                    <button class="action-btn btn-reset" onclick="resetStudentExam('${student.user_id}', ${examId})">
+                                    <button class="action-btn btn-reset" onclick="resetStudentExam('${student.user_id}', '${examId}')">
                                         Allow Retake
                                     </button>
                                 </div>
@@ -2158,10 +2173,10 @@ async function loadStudentsWithResults() {
 
                 detailsHTML += `
                     <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: center;">
-                        <button class="btn btn-assign" onclick="assignStudentsToExam(${examId})">
+                        <button class="btn btn-assign" onclick="assignStudentsToExam('${examId}')">
                             👥 Assign More Students
                         </button>
-                        <button class="btn btn-warning" onclick="editExam(${examId})">
+                        <button class="btn btn-warning" onclick="editExam('${examId}')">
                             ✏️ Edit Exam
                         </button>
                     </div>
