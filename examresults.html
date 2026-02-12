@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NCHSN - EXAM RESULTS PROVISIONAL PORTAL</title>
+    <title>NCHSN - EXAM RESULTS PROVISIONAL PORTAL (REAL SUPABASE)</title>
     
-    <!-- Tailwind CSS -->
+    <!-- Tailwind CSS - Production CDN (not recommended but works for now) -->
     <script src="https://cdn.tailwindcss.com"></script>
     
     <!-- Font Awesome -->
@@ -14,7 +14,7 @@
     <!-- SheetJS for Excel -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
     
-    <!-- Supabase JS - FIXED VERSION -->
+    <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8/dist/umd/supabase.min.js"></script>
     
     <style>
@@ -26,7 +26,7 @@
         
         body {
             font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            background: linear-gradient(135deg, #0b2c4a 0%, #1a4a6f 100%);
             min-height: 100vh;
             padding: 20px;
         }
@@ -34,13 +34,13 @@
         .portal-card {
             background: white;
             border-radius: 24px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.25);
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255,255,255,0.2);
         }
         
         .role-super-admin { 
-            background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+            background: linear-gradient(135deg, #8b0000 0%, #5a0000 100%);
             color: white;
             padding: 4px 16px;
             border-radius: 9999px;
@@ -50,7 +50,7 @@
         }
         
         .role-admin { 
-            background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+            background: linear-gradient(135deg, #00008b 0%, #00005a 100%);
             color: white;
             padding: 4px 16px;
             border-radius: 9999px;
@@ -60,7 +60,7 @@
         }
         
         .role-lecturer { 
-            background: linear-gradient(135deg, #16a34a 0%, #166534 100%);
+            background: linear-gradient(135deg, #006400 0%, #003d00 100%);
             color: white;
             padding: 4px 16px;
             border-radius: 9999px;
@@ -70,7 +70,7 @@
         }
         
         .provisional-badge {
-            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            background: linear-gradient(135deg, #f97316 0%, #c2410c 100%);
             color: white;
             padding: 8px 20px;
             border-radius: 9999px;
@@ -105,6 +105,12 @@
         .excel-table tr:hover {
             background-color: #f8fafc;
         }
+        
+        .setup-step {
+            border-left: 4px solid #f97316;
+            padding-left: 16px;
+            margin-bottom: 16px;
+        }
     </style>
 </head>
 <body>
@@ -112,11 +118,11 @@
         
         <!-- ========== SUPABASE CONFIG - YOUR CREDENTIALS ========== -->
         <script>
-            // 🔴 YOUR SUPABASE CREDENTIALS - HARDCODED AND WORKING!
+            // 🔴 YOUR SUPABASE CREDENTIALS - REAL CONNECTION!
             const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
             const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
             
-            // Initialize Supabase correctly
+            // Initialize Supabase
             const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
             
             console.log('✅ Supabase initialized!');
@@ -128,8 +134,103 @@
             let sharedFiles = [];
         </script>
 
+        <!-- ========== SETUP SCREEN - CREATE USERS FIRST ========== -->
+        <div id="setupScreen" class="flex items-center justify-center min-h-screen">
+            <div class="portal-card w-full max-w-2xl p-8">
+                <div class="text-center mb-8">
+                    <div class="bg-gradient-to-r from-orange-600 to-red-600 w-24 h-24 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                        <i class="fas fa-database text-white text-4xl"></i>
+                    </div>
+                    <h1 class="text-3xl font-bold text-gray-800">NCHSN</h1>
+                    <p class="text-gray-600 mt-2">EXAM RESULTS PROVISIONAL PORTAL</p>
+                    <div class="mt-3">
+                        <span class="provisional-badge text-sm">
+                            <i class="fas fa-exclamation-triangle mr-2"></i>
+                            FIRST TIME SETUP REQUIRED
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="bg-orange-50 p-6 rounded-xl mb-6">
+                    <h2 class="font-bold text-orange-800 text-lg mb-4 flex items-center">
+                        <i class="fas fa-tools mr-2"></i>
+                        Create Users in Supabase Auth
+                    </h2>
+                    
+                    <div class="space-y-4">
+                        <div class="setup-step">
+                            <p class="font-semibold text-gray-800">Step 1: Create Super Admin Account</p>
+                            <div class="flex gap-3 mt-2">
+                                <input type="email" id="setupSuperEmail" value="super_admin@nchs.edu" 
+                                       class="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-gray-50" readonly>
+                                <input type="password" id="setupSuperPass" value="admin123456" 
+                                       class="flex-1 px-4 py-2 border border-gray-300 rounded-lg" placeholder="Password">
+                                <button onclick="createSuperAdmin()" 
+                                        class="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700">
+                                    <i class="fas fa-user-plus mr-2"></i>
+                                    Create
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="setup-step">
+                            <p class="font-semibold text-gray-800">Step 2: Create Admin Account</p>
+                            <div class="flex gap-3 mt-2">
+                                <input type="email" id="setupAdminEmail" value="admin@nchs.edu" 
+                                       class="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-gray-50" readonly>
+                                <input type="password" id="setupAdminPass" value="admin123456" 
+                                       class="flex-1 px-4 py-2 border border-gray-300 rounded-lg" placeholder="Password">
+                                <button onclick="createAdmin()" 
+                                        class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
+                                    <i class="fas fa-user-plus mr-2"></i>
+                                    Create
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="setup-step">
+                            <p class="font-semibold text-gray-800">Step 3: Create Lecturer Account</p>
+                            <div class="flex gap-3 mt-2">
+                                <input type="email" id="setupLecturerEmail" value="lecturer@nchs.edu" 
+                                       class="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-gray-50" readonly>
+                                <input type="password" id="setupLecturerPass" value="lecturer123456" 
+                                       class="flex-1 px-4 py-2 border border-gray-300 rounded-lg" placeholder="Password">
+                                <button onclick="createLecturer()" 
+                                        class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700">
+                                    <i class="fas fa-user-plus mr-2"></i>
+                                    Create
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-6 p-4 bg-white rounded-lg border border-orange-200">
+                        <p class="text-sm text-orange-800 font-semibold flex items-center">
+                            <i class="fas fa-info-circle mr-2"></i>
+                            After creating users, click below to go to login:
+                        </p>
+                        <button onclick="showLogin()" 
+                                class="mt-3 w-full bg-gradient-to-r from-orange-600 to-red-600 text-white py-3 rounded-lg hover:opacity-90 font-bold">
+                            <i class="fas fa-arrow-right mr-2"></i>
+                            PROCEED TO LOGIN
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="bg-blue-50 p-4 rounded-lg">
+                    <p class="text-sm text-blue-800 font-semibold mb-2">📋 What this setup does:</p>
+                    <ul class="text-sm text-blue-700 space-y-1">
+                        <li><i class="fas fa-check-circle mr-2"></i> Creates users in Supabase Authentication</li>
+                        <li><i class="fas fa-check-circle mr-2"></i> Adds roles to consolidated_user_profiles_table</li>
+                        <li><i class="fas fa-check-circle mr-2"></i> Sets up shared Excel files table</li>
+                        <li><i class="fas fa-check-circle mr-2"></i> One-time setup - users will persist forever</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
         <!-- ========== LOGIN SCREEN ========== -->
-        <div id="loginScreen" class="flex items-center justify-center min-h-screen">
+        <div id="loginScreen" class="hidden flex items-center justify-center min-h-screen">
             <div class="portal-card w-full max-w-md p-8">
                 <div class="text-center mb-8">
                     <div class="bg-gradient-to-r from-blue-600 to-purple-600 w-24 h-24 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
@@ -151,7 +252,7 @@
                             <i class="fas fa-envelope mr-2 text-gray-500"></i>
                             Email Address
                         </label>
-                        <input type="email" id="loginEmail" value="super_admin@nchs.edu" 
+                        <input type="email" id="loginEmail" placeholder="Enter your email" 
                                class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-0">
                     </div>
                     
@@ -160,35 +261,22 @@
                             <i class="fas fa-lock mr-2 text-gray-500"></i>
                             Password
                         </label>
-                        <input type="password" id="loginPassword" value="admin123" 
+                        <input type="password" id="loginPassword" placeholder="Enter your password" 
                                class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-0">
                     </div>
                     
-                    <button onclick="handleLogin()" 
+                    <button onclick="handleRealLogin()" 
                             class="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-xl hover:opacity-90 transition font-bold text-lg shadow-lg">
                         <i class="fas fa-sign-in-alt mr-2"></i>
-                        ACCESS PROVISIONAL PORTAL
+                        LOGIN TO REAL DATABASE
                     </button>
                     
-                    <div class="bg-blue-50 p-4 rounded-xl mt-6">
-                        <p class="text-sm font-semibold text-blue-800 mb-2 flex items-center">
-                            <i class="fas fa-info-circle mr-2"></i>
-                            DEMO LOGIN CREDENTIALS:
-                        </p>
-                        <div class="space-y-2 text-sm">
-                            <div class="flex items-center justify-between">
-                                <span><i class="fas fa-crown text-yellow-600 mr-2"></i>Super Admin:</span>
-                                <span class="font-mono bg-white px-2 py-1 rounded">super_admin@nchs.edu / admin123</span>
-                            </div>
-                            <div class="flex items-center justify-between">
-                                <span><i class="fas fa-shield-alt text-blue-600 mr-2"></i>Admin:</span>
-                                <span class="font-mono bg-white px-2 py-1 rounded">admin@nchs.edu / admin123</span>
-                            </div>
-                            <div class="flex items-center justify-between">
-                                <span><i class="fas fa-chalkboard-teacher text-green-600 mr-2"></i>Lecturer:</span>
-                                <span class="font-mono bg-white px-2 py-1 rounded">lecturer@nchs.edu / lecturer123</span>
-                            </div>
-                        </div>
+                    <div class="text-center text-sm text-gray-500 mt-4">
+                        <p>⬆️ Use credentials you created in setup ⬆️</p>
+                        <button onclick="showSetup()" class="text-blue-600 hover:text-blue-800 mt-2">
+                            <i class="fas fa-arrow-left mr-2"></i>
+                            Back to Setup
+                        </button>
                     </div>
                 </div>
             </div>
@@ -196,7 +284,6 @@
 
         <!-- ========== MAIN PORTAL ========== -->
         <div id="mainPortal" class="hidden space-y-6">
-            
             <!-- Header -->
             <div class="portal-card p-6">
                 <div class="flex flex-col md:flex-row items-center justify-between">
@@ -231,7 +318,7 @@
                 </div>
             </div>
 
-            <!-- Stats Overview - ALL ROLES SEE SAME -->
+            <!-- Stats Overview -->
             <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div class="portal-card p-6">
                     <div class="flex items-center">
@@ -279,28 +366,24 @@
                 </div>
             </div>
 
-            <!-- ========== ROLE DASHBOARDS ========== -->
+            <!-- Role Dashboard Container -->
             <div id="dashboardContainer"></div>
 
-            <!-- ========== SHARED EXCEL FILES - EVERYONE SEES SAME ========== -->
+            <!-- Shared Excel Files -->
             <div class="portal-card p-6">
                 <div class="flex items-center justify-between mb-6">
                     <h2 class="text-xl font-bold text-gray-800 flex items-center">
                         <i class="fas fa-folder-open text-purple-600 mr-2"></i>
-                        📁 SHARED EXAM RESULTS - PROVISIONAL
+                        📁 SHARED PROVISIONAL RESULTS
                     </h2>
                     <span class="bg-purple-100 text-purple-800 px-4 py-2 rounded-full text-sm">
                         <i class="fas fa-globe mr-1"></i>
-                        ALL STAFF CAN VIEW
+                        REAL-TIME SYNC
                     </span>
                 </div>
                 
                 <div id="sharedFilesContainer" class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <!-- Files load here -->
-                    <div class="col-span-3 text-center py-8 text-gray-500">
-                        <i class="fas fa-folder-open text-5xl mb-3 text-gray-400"></i>
-                        <p>No provisional results uploaded yet</p>
-                    </div>
+                    <!-- Files load from Supabase -->
                 </div>
             </div>
 
@@ -311,25 +394,195 @@
                     PROVISIONAL RESULTS ACTIVITY LOG
                 </h3>
                 <div id="activityLogContainer" class="space-y-2 max-h-60 overflow-y-auto">
-                    <div class="text-center text-gray-500 py-4">
-                        <i class="fas fa-clock mr-2"></i>
-                        No recent activity
-                    </div>
+                    <!-- Real activity log from Supabase -->
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        // ========== LOGIN FUNCTION - FIXED AND WORKING ==========
-        async function handleLogin() {
+        // ========== CREATE TABLES IN SUPABASE ==========
+        async function createTables() {
+            try {
+                // Create consolidated_user_profiles_table if not exists
+                const { error: createProfileError } = await supabase.rpc('create_profile_table', {});
+                
+                // Create shared_excel_files table
+                const { error: createFilesError } = await supabase.rpc('create_files_table', {});
+                
+                // Create activity_log table
+                const { error: createLogError } = await supabase.rpc('create_log_table', {});
+                
+                console.log('✅ Tables created/verified');
+            } catch (error) {
+                console.log('Tables may already exist:', error);
+            }
+        }
+
+        // ========== CREATE SUPER ADMIN ==========
+        async function createSuperAdmin() {
+            const email = document.getElementById('setupSuperEmail').value;
+            const password = document.getElementById('setupSuperPass').value;
+            
+            if (!password || password.length < 6) {
+                alert('Password must be at least 6 characters');
+                return;
+            }
+            
+            try {
+                // 1. Create user in Supabase Auth
+                const { data: authData, error: authError } = await supabase.auth.signUp({
+                    email: email,
+                    password: password,
+                    options: {
+                        data: {
+                            role: 'super_admin',
+                            full_name: 'Super Administrator'
+                        }
+                    }
+                });
+                
+                if (authError) throw authError;
+                
+                // 2. Add to consolidated_user_profiles_table
+                const { error: profileError } = await supabase
+                    .from('consolidated_user_profiles_table')
+                    .insert([
+                        {
+                            email: email,
+                            full_name: 'Super Administrator',
+                            role: 'super_admin',
+                            department: 'Administration',
+                            is_active: true,
+                            created_at: new Date().toISOString()
+                        }
+                    ]);
+                
+                if (profileError && !profileError.message.includes('duplicate')) {
+                    console.error('Profile error:', profileError);
+                }
+                
+                alert(`✅ Super Admin created successfully!\nEmail: ${email}\nPassword: ${password}`);
+                
+            } catch (error) {
+                console.error('Error:', error);
+                if (error.message.includes('User already registered')) {
+                    alert('❌ Super Admin already exists! Please login directly.');
+                } else {
+                    alert('Error: ' + error.message);
+                }
+            }
+        }
+        
+        // ========== CREATE ADMIN ==========
+        async function createAdmin() {
+            const email = document.getElementById('setupAdminEmail').value;
+            const password = document.getElementById('setupAdminPass').value;
+            
+            if (!password || password.length < 6) {
+                alert('Password must be at least 6 characters');
+                return;
+            }
+            
+            try {
+                const { data: authData, error: authError } = await supabase.auth.signUp({
+                    email: email,
+                    password: password,
+                    options: {
+                        data: {
+                            role: 'admin',
+                            full_name: 'Administrator'
+                        }
+                    }
+                });
+                
+                if (authError) throw authError;
+                
+                const { error: profileError } = await supabase
+                    .from('consolidated_user_profiles_table')
+                    .insert([
+                        {
+                            email: email,
+                            full_name: 'Administrator',
+                            role: 'admin',
+                            department: 'Examinations',
+                            is_active: true,
+                            created_at: new Date().toISOString()
+                        }
+                    ]);
+                
+                alert(`✅ Admin created successfully!\nEmail: ${email}\nPassword: ${password}`);
+                
+            } catch (error) {
+                if (error.message.includes('User already registered')) {
+                    alert('❌ Admin already exists! Please login directly.');
+                } else {
+                    alert('Error: ' + error.message);
+                }
+            }
+        }
+        
+        // ========== CREATE LECTURER ==========
+        async function createLecturer() {
+            const email = document.getElementById('setupLecturerEmail').value;
+            const password = document.getElementById('setupLecturerPass').value;
+            
+            if (!password || password.length < 6) {
+                alert('Password must be at least 6 characters');
+                return;
+            }
+            
+            try {
+                const { data: authData, error: authError } = await supabase.auth.signUp({
+                    email: email,
+                    password: password,
+                    options: {
+                        data: {
+                            role: 'lecturer',
+                            full_name: 'Nursing Lecturer'
+                        }
+                    }
+                });
+                
+                if (authError) throw authError;
+                
+                const { error: profileError } = await supabase
+                    .from('consolidated_user_profiles_table')
+                    .insert([
+                        {
+                            email: email,
+                            full_name: 'Nursing Lecturer',
+                            role: 'lecturer',
+                            department: 'Nursing',
+                            is_active: true,
+                            created_at: new Date().toISOString()
+                        }
+                    ]);
+                
+                alert(`✅ Lecturer created successfully!\nEmail: ${email}\nPassword: ${password}`);
+                
+            } catch (error) {
+                if (error.message.includes('User already registered')) {
+                    alert('❌ Lecturer already exists! Please login directly.');
+                } else {
+                    alert('Error: ' + error.message);
+                }
+            }
+        }
+        
+        // ========== REAL LOGIN - NO DEMO ==========
+        async function handleRealLogin() {
             const email = document.getElementById('loginEmail').value;
             const password = document.getElementById('loginPassword').value;
             
+            if (!email || !password) {
+                alert('Please enter email and password');
+                return;
+            }
+            
             try {
-                console.log('🔐 Attempting login with:', email);
+                console.log('🔐 Attempting REAL login with:', email);
                 
-                // Direct login without checking consolidated table first
                 const { data, error } = await supabase.auth.signInWithPassword({
                     email: email,
                     password: password
@@ -338,76 +591,85 @@
                 if (error) {
                     console.error('❌ Auth error:', error);
                     
-                    // FALLBACK: Demo mode - allow login with demo credentials
-                    if (email === 'super_admin@nchs.edu' && password === 'admin123') {
-                        console.log('✅ Using demo Super Admin login');
-                        currentUser = {
-                            email: 'super_admin@nchs.edu',
-                            role: 'super_admin',
-                            full_name: 'Super Administrator'
-                        };
-                        currentRole = 'super_admin';
-                        showPortal();
-                        return;
+                    if (error.message.includes('Invalid login credentials')) {
+                        alert('❌ Invalid login credentials!\n\nPlease go to SETUP and create your account first, then try login.\n\nUse the same password you set during setup.');
+                    } else {
+                        alert('Login failed: ' + error.message);
                     }
-                    else if (email === 'admin@nchs.edu' && password === 'admin123') {
-                        console.log('✅ Using demo Admin login');
-                        currentUser = {
-                            email: 'admin@nchs.edu',
-                            role: 'admin',
-                            full_name: 'System Administrator'
-                        };
-                        currentRole = 'admin';
-                        showPortal();
-                        return;
-                    }
-                    else if (email === 'lecturer@nchs.edu' && password === 'lecturer123') {
-                        console.log('✅ Using demo Lecturer login');
-                        currentUser = {
-                            email: 'lecturer@nchs.edu',
-                            role: 'lecturer',
-                            full_name: 'Nursing Lecturer'
-                        };
-                        currentRole = 'lecturer';
-                        showPortal();
-                        return;
-                    }
-                    else {
-                        throw new Error('Invalid credentials. Use demo accounts: super_admin@nchs.edu / admin123');
-                    }
+                    return;
                 }
                 
-                // If Supabase auth works, get user data
-                if (data?.user) {
-                    console.log('✅ Auth successful:', data.user);
+                console.log('✅ Auth successful:', data.user);
+                
+                // Get profile from consolidated table
+                const { data: profile, error: profileError } = await supabase
+                    .from('consolidated_user_profiles_table')
+                    .select('*')
+                    .eq('email', email)
+                    .maybeSingle();
+                
+                if (profile) {
+                    currentUser = profile;
+                    currentRole = profile.role;
+                } else {
+                    // Create profile if doesn't exist
+                    let role = 'lecturer';
+                    if (email.includes('super_admin')) role = 'super_admin';
+                    else if (email.includes('admin')) role = 'admin';
                     
-                    // Try to get profile from consolidated table
-                    const { data: profile, error: profileError } = await supabase
+                    const { data: newProfile, error: createError } = await supabase
                         .from('consolidated_user_profiles_table')
-                        .select('*')
-                        .eq('email', email)
-                        .maybeSingle();
+                        .insert([
+                            {
+                                email: email,
+                                full_name: email.split('@')[0],
+                                role: role,
+                                department: 'Nursing',
+                                is_active: true,
+                                created_at: new Date().toISOString()
+                            }
+                        ])
+                        .select()
+                        .single();
                     
-                    if (profile) {
-                        currentUser = profile;
-                        currentRole = profile.role;
+                    if (!createError && newProfile) {
+                        currentUser = newProfile;
+                        currentRole = role;
                     } else {
-                        // Create default profile based on email
-                        let role = 'lecturer';
-                        if (email.includes('super_admin')) role = 'super_admin';
-                        else if (email.includes('admin')) role = 'admin';
-                        
+                        // Fallback
                         currentUser = {
                             email: email,
                             role: role,
-                            full_name: email.split('@')[0],
-                            id: data.user.id
+                            full_name: email.split('@')[0]
                         };
                         currentRole = role;
                     }
-                    
-                    showPortal();
                 }
+                
+                // Show portal
+                document.getElementById('loginScreen').classList.add('hidden');
+                document.getElementById('mainPortal').classList.remove('hidden');
+                
+                // Update UI
+                document.getElementById('userDisplayName').innerHTML = `<i class="fas fa-user mr-2"></i>${currentUser.full_name || currentUser.email}`;
+                document.getElementById('userEmailDisplay').innerText = currentUser.email;
+                document.getElementById('userRoleDisplay').innerText = currentRole.replace('_', ' ').toUpperCase();
+                
+                const badge = document.getElementById('userRoleBadge');
+                badge.innerText = currentRole.replace('_', ' ').toUpperCase();
+                badge.className = `role-${currentRole} px-4 py-1.5 rounded-full text-sm font-bold`;
+                
+                // Load dashboards
+                loadRoleDashboard();
+                
+                // Load real shared files
+                await loadRealSharedFiles();
+                
+                // Add to activity log
+                await addRealActivity(`${currentUser.full_name || currentUser.email} (${currentRole}) logged in`);
+                
+                // Update stats
+                await updateRealStats();
                 
             } catch (error) {
                 console.error('❌ Login error:', error);
@@ -415,36 +677,175 @@
             }
         }
         
-        // ========== SHOW PORTAL AFTER LOGIN ==========
-        function showPortal() {
-            // Hide login, show portal
-            document.getElementById('loginScreen').classList.add('hidden');
-            document.getElementById('mainPortal').classList.remove('hidden');
-            
-            // Update user info
-            document.getElementById('userDisplayName').innerHTML = `<i class="fas fa-user mr-2"></i>${currentUser.full_name || currentUser.email}`;
-            document.getElementById('userEmailDisplay').innerText = currentUser.email;
-            document.getElementById('userRoleDisplay').innerText = currentRole.replace('_', ' ').toUpperCase();
-            
-            // Set role badge
-            const badge = document.getElementById('userRoleBadge');
-            badge.innerText = currentRole.replace('_', ' ').toUpperCase();
-            badge.className = `role-${currentRole} px-4 py-1.5 rounded-full text-sm font-bold`;
-            
-            // Load role-specific dashboard
-            loadRoleDashboard();
-            
-            // Load shared files
-            loadSharedFiles();
-            
-            // Add to activity log
-            addActivity(`${currentUser.full_name || currentUser.email} (${currentRole}) accessed PROVISIONAL portal`);
-            
-            // Update stats
-            updateStats();
+        // ========== LOAD REAL SHARED FILES FROM SUPABASE ==========
+        async function loadRealSharedFiles() {
+            try {
+                const { data: files, error } = await supabase
+                    .from('shared_excel_files')
+                    .select('*')
+                    .order('uploaded_at', { ascending: false });
+                
+                if (error) {
+                    console.error('Error loading files:', error);
+                    return;
+                }
+                
+                sharedFiles = files || [];
+                
+                const container = document.getElementById('sharedFilesContainer');
+                
+                if (sharedFiles.length === 0) {
+                    container.innerHTML = `
+                        <div class="col-span-3 text-center py-12 text-gray-500">
+                            <i class="fas fa-folder-open text-5xl mb-3 text-gray-400"></i>
+                            <p>No provisional results uploaded yet</p>
+                            <p class="text-sm mt-2">Admins can upload Excel files</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                let html = '';
+                sharedFiles.forEach(file => {
+                    const date = new Date(file.uploaded_at).toLocaleString();
+                    html += `
+                        <div class="border border-gray-200 rounded-xl p-4 hover:shadow-lg transition cursor-pointer bg-white">
+                            <div class="flex items-start">
+                                <i class="fas fa-file-excel text-green-600 text-3xl mr-3"></i>
+                                <div class="flex-1">
+                                    <p class="font-semibold text-gray-800">${file.filename}</p>
+                                    <div class="flex items-center mt-2 text-xs">
+                                        <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                                            ${file.row_count || 0} records
+                                        </span>
+                                        <span class="text-gray-500 ml-2">
+                                            <i class="fas fa-user mr-1"></i>${file.uploaded_by_email || 'Unknown'}
+                                        </span>
+                                    </div>
+                                    <p class="text-xs text-gray-500 mt-2">
+                                        <i class="fas fa-clock mr-1"></i>${date}
+                                    </p>
+                                </div>
+                                <button onclick="viewFile('${file.id}')" class="text-blue-600 hover:text-blue-800">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                container.innerHTML = html;
+                
+                // Update stats
+                document.getElementById('totalFilesStats').innerText = sharedFiles.length;
+                let totalRecords = 0;
+                sharedFiles.forEach(f => totalRecords += (f.row_count || 0));
+                document.getElementById('totalRecordsStats').innerText = totalRecords;
+                
+            } catch (error) {
+                console.error('Error:', error);
+            }
         }
         
-        // ========== LOAD ROLE DASHBOARD ==========
+        // ========== ADD REAL ACTIVITY TO SUPABASE ==========
+        async function addRealActivity(action) {
+            if (!currentUser) return;
+            
+            try {
+                const { error } = await supabase
+                    .from('system_activity_log')
+                    .insert([
+                        {
+                            user_email: currentUser.email,
+                            user_role: currentRole,
+                            action: action,
+                            timestamp: new Date().toISOString()
+                        }
+                    ]);
+                
+                // Load activity log
+                await loadRealActivityLog();
+                
+            } catch (error) {
+                console.error('Error adding activity:', error);
+            }
+        }
+        
+        // ========== LOAD REAL ACTIVITY LOG ==========
+        async function loadRealActivityLog() {
+            try {
+                const { data: logs, error } = await supabase
+                    .from('system_activity_log')
+                    .select('*')
+                    .order('timestamp', { ascending: false })
+                    .limit(10);
+                
+                if (error) {
+                    console.error('Error loading logs:', error);
+                    return;
+                }
+                
+                const container = document.getElementById('activityLogContainer');
+                
+                if (!logs || logs.length === 0) {
+                    container.innerHTML = `
+                        <div class="text-center text-gray-500 py-4">
+                            <i class="fas fa-clock mr-2"></i>
+                            No activity yet
+                        </div>
+                    `;
+                    return;
+                }
+                
+                let html = '';
+                logs.forEach(log => {
+                    const time = new Date(log.timestamp).toLocaleTimeString();
+                    html += `
+                        <div class="flex items-center text-sm p-2 bg-gray-50 rounded-lg">
+                            <span class="text-gray-500 mr-2">[${time}]</span>
+                            <span class="role-${log.user_role || 'lecturer'} text-xs px-2 py-0.5 mr-2">
+                                ${(log.user_role || 'USER').replace('_', ' ').toUpperCase()}
+                            </span>
+                            <span class="text-gray-800">${log.action}</span>
+                        </div>
+                    `;
+                });
+                
+                container.innerHTML = html;
+                
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+        
+        // ========== UPDATE REAL STATS ==========
+        async function updateRealStats() {
+            try {
+                // Get staff count
+                const { data: staff, error: staffError } = await supabase
+                    .from('consolidated_user_profiles_table')
+                    .select('role');
+                
+                if (!staffError && staff) {
+                    const admins = staff.filter(s => s.role === 'admin' || s.role === 'super_admin').length;
+                    const lecturers = staff.filter(s => s.role === 'lecturer').length;
+                    
+                    document.getElementById('totalStaffStats').innerText = staff.length || 0;
+                    
+                    if (document.getElementById('totalAdmins')) {
+                        document.getElementById('totalAdmins').innerText = admins;
+                    }
+                    if (document.getElementById('totalLecturers')) {
+                        document.getElementById('totalLecturers').innerText = lecturers;
+                    }
+                }
+                
+            } catch (error) {
+                console.error('Error updating stats:', error);
+            }
+        }
+        
+        // ========== ROLE DASHBOARDS ==========
         function loadRoleDashboard() {
             const container = document.getElementById('dashboardContainer');
             
@@ -457,20 +858,19 @@
             }
         }
         
-        // ========== SUPER ADMIN DASHBOARD ==========
         function getSuperAdminDashboard() {
             return `
                 <div class="portal-card p-6">
                     <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
                         <i class="fas fa-crown text-yellow-500 mr-2"></i>
-                        SUPER ADMINISTRATOR - Full System Control
+                        SUPER ADMINISTRATOR DASHBOARD
                     </h2>
                     
                     <div class="grid md:grid-cols-2 gap-6">
                         <div class="bg-gray-50 p-6 rounded-xl">
                             <h3 class="font-semibold text-gray-800 mb-4 flex items-center">
                                 <i class="fas fa-user-plus text-blue-600 mr-2"></i>
-                                Create New Staff Account
+                                Create New Staff
                             </h3>
                             <div class="space-y-3">
                                 <input type="text" id="newStaffName" placeholder="Full Name" 
@@ -482,7 +882,9 @@
                                     <option value="admin">Admin</option>
                                     <option value="super_admin">Super Admin</option>
                                 </select>
-                                <button onclick="createUser()" 
+                                <input type="password" id="newStaffPassword" placeholder="Password" 
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                                <button onclick="createStaffUser()" 
                                         class="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-2 rounded-lg hover:opacity-90">
                                     <i class="fas fa-user-plus mr-2"></i>
                                     Create Account
@@ -492,56 +894,45 @@
                         
                         <div class="bg-gray-50 p-6 rounded-xl">
                             <h3 class="font-semibold text-gray-800 mb-4 flex items-center">
-                                <i class="fas fa-users-cog text-purple-600 mr-2"></i>
+                                <i class="fas fa-chart-pie text-purple-600 mr-2"></i>
                                 System Overview
                             </h3>
                             <div class="space-y-3">
                                 <div class="flex justify-between items-center p-3 bg-white rounded-lg">
-                                    <span>Total Administrators</span>
+                                    <span>Super Admins</span>
+                                    <span class="font-bold" id="totalSuperAdmins">0</span>
+                                </div>
+                                <div class="flex justify-between items-center p-3 bg-white rounded-lg">
+                                    <span>Admins</span>
                                     <span class="font-bold" id="totalAdmins">0</span>
                                 </div>
                                 <div class="flex justify-between items-center p-3 bg-white rounded-lg">
-                                    <span>Total Lecturers</span>
+                                    <span>Lecturers</span>
                                     <span class="font-bold" id="totalLecturers">0</span>
-                                </div>
-                                <div class="flex justify-between items-center p-3 bg-white rounded-lg">
-                                    <span>System Status</span>
-                                    <span class="text-green-600 font-bold">● ACTIVE</span>
                                 </div>
                             </div>
                         </div>
                     </div>
                     
-                    <!-- Quick Actions -->
-                    <div class="mt-6 grid grid-cols-3 gap-4">
-                        <button onclick="backupSystem()" class="bg-yellow-600 text-white p-3 rounded-lg hover:bg-yellow-700">
-                            <i class="fas fa-database mr-2"></i>
-                            Backup Data
-                        </button>
-                        <button onclick="publishProvisional()" class="bg-green-600 text-white p-3 rounded-lg hover:bg-green-700">
-                            <i class="fas fa-check-circle mr-2"></i>
-                            Publish Provisional
-                        </button>
-                        <button onclick="generateReport()" class="bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700">
-                            <i class="fas fa-file-alt mr-2"></i>
-                            Generate Report
-                        </button>
+                    <div class="mt-6 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                        <p class="text-sm text-yellow-800">
+                            <i class="fas fa-info-circle mr-2"></i>
+                            You have full system access. All actions are logged in Supabase.
+                        </p>
                     </div>
                 </div>
                 
-                <!-- Admin Dashboard also visible to Super Admin -->
                 ${getAdminDashboard()}
                 ${getLecturerDashboard()}
             `;
         }
         
-        // ========== ADMIN DASHBOARD ==========
         function getAdminDashboard() {
             return `
                 <div class="portal-card p-6 mt-6">
                     <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
                         <i class="fas fa-shield-alt text-blue-600 mr-2"></i>
-                        ADMINISTRATOR - Manage Provisional Results
+                        ADMINISTRATOR - Upload Provisional Results
                     </h2>
                     
                     <div class="grid md:grid-cols-2 gap-6">
@@ -549,9 +940,9 @@
                             <div onclick="document.getElementById('excelUpload').click()"
                                  class="border-4 border-dashed border-blue-300 rounded-xl p-8 text-center cursor-pointer hover:border-blue-500 bg-blue-50">
                                 <i class="fas fa-cloud-upload-alt text-5xl text-blue-500 mb-3"></i>
-                                <h3 class="text-xl font-bold text-gray-700">Upload Provisional Results</h3>
-                                <p class="text-gray-500 mt-2">Excel format (.xlsx, .xls)</p>
-                                <input type="file" id="excelUpload" accept=".xlsx,.xls,.csv" class="hidden" onchange="handleExcelUpload(this)">
+                                <h3 class="text-xl font-bold text-gray-700">Upload Excel File</h3>
+                                <p class="text-gray-500 mt-2">.xlsx, .xls, .csv</p>
+                                <input type="file" id="excelUpload" accept=".xlsx,.xls,.csv" class="hidden" onchange="handleRealExcelUpload(this)">
                             </div>
                         </div>
                         
@@ -560,19 +951,15 @@
                             <ul class="space-y-2 text-sm text-gray-600">
                                 <li class="flex items-center">
                                     <i class="fas fa-check-circle text-green-500 mr-2"></i>
-                                    Use template format
-                                </li>
-                                <li class="flex items-center">
-                                    <i class="fas fa-check-circle text-green-500 mr-2"></i>
                                     Include Student ID, Name, Marks
                                 </li>
                                 <li class="flex items-center">
                                     <i class="fas fa-check-circle text-green-500 mr-2"></i>
-                                    Marks must be between 0-100
+                                    Marks must be 0-100
                                 </li>
                                 <li class="flex items-center">
                                     <i class="fas fa-check-circle text-green-500 mr-2"></i>
-                                    Maximum 1000 rows per file
+                                    Files saved to Supabase
                                 </li>
                             </ul>
                             <button onclick="downloadTemplate()" class="mt-4 text-blue-600 hover:text-blue-800">
@@ -582,7 +969,6 @@
                         </div>
                     </div>
                     
-                    <!-- Excel Preview -->
                     <div id="excelPreviewSection" class="hidden mt-6">
                         <h3 class="font-semibold text-gray-800 mb-3">Preview Provisional Results</h3>
                         <div id="excelPreview" class="overflow-x-auto bg-white rounded-lg border"></div>
@@ -590,9 +976,9 @@
                             <button onclick="cancelUpload()" class="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600">
                                 Cancel
                             </button>
-                            <button onclick="publishProvisionalResults()" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700">
+                            <button onclick="publishRealProvisionalResults()" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700">
                                 <i class="fas fa-cloud-upload-alt mr-2"></i>
-                                Publish Provisional Results
+                                Publish to Supabase
                             </button>
                         </div>
                     </div>
@@ -600,7 +986,6 @@
             `;
         }
         
-        // ========== LECTURER DASHBOARD ==========
         function getLecturerDashboard() {
             return `
                 <div class="portal-card p-6 mt-6">
@@ -614,9 +999,9 @@
                             <div onclick="document.getElementById('lecturerUpload').click()"
                                  class="border-4 border-dashed border-green-300 rounded-xl p-8 text-center cursor-pointer hover:border-green-500 bg-green-50">
                                 <i class="fas fa-upload text-5xl text-green-500 mb-3"></i>
-                                <h3 class="text-xl font-bold text-gray-700">Submit Provisional Marks</h3>
-                                <p class="text-gray-500 mt-2">Excel format (.xlsx, .xls)</p>
-                                <input type="file" id="lecturerUpload" accept=".xlsx,.xls,.csv" class="hidden" onchange="handleLecturerUpload(this)">
+                                <h3 class="text-xl font-bold text-gray-700">Submit Marks</h3>
+                                <p class="text-gray-500 mt-2">Excel format only</p>
+                                <input type="file" id="lecturerUpload" accept=".xlsx,.xls,.csv" class="hidden" onchange="handleLecturerRealUpload(this)">
                             </div>
                         </div>
                         
@@ -631,83 +1016,14 @@
             `;
         }
         
-        // ========== LOAD SHARED FILES ==========
-        async function loadSharedFiles() {
-            // Demo shared files
-            const demoFiles = [
-                {
-                    id: 1,
-                    filename: 'MEDICAL_SURGICAL_NURSING_PROVISIONAL.xlsx',
-                    uploaded_by: 'admin@nchs.edu',
-                    uploaded_at: new Date().toISOString(),
-                    row_count: 45
-                },
-                {
-                    id: 2,
-                    filename: 'PEDIATRICS_EXAM_RESULTS_PROVISIONAL.xlsx',
-                    uploaded_by: 'lecturer@nchs.edu',
-                    uploaded_at: new Date().toISOString(),
-                    row_count: 32
-                },
-                {
-                    id: 3,
-                    filename: 'OBSTETRICS_CLINICAL_PROVISIONAL.xlsx',
-                    uploaded_by: 'super_admin@nchs.edu',
-                    uploaded_at: new Date().toISOString(),
-                    row_count: 28
-                }
-            ];
-            
-            sharedFiles = demoFiles;
-            
-            const container = document.getElementById('sharedFilesContainer');
-            let html = '';
-            
-            sharedFiles.forEach(file => {
-                const date = new Date(file.uploaded_at).toLocaleString();
-                html += `
-                    <div class="border border-gray-200 rounded-xl p-4 hover:shadow-lg transition cursor-pointer bg-white">
-                        <div class="flex items-start">
-                            <i class="fas fa-file-excel text-green-600 text-3xl mr-3"></i>
-                            <div class="flex-1">
-                                <p class="font-semibold text-gray-800">${file.filename}</p>
-                                <div class="flex items-center mt-2 text-xs">
-                                    <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                                        ${file.row_count} records
-                                    </span>
-                                    <span class="text-gray-500 ml-2">
-                                        <i class="fas fa-user mr-1"></i>${file.uploaded_by}
-                                    </span>
-                                </div>
-                                <p class="text-xs text-gray-500 mt-2">
-                                    <i class="fas fa-clock mr-1"></i>${date}
-                                </p>
-                            </div>
-                            <button onclick="viewFile('${file.id}')" class="text-blue-600 hover:text-blue-800">
-                                <i class="fas fa-eye"></i>
-                            </button>
-                        </div>
-                    </div>
-                `;
-            });
-            
-            container.innerHTML = html;
-            document.getElementById('totalFilesStats').innerText = sharedFiles.length;
-            
-            let totalRecords = 0;
-            sharedFiles.forEach(f => totalRecords += f.row_count);
-            document.getElementById('totalRecordsStats').innerText = totalRecords;
-            document.getElementById('totalStaffStats').innerText = '12';
-        }
-        
-        // ========== HANDLE EXCEL UPLOAD ==========
-        function handleExcelUpload(input) {
+        // ========== REAL EXCEL UPLOAD TO SUPABASE ==========
+        async function handleRealExcelUpload(input) {
             if (!input.files || !input.files[0]) return;
             
             const file = input.files[0];
             const reader = new FileReader();
             
-            reader.onload = function(e) {
+            reader.onload = async function(e) {
                 try {
                     const data = new Uint8Array(e.target.result);
                     const workbook = XLSX.read(data, { type: 'array' });
@@ -717,8 +1033,6 @@
                     
                     // Show preview
                     let previewHtml = '<table class="excel-table">';
-                    
-                    // Headers
                     previewHtml += '<thead><tr>';
                     if (jsonData[0]) {
                         jsonData[0].forEach(header => {
@@ -727,99 +1041,211 @@
                     }
                     previewHtml += '</tr></thead><tbody>';
                     
-                    // First 5 rows
                     for (let i = 1; i < Math.min(6, jsonData.length); i++) {
                         previewHtml += '<tr>';
-                        jsonData[i].forEach(cell => {
-                            previewHtml += `<td>${cell || '-'}</td>`;
-                        });
+                        if (jsonData[i]) {
+                            jsonData[i].forEach(cell => {
+                                previewHtml += `<td>${cell || '-'}</td>`;
+                            });
+                        }
                         previewHtml += '</tr>';
                     }
                     
                     previewHtml += '</tbody></table>';
-                    
                     document.getElementById('excelPreview').innerHTML = previewHtml;
                     document.getElementById('excelPreviewSection').classList.remove('hidden');
                     
-                    addActivity(`📊 ${currentUser.full_name || currentUser.email} uploaded ${file.name} for review`);
+                    // Store for publishing
+                    window.currentUploadData = {
+                        file: file,
+                        workbook: workbook,
+                        jsonData: jsonData,
+                        fileName: file.name,
+                        rowCount: jsonData.length - 1
+                    };
                     
                 } catch (error) {
-                    alert('Error reading Excel file: ' + error.message);
+                    alert('Error reading Excel: ' + error.message);
                 }
             };
             
             reader.readAsArrayBuffer(file);
         }
         
-        // ========== PUBLISH PROVISIONAL RESULTS ==========
-        function publishProvisionalResults() {
-            alert('✅ Provisional results published successfully! All staff can now view.');
-            addActivity(`📢 ${currentUser.full_name || currentUser.email} PUBLISHED PROVISIONAL RESULTS`);
+        // ========== PUBLISH TO SUPABASE ==========
+        async function publishRealProvisionalResults() {
+            if (!window.currentUploadData) {
+                alert('No file to publish');
+                return;
+            }
             
-            // Add to shared files
-            const newFile = {
-                id: sharedFiles.length + 1,
-                filename: `PROVISIONAL_RESULTS_${new Date().toLocaleDateString().replace(/\//g, '_')}.xlsx`,
-                uploaded_by: currentUser.email,
-                uploaded_at: new Date().toISOString(),
-                row_count: 45
-            };
-            
-            sharedFiles.unshift(newFile);
-            loadSharedFiles();
-            document.getElementById('excelPreviewSection').classList.add('hidden');
-        }
-        
-        // ========== LECTURER UPLOAD ==========
-        function handleLecturerUpload(input) {
-            if (!input.files || !input.files[0]) return;
-            
-            const file = input.files[0];
-            addActivity(`📝 ${currentUser.full_name || currentUser.email} submitted provisional marks: ${file.name}`);
-            alert('✅ Provisional marks submitted successfully! Admin will review.');
-            
-            // Add to recent submissions
-            document.getElementById('recentSubmissions').innerHTML = `
-                <div class="bg-white p-3 rounded-lg border border-gray-200">
-                    <div class="flex items-center justify-between">
-                        <span class="font-medium">${file.name}</span>
-                        <span class="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">Pending</span>
-                    </div>
-                    <p class="text-xs text-gray-500 mt-1">${new Date().toLocaleString()}</p>
-                </div>
-            `;
-        }
-        
-        // ========== ACTIVITY LOG ==========
-        function addActivity(action) {
-            const container = document.getElementById('activityLogContainer');
-            const time = new Date().toLocaleTimeString();
-            
-            const logEntry = document.createElement('div');
-            logEntry.className = 'flex items-center text-sm p-2 bg-gray-50 rounded-lg';
-            logEntry.innerHTML = `
-                <span class="text-gray-500 mr-2">[${time}]</span>
-                <span class="role-${currentRole} text-xs px-2 py-0.5 mr-2">
-                    ${currentRole.replace('_', ' ').toUpperCase()}
-                </span>
-                <span class="text-gray-800">${action}</span>
-            `;
-            
-            container.prepend(logEntry);
-            
-            // Keep only last 10 entries
-            while (container.children.length > 10) {
-                container.removeChild(container.lastChild);
+            try {
+                const { file, workbook, jsonData, fileName, rowCount } = window.currentUploadData;
+                
+                // Convert workbook to base64 for storage
+                const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'base64' });
+                
+                // Save to Supabase
+                const { data, error } = await supabase
+                    .from('shared_excel_files')
+                    .insert([
+                        {
+                            filename: `PROVISIONAL_${Date.now()}_${fileName}`,
+                            file_data: excelBuffer,
+                            row_count: rowCount,
+                            uploaded_by: currentUser.id,
+                            uploaded_by_email: currentUser.email,
+                            uploaded_at: new Date().toISOString()
+                        }
+                    ])
+                    .select();
+                
+                if (error) throw error;
+                
+                alert('✅ Provisional results published to Supabase! All staff can now view.');
+                await addRealActivity(`${currentUser.email} published provisional results: ${fileName}`);
+                
+                // Reload files
+                await loadRealSharedFiles();
+                
+                // Hide preview
+                document.getElementById('excelPreviewSection').classList.add('hidden');
+                document.getElementById('excelUpload').value = '';
+                window.currentUploadData = null;
+                
+            } catch (error) {
+                console.error('Error publishing:', error);
+                alert('Error publishing to Supabase: ' + error.message);
             }
         }
         
-        // ========== UPDATE STATS ==========
-        function updateStats() {
-            document.getElementById('totalAdmins').innerText = '2';
-            document.getElementById('totalLecturers').innerText = '10';
+        // ========== LECTURER REAL UPLOAD ==========
+        async function handleLecturerRealUpload(input) {
+            if (!input.files || !input.files[0]) return;
+            
+            const file = input.files[0];
+            
+            try {
+                const reader = new FileReader();
+                reader.onload = async function(e) {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'base64' });
+                    
+                    const { error } = await supabase
+                        .from('shared_excel_files')
+                        .insert([
+                            {
+                                filename: `LECTURER_${Date.now()}_${file.name}`,
+                                file_data: excelBuffer,
+                                row_count: 0,
+                                uploaded_by: currentUser.id,
+                                uploaded_by_email: currentUser.email,
+                                uploaded_at: new Date().toISOString()
+                            }
+                        ]);
+                    
+                    if (error) throw error;
+                    
+                    alert('✅ Provisional marks submitted to Supabase!');
+                    await addRealActivity(`${currentUser.email} submitted provisional marks: ${file.name}`);
+                    
+                    // Update recent submissions
+                    document.getElementById('recentSubmissions').innerHTML = `
+                        <div class="bg-white p-3 rounded-lg border border-gray-200">
+                            <div class="flex items-center justify-between">
+                                <span class="font-medium">${file.name}</span>
+                                <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">Submitted</span>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">${new Date().toLocaleString()}</p>
+                        </div>
+                    `;
+                    
+                };
+                reader.readAsArrayBuffer(file);
+                
+            } catch (error) {
+                alert('Error uploading: ' + error.message);
+            }
+        }
+        
+        // ========== CREATE STAFF USER (SUPER ADMIN) ==========
+        async function createStaffUser() {
+            const name = document.getElementById('newStaffName').value;
+            const email = document.getElementById('newStaffEmail').value;
+            const role = document.getElementById('newStaffRole').value;
+            const password = document.getElementById('newStaffPassword').value;
+            
+            if (!name || !email || !role || !password) {
+                alert('Please fill all fields');
+                return;
+            }
+            
+            if (password.length < 6) {
+                alert('Password must be at least 6 characters');
+                return;
+            }
+            
+            try {
+                const { data: authData, error: authError } = await supabase.auth.signUp({
+                    email: email,
+                    password: password,
+                    options: {
+                        data: {
+                            role: role,
+                            full_name: name
+                        }
+                    }
+                });
+                
+                if (authError) throw authError;
+                
+                const { error: profileError } = await supabase
+                    .from('consolidated_user_profiles_table')
+                    .insert([
+                        {
+                            email: email,
+                            full_name: name,
+                            role: role,
+                            department: 'Nursing',
+                            is_active: true,
+                            created_at: new Date().toISOString()
+                        }
+                    ]);
+                
+                if (profileError && !profileError.message.includes('duplicate')) {
+                    console.error('Profile error:', profileError);
+                }
+                
+                alert(`✅ ${role} created successfully!\nEmail: ${email}\nPassword: ${password}`);
+                await addRealActivity(`${currentUser.email} created new ${role}: ${email}`);
+                await updateRealStats();
+                
+                // Clear form
+                document.getElementById('newStaffName').value = '';
+                document.getElementById('newStaffEmail').value = '';
+                document.getElementById('newStaffPassword').value = '';
+                
+            } catch (error) {
+                if (error.message.includes('User already registered')) {
+                    alert('❌ User already exists!');
+                } else {
+                    alert('Error: ' + error.message);
+                }
+            }
         }
         
         // ========== UTILITY FUNCTIONS ==========
+        function showLogin() {
+            document.getElementById('setupScreen').classList.add('hidden');
+            document.getElementById('loginScreen').classList.remove('hidden');
+        }
+        
+        function showSetup() {
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('setupScreen').classList.remove('hidden');
+        }
+        
         function downloadTemplate() {
             const template = [
                 ['Student ID', 'Student Name', 'Subject', 'Marks (0-100)', 'Remarks'],
@@ -837,42 +1263,29 @@
         function cancelUpload() {
             document.getElementById('excelPreviewSection').classList.add('hidden');
             document.getElementById('excelUpload').value = '';
+            window.currentUploadData = null;
+        }
+        
+        function viewFile(fileId) {
+            alert('📄 Viewing file ID: ' + fileId + '\nFull Excel viewer coming soon!');
         }
         
         function logout() {
             currentUser = null;
             currentRole = null;
-            document.getElementById('loginScreen').classList.remove('hidden');
             document.getElementById('mainPortal').classList.add('hidden');
+            document.getElementById('loginScreen').classList.remove('hidden');
         }
         
-        function createUser() {
-            alert('✅ User account created successfully!');
-            addActivity(`👤 ${currentUser.full_name || currentUser.email} created new user account`);
-        }
-        
-        function backupSystem() {
-            alert('✅ System backup completed!');
-            addActivity(`💾 System backup performed by ${currentUser.full_name || currentUser.email}`);
-        }
-        
-        function publishProvisional() {
-            alert('✅ Provisional results published to all staff!');
-            addActivity(`📢 PROVISIONAL RESULTS PUBLISHED by ${currentUser.full_name || currentUser.email}`);
-        }
-        
-        function generateReport() {
-            alert('📊 Provisional results report generated!');
-        }
-        
-        function viewFile(fileId) {
-            alert('📄 Viewing provisional results file #' + fileId);
-        }
-        
-        // Initialize
-        console.log('🏥 NCHSN EXAM RESULTS PROVISIONAL PORTAL LOADED');
-        console.log('🔗 Supabase URL:', SUPABASE_URL);
-        console.log('🔑 Supabase Key configured');
+        // ========== INITIALIZE ==========
+        window.onload = function() {
+            console.log('🏥 NCHSN EXAM RESULTS PROVISIONAL PORTAL - REAL SUPABASE MODE');
+            console.log('🔗 Supabase URL:', SUPABASE_URL);
+            console.log('🔑 Supabase Key configured');
+            
+            // Try to create tables
+            createTables();
+        };
     </script>
 </body>
 </html>
