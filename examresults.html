@@ -37,6 +37,7 @@
             const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
             
             console.log('✅ Supabase initialized!');
+            console.log('🔗 URL:', SUPABASE_URL);
             
             // Global state
             let currentUser = null;
@@ -44,7 +45,6 @@
             let sharedFiles = [];
             let allStudentMarks = [];
             let currentEditingFile = null;
-            let currentViewingFile = null;
             let hot = null;
         </script>
 
@@ -185,7 +185,7 @@
                 </h2>
                 
                 <div class="flex gap-4 mb-6">
-                    <input type="text" id="studentSearchInput" placeholder="Enter Student ID or Name..." 
+                    <input type="text" id="studentSearchInput" placeholder="Enter Admission No. or Student Name..." 
                            class="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500">
                     <button onclick="searchStudentMarks()" 
                             class="bg-blue-600 text-white px-8 py-3 rounded-xl hover:bg-blue-700 flex items-center">
@@ -266,6 +266,12 @@
                             </button>
                         </div>
                     </div>
+                    
+                    <!-- Sheet selector for multi-sheet Excel files -->
+                    <div id="sheetSelector" class="mb-4 flex gap-2 overflow-x-auto pb-2">
+                        <!-- Sheet tabs will appear here -->
+                    </div>
+                    
                     <div id="excelEditor" class="excel-editor" style="height: 500px;"></div>
                 </div>
 
@@ -280,6 +286,9 @@
                             <i class="fas fa-times mr-2"></i>
                             Close
                         </button>
+                    </div>
+                    <div id="sheetViewerSelector" class="mb-4 flex gap-2 overflow-x-auto pb-2">
+                        <!-- Sheet tabs for viewer will appear here -->
                     </div>
                     <div id="excelViewer" class="overflow-x-auto bg-white rounded-lg border p-4"></div>
                 </div>
@@ -311,13 +320,26 @@
             const email = document.getElementById('loginEmail').value;
             const password = document.getElementById('loginPassword').value;
             
+            if (!email || !password) {
+                alert('Please enter email and password');
+                return;
+            }
+            
             try {
+                console.log('🔐 Logging in with:', email);
+                
                 const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
                     email: email,
                     password: password
                 });
                 
-                if (authError) throw authError;
+                if (authError) {
+                    console.error('❌ Auth error:', authError);
+                    alert('Login failed: ' + authError.message);
+                    return;
+                }
+                
+                console.log('✅ Auth successful:', authData.user);
                 
                 const { data: profile, error: profileError } = await supabase
                     .from('consolidated_user_profiles_table')
@@ -325,10 +347,16 @@
                     .eq('email', email)
                     .single();
                 
-                if (profileError) throw profileError;
+                if (profileError) {
+                    console.error('❌ Profile error:', profileError);
+                    alert('User profile not found. Please contact admin.');
+                    return;
+                }
                 
                 currentUser = profile;
                 currentRole = profile.role;
+                
+                console.log('✅ User role:', currentRole);
                 
                 document.getElementById('loginScreen').classList.add('hidden');
                 document.getElementById('mainPortal').classList.remove('hidden');
@@ -354,6 +382,7 @@
                 await loadAllStudentMarks();
                 
             } catch (error) {
+                console.error('❌ Login error:', error);
                 alert('Login failed: ' + error.message);
             }
         }
@@ -366,14 +395,21 @@
                     .select('*')
                     .order('uploaded_at', { ascending: false });
                 
-                if (error) throw error;
+                if (error) {
+                    console.error('Error loading files:', error);
+                    return;
+                }
                 
                 sharedFiles = files || [];
                 allStudentMarks = [];
                 
+                console.log(`📁 Found ${sharedFiles.length} files to process`);
+                
                 for (const file of sharedFiles) {
                     if (file.file_data) {
                         try {
+                            console.log(`📄 Processing file: ${file.filename}`);
+                            
                             const binaryData = atob(file.file_data);
                             const array = new Uint8Array(binaryData.length);
                             for (let i = 0; i < binaryData.length; i++) {
@@ -381,30 +417,41 @@
                             }
                             
                             const workbook = XLSX.read(array, { type: 'array' });
-                            const sheetName = workbook.SheetNames[0];
-                            const worksheet = workbook.Sheets[sheetName];
-                            const jsonData = XLSX.utils.sheet_to_json(worksheet);
                             
-                            jsonData.forEach((row, index) => {
-                                // Try different possible column names
-                                const studentId = row['Student ID'] || row['studentId'] || row['STUDENT_ID'] || row['StudentID'] || row['ID'] || '';
-                                const studentName = row['Student Name'] || row['studentName'] || row['STUDENT_NAME'] || row['Name'] || row['name'] || '';
-                                const marks = row['Marks'] || row['marks'] || row['MARKS'] || row['Score'] || row['score'] || '';
-                                const subject = row['Subject'] || row['subject'] || row['SUBJECT'] || 'General';
+                            // Process each sheet in the workbook
+                            workbook.SheetNames.forEach(sheetName => {
+                                const worksheet = workbook.Sheets[sheetName];
+                                const jsonData = XLSX.utils.sheet_to_json(worksheet);
                                 
-                                if (studentId) {
-                                    allStudentMarks.push({
-                                        id: `${file.id}_${index}`,
-                                        fileId: file.id,
-                                        filename: file.filename,
-                                        studentId: studentId.toString().trim(),
-                                        studentName: studentName.toString().trim(),
-                                        marks: marks,
-                                        subject: subject,
-                                        uploadedBy: file.uploaded_by_email,
-                                        uploadedAt: file.uploaded_at
-                                    });
-                                }
+                                console.log(`📊 Sheet "${sheetName}" has ${jsonData.length} rows`);
+                                
+                                jsonData.forEach((row, index) => {
+                                    // Look for YOUR specific column names
+                                    const admissionNo = row['Admission No.'] || row['Admission'] || row['S/N'] || '';
+                                    const studentName = row['Student Name'] || row['Name'] || row['STUDENT_NAME'] || '';
+                                    const cat = row['CAT'] || row['Cat'] || row['cat'] || '';
+                                    const ebe = row['EBE'] || row['Ebe'] || row['ebe'] || '';
+                                    const finalMarks = row['FINALMARKS'] || row['FinalMarks'] || row['FINAL'] || row['FINAL MARKS'] || '';
+                                    const remarks = row['REMARKS'] || row['Remarks'] || row['remarks'] || '';
+                                    
+                                    if (admissionNo || studentName) {
+                                        allStudentMarks.push({
+                                            id: `${file.id}_${sheetName}_${index}`,
+                                            fileId: file.id,
+                                            filename: file.filename,
+                                            sheetName: sheetName,
+                                            admissionNo: admissionNo.toString().trim(),
+                                            studentName: studentName.toString().trim(),
+                                            cat: cat,
+                                            ebe: ebe,
+                                            finalMarks: finalMarks,
+                                            remarks: remarks,
+                                            rowData: row,
+                                            uploadedBy: file.uploaded_by_email,
+                                            uploadedAt: file.uploaded_at
+                                        });
+                                    }
+                                });
                             });
                         } catch (e) {
                             console.error('Error parsing file:', file.filename, e);
@@ -418,6 +465,15 @@
                 
                 console.log(`✅ Loaded ${allStudentMarks.length} student records from ${sharedFiles.length} files`);
                 
+                // Get staff count
+                const { data: staff, error: staffError } = await supabase
+                    .from('consolidated_user_profiles_table')
+                    .select('role');
+                
+                if (!staffError && staff) {
+                    document.getElementById('totalStaffStats').innerText = staff.length || 0;
+                }
+                
             } catch (error) {
                 console.error('Error loading student marks:', error);
             }
@@ -428,15 +484,24 @@
             const searchTerm = document.getElementById('studentSearchInput').value.toLowerCase().trim();
             
             if (!searchTerm) {
-                alert('Please enter a Student ID or Name to search');
+                alert('Please enter Admission No. or Student Name to search');
+                return;
+            }
+            
+            console.log('🔍 Searching for:', searchTerm);
+            console.log('📊 Total records in memory:', allStudentMarks.length);
+            
+            if (allStudentMarks.length === 0) {
+                alert('No student records loaded yet. Please check if Excel files are uploaded.');
                 return;
             }
             
             const results = allStudentMarks.filter(mark => 
-                mark.studentId.toLowerCase().includes(searchTerm) || 
-                mark.studentName.toLowerCase().includes(searchTerm)
+                (mark.admissionNo && mark.admissionNo.toLowerCase().includes(searchTerm)) || 
+                (mark.studentName && mark.studentName.toLowerCase().includes(searchTerm))
             );
             
+            console.log('✅ Found:', results.length, 'results');
             displayStudentResults(results);
         }
 
@@ -457,10 +522,11 @@
             countSpan.innerText = results.length;
             
             // Calculate summary statistics
-            const totalMarks = results.reduce((sum, r) => sum + (parseFloat(r.marks) || 0), 0);
-            const averageMarks = (totalMarks / results.length).toFixed(2);
-            const passedCount = results.filter(r => parseFloat(r.marks) >= 50).length;
-            const failedCount = results.length - passedCount;
+            const validMarks = results.filter(r => r.finalMarks && !isNaN(parseFloat(r.finalMarks)));
+            const totalMarks = validMarks.reduce((sum, r) => sum + (parseFloat(r.finalMarks) || 0), 0);
+            const averageMarks = validMarks.length > 0 ? (totalMarks / validMarks.length).toFixed(2) : '0';
+            const passedCount = validMarks.filter(r => parseFloat(r.finalMarks) >= 50).length;
+            const failedCount = validMarks.length - passedCount;
             
             let html = `
                 <div class="mb-4 grid grid-cols-3 gap-4">
@@ -469,7 +535,7 @@
                         <p class="text-2xl font-bold text-blue-800">${results.length}</p>
                     </div>
                     <div class="bg-green-50 p-3 rounded-lg">
-                        <p class="text-sm text-gray-600">Average Marks</p>
+                        <p class="text-sm text-gray-600">Average Final Mark</p>
                         <p class="text-2xl font-bold text-green-800">${averageMarks}</p>
                     </div>
                     <div class="bg-purple-50 p-3 rounded-lg">
@@ -480,12 +546,13 @@
                 <table class="w-full border-collapse">
                     <thead>
                         <tr class="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
-                            <th class="p-3 text-left">Student ID</th>
+                            <th class="p-3 text-left">Admission No.</th>
                             <th class="p-3 text-left">Student Name</th>
-                            <th class="p-3 text-left">Subject</th>
-                            <th class="p-3 text-left">Marks</th>
-                            <th class="p-3 text-left">Status</th>
-                            <th class="p-3 text-left">File Name</th>
+                            <th class="p-3 text-left">CAT</th>
+                            <th class="p-3 text-left">EBE</th>
+                            <th class="p-3 text-left">FINAL</th>
+                            <th class="p-3 text-left">Remarks</th>
+                            <th class="p-3 text-left">Exam</th>
                             <th class="p-3 text-left">Actions</th>
                         </tr>
                     </thead>
@@ -493,22 +560,28 @@
             `;
             
             results.forEach(result => {
-                const marks = parseFloat(result.marks) || 0;
-                const status = marks >= 50 ? 'PASS' : 'FAIL';
-                const statusClass = marks >= 50 ? 'text-green-600 bg-green-100' : 'text-red-600 bg-red-100';
+                const finalMark = parseFloat(result.finalMarks) || 0;
+                const cat = parseFloat(result.cat) || 0;
+                const ebe = parseFloat(result.ebe) || 0;
+                const status = finalMark >= 50 ? 'PASS' : (finalMark > 0 ? 'FAIL' : 'INC');
+                const statusClass = finalMark >= 50 ? 'text-green-600 bg-green-100' : 
+                                   (finalMark > 0 ? 'text-red-600 bg-red-100' : 'text-gray-600 bg-gray-100');
                 
                 html += `
                     <tr class="border-b hover:bg-gray-50">
-                        <td class="p-3 font-medium">${result.studentId}</td>
+                        <td class="p-3 font-medium">${result.admissionNo || '-'}</td>
                         <td class="p-3">${result.studentName || '-'}</td>
-                        <td class="p-3">${result.subject}</td>
-                        <td class="p-3 font-bold">${marks}</td>
-                        <td class="p-3"><span class="px-2 py-1 rounded-full text-xs ${statusClass}">${status}</span></td>
-                        <td class="p-3 text-sm">${result.filename}</td>
+                        <td class="p-3">${cat || '-'}</td>
+                        <td class="p-3">${ebe || '-'}</td>
+                        <td class="p-3 font-bold">${finalMark || '-'}</td>
+                        <td class="p-3">${result.remarks || '-'}</td>
+                        <td class="p-3 text-sm">${result.sheetName || 'General'}</td>
                         <td class="p-3">
-                            <button onclick="openFileForEditing('${result.fileId}')" class="text-blue-600 hover:text-blue-800 mr-2">
-                                <i class="fas fa-edit"></i> Edit
-                            </button>
+                            ${currentRole === 'admin' || currentRole === 'super_admin' ? 
+                                `<button onclick="openFileForEditing('${result.fileId}')" class="text-blue-600 hover:text-blue-800 mr-2">
+                                    <i class="fas fa-edit"></i> Edit
+                                </button>` : ''
+                            }
                             <button onclick="viewFile('${result.fileId}')" class="text-green-600 hover:text-green-800">
                                 <i class="fas fa-eye"></i> View
                             </button>
@@ -538,88 +611,142 @@
             }
             
             try {
+                console.log('📝 Opening file for editing:', file.filename);
+                
+                // Decode base64 data
                 const binaryData = atob(file.file_data);
                 const array = new Uint8Array(binaryData.length);
                 for (let i = 0; i < binaryData.length; i++) {
                     array[i] = binaryData.charCodeAt(i);
                 }
                 
+                // Read the Excel file
                 const workbook = XLSX.read(array, { type: 'array' });
-                const sheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[sheetName];
-                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
                 
                 currentEditingFile = {
                     id: file.id,
                     workbook: workbook,
-                    data: jsonData,
-                    filename: file.filename
+                    filename: file.filename,
+                    sheets: workbook.SheetNames,
+                    currentSheet: workbook.SheetNames[0]
                 };
                 
                 document.getElementById('editingFileName').innerText = file.filename;
                 document.getElementById('excelEditorSection').classList.remove('hidden');
                 
-                // Initialize Handsontable editor
-                const container = document.getElementById('excelEditor');
-                if (hot) hot.destroy();
+                // Create sheet selector tabs
+                createSheetSelector(workbook.SheetNames);
                 
-                hot = new Handsontable(container, {
-                    data: jsonData,
-                    rowHeaders: true,
-                    colHeaders: true,
-                    height: '100%',
-                    width: '100%',
-                    licenseKey: 'non-commercial-and-evaluation',
-                    contextMenu: true,
-                    copyPaste: true,
-                    fillHandle: true,
-                    undo: true,
-                    redo: true,
-                    columnSorting: true,
-                    filters: true,
-                    dropdownMenu: true,
-                    
-                    // Mark validation for marks column
-                    cells: function(row, col, prop) {
-                        const cellProperties = {};
-                        const header = jsonData[0] ? jsonData[0][col] : '';
-                        
-                        if (header && header.toString().toLowerCase().includes('marks')) {
-                            cellProperties.type = 'numeric';
-                            cellProperties.validator = function(value, callback) {
-                                if (value === null || value === '') {
-                                    callback(true);
-                                    return;
-                                }
-                                const num = parseFloat(value);
-                                if (isNaN(num) || num < 0 || num > 100) {
-                                    callback(false);
-                                } else {
-                                    callback(true);
-                                }
-                            };
-                            
-                            // Color coding based on marks
-                            cellProperties.renderer = function(instance, td, row, col, prop, value, cellProperties) {
-                                Handsontable.renderers.NumericRenderer.apply(this, arguments);
-                                if (row > 0 && value) {
-                                    const marks = parseFloat(value);
-                                    if (marks >= 75) td.style.background = '#dcfce7';
-                                    else if (marks >= 50) td.style.background = '#fef9c3';
-                                    else td.style.background = '#fee2e2';
-                                }
-                                return td;
-                            };
-                        }
-                        
-                        return cellProperties;
-                    }
-                });
+                // Load the first sheet
+                loadSheetForEditing(workbook.SheetNames[0]);
                 
             } catch (error) {
                 console.error('Error opening file:', error);
                 alert('Error opening file: ' + error.message);
             }
+        }
+        
+        // ========== CREATE SHEET SELECTOR TABS ==========
+        function createSheetSelector(sheetNames) {
+            const selector = document.getElementById('sheetSelector');
+            let html = '';
+            
+            sheetNames.forEach((sheet, index) => {
+                html += `
+                    <button onclick="loadSheetForEditing('${sheet}')" 
+                            class="sheet-tab px-4 py-2 rounded-lg text-sm font-medium transition
+                            ${index === 0 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">
+                        ${sheet}
+                    </button>
+                `;
+            });
+            
+            selector.innerHTML = html;
+        }
+        
+        // ========== LOAD SHEET FOR EDITING ==========
+        function loadSheetForEditing(sheetName) {
+            if (!currentEditingFile || !currentEditingFile.workbook) return;
+            
+            // Update active tab
+            document.querySelectorAll('.sheet-tab').forEach(tab => {
+                if (tab.innerText === sheetName) {
+                    tab.className = 'sheet-tab px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 text-white';
+                } else {
+                    tab.className = 'sheet-tab px-4 py-2 rounded-lg text-sm font-medium bg-gray-200 text-gray-700 hover:bg-gray-300';
+                }
+            });
+            
+            const worksheet = currentEditingFile.workbook.Sheets[sheetName];
+            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+            
+            console.log(`📊 Loading sheet "${sheetName}" with ${jsonData.length} rows`);
+            console.log('📋 Headers:', jsonData[0]);
+            
+            currentEditingFile.currentSheet = sheetName;
+            
+            // Initialize Handsontable editor
+            const container = document.getElementById('excelEditor');
+            
+            // Clear previous instance
+            if (hot) {
+                hot.destroy();
+                hot = null;
+            }
+            
+            // Create new instance with the data
+            hot = new Handsontable(container, {
+                data: jsonData,
+                rowHeaders: true,
+                colHeaders: true,
+                height: '100%',
+                width: '100%',
+                licenseKey: 'non-commercial-and-evaluation',
+                contextMenu: true,
+                copyPaste: true,
+                fillHandle: true,
+                undo: true,
+                redo: true,
+                columnSorting: true,
+                filters: true,
+                dropdownMenu: true,
+                
+                // Style the cells based on YOUR column headers
+                cells: function(row, col, prop) {
+                    const cellProperties = {};
+                    const header = jsonData[0] ? jsonData[0][col] : '';
+                    
+                    // Make numeric columns for marks
+                    if (header && (
+                        header.toString().toLowerCase().includes('cat') ||
+                        header.toString().toLowerCase().includes('ebe') ||
+                        header.toString().toLowerCase().includes('final')
+                    )) {
+                        cellProperties.type = 'numeric';
+                        cellProperties.numericFormat = { pattern: '0.00' };
+                        
+                        // Color coding based on marks for FINALMARKS column
+                        if (header.toString().toLowerCase().includes('final')) {
+                            cellProperties.renderer = function(instance, td, row, col, prop, value, cellProperties) {
+                                Handsontable.renderers.NumericRenderer.apply(this, arguments);
+                                if (row > 0 && value) {
+                                    const marks = parseFloat(value);
+                                    if (marks >= 50) td.style.background = '#dcfce7';
+                                    else if (marks > 0) td.style.background = '#fee2e2';
+                                }
+                                return td;
+                            };
+                        }
+                    }
+                    
+                    // Make header row bold
+                    if (row === 0) {
+                        cellProperties.className = 'htCenter font-bold bg-gray-100';
+                    }
+                    
+                    return cellProperties;
+                }
+            });
         }
 
         // ========== SAVE EXCEL CHANGES ==========
@@ -630,13 +757,19 @@
             }
             
             try {
+                console.log('💾 Saving changes to:', currentEditingFile.filename);
+                
+                // Get the updated data from Handsontable for current sheet
                 const updatedData = hot.getData();
-                const workbook = XLSX.utils.book_new();
+                
+                // Update the current sheet in the workbook
                 const worksheet = XLSX.utils.aoa_to_sheet(updatedData);
-                XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
+                currentEditingFile.workbook.Sheets[currentEditingFile.currentSheet] = worksheet;
                 
-                const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'base64' });
+                // Convert entire workbook to base64 for storage
+                const excelBuffer = XLSX.write(currentEditingFile.workbook, { bookType: 'xlsx', type: 'base64' });
                 
+                // Update in Supabase
                 const { error } = await supabase
                     .from('shared_excel_files')
                     .update({
@@ -689,16 +822,55 @@
                 const workbook = XLSX.read(array, { type: 'array' });
                 const sheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[sheetName];
+                
+                // Create sheet selector for viewer
+                let sheetTabs = '';
+                workbook.SheetNames.forEach((sheet, index) => {
+                    sheetTabs += `
+                        <button onclick="viewSheet('${fileId}', '${sheet}')" 
+                                class="viewer-tab px-4 py-2 rounded-lg text-sm font-medium transition
+                                ${index === 0 ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">
+                            ${sheet}
+                        </button>
+                    `;
+                });
+                document.getElementById('sheetViewerSelector').innerHTML = sheetTabs;
+                
+                // Show first sheet
                 const htmlString = XLSX.utils.sheet_to_html(worksheet);
                 
                 document.getElementById('viewingFileName').innerText = file.filename;
                 document.getElementById('excelViewer').innerHTML = htmlString;
                 document.getElementById('excelViewerSection').classList.remove('hidden');
                 
+                // Store workbook for sheet switching
+                window.currentViewingFile = {
+                    id: fileId,
+                    workbook: workbook
+                };
+                
             } catch (error) {
                 console.error('Error viewing file:', error);
                 alert('Error viewing file: ' + error.message);
             }
+        }
+        
+        // ========== VIEW DIFFERENT SHEET ==========
+        function viewSheet(fileId, sheetName) {
+            if (!window.currentViewingFile) return;
+            
+            // Update active tab
+            document.querySelectorAll('.viewer-tab').forEach(tab => {
+                if (tab.innerText === sheetName) {
+                    tab.className = 'viewer-tab px-4 py-2 rounded-lg text-sm font-medium bg-green-600 text-white';
+                } else {
+                    tab.className = 'viewer-tab px-4 py-2 rounded-lg text-sm font-medium bg-gray-200 text-gray-700 hover:bg-gray-300';
+                }
+            });
+            
+            const worksheet = window.currentViewingFile.workbook.Sheets[sheetName];
+            const htmlString = XLSX.utils.sheet_to_html(worksheet);
+            document.getElementById('excelViewer').innerHTML = htmlString;
         }
 
         // ========== LOAD SHARED FILES ==========
@@ -761,7 +933,7 @@
                 container.innerHTML = html;
                 
             } catch (error) {
-                console.error('Error:', error);
+                console.error('Error loading files:', error);
             }
         }
 
@@ -780,8 +952,9 @@
                     const worksheet = workbook.Sheets[sheetName];
                     const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
                     
-                    // Show preview
-                    let previewHtml = '<table class="w-full border-collapse">';
+                    // Show preview with multiple sheets info
+                    let previewHtml = `<div class="mb-2 text-sm text-gray-600">📑 ${workbook.SheetNames.length} sheet(s) found</div>`;
+                    previewHtml += '<table class="w-full border-collapse">';
                     previewHtml += '<thead><tr class="bg-blue-600 text-white">';
                     if (jsonData[0]) {
                         jsonData[0].forEach(header => {
@@ -866,6 +1039,7 @@
         
         function closeEditor() {
             document.getElementById('excelEditorSection').classList.add('hidden');
+            document.getElementById('sheetSelector').innerHTML = '';
             if (hot) {
                 hot.destroy();
                 hot = null;
@@ -876,6 +1050,8 @@
         function closeViewer() {
             document.getElementById('excelViewerSection').classList.add('hidden');
             document.getElementById('excelViewer').innerHTML = '';
+            document.getElementById('sheetViewerSelector').innerHTML = '';
+            window.currentViewingFile = null;
         }
         
         function closeFilePreview() {
@@ -895,7 +1071,8 @@
         }
         
         window.onload = function() {
-            console.log('✅ NCHSN PORTAL LOADED - ALL BUTTONS WORKING!');
+            console.log('🏥 NCHSN PORTAL LOADED - EDIT WORKING WITH MULTIPLE SHEETS!');
+            console.log('🔗 Supabase URL:', SUPABASE_URL);
         };
     </script>
 </body>
