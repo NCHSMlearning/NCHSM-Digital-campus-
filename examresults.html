@@ -17,13 +17,17 @@
     <!-- SheetJS for Excel -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
     
+    <!-- Handsontable for Excel Editing -->
+    <script src="https://cdn.jsdelivr.net/npm/handsontable@14.2.0/dist/handsontable.full.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@14.2.0/dist/handsontable.full.min.css">
+    
     <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8/dist/umd/supabase.min.js"></script>
 </head>
 <body>
     <div class="max-w-7xl mx-auto">
         
-        <!-- ========== SUPABASE CONFIG - YOUR CREDENTIALS ========== -->
+        <!-- ========== SUPABASE CONFIG ========== -->
         <script>
             // 🔴 YOUR SUPABASE CREDENTIALS
             const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
@@ -33,12 +37,14 @@
             const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
             
             console.log('✅ Supabase initialized!');
-            console.log('🔗 URL:', SUPABASE_URL);
             
             // Global state
             let currentUser = null;
             let currentRole = null;
             let sharedFiles = [];
+            let allStudentMarks = [];
+            let currentEditingFile = null;
+            let hot = null;
         </script>
 
         <!-- ========== LOGIN SCREEN ========== -->
@@ -82,10 +88,6 @@
                         <i class="fas fa-sign-in-alt mr-2"></i>
                         LOGIN TO PORTAL
                     </button>
-                    
-                    <div class="text-center text-sm text-gray-500 mt-4">
-                        <p>Use your existing credentials from consolidated_user_profiles_table</p>
-                    </div>
                 </div>
             </div>
         </div>
@@ -174,8 +176,93 @@
                 </div>
             </div>
 
-            <!-- Role Dashboard Container -->
-            <div id="dashboardContainer"></div>
+            <!-- ========== ADMIN STUDENT SEARCH SECTION ========== -->
+            <div id="adminSearchSection" class="portal-card p-6">
+                <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                    <i class="fas fa-search text-blue-600 mr-2"></i>
+                    ADMIN - Search Student Marks Across All Excel Files
+                </h2>
+                
+                <div class="flex gap-4 mb-6">
+                    <input type="text" id="studentSearchInput" placeholder="Enter Student ID or Name..." 
+                           class="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500">
+                    <button onclick="searchStudentMarks()" 
+                            class="bg-blue-600 text-white px-8 py-3 rounded-xl hover:bg-blue-700 flex items-center">
+                        <i class="fas fa-search mr-2"></i>
+                        Search
+                    </button>
+                    <button onclick="clearSearch()" 
+                            class="bg-gray-500 text-white px-6 py-3 rounded-xl hover:bg-gray-600">
+                        <i class="fas fa-times"></i>
+                        Clear
+                    </button>
+                </div>
+                
+                <!-- Student Results Container -->
+                <div id="studentResultsContainer" class="hidden">
+                    <h3 class="font-semibold text-gray-800 mb-3 flex items-center">
+                        <i class="fas fa-user-graduate text-green-600 mr-2"></i>
+                        <span id="searchResultCount">0</span> Results Found
+                    </h3>
+                    <div id="studentResultsTable" class="overflow-x-auto bg-white rounded-xl border">
+                        <!-- Results table will be populated here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========== ADMIN DASHBOARD ========== -->
+            <div id="adminDashboard" class="space-y-6">
+                <!-- Excel Upload Section -->
+                <div class="portal-card p-6">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                        <i class="fas fa-upload text-green-600 mr-2"></i>
+                        ADMIN - Upload New Excel File
+                    </h2>
+                    
+                    <div onclick="document.getElementById('excelUpload').click()"
+                         class="border-4 border-dashed border-blue-300 rounded-xl p-8 text-center cursor-pointer hover:border-blue-500 bg-blue-50">
+                        <i class="fas fa-cloud-upload-alt text-5xl text-blue-500 mb-3"></i>
+                        <h3 class="text-xl font-bold text-gray-700">Click to Upload Excel File</h3>
+                        <p class="text-gray-500 mt-2">.xlsx, .xls, .csv files</p>
+                        <input type="file" id="excelUpload" accept=".xlsx,.xls,.csv" class="hidden" onchange="handleExcelUpload(this)">
+                    </div>
+                </div>
+
+                <!-- Live Excel Editor -->
+                <div id="excelEditorSection" class="hidden portal-card p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-xl font-bold text-gray-800 flex items-center">
+                            <i class="fas fa-edit text-purple-600 mr-2"></i>
+                            LIVE EXCEL EDITOR - <span id="editingFileName" class="text-blue-600"></span>
+                        </h2>
+                        <div class="flex gap-2">
+                            <button onclick="saveExcelChanges()" 
+                                    class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
+                                <i class="fas fa-save mr-2"></i>
+                                Save Changes
+                            </button>
+                            <button onclick="closeEditor()" 
+                                    class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600">
+                                <i class="fas fa-times"></i>
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                    <div id="excelEditor" class="excel-editor" style="height: 500px;"></div>
+                </div>
+
+                <!-- File Preview Section -->
+                <div id="filePreviewSection" class="hidden portal-card p-6">
+                    <h3 class="font-semibold text-gray-800 mb-3">File Preview</h3>
+                    <div id="filePreview" class="overflow-x-auto"></div>
+                    <div class="flex justify-end gap-3 mt-4">
+                        <button onclick="publishFile()" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700">
+                            <i class="fas fa-cloud-upload-alt mr-2"></i>
+                            Publish to Database
+                        </button>
+                    </div>
+                </div>
+            </div>
 
             <!-- Shared Excel Files -->
             <div class="portal-card p-6">
@@ -186,107 +273,364 @@
                     </h2>
                     <span class="bg-purple-100 text-purple-800 px-4 py-2 rounded-full text-sm">
                         <i class="fas fa-globe mr-1"></i>
-                        REAL-TIME SYNC
+                        ALL FILES
                     </span>
                 </div>
                 
                 <div id="sharedFilesContainer" class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <!-- Files load from Supabase -->
-                </div>
-            </div>
-
-            <!-- Activity Log -->
-            <div class="portal-card p-6">
-                <h3 class="font-bold text-gray-800 mb-4 flex items-center">
-                    <i class="fas fa-history text-gray-600 mr-2"></i>
-                    PROVISIONAL RESULTS ACTIVITY LOG
-                </h3>
-                <div id="activityLogContainer" class="space-y-2 max-h-60 overflow-y-auto">
-                    <!-- Activity log from Supabase -->
+                    <!-- Files load here -->
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        // ========== LOGIN USING EXISTING SUPABASE TABLE ==========
+        // ========== LOGIN FUNCTION ==========
         async function handleLogin() {
             const email = document.getElementById('loginEmail').value;
             const password = document.getElementById('loginPassword').value;
             
-            if (!email || !password) {
-                alert('Please enter email and password');
-                return;
-            }
-            
             try {
-                console.log('🔐 Logging in with:', email);
-                
-                // 1. Authenticate with Supabase Auth
                 const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
                     email: email,
                     password: password
                 });
                 
-                if (authError) {
-                    console.error('❌ Auth error:', authError);
-                    alert('Login failed: ' + authError.message);
-                    return;
-                }
+                if (authError) throw authError;
                 
-                console.log('✅ Auth successful:', authData.user);
-                
-                // 2. Get user role from consolidated_user_profiles_table
                 const { data: profile, error: profileError } = await supabase
                     .from('consolidated_user_profiles_table')
                     .select('*')
                     .eq('email', email)
                     .single();
                 
-                if (profileError) {
-                    console.error('❌ Profile error:', profileError);
-                    alert('User profile not found in consolidated_user_profiles_table');
-                    return;
-                }
+                if (profileError) throw profileError;
                 
-                // Set current user from profile
                 currentUser = profile;
                 currentRole = profile.role;
                 
-                console.log('✅ User role:', currentRole);
-                
-                // Show portal
                 document.getElementById('loginScreen').classList.add('hidden');
                 document.getElementById('mainPortal').classList.remove('hidden');
                 
-                // Update UI with user info from profile
                 document.getElementById('userDisplayName').innerHTML = `<i class="fas fa-user mr-2"></i>${profile.full_name || profile.email}`;
                 document.getElementById('userEmailDisplay').innerText = profile.email;
                 document.getElementById('userRoleDisplay').innerText = profile.role.replace('_', ' ').toUpperCase();
                 
-                // Set role badge
                 const badge = document.getElementById('userRoleBadge');
                 badge.innerText = profile.role.replace('_', ' ').toUpperCase();
                 badge.className = `role-${profile.role} px-4 py-1.5 rounded-full text-sm font-bold`;
                 
-                // Load role dashboard
-                loadRoleDashboard();
+                // Show/hide admin sections based on role
+                if (profile.role === 'admin' || profile.role === 'super_admin') {
+                    document.getElementById('adminDashboard').classList.remove('hidden');
+                    document.getElementById('adminSearchSection').classList.remove('hidden');
+                } else {
+                    document.getElementById('adminDashboard').classList.add('hidden');
+                    document.getElementById('adminSearchSection').classList.add('hidden');
+                }
                 
-                // Load shared files
                 await loadSharedFiles();
-                
-                // Add to activity log
-                await addActivity(`${profile.full_name || profile.email} (${profile.role}) logged in`);
-                
-                // Update stats
-                await updateStats();
+                await loadAllStudentMarks();
                 
             } catch (error) {
-                console.error('❌ Login error:', error);
                 alert('Login failed: ' + error.message);
             }
         }
-        
+
+        // ========== LOAD ALL STUDENT MARKS FROM ALL EXCEL FILES ==========
+        async function loadAllStudentMarks() {
+            try {
+                const { data: files, error } = await supabase
+                    .from('shared_excel_files')
+                    .select('*')
+                    .order('uploaded_at', { ascending: false });
+                
+                if (error) throw error;
+                
+                allStudentMarks = [];
+                
+                for (const file of files || []) {
+                    if (file.file_data) {
+                        try {
+                            const binaryData = atob(file.file_data);
+                            const array = new Uint8Array(binaryData.length);
+                            for (let i = 0; i < binaryData.length; i++) {
+                                array[i] = binaryData.charCodeAt(i);
+                            }
+                            
+                            const workbook = XLSX.read(array, { type: 'array' });
+                            const sheetName = workbook.SheetNames[0];
+                            const worksheet = workbook.Sheets[sheetName];
+                            const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                            
+                            jsonData.forEach((row, index) => {
+                                const studentId = row['Student ID'] || row['studentId'] || row['STUDENT_ID'] || '';
+                                const studentName = row['Student Name'] || row['studentName'] || row['STUDENT_NAME'] || '';
+                                const marks = row['Marks'] || row['marks'] || row['MARKS'] || '';
+                                const subject = row['Subject'] || row['subject'] || row['SUBJECT'] || 'General';
+                                
+                                if (studentId) {
+                                    allStudentMarks.push({
+                                        id: `${file.id}_${index}`,
+                                        fileId: file.id,
+                                        filename: file.filename,
+                                        studentId: studentId.toString().trim(),
+                                        studentName: studentName.toString().trim(),
+                                        marks: marks,
+                                        subject: subject,
+                                        uploadedBy: file.uploaded_by_email,
+                                        uploadedAt: file.uploaded_at
+                                    });
+                                }
+                            });
+                        } catch (e) {
+                            console.error('Error parsing file:', file.filename, e);
+                        }
+                    }
+                }
+                
+                console.log(`✅ Loaded ${allStudentMarks.length} student records from all files`);
+                
+            } catch (error) {
+                console.error('Error loading student marks:', error);
+            }
+        }
+
+        // ========== SEARCH STUDENT MARKS ==========
+        function searchStudentMarks() {
+            const searchTerm = document.getElementById('studentSearchInput').value.toLowerCase().trim();
+            
+            if (!searchTerm) {
+                alert('Please enter a Student ID or Name to search');
+                return;
+            }
+            
+            const results = allStudentMarks.filter(mark => 
+                mark.studentId.toLowerCase().includes(searchTerm) || 
+                mark.studentName.toLowerCase().includes(searchTerm)
+            );
+            
+            displayStudentResults(results);
+        }
+
+        // ========== DISPLAY STUDENT RESULTS ==========
+        function displayStudentResults(results) {
+            const container = document.getElementById('studentResultsContainer');
+            const tableContainer = document.getElementById('studentResultsTable');
+            const countSpan = document.getElementById('searchResultCount');
+            
+            if (results.length === 0) {
+                container.classList.remove('hidden');
+                countSpan.innerText = '0';
+                tableContainer.innerHTML = '<div class="text-center py-8 text-gray-500">No results found</div>';
+                return;
+            }
+            
+            container.classList.remove('hidden');
+            countSpan.innerText = results.length;
+            
+            // Calculate summary statistics
+            const totalMarks = results.reduce((sum, r) => sum + (parseFloat(r.marks) || 0), 0);
+            const averageMarks = (totalMarks / results.length).toFixed(2);
+            const passedCount = results.filter(r => parseFloat(r.marks) >= 50).length;
+            const failedCount = results.length - passedCount;
+            
+            let html = `
+                <div class="mb-4 grid grid-cols-3 gap-4">
+                    <div class="bg-blue-50 p-3 rounded-lg">
+                        <p class="text-sm text-gray-600">Total Exams</p>
+                        <p class="text-2xl font-bold text-blue-800">${results.length}</p>
+                    </div>
+                    <div class="bg-green-50 p-3 rounded-lg">
+                        <p class="text-sm text-gray-600">Average Marks</p>
+                        <p class="text-2xl font-bold text-green-800">${averageMarks}</p>
+                    </div>
+                    <div class="bg-purple-50 p-3 rounded-lg">
+                        <p class="text-sm text-gray-600">Pass/Fail</p>
+                        <p class="text-2xl font-bold text-purple-800">${passedCount}/${failedCount}</p>
+                    </div>
+                </div>
+                <table class="w-full border-collapse">
+                    <thead>
+                        <tr class="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
+                            <th class="p-3 text-left">Student ID</th>
+                            <th class="p-3 text-left">Student Name</th>
+                            <th class="p-3 text-left">Subject</th>
+                            <th class="p-3 text-left">Marks</th>
+                            <th class="p-3 text-left">Status</th>
+                            <th class="p-3 text-left">File Name</th>
+                            <th class="p-3 text-left">Uploaded By</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            results.forEach(result => {
+                const marks = parseFloat(result.marks) || 0;
+                const status = marks >= 50 ? 'PASS' : 'FAIL';
+                const statusClass = marks >= 50 ? 'text-green-600 bg-green-100' : 'text-red-600 bg-red-100';
+                const date = new Date(result.uploadedAt).toLocaleDateString();
+                
+                html += `
+                    <tr class="border-b hover:bg-gray-50">
+                        <td class="p-3 font-medium">${result.studentId}</td>
+                        <td class="p-3">${result.studentName || '-'}</td>
+                        <td class="p-3">${result.subject}</td>
+                        <td class="p-3 font-bold">${marks}</td>
+                        <td class="p-3"><span class="px-2 py-1 rounded-full text-xs ${statusClass}">${status}</span></td>
+                        <td class="p-3 text-sm">
+                            <button onclick="openFileForEditing('${result.fileId}')" class="text-blue-600 hover:text-blue-800">
+                                ${result.filename}
+                            </button>
+                        </td>
+                        <td class="p-3 text-sm">${result.uploadedBy || 'Unknown'}<br><span class="text-gray-500">${date}</span></td>
+                    </tr>
+                `;
+            });
+            
+            html += '</tbody></table>';
+            tableContainer.innerHTML = html;
+        }
+
+        // ========== OPEN FILE FOR EDITING ==========
+        async function openFileForEditing(fileId) {
+            if (currentRole !== 'admin' && currentRole !== 'super_admin') {
+                alert('Only Admins can edit files');
+                return;
+            }
+            
+            const file = sharedFiles.find(f => f.id === fileId);
+            if (!file || !file.file_data) {
+                alert('File data not found');
+                return;
+            }
+            
+            try {
+                const binaryData = atob(file.file_data);
+                const array = new Uint8Array(binaryData.length);
+                for (let i = 0; i < binaryData.length; i++) {
+                    array[i] = binaryData.charCodeAt(i);
+                }
+                
+                const workbook = XLSX.read(array, { type: 'array' });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                
+                currentEditingFile = {
+                    id: file.id,
+                    workbook: workbook,
+                    data: jsonData,
+                    filename: file.filename
+                };
+                
+                document.getElementById('editingFileName').innerText = file.filename;
+                document.getElementById('excelEditorSection').classList.remove('hidden');
+                
+                // Initialize Handsontable editor
+                const container = document.getElementById('excelEditor');
+                if (hot) hot.destroy();
+                
+                hot = new Handsontable(container, {
+                    data: jsonData,
+                    rowHeaders: true,
+                    colHeaders: true,
+                    height: '100%',
+                    width: '100%',
+                    licenseKey: 'non-commercial-and-evaluation',
+                    contextMenu: true,
+                    copyPaste: true,
+                    fillHandle: true,
+                    undo: true,
+                    redo: true,
+                    columnSorting: true,
+                    filters: true,
+                    dropdownMenu: true,
+                    
+                    // Mark validation for marks column
+                    cells: function(row, col, prop) {
+                        const cellProperties = {};
+                        const header = jsonData[0] ? jsonData[0][col] : '';
+                        
+                        if (header && header.toString().toLowerCase().includes('marks')) {
+                            cellProperties.type = 'numeric';
+                            cellProperties.validator = function(value, callback) {
+                                if (value === null || value === '') {
+                                    callback(true);
+                                    return;
+                                }
+                                const num = parseFloat(value);
+                                if (isNaN(num) || num < 0 || num > 100) {
+                                    callback(false);
+                                } else {
+                                    callback(true);
+                                }
+                            };
+                            
+                            // Color coding based on marks
+                            cellProperties.renderer = function(instance, td, row, col, prop, value, cellProperties) {
+                                Handsontable.renderers.NumericRenderer.apply(this, arguments);
+                                if (row > 0 && value) {
+                                    const marks = parseFloat(value);
+                                    if (marks >= 75) td.style.background = '#dcfce7';
+                                    else if (marks >= 50) td.style.background = '#fef9c3';
+                                    else td.style.background = '#fee2e2';
+                                }
+                                return td;
+                            };
+                        }
+                        
+                        return cellProperties;
+                    }
+                });
+                
+            } catch (error) {
+                console.error('Error opening file:', error);
+                alert('Error opening file: ' + error.message);
+            }
+        }
+
+        // ========== SAVE EXCEL CHANGES ==========
+        async function saveExcelChanges() {
+            if (!hot || !currentEditingFile) {
+                alert('No file being edited');
+                return;
+            }
+            
+            try {
+                const updatedData = hot.getData();
+                const workbook = XLSX.utils.book_new();
+                const worksheet = XLSX.utils.aoa_to_sheet(updatedData);
+                XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
+                
+                const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'base64' });
+                
+                const { error } = await supabase
+                    .from('shared_excel_files')
+                    .update({
+                        file_data: excelBuffer,
+                        row_count: updatedData.length - 1,
+                        last_edited_at: new Date().toISOString(),
+                        last_edited_by: currentUser.email
+                    })
+                    .eq('id', currentEditingFile.id);
+                
+                if (error) throw error;
+                
+                alert('✅ Changes saved successfully!');
+                await loadSharedFiles();
+                await loadAllStudentMarks();
+                
+                // Refresh search if active
+                const searchTerm = document.getElementById('studentSearchInput').value;
+                if (searchTerm) searchStudentMarks();
+                
+            } catch (error) {
+                console.error('Error saving:', error);
+                alert('Error saving changes: ' + error.message);
+            }
+        }
+
         // ========== LOAD SHARED FILES ==========
         async function loadSharedFiles() {
             try {
@@ -295,31 +639,24 @@
                     .select('*')
                     .order('uploaded_at', { ascending: false });
                 
-                if (error) {
-                    console.error('Error loading files:', error);
-                    return;
-                }
+                if (error) throw error;
                 
                 sharedFiles = files || [];
                 
                 const container = document.getElementById('sharedFilesContainer');
                 
                 if (sharedFiles.length === 0) {
-                    container.innerHTML = `
-                        <div class="col-span-3 text-center py-12 text-gray-500">
-                            <i class="fas fa-folder-open text-5xl mb-3 text-gray-400"></i>
-                            <p>No provisional results uploaded yet</p>
-                            <p class="text-sm mt-2">Admins can upload Excel files</p>
-                        </div>
-                    `;
+                    container.innerHTML = '<div class="col-span-3 text-center py-12 text-gray-500">No files uploaded</div>';
                     return;
                 }
                 
                 let html = '';
                 sharedFiles.forEach(file => {
                     const date = new Date(file.uploaded_at).toLocaleString();
+                    const canEdit = (currentRole === 'admin' || currentRole === 'super_admin');
+                    
                     html += `
-                        <div class="border border-gray-200 rounded-xl p-4 hover:shadow-lg transition cursor-pointer bg-white">
+                        <div class="border border-gray-200 rounded-xl p-4 hover:shadow-lg transition bg-white">
                             <div class="flex items-start">
                                 <i class="fas fa-file-excel text-green-600 text-3xl mr-3"></i>
                                 <div class="flex-1">
@@ -332,13 +669,20 @@
                                             <i class="fas fa-user mr-1"></i>${file.uploaded_by_email || 'Unknown'}
                                         </span>
                                     </div>
-                                    <p class="text-xs text-gray-500 mt-2">
-                                        <i class="fas fa-clock mr-1"></i>${date}
-                                    </p>
+                                    <p class="text-xs text-gray-500 mt-2">${date}</p>
+                                    <div class="mt-3 flex gap-2">
+                                        ${canEdit ? 
+                                            `<button onclick="openFileForEditing('${file.id}')" 
+                                                class="text-sm bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-700">
+                                                <i class="fas fa-edit mr-1"></i>Edit
+                                            </button>` : ''
+                                        }
+                                        <button onclick="viewFile('${file.id}')" 
+                                            class="text-sm bg-gray-600 text-white px-3 py-1 rounded-lg hover:bg-gray-700">
+                                            <i class="fas fa-eye mr-1"></i>View
+                                        </button>
+                                    </div>
                                 </div>
-                                <button onclick="viewFile('${file.id}')" class="text-blue-600 hover:text-blue-800">
-                                    <i class="fas fa-eye"></i>
-                                </button>
                             </div>
                         </div>
                     `;
@@ -346,7 +690,6 @@
                 
                 container.innerHTML = html;
                 
-                // Update stats
                 document.getElementById('totalFilesStats').innerText = sharedFiles.length;
                 let totalRecords = 0;
                 sharedFiles.forEach(f => totalRecords += (f.row_count || 0));
@@ -356,260 +699,15 @@
                 console.error('Error:', error);
             }
         }
-        
-        // ========== ADD ACTIVITY TO SUPABASE ==========
-        async function addActivity(action) {
-            if (!currentUser) return;
-            
-            try {
-                const { error } = await supabase
-                    .from('system_activity_log')
-                    .insert([
-                        {
-                            user_email: currentUser.email,
-                            user_role: currentRole,
-                            action: action,
-                            timestamp: new Date().toISOString()
-                        }
-                    ]);
-                
-                // Load activity log
-                await loadActivityLog();
-                
-            } catch (error) {
-                console.error('Error adding activity:', error);
-            }
-        }
-        
-        // ========== LOAD ACTIVITY LOG ==========
-        async function loadActivityLog() {
-            try {
-                const { data: logs, error } = await supabase
-                    .from('system_activity_log')
-                    .select('*')
-                    .order('timestamp', { ascending: false })
-                    .limit(10);
-                
-                if (error) {
-                    console.error('Error loading logs:', error);
-                    return;
-                }
-                
-                const container = document.getElementById('activityLogContainer');
-                
-                if (!logs || logs.length === 0) {
-                    container.innerHTML = `
-                        <div class="text-center text-gray-500 py-4">
-                            <i class="fas fa-clock mr-2"></i>
-                            No activity yet
-                        </div>
-                    `;
-                    return;
-                }
-                
-                let html = '';
-                logs.forEach(log => {
-                    const time = new Date(log.timestamp).toLocaleTimeString();
-                    html += `
-                        <div class="flex items-center text-sm p-2 bg-gray-50 rounded-lg">
-                            <span class="text-gray-500 mr-2">[${time}]</span>
-                            <span class="role-${log.user_role || 'lecturer'} text-xs px-2 py-0.5 mr-2">
-                                ${(log.user_role || 'USER').replace('_', ' ').toUpperCase()}
-                            </span>
-                            <span class="text-gray-800">${log.action}</span>
-                        </div>
-                    `;
-                });
-                
-                container.innerHTML = html;
-                
-            } catch (error) {
-                console.error('Error:', error);
-            }
-        }
-        
-        // ========== UPDATE STATS ==========
-        async function updateStats() {
-            try {
-                // Get staff count from consolidated_user_profiles_table
-                const { data: staff, error: staffError } = await supabase
-                    .from('consolidated_user_profiles_table')
-                    .select('role');
-                
-                if (!staffError && staff) {
-                    const admins = staff.filter(s => s.role === 'admin' || s.role === 'super_admin').length;
-                    const lecturers = staff.filter(s => s.role === 'lecturer').length;
-                    
-                    document.getElementById('totalStaffStats').innerText = staff.length || 0;
-                }
-                
-            } catch (error) {
-                console.error('Error updating stats:', error);
-            }
-        }
-        
-        // ========== ROLE DASHBOARDS ==========
-        function loadRoleDashboard() {
-            const container = document.getElementById('dashboardContainer');
-            
-            if (currentRole === 'super_admin') {
-                container.innerHTML = getSuperAdminDashboard();
-            } else if (currentRole === 'admin') {
-                container.innerHTML = getAdminDashboard();
-            } else {
-                container.innerHTML = getLecturerDashboard();
-            }
-        }
-        
-        function getSuperAdminDashboard() {
-            return `
-                <div class="portal-card p-6">
-                    <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
-                        <i class="fas fa-crown text-yellow-500 mr-2"></i>
-                        SUPER ADMINISTRATOR DASHBOARD
-                    </h2>
-                    
-                    <div class="grid md:grid-cols-2 gap-6">
-                        <div class="bg-gray-50 p-6 rounded-xl">
-                            <h3 class="font-semibold text-gray-800 mb-4 flex items-center">
-                                <i class="fas fa-users-cog text-purple-600 mr-2"></i>
-                                System Overview
-                            </h3>
-                            <div class="space-y-3">
-                                <div class="flex justify-between items-center p-3 bg-white rounded-lg">
-                                    <span>Your Role</span>
-                                    <span class="font-bold text-red-600">SUPER ADMIN</span>
-                                </div>
-                                <div class="flex justify-between items-center p-3 bg-white rounded-lg">
-                                    <span>Full Access</span>
-                                    <span class="text-green-600 font-bold">✓ Enabled</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="bg-gray-50 p-6 rounded-xl">
-                            <h3 class="font-semibold text-gray-800 mb-4 flex items-center">
-                                <i class="fas fa-chart-line text-blue-600 mr-2"></i>
-                                Quick Actions
-                            </h3>
-                            <div class="space-y-2">
-                                <button onclick="alert('Manage Users - Coming Soon')" 
-                                        class="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
-                                    <i class="fas fa-users-cog mr-2"></i>
-                                    Manage All Users
-                                </button>
-                                <button onclick="alert('System Settings - Coming Soon')" 
-                                        class="w-full bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700">
-                                    <i class="fas fa-cog mr-2"></i>
-                                    System Settings
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                ${getAdminDashboard()}
-                ${getLecturerDashboard()}
-            `;
-        }
-        
-        function getAdminDashboard() {
-            return `
-                <div class="portal-card p-6 mt-6">
-                    <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
-                        <i class="fas fa-shield-alt text-blue-600 mr-2"></i>
-                        ADMINISTRATOR - Upload Provisional Results
-                    </h2>
-                    
-                    <div class="grid md:grid-cols-2 gap-6">
-                        <div>
-                            <div onclick="document.getElementById('excelUpload').click()"
-                                 class="border-4 border-dashed border-blue-300 rounded-xl p-8 text-center cursor-pointer hover:border-blue-500 bg-blue-50">
-                                <i class="fas fa-cloud-upload-alt text-5xl text-blue-500 mb-3"></i>
-                                <h3 class="text-xl font-bold text-gray-700">Upload Excel File</h3>
-                                <p class="text-gray-500 mt-2">.xlsx, .xls, .csv</p>
-                                <input type="file" id="excelUpload" accept=".xlsx,.xls,.csv" class="hidden" onchange="handleExcelUpload(this)">
-                            </div>
-                        </div>
-                        
-                        <div class="bg-gray-50 p-6 rounded-xl">
-                            <h3 class="font-semibold text-gray-800 mb-3">Upload Guidelines</h3>
-                            <ul class="space-y-2 text-sm text-gray-600">
-                                <li class="flex items-center">
-                                    <i class="fas fa-check-circle text-green-500 mr-2"></i>
-                                    Include Student ID, Name, Marks
-                                </li>
-                                <li class="flex items-center">
-                                    <i class="fas fa-check-circle text-green-500 mr-2"></i>
-                                    Marks must be 0-100
-                                </li>
-                                <li class="flex items-center">
-                                    <i class="fas fa-check-circle text-green-500 mr-2"></i>
-                                    Files saved to Supabase
-                                </li>
-                            </ul>
-                            <button onclick="downloadTemplate()" class="mt-4 text-blue-600 hover:text-blue-800">
-                                <i class="fas fa-download mr-2"></i>
-                                Download Template
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <div id="excelPreviewSection" class="hidden mt-6">
-                        <h3 class="font-semibold text-gray-800 mb-3">Preview Provisional Results</h3>
-                        <div id="excelPreview" class="overflow-x-auto bg-white rounded-lg border"></div>
-                        <div class="flex justify-end gap-3 mt-4">
-                            <button onclick="cancelUpload()" class="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600">
-                                Cancel
-                            </button>
-                            <button onclick="publishProvisionalResults()" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700">
-                                <i class="fas fa-cloud-upload-alt mr-2"></i>
-                                Publish to Supabase
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-        
-        function getLecturerDashboard() {
-            return `
-                <div class="portal-card p-6 mt-6">
-                    <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
-                        <i class="fas fa-chalkboard-teacher text-green-600 mr-2"></i>
-                        LECTURER - Submit Provisional Marks
-                    </h2>
-                    
-                    <div class="grid md:grid-cols-2 gap-6">
-                        <div>
-                            <div onclick="document.getElementById('lecturerUpload').click()"
-                                 class="border-4 border-dashed border-green-300 rounded-xl p-8 text-center cursor-pointer hover:border-green-500 bg-green-50">
-                                <i class="fas fa-upload text-5xl text-green-500 mb-3"></i>
-                                <h3 class="text-xl font-bold text-gray-700">Submit Marks</h3>
-                                <p class="text-gray-500 mt-2">Excel format only</p>
-                                <input type="file" id="lecturerUpload" accept=".xlsx,.xls,.csv" class="hidden" onchange="handleLecturerUpload(this)">
-                            </div>
-                        </div>
-                        
-                        <div class="bg-gray-50 p-6 rounded-xl">
-                            <h3 class="font-semibold text-gray-800 mb-3">My Recent Submissions</h3>
-                            <div id="recentSubmissions" class="space-y-2">
-                                <p class="text-gray-500 text-sm">No recent submissions</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-        
-        // ========== EXCEL UPLOAD HANDLERS ==========
+
+        // ========== EXCEL UPLOAD HANDLER ==========
         function handleExcelUpload(input) {
             if (!input.files || !input.files[0]) return;
             
             const file = input.files[0];
             const reader = new FileReader();
             
-            reader.onload = async function(e) {
+            reader.onload = function(e) {
                 try {
                     const data = new Uint8Array(e.target.result);
                     const workbook = XLSX.read(data, { type: 'array' });
@@ -638,10 +736,9 @@
                     }
                     
                     previewHtml += '</tbody></table>';
-                    document.getElementById('excelPreview').innerHTML = previewHtml;
-                    document.getElementById('excelPreviewSection').classList.remove('hidden');
+                    document.getElementById('filePreview').innerHTML = previewHtml;
+                    document.getElementById('filePreviewSection').classList.remove('hidden');
                     
-                    // Store for publishing
                     window.currentUploadData = {
                         workbook: workbook,
                         fileName: file.name,
@@ -655,8 +752,9 @@
             
             reader.readAsArrayBuffer(file);
         }
-        
-        async function publishProvisionalResults() {
+
+        // ========== PUBLISH FILE TO SUPABASE ==========
+        async function publishFile() {
             if (!window.currentUploadData) {
                 alert('No file to publish');
                 return;
@@ -665,11 +763,9 @@
             try {
                 const { workbook, fileName, rowCount } = window.currentUploadData;
                 
-                // Convert workbook to base64 for storage
                 const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'base64' });
                 
-                // Save to Supabase
-                const { data, error } = await supabase
+                const { error } = await supabase
                     .from('shared_excel_files')
                     .insert([
                         {
@@ -680,65 +776,85 @@
                             uploaded_by_email: currentUser.email,
                             uploaded_at: new Date().toISOString()
                         }
-                    ])
-                    .select();
+                    ]);
                 
                 if (error) throw error;
                 
-                alert('✅ Provisional results published to Supabase!');
-                await addActivity(`${currentUser.email} published: ${fileName}`);
-                await loadSharedFiles();
+                alert('✅ File published successfully!');
                 
-                document.getElementById('excelPreviewSection').classList.add('hidden');
+                document.getElementById('filePreviewSection').classList.add('hidden');
                 document.getElementById('excelUpload').value = '';
                 window.currentUploadData = null;
+                
+                await loadSharedFiles();
+                await loadAllStudentMarks();
                 
             } catch (error) {
                 console.error('Error publishing:', error);
                 alert('Error: ' + error.message);
             }
         }
-        
-        function handleLecturerUpload(input) {
-            if (!input.files || !input.files[0]) return;
-            
-            const file = input.files[0];
-            alert(`✅ File "${file.name}" submitted for review`);
-            
-            document.getElementById('recentSubmissions').innerHTML = `
-                <div class="bg-white p-3 rounded-lg border border-gray-200">
-                    <div class="flex items-center justify-between">
-                        <span class="font-medium">${file.name}</span>
-                        <span class="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">Pending</span>
-                    </div>
-                    <p class="text-xs text-gray-500 mt-1">${new Date().toLocaleString()}</p>
-                </div>
-            `;
-        }
-        
-        // ========== UTILITY FUNCTIONS ==========
-        function downloadTemplate() {
-            const template = [
-                ['Student ID', 'Student Name', 'Subject', 'Marks (0-100)', 'Remarks'],
-                ['NUR2024001', 'Sarah Johnson', 'Medical-Surgical Nursing', '85', ''],
-                ['NUR2024002', 'Michael Chen', 'Medical-Surgical Nursing', '78', ''],
-                ['NUR2024003', 'Emily Rodriguez', 'Medical-Surgical Nursing', '92', '']
-            ];
-            
-            const wb = XLSX.utils.book_new();
-            const ws = XLSX.utils.aoa_to_sheet(template);
-            XLSX.utils.book_append_sheet(wb, ws, 'Template');
-            XLSX.writeFile(wb, 'NCHSN_PROVISIONAL_RESULTS_TEMPLATE.xlsx');
-        }
-        
-        function cancelUpload() {
-            document.getElementById('excelPreviewSection').classList.add('hidden');
-            document.getElementById('excelUpload').value = '';
-            window.currentUploadData = null;
-        }
-        
+
+        // ========== VIEW FILE ==========
         function viewFile(fileId) {
-            alert('📄 Viewing file: ' + fileId);
+            const file = sharedFiles.find(f => f.id === fileId);
+            if (!file || !file.file_data) {
+                alert('File data not found');
+                return;
+            }
+            
+            try {
+                const binaryData = atob(file.file_data);
+                const array = new Uint8Array(binaryData.length);
+                for (let i = 0; i < binaryData.length; i++) {
+                    array[i] = binaryData.charCodeAt(i);
+                }
+                
+                const workbook = XLSX.read(array, { type: 'array' });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                const htmlString = XLSX.utils.sheet_to_html(worksheet);
+                
+                const previewWindow = window.open('', '_blank');
+                previewWindow.document.write(`
+                    <html>
+                        <head>
+                            <title>${file.filename}</title>
+                            <style>
+                                body { font-family: Arial; padding: 20px; }
+                                table { border-collapse: collapse; width: 100%; }
+                                th { background: #1e3c72; color: white; padding: 10px; }
+                                td { padding: 8px; border: 1px solid #ddd; }
+                                tr:nth-child(even) { background: #f9f9f9; }
+                            </style>
+                        </head>
+                        <body>
+                            <h2>${file.filename}</h2>
+                            <p>Uploaded by: ${file.uploaded_by_email} on ${new Date(file.uploaded_at).toLocaleString()}</p>
+                            ${htmlString}
+                        </body>
+                    </html>
+                `);
+                
+            } catch (error) {
+                console.error('Error viewing file:', error);
+                alert('Error viewing file: ' + error.message);
+            }
+        }
+
+        // ========== UTILITY FUNCTIONS ==========
+        function clearSearch() {
+            document.getElementById('studentSearchInput').value = '';
+            document.getElementById('studentResultsContainer').classList.add('hidden');
+        }
+        
+        function closeEditor() {
+            document.getElementById('excelEditorSection').classList.add('hidden');
+            if (hot) {
+                hot.destroy();
+                hot = null;
+            }
+            currentEditingFile = null;
         }
         
         function logout() {
@@ -746,12 +862,11 @@
             currentRole = null;
             document.getElementById('mainPortal').classList.add('hidden');
             document.getElementById('loginScreen').classList.remove('hidden');
+            closeEditor();
         }
         
-        // ========== INITIALIZE ==========
         window.onload = function() {
-            console.log('🏥 NCHSN PORTAL LOADED');
-            console.log('🔗 Supabase URL:', SUPABASE_URL);
+            console.log('✅ NCHSN PORTAL LOADED');
         };
     </script>
 </body>
