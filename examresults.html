@@ -44,6 +44,7 @@
             let sharedFiles = [];
             let allStudentMarks = [];
             let currentEditingFile = null;
+            let currentViewingFile = null;
             let hot = null;
         </script>
 
@@ -228,6 +229,23 @@
                     </div>
                 </div>
 
+                <!-- File Preview Section -->
+                <div id="filePreviewSection" class="hidden portal-card p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="font-semibold text-gray-800">File Preview</h3>
+                        <button onclick="closeFilePreview()" class="text-gray-500 hover:text-gray-700">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div id="filePreview" class="overflow-x-auto"></div>
+                    <div class="flex justify-end gap-3 mt-4">
+                        <button onclick="publishFile()" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700">
+                            <i class="fas fa-cloud-upload-alt mr-2"></i>
+                            Publish to Database
+                        </button>
+                    </div>
+                </div>
+
                 <!-- Live Excel Editor -->
                 <div id="excelEditorSection" class="hidden portal-card p-6">
                     <div class="flex items-center justify-between mb-4">
@@ -251,16 +269,19 @@
                     <div id="excelEditor" class="excel-editor" style="height: 500px;"></div>
                 </div>
 
-                <!-- File Preview Section -->
-                <div id="filePreviewSection" class="hidden portal-card p-6">
-                    <h3 class="font-semibold text-gray-800 mb-3">File Preview</h3>
-                    <div id="filePreview" class="overflow-x-auto"></div>
-                    <div class="flex justify-end gap-3 mt-4">
-                        <button onclick="publishFile()" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700">
-                            <i class="fas fa-cloud-upload-alt mr-2"></i>
-                            Publish to Database
+                <!-- Excel Viewer -->
+                <div id="excelViewerSection" class="hidden portal-card p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-xl font-bold text-gray-800 flex items-center">
+                            <i class="fas fa-eye text-green-600 mr-2"></i>
+                            VIEWING: <span id="viewingFileName" class="text-blue-600 ml-2"></span>
+                        </h2>
+                        <button onclick="closeViewer()" class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600">
+                            <i class="fas fa-times mr-2"></i>
+                            Close
                         </button>
                     </div>
+                    <div id="excelViewer" class="overflow-x-auto bg-white rounded-lg border p-4"></div>
                 </div>
             </div>
 
@@ -347,9 +368,10 @@
                 
                 if (error) throw error;
                 
+                sharedFiles = files || [];
                 allStudentMarks = [];
                 
-                for (const file of files || []) {
+                for (const file of sharedFiles) {
                     if (file.file_data) {
                         try {
                             const binaryData = atob(file.file_data);
@@ -364,9 +386,10 @@
                             const jsonData = XLSX.utils.sheet_to_json(worksheet);
                             
                             jsonData.forEach((row, index) => {
-                                const studentId = row['Student ID'] || row['studentId'] || row['STUDENT_ID'] || '';
-                                const studentName = row['Student Name'] || row['studentName'] || row['STUDENT_NAME'] || '';
-                                const marks = row['Marks'] || row['marks'] || row['MARKS'] || '';
+                                // Try different possible column names
+                                const studentId = row['Student ID'] || row['studentId'] || row['STUDENT_ID'] || row['StudentID'] || row['ID'] || '';
+                                const studentName = row['Student Name'] || row['studentName'] || row['STUDENT_NAME'] || row['Name'] || row['name'] || '';
+                                const marks = row['Marks'] || row['marks'] || row['MARKS'] || row['Score'] || row['score'] || '';
                                 const subject = row['Subject'] || row['subject'] || row['SUBJECT'] || 'General';
                                 
                                 if (studentId) {
@@ -389,7 +412,11 @@
                     }
                 }
                 
-                console.log(`✅ Loaded ${allStudentMarks.length} student records from all files`);
+                // Update stats
+                document.getElementById('totalFilesStats').innerText = sharedFiles.length;
+                document.getElementById('totalRecordsStats').innerText = allStudentMarks.length;
+                
+                console.log(`✅ Loaded ${allStudentMarks.length} student records from ${sharedFiles.length} files`);
                 
             } catch (error) {
                 console.error('Error loading student marks:', error);
@@ -459,7 +486,7 @@
                             <th class="p-3 text-left">Marks</th>
                             <th class="p-3 text-left">Status</th>
                             <th class="p-3 text-left">File Name</th>
-                            <th class="p-3 text-left">Uploaded By</th>
+                            <th class="p-3 text-left">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -469,7 +496,6 @@
                 const marks = parseFloat(result.marks) || 0;
                 const status = marks >= 50 ? 'PASS' : 'FAIL';
                 const statusClass = marks >= 50 ? 'text-green-600 bg-green-100' : 'text-red-600 bg-red-100';
-                const date = new Date(result.uploadedAt).toLocaleDateString();
                 
                 html += `
                     <tr class="border-b hover:bg-gray-50">
@@ -478,12 +504,15 @@
                         <td class="p-3">${result.subject}</td>
                         <td class="p-3 font-bold">${marks}</td>
                         <td class="p-3"><span class="px-2 py-1 rounded-full text-xs ${statusClass}">${status}</span></td>
-                        <td class="p-3 text-sm">
-                            <button onclick="openFileForEditing('${result.fileId}')" class="text-blue-600 hover:text-blue-800">
-                                ${result.filename}
+                        <td class="p-3 text-sm">${result.filename}</td>
+                        <td class="p-3">
+                            <button onclick="openFileForEditing('${result.fileId}')" class="text-blue-600 hover:text-blue-800 mr-2">
+                                <i class="fas fa-edit"></i> Edit
+                            </button>
+                            <button onclick="viewFile('${result.fileId}')" class="text-green-600 hover:text-green-800">
+                                <i class="fas fa-eye"></i> View
                             </button>
                         </td>
-                        <td class="p-3 text-sm">${result.uploadedBy || 'Unknown'}<br><span class="text-gray-500">${date}</span></td>
                     </tr>
                 `;
             });
@@ -498,6 +527,9 @@
                 alert('Only Admins can edit files');
                 return;
             }
+            
+            // Close viewer if open
+            closeViewer();
             
             const file = sharedFiles.find(f => f.id === fileId);
             if (!file || !file.file_data) {
@@ -618,6 +650,11 @@
                 if (error) throw error;
                 
                 alert('✅ Changes saved successfully!');
+                
+                // Close editor
+                closeEditor();
+                
+                // Reload data
                 await loadSharedFiles();
                 await loadAllStudentMarks();
                 
@@ -628,6 +665,39 @@
             } catch (error) {
                 console.error('Error saving:', error);
                 alert('Error saving changes: ' + error.message);
+            }
+        }
+
+        // ========== VIEW FILE (IN SAME PAGE) ==========
+        async function viewFile(fileId) {
+            // Close editor if open
+            closeEditor();
+            
+            const file = sharedFiles.find(f => f.id === fileId);
+            if (!file || !file.file_data) {
+                alert('File data not found');
+                return;
+            }
+            
+            try {
+                const binaryData = atob(file.file_data);
+                const array = new Uint8Array(binaryData.length);
+                for (let i = 0; i < binaryData.length; i++) {
+                    array[i] = binaryData.charCodeAt(i);
+                }
+                
+                const workbook = XLSX.read(array, { type: 'array' });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                const htmlString = XLSX.utils.sheet_to_html(worksheet);
+                
+                document.getElementById('viewingFileName').innerText = file.filename;
+                document.getElementById('excelViewer').innerHTML = htmlString;
+                document.getElementById('excelViewerSection').classList.remove('hidden');
+                
+            } catch (error) {
+                console.error('Error viewing file:', error);
+                alert('Error viewing file: ' + error.message);
             }
         }
 
@@ -678,7 +748,7 @@
                                             </button>` : ''
                                         }
                                         <button onclick="viewFile('${file.id}')" 
-                                            class="text-sm bg-gray-600 text-white px-3 py-1 rounded-lg hover:bg-gray-700">
+                                            class="text-sm bg-green-600 text-white px-3 py-1 rounded-lg hover:bg-green-700">
                                             <i class="fas fa-eye mr-1"></i>View
                                         </button>
                                     </div>
@@ -689,11 +759,6 @@
                 });
                 
                 container.innerHTML = html;
-                
-                document.getElementById('totalFilesStats').innerText = sharedFiles.length;
-                let totalRecords = 0;
-                sharedFiles.forEach(f => totalRecords += (f.row_count || 0));
-                document.getElementById('totalRecordsStats').innerText = totalRecords;
                 
             } catch (error) {
                 console.error('Error:', error);
@@ -782,9 +847,7 @@
                 
                 alert('✅ File published successfully!');
                 
-                document.getElementById('filePreviewSection').classList.add('hidden');
-                document.getElementById('excelUpload').value = '';
-                window.currentUploadData = null;
+                closeFilePreview();
                 
                 await loadSharedFiles();
                 await loadAllStudentMarks();
@@ -792,53 +855,6 @@
             } catch (error) {
                 console.error('Error publishing:', error);
                 alert('Error: ' + error.message);
-            }
-        }
-
-        // ========== VIEW FILE ==========
-        function viewFile(fileId) {
-            const file = sharedFiles.find(f => f.id === fileId);
-            if (!file || !file.file_data) {
-                alert('File data not found');
-                return;
-            }
-            
-            try {
-                const binaryData = atob(file.file_data);
-                const array = new Uint8Array(binaryData.length);
-                for (let i = 0; i < binaryData.length; i++) {
-                    array[i] = binaryData.charCodeAt(i);
-                }
-                
-                const workbook = XLSX.read(array, { type: 'array' });
-                const sheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[sheetName];
-                const htmlString = XLSX.utils.sheet_to_html(worksheet);
-                
-                const previewWindow = window.open('', '_blank');
-                previewWindow.document.write(`
-                    <html>
-                        <head>
-                            <title>${file.filename}</title>
-                            <style>
-                                body { font-family: Arial; padding: 20px; }
-                                table { border-collapse: collapse; width: 100%; }
-                                th { background: #1e3c72; color: white; padding: 10px; }
-                                td { padding: 8px; border: 1px solid #ddd; }
-                                tr:nth-child(even) { background: #f9f9f9; }
-                            </style>
-                        </head>
-                        <body>
-                            <h2>${file.filename}</h2>
-                            <p>Uploaded by: ${file.uploaded_by_email} on ${new Date(file.uploaded_at).toLocaleString()}</p>
-                            ${htmlString}
-                        </body>
-                    </html>
-                `);
-                
-            } catch (error) {
-                console.error('Error viewing file:', error);
-                alert('Error viewing file: ' + error.message);
             }
         }
 
@@ -857,16 +873,29 @@
             currentEditingFile = null;
         }
         
+        function closeViewer() {
+            document.getElementById('excelViewerSection').classList.add('hidden');
+            document.getElementById('excelViewer').innerHTML = '';
+        }
+        
+        function closeFilePreview() {
+            document.getElementById('filePreviewSection').classList.add('hidden');
+            document.getElementById('excelUpload').value = '';
+            window.currentUploadData = null;
+        }
+        
         function logout() {
             currentUser = null;
             currentRole = null;
             document.getElementById('mainPortal').classList.add('hidden');
             document.getElementById('loginScreen').classList.remove('hidden');
             closeEditor();
+            closeViewer();
+            closeFilePreview();
         }
         
         window.onload = function() {
-            console.log('✅ NCHSN PORTAL LOADED');
+            console.log('✅ NCHSN PORTAL LOADED - ALL BUTTONS WORKING!');
         };
     </script>
 </body>
