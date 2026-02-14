@@ -1,0 +1,105 @@
+/* Reset & Base */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background: linear-gradient(135deg, #0b2c4a 0%, #1a4a6f 100%);
+    min-height: 100vh;
+    padding: 20px;
+}
+
+/* Card Styles */
+.portal-card {
+    background: white;
+    border-radius: 24px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.2);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.portal-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 30px 80px rgba(0,0,0,0.3);
+}
+
+/* Role Badges */
+.role-super-admin { 
+    background: linear-gradient(135deg, #8b0000 0%, #5a0000 100%);
+    color: white;
+    padding: 4px 16px;
+    border-radius: 9999px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.role-admin { 
+    background: linear-gradient(135deg, #00008b 0%, #00005a 100%);
+    color: white;
+    padding: 4px 16px;
+    border-radius: 9999px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.role-lecturer { 
+    background: linear-gradient(135deg, #006400 0%, #003d00 100%);
+    color: white;
+    padding: 4px 16px;
+    border-radius: 9999px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-block;
+}
+
+/* Provisional Badge */
+.provisional-badge {
+    background: linear-gradient(135deg, #f97316 0%, #c2410c 100%);
+    color: white;
+    padding: 8px 20px;
+    border-radius: 9999px;
+    font-weight: bold;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.8; }
+    100% { opacity: 1; }
+}
+
+/* Excel Table */
+.excel-table {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+.excel-table th {
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    color: white;
+    padding: 12px;
+    position: sticky;
+    top: 0;
+}
+
+.excel-table td {
+    padding: 10px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.excel-table tr:hover {
+    background-color: #f8fafc;
+}
+
+/* Setup Steps */
+.setup-step {
+    border-left: 4px solid #f97316;
+    padding-left: 16px;
+    margin-bottom: 16px;
+}
