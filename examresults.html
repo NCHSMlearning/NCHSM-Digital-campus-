@@ -17,15 +17,186 @@
     <!-- SheetJS for Excel -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
     
-    <!-- Handsontable for Excel Editing -->
+    <!-- Handsontable for Excel Editing - OPTIMIZED VERSION -->
     <script src="https://cdn.jsdelivr.net/npm/handsontable@14.2.0/dist/handsontable.full.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@14.2.0/dist/handsontable.full.min.css">
     
     <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8/dist/umd/supabase.min.js"></script>
+    
+    <style>
+        /* Loading Overlay */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            backdrop-filter: blur(5px);
+        }
+        
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 6px solid #f3f3f3;
+            border-top: 6px solid #3498db;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .loading-text {
+            color: white;
+            margin-top: 15px;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        
+        /* Progress Bar */
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #45a049);
+            transition: width 0.2s ease;
+            border-radius: 4px;
+        }
+        
+        /* Toast Notifications */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: white;
+            border-radius: 8px;
+            padding: 12px 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            z-index: 10000;
+            animation: slideIn 0.2s ease;
+            font-size: 14px;
+        }
+        
+        .toast.success { border-left: 4px solid #4CAF50; }
+        .toast.error { border-left: 4px solid #f44336; }
+        .toast.info { border-left: 4px solid #2196F3; }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        /* Excel Editor Container */
+        .excel-editor {
+            height: 500px;
+            width: 100%;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            overflow: hidden;
+            background: white;
+        }
+        
+        /* Handsontable Performance Optimizations */
+        .handsontable td {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .handsontable th {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        /* Sheet Tabs */
+        .sheet-tab {
+            transition: all 0.15s ease;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        
+        .sheet-tab:hover {
+            transform: translateY(-1px);
+        }
+        
+        /* Table Styles */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        
+        .data-table th {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 10px;
+            text-align: left;
+            position: sticky;
+            top: 0;
+            z-index: 5;
+        }
+        
+        .data-table td {
+            padding: 8px 10px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .data-table tr:hover {
+            background-color: #f8fafc;
+        }
+        
+        /* Card Styles */
+        .portal-card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            padding: 20px;
+            transition: all 0.2s ease;
+        }
+        
+        .portal-card:hover {
+            box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+        }
+    </style>
 </head>
 <body>
-    <div class="max-w-7xl mx-auto">
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+        <div style="text-align: center;">
+            <div class="loading-spinner"></div>
+            <div id="loadingMessage" class="loading-text">Loading...</div>
+            <div id="progressContainer" style="width: 280px; margin-top: 15px; display: none;">
+                <div class="progress-bar">
+                    <div id="progressFill" class="progress-fill" style="width: 0%;"></div>
+                </div>
+                <div id="progressText" class="text-white text-xs mt-1">0%</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         
         <!-- ========== SUPABASE CONFIG ========== -->
         <script>
@@ -37,7 +208,6 @@
             const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
             
             console.log('✅ Supabase initialized!');
-            console.log('🔗 URL:', SUPABASE_URL);
             
             // Global state
             let currentUser = null;
@@ -46,46 +216,49 @@
             let allStudentMarks = [];
             let currentEditingFile = null;
             let hot = null;
+            let sheetCache = new Map(); // Cache loaded sheets for instant switching
+            let isLoading = false;
+            let loadingQueue = [];
         </script>
 
         <!-- ========== LOGIN SCREEN ========== -->
         <div id="loginScreen" class="flex items-center justify-center min-h-screen">
-            <div class="portal-card w-full max-w-md p-8">
-                <div class="text-center mb-8">
-                    <div class="bg-gradient-to-r from-blue-600 to-purple-600 w-24 h-24 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                        <i class="fas fa-graduation-cap text-white text-4xl"></i>
+            <div class="portal-card w-full max-w-md">
+                <div class="text-center mb-6">
+                    <div class="bg-gradient-to-r from-blue-600 to-purple-600 w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                        <i class="fas fa-graduation-cap text-white text-3xl"></i>
                     </div>
-                    <h1 class="text-3xl font-bold text-gray-800">NCHSN</h1>
-                    <p class="text-gray-600 mt-2">EXAM RESULTS PROVISIONAL PORTAL</p>
-                    <div class="mt-3">
-                        <span class="provisional-badge text-sm">
-                            <i class="fas fa-clock mr-2"></i>
+                    <h1 class="text-2xl font-bold text-gray-800">NCHSN</h1>
+                    <p class="text-gray-600 mt-1 text-sm">EXAM RESULTS PROVISIONAL PORTAL</p>
+                    <div class="mt-2">
+                        <span class="provisional-badge text-xs">
+                            <i class="fas fa-clock mr-1"></i>
                             PROVISIONAL RESULTS
                         </span>
                     </div>
                 </div>
                 
-                <div class="space-y-4">
+                <div class="space-y-3">
                     <div>
-                        <label class="block text-gray-700 text-sm font-bold mb-2">
+                        <label class="block text-gray-700 text-sm font-medium mb-1">
                             <i class="fas fa-envelope mr-2 text-gray-500"></i>
                             Email Address
                         </label>
                         <input type="email" id="loginEmail" placeholder="Enter your email" 
-                               class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-0">
+                               class="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:ring-0 text-sm">
                     </div>
                     
                     <div>
-                        <label class="block text-gray-700 text-sm font-bold mb-2">
+                        <label class="block text-gray-700 text-sm font-medium mb-1">
                             <i class="fas fa-lock mr-2 text-gray-500"></i>
                             Password
                         </label>
                         <input type="password" id="loginPassword" placeholder="Enter your password" 
-                               class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-0">
+                               class="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:ring-0 text-sm">
                     </div>
                     
                     <button onclick="handleLogin()" 
-                            class="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-xl hover:opacity-90 transition font-bold text-lg shadow-lg">
+                            class="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-2.5 rounded-lg hover:opacity-90 transition font-medium text-sm shadow-lg">
                         <i class="fas fa-sign-in-alt mr-2"></i>
                         LOGIN TO PORTAL
                     </button>
@@ -96,116 +269,117 @@
         <!-- ========== MAIN PORTAL ========== -->
         <div id="mainPortal" class="hidden space-y-6">
             <!-- Header -->
-            <div class="portal-card p-6">
+            <div class="portal-card">
                 <div class="flex flex-col md:flex-row items-center justify-between">
                     <div class="flex items-center mb-4 md:mb-0">
-                        <div class="bg-gradient-to-r from-blue-600 to-purple-600 p-4 rounded-2xl shadow-lg mr-4">
-                            <i class="fas fa-graduation-cap text-white text-3xl"></i>
+                        <div class="bg-gradient-to-r from-blue-600 to-purple-600 p-3 rounded-xl shadow-lg mr-3">
+                            <i class="fas fa-graduation-cap text-white text-2xl"></i>
                         </div>
                         <div>
-                            <h1 class="text-2xl md:text-3xl font-bold text-gray-800">
+                            <h1 class="text-xl md:text-2xl font-bold text-gray-800">
                                 NCHSN EXAM RESULTS PORTAL
                             </h1>
-                            <div class="flex items-center mt-2">
-                                <span id="userRoleBadge" class="role-super-admin mr-3"></span>
-                                <span id="userDisplayName" class="text-gray-600 font-medium"></span>
+                            <div class="flex items-center mt-1 text-sm">
+                                <span id="userRoleBadge" class="role-super-admin mr-2"></span>
+                                <span id="userDisplayName" class="text-gray-600"></span>
                                 <span class="mx-2 text-gray-400">•</span>
-                                <span id="userEmailDisplay" class="text-gray-500 text-sm"></span>
+                                <span id="userEmailDisplay" class="text-gray-500 text-xs"></span>
                             </div>
                         </div>
                     </div>
                     
-                    <div class="flex items-center gap-4">
-                        <div class="bg-orange-100 px-4 py-2 rounded-full flex items-center">
-                            <i class="fas fa-clock text-orange-600 mr-2"></i>
-                            <span class="text-orange-800 text-sm font-semibold">PROVISIONAL</span>
+                    <div class="flex items-center gap-3">
+                        <div class="bg-orange-100 px-3 py-1.5 rounded-full flex items-center">
+                            <i class="fas fa-clock text-orange-600 mr-1 text-xs"></i>
+                            <span class="text-orange-800 text-xs font-semibold">PROVISIONAL</span>
                         </div>
                         <button onclick="logout()" 
-                                class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition">
-                            <i class="fas fa-sign-out-alt mr-2"></i>
+                                class="bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-300 transition text-sm">
+                            <i class="fas fa-sign-out-alt mr-1"></i>
                             Logout
                         </button>
                     </div>
                 </div>
             </div>
 
-            <!-- Stats Overview -->
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <div class="portal-card p-6">
+            <!-- Stats Overview - Compact -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="portal-card p-4">
                     <div class="flex items-center">
-                        <div class="bg-blue-100 p-3 rounded-full">
-                            <i class="fas fa-file-excel text-blue-800 text-xl"></i>
+                        <div class="bg-blue-100 p-2 rounded-full">
+                            <i class="fas fa-file-excel text-blue-800 text-lg"></i>
                         </div>
-                        <div class="ml-4">
-                            <p class="text-gray-500 text-sm">Total Excel Files</p>
-                            <p id="totalFilesStats" class="text-2xl font-bold text-gray-800">0</p>
+                        <div class="ml-3">
+                            <p class="text-gray-500 text-xs">Total Files</p>
+                            <p id="totalFilesStats" class="text-xl font-bold text-gray-800">0</p>
                         </div>
                     </div>
                 </div>
-                <div class="portal-card p-6">
+                <div class="portal-card p-4">
                     <div class="flex items-center">
-                        <div class="bg-green-100 p-3 rounded-full">
-                            <i class="fas fa-users text-green-800 text-xl"></i>
+                        <div class="bg-green-100 p-2 rounded-full">
+                            <i class="fas fa-users text-green-800 text-lg"></i>
                         </div>
-                        <div class="ml-4">
-                            <p class="text-gray-500 text-sm">Student Records</p>
-                            <p id="totalRecordsStats" class="text-2xl font-bold text-gray-800">0</p>
+                        <div class="ml-3">
+                            <p class="text-gray-500 text-xs">Records</p>
+                            <p id="totalRecordsStats" class="text-xl font-bold text-gray-800">0</p>
                         </div>
                     </div>
                 </div>
-                <div class="portal-card p-6">
+                <div class="portal-card p-4">
                     <div class="flex items-center">
-                        <div class="bg-purple-100 p-3 rounded-full">
-                            <i class="fas fa-chalkboard-teacher text-purple-800 text-xl"></i>
+                        <div class="bg-purple-100 p-2 rounded-full">
+                            <i class="fas fa-chalkboard-teacher text-purple-800 text-lg"></i>
                         </div>
-                        <div class="ml-4">
-                            <p class="text-gray-500 text-sm">Active Staff</p>
-                            <p id="totalStaffStats" class="text-2xl font-bold text-gray-800">0</p>
+                        <div class="ml-3">
+                            <p class="text-gray-500 text-xs">Staff</p>
+                            <p id="totalStaffStats" class="text-xl font-bold text-gray-800">0</p>
                         </div>
                     </div>
                 </div>
-                <div class="portal-card p-6">
+                <div class="portal-card p-4">
                     <div class="flex items-center">
-                        <div class="bg-yellow-100 p-3 rounded-full">
-                            <i class="fas fa-shield-alt text-yellow-800 text-xl"></i>
+                        <div class="bg-yellow-100 p-2 rounded-full">
+                            <i class="fas fa-shield-alt text-yellow-800 text-lg"></i>
                         </div>
-                        <div class="ml-4">
-                            <p class="text-gray-500 text-sm">Your Role</p>
-                            <p id="userRoleDisplay" class="text-2xl font-bold text-gray-800">-</p>
+                        <div class="ml-3">
+                            <p class="text-gray-500 text-xs">Role</p>
+                            <p id="userRoleDisplay" class="text-xl font-bold text-gray-800">-</p>
                         </div>
                     </div>
                 </div>
             </div>
 
             <!-- ========== ADMIN STUDENT SEARCH SECTION ========== -->
-            <div id="adminSearchSection" class="portal-card p-6">
-                <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+            <div id="adminSearchSection" class="portal-card">
+                <h2 class="text-lg font-bold text-gray-800 mb-3 flex items-center">
                     <i class="fas fa-search text-blue-600 mr-2"></i>
-                    ADMIN - Search Student Marks Across All Excel Files
+                    Search Student Marks
                 </h2>
                 
-                <div class="flex gap-4 mb-6">
-                    <input type="text" id="studentSearchInput" placeholder="Enter Admission No. or Student Name..." 
-                           class="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500">
+                <div class="flex gap-3 mb-4">
+                    <input type="text" id="studentSearchInput" placeholder="Admission No. or Name..." 
+                           class="flex-1 px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-blue-500 text-sm">
                     <button onclick="searchStudentMarks()" 
-                            class="bg-blue-600 text-white px-8 py-3 rounded-xl hover:bg-blue-700 flex items-center">
-                        <i class="fas fa-search mr-2"></i>
+                            class="bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700 flex items-center text-sm">
+                        <i class="fas fa-search mr-1"></i>
                         Search
                     </button>
                     <button onclick="clearSearch()" 
-                            class="bg-gray-500 text-white px-6 py-3 rounded-xl hover:bg-gray-600">
+                            class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 text-sm">
                         <i class="fas fa-times"></i>
-                        Clear
                     </button>
                 </div>
                 
                 <!-- Student Results Container -->
                 <div id="studentResultsContainer" class="hidden">
-                    <h3 class="font-semibold text-gray-800 mb-3 flex items-center">
-                        <i class="fas fa-user-graduate text-green-600 mr-2"></i>
-                        <span id="searchResultCount">0</span> Results Found
-                    </h3>
-                    <div id="studentResultsTable" class="overflow-x-auto bg-white rounded-xl border">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="font-semibold text-gray-800 text-sm flex items-center">
+                            <i class="fas fa-user-graduate text-green-600 mr-2"></i>
+                            <span id="searchResultCount">0</span> Results
+                        </h3>
+                    </div>
+                    <div id="studentResultsTable" class="overflow-x-auto bg-white rounded-lg border max-h-96 overflow-y-auto">
                         <!-- Results table will be populated here -->
                     </div>
                 </div>
@@ -214,100 +388,99 @@
             <!-- ========== ADMIN DASHBOARD ========== -->
             <div id="adminDashboard" class="space-y-6">
                 <!-- Excel Upload Section -->
-                <div class="portal-card p-6">
-                    <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                <div class="portal-card">
+                    <h2 class="text-lg font-bold text-gray-800 mb-3 flex items-center">
                         <i class="fas fa-upload text-green-600 mr-2"></i>
-                        ADMIN - Upload New Excel File
+                        Upload New Excel File
                     </h2>
                     
                     <div onclick="document.getElementById('excelUpload').click()"
-                         class="border-4 border-dashed border-blue-300 rounded-xl p-8 text-center cursor-pointer hover:border-blue-500 bg-blue-50">
-                        <i class="fas fa-cloud-upload-alt text-5xl text-blue-500 mb-3"></i>
-                        <h3 class="text-xl font-bold text-gray-700">Click to Upload Excel File</h3>
-                        <p class="text-gray-500 mt-2">.xlsx, .xls, .csv files</p>
+                         class="border-3 border-dashed border-blue-300 rounded-xl p-6 text-center cursor-pointer hover:border-blue-500 bg-blue-50 transition">
+                        <i class="fas fa-cloud-upload-alt text-4xl text-blue-500 mb-2"></i>
+                        <p class="text-gray-700 text-sm font-medium">Click to Upload Excel File</p>
+                        <p class="text-gray-500 text-xs mt-1">.xlsx, .xls, .csv files</p>
                         <input type="file" id="excelUpload" accept=".xlsx,.xls,.csv" class="hidden" onchange="handleExcelUpload(this)">
                     </div>
                 </div>
 
                 <!-- File Preview Section -->
-                <div id="filePreviewSection" class="hidden portal-card p-6">
-                    <div class="flex items-center justify-between mb-4">
-                        <h3 class="font-semibold text-gray-800">File Preview</h3>
+                <div id="filePreviewSection" class="hidden portal-card">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="font-semibold text-gray-800 text-sm">File Preview</h3>
                         <button onclick="closeFilePreview()" class="text-gray-500 hover:text-gray-700">
                             <i class="fas fa-times"></i>
                         </button>
                     </div>
-                    <div id="filePreview" class="overflow-x-auto"></div>
+                    <div id="filePreview" class="overflow-x-auto text-sm"></div>
                     <div class="flex justify-end gap-3 mt-4">
-                        <button onclick="publishFile()" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700">
-                            <i class="fas fa-cloud-upload-alt mr-2"></i>
-                            Publish to Database
+                        <button onclick="publishFile()" class="bg-green-600 text-white px-5 py-2 rounded-lg hover:bg-green-700 text-sm">
+                            <i class="fas fa-cloud-upload-alt mr-1"></i>
+                            Publish
                         </button>
                     </div>
                 </div>
 
-                <!-- Live Excel Editor -->
-                <div id="excelEditorSection" class="hidden portal-card p-6">
-                    <div class="flex items-center justify-between mb-4">
-                        <h2 class="text-xl font-bold text-gray-800 flex items-center">
+                <!-- Live Excel Editor - OPTIMIZED -->
+                <div id="excelEditorSection" class="hidden portal-card p-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <h2 class="text-lg font-bold text-gray-800 flex items-center">
                             <i class="fas fa-edit text-purple-600 mr-2"></i>
-                            LIVE EXCEL EDITOR - <span id="editingFileName" class="text-blue-600"></span>
+                            EDITING: <span id="editingFileName" class="text-blue-600 ml-1 text-sm font-medium"></span>
                         </h2>
                         <div class="flex gap-2">
                             <button onclick="saveExcelChanges()" 
-                                    class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
-                                <i class="fas fa-save mr-2"></i>
-                                Save Changes
+                                    class="bg-green-600 text-white px-4 py-1.5 rounded-lg hover:bg-green-700 text-sm flex items-center">
+                                <i class="fas fa-save mr-1"></i>
+                                Save
                             </button>
                             <button onclick="closeEditor()" 
-                                    class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600">
+                                    class="bg-gray-500 text-white px-4 py-1.5 rounded-lg hover:bg-gray-600 text-sm">
                                 <i class="fas fa-times"></i>
-                                Close
                             </button>
                         </div>
                     </div>
                     
-                    <!-- Sheet selector for multi-sheet Excel files -->
-                    <div id="sheetSelector" class="mb-4 flex gap-2 overflow-x-auto pb-2">
+                    <!-- Sheet selector - Scrollable -->
+                    <div id="sheetSelector" class="mb-3 flex gap-1 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-gray-300">
                         <!-- Sheet tabs will appear here -->
                     </div>
                     
-                    <div id="excelEditor" class="excel-editor" style="height: 500px;"></div>
+                    <div id="excelEditor" class="excel-editor"></div>
                 </div>
 
                 <!-- Excel Viewer -->
-                <div id="excelViewerSection" class="hidden portal-card p-6">
-                    <div class="flex items-center justify-between mb-4">
-                        <h2 class="text-xl font-bold text-gray-800 flex items-center">
+                <div id="excelViewerSection" class="hidden portal-card p-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <h2 class="text-lg font-bold text-gray-800 flex items-center">
                             <i class="fas fa-eye text-green-600 mr-2"></i>
-                            VIEWING: <span id="viewingFileName" class="text-blue-600 ml-2"></span>
+                            VIEWING: <span id="viewingFileName" class="text-blue-600 ml-1 text-sm font-medium"></span>
                         </h2>
-                        <button onclick="closeViewer()" class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600">
-                            <i class="fas fa-times mr-2"></i>
+                        <button onclick="closeViewer()" class="bg-gray-500 text-white px-4 py-1.5 rounded-lg hover:bg-gray-600 text-sm">
+                            <i class="fas fa-times mr-1"></i>
                             Close
                         </button>
                     </div>
-                    <div id="sheetViewerSelector" class="mb-4 flex gap-2 overflow-x-auto pb-2">
+                    <div id="sheetViewerSelector" class="mb-3 flex gap-1 overflow-x-auto pb-1">
                         <!-- Sheet tabs for viewer will appear here -->
                     </div>
-                    <div id="excelViewer" class="overflow-x-auto bg-white rounded-lg border p-4"></div>
+                    <div id="excelViewer" class="overflow-x-auto bg-white rounded-lg border p-3 text-sm max-h-96 overflow-y-auto"></div>
                 </div>
             </div>
 
             <!-- Shared Excel Files -->
-            <div class="portal-card p-6">
-                <div class="flex items-center justify-between mb-6">
-                    <h2 class="text-xl font-bold text-gray-800 flex items-center">
+            <div class="portal-card">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-bold text-gray-800 flex items-center">
                         <i class="fas fa-folder-open text-purple-600 mr-2"></i>
-                        📁 SHARED PROVISIONAL RESULTS
+                        Shared Files
                     </h2>
-                    <span class="bg-purple-100 text-purple-800 px-4 py-2 rounded-full text-sm">
+                    <span class="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-xs">
                         <i class="fas fa-globe mr-1"></i>
-                        ALL FILES
+                        ALL
                     </span>
                 </div>
                 
-                <div id="sharedFilesContainer" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div id="sharedFilesContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <!-- Files load here -->
                 </div>
             </div>
@@ -315,31 +488,80 @@
     </div>
 
     <script>
+        // ========== UTILITY FUNCTIONS - OPTIMIZED ==========
+        let toastTimeout;
+        function showToast(message, type = 'success', duration = 2000) {
+            if (toastTimeout) clearTimeout(toastTimeout);
+            
+            const existingToast = document.querySelector('.toast');
+            if (existingToast) existingToast.remove();
+            
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `
+                <i class="fas ${type === 'success' ? 'fa-check-circle text-green-600' : 
+                                 type === 'error' ? 'fa-exclamation-circle text-red-600' : 
+                                 'fa-info-circle text-blue-600'} text-sm"></i>
+                <span class="text-sm">${message}</span>
+            `;
+            document.body.appendChild(toast);
+            
+            toastTimeout = setTimeout(() => {
+                toast.remove();
+            }, duration);
+        }
+
+        let loadingTimeout;
+        function showLoading(message = 'Loading...', showProgress = false, timeoutMs = 30000) {
+            if (loadingTimeout) clearTimeout(loadingTimeout);
+            
+            document.getElementById('loadingMessage').innerText = message;
+            document.getElementById('loadingOverlay').style.display = 'flex';
+            if (showProgress) {
+                document.getElementById('progressContainer').style.display = 'block';
+                updateProgress(0);
+            } else {
+                document.getElementById('progressContainer').style.display = 'none';
+            }
+            
+            // Safety timeout - hide loading after 30 seconds to prevent infinite loading
+            loadingTimeout = setTimeout(() => {
+                if (document.getElementById('loadingOverlay').style.display === 'flex') {
+                    hideLoading();
+                    showToast('Operation timed out', 'error');
+                }
+            }, timeoutMs);
+        }
+        
+        function updateProgress(percent) {
+            document.getElementById('progressFill').style.width = percent + '%';
+            document.getElementById('progressText').innerText = Math.round(percent) + '%';
+        }
+        
+        function hideLoading() {
+            document.getElementById('loadingOverlay').style.display = 'none';
+            if (loadingTimeout) clearTimeout(loadingTimeout);
+        }
+
         // ========== LOGIN FUNCTION ==========
         async function handleLogin() {
-            const email = document.getElementById('loginEmail').value;
+            const email = document.getElementById('loginEmail').value.trim();
             const password = document.getElementById('loginPassword').value;
             
             if (!email || !password) {
-                alert('Please enter email and password');
+                showToast('Please enter email and password', 'error');
                 return;
             }
             
+            showLoading('Logging in...', false, 10000);
+            
             try {
-                console.log('🔐 Logging in with:', email);
-                
                 const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
                     email: email,
                     password: password
                 });
                 
-                if (authError) {
-                    console.error('❌ Auth error:', authError);
-                    alert('Login failed: ' + authError.message);
-                    return;
-                }
-                
-                console.log('✅ Auth successful:', authData.user);
+                if (authError) throw authError;
                 
                 const { data: profile, error: profileError } = await supabase
                     .from('consolidated_user_profiles_table')
@@ -347,29 +569,22 @@
                     .eq('email', email)
                     .single();
                 
-                if (profileError) {
-                    console.error('❌ Profile error:', profileError);
-                    alert('User profile not found. Please contact admin.');
-                    return;
-                }
+                if (profileError) throw profileError;
                 
                 currentUser = profile;
                 currentRole = profile.role;
                 
-                console.log('✅ User role:', currentRole);
-                
                 document.getElementById('loginScreen').classList.add('hidden');
                 document.getElementById('mainPortal').classList.remove('hidden');
                 
-                document.getElementById('userDisplayName').innerHTML = `<i class="fas fa-user mr-2"></i>${profile.full_name || profile.email}`;
+                document.getElementById('userDisplayName').innerHTML = `<i class="fas fa-user mr-1"></i>${profile.full_name || profile.email}`;
                 document.getElementById('userEmailDisplay').innerText = profile.email;
                 document.getElementById('userRoleDisplay').innerText = profile.role.replace('_', ' ').toUpperCase();
                 
                 const badge = document.getElementById('userRoleBadge');
                 badge.innerText = profile.role.replace('_', ' ').toUpperCase();
-                badge.className = `role-${profile.role} px-4 py-1.5 rounded-full text-sm font-bold`;
+                badge.className = `role-${profile.role} px-3 py-1 rounded-full text-xs font-bold`;
                 
-                // Show/hide admin sections based on role
                 if (profile.role === 'admin' || profile.role === 'super_admin') {
                     document.getElementById('adminDashboard').classList.remove('hidden');
                     document.getElementById('adminSearchSection').classList.remove('hidden');
@@ -378,16 +593,23 @@
                     document.getElementById('adminSearchSection').classList.add('hidden');
                 }
                 
-                await loadSharedFiles();
-                await loadAllStudentMarks();
+                hideLoading();
+                showToast('Login successful!', 'success');
+                
+                // Load data in background
+                setTimeout(() => {
+                    loadSharedFiles();
+                    loadAllStudentMarks();
+                }, 100);
                 
             } catch (error) {
-                console.error('❌ Login error:', error);
-                alert('Login failed: ' + error.message);
+                hideLoading();
+                console.error('Login error:', error);
+                showToast(error.message, 'error');
             }
         }
 
-        // ========== LOAD ALL STUDENT MARKS FROM ALL EXCEL FILES ==========
+        // ========== LOAD ALL STUDENT MARKS - OPTIMIZED ==========
         async function loadAllStudentMarks() {
             try {
                 const { data: files, error } = await supabase
@@ -395,114 +617,106 @@
                     .select('*')
                     .order('uploaded_at', { ascending: false });
                 
-                if (error) {
-                    console.error('Error loading files:', error);
-                    return;
-                }
+                if (error) throw error;
                 
                 sharedFiles = files || [];
                 allStudentMarks = [];
                 
-                console.log(`📁 Found ${sharedFiles.length} files to process`);
-                
-                for (const file of sharedFiles) {
-                    if (file.file_data) {
-                        try {
-                            console.log(`📄 Processing file: ${file.filename}`);
-                            
-                            const binaryData = atob(file.file_data);
-                            const array = new Uint8Array(binaryData.length);
-                            for (let i = 0; i < binaryData.length; i++) {
-                                array[i] = binaryData.charCodeAt(i);
-                            }
-                            
-                            const workbook = XLSX.read(array, { type: 'array' });
-                            
-                            // Process each sheet in the workbook
-                            workbook.SheetNames.forEach(sheetName => {
-                                const worksheet = workbook.Sheets[sheetName];
-                                const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                // Process files in chunks to prevent UI freeze
+                const chunkSize = 3;
+                for (let i = 0; i < sharedFiles.length; i += chunkSize) {
+                    const chunk = sharedFiles.slice(i, i + chunkSize);
+                    
+                    await Promise.all(chunk.map(async (file) => {
+                        if (file.file_data) {
+                            try {
+                                const binaryData = atob(file.file_data);
+                                const array = new Uint8Array(binaryData.length);
+                                for (let j = 0; j < binaryData.length; j++) {
+                                    array[j] = binaryData.charCodeAt(j);
+                                }
                                 
-                                console.log(`📊 Sheet "${sheetName}" has ${jsonData.length} rows`);
+                                const workbook = XLSX.read(array, { type: 'array' });
                                 
-                                jsonData.forEach((row, index) => {
-                                    // Look for YOUR specific column names
-                                    const admissionNo = row['Admission No.'] || row['Admission'] || row['S/N'] || '';
-                                    const studentName = row['Student Name'] || row['Name'] || row['STUDENT_NAME'] || '';
-                                    const cat = row['CAT'] || row['Cat'] || row['cat'] || '';
-                                    const ebe = row['EBE'] || row['Ebe'] || row['ebe'] || '';
-                                    const finalMarks = row['FINALMARKS'] || row['FinalMarks'] || row['FINAL'] || row['FINAL MARKS'] || '';
-                                    const remarks = row['REMARKS'] || row['Remarks'] || row['remarks'] || '';
+                                workbook.SheetNames.forEach(sheetName => {
+                                    const worksheet = workbook.Sheets[sheetName];
+                                    const jsonData = XLSX.utils.sheet_to_json(worksheet);
                                     
-                                    if (admissionNo || studentName) {
-                                        allStudentMarks.push({
-                                            id: `${file.id}_${sheetName}_${index}`,
-                                            fileId: file.id,
-                                            filename: file.filename,
-                                            sheetName: sheetName,
-                                            admissionNo: admissionNo.toString().trim(),
-                                            studentName: studentName.toString().trim(),
-                                            cat: cat,
-                                            ebe: ebe,
-                                            finalMarks: finalMarks,
-                                            remarks: remarks,
-                                            rowData: row,
-                                            uploadedBy: file.uploaded_by_email,
-                                            uploadedAt: file.uploaded_at
-                                        });
-                                    }
+                                    jsonData.forEach((row, idx) => {
+                                        const admissionNo = row['Admission No.'] || row['Admission'] || row['S/N'] || '';
+                                        const studentName = row['Student Name'] || row['Name'] || '';
+                                        const cat = row['CAT'] || '';
+                                        const ebe = row['EBE'] || '';
+                                        const finalMarks = row['FINALMARKS'] || row['FINAL'] || '';
+                                        const remarks = row['REMARKS'] || '';
+                                        
+                                        if (admissionNo || studentName) {
+                                            allStudentMarks.push({
+                                                id: `${file.id}_${sheetName}_${idx}`,
+                                                fileId: file.id,
+                                                filename: file.filename,
+                                                sheetName: sheetName,
+                                                admissionNo: admissionNo.toString().trim(),
+                                                studentName: studentName.toString().trim(),
+                                                cat: cat,
+                                                ebe: ebe,
+                                                finalMarks: finalMarks,
+                                                remarks: remarks,
+                                                uploadedBy: file.uploaded_by_email,
+                                                uploadedAt: file.uploaded_at
+                                            });
+                                        }
+                                    });
                                 });
-                            });
-                        } catch (e) {
-                            console.error('Error parsing file:', file.filename, e);
+                            } catch (e) {
+                                console.error('Error parsing file:', file.filename, e);
+                            }
                         }
-                    }
+                    }));
+                    
+                    // Allow UI to breathe
+                    await new Promise(resolve => setTimeout(resolve, 0));
                 }
                 
-                // Update stats
                 document.getElementById('totalFilesStats').innerText = sharedFiles.length;
                 document.getElementById('totalRecordsStats').innerText = allStudentMarks.length;
                 
-                console.log(`✅ Loaded ${allStudentMarks.length} student records from ${sharedFiles.length} files`);
-                
                 // Get staff count
-                const { data: staff, error: staffError } = await supabase
+                const { data: staff } = await supabase
                     .from('consolidated_user_profiles_table')
                     .select('role');
                 
-                if (!staffError && staff) {
-                    document.getElementById('totalStaffStats').innerText = staff.length || 0;
-                }
+                if (staff) document.getElementById('totalStaffStats').innerText = staff.length;
                 
             } catch (error) {
                 console.error('Error loading student marks:', error);
+                showToast('Error loading data', 'error');
             }
         }
 
-        // ========== SEARCH STUDENT MARKS ==========
+        // ========== SEARCH STUDENT MARKS - OPTIMIZED ==========
         function searchStudentMarks() {
             const searchTerm = document.getElementById('studentSearchInput').value.toLowerCase().trim();
             
             if (!searchTerm) {
-                alert('Please enter Admission No. or Student Name to search');
+                showToast('Enter search term', 'error');
                 return;
             }
             
-            console.log('🔍 Searching for:', searchTerm);
-            console.log('📊 Total records in memory:', allStudentMarks.length);
+            // Immediate response - no loading for small searches
+            if (allStudentMarks.length > 5000) showLoading('Searching...', false, 10000);
             
-            if (allStudentMarks.length === 0) {
-                alert('No student records loaded yet. Please check if Excel files are uploaded.');
-                return;
-            }
-            
-            const results = allStudentMarks.filter(mark => 
-                (mark.admissionNo && mark.admissionNo.toLowerCase().includes(searchTerm)) || 
-                (mark.studentName && mark.studentName.toLowerCase().includes(searchTerm))
-            );
-            
-            console.log('✅ Found:', results.length, 'results');
-            displayStudentResults(results);
+            setTimeout(() => {
+                const results = allStudentMarks.filter(mark => 
+                    (mark.admissionNo && mark.admissionNo.toLowerCase().includes(searchTerm)) || 
+                    (mark.studentName && mark.studentName.toLowerCase().includes(searchTerm))
+                );
+                
+                displayStudentResults(results);
+                hideLoading();
+                
+                showToast(`Found ${results.length} results`, results.length ? 'success' : 'info');
+            }, 10);
         }
 
         // ========== DISPLAY STUDENT RESULTS ==========
@@ -514,262 +728,240 @@
             if (results.length === 0) {
                 container.classList.remove('hidden');
                 countSpan.innerText = '0';
-                tableContainer.innerHTML = '<div class="text-center py-8 text-gray-500">No results found</div>';
+                tableContainer.innerHTML = '<div class="text-center py-6 text-gray-500 text-sm">No results</div>';
                 return;
             }
             
             container.classList.remove('hidden');
             countSpan.innerText = results.length;
             
-            // Calculate summary statistics
-            const validMarks = results.filter(r => r.finalMarks && !isNaN(parseFloat(r.finalMarks)));
-            const totalMarks = validMarks.reduce((sum, r) => sum + (parseFloat(r.finalMarks) || 0), 0);
-            const averageMarks = validMarks.length > 0 ? (totalMarks / validMarks.length).toFixed(2) : '0';
-            const passedCount = validMarks.filter(r => parseFloat(r.finalMarks) >= 50).length;
-            const failedCount = validMarks.length - passedCount;
+            // Show first 100 results only for performance
+            const displayResults = results.slice(0, 100);
             
-            let html = `
-                <div class="mb-4 grid grid-cols-3 gap-4">
-                    <div class="bg-blue-50 p-3 rounded-lg">
-                        <p class="text-sm text-gray-600">Total Exams</p>
-                        <p class="text-2xl font-bold text-blue-800">${results.length}</p>
-                    </div>
-                    <div class="bg-green-50 p-3 rounded-lg">
-                        <p class="text-sm text-gray-600">Average Final Mark</p>
-                        <p class="text-2xl font-bold text-green-800">${averageMarks}</p>
-                    </div>
-                    <div class="bg-purple-50 p-3 rounded-lg">
-                        <p class="text-sm text-gray-600">Pass/Fail</p>
-                        <p class="text-2xl font-bold text-purple-800">${passedCount}/${failedCount}</p>
-                    </div>
-                </div>
-                <table class="w-full border-collapse">
-                    <thead>
-                        <tr class="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
-                            <th class="p-3 text-left">Admission No.</th>
-                            <th class="p-3 text-left">Student Name</th>
-                            <th class="p-3 text-left">CAT</th>
-                            <th class="p-3 text-left">EBE</th>
-                            <th class="p-3 text-left">FINAL</th>
-                            <th class="p-3 text-left">Remarks</th>
-                            <th class="p-3 text-left">Exam</th>
-                            <th class="p-3 text-left">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-            `;
+            let html = '<table class="data-table">';
+            html += '<thead><tr>';
+            html += '<th>Admission No.</th><th>Name</th><th>CAT</th><th>EBE</th><th>FINAL</th><th>Remarks</th><th>Exam</th><th>Actions</th>';
+            html += '</tr></thead><tbody>';
             
-            results.forEach(result => {
+            displayResults.forEach(result => {
                 const finalMark = parseFloat(result.finalMarks) || 0;
-                const cat = parseFloat(result.cat) || 0;
-                const ebe = parseFloat(result.ebe) || 0;
-                const status = finalMark >= 50 ? 'PASS' : (finalMark > 0 ? 'FAIL' : 'INC');
                 const statusClass = finalMark >= 50 ? 'text-green-600 bg-green-100' : 
                                    (finalMark > 0 ? 'text-red-600 bg-red-100' : 'text-gray-600 bg-gray-100');
                 
-                html += `
-                    <tr class="border-b hover:bg-gray-50">
-                        <td class="p-3 font-medium">${result.admissionNo || '-'}</td>
-                        <td class="p-3">${result.studentName || '-'}</td>
-                        <td class="p-3">${cat || '-'}</td>
-                        <td class="p-3">${ebe || '-'}</td>
-                        <td class="p-3 font-bold">${finalMark || '-'}</td>
-                        <td class="p-3">${result.remarks || '-'}</td>
-                        <td class="p-3 text-sm">${result.sheetName || 'General'}</td>
-                        <td class="p-3">
-                            ${currentRole === 'admin' || currentRole === 'super_admin' ? 
-                                `<button onclick="openFileForEditing('${result.fileId}')" class="text-blue-600 hover:text-blue-800 mr-2">
-                                    <i class="fas fa-edit"></i> Edit
-                                </button>` : ''
-                            }
-                            <button onclick="viewFile('${result.fileId}')" class="text-green-600 hover:text-green-800">
-                                <i class="fas fa-eye"></i> View
-                            </button>
-                        </td>
-                    </tr>
-                `;
+                html += `<tr>
+                    <td class="font-medium">${result.admissionNo || '-'}</td>
+                    <td>${result.studentName || '-'}</td>
+                    <td>${result.cat || '-'}</td>
+                    <td>${result.ebe || '-'}</td>
+                    <td class="font-bold">${finalMark || '-'}</td>
+                    <td>${result.remarks || '-'}</td>
+                    <td>${result.sheetName || 'General'}</td>
+                    <td>
+                        ${currentRole === 'admin' || currentRole === 'super_admin' ? 
+                            `<button onclick="openFileForEditing('${result.fileId}')" class="text-blue-600 hover:text-blue-800 mr-2 text-xs" title="Edit">
+                                <i class="fas fa-edit"></i>
+                            </button>` : ''
+                        }
+                        <button onclick="viewFile('${result.fileId}')" class="text-green-600 hover:text-green-800 text-xs" title="View">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </td>
+                </tr>`;
             });
+            
+            if (results.length > 100) {
+                html += `<tr><td colspan="8" class="text-center text-gray-500 text-xs py-2">
+                    Showing first 100 of ${results.length} results
+                </td></tr>`;
+            }
             
             html += '</tbody></table>';
             tableContainer.innerHTML = html;
         }
 
-        // ========== OPEN FILE FOR EDITING ==========
+        // ========== OPEN FILE FOR EDITING - OPTIMIZED ==========
         async function openFileForEditing(fileId) {
             if (currentRole !== 'admin' && currentRole !== 'super_admin') {
-                alert('Only Admins can edit files');
+                showToast('Admins only', 'error');
                 return;
             }
             
-            // Close viewer if open
             closeViewer();
+            sheetCache.clear(); // Clear cache when opening new file
             
             const file = sharedFiles.find(f => f.id === fileId);
             if (!file || !file.file_data) {
-                alert('File data not found');
+                showToast('File not found', 'error');
                 return;
             }
             
+            showLoading('Opening file...', false, 15000);
+            
             try {
-                console.log('📝 Opening file for editing:', file.filename);
-                
-                // Decode base64 data
-                const binaryData = atob(file.file_data);
-                const array = new Uint8Array(binaryData.length);
-                for (let i = 0; i < binaryData.length; i++) {
-                    array[i] = binaryData.charCodeAt(i);
+                // Check if already loaded in cache
+                if (sheetCache.has(file.id)) {
+                    currentEditingFile = sheetCache.get(file.id);
+                } else {
+                    const binaryData = atob(file.file_data);
+                    const array = new Uint8Array(binaryData.length);
+                    for (let i = 0; i < binaryData.length; i++) {
+                        array[i] = binaryData.charCodeAt(i);
+                    }
+                    
+                    const workbook = XLSX.read(array, { type: 'array' });
+                    
+                    currentEditingFile = {
+                        id: file.id,
+                        workbook: workbook,
+                        filename: file.filename,
+                        sheets: workbook.SheetNames,
+                        currentSheet: workbook.SheetNames[0],
+                        loadedSheets: new Map() // Cache individual sheets
+                    };
+                    
+                    // Cache the file
+                    sheetCache.set(file.id, currentEditingFile);
                 }
-                
-                // Read the Excel file
-                const workbook = XLSX.read(array, { type: 'array' });
-                
-                currentEditingFile = {
-                    id: file.id,
-                    workbook: workbook,
-                    filename: file.filename,
-                    sheets: workbook.SheetNames,
-                    currentSheet: workbook.SheetNames[0]
-                };
                 
                 document.getElementById('editingFileName').innerText = file.filename;
                 document.getElementById('excelEditorSection').classList.remove('hidden');
                 
-                // Create sheet selector tabs
-                createSheetSelector(workbook.SheetNames);
+                // Create sheet selector
+                const selector = document.getElementById('sheetSelector');
+                selector.innerHTML = currentEditingFile.sheets.map((sheet, i) => 
+                    `<button onclick="loadSheetForEditing('${sheet}')" 
+                        class="sheet-tab px-3 py-1.5 rounded-lg text-xs font-medium transition
+                        ${i === 0 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">
+                        ${sheet.length > 15 ? sheet.substr(0, 12) + '...' : sheet}
+                    </button>`
+                ).join('');
                 
-                // Load the first sheet
-                loadSheetForEditing(workbook.SheetNames[0]);
+                hideLoading();
+                loadSheetForEditing(currentEditingFile.sheets[0]);
                 
             } catch (error) {
-                console.error('Error opening file:', error);
-                alert('Error opening file: ' + error.message);
+                hideLoading();
+                showToast('Error: ' + error.message, 'error');
             }
         }
-        
-        // ========== CREATE SHEET SELECTOR TABS ==========
-        function createSheetSelector(sheetNames) {
-            const selector = document.getElementById('sheetSelector');
-            let html = '';
-            
-            sheetNames.forEach((sheet, index) => {
-                html += `
-                    <button onclick="loadSheetForEditing('${sheet}')" 
-                            class="sheet-tab px-4 py-2 rounded-lg text-sm font-medium transition
-                            ${index === 0 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">
-                        ${sheet}
-                    </button>
-                `;
-            });
-            
-            selector.innerHTML = html;
-        }
-        
-        // ========== LOAD SHEET FOR EDITING ==========
+
+        // ========== LOAD SHEET FOR EDITING - INSTANT WITH CACHE ==========
         function loadSheetForEditing(sheetName) {
-            if (!currentEditingFile || !currentEditingFile.workbook) return;
+            if (!currentEditingFile) return;
             
-            // Update active tab
+            // Update tabs instantly
             document.querySelectorAll('.sheet-tab').forEach(tab => {
-                if (tab.innerText === sheetName) {
-                    tab.className = 'sheet-tab px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 text-white';
-                } else {
-                    tab.className = 'sheet-tab px-4 py-2 rounded-lg text-sm font-medium bg-gray-200 text-gray-700 hover:bg-gray-300';
-                }
+                const isActive = tab.innerText.includes(sheetName) || tab.innerText === sheetName;
+                tab.className = `sheet-tab px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+                    isActive ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`;
             });
             
-            const worksheet = currentEditingFile.workbook.Sheets[sheetName];
-            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+            // Check if sheet is already loaded
+            if (currentEditingFile.loadedSheets.has(sheetName)) {
+                const jsonData = currentEditingFile.loadedSheets.get(sheetName);
+                initHandsontable(jsonData);
+                currentEditingFile.currentSheet = sheetName;
+                return;
+            }
             
-            console.log(`📊 Loading sheet "${sheetName}" with ${jsonData.length} rows`);
-            console.log('📋 Headers:', jsonData[0]);
+            // Show loading only for first load of this sheet
+            showLoading(`Loading ${sheetName}...`, false, 10000);
             
-            currentEditingFile.currentSheet = sheetName;
-            
-            // Initialize Handsontable editor
+            setTimeout(() => {
+                try {
+                    const worksheet = currentEditingFile.workbook.Sheets[sheetName];
+                    if (!worksheet) {
+                        hideLoading();
+                        showToast('Sheet not found', 'error');
+                        return;
+                    }
+                    
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                    
+                    // Cache the sheet data
+                    currentEditingFile.loadedSheets.set(sheetName, jsonData);
+                    currentEditingFile.currentSheet = sheetName;
+                    
+                    initHandsontable(jsonData);
+                    hideLoading();
+                    
+                } catch (error) {
+                    hideLoading();
+                    showToast('Error loading sheet', 'error');
+                }
+            }, 10);
+        }
+
+        // ========== INIT HANDSONTABLE - OPTIMIZED ==========
+        function initHandsontable(data) {
             const container = document.getElementById('excelEditor');
             
-            // Clear previous instance
-            if (hot) {
-                hot.destroy();
-                hot = null;
-            }
+            if (hot) hot.destroy();
             
-            // Create new instance with the data
-            hot = new Handsontable(container, {
-                data: jsonData,
-                rowHeaders: true,
-                colHeaders: true,
-                height: '100%',
-                width: '100%',
-                licenseKey: 'non-commercial-and-evaluation',
-                contextMenu: true,
-                copyPaste: true,
-                fillHandle: true,
-                undo: true,
-                redo: true,
-                columnSorting: true,
-                filters: true,
-                dropdownMenu: true,
-                
-                // Style the cells based on YOUR column headers
-                cells: function(row, col, prop) {
-                    const cellProperties = {};
-                    const header = jsonData[0] ? jsonData[0][col] : '';
+            // Use setTimeout to ensure DOM is ready
+            setTimeout(() => {
+                hot = new Handsontable(container, {
+                    data: data,
+                    rowHeaders: true,
+                    colHeaders: true,
+                    height: '100%',
+                    width: '100%',
+                    licenseKey: 'non-commercial-and-evaluation',
+                    contextMenu: ['row_above', 'row_below', 'remove_row', 'undo', 'redo', 'copy', 'cut'],
+                    copyPaste: true,
+                    fillHandle: true,
+                    undo: true,
+                    redo: true,
+                    columnSorting: true,
+                    filters: true,
+                    dropdownMenu: false,
+                    renderAllRows: false,
+                    viewportRowRenderingOffset: 10,
+                    viewportColumnRenderingOffset: 5,
                     
-                    // Make numeric columns for marks
-                    if (header && (
-                        header.toString().toLowerCase().includes('cat') ||
-                        header.toString().toLowerCase().includes('ebe') ||
-                        header.toString().toLowerCase().includes('final')
-                    )) {
-                        cellProperties.type = 'numeric';
-                        cellProperties.numericFormat = { pattern: '0.00' };
+                    cells: function(row, col) {
+                        const cellProps = {};
+                        const header = data[0] ? data[0][col] : '';
                         
-                        // Color coding based on marks for FINALMARKS column
-                        if (header.toString().toLowerCase().includes('final')) {
-                            cellProperties.renderer = function(instance, td, row, col, prop, value, cellProperties) {
+                        if (row === 0) {
+                            cellProps.className = 'htCenter font-bold bg-gray-100';
+                        }
+                        
+                        if (header && header.toString().toLowerCase().includes('final')) {
+                            cellProps.renderer = function(instance, td, row, col, prop, value) {
                                 Handsontable.renderers.NumericRenderer.apply(this, arguments);
                                 if (row > 0 && value) {
                                     const marks = parseFloat(value);
-                                    if (marks >= 50) td.style.background = '#dcfce7';
-                                    else if (marks > 0) td.style.background = '#fee2e2';
+                                    td.style.background = marks >= 50 ? '#dcfce7' : 
+                                                         marks > 0 ? '#fee2e2' : '';
                                 }
                                 return td;
                             };
                         }
+                        
+                        return cellProps;
                     }
-                    
-                    // Make header row bold
-                    if (row === 0) {
-                        cellProperties.className = 'htCenter font-bold bg-gray-100';
-                    }
-                    
-                    return cellProperties;
-                }
-            });
+                });
+            }, 10);
         }
 
-        // ========== SAVE EXCEL CHANGES ==========
+        // ========== SAVE EXCEL CHANGES - OPTIMIZED ==========
         async function saveExcelChanges() {
             if (!hot || !currentEditingFile) {
-                alert('No file being edited');
+                showToast('No file open', 'error');
                 return;
             }
             
+            showLoading('Saving...', false, 20000);
+            
             try {
-                console.log('💾 Saving changes to:', currentEditingFile.filename);
-                
-                // Get the updated data from Handsontable for current sheet
                 const updatedData = hot.getData();
-                
-                // Update the current sheet in the workbook
                 const worksheet = XLSX.utils.aoa_to_sheet(updatedData);
                 currentEditingFile.workbook.Sheets[currentEditingFile.currentSheet] = worksheet;
                 
-                // Convert entire workbook to base64 for storage
                 const excelBuffer = XLSX.write(currentEditingFile.workbook, { bookType: 'xlsx', type: 'base64' });
                 
-                // Update in Supabase
                 const { error } = await supabase
                     .from('shared_excel_files')
                     .update({
@@ -782,35 +974,37 @@
                 
                 if (error) throw error;
                 
-                alert('✅ Changes saved successfully!');
+                // Update cache
+                sheetCache.delete(currentEditingFile.id);
                 
-                // Close editor
+                hideLoading();
+                showToast('Saved!', 'success');
+                
                 closeEditor();
                 
-                // Reload data
-                await loadSharedFiles();
-                await loadAllStudentMarks();
-                
-                // Refresh search if active
-                const searchTerm = document.getElementById('studentSearchInput').value;
-                if (searchTerm) searchStudentMarks();
+                // Reload in background
+                setTimeout(() => {
+                    loadSharedFiles();
+                    loadAllStudentMarks();
+                }, 100);
                 
             } catch (error) {
-                console.error('Error saving:', error);
-                alert('Error saving changes: ' + error.message);
+                hideLoading();
+                showToast('Save failed: ' + error.message, 'error');
             }
         }
 
-        // ========== VIEW FILE (IN SAME PAGE) ==========
+        // ========== VIEW FILE - OPTIMIZED ==========
         async function viewFile(fileId) {
-            // Close editor if open
             closeEditor();
             
             const file = sharedFiles.find(f => f.id === fileId);
             if (!file || !file.file_data) {
-                alert('File data not found');
+                showToast('File not found', 'error');
                 return;
             }
+            
+            showLoading('Loading...', false, 10000);
             
             try {
                 const binaryData = atob(file.file_data);
@@ -820,57 +1014,46 @@
                 }
                 
                 const workbook = XLSX.read(array, { type: 'array' });
-                const sheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[sheetName];
                 
-                // Create sheet selector for viewer
-                let sheetTabs = '';
-                workbook.SheetNames.forEach((sheet, index) => {
-                    sheetTabs += `
-                        <button onclick="viewSheet('${fileId}', '${sheet}')" 
-                                class="viewer-tab px-4 py-2 rounded-lg text-sm font-medium transition
-                                ${index === 0 ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">
-                            ${sheet}
-                        </button>
-                    `;
-                });
+                // Create sheet tabs
+                const sheetTabs = workbook.SheetNames.map((sheet, i) => 
+                    `<button onclick="viewSheet('${fileId}', '${sheet}')" 
+                        class="viewer-tab px-3 py-1.5 rounded-lg text-xs font-medium transition
+                        ${i === 0 ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">
+                        ${sheet.length > 15 ? sheet.substr(0, 12) + '...' : sheet}
+                    </button>`
+                ).join('');
+                
                 document.getElementById('sheetViewerSelector').innerHTML = sheetTabs;
+                document.getElementById('viewingFileName').innerText = file.filename;
                 
                 // Show first sheet
-                const htmlString = XLSX.utils.sheet_to_html(worksheet);
-                
-                document.getElementById('viewingFileName').innerText = file.filename;
-                document.getElementById('excelViewer').innerHTML = htmlString;
+                const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                document.getElementById('excelViewer').innerHTML = XLSX.utils.sheet_to_html(worksheet);
                 document.getElementById('excelViewerSection').classList.remove('hidden');
                 
-                // Store workbook for sheet switching
-                window.currentViewingFile = {
-                    id: fileId,
-                    workbook: workbook
-                };
+                window.currentViewingFile = { workbook: workbook };
+                hideLoading();
                 
             } catch (error) {
-                console.error('Error viewing file:', error);
-                alert('Error viewing file: ' + error.message);
+                hideLoading();
+                showToast('Error viewing file', 'error');
             }
         }
-        
-        // ========== VIEW DIFFERENT SHEET ==========
+
+        // ========== VIEW SHEET ==========
         function viewSheet(fileId, sheetName) {
             if (!window.currentViewingFile) return;
             
-            // Update active tab
             document.querySelectorAll('.viewer-tab').forEach(tab => {
-                if (tab.innerText === sheetName) {
-                    tab.className = 'viewer-tab px-4 py-2 rounded-lg text-sm font-medium bg-green-600 text-white';
-                } else {
-                    tab.className = 'viewer-tab px-4 py-2 rounded-lg text-sm font-medium bg-gray-200 text-gray-700 hover:bg-gray-300';
-                }
+                const isActive = tab.innerText.includes(sheetName) || tab.innerText === sheetName;
+                tab.className = `viewer-tab px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+                    isActive ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`;
             });
             
             const worksheet = window.currentViewingFile.workbook.Sheets[sheetName];
-            const htmlString = XLSX.utils.sheet_to_html(worksheet);
-            document.getElementById('excelViewer').innerHTML = htmlString;
+            document.getElementById('excelViewer').innerHTML = XLSX.utils.sheet_to_html(worksheet);
         }
 
         // ========== LOAD SHARED FILES ==========
@@ -879,7 +1062,8 @@
                 const { data: files, error } = await supabase
                     .from('shared_excel_files')
                     .select('*')
-                    .order('uploaded_at', { ascending: false });
+                    .order('uploaded_at', { ascending: false })
+                    .limit(50); // Limit to 50 files for performance
                 
                 if (error) throw error;
                 
@@ -888,39 +1072,38 @@
                 const container = document.getElementById('sharedFilesContainer');
                 
                 if (sharedFiles.length === 0) {
-                    container.innerHTML = '<div class="col-span-3 text-center py-12 text-gray-500">No files uploaded</div>';
+                    container.innerHTML = '<div class="col-span-3 text-center py-8 text-gray-500 text-sm">No files</div>';
                     return;
                 }
                 
-                let html = '';
-                sharedFiles.forEach(file => {
+                container.innerHTML = sharedFiles.map(file => {
                     const date = new Date(file.uploaded_at).toLocaleString();
-                    const canEdit = (currentRole === 'admin' || currentRole === 'super_admin');
+                    const canEdit = currentRole === 'admin' || currentRole === 'super_admin';
                     
-                    html += `
-                        <div class="border border-gray-200 rounded-xl p-4 hover:shadow-lg transition bg-white">
+                    return `
+                        <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition bg-white">
                             <div class="flex items-start">
-                                <i class="fas fa-file-excel text-green-600 text-3xl mr-3"></i>
-                                <div class="flex-1">
-                                    <p class="font-semibold text-gray-800">${file.filename}</p>
-                                    <div class="flex items-center mt-2 text-xs">
-                                        <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                                            ${file.row_count || 0} records
+                                <i class="fas fa-file-excel text-green-600 text-2xl mr-3"></i>
+                                <div class="flex-1 min-w-0">
+                                    <p class="font-semibold text-gray-800 text-sm truncate">${file.filename}</p>
+                                    <div class="flex items-center mt-1 text-xs">
+                                        <span class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
+                                            ${file.row_count || 0} rec
                                         </span>
-                                        <span class="text-gray-500 ml-2">
+                                        <span class="text-gray-500 ml-2 truncate">
                                             <i class="fas fa-user mr-1"></i>${file.uploaded_by_email || 'Unknown'}
                                         </span>
                                     </div>
-                                    <p class="text-xs text-gray-500 mt-2">${date}</p>
-                                    <div class="mt-3 flex gap-2">
+                                    <p class="text-xs text-gray-500 mt-1">${date}</p>
+                                    <div class="mt-2 flex gap-1">
                                         ${canEdit ? 
                                             `<button onclick="openFileForEditing('${file.id}')" 
-                                                class="text-sm bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-700">
+                                                class="text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700">
                                                 <i class="fas fa-edit mr-1"></i>Edit
                                             </button>` : ''
                                         }
                                         <button onclick="viewFile('${file.id}')" 
-                                            class="text-sm bg-green-600 text-white px-3 py-1 rounded-lg hover:bg-green-700">
+                                            class="text-xs bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700">
                                             <i class="fas fa-eye mr-1"></i>View
                                         </button>
                                     </div>
@@ -928,9 +1111,7 @@
                             </div>
                         </div>
                     `;
-                });
-                
-                container.innerHTML = html;
+                }).join('');
                 
             } catch (error) {
                 console.error('Error loading files:', error);
@@ -942,33 +1123,34 @@
             if (!input.files || !input.files[0]) return;
             
             const file = input.files[0];
+            showLoading('Reading file...', false, 10000);
+            
             const reader = new FileReader();
             
             reader.onload = function(e) {
                 try {
                     const data = new Uint8Array(e.target.result);
                     const workbook = XLSX.read(data, { type: 'array' });
-                    const sheetName = workbook.SheetNames[0];
-                    const worksheet = workbook.Sheets[sheetName];
-                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                    const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
                     
-                    // Show preview with multiple sheets info
-                    let previewHtml = `<div class="mb-2 text-sm text-gray-600">📑 ${workbook.SheetNames.length} sheet(s) found</div>`;
-                    previewHtml += '<table class="w-full border-collapse">';
-                    previewHtml += '<thead><tr class="bg-blue-600 text-white">';
+                    let previewHtml = `<div class="mb-2 text-xs text-gray-600">📑 ${workbook.SheetNames.length} sheet(s)</div>`;
+                    previewHtml += '<table class="data-table"><thead><tr>';
+                    
                     if (jsonData[0]) {
-                        jsonData[0].forEach(header => {
-                            previewHtml += `<th class="p-2 border">${header || 'Column'}</th>`;
+                        jsonData[0].slice(0, 8).forEach(header => {
+                            previewHtml += `<th class="text-xs">${header || 'Col'}</th>`;
                         });
+                        if (jsonData[0].length > 8) previewHtml += '<th>...</th>';
                     }
                     previewHtml += '</tr></thead><tbody>';
                     
-                    for (let i = 1; i < Math.min(6, jsonData.length); i++) {
+                    for (let i = 1; i < Math.min(4, jsonData.length); i++) {
                         previewHtml += '<tr>';
                         if (jsonData[i]) {
-                            jsonData[i].forEach(cell => {
-                                previewHtml += `<td class="p-2 border">${cell || '-'}</td>`;
+                            jsonData[i].slice(0, 8).forEach(cell => {
+                                previewHtml += `<td class="text-xs">${cell || '-'}</td>`;
                             });
+                            if (jsonData[i].length > 8) previewHtml += '<td>...</td>';
                         }
                         previewHtml += '</tr>';
                     }
@@ -983,51 +1165,57 @@
                         rowCount: jsonData.length - 1
                     };
                     
+                    hideLoading();
+                    showToast('Ready to publish', 'success');
+                    
                 } catch (error) {
-                    alert('Error reading Excel: ' + error.message);
+                    hideLoading();
+                    showToast('Error reading file', 'error');
                 }
             };
             
             reader.readAsArrayBuffer(file);
         }
 
-        // ========== PUBLISH FILE TO SUPABASE ==========
+        // ========== PUBLISH FILE ==========
         async function publishFile() {
             if (!window.currentUploadData) {
-                alert('No file to publish');
+                showToast('No file', 'error');
                 return;
             }
             
+            showLoading('Publishing...', false, 20000);
+            
             try {
                 const { workbook, fileName, rowCount } = window.currentUploadData;
-                
                 const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'base64' });
                 
                 const { error } = await supabase
                     .from('shared_excel_files')
-                    .insert([
-                        {
-                            filename: `PROVISIONAL_${Date.now()}_${fileName}`,
-                            file_data: excelBuffer,
-                            row_count: rowCount,
-                            uploaded_by: currentUser.id,
-                            uploaded_by_email: currentUser.email,
-                            uploaded_at: new Date().toISOString()
-                        }
-                    ]);
+                    .insert([{
+                        filename: `PROV_${Date.now()}_${fileName}`,
+                        file_data: excelBuffer,
+                        row_count: rowCount,
+                        uploaded_by: currentUser.id,
+                        uploaded_by_email: currentUser.email,
+                        uploaded_at: new Date().toISOString()
+                    }]);
                 
                 if (error) throw error;
                 
-                alert('✅ File published successfully!');
+                hideLoading();
+                showToast('Published!', 'success');
                 
                 closeFilePreview();
                 
-                await loadSharedFiles();
-                await loadAllStudentMarks();
+                setTimeout(() => {
+                    loadSharedFiles();
+                    loadAllStudentMarks();
+                }, 100);
                 
             } catch (error) {
-                console.error('Error publishing:', error);
-                alert('Error: ' + error.message);
+                hideLoading();
+                showToast('Publish failed', 'error');
             }
         }
 
@@ -1071,8 +1259,7 @@
         }
         
         window.onload = function() {
-            console.log('🏥 NCHSN PORTAL LOADED - EDIT WORKING WITH MULTIPLE SHEETS!');
-            console.log('🔗 Supabase URL:', SUPABASE_URL);
+            console.log('🚀 NCHSN PORTAL - ULTRA FAST VERSION');
         };
     </script>
 </body>
