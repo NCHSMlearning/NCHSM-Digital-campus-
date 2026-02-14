@@ -17,9 +17,12 @@
     <!-- SheetJS for Excel -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
     
-    <!-- Handsontable for Excel Editing - OPTIMIZED VERSION -->
+    <!-- Handsontable for Excel Editing -->
     <script src="https://cdn.jsdelivr.net/npm/handsontable@14.2.0/dist/handsontable.full.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@14.2.0/dist/handsontable.full.min.css">
+    
+    <!-- Chart.js for Beautiful Graphs -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     
     <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8/dist/umd/supabase.min.js"></script>
@@ -151,7 +154,7 @@
         .data-table th {
             background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
             color: white;
-            padding: 10px;
+            padding: 12px;
             text-align: left;
             position: sticky;
             top: 0;
@@ -159,7 +162,7 @@
         }
         
         .data-table td {
-            padding: 8px 10px;
+            padding: 10px 12px;
             border-bottom: 1px solid #e2e8f0;
         }
         
@@ -178,6 +181,139 @@
         
         .portal-card:hover {
             box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+        }
+        
+        /* Grade Badges */
+        .grade-badge {
+            padding: 4px 8px;
+            border-radius: 9999px;
+            font-size: 11px;
+            font-weight: 600;
+            display: inline-block;
+        }
+        
+        .grade-distinction {
+            background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
+            color: white;
+        }
+        
+        .grade-credit {
+            background: linear-gradient(135deg, #059669 0%, #10B981 100%);
+            color: white;
+        }
+        
+        .grade-pass {
+            background: linear-gradient(135deg, #D97706 0%, #F59E0B 100%);
+            color: white;
+        }
+        
+        .grade-fail {
+            background: linear-gradient(135deg, #DC2626 0%, #EF4444 100%);
+            color: white;
+        }
+        
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 9999px;
+            font-size: 11px;
+            font-weight: 600;
+            display: inline-block;
+        }
+        
+        .status-pass {
+            background: #dcfce7;
+            color: #166534;
+        }
+        
+        .status-fail {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        
+        /* Student Summary Card */
+        .student-summary-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-box {
+            background: rgba(255,255,255,0.2);
+            border-radius: 12px;
+            padding: 12px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+        }
+        
+        .stat-value {
+            font-size: 28px;
+            font-weight: bold;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            opacity: 0.9;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        /* Delete Button */
+        .delete-btn {
+            background: #ef4444;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            transition: all 0.2s;
+        }
+        
+        .delete-btn:hover {
+            background: #dc2626;
+            transform: scale(1.05);
+        }
+        
+        /* Chart Container */
+        .chart-container {
+            position: relative;
+            height: 250px;
+            width: 100%;
+        }
+        
+        /* Stats Cards */
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 12px;
+            padding: 16px;
+            transition: all 0.3s;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+        
+        /* Beautiful Gradient Cards */
+        .gradient-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .gradient-card-green {
+            background: linear-gradient(135deg, #34b1aa 0%, #1c8f7c 100%);
+            color: white;
+        }
+        
+        .gradient-card-orange {
+            background: linear-gradient(135deg, #f09351 0%, #e9692c 100%);
+            color: white;
+        }
+        
+        .gradient-card-purple {
+            background: linear-gradient(135deg, #a166ab 0%, #6d4c7d 100%);
+            color: white;
         }
     </style>
 </head>
@@ -216,9 +352,9 @@
             let allStudentMarks = [];
             let currentEditingFile = null;
             let hot = null;
-            let sheetCache = new Map(); // Cache loaded sheets for instant switching
-            let isLoading = false;
-            let loadingQueue = [];
+            let sheetCache = new Map();
+            let performanceChart = null;
+            let distributionChart = null;
         </script>
 
         <!-- ========== LOGIN SCREEN ========== -->
@@ -302,50 +438,75 @@
                 </div>
             </div>
 
-            <!-- Stats Overview - Compact -->
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div class="portal-card p-4">
-                    <div class="flex items-center">
-                        <div class="bg-blue-100 p-2 rounded-full">
-                            <i class="fas fa-file-excel text-blue-800 text-lg"></i>
+            <!-- Beautiful Stats Overview -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="gradient-card p-5 rounded-xl shadow-lg">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-white/80 text-xs uppercase tracking-wider">Total Files</p>
+                            <p id="totalFilesStats" class="text-3xl font-bold mt-1">0</p>
                         </div>
-                        <div class="ml-3">
-                            <p class="text-gray-500 text-xs">Total Files</p>
-                            <p id="totalFilesStats" class="text-xl font-bold text-gray-800">0</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="portal-card p-4">
-                    <div class="flex items-center">
-                        <div class="bg-green-100 p-2 rounded-full">
-                            <i class="fas fa-users text-green-800 text-lg"></i>
-                        </div>
-                        <div class="ml-3">
-                            <p class="text-gray-500 text-xs">Records</p>
-                            <p id="totalRecordsStats" class="text-xl font-bold text-gray-800">0</p>
+                        <div class="bg-white/20 p-3 rounded-full">
+                            <i class="fas fa-file-excel text-white text-xl"></i>
                         </div>
                     </div>
                 </div>
-                <div class="portal-card p-4">
-                    <div class="flex items-center">
-                        <div class="bg-purple-100 p-2 rounded-full">
-                            <i class="fas fa-chalkboard-teacher text-purple-800 text-lg"></i>
+                <div class="gradient-card-green p-5 rounded-xl shadow-lg">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-white/80 text-xs uppercase tracking-wider">Student Records</p>
+                            <p id="totalRecordsStats" class="text-3xl font-bold mt-1">0</p>
                         </div>
-                        <div class="ml-3">
-                            <p class="text-gray-500 text-xs">Staff</p>
-                            <p id="totalStaffStats" class="text-xl font-bold text-gray-800">0</p>
+                        <div class="bg-white/20 p-3 rounded-full">
+                            <i class="fas fa-users text-white text-xl"></i>
                         </div>
                     </div>
                 </div>
-                <div class="portal-card p-4">
-                    <div class="flex items-center">
-                        <div class="bg-yellow-100 p-2 rounded-full">
-                            <i class="fas fa-shield-alt text-yellow-800 text-lg"></i>
+                <div class="gradient-card-orange p-5 rounded-xl shadow-lg">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-white/80 text-xs uppercase tracking-wider">Active Staff</p>
+                            <p id="totalStaffStats" class="text-3xl font-bold mt-1">0</p>
                         </div>
-                        <div class="ml-3">
-                            <p class="text-gray-500 text-xs">Role</p>
-                            <p id="userRoleDisplay" class="text-xl font-bold text-gray-800">-</p>
+                        <div class="bg-white/20 p-3 rounded-full">
+                            <i class="fas fa-chalkboard-teacher text-white text-xl"></i>
                         </div>
+                    </div>
+                </div>
+                <div class="gradient-card-purple p-5 rounded-xl shadow-lg">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-white/80 text-xs uppercase tracking-wider">Your Role</p>
+                            <p id="userRoleDisplay" class="text-2xl font-bold mt-1">-</p>
+                        </div>
+                        <div class="bg-white/20 p-3 rounded-full">
+                            <i class="fas fa-shield-alt text-white text-xl"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Beautiful Charts Section -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Performance Distribution Chart -->
+                <div class="portal-card">
+                    <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                        <i class="fas fa-chart-pie text-purple-600 mr-2"></i>
+                        Grade Distribution
+                    </h2>
+                    <div class="chart-container">
+                        <canvas id="performanceChart"></canvas>
+                    </div>
+                </div>
+                
+                <!-- Grade Distribution Chart -->
+                <div class="portal-card">
+                    <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                        <i class="fas fa-chart-bar text-green-600 mr-2"></i>
+                        Mark Ranges
+                    </h2>
+                    <div class="chart-container">
+                        <canvas id="distributionChart"></canvas>
                     </div>
                 </div>
             </div>
@@ -354,31 +515,62 @@
             <div id="adminSearchSection" class="portal-card">
                 <h2 class="text-lg font-bold text-gray-800 mb-3 flex items-center">
                     <i class="fas fa-search text-blue-600 mr-2"></i>
-                    Search Student Marks
+                    Search Student Results
                 </h2>
                 
-                <div class="flex gap-3 mb-4">
-                    <input type="text" id="studentSearchInput" placeholder="Admission No. or Name..." 
-                           class="flex-1 px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-blue-500 text-sm">
+                <div class="flex gap-3 mb-6">
+                    <input type="text" id="studentSearchInput" placeholder="Enter Admission No. or Student Name..." 
+                           class="flex-1 px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 text-sm">
                     <button onclick="searchStudentMarks()" 
-                            class="bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700 flex items-center text-sm">
-                        <i class="fas fa-search mr-1"></i>
+                            class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 flex items-center text-sm">
+                        <i class="fas fa-search mr-2"></i>
                         Search
                     </button>
                     <button onclick="clearSearch()" 
-                            class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 text-sm">
+                            class="bg-gray-500 text-white px-4 py-3 rounded-lg hover:bg-gray-600 text-sm">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
                 
-                <!-- Student Results Container -->
+                <!-- Student Results Container - BEAUTIFUL STUDENT-SPECIFIC DISPLAY -->
                 <div id="studentResultsContainer" class="hidden">
-                    <div class="flex items-center justify-between mb-3">
-                        <h3 class="font-semibold text-gray-800 text-sm flex items-center">
-                            <i class="fas fa-user-graduate text-green-600 mr-2"></i>
-                            <span id="searchResultCount">0</span> Results
-                        </h3>
+                    <!-- Student Summary Card -->
+                    <div id="studentSummaryCard" class="student-summary-card">
+                        <div class="flex flex-col md:flex-row items-start md:items-center justify-between mb-4">
+                            <div>
+                                <h3 id="studentNameDisplay" class="text-xl font-bold">Student Name</h3>
+                                <p id="studentIdDisplay" class="text-white/80 text-sm">Admission No.</p>
+                            </div>
+                            <div class="mt-2 md:mt-0">
+                                <span id="overallGradeDisplay" class="grade-badge grade-distinction text-sm px-4 py-2">GRADE</span>
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            <div class="stat-box">
+                                <div class="stat-value" id="totalExamsCount">0</div>
+                                <div class="stat-label">Total Exams</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-value" id="averageMarkDisplay">0.0</div>
+                                <div class="stat-label">Average</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-value" id="passedExamsCount">0</div>
+                                <div class="stat-label">Passed</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-value" id="failedExamsCount">0</div>
+                                <div class="stat-label">Failed</div>
+                            </div>
+                        </div>
                     </div>
+                    
+                    <!-- Results Table -->
+                    <h3 class="font-semibold text-gray-800 mb-3 flex items-center">
+                        <i class="fas fa-file-alt text-blue-600 mr-2"></i>
+                        Exam Results
+                    </h3>
                     <div id="studentResultsTable" class="overflow-x-auto bg-white rounded-lg border max-h-96 overflow-y-auto">
                         <!-- Results table will be populated here -->
                     </div>
@@ -420,7 +612,7 @@
                     </div>
                 </div>
 
-                <!-- Live Excel Editor - OPTIMIZED -->
+                <!-- Live Excel Editor -->
                 <div id="excelEditorSection" class="hidden portal-card p-4">
                     <div class="flex items-center justify-between mb-3">
                         <h2 class="text-lg font-bold text-gray-800 flex items-center">
@@ -440,7 +632,7 @@
                         </div>
                     </div>
                     
-                    <!-- Sheet selector - Scrollable -->
+                    <!-- Sheet selector -->
                     <div id="sheetSelector" class="mb-3 flex gap-1 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-gray-300">
                         <!-- Sheet tabs will appear here -->
                     </div>
@@ -460,14 +652,12 @@
                             Close
                         </button>
                     </div>
-                    <div id="sheetViewerSelector" class="mb-3 flex gap-1 overflow-x-auto pb-1">
-                        <!-- Sheet tabs for viewer will appear here -->
-                    </div>
+                    <div id="sheetViewerSelector" class="mb-3 flex gap-1 overflow-x-auto pb-1"></div>
                     <div id="excelViewer" class="overflow-x-auto bg-white rounded-lg border p-3 text-sm max-h-96 overflow-y-auto"></div>
                 </div>
             </div>
 
-            <!-- Shared Excel Files -->
+            <!-- Shared Excel Files with Delete Button -->
             <div class="portal-card">
                 <div class="flex items-center justify-between mb-4">
                     <h2 class="text-lg font-bold text-gray-800 flex items-center">
@@ -481,14 +671,14 @@
                 </div>
                 
                 <div id="sharedFilesContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <!-- Files load here -->
+                    <!-- Files load here with delete button -->
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        // ========== UTILITY FUNCTIONS - OPTIMIZED ==========
+        // ========== UTILITY FUNCTIONS ==========
         let toastTimeout;
         function showToast(message, type = 'success', duration = 2000) {
             if (toastTimeout) clearTimeout(toastTimeout);
@@ -524,7 +714,6 @@
                 document.getElementById('progressContainer').style.display = 'none';
             }
             
-            // Safety timeout - hide loading after 30 seconds to prevent infinite loading
             loadingTimeout = setTimeout(() => {
                 if (document.getElementById('loadingOverlay').style.display === 'flex') {
                     hideLoading();
@@ -541,6 +730,14 @@
         function hideLoading() {
             document.getElementById('loadingOverlay').style.display = 'none';
             if (loadingTimeout) clearTimeout(loadingTimeout);
+        }
+
+        // ========== GRADE CALCULATION FUNCTION ==========
+        function getGrade(mark) {
+            if (mark >= 80) return { grade: 'DISTINCTION', class: 'grade-distinction', pass: true };
+            if (mark >= 70) return { grade: 'CREDIT', class: 'grade-credit', pass: true };
+            if (mark >= 60) return { grade: 'C', class: 'grade-pass', pass: true };
+            return { grade: 'E', class: 'grade-fail', pass: false };
         }
 
         // ========== LOGIN FUNCTION ==========
@@ -596,7 +793,6 @@
                 hideLoading();
                 showToast('Login successful!', 'success');
                 
-                // Load data in background
                 setTimeout(() => {
                     loadSharedFiles();
                     loadAllStudentMarks();
@@ -609,7 +805,7 @@
             }
         }
 
-        // ========== LOAD ALL STUDENT MARKS - OPTIMIZED ==========
+        // ========== LOAD ALL STUDENT MARKS ==========
         async function loadAllStudentMarks() {
             try {
                 const { data: files, error } = await supabase
@@ -622,7 +818,7 @@
                 sharedFiles = files || [];
                 allStudentMarks = [];
                 
-                // Process files in chunks to prevent UI freeze
+                // Process files in chunks
                 const chunkSize = 3;
                 for (let i = 0; i < sharedFiles.length; i += chunkSize) {
                     const chunk = sharedFiles.slice(i, i + chunkSize);
@@ -674,14 +870,15 @@
                         }
                     }));
                     
-                    // Allow UI to breathe
                     await new Promise(resolve => setTimeout(resolve, 0));
                 }
                 
                 document.getElementById('totalFilesStats').innerText = sharedFiles.length;
                 document.getElementById('totalRecordsStats').innerText = allStudentMarks.length;
                 
-                // Get staff count
+                // Update charts
+                updateCharts();
+                
                 const { data: staff } = await supabase
                     .from('consolidated_user_profiles_table')
                     .select('role');
@@ -694,7 +891,86 @@
             }
         }
 
-        // ========== SEARCH STUDENT MARKS - OPTIMIZED ==========
+        // ========== UPDATE CHARTS ==========
+        function updateCharts() {
+            if (allStudentMarks.length === 0) return;
+            
+            const marks = allStudentMarks.map(m => parseFloat(m.finalMarks) || 0).filter(m => m > 0);
+            
+            // Count grades according to your system
+            const distinctionCount = marks.filter(m => m >= 80).length;
+            const creditCount = marks.filter(m => m >= 70 && m < 80).length;
+            const passCount = marks.filter(m => m >= 60 && m < 70).length;
+            const failCount = marks.filter(m => m < 60).length;
+            
+            // Performance Chart (Pie)
+            const perfCtx = document.getElementById('performanceChart').getContext('2d');
+            if (performanceChart) performanceChart.destroy();
+            
+            performanceChart = new Chart(perfCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Distinction (80+)', 'Credit (70-79)', 'Pass (60-69)', 'Fail (0-59)'],
+                    datasets: [{
+                        data: [distinctionCount, creditCount, passCount, failCount],
+                        backgroundColor: ['#4F46E5', '#059669', '#D97706', '#DC2626'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+            
+            // Grade Distribution (Bar)
+            const gradeRanges = [
+                { range: '0-59 (E)', count: failCount },
+                { range: '60-69 (C)', count: passCount },
+                { range: '70-79 (Credit)', count: creditCount },
+                { range: '80-100 (Dist)', count: distinctionCount }
+            ];
+            
+            const distCtx = document.getElementById('distributionChart').getContext('2d');
+            if (distributionChart) distributionChart.destroy();
+            
+            distributionChart = new Chart(distCtx, {
+                type: 'bar',
+                data: {
+                    labels: gradeRanges.map(g => g.range),
+                    datasets: [{
+                        label: 'Number of Students',
+                        data: gradeRanges.map(g => g.count),
+                        backgroundColor: ['#DC2626', '#D97706', '#059669', '#4F46E5'],
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // ========== SEARCH STUDENT MARKS - STUDENT-SPECIFIC STATISTICS ==========
         function searchStudentMarks() {
             const searchTerm = document.getElementById('studentSearchInput').value.toLowerCase().trim();
             
@@ -703,7 +979,6 @@
                 return;
             }
             
-            // Immediate response - no loading for small searches
             if (allStudentMarks.length > 5000) showLoading('Searching...', false, 10000);
             
             setTimeout(() => {
@@ -719,58 +994,89 @@
             }, 10);
         }
 
-        // ========== DISPLAY STUDENT RESULTS ==========
+        // ========== DISPLAY STUDENT RESULTS WITH STATISTICS ==========
         function displayStudentResults(results) {
             const container = document.getElementById('studentResultsContainer');
             const tableContainer = document.getElementById('studentResultsTable');
-            const countSpan = document.getElementById('searchResultCount');
             
             if (results.length === 0) {
                 container.classList.remove('hidden');
-                countSpan.innerText = '0';
-                tableContainer.innerHTML = '<div class="text-center py-6 text-gray-500 text-sm">No results</div>';
+                tableContainer.innerHTML = '<div class="text-center py-10 text-gray-500"><i class="fas fa-search text-4xl mb-3 text-gray-300"></i><p>No results found</p></div>';
                 return;
             }
             
             container.classList.remove('hidden');
-            countSpan.innerText = results.length;
             
-            // Show first 100 results only for performance
-            const displayResults = results.slice(0, 100);
+            // Get student info from first result
+            const studentName = results[0].studentName || 'Unknown';
+            const studentId = results[0].admissionNo || 'Unknown';
             
-            let html = '<table class="data-table">';
+            document.getElementById('studentNameDisplay').innerText = studentName;
+            document.getElementById('studentIdDisplay').innerText = studentId;
+            
+            // Calculate student statistics
+            const validMarks = results.filter(r => r.finalMarks && !isNaN(parseFloat(r.finalMarks)))
+                                      .map(r => parseFloat(r.finalMarks));
+            
+            const totalExams = results.length;
+            const averageMark = validMarks.length ? (validMarks.reduce((a, b) => a + b, 0) / validMarks.length).toFixed(1) : 0;
+            
+            const passedExams = validMarks.filter(m => m >= 60).length;
+            const failedExams = validMarks.filter(m => m < 60).length;
+            
+            // Calculate overall grade based on average
+            let overallGrade, overallGradeClass;
+            if (averageMark >= 80) { overallGrade = 'DISTINCTION'; overallGradeClass = 'grade-distinction'; }
+            else if (averageMark >= 70) { overallGrade = 'CREDIT'; overallGradeClass = 'grade-credit'; }
+            else if (averageMark >= 60) { overallGrade = 'C'; overallGradeClass = 'grade-pass'; }
+            else { overallGrade = 'E'; overallGradeClass = 'grade-fail'; }
+            
+            // Update summary stats
+            document.getElementById('totalExamsCount').innerText = totalExams;
+            document.getElementById('averageMarkDisplay').innerText = averageMark;
+            document.getElementById('passedExamsCount').innerText = passedExams;
+            document.getElementById('failedExamsCount').innerText = failedExams;
+            document.getElementById('overallGradeDisplay').innerText = overallGrade;
+            document.getElementById('overallGradeDisplay').className = `grade-badge ${overallGradeClass} text-sm px-4 py-2`;
+            
+            // Results table
+            let html = '<table class="data-table w-full">';
             html += '<thead><tr>';
-            html += '<th>Admission No.</th><th>Name</th><th>CAT</th><th>EBE</th><th>FINAL</th><th>Remarks</th><th>Exam</th><th>Actions</th>';
+            html += '<th>Exam/Subject</th><th>CAT</th><th>EBE</th><th>FINAL</th><th>Grade</th><th>Status</th><th>Remarks</th><th>Actions</th>';
             html += '</tr></thead><tbody>';
             
-            displayResults.forEach(result => {
+            results.slice(0, 100).forEach(result => {
                 const finalMark = parseFloat(result.finalMarks) || 0;
-                const statusClass = finalMark >= 50 ? 'text-green-600 bg-green-100' : 
-                                   (finalMark > 0 ? 'text-red-600 bg-red-100' : 'text-gray-600 bg-gray-100');
+                const grade = getGrade(finalMark);
+                const status = grade.pass ? 'PASS' : 'FAIL';
+                const statusClass = grade.pass ? 'status-pass' : 'status-fail';
                 
-                html += `<tr>
-                    <td class="font-medium">${result.admissionNo || '-'}</td>
-                    <td>${result.studentName || '-'}</td>
-                    <td>${result.cat || '-'}</td>
-                    <td>${result.ebe || '-'}</td>
-                    <td class="font-bold">${finalMark || '-'}</td>
+                html += `<tr class="hover:bg-gray-50 transition">
+                    <td class="font-medium">${result.sheetName || 'General'}</td>
+                    <td class="text-center">${result.cat || '-'}</td>
+                    <td class="text-center">${result.ebe || '-'}</td>
+                    <td class="font-bold text-center">${finalMark || '-'}</td>
+                    <td class="text-center"><span class="grade-badge ${grade.class}">${grade.grade}</span></td>
+                    <td class="text-center"><span class="status-badge ${statusClass}">${status}</span></td>
                     <td>${result.remarks || '-'}</td>
-                    <td>${result.sheetName || 'General'}</td>
                     <td>
-                        ${currentRole === 'admin' || currentRole === 'super_admin' ? 
-                            `<button onclick="openFileForEditing('${result.fileId}')" class="text-blue-600 hover:text-blue-800 mr-2 text-xs" title="Edit">
-                                <i class="fas fa-edit"></i>
-                            </button>` : ''
-                        }
-                        <button onclick="viewFile('${result.fileId}')" class="text-green-600 hover:text-green-800 text-xs" title="View">
-                            <i class="fas fa-eye"></i>
-                        </button>
+                        <div class="flex gap-1">
+                            ${currentRole === 'admin' || currentRole === 'super_admin' ? 
+                                `<button onclick="openFileForEditing('${result.fileId}')" class="text-blue-600 hover:text-blue-800 text-sm p-1" title="Edit">
+                                    <i class="fas fa-edit"></i>
+                                </button>` : ''
+                            }
+                            <button onclick="viewFile('${result.fileId}')" class="text-green-600 hover:text-green-800 text-sm p-1" title="View">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
                     </td>
                 </tr>`;
             });
             
             if (results.length > 100) {
-                html += `<tr><td colspan="8" class="text-center text-gray-500 text-xs py-2">
+                html += `<tr><td colspan="8" class="text-center text-gray-500 text-xs py-3 bg-gray-50">
+                    <i class="fas fa-info-circle mr-1"></i>
                     Showing first 100 of ${results.length} results
                 </td></tr>`;
             }
@@ -779,7 +1085,7 @@
             tableContainer.innerHTML = html;
         }
 
-        // ========== OPEN FILE FOR EDITING - OPTIMIZED ==========
+        // ========== OPEN FILE FOR EDITING ==========
         async function openFileForEditing(fileId) {
             if (currentRole !== 'admin' && currentRole !== 'super_admin') {
                 showToast('Admins only', 'error');
@@ -787,7 +1093,7 @@
             }
             
             closeViewer();
-            sheetCache.clear(); // Clear cache when opening new file
+            sheetCache.clear();
             
             const file = sharedFiles.find(f => f.id === fileId);
             if (!file || !file.file_data) {
@@ -798,7 +1104,6 @@
             showLoading('Opening file...', false, 15000);
             
             try {
-                // Check if already loaded in cache
                 if (sheetCache.has(file.id)) {
                     currentEditingFile = sheetCache.get(file.id);
                 } else {
@@ -816,17 +1121,15 @@
                         filename: file.filename,
                         sheets: workbook.SheetNames,
                         currentSheet: workbook.SheetNames[0],
-                        loadedSheets: new Map() // Cache individual sheets
+                        loadedSheets: new Map()
                     };
                     
-                    // Cache the file
                     sheetCache.set(file.id, currentEditingFile);
                 }
                 
                 document.getElementById('editingFileName').innerText = file.filename;
                 document.getElementById('excelEditorSection').classList.remove('hidden');
                 
-                // Create sheet selector
                 const selector = document.getElementById('sheetSelector');
                 selector.innerHTML = currentEditingFile.sheets.map((sheet, i) => 
                     `<button onclick="loadSheetForEditing('${sheet}')" 
@@ -845,11 +1148,10 @@
             }
         }
 
-        // ========== LOAD SHEET FOR EDITING - INSTANT WITH CACHE ==========
+        // ========== LOAD SHEET FOR EDITING ==========
         function loadSheetForEditing(sheetName) {
             if (!currentEditingFile) return;
             
-            // Update tabs instantly
             document.querySelectorAll('.sheet-tab').forEach(tab => {
                 const isActive = tab.innerText.includes(sheetName) || tab.innerText === sheetName;
                 tab.className = `sheet-tab px-3 py-1.5 rounded-lg text-xs font-medium transition ${
@@ -857,7 +1159,6 @@
                 }`;
             });
             
-            // Check if sheet is already loaded
             if (currentEditingFile.loadedSheets.has(sheetName)) {
                 const jsonData = currentEditingFile.loadedSheets.get(sheetName);
                 initHandsontable(jsonData);
@@ -865,7 +1166,6 @@
                 return;
             }
             
-            // Show loading only for first load of this sheet
             showLoading(`Loading ${sheetName}...`, false, 10000);
             
             setTimeout(() => {
@@ -878,8 +1178,6 @@
                     }
                     
                     const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-                    
-                    // Cache the sheet data
                     currentEditingFile.loadedSheets.set(sheetName, jsonData);
                     currentEditingFile.currentSheet = sheetName;
                     
@@ -893,13 +1191,12 @@
             }, 10);
         }
 
-        // ========== INIT HANDSONTABLE - OPTIMIZED ==========
+        // ========== INIT HANDSONTABLE ==========
         function initHandsontable(data) {
             const container = document.getElementById('excelEditor');
             
             if (hot) hot.destroy();
             
-            // Use setTimeout to ensure DOM is ready
             setTimeout(() => {
                 hot = new Handsontable(container, {
                     data: data,
@@ -933,8 +1230,10 @@
                                 Handsontable.renderers.NumericRenderer.apply(this, arguments);
                                 if (row > 0 && value) {
                                     const marks = parseFloat(value);
-                                    td.style.background = marks >= 50 ? '#dcfce7' : 
-                                                         marks > 0 ? '#fee2e2' : '';
+                                    if (marks >= 80) td.style.background = '#ede9fe';
+                                    else if (marks >= 70) td.style.background = '#d1fae5';
+                                    else if (marks >= 60) td.style.background = '#fed7aa';
+                                    else td.style.background = '#fee2e2';
                                 }
                                 return td;
                             };
@@ -946,7 +1245,7 @@
             }, 10);
         }
 
-        // ========== SAVE EXCEL CHANGES - OPTIMIZED ==========
+        // ========== SAVE EXCEL CHANGES ==========
         async function saveExcelChanges() {
             if (!hot || !currentEditingFile) {
                 showToast('No file open', 'error');
@@ -974,15 +1273,12 @@
                 
                 if (error) throw error;
                 
-                // Update cache
                 sheetCache.delete(currentEditingFile.id);
-                
                 hideLoading();
                 showToast('Saved!', 'success');
                 
                 closeEditor();
                 
-                // Reload in background
                 setTimeout(() => {
                     loadSharedFiles();
                     loadAllStudentMarks();
@@ -994,7 +1290,45 @@
             }
         }
 
-        // ========== VIEW FILE - OPTIMIZED ==========
+        // ========== DELETE FILE WITH CONFIRMATION ==========
+        async function deleteFile(fileId, filename) {
+            if (currentRole !== 'admin' && currentRole !== 'super_admin') {
+                showToast('Only admins can delete files', 'error');
+                return;
+            }
+            
+            if (!confirm(`⚠️ Are you sure you want to delete "${filename}"?\n\nThis action CANNOT be undone!`)) {
+                return;
+            }
+            
+            showLoading('Deleting file...', false, 10000);
+            
+            try {
+                const { error } = await supabase
+                    .from('shared_excel_files')
+                    .delete()
+                    .eq('id', fileId);
+                
+                if (error) throw error;
+                
+                // Remove from cache
+                sheetCache.delete(fileId);
+                
+                hideLoading();
+                showToast('File deleted successfully', 'success');
+                
+                // Reload data
+                await loadSharedFiles();
+                await loadAllStudentMarks();
+                
+            } catch (error) {
+                hideLoading();
+                console.error('Delete error:', error);
+                showToast('Delete failed: ' + error.message, 'error');
+            }
+        }
+
+        // ========== VIEW FILE ==========
         async function viewFile(fileId) {
             closeEditor();
             
@@ -1015,7 +1349,6 @@
                 
                 const workbook = XLSX.read(array, { type: 'array' });
                 
-                // Create sheet tabs
                 const sheetTabs = workbook.SheetNames.map((sheet, i) => 
                     `<button onclick="viewSheet('${fileId}', '${sheet}')" 
                         class="viewer-tab px-3 py-1.5 rounded-lg text-xs font-medium transition
@@ -1027,7 +1360,6 @@
                 document.getElementById('sheetViewerSelector').innerHTML = sheetTabs;
                 document.getElementById('viewingFileName').innerText = file.filename;
                 
-                // Show first sheet
                 const worksheet = workbook.Sheets[workbook.SheetNames[0]];
                 document.getElementById('excelViewer').innerHTML = XLSX.utils.sheet_to_html(worksheet);
                 document.getElementById('excelViewerSection').classList.remove('hidden');
@@ -1056,14 +1388,14 @@
             document.getElementById('excelViewer').innerHTML = XLSX.utils.sheet_to_html(worksheet);
         }
 
-        // ========== LOAD SHARED FILES ==========
+        // ========== LOAD SHARED FILES WITH DELETE BUTTON ==========
         async function loadSharedFiles() {
             try {
                 const { data: files, error } = await supabase
                     .from('shared_excel_files')
                     .select('*')
                     .order('uploaded_at', { ascending: false })
-                    .limit(50); // Limit to 50 files for performance
+                    .limit(50);
                 
                 if (error) throw error;
                 
@@ -1072,7 +1404,7 @@
                 const container = document.getElementById('sharedFilesContainer');
                 
                 if (sharedFiles.length === 0) {
-                    container.innerHTML = '<div class="col-span-3 text-center py-8 text-gray-500 text-sm">No files</div>';
+                    container.innerHTML = '<div class="col-span-3 text-center py-8 text-gray-500 text-sm">No files uploaded</div>';
                     return;
                 }
                 
@@ -1085,7 +1417,7 @@
                             <div class="flex items-start">
                                 <i class="fas fa-file-excel text-green-600 text-2xl mr-3"></i>
                                 <div class="flex-1 min-w-0">
-                                    <p class="font-semibold text-gray-800 text-sm truncate">${file.filename}</p>
+                                    <p class="font-semibold text-gray-800 text-sm truncate" title="${file.filename}">${file.filename}</p>
                                     <div class="flex items-center mt-1 text-xs">
                                         <span class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
                                             ${file.row_count || 0} rec
@@ -1106,6 +1438,12 @@
                                             class="text-xs bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700">
                                             <i class="fas fa-eye mr-1"></i>View
                                         </button>
+                                        ${canEdit ? 
+                                            `<button onclick="deleteFile('${file.id}', '${file.filename}')" 
+                                                class="text-xs bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700">
+                                                <i class="fas fa-trash mr-1"></i>Delete
+                                            </button>` : ''
+                                        }
                                     </div>
                                 </div>
                             </div>
@@ -1133,12 +1471,12 @@
                     const workbook = XLSX.read(data, { type: 'array' });
                     const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
                     
-                    let previewHtml = `<div class="mb-2 text-xs text-gray-600">📑 ${workbook.SheetNames.length} sheet(s)</div>`;
+                    let previewHtml = `<div class="mb-2 text-xs text-gray-600">📑 ${workbook.SheetNames.length} sheet(s) found</div>`;
                     previewHtml += '<table class="data-table"><thead><tr>';
                     
                     if (jsonData[0]) {
                         jsonData[0].slice(0, 8).forEach(header => {
-                            previewHtml += `<th class="text-xs">${header || 'Col'}</th>`;
+                            previewHtml += `<th class="text-xs">${header || 'Column'}</th>`;
                         });
                         if (jsonData[0].length > 8) previewHtml += '<th>...</th>';
                     }
@@ -1259,7 +1597,7 @@
         }
         
         window.onload = function() {
-            console.log('🚀 NCHSN PORTAL - ULTRA FAST VERSION');
+            console.log('🚀 NCHSN PORTAL - STUDENT STATISTICS WITH GRADING SYSTEM');
         };
     </script>
 </body>
