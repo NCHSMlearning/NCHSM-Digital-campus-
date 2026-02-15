@@ -622,7 +622,7 @@
         }
 
         
-             // ========== LOAD DATA - OPTIMIZED WITH CHUNKING ==========
+             // ========== ULTRA-OPTIMIZED LOADER - ONLY PROCESSES REAL DATA ==========
 async function loadAllStudentMarks() {
     if (isProcessing) {
         processingQueue.push(loadAllStudentMarks);
@@ -633,146 +633,242 @@ async function loadAllStudentMarks() {
     showLoading('Loading data...', true, 60000);
     
     try {
+        debugLog('📡 Fetching files from Supabase...');
+        
         const { data: files, error } = await supabase
-            .from('shared_excel_files').select('*').order('uploaded_at', { ascending: false });
+            .from('shared_excel_files')
+            .select('id, filename, file_data, uploaded_by_email, uploaded_at')
+            .order('uploaded_at', { ascending: false });
+        
         if (error) throw error;
         
-        sharedFiles = files || [];
+        if (!files || files.length === 0) {
+            debugLog('⚠️ No files found');
+            document.getElementById('totalFilesStats').innerText = '0';
+            document.getElementById('totalRecordsStats').innerText = '0';
+            hideLoading();
+            isProcessing = false;
+            return;
+        }
+        
+        debugLog(`📁 Found ${files.length} files`);
+        sharedFiles = files;
+        
         allStudentMarks = [];
         studentIndex.clear();
         
-        const chunkSize = 2; // Process 2 files at a time
-        for (let i = 0; i < sharedFiles.length; i += chunkSize) {
-            const chunk = sharedFiles.slice(i, i + chunkSize);
-            updateProgress((i / sharedFiles.length) * 100);
-            document.getElementById('loadingMessage').innerText = `Processing files ${i+1}-${Math.min(i+chunkSize, sharedFiles.length)} of ${sharedFiles.length}`;
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const progress = (i / files.length) * 100;
+            updateProgress(progress);
             
-            await Promise.all(chunk.map(async (file) => {
-                if (!file.file_data) return;
+            debugLog(`📊 Processing file ${i+1}/${files.length}: ${file.filename?.substring(0, 30)}...`);
+            document.getElementById('loadingMessage').innerText = `File ${i+1}/${files.length}: ${file.filename?.substring(0, 30)}...`;
+            
+            if (!file.file_data) {
+                debugLog(`⚠️ File ${i+1} has no data, skipping`);
+                continue;
+            }
+            
+            try {
+                const binaryData = atob(file.file_data);
+                const array = new Uint8Array(binaryData.length);
+                for (let j = 0; j < binaryData.length; j++) {
+                    array[j] = binaryData.charCodeAt(j);
+                }
                 
-                await new Promise(resolve => setTimeout(resolve, 0)); // Yield to UI
+                const workbook = XLSX.read(array, { type: 'array' });
                 
-                try {
-                    const binaryData = atob(file.file_data);
-                    const array = new Uint8Array(binaryData.length);
-                    for (let j = 0; j < binaryData.length; j++) array[j] = binaryData.charCodeAt(j);
+                for (const sheetName of workbook.SheetNames) {
+                    const worksheet = workbook.Sheets[sheetName];
                     
-                    const workbook = XLSX.read(array, { type: 'array' });
+                    // ========== CRITICAL: GET ACTUAL DATA RANGE ==========
+                    let lastRowWithData = 0;
+                    let actualData = [];
                     
-                    workbook.SheetNames.forEach(sheetName => {
-                        const worksheet = workbook.Sheets[sheetName];
-                        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                    // Method 1: Check worksheet range
+                    if (worksheet['!ref']) {
+                        const range = XLSX.utils.decode_range(worksheet['!ref']);
+                        lastRowWithData = range.e.r; // Last row with ANY data
                         
-                        jsonData.forEach((row, idx) => {
-                            // Try ALL possible column name variations
-                            const admissionNo = 
-                                row['Admission No.'] || 
-                                row['Admission'] || 
-                                row['S/N'] || 
-                                row['SN'] || 
-                                row['No.'] || 
-                                row['ID'] || 
-                                row['Student ID'] || 
-                                '';
+                        debugLog(`📊 Sheet "${sheetName}" range: rows 0-${lastRowWithData}`);
+                        
+                        // Convert only the used range
+                        const rawData = XLSX.utils.sheet_to_json(worksheet, { 
+                            range: lastRowWithData,
+                            defval: null,
+                            blankrows: false,
+                            header: 1 // Get as array first to filter empty rows
+                        });
+                        
+                        // Method 2: Filter out completely empty rows
+                        if (rawData && rawData.length > 0) {
+                            // First row is headers
+                            const headers = rawData[0] || [];
                             
-                            const studentName = 
-                                row['Student Name'] || 
-                                row['Name'] || 
-                                row['STUDENT_NAME'] || 
-                                row['StudentName'] || 
-                                row['Full Name'] || 
-                                '';
+                            // Filter data rows (skip header row)
+                            for (let r = 1; r < rawData.length; r++) {
+                                const row = rawData[r];
+                                
+                                // Check if row has any actual data
+                                const hasData = row && row.some(cell => 
+                                    cell !== null && 
+                                    cell !== undefined && 
+                                    cell !== '' &&
+                                    !(typeof cell === 'number' && isNaN(cell))
+                                );
+                                
+                                if (hasData) {
+                                    // Convert back to object with headers
+                                    const rowObj = {};
+                                    headers.forEach((header, idx) => {
+                                        if (header && header.toString().trim()) {
+                                            rowObj[header] = row[idx];
+                                        }
+                                    });
+                                    actualData.push(rowObj);
+                                }
+                            }
+                        }
+                    } else {
+                        // Fallback: use standard method
+                        actualData = XLSX.utils.sheet_to_json(worksheet, {
+                            defval: null,
+                            blankrows: false
+                        });
+                    }
+                    
+                    // ========== SAFETY LIMIT ==========
+                    const MAX_ROWS = 5000;
+                    if (actualData.length > MAX_ROWS) {
+                        debugLog(`⚠️ Sheet "${sheetName}" has ${actualData.length} data rows, limiting to ${MAX_ROWS}`);
+                        actualData = actualData.slice(0, MAX_ROWS);
+                        showToast(`Sheet "${sheetName}" has many rows, showing first ${MAX_ROWS}`, 'info');
+                    }
+                    
+                    debugLog(`📊 Sheet "${sheetName}" has ${actualData.length} rows with data`);
+                    
+                    if (!actualData || actualData.length === 0) continue;
+                    
+                    // Get headers from first data row
+                    const headers = Object.keys(actualData[0] || {});
+                    
+                    // ========== PROCESS IN CHUNKS ==========
+                    for (let k = 0; k < actualData.length; k += 50) {
+                        const chunk = actualData.slice(k, k + 50);
+                        
+                        chunk.forEach((row, idx) => {
+                            if (!row || Object.keys(row).length === 0) return;
                             
-                            // PHARMACOLOGY SPECIFIC - Handle multiple CAT columns
-                            let cat = '';
-                            if (row['AVERAGE CAT']) {
-                                cat = row['AVERAGE CAT'];  // Use average if available
-                            } else if (row['CAT1(x/30)'] && row['CAT 2 (x/30)']) {
-                                // Calculate average of two CATs
-                                const cat1 = parseFloat(row['CAT1(x/30)']) || 0;
-                                const cat2 = parseFloat(row['CAT 2 (x/30)']) || 0;
-                                cat = ((cat1 + cat2) / 2).toFixed(1);
-                            } else {
-                                cat = row['CAT'] || row['Cat'] || row['cat'] || row['CAT MARKS'] || '';
+                            const record = {
+                                id: `${file.id}_${sheetName}_${k + idx}`,
+                                fileId: file.id,
+                                filename: file.filename || 'Unknown',
+                                sheetName: sheetName,
+                                uploadedBy: file.uploaded_by_email || 'Unknown',
+                                uploadedAt: file.uploaded_at,
+                                rowData: row,
+                                headers: headers,
+                                marks: {}
+                            };
+                            
+                            // ========== STORE ALL MARK COLUMNS ==========
+                            headers.forEach(header => {
+                                const headerLower = String(header).toLowerCase();
+                                if (headerLower.includes('cat') || 
+                                    headerLower.includes('ebe') || 
+                                    headerLower.includes('final') || 
+                                    headerLower.includes('mark') || 
+                                    headerLower.includes('score') || 
+                                    headerLower.includes('total')) {
+                                    record.marks[header] = row[header];
+                                }
+                            });
+                            
+                            // ========== SMART ID/NAME DETECTION ==========
+                            for (const [key, value] of Object.entries(row)) {
+                                const keyLower = key.toLowerCase();
+                                const valueStr = value?.toString() || '';
+                                
+                                if (!record.admissionNo) {
+                                    if (keyLower.includes('admission')) record.admissionNo = valueStr;
+                                    else if (keyLower.includes('s/n')) record.admissionNo = valueStr;
+                                    else if (keyLower.includes('sn')) record.admissionNo = valueStr;
+                                    else if (keyLower.includes('id') && !keyLower.includes('student')) record.admissionNo = valueStr;
+                                    else if (keyLower.includes('no.') && !keyLower.includes('s/n')) record.admissionNo = valueStr;
+                                }
+                                
+                                if (!record.studentName) {
+                                    if (keyLower.includes('student name')) record.studentName = valueStr;
+                                    else if (keyLower.includes('name') && !keyLower.includes('student')) record.studentName = valueStr;
+                                }
                             }
                             
-                            // PHARMACOLOGY SPECIFIC - Handle EBE with denominator
-                            let ebe = '';
-                            if (row['EBE (x/70)']) {
-                                // If it's out of 70, convert to percentage for consistency
-                                const ebeValue = parseFloat(row['EBE (x/70)']) || 0;
-                                ebe = ((ebeValue / 70) * 100).toFixed(1) + '%';
-                            } else {
-                                ebe = row['EBE'] || row['Ebe'] || row['ebe'] || row['Exam'] || '';
+                            // ========== FALLBACK TO FIRST TWO COLUMNS ==========
+                            if (!record.admissionNo && headers.length > 0) {
+                                const firstCol = row[headers[0]];
+                                if (firstCol && typeof firstCol === 'string' && firstCol.match(/[A-Z0-9\/]/i)) {
+                                    record.admissionNo = firstCol.toString();
+                                } else if (firstCol && typeof firstCol === 'number') {
+                                    record.admissionNo = firstCol.toString();
+                                }
                             }
                             
-                            // FINAL MARKS - Handle percentage format
-                            let finalMarks = '';
-                            if (row['FINAL MARKS %']) {
-                                finalMarks = row['FINAL MARKS %'];
-                            } else {
-                                finalMarks = row['FINALMARKS'] || row['FinalMarks'] || row['FINAL'] || 
-                                             row['FINAL MARKS'] || row['Final Mark'] || row['Total'] || '';
+                            if (!record.studentName && headers.length > 1) {
+                                const secondCol = row[headers[1]];
+                                if (secondCol && typeof secondCol === 'string' && secondCol.match(/[A-Za-z\s]/i)) {
+                                    record.studentName = secondCol.toString();
+                                }
                             }
                             
-                            const remarks = 
-                                row['REMARKS'] || 
-                                row['Remarks'] || 
-                                row['remarks'] || 
-                                row['Comment'] || 
-                                '';
-                            
-                            if (admissionNo || studentName) {
-                                const record = {
-                                    id: `${file.id}_${sheetName}_${idx}`,
-                                    fileId: file.id,
-                                    filename: file.filename,
-                                    sheetName,
-                                    admissionNo: admissionNo.toString().trim(),
-                                    studentName: studentName.toString().trim(),
-                                    cat: cat.toString().trim(),
-                                    ebe: ebe.toString().trim(),
-                                    finalMarks: finalMarks.toString().trim(),
-                                    remarks: remarks.toString().trim(),
-                                    uploadedBy: file.uploaded_by_email,
-                                    uploadedAt: file.uploaded_at
-                                };
+                            // ========== ONLY ADD IF HAS ID OR NAME ==========
+                            if (record.admissionNo || record.studentName) {
                                 allStudentMarks.push(record);
                                 
-                                // Index for O(1) search - index by both ID and Name
-                                const idKey = admissionNo.toString().trim().toLowerCase();
-                                if (idKey && !studentIndex.has(idKey)) studentIndex.set(idKey, []);
-                                if (idKey) studentIndex.get(idKey).push(record);
-                                
-                                const nameKey = studentName.toString().trim().toLowerCase();
-                                if (nameKey && !studentIndex.has(nameKey)) studentIndex.set(nameKey, []);
-                                if (nameKey) studentIndex.get(nameKey).push(record);
+                                // Index for instant search
+                                if (record.admissionNo) {
+                                    const idKey = record.admissionNo.toLowerCase();
+                                    if (!studentIndex.has(idKey)) studentIndex.set(idKey, []);
+                                    studentIndex.get(idKey).push(record);
+                                }
+                                if (record.studentName) {
+                                    const nameKey = record.studentName.toLowerCase();
+                                    if (!studentIndex.has(nameKey)) studentIndex.set(nameKey, []);
+                                    studentIndex.get(nameKey).push(record);
+                                }
                             }
                         });
-                    });
-                } catch (e) { 
-                    console.error('Error parsing file:', file.filename, e); 
-                    // Continue with next file even if this one fails
+                        
+                        // ========== YIELD TO UI ==========
+                        await new Promise(resolve => setTimeout(resolve, 0));
+                    }
                 }
-            }));
+                
+                debugLog(`✅ File ${i+1} processed: ${allStudentMarks.length} total records so far`);
+                
+            } catch (fileError) {
+                debugLog(`❌ Error processing file ${i+1}: ${fileError.message}`);
+                console.error(fileError);
+            }
+            
+            await new Promise(resolve => setTimeout(resolve, 10));
         }
         
         updateProgress(100);
-        document.getElementById('totalFilesStats').innerText = sharedFiles.length;
+        debugLog(`✅ TOTAL: Loaded ${allStudentMarks.length} records from ${files.length} files`);
+        
+        document.getElementById('totalFilesStats').innerText = files.length;
         document.getElementById('totalRecordsStats').innerText = allStudentMarks.length;
         
         updateCharts();
-        
-        const { data: staff } = await supabase.from('consolidated_user_profiles_table').select('role');
-        if (staff) document.getElementById('totalStaffStats').innerText = staff.length;
-        
         hideLoading();
-        showToast(`Loaded ${allStudentMarks.length} records from ${sharedFiles.length} files`, 'success');
+        showToast(`Loaded ${allStudentMarks.length} records`, 'success');
         
     } catch (error) {
+        debugLog('❌ Fatal error: ' + error.message);
+        console.error(error);
         hideLoading();
-        console.error('Error:', error);
-        showToast('Error loading data: ' + error.message, 'error');
+        showToast('Error loading data', 'error');
     } finally {
         isProcessing = false;
         if (processingQueue.length) {
