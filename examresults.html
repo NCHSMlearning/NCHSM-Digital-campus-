@@ -815,106 +815,191 @@ async function loadAllStudentMarks() {
             });
         }
 
-        // ========== SEARCH - OPTIMIZED ==========
-        function searchStudentMarks() {
-            const searchTerm = document.getElementById('studentSearchInput').value.toLowerCase().trim();
-            if (!searchTerm) { showToast('Enter search term', 'error'); return; }
-            
-            showLoading('Searching...', false, 10000);
-            
-            setTimeout(() => {
-                // First try exact match from index
-                let results = studentIndex.get(searchTerm) || [];
-                
-                // If not found, do a partial search across all records
-                if (results.length === 0) {
-                    results = allStudentMarks.filter(m => 
-                        m.admissionNo.toLowerCase().includes(searchTerm) || 
-                        m.studentName.toLowerCase().includes(searchTerm)
-                    );
-                }
-                
-                displayStudentResults(results || []);
-                hideLoading();
-                showToast(`Found ${results?.length || 0} results`, results?.length ? 'success' : 'info');
-            }, 10);
+       // ========== OPTIMIZED SEARCH ==========
+function searchStudentMarks() {
+    const searchTerm = document.getElementById('studentSearchInput').value.toLowerCase().trim();
+    if (!searchTerm) { showToast('Enter search term', 'error'); return; }
+    
+    // Don't show loading for small searches
+    if (allStudentMarks.length > 1000) {
+        showLoading('Searching...', false, 10000);
+    }
+    
+    setTimeout(() => {
+        // Use index for fast lookup
+        let results = studentIndex.get(searchTerm) || [];
+        
+        // If not found, do partial search (limit to first 500 for performance)
+        if (results.length === 0) {
+            results = allStudentMarks.filter(m => 
+                (m.admissionNo && m.admissionNo.toLowerCase().includes(searchTerm)) || 
+                (m.studentName && m.studentName.toLowerCase().includes(searchTerm))
+            ).slice(0, 500); // Limit to 500 results for performance
         }
+        
+        hideLoading();
+        displayStudentResults(results || []);
+        showToast(`Found ${results?.length || 0} results`, results?.length ? 'success' : 'info');
+    }, 10);
+}
 
-        // ========== DISPLAY RESULTS ==========
-        function displayStudentResults(results) {
-            const container = document.getElementById('studentResultsContainer');
-            const tableContainer = document.getElementById('studentResultsTable');
-            
-            if (!results || results.length === 0) {
-                container.classList.remove('hidden');
-                tableContainer.innerHTML = '<div class="text-center py-10 text-gray-500"><i class="fas fa-search text-4xl mb-3 text-gray-300"></i><p>No results</p></div>';
-                return;
+      // ========== ULTRA-FAST DISPLAY WITH VIRTUAL SCROLLING ==========
+function displayStudentResults(results) {
+    const container = document.getElementById('studentResultsContainer');
+    const tableContainer = document.getElementById('studentResultsTable');
+    
+    if (!results || results.length === 0) {
+        container.classList.remove('hidden');
+        tableContainer.innerHTML = '<div class="text-center py-10 text-gray-500"><i class="fas fa-search text-4xl mb-3 text-gray-300"></i><p>No results</p></div>';
+        return;
+    }
+    
+    container.classList.remove('hidden');
+    
+    // Get ALL unique headers
+    const allHeaders = new Set();
+    results.forEach(r => {
+        if (r.headers) r.headers.forEach(h => allHeaders.add(h));
+        if (r.rowData) Object.keys(r.rowData).forEach(k => allHeaders.add(k));
+    });
+    
+    const headers = Array.from(allHeaders);
+    
+    // Student summary
+    const studentName = results[0].studentName || 'Unknown';
+    const studentId = results[0].admissionNo || 'Unknown';
+    document.getElementById('studentNameDisplay').innerText = studentName;
+    document.getElementById('studentIdDisplay').innerText = studentId;
+    
+    // Calculate statistics
+    let validMarks = [];
+    results.forEach(r => {
+        // Look for FINAL MARKS or any numeric column
+        for (const [key, value] of Object.entries(r.rowData || {})) {
+            const keyLower = key.toLowerCase();
+            if (keyLower.includes('final') || keyLower.includes('total') || keyLower.includes('marks')) {
+                const num = parseFloat(value);
+                if (!isNaN(num) && num >= 0 && num <= 100) {
+                    validMarks.push(num);
+                    break;
+                }
             }
+        }
+    });
+    
+    const totalExams = results.length;
+    const avg = validMarks.length ? (validMarks.reduce((a,b) => a+b,0) / validMarks.length).toFixed(1) : 'N/A';
+    const passed = validMarks.filter(m => m >= 60).length;
+    const failed = validMarks.filter(m => m < 60).length;
+    
+    let overallGrade, gradeClass;
+    if (avg !== 'N/A') {
+        const avgNum = parseFloat(avg);
+        if (avgNum >= 80) { overallGrade = 'DISTINCTION'; gradeClass = 'grade-distinction'; }
+        else if (avgNum >= 70) { overallGrade = 'CREDIT'; gradeClass = 'grade-credit'; }
+        else if (avgNum >= 60) { overallGrade = 'C'; gradeClass = 'grade-pass'; }
+        else { overallGrade = 'E'; gradeClass = 'grade-fail'; }
+    } else {
+        overallGrade = 'N/A';
+        gradeClass = 'grade-fail';
+    }
+    
+    document.getElementById('totalExamsCount').innerText = totalExams;
+    document.getElementById('averageMarkDisplay').innerText = avg;
+    document.getElementById('passedExamsCount').innerText = passed;
+    document.getElementById('failedExamsCount').innerText = failed;
+    document.getElementById('overallGradeDisplay').innerText = overallGrade;
+    document.getElementById('overallGradeDisplay').className = `grade-badge ${gradeClass} text-sm px-4 py-2`;
+    
+    // VIRTUAL SCROLLING - Only render 20 rows at a time
+    const ROWS_PER_PAGE = 20;
+    let currentPage = 0;
+    const totalPages = Math.ceil(results.length / ROWS_PER_PAGE);
+    
+    function renderPage(page) {
+        const start = page * ROWS_PER_PAGE;
+        const end = Math.min(start + ROWS_PER_PAGE, results.length);
+        const pageResults = results.slice(start, end);
+        
+        let html = '<div class="overflow-x-auto"><table class="data-table w-full"><thead><tr>';
+        html += '<th>Exam Sheet</th>';
+        
+        headers.forEach(header => {
+            if (header && !header.startsWith('_')) {
+                html += `<th>${header}</th>`;
+            }
+        });
+        
+        html += '<th>Actions</th></tr></thead><tbody>';
+        
+        pageResults.forEach((result, idx) => {
+            const rowClass = (start + idx) % 2 === 0 ? 'row-even' : 'row-odd';
             
-            container.classList.remove('hidden');
+            html += `<tr class="${rowClass} hover:bg-gray-50 transition">`;
+            html += `<td class="font-medium">${result.sheetName || 'General'}</td>`;
             
-            const studentName = results[0].studentName || 'Unknown';
-            const studentId = results[0].admissionNo || 'Unknown';
-            document.getElementById('studentNameDisplay').innerText = studentName;
-            document.getElementById('studentIdDisplay').innerText = studentId;
-            
-            const validMarks = results.filter(r => r.finalMarks && !isNaN(parseFloat(r.finalMarks))).map(r => parseFloat(r.finalMarks));
-            const totalExams = results.length;
-            const avg = validMarks.length ? (validMarks.reduce((a,b) => a+b,0) / validMarks.length).toFixed(1) : 0;
-            const passed = validMarks.filter(m => m >= 60).length;
-            const failed = validMarks.filter(m => m < 60).length;
-            
-            let grade, gradeClass;
-            if (avg >= 80) { grade = 'DISTINCTION'; gradeClass = 'grade-distinction'; }
-            else if (avg >= 70) { grade = 'CREDIT'; gradeClass = 'grade-credit'; }
-            else if (avg >= 60) { grade = 'C'; gradeClass = 'grade-pass'; }
-            else { grade = 'E'; gradeClass = 'grade-fail'; }
-            
-            document.getElementById('totalExamsCount').innerText = totalExams;
-            document.getElementById('averageMarkDisplay').innerText = avg;
-            document.getElementById('passedExamsCount').innerText = passed;
-            document.getElementById('failedExamsCount').innerText = failed;
-            document.getElementById('overallGradeDisplay').innerText = grade;
-            document.getElementById('overallGradeDisplay').className = `grade-badge ${gradeClass} text-sm px-4 py-2`;
-            
-            // Virtual scrolling - only render first 50
-            const displayResults = results.slice(0, 50);
-            let html = '<table class="data-table w-full"><thead><tr><th>Exam</th><th>CAT</th><th>EBE</th><th>FINAL</th><th>Grade</th><th>Status</th><th>Remarks</th><th>Actions</th></tr></thead><tbody>';
-            
-            displayResults.forEach((result, index) => {
-                const finalMark = parseFloat(result.finalMarks) || 0;
-                const grade = getGrade(finalMark);
-                const status = grade.pass ? 'PASS' : 'FAIL';
-                const statusClass = grade.pass ? 'status-pass' : 'status-fail';
-                const rowClass = index % 2 === 0 ? 'row-even' : 'row-odd';
-                
-                html += `<tr class="${rowClass} hover:bg-gray-50 transition">
-                    <td class="font-medium">${result.sheetName || 'General'}</td>
-                    <td class="text-center">${result.cat || '-'}</td>
-                    <td class="text-center">${result.ebe || '-'}</td>
-                    <td class="font-bold text-center ${finalMark >= 60 ? 'text-green-600' : 'text-red-600'}">${finalMark || '-'}</td>
-                    <td class="text-center"><span class="grade-badge ${grade.class}">${grade.grade}</span></td>
-                    <td class="text-center"><span class="status-badge ${statusClass}">${status}</span></td>
-                    <td>${result.remarks || '-'}</td>
-                    <td>
-                        <div class="flex gap-1">
-                            ${currentRole === 'admin' || currentRole === 'super_admin' ? 
-                                `<button onclick="openFileForEditing('${result.fileId}')" class="text-blue-600 hover:text-blue-800 text-sm p-1" title="Edit"><i class="fas fa-edit"></i></button>` : ''}
-                            <button onclick="viewFile('${result.fileId}')" class="text-green-600 hover:text-green-800 text-sm p-1" title="View"><i class="fas fa-eye"></i></button>
-                        </div>
-                    </td>
-                </tr>`;
+            headers.forEach(header => {
+                if (header && !header.startsWith('_')) {
+                    let value = result.rowData?.[header] !== undefined ? result.rowData[header] : '-';
+                    if (value === null || value === undefined) value = '-';
+                    
+                    const num = parseFloat(value);
+                    if (!isNaN(num)) {
+                        const colorClass = num >= 60 ? 'text-green-600 font-bold' : 
+                                          (num > 0 ? 'text-red-600' : '');
+                        html += `<td class="${colorClass}">${value}</td>`;
+                    } else {
+                        html += `<td>${value}</td>`;
+                    }
+                }
             });
             
-            if (results.length > 50) {
-                html += `<tr><td colspan="8" class="text-center text-gray-500 text-xs py-3 bg-gray-50">
-                    <i class="fas fa-info-circle mr-1"></i> Showing 50 of ${results.length} results
-                </td></tr>`;
-            }
-            
-            html += '</tbody></table>';
-            tableContainer.innerHTML = html;
+            html += `<td>
+                <div class="flex gap-1">
+                    ${currentRole === 'admin' || currentRole === 'super_admin' ? 
+                        `<button onclick="openFileForEditing('${result.fileId}')" class="text-blue-600 hover:text-blue-800 text-sm p-1" title="Edit"><i class="fas fa-edit"></i></button>` : ''}
+                    <button onclick="viewFile('${result.fileId}')" class="text-green-600 hover:text-green-800 text-sm p-1" title="View"><i class="fas fa-eye"></i></button>
+                </div>
+            </td></tr>`;
+        });
+        
+        html += '</tbody></table>';
+        
+        // Add pagination controls
+        if (totalPages > 1) {
+            html += '<div class="flex justify-center items-center gap-4 mt-4 pb-2">';
+            html += `<button onclick="changePage(${page - 1})" ${page === 0 ? 'disabled' : ''} 
+                class="px-3 py-1 rounded ${page === 0 ? 'bg-gray-200 text-gray-500' : 'bg-blue-600 text-white hover:bg-blue-700'}">
+                <i class="fas fa-chevron-left mr-1"></i> Previous
+            </button>`;
+            html += `<span class="text-sm text-gray-600">Page ${page + 1} of ${totalPages}</span>`;
+            html += `<button onclick="changePage(${page + 1})" ${page === totalPages - 1 ? 'disabled' : ''} 
+                class="px-3 py-1 rounded ${page === totalPages - 1 ? 'bg-gray-200 text-gray-500' : 'bg-blue-600 text-white hover:bg-blue-700'}">
+                Next <i class="fas fa-chevron-right ml-1"></i>
+            </button>`;
+            html += '</div>';
         }
+        
+        html += '</div>';
+        tableContainer.innerHTML = html;
+        
+        // Store current page for navigation
+        window.currentResultsPage = page;
+        window.totalResultsPages = totalPages;
+        window.currentResults = results;
+        window.currentHeaders = headers;
+    }
+    
+    // Store render function globally for pagination
+    window.changePage = function(newPage) {
+        if (newPage >= 0 && newPage < totalPages) {
+            renderPage(newPage);
+        }
+    };
+    
+    // Render first page
+    renderPage(0);
+}
 
         // ========== EDITOR FUNCTIONS ==========
         async function openFileForEditing(fileId) {
