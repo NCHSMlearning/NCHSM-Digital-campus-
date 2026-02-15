@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NCHSN - EXAM RESULTS PROVISIONAL PORTAL</title>
+    <title>Nakuru College of Health Sciences - Exam Portal</title>
     
     <!-- External CSS -->
     <link rel="stylesheet" href="examstyle.css">
@@ -372,6 +372,14 @@
             let processingQueue = [];
             let currentTranscriptData = null;
             let currentClass = 'all';
+            
+            // College Info
+            const COLLEGE_NAME = 'NAKURU COLLEGE OF HEALTH SCIENCES & MANAGEMENT';
+            const COLLEGE_MOTTO = 'Excellence in Health Training, Research & Professional Development';
+            const COLLEGE_ADDRESS = 'Kiamunyi Campus | P.O. Box 12906 – 20100, Nakuru | Tel: 0745 215594 | 0703 345771 | 0103614355';
+            const COLLEGE_EMAIL = 'info@nakurucollegeofhealth.ac.ke';
+            const COLLEGE_WEBSITE = 'www.nakurucollegeofhealth.ac.ke';
+            const COLLEGE_FOOTER = 'Accredited & Registered Institution | Committed to Academic Excellence | © 2026 Nakuru College of Health Sciences & Management';
         </script>
 
         <!-- ========== LOGIN SCREEN ========== -->
@@ -381,7 +389,7 @@
                     <div class="bg-gradient-to-r from-blue-600 to-purple-600 w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
                         <i class="fas fa-graduation-cap text-white text-3xl"></i>
                     </div>
-                    <h1 class="text-2xl font-bold text-gray-800">NCHSN</h1>
+                    <h1 class="text-2xl font-bold text-gray-800">NAKURU COLLEGE OF HEALTH SCIENCES</h1>
                     <p class="text-gray-600 mt-1 text-sm">EXAM RESULTS PROVISIONAL PORTAL</p>
                     <div class="mt-2">
                         <span class="provisional-badge text-xs">
@@ -429,7 +437,7 @@
                             <i class="fas fa-graduation-cap text-white text-2xl"></i>
                         </div>
                         <div>
-                            <h1 class="text-xl md:text-2xl font-bold text-gray-800">NCHSN EXAM PORTAL</h1>
+                            <h1 class="text-xl md:text-2xl font-bold text-gray-800">NAKURU COLLEGE EXAM PORTAL</h1>
                             <div class="flex items-center mt-1 text-sm">
                                 <span id="userRoleBadge" class="role-super-admin mr-2"></span>
                                 <span id="userDisplayName" class="text-gray-600"></span>
@@ -490,7 +498,7 @@
                             <th>Marks To</th>
                             <th>Grade</th>
                             <th>Points</th>
-                            <th>Comment</th>
+                            <th>Status</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -621,19 +629,19 @@
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
                             <div class="stat-box"><div class="stat-value" id="totalExamsCount">0</div><div class="stat-label">Exams</div></div>
                             <div class="stat-box"><div class="stat-value" id="averageMarkDisplay">0.0</div><div class="stat-label">Average</div></div>
-                            <div class="stat-box"><div class="stat-value" id="totalPointsDisplay">0</div><div class="stat-label">Total Points</div></div>
+                            <div class="stat-box"><div class="stat-value" id="totalPointsDisplay">0</div><div class="stat-label">Points</div></div>
                             <div class="stat-box"><div class="stat-value" id="gpaValueDisplay">0.0</div><div class="stat-label">GPA</div></div>
                         </div>
                         
                         <!-- Transcript Actions -->
-                        <div class="transcript-actions mt-4 flex gap-2">
-                            <button onclick="downloadTranscriptPDF()" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 text-sm flex items-center gap-2">
-                                <i class="fas fa-file-pdf"></i> PDF Transcript
+                        <div class="flex gap-2 mt-4">
+                            <button onclick="downloadOfficialTranscriptPDF()" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 text-sm flex items-center gap-2">
+                                <i class="fas fa-file-pdf"></i> Official Transcript
                             </button>
                             <button onclick="downloadTranscriptExcel()" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm flex items-center gap-2">
                                 <i class="fas fa-file-excel"></i> Excel Transcript
                             </button>
-                            <button onclick="printTranscript()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm flex items-center gap-2">
+                            <button onclick="printOfficialTranscript()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm flex items-center gap-2">
                                 <i class="fas fa-print"></i> Print
                             </button>
                         </div>
@@ -784,33 +792,33 @@
             }
         }
 
-        // ========== UPDATED GRADE FUNCTION WITH NEW SCALE ==========
+        // ========== GRADE FUNCTION ==========
         function getGrade(mark) {
             if (mark >= 85) return { 
                 grade: 'A', 
                 points: 4, 
-                comment: 'DISTINCTION', 
+                status: 'DISTINCTION', 
                 class: 'grade-a', 
                 pass: true 
             };
             if (mark >= 75) return { 
                 grade: 'B', 
                 points: 3, 
-                comment: 'CREDIT', 
+                status: 'CREDIT', 
                 class: 'grade-b', 
                 pass: true 
             };
             if (mark >= 60) return { 
                 grade: 'C', 
                 points: 2, 
-                comment: 'PASS', 
+                status: 'PASS', 
                 class: 'grade-c', 
                 pass: true 
             };
             return { 
                 grade: 'D', 
                 points: 0, 
-                comment: 'FAIL', 
+                status: 'FAIL', 
                 class: 'grade-d', 
                 pass: false 
             };
@@ -829,7 +837,401 @@
             showToast(`Showing ${year === 'all' ? 'all classes' : 'March ' + year}`, 'success');
         }
 
-        // ========== LOGIN ==========
+        // ========== LOGOUT ==========
+        async function logout() {
+            await supabase.auth.signOut();
+            currentUser = null;
+            currentRole = null;
+            document.getElementById('loginScreen').classList.remove('hidden');
+            document.getElementById('mainPortal').classList.add('hidden');
+            showToast('Logged out successfully', 'success');
+        }
+
+        // ========== CLEAR SEARCH ==========
+        function clearSearch() {
+            document.getElementById('studentSearchInput').value = '';
+            document.getElementById('studentResultsContainer').classList.add('hidden');
+            document.getElementById('studentResultsTable').innerHTML = '';
+        }
+
+        // ========== CLOSE FILE PREVIEW ==========
+        function closeFilePreview() {
+            document.getElementById('filePreviewSection').classList.add('hidden');
+            document.getElementById('filePreview').innerHTML = '';
+        }
+
+        // ========== CLOSE EDITOR ==========
+        function closeEditor() {
+            if (hot) {
+                try {
+                    hot.destroy();
+                } catch (e) {}
+                hot = null;
+            }
+            document.getElementById('excelEditorSection').classList.add('hidden');
+            currentEditingFile = null;
+        }
+
+        // ========== CLOSE VIEWER ==========
+        function closeViewer() {
+            document.getElementById('excelViewerSection').classList.add('hidden');
+            document.getElementById('excelViewer').innerHTML = '';
+        }
+
+        // ========== VIEW FILE ==========
+        async function viewFile(fileId) {
+            closeEditor();
+            
+            const file = sharedFiles.find(f => f.id === fileId);
+            if (!file || !file.file_data) { 
+                showToast('File not found', 'error'); 
+                return; 
+            }
+            
+            showLoading('Opening file...', false, 30000);
+            
+            try {
+                const binaryData = atob(file.file_data);
+                const array = new Uint8Array(binaryData.length);
+                for (let i = 0; i < binaryData.length; i++) {
+                    array[i] = binaryData.charCodeAt(i);
+                }
+                
+                const workbook = XLSX.read(array, { type: 'array' });
+                const firstSheet = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheet];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                
+                document.getElementById('viewingFileName').innerText = file.filename;
+                document.getElementById('excelViewerSection').classList.remove('hidden');
+                
+                // Create sheet selector
+                const selector = document.getElementById('sheetViewerSelector');
+                selector.innerHTML = workbook.SheetNames.map((sheet, i) => 
+                    `<button onclick="viewSheet('${file.id}', '${sheet}')" 
+                        class="sheet-tab px-3 py-1.5 rounded-lg text-xs font-medium transition 
+                        ${i === 0 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">
+                        ${sheet.length > 15 ? sheet.substr(0,12)+'...' : sheet}
+                    </button>`
+                ).join('');
+                
+                // Display first sheet
+                displaySheetData(jsonData);
+                hideLoading();
+                
+            } catch (error) {
+                console.error('Error viewing file:', error);
+                hideLoading();
+                showToast('Error viewing file: ' + error.message, 'error');
+            }
+        }
+
+        // ========== VIEW SHEET ==========
+        async function viewSheet(fileId, sheetName) {
+            showLoading('Loading sheet...', false, 10000);
+            
+            try {
+                const file = sharedFiles.find(f => f.id === fileId);
+                if (!file || !file.file_data) throw new Error('File not found');
+                
+                const binaryData = atob(file.file_data);
+                const array = new Uint8Array(binaryData.length);
+                for (let i = 0; i < binaryData.length; i++) {
+                    array[i] = binaryData.charCodeAt(i);
+                }
+                
+                const workbook = XLSX.read(array, { type: 'array' });
+                const worksheet = workbook.Sheets[sheetName];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                
+                // Update tab styles
+                document.querySelectorAll('#sheetViewerSelector .sheet-tab').forEach(tab => {
+                    const isActive = tab.innerText.includes(sheetName) || tab.innerText === sheetName;
+                    tab.className = `sheet-tab px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+                        isActive ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`;
+                });
+                
+                displaySheetData(jsonData);
+                hideLoading();
+                
+            } catch (error) {
+                console.error('Error loading sheet:', error);
+                hideLoading();
+                showToast('Error loading sheet', 'error');
+            }
+        }
+
+        // ========== DISPLAY SHEET DATA ==========
+        function displaySheetData(data) {
+            if (!data || data.length === 0) {
+                document.getElementById('excelViewer').innerHTML = '<p class="text-center py-8 text-gray-500">No data in this sheet</p>';
+                return;
+            }
+            
+            let html = '<div class="overflow-x-auto"><table class="excel-viewer-table"><thead><tr>';
+            
+            // Headers from first row
+            const headers = data[0] || [];
+            headers.forEach(header => {
+                html += `<th>${header || ''}</th>`;
+            });
+            html += '</tr></thead><tbody>';
+            
+            // Data rows
+            for (let i = 1; i < Math.min(data.length, 1000); i++) {
+                const row = data[i] || [];
+                html += '<tr>';
+                for (let j = 0; j < headers.length; j++) {
+                    const value = row[j] !== undefined && row[j] !== null ? row[j] : '';
+                    
+                    // Check if it's a mark column
+                    const headerLower = String(headers[j] || '').toLowerCase();
+                    const isMark = headerLower.includes('mark') || headerLower.includes('total') || headerLower.includes('final');
+                    
+                    if (isMark && !isNaN(parseFloat(value))) {
+                        const num = parseFloat(value);
+                        const colorClass = num >= 85 ? 'text-purple-600 font-bold' :
+                                          num >= 75 ? 'text-green-600 font-bold' :
+                                          num >= 60 ? 'text-orange-600 font-bold' :
+                                          'text-red-600 font-bold';
+                        html += `<td class="${colorClass}">${value}</td>`;
+                    } else {
+                        html += `<td>${value}</td>`;
+                    }
+                }
+                html += '</tr>';
+            }
+            
+            if (data.length > 1000) {
+                html += `<tr><td colspan="${headers.length}" class="text-center text-gray-500 py-2">... and ${data.length - 1000} more rows</td></tr>`;
+            }
+            
+            html += '</tbody></table></div>';
+            document.getElementById('excelViewer').innerHTML = html;
+        }
+
+        // ========== HANDLE EXCEL UPLOAD ==========
+        async function handleExcelUpload(input) {
+            if (!input.files || input.files.length === 0) return;
+            
+            const file = input.files[0];
+            showLoading('Processing Excel file...', true, 60000);
+            
+            try {
+                debugLog(`📁 Processing file: ${file.name}`);
+                
+                const reader = new FileReader();
+                reader.onload = async function(e) {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        
+                        debugLog(`📊 Workbook has ${workbook.SheetNames.length} sheets`);
+                        
+                        // Show preview
+                        const firstSheet = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[firstSheet];
+                        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                        
+                        let previewHtml = '<div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200">';
+                        
+                        // Headers
+                        if (jsonData.length > 0) {
+                            previewHtml += '<thead class="bg-gray-50"><tr>';
+                            (jsonData[0] || []).forEach(header => {
+                                previewHtml += `<th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">${header || ''}</th>`;
+                            });
+                            previewHtml += '</tr></thead><tbody class="bg-white divide-y divide-gray-200">';
+                            
+                            // First 10 rows
+                            for (let i = 1; i < Math.min(jsonData.length, 11); i++) {
+                                const row = jsonData[i] || [];
+                                previewHtml += '<tr>';
+                                row.forEach(cell => {
+                                    previewHtml += `<td class="px-3 py-2 text-xs text-gray-500">${cell || ''}</td>`;
+                                });
+                                previewHtml += '</tr>';
+                            }
+                            
+                            if (jsonData.length > 11) {
+                                previewHtml += `<tr><td colspan="${jsonData[0].length}" class="px-3 py-2 text-xs text-gray-400 italic">... and ${jsonData.length - 11} more rows</td></tr>`;
+                            }
+                            
+                            previewHtml += '</tbody></table></div>';
+                        }
+                        
+                        document.getElementById('filePreview').innerHTML = previewHtml;
+                        document.getElementById('filePreviewSection').classList.remove('hidden');
+                        
+                        // Store for publishing
+                        window.pendingFile = {
+                            name: file.name,
+                            data: XLSX.write(workbook, { type: 'base64' }),
+                            workbook: workbook,
+                            rowCount: jsonData.length - 1
+                        };
+                        
+                        hideLoading();
+                        showToast('File ready for publishing', 'success');
+                        
+                    } catch (error) {
+                        console.error('Error processing file:', error);
+                        hideLoading();
+                        showToast('Error processing file: ' + error.message, 'error');
+                    }
+                };
+                
+                reader.readAsArrayBuffer(file);
+                
+            } catch (error) {
+                console.error('Upload error:', error);
+                hideLoading();
+                showToast('Error uploading file: ' + error.message, 'error');
+            }
+        }
+
+        // ========== PUBLISH FILE ==========
+        async function publishFile() {
+            if (!window.pendingFile) {
+                showToast('No file to publish', 'error');
+                return;
+            }
+            
+            if (!currentUser) {
+                showToast('You must be logged in', 'error');
+                return;
+            }
+            
+            showLoading('Publishing file...', true, 60000);
+            
+            try {
+                debugLog(`📤 Publishing: ${window.pendingFile.name}`);
+                
+                const { data, error } = await supabase
+                    .from('shared_excel_files')
+                    .insert([{
+                        filename: window.pendingFile.name,
+                        file_data: window.pendingFile.data,
+                        uploaded_by: currentUser.id,
+                        uploaded_by_email: currentUser.email,
+                        row_count: window.pendingFile.rowCount || 0,
+                        uploaded_at: new Date().toISOString()
+                    }])
+                    .select();
+                
+                if (error) throw error;
+                
+                debugLog('✅ File published successfully');
+                
+                // Clear preview and refresh
+                document.getElementById('filePreviewSection').classList.add('hidden');
+                document.getElementById('filePreview').innerHTML = '';
+                document.getElementById('excelUpload').value = '';
+                window.pendingFile = null;
+                
+                hideLoading();
+                showToast('File published successfully', 'success');
+                
+                // Refresh file list
+                loadSharedFiles();
+                loadAllStudentMarks();
+                
+            } catch (error) {
+                console.error('Publish error:', error);
+                hideLoading();
+                showToast('Error publishing file: ' + error.message, 'error');
+            }
+        }
+
+        // ========== DELETE FILE ==========
+        async function deleteFile(fileId, filename) {
+            if (!confirm(`Are you sure you want to delete "${filename}"? This cannot be undone.`)) {
+                return;
+            }
+            
+            showLoading('Deleting file...', false, 30000);
+            
+            try {
+                const { error } = await supabase
+                    .from('shared_excel_files')
+                    .delete()
+                    .eq('id', fileId);
+                
+                if (error) throw error;
+                
+                // Remove from cache
+                sheetCache.delete(fileId);
+                
+                hideLoading();
+                showToast('File deleted successfully', 'success');
+                
+                // Refresh
+                loadSharedFiles();
+                loadAllStudentMarks();
+                
+            } catch (error) {
+                console.error('Delete error:', error);
+                hideLoading();
+                showToast('Error deleting file: ' + error.message, 'error');
+            }
+        }
+
+        // ========== SAVE EXCEL CHANGES ==========
+        async function saveExcelChanges() {
+            if (!currentEditingFile || !hot) {
+                showToast('No file open for editing', 'error');
+                return;
+            }
+            
+            showLoading('Saving changes...', true, 30000);
+            
+            try {
+                debugLog('💾 Saving changes...');
+                
+                const sheetName = currentEditingFile.currentSheet;
+                const data = hot.getData();
+                
+                debugLog(`📊 Data has ${data.length} rows`);
+                
+                // Update the worksheet
+                const worksheet = XLSX.utils.aoa_to_sheet(data);
+                currentEditingFile.workbook.Sheets[sheetName] = worksheet;
+                currentEditingFile.loadedSheets.set(sheetName, data);
+                
+                // Convert workbook to base64
+                const wbData = XLSX.write(currentEditingFile.workbook, { type: 'base64' });
+                
+                // Update in database
+                const { error } = await supabase
+                    .from('shared_excel_files')
+                    .update({
+                        file_data: wbData,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', currentEditingFile.id);
+                
+                if (error) throw error;
+                
+                debugLog('✅ Changes saved to database');
+                
+                // Clear cache for this file to force reload
+                sheetCache.delete(currentEditingFile.id);
+                
+                hideLoading();
+                showToast('Changes saved successfully', 'success');
+                
+                // Refresh data
+                loadAllStudentMarks();
+                
+            } catch (error) {
+                console.error('Save error:', error);
+                hideLoading();
+                showToast('Error saving changes: ' + error.message, 'error');
+            }
+        }
+
+        // ========== LOGIN FUNCTION ==========
         async function handleLogin() {
             const email = document.getElementById('loginEmail').value.trim();
             const password = document.getElementById('loginPassword').value;
@@ -977,7 +1379,7 @@
             }
         }
 
-        // ========== FIXED LOAD ALL STUDENT MARKS ==========
+        // ========== LOAD ALL STUDENT MARKS ==========
         async function loadAllStudentMarks() {
             if (isProcessing) {
                 processingQueue.push(loadAllStudentMarks);
@@ -1037,7 +1439,7 @@
                         for (const sheetName of workbook.SheetNames) {
                             const worksheet = workbook.Sheets[sheetName];
                             
-                            // SIMPLE APPROACH: Use sheet_to_json directly
+                            // Get data
                             const jsonData = XLSX.utils.sheet_to_json(worksheet);
                             
                             debugLog(`📊 Sheet "${sheetName}" has ${jsonData.length} rows with data`);
@@ -1083,7 +1485,7 @@
                                         }
                                     }
                                     
-                                    // Fallback to first two columns
+                                    // Fallback
                                     if (!record.admissionNo && headers.length > 0) {
                                         record.admissionNo = row[headers[0]]?.toString() || '';
                                     }
@@ -1091,7 +1493,6 @@
                                         record.studentName = row[headers[1]]?.toString() || '';
                                     }
                                     
-                                    // Only add if we have at least an ID or name
                                     if (record.admissionNo || record.studentName) {
                                         allStudentMarks.push(record);
                                         
@@ -1107,7 +1508,7 @@
                                             studentIndex.get(nameKey).push(record);
                                         }
                                         
-                                        // Index by parts for partial matching
+                                        // Index by parts
                                         if (record.admissionNo) {
                                             const parts = record.admissionNo.toLowerCase().split(/[\s\/\-]+/);
                                             parts.forEach(part => {
@@ -1129,12 +1530,11 @@
                                     }
                                 });
                                 
-                                // Yield to UI
                                 await new Promise(resolve => setTimeout(resolve, 0));
                             }
                         }
                         
-                        debugLog(`✅ File ${i+1} processed: ${allStudentMarks.length} total records so far`);
+                        debugLog(`✅ File ${i+1} processed: ${allStudentMarks.length} total records`);
                         
                     } catch (fileError) {
                         debugLog(`❌ Error processing file ${i+1}: ${fileError.message}`);
@@ -1168,7 +1568,503 @@
             }
         }
 
-        // ========== UPDATED CHARTS WITH NEW GRADING ==========
+        // ========== OPEN FILE FOR EDITING ==========
+        async function openFileForEditing(fileId) {
+            if (currentRole !== 'admin' && currentRole !== 'super_admin') { 
+                showToast('Admins only', 'error'); 
+                return; 
+            }
+            
+            if (typeof Handsontable === 'undefined') {
+                showToast('Editor library not loaded. Please refresh.', 'error');
+                return;
+            }
+            
+            closeViewer();
+            
+            const file = sharedFiles.find(f => f.id === fileId);
+            if (!file || !file.file_data) { 
+                showToast('File not found', 'error'); 
+                return; 
+            }
+            
+            showLoading('Opening Excel editor...', false, 30000);
+            
+            try {
+                if (sheetCache.has(file.id)) {
+                    currentEditingFile = sheetCache.get(file.id);
+                } else {
+                    const binaryData = atob(file.file_data);
+                    const array = new Uint8Array(binaryData.length);
+                    for (let i = 0; i < binaryData.length; i++) {
+                        array[i] = binaryData.charCodeAt(i);
+                    }
+                    
+                    const workbook = XLSX.read(array, { type: 'array' });
+                    
+                    currentEditingFile = { 
+                        id: file.id, 
+                        workbook, 
+                        filename: file.filename, 
+                        sheets: workbook.SheetNames, 
+                        currentSheet: workbook.SheetNames[0], 
+                        loadedSheets: new Map() 
+                    };
+                    
+                    sheetCache.set(file.id, currentEditingFile);
+                }
+                
+                document.getElementById('editingFileName').innerText = file.filename;
+                document.getElementById('excelEditorSection').classList.remove('hidden');
+                
+                const selector = document.getElementById('sheetSelector');
+                selector.innerHTML = currentEditingFile.sheets.map((sheet, i) => 
+                    `<button onclick="loadSheetForEditing('${sheet}')" 
+                        class="sheet-tab px-3 py-1.5 rounded-lg text-xs font-medium transition 
+                        ${i === 0 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">
+                        ${sheet.length > 15 ? sheet.substr(0,12)+'...' : sheet}
+                    </button>`
+                ).join('');
+                
+                hideLoading();
+                showToast('File opened successfully', 'success');
+                
+                setTimeout(() => {
+                    loadSheetForEditing(currentEditingFile.sheets[0]);
+                }, 100);
+                
+            } catch (error) { 
+                console.error('❌ Error opening file:', error);
+                hideLoading(); 
+                showToast('Error opening file: ' + error.message, 'error'); 
+            }
+        }
+
+        // ========== LOAD SHEET FOR EDITING ==========
+        function loadSheetForEditing(sheetName) {
+            if (!currentEditingFile) return;
+            
+            document.querySelectorAll('.sheet-tab').forEach(tab => {
+                const isActive = tab.innerText.includes(sheetName) || tab.innerText === sheetName;
+                tab.className = `sheet-tab px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+                    isActive ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`;
+            });
+            
+            if (currentEditingFile.loadedSheets.has(sheetName)) {
+                const jsonData = currentEditingFile.loadedSheets.get(sheetName);
+                initHandsontable(jsonData);
+                currentEditingFile.currentSheet = sheetName;
+                return;
+            }
+            
+            showLoading(`Loading ${sheetName}...`, false, 10000);
+            
+            try {
+                const worksheet = currentEditingFile.workbook.Sheets[sheetName];
+                if (!worksheet) { 
+                    hideLoading(); 
+                    showToast('Sheet not found', 'error'); 
+                    return; 
+                }
+                
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                
+                currentEditingFile.loadedSheets.set(sheetName, jsonData);
+                currentEditingFile.currentSheet = sheetName;
+                
+                initHandsontable(jsonData);
+                hideLoading();
+                
+            } catch (error) { 
+                console.error('❌ Error loading sheet:', error);
+                hideLoading(); 
+                showToast('Error loading sheet: ' + error.message, 'error'); 
+            }
+        }
+
+        // ========== INIT HANDSONTABLE ==========
+        function initHandsontable(data) {
+            const container = document.getElementById('excelEditor');
+            
+            if (!container) {
+                console.error('❌ Excel editor container not found');
+                showToast('Editor container not found', 'error');
+                return;
+            }
+            
+            if (hot) {
+                try {
+                    hot.destroy();
+                } catch (e) {
+                    console.warn('Error destroying previous instance:', e);
+                }
+                hot = null;
+            }
+            
+            container.style.height = '500px';
+            container.style.width = '100%';
+            container.innerHTML = '';
+            
+            setTimeout(() => {
+                try {
+                    hot = new Handsontable(container, {
+                        data: data,
+                        rowHeaders: true,
+                        colHeaders: true,
+                        height: '100%',
+                        width: '100%',
+                        licenseKey: 'non-commercial-and-evaluation',
+                        contextMenu: ['row_above', 'row_below', 'remove_row', 'undo', 'redo', 'copy', 'cut'],
+                        copyPaste: true,
+                        fillHandle: true,
+                        undo: true,
+                        redo: true,
+                        columnSorting: true,
+                        filters: true,
+                        manualRowResize: true,
+                        manualColumnResize: true,
+                        
+                        cells: function(row, col) {
+                            const cellProperties = {};
+                            const header = data[0]?.[col];
+                            
+                            if (row === 0) {
+                                cellProperties.className = 'htCenter font-bold bg-gray-100';
+                                cellProperties.readOnly = true;
+                            }
+                            
+                            // Style mark columns
+                            const headerStr = String(header || '').toLowerCase();
+                            if (headerStr.includes('mark') || headerStr.includes('total') || headerStr.includes('final')) {
+                                cellProperties.className = 'htRight font-mono';
+                            }
+                            
+                            return cellProperties;
+                        },
+                        
+                        afterChange: function(changes, source) {
+                            if (source === 'load') return;
+                            if (changes) {
+                                showToast('Changes made. Remember to save.', 'info', 2000);
+                            }
+                        },
+                        
+                        renderAllRows: false,
+                        viewportRowRenderingOffset: 20
+                    });
+                    
+                } catch (error) {
+                    console.error('❌ Error initializing Handsontable:', error);
+                    showToast('Error loading editor: ' + error.message, 'error');
+                }
+            }, 50);
+        }
+
+        // ========== SEARCH STUDENT ==========
+        function searchStudentMarks() {
+            const searchTerm = document.getElementById('studentSearchInput').value.toLowerCase().trim();
+            if (!searchTerm) { 
+                showToast('Enter search term', 'error'); 
+                return; 
+            }
+            
+            if (allStudentMarks.length === 0) {
+                showToast('No data loaded yet. Please wait.', 'error');
+                return;
+            }
+            
+            showLoading('Searching...', false, 10000);
+            
+            setTimeout(() => {
+                let results = [];
+                
+                if (studentIndex.has(searchTerm)) {
+                    results = studentIndex.get(searchTerm);
+                }
+                
+                if (results.length === 0) {
+                    results = allStudentMarks.filter(m => 
+                        (m.admissionNo && m.admissionNo.toLowerCase().includes(searchTerm)) || 
+                        (m.studentName && m.studentName.toLowerCase().includes(searchTerm))
+                    );
+                }
+                
+                if (results.length === 0) {
+                    const words = searchTerm.split(/\s+/);
+                    results = allStudentMarks.filter(m => {
+                        const admissionMatch = m.admissionNo && words.some(w => 
+                            m.admissionNo.toLowerCase().includes(w) && w.length > 1
+                        );
+                        const nameMatch = m.studentName && words.some(w => 
+                            m.studentName.toLowerCase().includes(w) && w.length > 1
+                        );
+                        return admissionMatch || nameMatch;
+                    });
+                }
+                
+                hideLoading();
+                
+                if (results.length > 0) {
+                    displayStudentResults(results);
+                    showToast(`Found ${results.length} results`, 'success');
+                } else {
+                    document.getElementById('studentResultsContainer').classList.remove('hidden');
+                    document.getElementById('studentResultsTable').innerHTML = 
+                        `<div class="text-center py-10 text-gray-500">
+                            <i class="fas fa-search text-4xl mb-3 text-gray-300"></i>
+                            <p>No results found for "${searchTerm}"</p>
+                            <p class="text-sm mt-2">Try a different spelling</p>
+                        </div>`;
+                    showToast('No results found', 'info');
+                }
+            }, 100);
+        }
+
+        // ========== DISPLAY STUDENT RESULTS ==========
+        function displayStudentResults(results) {
+            const container = document.getElementById('studentResultsContainer');
+            const tableContainer = document.getElementById('studentResultsTable');
+            
+            if (!results || results.length === 0) {
+                container.classList.remove('hidden');
+                tableContainer.innerHTML = '<div class="text-center py-10 text-gray-500"><i class="fas fa-search text-4xl mb-3 text-gray-300"></i><p>No results found</p></div>';
+                return;
+            }
+            
+            container.classList.remove('hidden');
+            
+            currentTranscriptData = results;
+            
+            const allHeaders = new Set();
+            results.forEach(r => {
+                if (r.headers) r.headers.forEach(h => allHeaders.add(h));
+                if (r.rowData) Object.keys(r.rowData).forEach(k => allHeaders.add(k));
+            });
+            
+            const headers = Array.from(allHeaders);
+            
+            let studentName = 'Unknown';
+            let studentId = 'Unknown';
+            
+            for (const result of results) {
+                if (result.studentName) {
+                    studentName = result.studentName;
+                    break;
+                }
+                if (result.rowData) {
+                    const possibleNameCols = ['Student Name', 'StudentName', 'Name', 'STUDENT_NAME'];
+                    for (const col of possibleNameCols) {
+                        if (result.rowData[col]) {
+                            studentName = result.rowData[col].toString();
+                            break;
+                        }
+                    }
+                }
+                if (studentName !== 'Unknown') break;
+            }
+            
+            for (const result of results) {
+                if (result.admissionNo) {
+                    studentId = result.admissionNo;
+                    break;
+                }
+                if (result.rowData) {
+                    const possibleIdCols = ['Admission No.', 'Admission', 'S/N', 'SN', 'ID'];
+                    for (const col of possibleIdCols) {
+                        if (result.rowData[col]) {
+                            studentId = result.rowData[col].toString();
+                            break;
+                        }
+                    }
+                }
+                if (studentId !== 'Unknown') break;
+            }
+            
+            document.getElementById('studentNameDisplay').innerText = studentName;
+            document.getElementById('studentIdDisplay').innerText = studentId;
+            
+            let validMarks = [];
+            let totalPoints = 0;
+            
+            results.forEach(result => {
+                if (result.rowData) {
+                    const candidates = [
+                        result.rowData['FINAL MARKS %'],
+                        result.rowData['FINALMARKS'],
+                        result.rowData['FINAL'],
+                        result.rowData['FINAL MARKS'],
+                        result.rowData['Final Marks'],
+                        result.rowData['Total'],
+                        result.rowData['MARKS'],
+                        result.rowData['Marks'],
+                        result.rowData['FINAL MARK'],
+                        result.rowData['Final Mark'],
+                        ...Object.entries(result.rowData)
+                            .filter(([key, value]) => 
+                                !isNaN(parseFloat(value)) && 
+                                parseFloat(value) >= 0 && 
+                                parseFloat(value) <= 100 &&
+                                (key.toLowerCase().includes('final') || 
+                                 key.toLowerCase().includes('total') || 
+                                 key.toLowerCase().includes('mark'))
+                            )
+                            .map(([_, value]) => value)
+                    ];
+                    
+                    for (const candidate of candidates) {
+                        if (candidate !== undefined && candidate !== null && candidate !== '') {
+                            const num = parseFloat(candidate);
+                            if (!isNaN(num) && num >= 0 && num <= 100) {
+                                validMarks.push(num);
+                                const grade = getGrade(num);
+                                totalPoints += grade.points;
+                                break;
+                            }
+                        }
+                    }
+                }
+            });
+            
+            const totalExams = results.length;
+            const avg = validMarks.length ? (validMarks.reduce((a,b) => a+b,0) / validMarks.length).toFixed(1) : 'N/A';
+            const gpa = validMarks.length ? (totalPoints / validMarks.length).toFixed(2) : '0.00';
+            
+            let overallGrade, gradeClass;
+            if (avg !== 'N/A') {
+                const avgNum = parseFloat(avg);
+                if (avgNum >= 85) { overallGrade = 'A'; gradeClass = 'grade-a'; }
+                else if (avgNum >= 75) { overallGrade = 'B'; gradeClass = 'grade-b'; }
+                else if (avgNum >= 60) { overallGrade = 'C'; gradeClass = 'grade-c'; }
+                else { overallGrade = 'D'; gradeClass = 'grade-d'; }
+            } else {
+                overallGrade = 'N/A';
+                gradeClass = 'grade-d';
+            }
+            
+            document.getElementById('totalExamsCount').innerText = totalExams;
+            document.getElementById('averageMarkDisplay').innerText = avg;
+            document.getElementById('totalPointsDisplay').innerText = totalPoints;
+            document.getElementById('gpaValueDisplay').innerText = gpa;
+            document.getElementById('overallGradeDisplay').innerText = overallGrade;
+            document.getElementById('overallGradeDisplay').className = `grade-badge ${gradeClass} text-sm px-4 py-2`;
+            document.getElementById('gpaDisplay').innerText = `GPA: ${gpa}`;
+            
+            // Build table
+            let html = '<div class="overflow-x-auto"><table class="data-table w-full"><thead><tr>';
+            html += '<th>Exam</th>';
+            
+            headers.forEach(header => {
+                if (header && !header.startsWith('_') && header !== 'row' && header !== 'col') {
+                    html += `<th>${header}</th>`;
+                }
+            });
+            
+            html += '<th>Grade</th><th>Points</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
+            
+            results.forEach((result, idx) => {
+                const rowClass = idx % 2 === 0 ? 'row-even' : 'row-odd';
+                
+                html += `<tr class="${rowClass} hover:bg-gray-50 transition">`;
+                html += `<td class="font-medium">${result.sheetName || 'General'}</td>`;
+                
+                let finalMark = null;
+                
+                if (result.rowData) {
+                    const candidates = [
+                        result.rowData['FINAL MARKS %'],
+                        result.rowData['FINALMARKS'],
+                        result.rowData['FINAL'],
+                        result.rowData['FINAL MARKS'],
+                        result.rowData['Final Marks'],
+                        result.rowData['Total'],
+                        result.rowData['MARKS'],
+                        result.rowData['Marks'],
+                        result.rowData['FINAL MARK'],
+                        result.rowData['Final Mark'],
+                        ...Object.entries(result.rowData)
+                            .filter(([key, value]) => 
+                                !isNaN(parseFloat(value)) && 
+                                parseFloat(value) >= 0 && 
+                                parseFloat(value) <= 100 &&
+                                (key.toLowerCase().includes('final') || 
+                                 key.toLowerCase().includes('total') || 
+                                 key.toLowerCase().includes('mark'))
+                            )
+                            .map(([_, value]) => value)
+                    ];
+                    
+                    for (const candidate of candidates) {
+                        if (candidate !== undefined && candidate !== null && candidate !== '') {
+                            const num = parseFloat(candidate);
+                            if (!isNaN(num)) {
+                                finalMark = num;
+                                break;
+                            }
+                        }
+                    }
+                }
+                
+                headers.forEach(header => {
+                    if (header && !header.startsWith('_') && header !== 'row' && header !== 'col') {
+                        let value = result.rowData?.[header];
+                        
+                        if (value === undefined || value === null) {
+                            value = '-';
+                        }
+                        
+                        if (typeof value === 'number') {
+                            value = value.toFixed(1);
+                        }
+                        
+                        const headerLower = String(header).toLowerCase();
+                        if (finalMark !== null && 
+                            (headerLower.includes('final') || 
+                             headerLower.includes('total') || 
+                             headerLower.includes('mark'))) {
+                            const num = parseFloat(value);
+                            if (!isNaN(num)) {
+                                const colorClass = num >= 85 ? 'text-purple-600 font-bold' :
+                                                  num >= 75 ? 'text-green-600 font-bold' :
+                                                  num >= 60 ? 'text-orange-600 font-bold' :
+                                                  'text-red-600 font-bold';
+                                html += `<td class="${colorClass}">${value}</td>`;
+                            } else {
+                                html += `<td>${value}</td>`;
+                            }
+                        } else {
+                            html += `<td>${value}</td>`;
+                        }
+                    }
+                });
+                
+                if (finalMark !== null) {
+                    const grade = getGrade(finalMark);
+                    html += `<td><span class="grade-badge ${grade.class}">${grade.grade}</span></td>`;
+                    html += `<td class="text-center font-bold">${grade.points}</td>`;
+                    html += `<td><span class="status-badge ${grade.pass ? 'status-pass' : 'status-fail'}">${grade.status}</span></td>`;
+                } else {
+                    html += `<td>-</td><td>-</td><td>-</td>`;
+                }
+                
+                html += `<td>
+                    <div class="flex gap-1">
+                        ${currentRole === 'admin' || currentRole === 'super_admin' ? 
+                            `<button onclick="openFileForEditing('${result.fileId}')" class="text-blue-600 hover:text-blue-800 text-sm p-1" title="Edit">
+                                <i class="fas fa-edit"></i>
+                            </button>` : ''}
+                        <button onclick="viewFile('${result.fileId}')" class="text-green-600 hover:text-green-800 text-sm p-1" title="View">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </td></tr>`;
+            });
+            
+            html += '</tbody></table></div>';
+            tableContainer.innerHTML = html;
+        }
+
+        // ========== UPDATE CHARTS ==========
         function updateCharts() {
             if (allStudentMarks.length === 0) return;
             
@@ -1197,7 +2093,7 @@
             const cCount = marks.filter(m => m >= 60 && m < 75).length;
             const dCount = marks.filter(m => m < 60).length;
             
-            // Performance Chart (Doughnut)
+            // Performance Chart
             const perfCtx = document.getElementById('performanceChart').getContext('2d');
             if (performanceChart) performanceChart.destroy();
             performanceChart = new Chart(perfCtx, {
@@ -1222,7 +2118,7 @@
                 }
             });
             
-            // Distribution Chart (Bar)
+            // Distribution Chart
             const distCtx = document.getElementById('distributionChart').getContext('2d');
             if (distributionChart) distributionChart.destroy();
             distributionChart = new Chart(distCtx, {
@@ -1239,1324 +2135,668 @@
                 options: { 
                     responsive: true, 
                     maintainAspectRatio: false, 
-                    plugins: { 
-                        legend: { display: false } 
-                    },
-                    scales: { 
-                        y: { 
-                            beginAtZero: true, 
-                            ticks: { stepSize: 1 } 
-                        } 
-                    }
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
                 }
             });
         }
 
-        // ========== FIXED SEARCH ==========
-        function searchStudentMarks() {
-            const searchTerm = document.getElementById('studentSearchInput').value.toLowerCase().trim();
-            if (!searchTerm) { 
-                showToast('Enter search term', 'error'); 
-                return; 
-            }
-            
-            console.log('🔍 Searching for:', searchTerm);
-            console.log('📊 Total records:', allStudentMarks.length);
-            
-            if (allStudentMarks.length === 0) {
-                showToast('No data loaded yet. Please wait for files to process.', 'error');
+        // ========== OFFICIAL TRANSCRIPT PDF ==========
+        function downloadOfficialTranscriptPDF() {
+            if (!currentTranscriptData || currentTranscriptData.length === 0) {
+                showToast('No transcript data available', 'error');
                 return;
             }
             
-            showLoading('Searching...', false, 10000);
+            showLoading('Generating Official Transcript...', false, 30000);
             
-            setTimeout(() => {
-                let results = [];
-                
-                // Try exact match
-                if (studentIndex.has(searchTerm)) {
-                    results = studentIndex.get(searchTerm);
+            try {
+                if (typeof window.jspdf === 'undefined') {
+                    throw new Error('PDF library not loaded');
                 }
                 
-                // Try partial match
-                if (results.length === 0) {
-                    results = allStudentMarks.filter(m => 
-                        (m.admissionNo && m.admissionNo.toLowerCase().includes(searchTerm)) || 
-                        (m.studentName && m.studentName.toLowerCase().includes(searchTerm))
-                    );
-                }
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF({
+                    orientation: 'portrait',
+                    unit: 'mm',
+                    format: 'a4'
+                });
                 
-                // Try word-by-word
-                if (results.length === 0) {
-                    const words = searchTerm.split(/\s+/);
-                    results = allStudentMarks.filter(m => {
-                        const admissionMatch = m.admissionNo && words.some(w => 
-                            m.admissionNo.toLowerCase().includes(w) && w.length > 1
-                        );
-                        const nameMatch = m.studentName && words.some(w => 
-                            m.studentName.toLowerCase().includes(w) && w.length > 1
-                        );
-                        return admissionMatch || nameMatch;
-                    });
-                }
+                const pageWidth = doc.internal.pageSize.getWidth();
+                const pageHeight = doc.internal.pageSize.getHeight();
                 
-                console.log('✅ Found:', results.length, 'results');
-                hideLoading();
+                // ========== COLLEGE LETTERHEAD ==========
                 
-                if (results.length > 0) {
-                    displayStudentResults(results);
-                    showToast(`Found ${results.length} results`, 'success');
-                } else {
-                    document.getElementById('studentResultsContainer').classList.remove('hidden');
-                    document.getElementById('studentResultsTable').innerHTML = 
-                        `<div class="text-center py-10 text-gray-500">
-                            <i class="fas fa-search text-4xl mb-3 text-gray-300"></i>
-                            <p>No results found for "${searchTerm}"</p>
-                            <p class="text-sm mt-2">Try a different spelling or check admission number format</p>
-                        </div>`;
-                    showToast('No results found', 'info');
-                }
-            }, 100);
-        }
-
-        // ========== FIXED DISPLAY STUDENT RESULTS ==========
-function displayStudentResults(results) {
-    const container = document.getElementById('studentResultsContainer');
-    const tableContainer = document.getElementById('studentResultsTable');
-    
-    if (!results || results.length === 0) {
-        container.classList.remove('hidden');
-        tableContainer.innerHTML = '<div class="text-center py-10 text-gray-500"><i class="fas fa-search text-4xl mb-3 text-gray-300"></i><p>No results found</p></div>';
-        return;
-    }
-    
-    container.classList.remove('hidden');
-    
-    // Store for transcript
-    currentTranscriptData = results;
-    
-    // Get all unique headers
-    const allHeaders = new Set();
-    results.forEach(r => {
-        if (r.headers) r.headers.forEach(h => allHeaders.add(h));
-        if (r.rowData) Object.keys(r.rowData).forEach(k => allHeaders.add(k));
-    });
-    
-    const headers = Array.from(allHeaders);
-    console.log('📋 Headers found:', headers);
-    
-    // Student info - get from first result
-    let studentName = 'Unknown';
-    let studentId = 'Unknown';
-    
-    // Try to find name from different possible columns
-    for (const result of results) {
-        if (result.studentName) {
-            studentName = result.studentName;
-            break;
-        }
-        if (result.rowData) {
-            const possibleNameCols = ['Student Name', 'StudentName', 'Name', 'STUDENT_NAME'];
-            for (const col of possibleNameCols) {
-                if (result.rowData[col]) {
-                    studentName = result.rowData[col].toString();
-                    break;
-                }
-            }
-        }
-        if (studentName !== 'Unknown') break;
-    }
-    
-    // Try to find ID from different possible columns
-    for (const result of results) {
-        if (result.admissionNo) {
-            studentId = result.admissionNo;
-            break;
-        }
-        if (result.rowData) {
-            const possibleIdCols = ['Admission No.', 'Admission', 'S/N', 'SN', 'ID'];
-            for (const col of possibleIdCols) {
-                if (result.rowData[col]) {
-                    studentId = result.rowData[col].toString();
-                    break;
-                }
-            }
-        }
-        if (studentId !== 'Unknown') break;
-    }
-    
-    document.getElementById('studentNameDisplay').innerText = studentName;
-    document.getElementById('studentIdDisplay').innerText = studentId;
-    
-    // Calculate statistics by finding the final mark in each exam
-    let validMarks = [];
-    let totalPoints = 0;
-    
-    results.forEach(result => {
-        if (result.rowData) {
-            // Try ALL possible final mark column names in order of priority
-            const finalMarkCandidates = [
-                result.rowData['FINAL MARKS %'],
-                result.rowData['FINALMARKS'],
-                result.rowData['FINAL'],
-                result.rowData['FINAL MARKS'],
-                result.rowData['Final Marks'],
-                result.rowData['Total'],
-                result.rowData['MARKS'],
-                result.rowData['Marks'],
-                result.rowData['FINAL MARK'],
-                result.rowData['Final Mark'],
-                // Also try numeric columns that might be the final mark
-                ...Object.entries(result.rowData)
-                    .filter(([key, value]) => 
-                        !isNaN(parseFloat(value)) && 
-                        parseFloat(value) >= 0 && 
-                        parseFloat(value) <= 100 &&
-                        (key.toLowerCase().includes('final') || 
-                         key.toLowerCase().includes('total') || 
-                         key.toLowerCase().includes('mark'))
-                    )
-                    .map(([_, value]) => value)
-            ];
-            
-            // Use the first valid mark found
-            for (const candidate of finalMarkCandidates) {
-                if (candidate !== undefined && candidate !== null && candidate !== '') {
-                    const num = parseFloat(candidate);
-                    if (!isNaN(num) && num >= 0 && num <= 100) {
-                        validMarks.push(num);
-                        const grade = getGrade(num);
-                        totalPoints += grade.points;
-                        break;
-                    }
-                }
-            }
-        }
-    });
-    
-    const totalExams = results.length;
-    const avg = validMarks.length ? (validMarks.reduce((a,b) => a+b,0) / validMarks.length).toFixed(1) : 'N/A';
-    const gpa = validMarks.length ? (totalPoints / validMarks.length).toFixed(2) : '0.00';
-    
-    // Get overall grade based on average
-    let overallGrade, gradeClass;
-    if (avg !== 'N/A') {
-        const avgNum = parseFloat(avg);
-        if (avgNum >= 85) { overallGrade = 'A'; gradeClass = 'grade-a'; }
-        else if (avgNum >= 75) { overallGrade = 'B'; gradeClass = 'grade-b'; }
-        else if (avgNum >= 60) { overallGrade = 'C'; gradeClass = 'grade-c'; }
-        else { overallGrade = 'D'; gradeClass = 'grade-d'; }
-    } else {
-        overallGrade = 'N/A';
-        gradeClass = 'grade-d';
-    }
-    
-    document.getElementById('totalExamsCount').innerText = totalExams;
-    document.getElementById('averageMarkDisplay').innerText = avg;
-    document.getElementById('totalPointsDisplay').innerText = totalPoints;
-    document.getElementById('gpaValueDisplay').innerText = gpa;
-    document.getElementById('overallGradeDisplay').innerText = overallGrade;
-    document.getElementById('overallGradeDisplay').className = `grade-badge ${gradeClass} text-sm px-4 py-2`;
-    document.getElementById('gpaDisplay').innerText = `GPA: ${gpa}`;
-    
-    // Build table
-    let html = '<div class="overflow-x-auto"><table class="data-table w-full"><thead><tr>';
-    html += '<th>Exam</th>';
-    
-    // Add all headers
-    headers.forEach(header => {
-        if (header && !header.startsWith('_') && header !== 'row' && header !== 'col') {
-            html += `<th>${header}</th>`;
-        }
-    });
-    
-    html += '<th>Grade</th><th>Points</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
-    
-    results.forEach((result, idx) => {
-        const rowClass = idx % 2 === 0 ? 'row-even' : 'row-odd';
-        
-        html += `<tr class="${rowClass} hover:bg-gray-50 transition">`;
-        html += `<td class="font-medium">${result.sheetName || 'General'}</td>`;
-        
-        // Find final mark for this row
-        let finalMark = null;
-        
-        // Try ALL possible final mark column names
-        if (result.rowData) {
-            const candidates = [
-                result.rowData['FINAL MARKS %'],
-                result.rowData['FINALMARKS'],
-                result.rowData['FINAL'],
-                result.rowData['FINAL MARKS'],
-                result.rowData['Final Marks'],
-                result.rowData['Total'],
-                result.rowData['MARKS'],
-                result.rowData['Marks'],
-                result.rowData['FINAL MARK'],
-                result.rowData['Final Mark'],
-                // Look for any numeric column that might be the mark
-                ...Object.entries(result.rowData)
-                    .filter(([key, value]) => 
-                        !isNaN(parseFloat(value)) && 
-                        parseFloat(value) >= 0 && 
-                        parseFloat(value) <= 100 &&
-                        (key.toLowerCase().includes('final') || 
-                         key.toLowerCase().includes('total') || 
-                         key.toLowerCase().includes('mark'))
-                    )
-                    .map(([_, value]) => value)
-            ];
-            
-            for (const candidate of candidates) {
-                if (candidate !== undefined && candidate !== null && candidate !== '') {
-                    const num = parseFloat(candidate);
-                    if (!isNaN(num)) {
-                        finalMark = num;
-                        break;
-                    }
-                }
-            }
-        }
-        
-        // Add all data columns
-        headers.forEach(header => {
-            if (header && !header.startsWith('_') && header !== 'row' && header !== 'col') {
-                let value = result.rowData?.[header];
+                // Top border line
+                doc.setDrawColor(0, 51, 102);
+                doc.setLineWidth(1);
+                doc.line(20, 15, pageWidth - 20, 15);
                 
-                if (value === undefined || value === null) {
-                    value = '-';
-                }
+                // College Name - Large and Bold
+                doc.setFontSize(22);
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor(0, 51, 102);
+                doc.text('NAKURU COLLEGE OF HEALTH SCIENCES', pageWidth / 2, 25, { align: 'center' });
+                doc.setTextColor(0, 102, 204);
+                doc.text('& MANAGEMENT', pageWidth / 2, 32, { align: 'center' });
                 
-                if (typeof value === 'number') {
-                    value = value.toFixed(1);
-                }
+                // Motto
+                doc.setFontSize(11);
+                doc.setFont('helvetica', 'italic');
+                doc.setTextColor(80, 80, 80);
+                doc.text(COLLEGE_MOTTO, pageWidth / 2, 40, { align: 'center' });
                 
-                // Highlight if this is the final mark column
-                const headerLower = String(header).toLowerCase();
-                if (finalMark !== null && 
-                    (headerLower.includes('final') || 
-                     headerLower.includes('total') || 
-                     headerLower.includes('mark'))) {
-                    const num = parseFloat(value);
-                    if (!isNaN(num)) {
-                        const colorClass = num >= 85 ? 'text-purple-600 font-bold' :
-                                          num >= 75 ? 'text-green-600 font-bold' :
-                                          num >= 60 ? 'text-orange-600 font-bold' :
-                                          'text-red-600 font-bold';
-                        html += `<td class="${colorClass}">${value}</td>`;
-                    } else {
-                        html += `<td>${value}</td>`;
-                    }
-                } else {
-                    html += `<td>${value}</td>`;
-                }
-            }
-        });
-        
-        // Add grade, points, status
-        if (finalMark !== null) {
-            const grade = getGrade(finalMark);
-            html += `<td><span class="grade-badge ${grade.class}">${grade.grade}</span></td>`;
-            html += `<td class="text-center font-bold">${grade.points}</td>`;
-            html += `<td><span class="status-badge ${grade.pass ? 'status-pass' : 'status-fail'}">${grade.comment}</span></td>`;
-        } else {
-            html += `<td>-</td><td>-</td><td>-</td>`;
-        }
-        
-        html += `<td>
-            <div class="flex gap-1">
-                ${currentRole === 'admin' || currentRole === 'super_admin' ? 
-                    `<button onclick="openFileForEditing('${result.fileId}')" class="text-blue-600 hover:text-blue-800 text-sm p-1" title="Edit">
-                        <i class="fas fa-edit"></i>
-                    </button>` : ''}
-                <button onclick="viewFile('${result.fileId}')" class="text-green-600 hover:text-green-800 text-sm p-1" title="View">
-                    <i class="fas fa-eye"></i>
-                </button>
-            </div>
-        </td></tr>`;
-    });
-    
-    html += '</tbody></table></div>';
-    tableContainer.innerHTML = html;
-}
-// ========== FIXED TRANSCRIPT FUNCTIONS ==========
-function downloadTranscriptPDF() {
-    if (!currentTranscriptData || currentTranscriptData.length === 0) {
-        showToast('No transcript data available', 'error');
-        return;
-    }
-    
-    try {
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-        
-        const studentName = document.getElementById('studentNameDisplay').innerText;
-        const studentId = document.getElementById('studentIdDisplay').innerText;
-        const avgMark = document.getElementById('averageMarkDisplay').innerText;
-        const overallGrade = document.getElementById('overallGradeDisplay').innerText;
-        const gpa = document.getElementById('gpaValueDisplay').innerText;
-        
-        // Title
-        doc.setFontSize(20);
-        doc.setTextColor(40, 40, 40);
-        doc.text('NCHSN SCHOOL OF NURSING', 105, 20, { align: 'center' });
-        
-        doc.setFontSize(16);
-        doc.setTextColor(80, 80, 80);
-        doc.text('PROVISIONAL EXAM RESULTS TRANSCRIPT', 105, 30, { align: 'center' });
-        
-        // Student Info
-        doc.setFontSize(12);
-        doc.setTextColor(0, 0, 0);
-        doc.text(`Student Name: ${studentName}`, 20, 45);
-        doc.text(`Admission No: ${studentId}`, 20, 52);
-        doc.text(`Average Mark: ${avgMark}%`, 20, 59);
-        doc.text(`Overall Grade: ${overallGrade}`, 20, 66);
-        doc.text(`GPA: ${gpa}`, 20, 73);
-        
-        // Table headers
-        const headers = [['Exam', 'Marks', 'Grade', 'Points', 'Status']];
-        const data = [];
-        
-        currentTranscriptData.forEach(result => {
-            // Try ALL possible places where marks might be stored
-            let marks = '-';
-            let markNum = 0;
-            
-            if (result.rowData) {
-                // Check all possible mark column names in order of priority
-                const possibleMarkColumns = [
-                    'FINAL MARKS %',
-                    'FINALMARKS',
-                    'FINAL',
-                    'FINAL MARKS',
-                    'Final Marks',
-                    'Total',
-                    'MARKS',
-                    'Marks',
-                    'FINAL MARK',
-                    'Final Mark',
-                    'EBE (x/70)',
-                    'EBE',
-                    'EXAM MARK',
-                    'FINAL MARK',
-                    // Look through all columns for any numeric value between 0-100
-                    ...Object.entries(result.rowData)
-                        .filter(([key, value]) => {
-                            const num = parseFloat(value);
-                            return !isNaN(num) && num >= 0 && num <= 100;
-                        })
-                        .map(([key, value]) => key)
-                ];
+                // Address line
+                doc.setFontSize(9);
+                doc.setFont('helvetica', 'normal');
+                doc.setTextColor(60, 60, 60);
+                doc.text(COLLEGE_ADDRESS, pageWidth / 2, 47, { align: 'center' });
                 
-                // Try each possible column
-                for (const col of possibleMarkColumns) {
-                    const value = result.rowData[col];
-                    if (value !== undefined && value !== null && value !== '') {
-                        const num = parseFloat(value);
-                        if (!isNaN(num)) {
-                            marks = num.toFixed(1);
-                            markNum = num;
-                            break;
-                        }
-                    }
-                }
+                // Contact line
+                doc.text(`Email: ${COLLEGE_EMAIL} | Website: ${COLLEGE_WEBSITE}`, pageWidth / 2, 52, { align: 'center' });
                 
-                // If still no marks found, try to find any numeric value in the row
-                if (marks === '-') {
-                    for (const [key, value] of Object.entries(result.rowData)) {
-                        const num = parseFloat(value);
-                        if (!isNaN(num) && num >= 0 && num <= 100) {
-                            marks = num.toFixed(1);
-                            markNum = num;
-                            break;
-                        }
-                    }
-                }
-            }
-            
-            const grade = getGrade(markNum);
-            
-            data.push([
-                result.sheetName || 'General',
-                marks,
-                grade.grade,
-                grade.points.toString(),
-                grade.comment
-            ]);
-        });
-        
-        doc.autoTable({
-            head: headers,
-            body: data,
-            startY: 80,
-            theme: 'striped',
-            headStyles: { fillColor: [30, 60, 114] },
-            styles: { fontSize: 10 }
-        });
-        
-        // Footer
-        const today = new Date().toLocaleDateString();
-        doc.setFontSize(10);
-        doc.setTextColor(150, 150, 150);
-        doc.text(`Generated on: ${today}`, 20, doc.lastAutoTable.finalY + 10);
-        doc.text('This is a provisional transcript pending official verification.', 20, doc.lastAutoTable.finalY + 17);
-        
-        doc.save(`NCHSN_Transcript_${studentId}.pdf`);
-        showToast('PDF downloaded successfully', 'success');
-        
-    } catch (error) {
-        console.error('PDF Error:', error);
-        showToast('Error generating PDF', 'error');
-    }
-}
-
-function downloadTranscriptExcel() {
-    if (!currentTranscriptData || currentTranscriptData.length === 0) {
-        showToast('No transcript data available', 'error');
-        return;
-    }
-    
-    try {
-        const studentName = document.getElementById('studentNameDisplay').innerText;
-        const studentId = document.getElementById('studentIdDisplay').innerText;
-        const avgMark = document.getElementById('averageMarkDisplay').innerText;
-        const overallGrade = document.getElementById('overallGradeDisplay').innerText;
-        const gpa = document.getElementById('gpaValueDisplay').innerText;
-        
-        const wsData = [
-            ['NCHSN SCHOOL OF NURSING - PROVISIONAL RESULTS TRANSCRIPT'],
-            [''],
-            ['Student Name:', studentName, 'Admission No:', studentId],
-            ['Average Mark:', avgMark + '%', 'Overall Grade:', overallGrade, 'GPA:', gpa],
-            [''],
-            ['Exam', 'Marks', 'Grade', 'Points', 'Status']
-        ];
-        
-        currentTranscriptData.forEach(result => {
-            // Try ALL possible places where marks might be stored
-            let marks = '-';
-            let markNum = 0;
-            
-            if (result.rowData) {
-                // Check all possible mark column names
-                const possibleMarkColumns = [
-                    'FINAL MARKS %',
-                    'FINALMARKS',
-                    'FINAL',
-                    'FINAL MARKS',
-                    'Final Marks',
-                    'Total',
-                    'MARKS',
-                    'Marks',
-                    'FINAL MARK',
-                    'Final Mark',
-                    'EBE (x/70)',
-                    'EBE',
-                    'EXAM MARK',
-                    'FINAL MARK'
-                ];
+                // Second border line
+                doc.setDrawColor(0, 51, 102);
+                doc.setLineWidth(0.5);
+                doc.line(20, 58, pageWidth - 20, 58);
                 
-                // Try each possible column
-                for (const col of possibleMarkColumns) {
-                    const value = result.rowData[col];
-                    if (value !== undefined && value !== null && value !== '') {
-                        const num = parseFloat(value);
-                        if (!isNaN(num)) {
-                            marks = num.toFixed(1);
-                            markNum = num;
-                            break;
-                        }
-                    }
-                }
+                // ========== TRANSCRIPT TITLE ==========
+                doc.setFontSize(16);
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor(0, 51, 102);
+                doc.text('OFFICIAL ACADEMIC TRANSCRIPT', pageWidth / 2, 68, { align: 'center' });
                 
-                // If still no marks found, try to find any numeric value in the row
-                if (marks === '-') {
-                    for (const [key, value] of Object.entries(result.rowData)) {
-                        const num = parseFloat(value);
-                        if (!isNaN(num) && num >= 0 && num <= 100) {
-                            marks = num.toFixed(1);
-                            markNum = num;
-                            break;
-                        }
-                    }
-                }
-            }
-            
-            const grade = getGrade(markNum);
-            
-            wsData.push([
-                result.sheetName || 'General',
-                marks,
-                grade.grade,
-                grade.points.toString(),
-                grade.comment
-            ]);
-        });
-        
-        const wb = XLSX.utils.book_new();
-        const ws = XLSX.utils.aoa_to_sheet(wsData);
-        XLSX.utils.book_append_sheet(wb, ws, 'Transcript');
-        XLSX.writeFile(wb, `NCHSN_Transcript_${studentId}.xlsx`);
-        
-        showToast('Excel transcript downloaded', 'success');
-        
-    } catch (error) {
-        console.error('Excel Error:', error);
-        showToast('Error generating Excel', 'error');
-    }
-}
-
-function printTranscript() {
-    if (!currentTranscriptData || currentTranscriptData.length === 0) {
-        showToast('No transcript data available', 'error');
-        return;
-    }
-    
-    const studentName = document.getElementById('studentNameDisplay').innerText;
-    const studentId = document.getElementById('studentIdDisplay').innerText;
-    const avgMark = document.getElementById('averageMarkDisplay').innerText;
-    const overallGrade = document.getElementById('overallGradeDisplay').innerText;
-    const gpa = document.getElementById('gpaValueDisplay').innerText;
-    
-    let printContent = `
-        <html>
-        <head>
-            <title>NCHSN Transcript - ${studentName}</title>
-            <style>
-                body { font-family: Arial; padding: 30px; }
-                h1 { color: #1e3c72; text-align: center; }
-                h2 { color: #2a5298; text-align: center; }
-                .info { margin: 20px 0; padding: 15px; background: #f0f4f8; border-radius: 8px; }
-                table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-                th { background: #1e3c72; color: white; padding: 12px; text-align: left; }
-                td { padding: 10px; border-bottom: 1px solid #ddd; }
-                .grade-a { color: #4F46E5; font-weight: bold; }
-                .grade-b { color: #059669; font-weight: bold; }
-                .grade-c { color: #D97706; font-weight: bold; }
-                .grade-d { color: #DC2626; font-weight: bold; }
-                .footer { margin-top: 30px; text-align: center; color: #666; font-size: 12px; }
-            </style>
-        </head>
-        <body>
-            <h1>NCHSN SCHOOL OF NURSING</h1>
-            <h2>PROVISIONAL EXAM RESULTS TRANSCRIPT</h2>
-            
-            <div class="info">
-                <p><strong>Student Name:</strong> ${studentName}</p>
-                <p><strong>Admission No:</strong> ${studentId}</p>
-                <p><strong>Average Mark:</strong> ${avgMark}%</p>
-                <p><strong>Overall Grade:</strong> ${overallGrade}</p>
-                <p><strong>GPA:</strong> ${gpa}</p>
-            </div>
-            
-            <table>
-                <thead>
-                    <tr>
-                        <th>Exam</th>
-                        <th>Marks</th>
-                        <th>Grade</th>
-                        <th>Points</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-    `;
-    
-    currentTranscriptData.forEach(result => {
-        // Try ALL possible places where marks might be stored
-        let marks = '-';
-        let markNum = 0;
-        
-        if (result.rowData) {
-            // Check all possible mark column names
-            const possibleMarkColumns = [
-                'FINAL MARKS %',
-                'FINALMARKS',
-                'FINAL',
-                'FINAL MARKS',
-                'Final Marks',
-                'Total',
-                'MARKS',
-                'Marks',
-                'FINAL MARK',
-                'Final Mark',
-                'EBE (x/70)',
-                'EBE',
-                'EXAM MARK'
-            ];
-            
-            // Try each possible column
-            for (const col of possibleMarkColumns) {
-                const value = result.rowData[col];
-                if (value !== undefined && value !== null && value !== '') {
-                    const num = parseFloat(value);
-                    if (!isNaN(num)) {
-                        marks = num.toFixed(1);
-                        markNum = num;
-                        break;
-                    }
-                }
-            }
-            
-            // If still no marks found, try to find any numeric value in the row
-            if (marks === '-') {
-                for (const [key, value] of Object.entries(result.rowData)) {
-                    const num = parseFloat(value);
-                    if (!isNaN(num) && num >= 0 && num <= 100) {
-                        marks = num.toFixed(1);
-                        markNum = num;
-                        break;
-                    }
-                }
-            }
-        }
-        
-        const grade = getGrade(markNum);
-        
-        printContent += `
-            <tr>
-                <td>${result.sheetName || 'General'}</td>
-                <td>${marks}</td>
-                <td class="grade-${grade.grade.toLowerCase()}">${grade.grade}</td>
-                <td>${grade.points}</td>
-                <td>${grade.comment}</td>
-            </tr>
-        `;
-    });
-    
-    printContent += `
-                </tbody>
-            </table>
-            <div class="footer">
-                <p>Generated on: ${new Date().toLocaleString()}</p>
-                <p>This is a provisional transcript pending official verification.</p>
-            </div>
-        </body>
-        </html>
-    `;
-    
-    const printWindow = window.open('', '_blank');
-    printWindow.document.write(printContent);
-    printWindow.document.close();
-    printWindow.focus();
-    printWindow.print();
-}
-        // ========== FIXED EDITOR FUNCTIONS ==========
-
-// Global variable to track Handsontable availability
-let isHandsontableLoaded = false;
-
-// Check if Handsontable is loaded
-function checkHandsontable() {
-    if (typeof Handsontable !== 'undefined') {
-        isHandsontableLoaded = true;
-        console.log('✅ Handsontable is loaded');
-        return true;
-    } else {
-        console.error('❌ Handsontable is NOT loaded');
-        showToast('Editor library not loaded. Please refresh.', 'error');
-        return false;
-    }
-}
-
-async function openFileForEditing(fileId) {
-    if (currentRole !== 'admin' && currentRole !== 'super_admin') { 
-        showToast('Admins only', 'error'); 
-        return; 
-    }
-    
-    // Check if Handsontable is available
-    if (!checkHandsontable()) {
-        return;
-    }
-    
-    closeViewer();
-    
-    const file = sharedFiles.find(f => f.id === fileId);
-    if (!file || !file.file_data) { 
-        showToast('File not found', 'error'); 
-        return; 
-    }
-    
-    showLoading('Opening Excel editor...', false, 30000);
-    
-    try {
-        console.log('📝 Opening file:', file.filename);
-        console.log('📊 File data length:', file.file_data.length);
-        
-        // Check cache
-        if (sheetCache.has(file.id)) {
-            currentEditingFile = sheetCache.get(file.id);
-            console.log('✅ Loaded from cache');
-        } else {
-            // Decode base64
-            console.log('🔄 Decoding base64...');
-            const binaryData = atob(file.file_data);
-            console.log('✅ Base64 decoded, length:', binaryData.length);
-            
-            // Convert to Uint8Array
-            console.log('🔄 Converting to Uint8Array...');
-            const array = new Uint8Array(binaryData.length);
-            for (let i = 0; i < binaryData.length; i++) {
-                array[i] = binaryData.charCodeAt(i);
-            }
-            console.log('✅ Converted to Uint8Array');
-            
-            // Parse Excel
-            console.log('🔄 Parsing Excel with SheetJS...');
-            const workbook = XLSX.read(array, { type: 'array' });
-            console.log('✅ Excel parsed, sheets:', workbook.SheetNames);
-            
-            currentEditingFile = { 
-                id: file.id, 
-                workbook, 
-                filename: file.filename, 
-                sheets: workbook.SheetNames, 
-                currentSheet: workbook.SheetNames[0], 
-                loadedSheets: new Map() 
-            };
-            
-            sheetCache.set(file.id, currentEditingFile);
-        }
-        
-        // Show editor section
-        const editorSection = document.getElementById('excelEditorSection');
-        editorSection.classList.remove('hidden');
-        
-        // Update filename
-        document.getElementById('editingFileName').innerText = file.filename;
-        
-        // Create sheet tabs
-        const selector = document.getElementById('sheetSelector');
-        selector.innerHTML = currentEditingFile.sheets.map((sheet, i) => 
-            `<button onclick="loadSheetForEditing('${sheet}')" 
-                class="sheet-tab px-3 py-1.5 rounded-lg text-xs font-medium transition 
-                ${i === 0 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">
-                ${sheet.length > 20 ? sheet.substr(0, 18) + '...' : sheet}
-            </button>`
-        ).join('');
-        
-        hideLoading();
-        showToast('Excel editor opened', 'success');
-        
-        // Load first sheet after a small delay
-        setTimeout(() => {
-            loadSheetForEditing(currentEditingFile.sheets[0]);
-        }, 200);
-        
-    } catch (error) { 
-        console.error('❌ Error opening file:', error);
-        hideLoading(); 
-        showToast('Error opening file: ' + error.message, 'error'); 
-    }
-}
-
-function loadSheetForEditing(sheetName) {
-    if (!currentEditingFile) {
-        showToast('No file loaded', 'error');
-        return;
-    }
-    
-    console.log('📄 Loading sheet for editing:', sheetName);
-    
-    // Update tab styling
-    document.querySelectorAll('.sheet-tab').forEach(tab => {
-        const isActive = tab.innerText.includes(sheetName) || tab.innerText === sheetName;
-        tab.className = `sheet-tab px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-            isActive ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-        }`;
-    });
-    
-    // Check cache
-    if (currentEditingFile.loadedSheets.has(sheetName)) {
-        console.log('✅ Loading from cache');
-        const jsonData = currentEditingFile.loadedSheets.get(sheetName);
-        initHandsontable(jsonData);
-        currentEditingFile.currentSheet = sheetName;
-        return;
-    }
-    
-    showLoading(`Loading ${sheetName}...`, false, 10000);
-    
-    try {
-        const worksheet = currentEditingFile.workbook.Sheets[sheetName];
-        if (!worksheet) { 
-            hideLoading(); 
-            showToast('Sheet not found', 'error'); 
-            return; 
-        }
-        
-        // Convert sheet to array of arrays format for Handsontable
-        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-        console.log(`📊 Sheet has ${jsonData.length} rows, ${jsonData[0]?.length || 0} columns`);
-        
-        // Log first few rows for debugging
-        if (jsonData.length > 0) {
-            console.log('📋 Headers:', jsonData[0]);
-            if (jsonData.length > 1) {
-                console.log('📋 Sample row:', jsonData[1]);
-            }
-        }
-        
-        // Cache it
-        currentEditingFile.loadedSheets.set(sheetName, jsonData);
-        currentEditingFile.currentSheet = sheetName;
-        
-        // Initialize editor
-        initHandsontable(jsonData);
-        hideLoading();
-        showToast(`Sheet "${sheetName}" loaded`, 'success');
-        
-    } catch (error) { 
-        console.error('❌ Error loading sheet:', error);
-        hideLoading(); 
-        showToast('Error loading sheet: ' + error.message, 'error'); 
-    }
-}
-
-function initHandsontable(data) {
-    const container = document.getElementById('excelEditor');
-    
-    if (!container) {
-        console.error('❌ Excel editor container not found');
-        showToast('Editor container not found', 'error');
-        return;
-    }
-    
-    // Destroy existing instance
-    if (hot) {
-        try {
-            hot.destroy();
-        } catch (e) {
-            console.warn('Error destroying previous instance:', e);
-        }
-        hot = null;
-    }
-    
-    // Ensure container is visible and has dimensions
-    container.style.height = '500px';
-    container.style.width = '100%';
-    container.innerHTML = ''; // Clear any previous content
-    
-    // Small delay to ensure DOM is ready
-    setTimeout(() => {
-        try {
-            console.log('📊 Initializing Handsontable with', data.length, 'rows');
-            
-            // Check if Handsontable is available
-            if (typeof Handsontable === 'undefined') {
-                throw new Error('Handsontable library not loaded');
-            }
-            
-            // Create new instance
-            hot = new Handsontable(container, {
-                data: data,
-                rowHeaders: true,
-                colHeaders: true,
-                height: '100%',
-                width: '100%',
-                licenseKey: 'non-commercial-and-evaluation',
-                contextMenu: ['row_above', 'row_below', 'remove_row', 'undo', 'redo', 'copy', 'cut', 'alignment'],
-                copyPaste: true,
-                fillHandle: true,
-                undo: true,
-                redo: true,
-                columnSorting: true,
-                filters: true,
-                dropdownMenu: true,
-                manualRowResize: true,
-                manualColumnResize: true,
-                rowHeights: 30,
+                // Reference Number
+                doc.setFontSize(9);
+                doc.setFont('helvetica', 'normal');
+                doc.setTextColor(100, 100, 100);
+                const transcriptRef = `REF: TR/${new Date().getFullYear()}/${Math.floor(Math.random() * 1000)}`;
+                doc.text(transcriptRef, pageWidth - 25, 75, { align: 'right' });
                 
-                // Cell styling
-                cells: function(row, col) {
-                    const cellProperties = {};
-                    const header = data[0]?.[col];
+                // Date
+                const today = new Date();
+                const dateStr = today.toLocaleDateString('en-GB', { 
+                    day: '2-digit', 
+                    month: 'long', 
+                    year: 'numeric' 
+                });
+                doc.text(`Date: ${dateStr}`, 20, 75);
+                
+                // ========== STUDENT INFORMATION ==========
+                const studentName = document.getElementById('studentNameDisplay').innerText;
+                const studentId = document.getElementById('studentIdDisplay').innerText;
+                const avgMark = document.getElementById('averageMarkDisplay').innerText;
+                const overallGrade = document.getElementById('overallGradeDisplay').innerText;
+                const gpa = document.getElementById('gpaValueDisplay').innerText;
+                
+                doc.setFontSize(11);
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor(0, 0, 0);
+                doc.text('STUDENT INFORMATION', 20, 88);
+                
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(10);
+                doc.text(`Student Name: ${studentName}`, 25, 95);
+                doc.text(`Admission Number: ${studentId}`, 25, 102);
+                doc.text(`Programme: Bachelor of Science in Nursing`, 25, 109);
+                doc.text(`Year of Study: ${new Date().getFullYear()}`, 25, 116);
+                
+                // ========== ACADEMIC SUMMARY ==========
+                doc.setFontSize(11);
+                doc.setFont('helvetica', 'bold');
+                doc.text('ACADEMIC SUMMARY', 20, 130);
+                
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(10);
+                doc.text(`Total Examinations: ${document.getElementById('totalExamsCount').innerText}`, 25, 137);
+                doc.text(`Average Mark: ${avgMark}%`, 25, 144);
+                doc.text(`Overall Grade: ${overallGrade}`, 25, 151);
+                doc.text(`Grade Point Average (GPA): ${gpa}`, 25, 158);
+                
+                // ========== RESULTS TABLE ==========
+                const tableHeaders = [['Exam', 'Marks', 'Grade', 'Points', 'Status']];
+                const tableData = [];
+                
+                currentTranscriptData.forEach(result => {
+                    let marks = '-';
+                    let markNum = 0;
                     
-                    // Style header row
-                    if (row === 0) {
-                        cellProperties.className = 'htCenter font-bold bg-gray-100';
-                        cellProperties.readOnly = true; // Make headers read-only
-                    }
-                    
-                    // Color code numeric columns that might be marks
-                    if (row > 0 && header && typeof header === 'string') {
-                        const headerLower = header.toLowerCase();
-                        if (headerLower.includes('cat') || 
-                            headerLower.includes('ebe') || 
-                            headerLower.includes('final') || 
-                            headerLower.includes('mark') ||
-                            headerLower.includes('total') ||
-                            headerLower.includes('score')) {
-                            
-                            cellProperties.type = 'numeric';
-                            cellProperties.numericFormat = { pattern: '0.00' };
-                            
-                            cellProperties.renderer = function(instance, td, row, col, prop, value) {
-                                Handsontable.renderers.NumericRenderer.apply(this, arguments);
-                                const num = parseFloat(value);
+                    if (result.rowData) {
+                        const candidates = [
+                            result.rowData['FINAL MARKS %'],
+                            result.rowData['FINALMARKS'],
+                            result.rowData['FINAL'],
+                            result.rowData['FINAL MARKS'],
+                            result.rowData['Final Marks'],
+                            result.rowData['Total'],
+                            result.rowData['MARKS'],
+                            result.rowData['Marks'],
+                            result.rowData['FINAL MARK'],
+                            result.rowData['Final Mark'],
+                            result.rowData['EBE (x/70)'],
+                            result.rowData['EBE'],
+                            result.rowData['EXAM MARK']
+                        ];
+                        
+                        for (const candidate of candidates) {
+                            if (candidate !== undefined && candidate !== null && candidate !== '') {
+                                const num = parseFloat(candidate);
                                 if (!isNaN(num)) {
-                                    if (num >= 85) td.style.background = '#ede9fe';
-                                    else if (num >= 75) td.style.background = '#d1fae5';
-                                    else if (num >= 60) td.style.background = '#fed7aa';
-                                    else if (num > 0) td.style.background = '#fee2e2';
+                                    marks = num.toFixed(1);
+                                    markNum = num;
+                                    break;
                                 }
-                                return td;
-                            };
+                            }
+                        }
+                        
+                        if (marks === '-') {
+                            for (const [key, value] of Object.entries(result.rowData)) {
+                                const num = parseFloat(value);
+                                if (!isNaN(num) && num >= 0 && num <= 100) {
+                                    marks = num.toFixed(1);
+                                    markNum = num;
+                                    break;
+                                }
+                            }
                         }
                     }
                     
-                    return cellProperties;
-                },
+                    const grade = getGrade(markNum);
+                    
+                    tableData.push([
+                        result.sheetName || 'General Examination',
+                        marks,
+                        grade.grade,
+                        grade.points.toString(),
+                        grade.status
+                    ]);
+                });
                 
-                // After load complete
-                afterInit: function() {
-                    console.log('✅ Handsontable initialized successfully');
-                },
-                
-                // After change
-                afterChange: function(changes, source) {
-                    if (source === 'edit') {
-                        console.log('📝 Cell edited');
+                doc.autoTable({
+                    head: tableHeaders,
+                    body: tableData,
+                    startY: 170,
+                    theme: 'striped',
+                    headStyles: { 
+                        fillColor: [0, 51, 102],
+                        textColor: [255, 255, 255],
+                        fontStyle: 'bold',
+                        halign: 'center'
+                    },
+                    styles: { 
+                        fontSize: 9,
+                        cellPadding: 4,
+                        lineColor: [200, 200, 200],
+                        lineWidth: 0.1
+                    },
+                    columnStyles: {
+                        0: { cellWidth: 80 },
+                        1: { cellWidth: 30, halign: 'center' },
+                        2: { cellWidth: 20, halign: 'center' },
+                        3: { cellWidth: 20, halign: 'center' },
+                        4: { cellWidth: 35, halign: 'center' }
+                    },
+                    alternateRowStyles: {
+                        fillColor: [245, 245, 245]
                     }
-                }
-            });
-            
-            // Trigger a resize to ensure proper rendering
-            setTimeout(() => {
-                if (hot) {
-                    hot.render();
-                }
-            }, 50);
-            
-        } catch (error) {
-            console.error('❌ Handsontable error:', error);
-            showToast('Error initializing editor: ' + error.message, 'error');
-            hideLoading();
-        }
-    }, 100);
-}
-
-async function saveExcelChanges() {
-    if (!hot || !currentEditingFile) { 
-        showToast('No file open', 'error'); 
-        return; 
-    }
-    
-    showLoading('Saving changes...', false, 20000);
-    
-    try {
-        console.log('💾 Saving changes to:', currentEditingFile.filename);
-        
-        // Get the updated data from Handsontable
-        const updatedData = hot.getData();
-        console.log(`📊 Updated data has ${updatedData.length} rows`);
-        
-        // Create a new worksheet with the updated data
-        const worksheet = XLSX.utils.aoa_to_sheet(updatedData);
-        
-        // Update the workbook
-        currentEditingFile.workbook.Sheets[currentEditingFile.currentSheet] = worksheet;
-        
-        // Convert workbook to base64
-        const excelBuffer = XLSX.write(currentEditingFile.workbook, { bookType: 'xlsx', type: 'base64' });
-        
-        // Update in Supabase
-        const { error } = await supabase
-            .from('shared_excel_files')
-            .update({
-                file_data: excelBuffer, 
-                row_count: updatedData.length - 1,
-                last_edited_at: new Date().toISOString(), 
-                last_edited_by: currentUser.email
-            })
-            .eq('id', currentEditingFile.id);
-        
-        if (error) throw error;
-        
-        // Clear cache for this file
-        sheetCache.delete(currentEditingFile.id);
-        
-        hideLoading(); 
-        showToast('Changes saved successfully!', 'success');
-        
-        // Close editor
-        closeEditor();
-        
-        // Reload data in background
-        setTimeout(() => { 
-            loadSharedFiles(); 
-            loadAllStudentMarks(); 
-        }, 100);
-        
-    } catch (error) { 
-        console.error('❌ Save error:', error);
-        hideLoading(); 
-        showToast('Save failed: ' + error.message, 'error'); 
-    }
-}
-
-async function deleteFile(fileId, filename) {
-    if (currentRole !== 'admin' && currentRole !== 'super_admin') { 
-        showToast('Admins only', 'error'); 
-        return; 
-    }
-    
-    if (!confirm(`⚠️ Delete "${filename}"?\nThis CANNOT be undone!`)) return;
-    
-    showLoading('Deleting file...', false, 10000);
-    
-    try {
-        console.log('🗑️ Deleting file:', filename);
-        
-        const { error } = await supabase
-            .from('shared_excel_files')
-            .delete()
-            .eq('id', fileId);
-        
-        if (error) throw error;
-        
-        // Remove from cache
-        sheetCache.delete(fileId);
-        
-        hideLoading(); 
-        showToast('File deleted successfully', 'success');
-        
-        // Reload data
-        await loadSharedFiles(); 
-        await loadAllStudentMarks();
-        
-    } catch (error) { 
-        console.error('❌ Delete error:', error);
-        hideLoading(); 
-        showToast('Delete failed: ' + error.message, 'error'); 
-    }
-}
-
-function closeEditor() {
-    console.log('Closing editor');
-    document.getElementById('excelEditorSection').classList.add('hidden');
-    document.getElementById('sheetSelector').innerHTML = '';
-    
-    if (hot) {
-        try {
-            hot.destroy();
-        } catch (e) {
-            console.warn('Error destroying editor:', e);
-        }
-        hot = null;
-    }
-    
-    currentEditingFile = null;
-}
-
-        // ========== VIEW FILE ==========
-        async function viewFile(fileId) {
-            closeEditor();
-            const file = sharedFiles.find(f => f.id === fileId);
-            if (!file || !file.file_data) { 
-                showToast('File not found', 'error'); 
-                return; 
-            }
-            
-            showLoading('Loading file...', false, 10000);
-            
-            try {
-                const binaryData = atob(file.file_data);
-                const array = new Uint8Array(binaryData.length);
-                for (let i = 0; i < binaryData.length; i++) array[i] = binaryData.charCodeAt(i);
+                });
                 
-                const workbook = XLSX.read(array, { type: 'array' });
+                // ========== GRADING SCALE ==========
+                const finalY = doc.lastAutoTable.finalY + 10;
                 
-                const sheetTabs = workbook.SheetNames.map((sheet, i) => 
-                    `<button onclick="viewSheet('${fileId}', '${sheet}')" 
-                        class="viewer-tab px-3 py-1.5 rounded-lg text-xs font-medium transition 
-                        ${i === 0 ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">
-                        ${sheet.length > 15 ? sheet.substr(0,12)+'...' : sheet}
-                    </button>`
-                ).join('');
+                doc.setFontSize(11);
+                doc.setFont('helvetica', 'bold');
+                doc.text('GRADING SCALE', 20, finalY);
                 
-                document.getElementById('sheetViewerSelector').innerHTML = sheetTabs;
-                document.getElementById('viewingFileName').innerText = file.filename;
+                doc.autoTable({
+                    startY: finalY + 5,
+                    head: [['Marks Range', 'Grade', 'Points', 'Status']],
+                    body: [
+                        ['85 - 100', 'A', '4', 'DISTINCTION'],
+                        ['75 - 84', 'B', '3', 'CREDIT'],
+                        ['60 - 74', 'C', '2', 'PASS'],
+                        ['0 - 59', 'D', '0', 'FAIL']
+                    ],
+                    theme: 'grid',
+                    headStyles: { fillColor: [100, 100, 100] },
+                    styles: { fontSize: 9, halign: 'center' },
+                    margin: { left: 20, right: 20 }
+                });
                 
-                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                const htmlString = XLSX.utils.sheet_to_html(firstSheet);
+                // ========== AUTHORIZATION ==========
+                const authY = doc.lastAutoTable.finalY + 15;
                 
-                const styledHtml = htmlString.replace(
-                    '<table>',
-                    '<table class="excel-viewer-table">'
-                ).replace(
-                    /<td/g,
-                    '<td class="border border-gray-200 px-3 py-2"'
-                ).replace(
-                    /<th/g,
-                    '<th class="bg-blue-900 text-white px-3 py-2 font-semibold"'
-                );
+                // Signature line
+                doc.line(40, authY, 90, authY);
+                doc.line(140, authY, 190, authY);
                 
-                document.getElementById('excelViewer').innerHTML = styledHtml;
-                document.getElementById('excelViewerSection').classList.remove('hidden');
+                doc.setFontSize(10);
+                doc.setFont('helvetica', 'normal');
+                doc.text('Head of Nursing Department', 40, authY + 5);
+                doc.text('Registrar (Academics)', 140, authY + 5);
                 
-                window.currentViewingFile = { workbook };
+                // Date line
+                doc.text(`Date: ${dateStr}`, 40, authY + 12);
+                doc.text(`Date: ${dateStr}`, 140, authY + 12);
+                
+                // ========== FOOTER ==========
+                doc.setFontSize(8);
+                doc.setTextColor(100, 100, 100);
+                doc.setFont('helvetica', 'italic');
+                doc.text(COLLEGE_FOOTER, pageWidth / 2, pageHeight - 15, { align: 'center' });
+                
+                // Bottom border
+                doc.setDrawColor(0, 51, 102);
+                doc.setLineWidth(0.5);
+                doc.line(20, pageHeight - 20, pageWidth - 20, pageHeight - 20);
+                
                 hideLoading();
+                doc.save(`NCHSN_Transcript_${studentId}.pdf`);
+                showToast('Official Transcript generated successfully', 'success');
                 
-            } catch (error) { 
-                console.error('Error viewing file:', error);
-                hideLoading(); 
-                showToast('Error viewing file', 'error'); 
+            } catch (error) {
+                console.error('PDF Error:', error);
+                hideLoading();
+                showToast('Error generating PDF: ' + error.message, 'error');
             }
         }
 
-        function viewSheet(fileId, sheetName) {
-            if (!window.currentViewingFile) return;
+        // ========== PRINT OFFICIAL TRANSCRIPT ==========
+        function printOfficialTranscript() {
+            if (!currentTranscriptData || currentTranscriptData.length === 0) {
+                showToast('No transcript data available', 'error');
+                return;
+            }
             
-            document.querySelectorAll('.viewer-tab').forEach(tab => {
-                const isActive = tab.innerText.includes(sheetName) || tab.innerText === sheetName;
-                tab.className = `viewer-tab px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                    isActive ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`;
+            const studentName = document.getElementById('studentNameDisplay').innerText;
+            const studentId = document.getElementById('studentIdDisplay').innerText;
+            const avgMark = document.getElementById('averageMarkDisplay').innerText;
+            const overallGrade = document.getElementById('overallGradeDisplay').innerText;
+            const gpa = document.getElementById('gpaValueDisplay').innerText;
+            const totalExams = document.getElementById('totalExamsCount').innerText;
+            const today = new Date().toLocaleDateString('en-GB', { 
+                day: '2-digit', 
+                month: 'long', 
+                year: 'numeric' 
             });
             
-            const worksheet = window.currentViewingFile.workbook.Sheets[sheetName];
-            const htmlString = XLSX.utils.sheet_to_html(worksheet);
-            
-            const styledHtml = htmlString.replace(
-                '<table>',
-                '<table class="excel-viewer-table">'
-            ).replace(
-                /<td/g,
-                '<td class="border border-gray-200 px-3 py-2"'
-            ).replace(
-                /<th/g,
-                '<th class="bg-blue-900 text-white px-3 py-2 font-semibold"'
-            );
-            
-            document.getElementById('excelViewer').innerHTML = styledHtml;
-        }
-
-        function handleExcelUpload(input) {
-            if (!input.files?.[0]) return;
-            const file = input.files[0];
-            showLoading('Reading...', false, 10000);
-            
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, { type: 'array' });
-                    const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
+            let tableRows = '';
+            currentTranscriptData.forEach(result => {
+                let marks = '-';
+                let markNum = 0;
+                
+                if (result.rowData) {
+                    const candidates = [
+                        result.rowData['FINAL MARKS %'],
+                        result.rowData['FINALMARKS'],
+                        result.rowData['FINAL'],
+                        result.rowData['FINAL MARKS'],
+                        result.rowData['Final Marks'],
+                        result.rowData['Total'],
+                        result.rowData['MARKS'],
+                        result.rowData['Marks']
+                    ];
                     
-                    let preview = `<div class="mb-2 text-xs text-gray-600">📑 ${workbook.SheetNames.length} sheet(s)</div>`;
-                    preview += '<table class="data-table"><thead><tr>';
-                    if (jsonData[0]) {
-                        jsonData[0].slice(0, 8).forEach(h => preview += `<th class="text-xs">${h || 'Col'}</th>`);
-                        if (jsonData[0].length > 8) preview += '<th>...</th>';
-                    }
-                    preview += '</tr></thead><tbody>';
-                    
-                    for (let i = 1; i < Math.min(4, jsonData.length); i++) {
-                        preview += '<tr>';
-                        if (jsonData[i]) {
-                            jsonData[i].slice(0, 8).forEach(c => preview += `<td class="text-xs">${c || '-'}</td>`);
-                            if (jsonData[i].length > 8) preview += '<td>...</td>';
+                    for (const candidate of candidates) {
+                        if (candidate !== undefined && candidate !== null && candidate !== '') {
+                            const num = parseFloat(candidate);
+                            if (!isNaN(num)) {
+                                marks = num.toFixed(1);
+                                markNum = num;
+                                break;
+                            }
                         }
-                        preview += '</tr>';
                     }
-                    preview += '</tbody></table>';
-                    
-                    document.getElementById('filePreview').innerHTML = preview;
-                    document.getElementById('filePreviewSection').classList.remove('hidden');
-                    window.currentUploadData = { workbook, fileName: file.name, rowCount: jsonData.length - 1 };
-                    hideLoading(); 
-                    showToast('Ready to publish', 'success');
-                    
-                } catch (error) { 
-                    hideLoading(); 
-                    showToast('Error reading file', 'error'); 
                 }
-            };
-            reader.readAsArrayBuffer(file);
+                
+                const grade = getGrade(markNum);
+                
+                tableRows += `
+                    <tr>
+                        <td>${result.sheetName || 'General Examination'}</td>
+                        <td class="center">${marks}</td>
+                        <td class="center grade-${grade.grade.toLowerCase()}">${grade.grade}</td>
+                        <td class="center">${grade.points}</td>
+                        <td class="center">${grade.status}</td>
+                    </tr>
+                `;
+            });
+            
+            const printContent = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Official Transcript - ${studentName}</title>
+                    <style>
+                        body {
+                            font-family: 'Times New Roman', Times, serif;
+                            margin: 0;
+                            padding: 20px;
+                            background: white;
+                        }
+                        .letterhead {
+                            text-align: center;
+                            margin-bottom: 20px;
+                            border-bottom: 2px solid #003366;
+                            padding-bottom: 10px;
+                        }
+                        .college-name {
+                            font-size: 24px;
+                            font-weight: bold;
+                            color: #003366;
+                            margin: 0;
+                            line-height: 1.2;
+                        }
+                        .college-sub {
+                            font-size: 20px;
+                            font-weight: bold;
+                            color: #0066cc;
+                            margin: 0;
+                        }
+                        .motto {
+                            font-size: 12px;
+                            font-style: italic;
+                            color: #666;
+                            margin: 5px 0;
+                        }
+                        .address {
+                            font-size: 10px;
+                            color: #444;
+                            margin: 2px 0;
+                        }
+                        .title {
+                            font-size: 18px;
+                            font-weight: bold;
+                            color: #003366;
+                            text-align: center;
+                            margin: 20px 0;
+                            text-transform: uppercase;
+                        }
+                        .info-section {
+                            margin: 20px 0;
+                            padding: 15px;
+                            background: #f5f5f5;
+                            border-radius: 5px;
+                        }
+                        .info-row {
+                            display: flex;
+                            margin: 5px 0;
+                            font-size: 12px;
+                        }
+                        .info-label {
+                            font-weight: bold;
+                            width: 150px;
+                        }
+                        .info-value {
+                            flex: 1;
+                        }
+                        table {
+                            width: 100%;
+                            border-collapse: collapse;
+                            margin: 20px 0;
+                            font-size: 11px;
+                        }
+                        th {
+                            background: #003366;
+                            color: white;
+                            padding: 10px;
+                            font-weight: bold;
+                            text-align: left;
+                        }
+                        td {
+                            padding: 8px 10px;
+                            border-bottom: 1px solid #ddd;
+                        }
+                        tr:nth-child(even) {
+                            background: #f9f9f9;
+                        }
+                        .center {
+                            text-align: center;
+                        }
+                        .grade-a { color: #4F46E5; font-weight: bold; }
+                        .grade-b { color: #059669; font-weight: bold; }
+                        .grade-c { color: #D97706; font-weight: bold; }
+                        .grade-d { color: #DC2626; font-weight: bold; }
+                        .grading-scale {
+                            margin: 30px 0;
+                            font-size: 11px;
+                        }
+                        .grading-scale table {
+                            width: 50%;
+                            margin: 10px 0;
+                        }
+                        .signature-section {
+                            margin-top: 50px;
+                            display: flex;
+                            justify-content: space-between;
+                        }
+                        .signature-line {
+                            width: 200px;
+                            border-top: 1px solid black;
+                            margin-top: 30px;
+                            padding-top: 5px;
+                            text-align: center;
+                        }
+                        .footer {
+                            margin-top: 30px;
+                            text-align: center;
+                            font-size: 9px;
+                            color: #666;
+                            border-top: 1px solid #003366;
+                            padding-top: 10px;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="letterhead">
+                        <div class="college-name">NAKURU COLLEGE OF HEALTH SCIENCES</div>
+                        <div class="college-sub">& MANAGEMENT</div>
+                        <div class="motto">Excellence in Health Training, Research & Professional Development</div>
+                        <div class="address">Kiamunyi Campus | P.O. Box 12906 – 20100, Nakuru | Tel: 0745 215594 | 0703 345771 | 0103614355</div>
+                        <div class="address">Email: info@nakurucollegeofhealth.ac.ke | Website: www.nakurucollegeofhealth.ac.ke</div>
+                    </div>
+                    
+                    <div class="title">OFFICIAL ACADEMIC TRANSCRIPT</div>
+                    
+                    <div class="info-section">
+                        <div class="info-row">
+                            <span class="info-label">Student Name:</span>
+                            <span class="info-value">${studentName}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Admission Number:</span>
+                            <span class="info-value">${studentId}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Programme:</span>
+                            <span class="info-value">Bachelor of Science in Nursing</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Date:</span>
+                            <span class="info-value">${today}</span>
+                        </div>
+                    </div>
+                    
+                    <h3>ACADEMIC SUMMARY</h3>
+                    <div class="info-section">
+                        <div class="info-row">
+                            <span class="info-label">Total Examinations:</span>
+                            <span class="info-value">${totalExams}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Average Mark:</span>
+                            <span class="info-value">${avgMark}%</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Overall Grade:</span>
+                            <span class="info-value">${overallGrade}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">GPA:</span>
+                            <span class="info-value">${gpa}</span>
+                        </div>
+                    </div>
+                    
+                    <h3>EXAMINATION RESULTS</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Examination</th>
+                                <th class="center">Marks (%)</th>
+                                <th class="center">Grade</th>
+                                <th class="center">Points</th>
+                                <th class="center">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${tableRows}
+                        </tbody>
+                    </table>
+                    
+                    <div class="grading-scale">
+                        <h3>GRADING SCALE</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Marks Range</th>
+                                    <th>Grade</th>
+                                    <th>Points</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr><td>85 - 100</td><td class="grade-a">A</td><td class="center">4</td><td>DISTINCTION</td></tr>
+                                <tr><td>75 - 84</td><td class="grade-b">B</td><td class="center">3</td><td>CREDIT</td></tr>
+                                <tr><td>60 - 74</td><td class="grade-c">C</td><td class="center">2</td><td>PASS</td></tr>
+                                <tr><td>0 - 59</td><td class="grade-d">D</td><td class="center">0</td><td>FAIL</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="signature-section">
+                        <div class="signature-line">
+                            Head of Nursing Department<br>
+                            Date: ${today}
+                        </div>
+                        <div class="signature-line">
+                            Registrar (Academics)<br>
+                            Date: ${today}
+                        </div>
+                    </div>
+                    
+                    <div class="footer">
+                        Accredited & Registered Institution | Committed to Academic Excellence | © 2026 Nakuru College of Health Sciences & Management
+                    </div>
+                </body>
+                </html>
+            `;
+            
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(printContent);
+            printWindow.document.close();
+            printWindow.focus();
+            printWindow.print();
         }
 
-        async function publishFile() {
-            if (!window.currentUploadData) { 
-                showToast('No file', 'error'); 
-                return; 
+        // ========== EXCEL TRANSCRIPT ==========
+        function downloadTranscriptExcel() {
+            if (!currentTranscriptData || currentTranscriptData.length === 0) {
+                showToast('No transcript data available', 'error');
+                return;
             }
-            showLoading('Publishing...', false, 20000);
             
             try {
-                const { workbook, fileName, rowCount } = window.currentUploadData;
-                const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'base64' });
+                const studentName = document.getElementById('studentNameDisplay').innerText;
+                const studentId = document.getElementById('studentIdDisplay').innerText;
+                const avgMark = document.getElementById('averageMarkDisplay').innerText;
+                const overallGrade = document.getElementById('overallGradeDisplay').innerText;
+                const gpa = document.getElementById('gpaValueDisplay').innerText;
+                const totalExams = document.getElementById('totalExamsCount').innerText;
                 
-                const { error } = await supabase
-                    .from('shared_excel_files')
-                    .insert([{
-                        filename: `PROV_${Date.now()}_${fileName}`, 
-                        file_data: excelBuffer, 
-                        row_count: rowCount,
-                        uploaded_by: currentUser.id, 
-                        uploaded_by_email: currentUser.email, 
-                        uploaded_at: new Date().toISOString()
-                    }]);
+                const wsData = [
+                    ['NAKURU COLLEGE OF HEALTH SCIENCES & MANAGEMENT'],
+                    ['OFFICIAL ACADEMIC TRANSCRIPT'],
+                    [''],
+                    ['Student Name:', studentName, 'Admission No:', studentId],
+                    ['Programme:', 'Bachelor of Science in Nursing', 'Date:', new Date().toLocaleDateString()],
+                    [''],
+                    ['ACADEMIC SUMMARY'],
+                    ['Total Examinations:', totalExams, 'Average Mark:', avgMark + '%'],
+                    ['Overall Grade:', overallGrade, 'GPA:', gpa],
+                    [''],
+                    ['EXAMINATION RESULTS'],
+                    ['Exam', 'Marks', 'Grade', 'Points', 'Status']
+                ];
                 
-                if (error) throw error;
+                currentTranscriptData.forEach(result => {
+                    let marks = '-';
+                    let markNum = 0;
+                    
+                    if (result.rowData) {
+                        const candidates = [
+                            result.rowData['FINAL MARKS %'],
+                            result.rowData['FINALMARKS'],
+                            result.rowData['FINAL'],
+                            result.rowData['FINAL MARKS'],
+                            result.rowData['Final Marks'],
+                            result.rowData['Total'],
+                            result.rowData['MARKS'],
+                            result.rowData['Marks']
+                        ];
+                        
+                        for (const candidate of candidates) {
+                            if (candidate !== undefined && candidate !== null && candidate !== '') {
+                                const num = parseFloat(candidate);
+                                if (!isNaN(num)) {
+                                    marks = num.toFixed(1);
+                                    markNum = num;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    
+                    const grade = getGrade(markNum);
+                    
+                    wsData.push([
+                        result.sheetName || 'General Examination',
+                        marks,
+                        grade.grade,
+                        grade.points.toString(),
+                        grade.status
+                    ]);
+                });
                 
-                hideLoading(); 
-                showToast('Published!', 'success');
-                closeFilePreview();
-                setTimeout(() => { 
-                    loadSharedFiles(); 
-                    loadAllStudentMarks(); 
-                }, 100);
+                wsData.push([]);
+                wsData.push(['GRADING SCALE']);
+                wsData.push(['Marks Range', 'Grade', 'Points', 'Status']);
+                wsData.push(['85 - 100', 'A', '4', 'DISTINCTION']);
+                wsData.push(['75 - 84', 'B', '3', 'CREDIT']);
+                wsData.push(['60 - 74', 'C', '2', 'PASS']);
+                wsData.push(['0 - 59', 'D', '0', 'FAIL']);
                 
-            } catch (error) { 
-                hideLoading(); 
-                showToast('Publish failed', 'error'); 
+                const wb = XLSX.utils.book_new();
+                const ws = XLSX.utils.aoa_to_sheet(wsData);
+                
+                // Style the worksheet
+                ws['!cols'] = [
+                    { wch: 40 }, // Exam
+                    { wch: 10 }, // Marks
+                    { wch: 8 },  // Grade
+                    { wch: 8 },  // Points
+                    { wch: 15 }  // Status
+                ];
+                
+                XLSX.utils.book_append_sheet(wb, ws, 'Official Transcript');
+                XLSX.writeFile(wb, `NCHSN_Official_Transcript_${studentId}.xlsx`);
+                
+                showToast('Official Excel transcript downloaded', 'success');
+                
+            } catch (error) {
+                console.error('Excel Error:', error);
+                showToast('Error generating Excel', 'error');
             }
         }
-
-        function clearSearch() {
-            document.getElementById('studentSearchInput').value = '';
-            document.getElementById('studentResultsContainer').classList.add('hidden');
-            currentTranscriptData = null;
-        }
-        
-        function closeEditor() {
-            document.getElementById('excelEditorSection').classList.add('hidden');
-            document.getElementById('sheetSelector').innerHTML = '';
-            if (hot) { hot.destroy(); hot = null; }
-            currentEditingFile = null;
-        }
-        
-        function closeViewer() {
-            document.getElementById('excelViewerSection').classList.add('hidden');
-            document.getElementById('excelViewer').innerHTML = '';
-            document.getElementById('sheetViewerSelector').innerHTML = '';
-            window.currentViewingFile = null;
-        }
-        
-        function closeFilePreview() {
-            document.getElementById('filePreviewSection').classList.add('hidden');
-            document.getElementById('excelUpload').value = '';
-            window.currentUploadData = null;
-        }
-        
-        function logout() {
-            currentUser = null; 
-            currentRole = null;
-            document.getElementById('mainPortal').classList.add('hidden');
-            document.getElementById('loginScreen').classList.remove('hidden');
-            closeEditor(); 
-            closeViewer(); 
-            closeFilePreview();
-            currentTranscriptData = null;
-        }
-        
-        window.onload = () => {
-            console.log('🚀 NCHSN PORTAL - COMPLETE WITH NEW GRADING SYSTEM');
-            console.log('🔗 Supabase URL:', SUPABASE_URL);
-        };
     </script>
 </body>
 </html>
