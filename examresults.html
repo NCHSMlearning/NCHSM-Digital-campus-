@@ -621,163 +621,166 @@
             } catch (error) { hideLoading(); showToast(error.message, 'error'); }
         }
 
-        // ========== LOAD DATA - OPTIMIZED WITH CHUNKING ==========
-        async function loadAllStudentMarks() {
-            if (isProcessing) {
-                processingQueue.push(loadAllStudentMarks);
-                return;
-            }
+        
+             // ========== LOAD DATA - OPTIMIZED WITH CHUNKING ==========
+async function loadAllStudentMarks() {
+    if (isProcessing) {
+        processingQueue.push(loadAllStudentMarks);
+        return;
+    }
+    
+    isProcessing = true;
+    showLoading('Loading data...', true, 60000);
+    
+    try {
+        const { data: files, error } = await supabase
+            .from('shared_excel_files').select('*').order('uploaded_at', { ascending: false });
+        if (error) throw error;
+        
+        sharedFiles = files || [];
+        allStudentMarks = [];
+        studentIndex.clear();
+        
+        const chunkSize = 2; // Process 2 files at a time
+        for (let i = 0; i < sharedFiles.length; i += chunkSize) {
+            const chunk = sharedFiles.slice(i, i + chunkSize);
+            updateProgress((i / sharedFiles.length) * 100);
+            document.getElementById('loadingMessage').innerText = `Processing files ${i+1}-${Math.min(i+chunkSize, sharedFiles.length)} of ${sharedFiles.length}`;
             
-            isProcessing = true;
-            showLoading('Loading data...', true, 60000);
-            
-            try {
-                const { data: files, error } = await supabase
-                    .from('shared_excel_files').select('*').order('uploaded_at', { ascending: false });
-                if (error) throw error;
+            await Promise.all(chunk.map(async (file) => {
+                if (!file.file_data) return;
                 
-                sharedFiles = files || [];
-                allStudentMarks = [];
-                studentIndex.clear();
+                await new Promise(resolve => setTimeout(resolve, 0)); // Yield to UI
                 
-                const chunkSize = 2; // Process 2 files at a time
-                for (let i = 0; i < sharedFiles.length; i += chunkSize) {
-                    const chunk = sharedFiles.slice(i, i + chunkSize);
-                    updateProgress((i / sharedFiles.length) * 100);
-                    document.getElementById('loadingMessage').innerText = `Processing files ${i+1}-${Math.min(i+chunkSize, sharedFiles.length)} of ${sharedFiles.length}`;
+                try {
+                    const binaryData = atob(file.file_data);
+                    const array = new Uint8Array(binaryData.length);
+                    for (let j = 0; j < binaryData.length; j++) array[j] = binaryData.charCodeAt(j);
                     
-                    await Promise.all(chunk.map(async (file) => {
-                        if (!file.file_data) return;
+                    const workbook = XLSX.read(array, { type: 'array' });
+                    
+                    workbook.SheetNames.forEach(sheetName => {
+                        const worksheet = workbook.Sheets[sheetName];
+                        const jsonData = XLSX.utils.sheet_to_json(worksheet);
                         
-                        await new Promise(resolve => setTimeout(resolve, 0)); // Yield to UI
-                        
-                        try {
-                            const binaryData = atob(file.file_data);
-                            const array = new Uint8Array(binaryData.length);
-                            for (let j = 0; j < binaryData.length; j++) array[j] = binaryData.charCodeAt(j);
+                        jsonData.forEach((row, idx) => {
+                            // Try ALL possible column name variations
+                            const admissionNo = 
+                                row['Admission No.'] || 
+                                row['Admission'] || 
+                                row['S/N'] || 
+                                row['SN'] || 
+                                row['No.'] || 
+                                row['ID'] || 
+                                row['Student ID'] || 
+                                '';
                             
-                            const workbook = XLSX.read(array, { type: 'array' });
+                            const studentName = 
+                                row['Student Name'] || 
+                                row['Name'] || 
+                                row['STUDENT_NAME'] || 
+                                row['StudentName'] || 
+                                row['Full Name'] || 
+                                '';
                             
-                            workbook.SheetNames.forEach(sheetName => {
-                                const worksheet = workbook.Sheets[sheetName];
-                                const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                            // PHARMACOLOGY SPECIFIC - Handle multiple CAT columns
+                            let cat = '';
+                            if (row['AVERAGE CAT']) {
+                                cat = row['AVERAGE CAT'];  // Use average if available
+                            } else if (row['CAT1(x/30)'] && row['CAT 2 (x/30)']) {
+                                // Calculate average of two CATs
+                                const cat1 = parseFloat(row['CAT1(x/30)']) || 0;
+                                const cat2 = parseFloat(row['CAT 2 (x/30)']) || 0;
+                                cat = ((cat1 + cat2) / 2).toFixed(1);
+                            } else {
+                                cat = row['CAT'] || row['Cat'] || row['cat'] || row['CAT MARKS'] || '';
+                            }
+                            
+                            // PHARMACOLOGY SPECIFIC - Handle EBE with denominator
+                            let ebe = '';
+                            if (row['EBE (x/70)']) {
+                                // If it's out of 70, convert to percentage for consistency
+                                const ebeValue = parseFloat(row['EBE (x/70)']) || 0;
+                                ebe = ((ebeValue / 70) * 100).toFixed(1) + '%';
+                            } else {
+                                ebe = row['EBE'] || row['Ebe'] || row['ebe'] || row['Exam'] || '';
+                            }
+                            
+                            // FINAL MARKS - Handle percentage format
+                            let finalMarks = '';
+                            if (row['FINAL MARKS %']) {
+                                finalMarks = row['FINAL MARKS %'];
+                            } else {
+                                finalMarks = row['FINALMARKS'] || row['FinalMarks'] || row['FINAL'] || 
+                                             row['FINAL MARKS'] || row['Final Mark'] || row['Total'] || '';
+                            }
+                            
+                            const remarks = 
+                                row['REMARKS'] || 
+                                row['Remarks'] || 
+                                row['remarks'] || 
+                                row['Comment'] || 
+                                '';
+                            
+                            if (admissionNo || studentName) {
+                                const record = {
+                                    id: `${file.id}_${sheetName}_${idx}`,
+                                    fileId: file.id,
+                                    filename: file.filename,
+                                    sheetName,
+                                    admissionNo: admissionNo.toString().trim(),
+                                    studentName: studentName.toString().trim(),
+                                    cat: cat.toString().trim(),
+                                    ebe: ebe.toString().trim(),
+                                    finalMarks: finalMarks.toString().trim(),
+                                    remarks: remarks.toString().trim(),
+                                    uploadedBy: file.uploaded_by_email,
+                                    uploadedAt: file.uploaded_at
+                                };
+                                allStudentMarks.push(record);
                                 
-                                jsonData.forEach((row, idx) => {
-                                    // Try ALL possible column name variations
-                                    const admissionNo = 
-                                        row['Admission No.'] || 
-                                        row['Admission'] || 
-                                        row['S/N'] || 
-                                        row['SN'] || 
-                                        row['No.'] || 
-                                        row['ID'] || 
-                                        row['Student ID'] || 
-                                        row['STUDENT_ID'] || 
-                                        '';
-                                    
-                                    const studentName = 
-                                        row['Student Name'] || 
-                                        row['Name'] || 
-                                        row['STUDENT_NAME'] || 
-                                        row['StudentName'] || 
-                                        row['Full Name'] || 
-                                        '';
-                                    
-                                    const cat = 
-                                        row['CAT'] || 
-                                        row['Cat'] || 
-                                        row['cat'] || 
-                                        row['CAT MARKS'] || 
-                                        row['CAT Marks'] || 
-                                        row['Continuous Assessment'] || 
-                                        '';
-                                    
-                                    const ebe = 
-                                        row['EBE'] || 
-                                        row['Ebe'] || 
-                                        row['ebe'] || 
-                                        row['Exam'] || 
-                                        row['EXAM'] || 
-                                        row['EXAM MARK'] || 
-                                        row['Exam Mark'] || 
-                                        '';
-                                    
-                                    const finalMarks = 
-                                        row['FINALMARKS'] || 
-                                        row['FinalMarks'] || 
-                                        row['FINAL'] || 
-                                        row['FINAL MARKS'] || 
-                                        row['Final Mark'] || 
-                                        row['Total'] || 
-                                        row['TOTAL'] || 
-                                        row['Marks'] || 
-                                        row['marks'] || 
-                                        '';
-                                    
-                                    const remarks = 
-                                        row['REMARKS'] || 
-                                        row['Remarks'] || 
-                                        row['remarks'] || 
-                                        row['Comment'] || 
-                                        row['COMMENT'] || 
-                                        '';
-                                    
-                                    if (admissionNo || studentName) {
-                                        const record = {
-                                            id: `${file.id}_${sheetName}_${idx}`,
-                                            fileId: file.id,
-                                            filename: file.filename,
-                                            sheetName,
-                                            admissionNo: admissionNo.toString().trim(),
-                                            studentName: studentName.toString().trim(),
-                                            cat: cat.toString().trim(),
-                                            ebe: ebe.toString().trim(),
-                                            finalMarks: finalMarks.toString().trim(),
-                                            remarks: remarks.toString().trim(),
-                                            uploadedBy: file.uploaded_by_email,
-                                            uploadedAt: file.uploaded_at
-                                        };
-                                        allStudentMarks.push(record);
-                                        
-                                        // Index for O(1) search - index by both ID and Name
-                                        const idKey = admissionNo.toString().trim().toLowerCase();
-                                        if (idKey && !studentIndex.has(idKey)) studentIndex.set(idKey, []);
-                                        if (idKey) studentIndex.get(idKey).push(record);
-                                        
-                                        const nameKey = studentName.toString().trim().toLowerCase();
-                                        if (nameKey && !studentIndex.has(nameKey)) studentIndex.set(nameKey, []);
-                                        if (nameKey) studentIndex.get(nameKey).push(record);
-                                    }
-                                });
-                            });
-                        } catch (e) { console.error('Error parsing file:', file.filename, e); }
-                    }));
+                                // Index for O(1) search - index by both ID and Name
+                                const idKey = admissionNo.toString().trim().toLowerCase();
+                                if (idKey && !studentIndex.has(idKey)) studentIndex.set(idKey, []);
+                                if (idKey) studentIndex.get(idKey).push(record);
+                                
+                                const nameKey = studentName.toString().trim().toLowerCase();
+                                if (nameKey && !studentIndex.has(nameKey)) studentIndex.set(nameKey, []);
+                                if (nameKey) studentIndex.get(nameKey).push(record);
+                            }
+                        });
+                    });
+                } catch (e) { 
+                    console.error('Error parsing file:', file.filename, e); 
+                    // Continue with next file even if this one fails
                 }
-                
-                updateProgress(100);
-                document.getElementById('totalFilesStats').innerText = sharedFiles.length;
-                document.getElementById('totalRecordsStats').innerText = allStudentMarks.length;
-                
-                updateCharts();
-                
-                const { data: staff } = await supabase.from('consolidated_user_profiles_table').select('role');
-                if (staff) document.getElementById('totalStaffStats').innerText = staff.length;
-                
-                hideLoading();
-                showToast(`Loaded ${allStudentMarks.length} records`, 'success');
-                
-            } catch (error) {
-                hideLoading();
-                console.error('Error:', error);
-                showToast('Error loading data', 'error');
-            } finally {
-                isProcessing = false;
-                if (processingQueue.length) {
-                    const next = processingQueue.shift();
-                    setTimeout(next, 100);
-                }
-            }
+            }));
         }
+        
+        updateProgress(100);
+        document.getElementById('totalFilesStats').innerText = sharedFiles.length;
+        document.getElementById('totalRecordsStats').innerText = allStudentMarks.length;
+        
+        updateCharts();
+        
+        const { data: staff } = await supabase.from('consolidated_user_profiles_table').select('role');
+        if (staff) document.getElementById('totalStaffStats').innerText = staff.length;
+        
+        hideLoading();
+        showToast(`Loaded ${allStudentMarks.length} records from ${sharedFiles.length} files`, 'success');
+        
+    } catch (error) {
+        hideLoading();
+        console.error('Error:', error);
+        showToast('Error loading data: ' + error.message, 'error');
+    } finally {
+        isProcessing = false;
+        if (processingQueue.length) {
+            const next = processingQueue.shift();
+            setTimeout(next, 100);
+        }
+    }
+}
 
         // ========== UPDATE CHARTS ==========
         function updateCharts() {
