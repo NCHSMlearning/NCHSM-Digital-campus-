@@ -24,6 +24,10 @@
     <!-- Chart.js for Graphs -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     
+    <!-- jsPDF for PDF Transcript -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    
     <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8/dist/umd/supabase.min.js"></script>
     
@@ -35,7 +39,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0,0,0,0.8);
+            background: rgba(0,0,0,0.9);
             display: flex;
             justify-content: center;
             align-items: center;
@@ -62,6 +66,19 @@
             margin-top: 15px;
             font-size: 16px;
             font-weight: bold;
+        }
+        
+        .debug-info {
+            color: #00ff00;
+            font-family: monospace;
+            font-size: 12px;
+            margin-top: 10px;
+            background: rgba(0,0,0,0.5);
+            padding: 8px;
+            border-radius: 4px;
+            max-width: 400px;
+            max-height: 200px;
+            overflow-y: auto;
         }
         
         .progress-bar {
@@ -102,7 +119,7 @@
         
         @keyframes slideIn {
             from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(0%); opacity: 1; }
         }
         
         .excel-editor {
@@ -216,14 +233,81 @@
         
         .row-even { background-color: #f9fafb; }
         .row-odd { background-color: white; }
+        
+        .folder-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .folder-btn {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.3s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .folder-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(79, 70, 229, 0.3);
+        }
+        
+        .folder-btn.active {
+            background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+            box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.3);
+        }
+        
+        .excel-viewer-table {
+            border-collapse: collapse;
+            width: 100%;
+            font-size: 13px;
+        }
+        
+        .excel-viewer-table th {
+            background: #1e3c72;
+            color: white;
+            padding: 10px;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            font-weight: 600;
+        }
+        
+        .excel-viewer-table td {
+            padding: 8px 10px;
+            border: 1px solid #e5e7eb;
+        }
+        
+        .excel-viewer-table tr:nth-child(even) {
+            background-color: #f9fafb;
+        }
+        
+        .excel-viewer-table tr:hover {
+            background-color: #e5e7eb;
+        }
+        
+        .overflow-x-auto {
+            max-height: 500px;
+            overflow: auto;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+        }
     </style>
 </head>
 <body>
-    <!-- Loading Overlay -->
+    <!-- Loading Overlay with Debug Info -->
     <div id="loadingOverlay" class="loading-overlay" style="display: none;">
         <div style="text-align: center;">
             <div class="loading-spinner"></div>
             <div id="loadingMessage" class="loading-text">Loading...</div>
+            <div id="debugInfo" class="debug-info"></div>
             <div id="progressContainer" style="width: 300px; margin-top: 15px; display: none;">
                 <div class="progress-bar">
                     <div id="progressFill" class="progress-fill" style="width: 0%;"></div>
@@ -246,12 +330,12 @@
             
             console.log('✅ Supabase initialized!');
             
-            // Global state with optimizations
+            // Global state
             let currentUser = null;
             let currentRole = null;
             let sharedFiles = [];
             let allStudentMarks = [];
-            let studentIndex = new Map(); // For O(1) lookups
+            let studentIndex = new Map();
             let currentEditingFile = null;
             let hot = null;
             let sheetCache = new Map();
@@ -259,6 +343,8 @@
             let distributionChart = null;
             let isProcessing = false;
             let processingQueue = [];
+            let currentTranscriptData = null;
+            let currentClass = 'all'; // '2024', '2025', '2026', '2027', '2028', 'all'
         </script>
 
         <!-- ========== LOGIN SCREEN ========== -->
@@ -335,6 +421,33 @@
                             <i class="fas fa-sign-out-alt mr-1"></i> Logout
                         </button>
                     </div>
+                </div>
+            </div>
+
+            <!-- Class Folders -->
+            <div class="portal-card">
+                <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                    <i class="fas fa-folder-open text-purple-600 mr-2"></i> Class Folders
+                </h2>
+                <div class="folder-container">
+                    <button onclick="filterByClass('all')" id="class-all" class="folder-btn active">
+                        <i class="fas fa-folder"></i> All Classes
+                    </button>
+                    <button onclick="filterByClass('2024')" id="class-2024" class="folder-btn">
+                        <i class="fas fa-folder"></i> March 2024
+                    </button>
+                    <button onclick="filterByClass('2025')" id="class-2025" class="folder-btn">
+                        <i class="fas fa-folder"></i> March 2025
+                    </button>
+                    <button onclick="filterByClass('2026')" id="class-2026" class="folder-btn">
+                        <i class="fas fa-folder"></i> March 2026
+                    </button>
+                    <button onclick="filterByClass('2027')" id="class-2027" class="folder-btn">
+                        <i class="fas fa-folder"></i> March 2027
+                    </button>
+                    <button onclick="filterByClass('2028')" id="class-2028" class="folder-btn">
+                        <i class="fas fa-folder"></i> March 2028
+                    </button>
                 </div>
             </div>
 
@@ -424,7 +537,7 @@
                                 <h3 id="studentNameDisplay" class="text-xl font-bold">-</h3>
                                 <p id="studentIdDisplay" class="text-white/80 text-sm">-</p>
                             </div>
-                            <div class="mt-2 md:mt-0">
+                            <div class="mt-2 md:mt-0 flex gap-2">
                                 <span id="overallGradeDisplay" class="grade-badge grade-distinction text-sm px-4 py-2">-</span>
                             </div>
                         </div>
@@ -435,10 +548,23 @@
                             <div class="stat-box"><div class="stat-value" id="passedExamsCount">0</div><div class="stat-label">Passed</div></div>
                             <div class="stat-box"><div class="stat-value" id="failedExamsCount">0</div><div class="stat-label">Failed</div></div>
                         </div>
+                        
+                        <!-- Transcript Actions -->
+                        <div class="transcript-actions mt-4">
+                            <button onclick="downloadTranscriptPDF()" class="btn-pdf">
+                                <i class="fas fa-file-pdf"></i> Download PDF Transcript
+                            </button>
+                            <button onclick="downloadTranscriptExcel()" class="btn-excel">
+                                <i class="fas fa-file-excel"></i> Download Excel Transcript
+                            </button>
+                            <button onclick="printTranscript()" class="btn-print">
+                                <i class="fas fa-print"></i> Print Transcript
+                            </button>
+                        </div>
                     </div>
                     
                     <h3 class="font-semibold text-gray-800 mb-3 flex items-center">
-                        <i class="fas fa-file-alt text-blue-600 mr-2"></i> Results
+                        <i class="fas fa-file-alt text-blue-600 mr-2"></i> Detailed Results
                     </h3>
                     <div id="studentResultsTable" class="overflow-x-auto bg-white rounded-lg border max-h-96 overflow-y-auto"></div>
                 </div>
@@ -504,7 +630,7 @@
                         </button>
                     </div>
                     <div id="sheetViewerSelector" class="mb-3 flex gap-1 overflow-x-auto pb-1"></div>
-                    <div id="excelViewer" class="overflow-x-auto bg-white rounded-lg border p-3 text-sm max-h-96 overflow-y-auto"></div>
+                    <div id="excelViewer" class="overflow-x-auto bg-white rounded-lg border p-3 text-sm"></div>
                 </div>
             </div>
 
@@ -524,7 +650,7 @@
     <script>
         // ========== UTILITIES ==========
         let toastTimeout;
-        function showToast(message, type = 'success', duration = 2000) {
+        function showToast(message, type = 'success', duration = 3000) {
             if (toastTimeout) clearTimeout(toastTimeout);
             const existing = document.querySelector('.toast');
             if (existing) existing.remove();
@@ -538,10 +664,11 @@
         }
 
         let loadingTimeout;
-        function showLoading(message = 'Loading...', showProgress = false, timeoutMs = 30000) {
+        function showLoading(message = 'Loading...', showProgress = false, timeoutMs = 60000) {
             if (loadingTimeout) clearTimeout(loadingTimeout);
             document.getElementById('loadingMessage').innerText = message;
             document.getElementById('loadingOverlay').style.display = 'flex';
+            document.getElementById('debugInfo').innerHTML = '';
             if (showProgress) {
                 document.getElementById('progressContainer').style.display = 'block';
                 updateProgress(0);
@@ -553,6 +680,7 @@
                 if (document.getElementById('loadingOverlay').style.display === 'flex') {
                     hideLoading();
                     showToast('Operation timed out', 'error');
+                    debugLog('❌ OPERATION TIMED OUT');
                 }
             }, timeoutMs);
         }
@@ -567,11 +695,40 @@
             if (loadingTimeout) clearTimeout(loadingTimeout);
         }
 
+        // ========== DEBUG LOGGING ==========
+        function debugLog(message) {
+            const time = new Date().toLocaleTimeString();
+            const log = `[${time}] ${message}`;
+            console.log(log);
+            
+            const debugEl = document.getElementById('debugInfo');
+            if (debugEl && document.getElementById('loadingOverlay').style.display === 'flex') {
+                debugEl.innerHTML += `<div>${log}</div>`;
+                debugEl.scrollTop = debugEl.scrollHeight;
+            }
+        }
+
         function getGrade(mark) {
             if (mark >= 80) return { grade: 'DISTINCTION', class: 'grade-distinction', pass: true };
             if (mark >= 70) return { grade: 'CREDIT', class: 'grade-credit', pass: true };
             if (mark >= 60) return { grade: 'C', class: 'grade-pass', pass: true };
             return { grade: 'E', class: 'grade-fail', pass: false };
+        }
+
+        // ========== FILTER BY CLASS ==========
+        function filterByClass(year) {
+            currentClass = year;
+            
+            // Update button active states
+            document.querySelectorAll('.folder-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.getElementById(`class-${year}`).classList.add('active');
+            
+            // Refresh file display
+            loadSharedFiles();
+            
+            showToast(`Showing ${year === 'all' ? 'all classes' : 'March ' + year}`, 'success');
         }
 
         // ========== LOGIN ==========
@@ -583,28 +740,61 @@
             showLoading('Logging in...', false, 10000);
             
             try {
-                const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password });
+                debugLog('🔐 Attempting login for: ' + email);
+                
+                const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ 
+                    email, 
+                    password 
+                });
+                
                 if (authError) throw authError;
                 
-                const { data: profile, error: profileError } = await supabase
-                    .from('consolidated_user_profiles_table').select('*').eq('email', email).single();
-                if (profileError) throw profileError;
+                debugLog('✅ Auth successful for: ' + authData.user.email);
                 
-                currentUser = profile;
-                currentRole = profile.role;
+                const { data: profile, error: profileError } = await supabase
+                    .from('consolidated_user_profiles_table')
+                    .select('*')
+                    .eq('email', email)
+                    .single();
+                
+                if (profileError) {
+                    debugLog('📝 Creating new profile...');
+                    const { data: newProfile, error: createError } = await supabase
+                        .from('consolidated_user_profiles_table')
+                        .insert([{
+                            email: email,
+                            full_name: email.split('@')[0],
+                            role: email.includes('admin') ? 'admin' : 'lecturer',
+                            department: 'Nursing',
+                            is_active: true,
+                            created_at: new Date().toISOString()
+                        }])
+                        .select()
+                        .single();
+                    
+                    if (createError) throw createError;
+                    
+                    currentUser = newProfile;
+                    currentRole = newProfile.role;
+                } else {
+                    currentUser = profile;
+                    currentRole = profile.role;
+                }
+                
+                debugLog('✅ User role: ' + currentRole);
                 
                 document.getElementById('loginScreen').classList.add('hidden');
                 document.getElementById('mainPortal').classList.remove('hidden');
                 
-                document.getElementById('userDisplayName').innerHTML = `<i class="fas fa-user mr-1"></i>${profile.full_name || profile.email}`;
-                document.getElementById('userEmailDisplay').innerText = profile.email;
-                document.getElementById('userRoleDisplay').innerText = profile.role.replace('_', ' ').toUpperCase();
+                document.getElementById('userDisplayName').innerHTML = `<i class="fas fa-user mr-1"></i>${currentUser.full_name || currentUser.email}`;
+                document.getElementById('userEmailDisplay').innerText = currentUser.email;
+                document.getElementById('userRoleDisplay').innerText = currentRole.replace('_', ' ').toUpperCase();
                 
                 const badge = document.getElementById('userRoleBadge');
-                badge.innerText = profile.role.replace('_', ' ').toUpperCase();
-                badge.className = `role-${profile.role} px-3 py-1 rounded-full text-xs font-bold`;
+                badge.innerText = currentRole.replace('_', ' ').toUpperCase();
+                badge.className = `role-${currentRole} px-3 py-1 rounded-full text-xs font-bold`;
                 
-                if (profile.role === 'admin' || profile.role === 'super_admin') {
+                if (currentRole === 'admin' || currentRole === 'super_admin') {
                     document.getElementById('adminDashboard').classList.remove('hidden');
                     document.getElementById('adminSearchSection').classList.remove('hidden');
                 } else {
@@ -615,695 +805,63 @@
                 hideLoading();
                 showToast('Login successful!', 'success');
                 
-                // Load data in background
-                setTimeout(() => { loadSharedFiles(); loadAllStudentMarks(); }, 100);
+                setTimeout(() => { 
+                    loadSharedFiles(); 
+                    loadAllStudentMarks(); 
+                }, 100);
                 
-            } catch (error) { hideLoading(); showToast(error.message, 'error'); }
-        }
-
-        
-             // ========== ULTRA-OPTIMIZED LOADER - ONLY PROCESSES REAL DATA ==========
-async function loadAllStudentMarks() {
-    if (isProcessing) {
-        processingQueue.push(loadAllStudentMarks);
-        return;
-    }
-    
-    isProcessing = true;
-    showLoading('Loading data...', true, 60000);
-    
-    try {
-        debugLog('📡 Fetching files from Supabase...');
-        
-        const { data: files, error } = await supabase
-            .from('shared_excel_files')
-            .select('id, filename, file_data, uploaded_by_email, uploaded_at')
-            .order('uploaded_at', { ascending: false });
-        
-        if (error) throw error;
-        
-        if (!files || files.length === 0) {
-            debugLog('⚠️ No files found');
-            document.getElementById('totalFilesStats').innerText = '0';
-            document.getElementById('totalRecordsStats').innerText = '0';
-            hideLoading();
-            isProcessing = false;
-            return;
-        }
-        
-        debugLog(`📁 Found ${files.length} files`);
-        sharedFiles = files;
-        
-        allStudentMarks = [];
-        studentIndex.clear();
-        
-        for (let i = 0; i < files.length; i++) {
-            const file = files[i];
-            const progress = (i / files.length) * 100;
-            updateProgress(progress);
-            
-            debugLog(`📊 Processing file ${i+1}/${files.length}: ${file.filename?.substring(0, 30)}...`);
-            document.getElementById('loadingMessage').innerText = `File ${i+1}/${files.length}: ${file.filename?.substring(0, 30)}...`;
-            
-            if (!file.file_data) {
-                debugLog(`⚠️ File ${i+1} has no data, skipping`);
-                continue;
-            }
-            
-            try {
-                const binaryData = atob(file.file_data);
-                const array = new Uint8Array(binaryData.length);
-                for (let j = 0; j < binaryData.length; j++) {
-                    array[j] = binaryData.charCodeAt(j);
-                }
-                
-                const workbook = XLSX.read(array, { type: 'array' });
-                
-                for (const sheetName of workbook.SheetNames) {
-                    const worksheet = workbook.Sheets[sheetName];
-                    
-                    // ========== CRITICAL: GET ACTUAL DATA RANGE ==========
-                    let lastRowWithData = 0;
-                    let actualData = [];
-                    
-                    // Method 1: Check worksheet range
-                    if (worksheet['!ref']) {
-                        const range = XLSX.utils.decode_range(worksheet['!ref']);
-                        lastRowWithData = range.e.r; // Last row with ANY data
-                        
-                        debugLog(`📊 Sheet "${sheetName}" range: rows 0-${lastRowWithData}`);
-                        
-                        // Convert only the used range
-                        const rawData = XLSX.utils.sheet_to_json(worksheet, { 
-                            range: lastRowWithData,
-                            defval: null,
-                            blankrows: false,
-                            header: 1 // Get as array first to filter empty rows
-                        });
-                        
-                        // Method 2: Filter out completely empty rows
-                        if (rawData && rawData.length > 0) {
-                            // First row is headers
-                            const headers = rawData[0] || [];
-                            
-                            // Filter data rows (skip header row)
-                            for (let r = 1; r < rawData.length; r++) {
-                                const row = rawData[r];
-                                
-                                // Check if row has any actual data
-                                const hasData = row && row.some(cell => 
-                                    cell !== null && 
-                                    cell !== undefined && 
-                                    cell !== '' &&
-                                    !(typeof cell === 'number' && isNaN(cell))
-                                );
-                                
-                                if (hasData) {
-                                    // Convert back to object with headers
-                                    const rowObj = {};
-                                    headers.forEach((header, idx) => {
-                                        if (header && header.toString().trim()) {
-                                            rowObj[header] = row[idx];
-                                        }
-                                    });
-                                    actualData.push(rowObj);
-                                }
-                            }
-                        }
-                    } else {
-                        // Fallback: use standard method
-                        actualData = XLSX.utils.sheet_to_json(worksheet, {
-                            defval: null,
-                            blankrows: false
-                        });
-                    }
-                    
-                    // ========== SAFETY LIMIT ==========
-                    const MAX_ROWS = 5000;
-                    if (actualData.length > MAX_ROWS) {
-                        debugLog(`⚠️ Sheet "${sheetName}" has ${actualData.length} data rows, limiting to ${MAX_ROWS}`);
-                        actualData = actualData.slice(0, MAX_ROWS);
-                        showToast(`Sheet "${sheetName}" has many rows, showing first ${MAX_ROWS}`, 'info');
-                    }
-                    
-                    debugLog(`📊 Sheet "${sheetName}" has ${actualData.length} rows with data`);
-                    
-                    if (!actualData || actualData.length === 0) continue;
-                    
-                    // Get headers from first data row
-                    const headers = Object.keys(actualData[0] || {});
-                    
-                    // ========== PROCESS IN CHUNKS ==========
-                    for (let k = 0; k < actualData.length; k += 50) {
-                        const chunk = actualData.slice(k, k + 50);
-                        
-                        chunk.forEach((row, idx) => {
-                            if (!row || Object.keys(row).length === 0) return;
-                            
-                            const record = {
-                                id: `${file.id}_${sheetName}_${k + idx}`,
-                                fileId: file.id,
-                                filename: file.filename || 'Unknown',
-                                sheetName: sheetName,
-                                uploadedBy: file.uploaded_by_email || 'Unknown',
-                                uploadedAt: file.uploaded_at,
-                                rowData: row,
-                                headers: headers,
-                                marks: {}
-                            };
-                            
-                            // ========== STORE ALL MARK COLUMNS ==========
-                            headers.forEach(header => {
-                                const headerLower = String(header).toLowerCase();
-                                if (headerLower.includes('cat') || 
-                                    headerLower.includes('ebe') || 
-                                    headerLower.includes('final') || 
-                                    headerLower.includes('mark') || 
-                                    headerLower.includes('score') || 
-                                    headerLower.includes('total')) {
-                                    record.marks[header] = row[header];
-                                }
-                            });
-                            
-                            // ========== SMART ID/NAME DETECTION ==========
-                            for (const [key, value] of Object.entries(row)) {
-                                const keyLower = key.toLowerCase();
-                                const valueStr = value?.toString() || '';
-                                
-                                if (!record.admissionNo) {
-                                    if (keyLower.includes('admission')) record.admissionNo = valueStr;
-                                    else if (keyLower.includes('s/n')) record.admissionNo = valueStr;
-                                    else if (keyLower.includes('sn')) record.admissionNo = valueStr;
-                                    else if (keyLower.includes('id') && !keyLower.includes('student')) record.admissionNo = valueStr;
-                                    else if (keyLower.includes('no.') && !keyLower.includes('s/n')) record.admissionNo = valueStr;
-                                }
-                                
-                                if (!record.studentName) {
-                                    if (keyLower.includes('student name')) record.studentName = valueStr;
-                                    else if (keyLower.includes('name') && !keyLower.includes('student')) record.studentName = valueStr;
-                                }
-                            }
-                            
-                            // ========== FALLBACK TO FIRST TWO COLUMNS ==========
-                            if (!record.admissionNo && headers.length > 0) {
-                                const firstCol = row[headers[0]];
-                                if (firstCol && typeof firstCol === 'string' && firstCol.match(/[A-Z0-9\/]/i)) {
-                                    record.admissionNo = firstCol.toString();
-                                } else if (firstCol && typeof firstCol === 'number') {
-                                    record.admissionNo = firstCol.toString();
-                                }
-                            }
-                            
-                            if (!record.studentName && headers.length > 1) {
-                                const secondCol = row[headers[1]];
-                                if (secondCol && typeof secondCol === 'string' && secondCol.match(/[A-Za-z\s]/i)) {
-                                    record.studentName = secondCol.toString();
-                                }
-                            }
-                            
-                            // ========== ONLY ADD IF HAS ID OR NAME ==========
-                            if (record.admissionNo || record.studentName) {
-                                allStudentMarks.push(record);
-                                
-                                // Index for instant search
-                                if (record.admissionNo) {
-                                    const idKey = record.admissionNo.toLowerCase();
-                                    if (!studentIndex.has(idKey)) studentIndex.set(idKey, []);
-                                    studentIndex.get(idKey).push(record);
-                                }
-                                if (record.studentName) {
-                                    const nameKey = record.studentName.toLowerCase();
-                                    if (!studentIndex.has(nameKey)) studentIndex.set(nameKey, []);
-                                    studentIndex.get(nameKey).push(record);
-                                }
-                            }
-                        });
-                        
-                        // ========== YIELD TO UI ==========
-                        await new Promise(resolve => setTimeout(resolve, 0));
-                    }
-                }
-                
-                debugLog(`✅ File ${i+1} processed: ${allStudentMarks.length} total records so far`);
-                
-            } catch (fileError) {
-                debugLog(`❌ Error processing file ${i+1}: ${fileError.message}`);
-                console.error(fileError);
-            }
-            
-            await new Promise(resolve => setTimeout(resolve, 10));
-        }
-        
-        updateProgress(100);
-        debugLog(`✅ TOTAL: Loaded ${allStudentMarks.length} records from ${files.length} files`);
-        
-        document.getElementById('totalFilesStats').innerText = files.length;
-        document.getElementById('totalRecordsStats').innerText = allStudentMarks.length;
-        
-        updateCharts();
-        hideLoading();
-        showToast(`Loaded ${allStudentMarks.length} records`, 'success');
-        
-    } catch (error) {
-        debugLog('❌ Fatal error: ' + error.message);
-        console.error(error);
-        hideLoading();
-        showToast('Error loading data', 'error');
-    } finally {
-        isProcessing = false;
-        if (processingQueue.length) {
-            const next = processingQueue.shift();
-            setTimeout(next, 100);
-        }
-    }
-}
-
-        // ========== UPDATE CHARTS ==========
-        function updateCharts() {
-            if (allStudentMarks.length === 0) return;
-            
-            const marks = allStudentMarks.map(m => parseFloat(m.finalMarks) || 0).filter(m => m > 0);
-            const dist = marks.filter(m => m >= 80).length;
-            const credit = marks.filter(m => m >= 70 && m < 80).length;
-            const pass = marks.filter(m => m >= 60 && m < 70).length;
-            const fail = marks.filter(m => m < 60).length;
-            
-            const perfCtx = document.getElementById('performanceChart').getContext('2d');
-            if (performanceChart) performanceChart.destroy();
-            performanceChart = new Chart(perfCtx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Distinction (80+)', 'Credit (70-79)', 'Pass (60-69)', 'Fail (0-59)'],
-                    datasets: [{ data: [dist, credit, pass, fail], backgroundColor: ['#4F46E5', '#059669', '#D97706', '#DC2626'], borderWidth: 0 }]
-                },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
-            });
-            
-            const distCtx = document.getElementById('distributionChart').getContext('2d');
-            if (distributionChart) distributionChart.destroy();
-            distributionChart = new Chart(distCtx, {
-                type: 'bar',
-                data: {
-                    labels: ['0-59 (E)', '60-69 (C)', '70-79 (Credit)', '80-100 (Dist)'],
-                    datasets: [{ label: 'Students', data: [fail, pass, credit, dist], backgroundColor: ['#DC2626', '#D97706', '#059669', '#4F46E5'], borderRadius: 8 }]
-                },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
-            });
-        }
-
-       // ========== OPTIMIZED SEARCH ==========
-function searchStudentMarks() {
-    const searchTerm = document.getElementById('studentSearchInput').value.toLowerCase().trim();
-    if (!searchTerm) { showToast('Enter search term', 'error'); return; }
-    
-    // Don't show loading for small searches
-    if (allStudentMarks.length > 1000) {
-        showLoading('Searching...', false, 10000);
-    }
-    
-    setTimeout(() => {
-        // Use index for fast lookup
-        let results = studentIndex.get(searchTerm) || [];
-        
-        // If not found, do partial search (limit to first 500 for performance)
-        if (results.length === 0) {
-            results = allStudentMarks.filter(m => 
-                (m.admissionNo && m.admissionNo.toLowerCase().includes(searchTerm)) || 
-                (m.studentName && m.studentName.toLowerCase().includes(searchTerm))
-            ).slice(0, 500); // Limit to 500 results for performance
-        }
-        
-        hideLoading();
-        displayStudentResults(results || []);
-        showToast(`Found ${results?.length || 0} results`, results?.length ? 'success' : 'info');
-    }, 10);
-}
-
-      // ========== ULTRA-FAST DISPLAY WITH VIRTUAL SCROLLING ==========
-function displayStudentResults(results) {
-    const container = document.getElementById('studentResultsContainer');
-    const tableContainer = document.getElementById('studentResultsTable');
-    
-    if (!results || results.length === 0) {
-        container.classList.remove('hidden');
-        tableContainer.innerHTML = '<div class="text-center py-10 text-gray-500"><i class="fas fa-search text-4xl mb-3 text-gray-300"></i><p>No results</p></div>';
-        return;
-    }
-    
-    container.classList.remove('hidden');
-    
-    // Get ALL unique headers
-    const allHeaders = new Set();
-    results.forEach(r => {
-        if (r.headers) r.headers.forEach(h => allHeaders.add(h));
-        if (r.rowData) Object.keys(r.rowData).forEach(k => allHeaders.add(k));
-    });
-    
-    const headers = Array.from(allHeaders);
-    
-    // Student summary
-    const studentName = results[0].studentName || 'Unknown';
-    const studentId = results[0].admissionNo || 'Unknown';
-    document.getElementById('studentNameDisplay').innerText = studentName;
-    document.getElementById('studentIdDisplay').innerText = studentId;
-    
-    // Calculate statistics
-    let validMarks = [];
-    results.forEach(r => {
-        // Look for FINAL MARKS or any numeric column
-        for (const [key, value] of Object.entries(r.rowData || {})) {
-            const keyLower = key.toLowerCase();
-            if (keyLower.includes('final') || keyLower.includes('total') || keyLower.includes('marks')) {
-                const num = parseFloat(value);
-                if (!isNaN(num) && num >= 0 && num <= 100) {
-                    validMarks.push(num);
-                    break;
-                }
-            }
-        }
-    });
-    
-    const totalExams = results.length;
-    const avg = validMarks.length ? (validMarks.reduce((a,b) => a+b,0) / validMarks.length).toFixed(1) : 'N/A';
-    const passed = validMarks.filter(m => m >= 60).length;
-    const failed = validMarks.filter(m => m < 60).length;
-    
-    let overallGrade, gradeClass;
-    if (avg !== 'N/A') {
-        const avgNum = parseFloat(avg);
-        if (avgNum >= 80) { overallGrade = 'DISTINCTION'; gradeClass = 'grade-distinction'; }
-        else if (avgNum >= 70) { overallGrade = 'CREDIT'; gradeClass = 'grade-credit'; }
-        else if (avgNum >= 60) { overallGrade = 'C'; gradeClass = 'grade-pass'; }
-        else { overallGrade = 'E'; gradeClass = 'grade-fail'; }
-    } else {
-        overallGrade = 'N/A';
-        gradeClass = 'grade-fail';
-    }
-    
-    document.getElementById('totalExamsCount').innerText = totalExams;
-    document.getElementById('averageMarkDisplay').innerText = avg;
-    document.getElementById('passedExamsCount').innerText = passed;
-    document.getElementById('failedExamsCount').innerText = failed;
-    document.getElementById('overallGradeDisplay').innerText = overallGrade;
-    document.getElementById('overallGradeDisplay').className = `grade-badge ${gradeClass} text-sm px-4 py-2`;
-    
-    // VIRTUAL SCROLLING - Only render 20 rows at a time
-    const ROWS_PER_PAGE = 20;
-    let currentPage = 0;
-    const totalPages = Math.ceil(results.length / ROWS_PER_PAGE);
-    
-    function renderPage(page) {
-        const start = page * ROWS_PER_PAGE;
-        const end = Math.min(start + ROWS_PER_PAGE, results.length);
-        const pageResults = results.slice(start, end);
-        
-        let html = '<div class="overflow-x-auto"><table class="data-table w-full"><thead><tr>';
-        html += '<th>Exam Sheet</th>';
-        
-        headers.forEach(header => {
-            if (header && !header.startsWith('_')) {
-                html += `<th>${header}</th>`;
-            }
-        });
-        
-        html += '<th>Actions</th></tr></thead><tbody>';
-        
-        pageResults.forEach((result, idx) => {
-            const rowClass = (start + idx) % 2 === 0 ? 'row-even' : 'row-odd';
-            
-            html += `<tr class="${rowClass} hover:bg-gray-50 transition">`;
-            html += `<td class="font-medium">${result.sheetName || 'General'}</td>`;
-            
-            headers.forEach(header => {
-                if (header && !header.startsWith('_')) {
-                    let value = result.rowData?.[header] !== undefined ? result.rowData[header] : '-';
-                    if (value === null || value === undefined) value = '-';
-                    
-                    const num = parseFloat(value);
-                    if (!isNaN(num)) {
-                        const colorClass = num >= 60 ? 'text-green-600 font-bold' : 
-                                          (num > 0 ? 'text-red-600' : '');
-                        html += `<td class="${colorClass}">${value}</td>`;
-                    } else {
-                        html += `<td>${value}</td>`;
-                    }
-                }
-            });
-            
-            html += `<td>
-                <div class="flex gap-1">
-                    ${currentRole === 'admin' || currentRole === 'super_admin' ? 
-                        `<button onclick="openFileForEditing('${result.fileId}')" class="text-blue-600 hover:text-blue-800 text-sm p-1" title="Edit"><i class="fas fa-edit"></i></button>` : ''}
-                    <button onclick="viewFile('${result.fileId}')" class="text-green-600 hover:text-green-800 text-sm p-1" title="View"><i class="fas fa-eye"></i></button>
-                </div>
-            </td></tr>`;
-        });
-        
-        html += '</tbody></table>';
-        
-        // Add pagination controls
-        if (totalPages > 1) {
-            html += '<div class="flex justify-center items-center gap-4 mt-4 pb-2">';
-            html += `<button onclick="changePage(${page - 1})" ${page === 0 ? 'disabled' : ''} 
-                class="px-3 py-1 rounded ${page === 0 ? 'bg-gray-200 text-gray-500' : 'bg-blue-600 text-white hover:bg-blue-700'}">
-                <i class="fas fa-chevron-left mr-1"></i> Previous
-            </button>`;
-            html += `<span class="text-sm text-gray-600">Page ${page + 1} of ${totalPages}</span>`;
-            html += `<button onclick="changePage(${page + 1})" ${page === totalPages - 1 ? 'disabled' : ''} 
-                class="px-3 py-1 rounded ${page === totalPages - 1 ? 'bg-gray-200 text-gray-500' : 'bg-blue-600 text-white hover:bg-blue-700'}">
-                Next <i class="fas fa-chevron-right ml-1"></i>
-            </button>`;
-            html += '</div>';
-        }
-        
-        html += '</div>';
-        tableContainer.innerHTML = html;
-        
-        // Store current page for navigation
-        window.currentResultsPage = page;
-        window.totalResultsPages = totalPages;
-        window.currentResults = results;
-        window.currentHeaders = headers;
-    }
-    
-    // Store render function globally for pagination
-    window.changePage = function(newPage) {
-        if (newPage >= 0 && newPage < totalPages) {
-            renderPage(newPage);
-        }
-    };
-    
-    // Render first page
-    renderPage(0);
-}
-
-        // ========== EDITOR FUNCTIONS ==========
-        async function openFileForEditing(fileId) {
-            if (currentRole !== 'admin' && currentRole !== 'super_admin') { showToast('Admins only', 'error'); return; }
-            closeViewer();
-            
-            const file = sharedFiles.find(f => f.id === fileId);
-            if (!file || !file.file_data) { showToast('File not found', 'error'); return; }
-            
-            showLoading('Opening...', false, 15000);
-            
-            try {
-                if (sheetCache.has(file.id)) {
-                    currentEditingFile = sheetCache.get(file.id);
-                } else {
-                    const binaryData = atob(file.file_data);
-                    const array = new Uint8Array(binaryData.length);
-                    for (let i = 0; i < binaryData.length; i++) array[i] = binaryData.charCodeAt(i);
-                    
-                    const workbook = XLSX.read(array, { type: 'array' });
-                    currentEditingFile = { id: file.id, workbook, filename: file.filename, sheets: workbook.SheetNames, currentSheet: workbook.SheetNames[0], loadedSheets: new Map() };
-                    sheetCache.set(file.id, currentEditingFile);
-                }
-                
-                document.getElementById('editingFileName').innerText = file.filename;
-                document.getElementById('excelEditorSection').classList.remove('hidden');
-                
-                document.getElementById('sheetSelector').innerHTML = currentEditingFile.sheets.map((sheet, i) => 
-                    `<button onclick="loadSheetForEditing('${sheet}')" class="sheet-tab px-3 py-1.5 rounded-lg text-xs font-medium transition ${i === 0 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">${sheet.length > 15 ? sheet.substr(0,12)+'...' : sheet}</button>`
-                ).join('');
-                
+            } catch (error) {
+                debugLog('❌ Login error: ' + error.message);
                 hideLoading();
-                loadSheetForEditing(currentEditingFile.sheets[0]);
-                
-            } catch (error) { hideLoading(); showToast('Error: ' + error.message, 'error'); }
-        }
-
-        function loadSheetForEditing(sheetName) {
-            if (!currentEditingFile) return;
-            
-            document.querySelectorAll('.sheet-tab').forEach(tab => {
-                const isActive = tab.innerText.includes(sheetName) || tab.innerText === sheetName;
-                tab.className = `sheet-tab px-3 py-1.5 rounded-lg text-xs font-medium transition ${isActive ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`;
-            });
-            
-            if (currentEditingFile.loadedSheets.has(sheetName)) {
-                initHandsontable(currentEditingFile.loadedSheets.get(sheetName));
-                currentEditingFile.currentSheet = sheetName;
-                return;
+                showToast(error.message, 'error');
             }
-            
-            showLoading(`Loading ${sheetName}...`, false, 10000);
-            
-            setTimeout(() => {
-                try {
-                    const worksheet = currentEditingFile.workbook.Sheets[sheetName];
-                    if (!worksheet) { hideLoading(); showToast('Sheet not found', 'error'); return; }
-                    
-                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-                    currentEditingFile.loadedSheets.set(sheetName, jsonData);
-                    currentEditingFile.currentSheet = sheetName;
-                    
-                    initHandsontable(jsonData);
-                    hideLoading();
-                    
-                } catch (error) { hideLoading(); showToast('Error loading sheet', 'error'); }
-            }, 10);
         }
 
-        function initHandsontable(data) {
-            const container = document.getElementById('excelEditor');
-            if (hot) hot.destroy();
-            
-            setTimeout(() => {
-                hot = new Handsontable(container, {
-                    data, rowHeaders: true, colHeaders: true, height: '100%', width: '100%',
-                    licenseKey: 'non-commercial-and-evaluation',
-                    contextMenu: ['row_above', 'row_below', 'remove_row', 'undo', 'redo', 'copy', 'cut'],
-                    copyPaste: true, fillHandle: true, undo: true, redo: true, columnSorting: true,
-                    renderAllRows: false, viewportRowRenderingOffset: 10,
-                    
-                    cells: function(row, col) {
-                        const props = {};
-                        const header = data[0]?.[col] || '';
-                        if (row === 0) props.className = 'htCenter font-bold bg-gray-100';
-                        if (header.toString().toLowerCase().includes('final') || 
-                            header.toString().toLowerCase().includes('total') ||
-                            header.toString().toLowerCase().includes('marks')) {
-                            props.renderer = function(instance, td, row, col, prop, value) {
-                                Handsontable.renderers.NumericRenderer.apply(this, arguments);
-                                if (row > 0 && value) {
-                                    const m = parseFloat(value);
-                                    if (m >= 80) td.style.background = '#ede9fe';
-                                    else if (m >= 70) td.style.background = '#d1fae5';
-                                    else if (m >= 60) td.style.background = '#fed7aa';
-                                    else td.style.background = '#fee2e2';
-                                }
-                                return td;
-                            };
-                        }
-                        return props;
-                    }
-                });
-            }, 10);
-        }
-
-        async function saveExcelChanges() {
-            if (!hot || !currentEditingFile) { showToast('No file open', 'error'); return; }
-            showLoading('Saving...', false, 20000);
-            
-            try {
-                const updatedData = hot.getData();
-                const worksheet = XLSX.utils.aoa_to_sheet(updatedData);
-                currentEditingFile.workbook.Sheets[currentEditingFile.currentSheet] = worksheet;
-                const excelBuffer = XLSX.write(currentEditingFile.workbook, { bookType: 'xlsx', type: 'base64' });
-                
-                const { error } = await supabase.from('shared_excel_files').update({
-                    file_data: excelBuffer, row_count: updatedData.length - 1,
-                    last_edited_at: new Date().toISOString(), last_edited_by: currentUser.email
-                }).eq('id', currentEditingFile.id);
-                
-                if (error) throw error;
-                
-                sheetCache.delete(currentEditingFile.id);
-                hideLoading(); showToast('Saved!', 'success');
-                closeEditor();
-                setTimeout(() => { loadSharedFiles(); loadAllStudentMarks(); }, 100);
-                
-            } catch (error) { hideLoading(); showToast('Save failed: ' + error.message, 'error'); }
-        }
-
-        async function deleteFile(fileId, filename) {
-            if (currentRole !== 'admin' && currentRole !== 'super_admin') { showToast('Admins only', 'error'); return; }
-            if (!confirm(`⚠️ Delete "${filename}"?\nThis CANNOT be undone!`)) return;
-            
-            showLoading('Deleting...', false, 10000);
-            
-            try {
-                const { error } = await supabase.from('shared_excel_files').delete().eq('id', fileId);
-                if (error) throw error;
-                
-                sheetCache.delete(fileId);
-                hideLoading(); showToast('Deleted', 'success');
-                await loadSharedFiles(); await loadAllStudentMarks();
-                
-            } catch (error) { hideLoading(); showToast('Delete failed', 'error'); }
-        }
-
-        async function viewFile(fileId) {
-            closeEditor();
-            const file = sharedFiles.find(f => f.id === fileId);
-            if (!file || !file.file_data) { showToast('File not found', 'error'); return; }
-            
-            showLoading('Loading...', false, 10000);
-            
-            try {
-                const binaryData = atob(file.file_data);
-                const array = new Uint8Array(binaryData.length);
-                for (let i = 0; i < binaryData.length; i++) array[i] = binaryData.charCodeAt(i);
-                
-                const workbook = XLSX.read(array, { type: 'array' });
-                const sheetTabs = workbook.SheetNames.map((sheet, i) => 
-                    `<button onclick="viewSheet('${fileId}', '${sheet}')" class="viewer-tab px-3 py-1.5 rounded-lg text-xs font-medium transition ${i === 0 ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">${sheet.length > 15 ? sheet.substr(0,12)+'...' : sheet}</button>`
-                ).join('');
-                
-                document.getElementById('sheetViewerSelector').innerHTML = sheetTabs;
-                document.getElementById('viewingFileName').innerText = file.filename;
-                document.getElementById('excelViewer').innerHTML = XLSX.utils.sheet_to_html(workbook.Sheets[workbook.SheetNames[0]]);
-                document.getElementById('excelViewerSection').classList.remove('hidden');
-                window.currentViewingFile = { workbook };
-                hideLoading();
-                
-            } catch (error) { hideLoading(); showToast('Error viewing file', 'error'); }
-        }
-
-        function viewSheet(fileId, sheetName) {
-            if (!window.currentViewingFile) return;
-            document.querySelectorAll('.viewer-tab').forEach(tab => {
-                const isActive = tab.innerText.includes(sheetName) || tab.innerText === sheetName;
-                tab.className = `viewer-tab px-3 py-1.5 rounded-lg text-xs font-medium transition ${isActive ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`;
-            });
-            document.getElementById('excelViewer').innerHTML = XLSX.utils.sheet_to_html(window.currentViewingFile.workbook.Sheets[sheetName]);
-        }
-
+        // ========== LOAD SHARED FILES WITH CLASS FILTER ==========
         async function loadSharedFiles() {
             try {
-                const { data: files, error } = await supabase.from('shared_excel_files').select('*').order('uploaded_at', { ascending: false }).limit(50);
+                const { data: files, error } = await supabase
+                    .from('shared_excel_files')
+                    .select('*')
+                    .order('uploaded_at', { ascending: false });
+                
                 if (error) throw error;
                 
                 sharedFiles = files || [];
+                
+                // Filter by class if not 'all'
+                let filteredFiles = sharedFiles;
+                if (currentClass !== 'all') {
+                    filteredFiles = sharedFiles.filter(file => 
+                        file.filename && file.filename.includes(currentClass)
+                    );
+                }
+                
                 const container = document.getElementById('sharedFilesContainer');
                 
-                if (sharedFiles.length === 0) {
-                    container.innerHTML = '<div class="col-span-3 text-center py-8 text-gray-500 text-sm">No files</div>';
+                if (filteredFiles.length === 0) {
+                    container.innerHTML = `<div class="col-span-3 text-center py-8 text-gray-500 text-sm">No files for ${currentClass === 'all' ? 'any class' : 'March ' + currentClass}</div>`;
                     return;
                 }
                 
-                container.innerHTML = sharedFiles.map(file => {
+                container.innerHTML = filteredFiles.map(file => {
                     const date = new Date(file.uploaded_at).toLocaleString();
                     const canEdit = currentRole === 'admin' || currentRole === 'super_admin';
+                    
+                    // Extract class year from filename
+                    const classYear = file.filename?.match(/20\d{2}/)?.[0] || 'Unknown';
+                    
                     return `
                         <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition bg-white">
                             <div class="flex items-start">
                                 <i class="fas fa-file-excel text-green-600 text-2xl mr-3"></i>
                                 <div class="flex-1 min-w-0">
-                                    <p class="font-semibold text-gray-800 text-sm truncate" title="${file.filename}">${file.filename}</p>
+                                    <div class="flex justify-between items-start">
+                                        <p class="font-semibold text-gray-800 text-sm truncate" title="${file.filename}">${file.filename}</p>
+                                        <span class="bg-purple-100 text-purple-800 text-xs px-2 py-0.5 rounded-full ml-2">${classYear}</span>
+                                    </div>
                                     <div class="flex items-center mt-1 text-xs">
-                                        <span class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">${file.row_count || 0} rec</span>
+                                        <span class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">${file.row_count || 0} records</span>
                                         <span class="text-gray-500 ml-2 truncate"><i class="fas fa-user mr-1"></i>${file.uploaded_by_email || 'Unknown'}</span>
                                     </div>
                                     <p class="text-xs text-gray-500 mt-1">${date}</p>
@@ -1318,7 +876,1086 @@ function displayStudentResults(results) {
                     `;
                 }).join('');
                 
-            } catch (error) { console.error('Error loading files:', error); }
+            } catch (error) { 
+                debugLog('❌ Error loading files: ' + error.message);
+                console.error(error); 
+            }
+        }
+
+        // ========== LOAD ALL STUDENT MARKS ==========
+        async function loadAllStudentMarks() {
+            if (isProcessing) {
+                processingQueue.push(loadAllStudentMarks);
+                return;
+            }
+            
+            isProcessing = true;
+            showLoading('Loading data...', true, 60000);
+            
+            try {
+                debugLog('📡 Fetching files from Supabase...');
+                
+                const { data: files, error } = await supabase
+                    .from('shared_excel_files')
+                    .select('id, filename, file_data, uploaded_by_email, uploaded_at')
+                    .order('uploaded_at', { ascending: false });
+                
+                if (error) throw error;
+                
+                if (!files || files.length === 0) {
+                    debugLog('⚠️ No files found');
+                    document.getElementById('totalFilesStats').innerText = '0';
+                    document.getElementById('totalRecordsStats').innerText = '0';
+                    hideLoading();
+                    isProcessing = false;
+                    return;
+                }
+                
+                debugLog(`📁 Found ${files.length} files`);
+                sharedFiles = files;
+                
+                allStudentMarks = [];
+                studentIndex.clear();
+                
+                for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    const progress = (i / files.length) * 100;
+                    updateProgress(progress);
+                    
+                    debugLog(`📊 Processing file ${i+1}/${files.length}: ${file.filename?.substring(0, 30)}...`);
+                    document.getElementById('loadingMessage').innerText = `File ${i+1}/${files.length}: ${file.filename?.substring(0, 30)}...`;
+                    
+                    if (!file.file_data) {
+                        debugLog(`⚠️ File ${i+1} has no data, skipping`);
+                        continue;
+                    }
+                    
+                    try {
+                        const binaryData = atob(file.file_data);
+                        const array = new Uint8Array(binaryData.length);
+                        for (let j = 0; j < binaryData.length; j++) {
+                            array[j] = binaryData.charCodeAt(j);
+                        }
+                        
+                        const workbook = XLSX.read(array, { type: 'array' });
+                        
+                        for (const sheetName of workbook.SheetNames) {
+                            const worksheet = workbook.Sheets[sheetName];
+                            
+                            // Get actual data range
+                            let actualData = [];
+                            
+                            if (worksheet['!ref']) {
+                                const range = XLSX.utils.decode_range(worksheet['!ref']);
+                                const lastRow = range.e.r;
+                                
+                                // Get data
+                                const rawData = XLSX.utils.sheet_to_json(worksheet, { 
+                                    range: lastRow,
+                                    defval: null,
+                                    header: 1
+                                });
+                                
+                                if (rawData && rawData.length > 1) {
+                                    const headers = rawData[0] || [];
+                                    
+                                    // Filter rows with data
+                                    for (let r = 1; r < rawData.length; r++) {
+                                        const row = rawData[r];
+                                        
+                                        const hasData = row && row.some(cell => 
+                                            cell !== null && 
+                                            cell !== undefined && 
+                                            cell !== '' &&
+                                            !(typeof cell === 'number' && isNaN(cell))
+                                        );
+                                        
+                                        if (hasData) {
+                                            const rowObj = {};
+                                            headers.forEach((header, idx) => {
+                                                if (header && header.toString().trim()) {
+                                                    rowObj[header] = row[idx];
+                                                }
+                                            });
+                                            actualData.push(rowObj);
+                                        }
+                                    }
+                                }
+                            } else {
+                                actualData = XLSX.utils.sheet_to_json(worksheet, {
+                                    defval: null
+                                });
+                            }
+                            
+                            // Safety limit
+                            const MAX_ROWS = 5000;
+                            if (actualData.length > MAX_ROWS) {
+                                debugLog(`⚠️ Sheet "${sheetName}" has ${actualData.length} data rows, limiting to ${MAX_ROWS}`);
+                                actualData = actualData.slice(0, MAX_ROWS);
+                            }
+                            
+                            debugLog(`📊 Sheet "${sheetName}" has ${actualData.length} rows with data`);
+                            
+                            if (!actualData || actualData.length === 0) continue;
+                            
+                            const headers = Object.keys(actualData[0] || {});
+                            
+                            // Process in chunks
+                            for (let k = 0; k < actualData.length; k += 50) {
+                                const chunk = actualData.slice(k, k + 50);
+                                
+                                chunk.forEach((row, idx) => {
+                                    if (!row || Object.keys(row).length === 0) return;
+                                    
+                                    const record = {
+                                        id: `${file.id}_${sheetName}_${k + idx}`,
+                                        fileId: file.id,
+                                        filename: file.filename || 'Unknown',
+                                        sheetName: sheetName,
+                                        uploadedBy: file.uploaded_by_email || 'Unknown',
+                                        uploadedAt: file.uploaded_at,
+                                        rowData: row,
+                                        headers: headers
+                                    };
+                                    
+                                    // Smart ID/Name detection
+                                    for (const [key, value] of Object.entries(row)) {
+                                        const keyLower = key.toLowerCase();
+                                        const valueStr = value?.toString() || '';
+                                        
+                                        if (!record.admissionNo) {
+                                            if (keyLower.includes('admission')) record.admissionNo = valueStr;
+                                            else if (keyLower.includes('s/n')) record.admissionNo = valueStr;
+                                            else if (keyLower.includes('sn')) record.admissionNo = valueStr;
+                                            else if (keyLower.includes('id') && !keyLower.includes('student')) record.admissionNo = valueStr;
+                                            else if (keyLower.includes('no.')) record.admissionNo = valueStr;
+                                        }
+                                        
+                                        if (!record.studentName) {
+                                            if (keyLower.includes('student name')) record.studentName = valueStr;
+                                            else if (keyLower.includes('name') && !keyLower.includes('student')) record.studentName = valueStr;
+                                        }
+                                    }
+                                    
+                                    // Fallback
+                                    if (!record.admissionNo && headers.length > 0) {
+                                        const firstCol = row[headers[0]];
+                                        if (firstCol) record.admissionNo = firstCol.toString();
+                                    }
+                                    if (!record.studentName && headers.length > 1) {
+                                        const secondCol = row[headers[1]];
+                                        if (secondCol) record.studentName = secondCol.toString();
+                                    }
+                                    
+                                    if (record.admissionNo || record.studentName) {
+                                        allStudentMarks.push(record);
+                                        
+                                        // Index for search
+                                        if (record.admissionNo) {
+                                            const idKey = record.admissionNo.toLowerCase();
+                                            if (!studentIndex.has(idKey)) studentIndex.set(idKey, []);
+                                            studentIndex.get(idKey).push(record);
+                                        }
+                                        if (record.studentName) {
+                                            const nameKey = record.studentName.toLowerCase();
+                                            if (!studentIndex.has(nameKey)) studentIndex.set(nameKey, []);
+                                            studentIndex.get(nameKey).push(record);
+                                        }
+                                        
+                                        // Also index by partial matches
+                                        if (record.admissionNo) {
+                                            const words = record.admissionNo.toLowerCase().split(/[\s\/\-]+/);
+                                            words.forEach(word => {
+                                                if (word.length > 2) {
+                                                    if (!studentIndex.has(word)) studentIndex.set(word, []);
+                                                    studentIndex.get(word).push(record);
+                                                }
+                                            });
+                                        }
+                                        if (record.studentName) {
+                                            const words = record.studentName.toLowerCase().split(/\s+/);
+                                            words.forEach(word => {
+                                                if (word.length > 2) {
+                                                    if (!studentIndex.has(word)) studentIndex.set(word, []);
+                                                    studentIndex.get(word).push(record);
+                                                }
+                                            });
+                                        }
+                                    }
+                                });
+                                
+                                await new Promise(resolve => setTimeout(resolve, 0));
+                            }
+                        }
+                        
+                        debugLog(`✅ File ${i+1} processed: ${allStudentMarks.length} total records`);
+                        
+                    } catch (fileError) {
+                        debugLog(`❌ Error processing file ${i+1}: ${fileError.message}`);
+                        console.error(fileError);
+                    }
+                    
+                    await new Promise(resolve => setTimeout(resolve, 10));
+                }
+                
+                updateProgress(100);
+                debugLog(`✅ TOTAL: Loaded ${allStudentMarks.length} records from ${files.length} files`);
+                
+                document.getElementById('totalFilesStats').innerText = files.length;
+                document.getElementById('totalRecordsStats').innerText = allStudentMarks.length;
+                
+                updateCharts();
+                hideLoading();
+                showToast(`Loaded ${allStudentMarks.length} records`, 'success');
+                
+            } catch (error) {
+                debugLog('❌ Fatal error: ' + error.message);
+                console.error(error);
+                hideLoading();
+                showToast('Error loading data', 'error');
+            } finally {
+                isProcessing = false;
+                if (processingQueue.length) {
+                    const next = processingQueue.shift();
+                    setTimeout(next, 100);
+                }
+            }
+        }
+
+        // ========== UPDATE CHARTS ==========
+        function updateCharts() {
+            if (allStudentMarks.length === 0) return;
+            
+            const marks = [];
+            allStudentMarks.forEach(record => {
+                if (record.rowData) {
+                    const finalMark = record.rowData['FINAL MARKS %'] || 
+                                     record.rowData['FINALMARKS'] || 
+                                     record.rowData['FINAL'] || 
+                                     record.rowData['Final Marks'] || 
+                                     record.rowData['Total'];
+                    
+                    const num = parseFloat(finalMark);
+                    if (!isNaN(num) && num >= 0 && num <= 100) {
+                        marks.push(num);
+                    }
+                }
+            });
+            
+            if (marks.length === 0) return;
+            
+            const dist = marks.filter(m => m >= 80).length;
+            const credit = marks.filter(m => m >= 70 && m < 80).length;
+            const pass = marks.filter(m => m >= 60 && m < 70).length;
+            const fail = marks.filter(m => m < 60).length;
+            
+            const perfCtx = document.getElementById('performanceChart').getContext('2d');
+            if (performanceChart) performanceChart.destroy();
+            performanceChart = new Chart(perfCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Distinction (80+)', 'Credit (70-79)', 'Pass (60-69)', 'Fail (0-59)'],
+                    datasets: [{ data: [dist, credit, pass, fail], backgroundColor: ['#4F46E5', '#059669', '#D97706', '#DC2626'] }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+            });
+            
+            const distCtx = document.getElementById('distributionChart').getContext('2d');
+            if (distributionChart) distributionChart.destroy();
+            distributionChart = new Chart(distCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['0-59 (E)', '60-69 (C)', '70-79 (Credit)', '80-100 (Dist)'],
+                    datasets: [{ 
+                        label: 'Students', 
+                        data: [fail, pass, credit, dist], 
+                        backgroundColor: ['#DC2626', '#D97706', '#059669', '#4F46E5'],
+                        borderRadius: 8
+                    }]
+                },
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+                }
+            });
+        }
+
+        // ========== SEARCH STUDENT - FIXED ==========
+        function searchStudentMarks() {
+            const searchTerm = document.getElementById('studentSearchInput').value.toLowerCase().trim();
+            if (!searchTerm) { 
+                showToast('Enter search term', 'error'); 
+                return; 
+            }
+            
+            console.log('🔍 Searching for:', searchTerm);
+            console.log('📊 Total records:', allStudentMarks.length);
+            
+            if (allStudentMarks.length === 0) {
+                showToast('No data loaded yet', 'error');
+                return;
+            }
+            
+            if (allStudentMarks.length > 1000) {
+                showLoading('Searching...', false, 10000);
+            }
+            
+            setTimeout(() => {
+                // Try exact match first
+                let results = [];
+                
+                // Check index for exact match
+                if (studentIndex.has(searchTerm)) {
+                    results = studentIndex.get(searchTerm);
+                }
+                
+                // If no exact match, do partial search
+                if (results.length === 0) {
+                    results = allStudentMarks.filter(m => 
+                        (m.admissionNo && m.admissionNo.toLowerCase().includes(searchTerm)) || 
+                        (m.studentName && m.studentName.toLowerCase().includes(searchTerm))
+                    );
+                }
+                
+                // If still no results, try matching parts
+                if (results.length === 0) {
+                    const searchParts = searchTerm.split(/\s+/);
+                    results = allStudentMarks.filter(m => {
+                        const admissionMatch = m.admissionNo && searchParts.some(part => 
+                            m.admissionNo.toLowerCase().includes(part)
+                        );
+                        const nameMatch = m.studentName && searchParts.some(part => 
+                            m.studentName.toLowerCase().includes(part)
+                        );
+                        return admissionMatch || nameMatch;
+                    });
+                }
+                
+                console.log('✅ Found:', results.length, 'results');
+                
+                hideLoading();
+                
+                if (results.length > 0) {
+                    displayStudentResults(results);
+                    showToast(`Found ${results.length} results`, 'success');
+                } else {
+                    document.getElementById('studentResultsContainer').classList.remove('hidden');
+                    document.getElementById('studentResultsTable').innerHTML = '<div class="text-center py-10 text-gray-500"><i class="fas fa-search text-4xl mb-3 text-gray-300"></i><p>No results found for "' + searchTerm + '"</p></div>';
+                    showToast('No results found', 'info');
+                }
+            }, 10);
+        }
+
+        // ========== DISPLAY STUDENT RESULTS ==========
+        function displayStudentResults(results) {
+            const container = document.getElementById('studentResultsContainer');
+            const tableContainer = document.getElementById('studentResultsTable');
+            
+            if (!results || results.length === 0) {
+                container.classList.remove('hidden');
+                tableContainer.innerHTML = '<div class="text-center py-10 text-gray-500"><i class="fas fa-search text-4xl mb-3 text-gray-300"></i><p>No results found</p></div>';
+                return;
+            }
+            
+            container.classList.remove('hidden');
+            
+            // Store for transcript
+            currentTranscriptData = results;
+            
+            // Get all headers
+            const allHeaders = new Set();
+            results.forEach(r => {
+                if (r.headers) r.headers.forEach(h => allHeaders.add(h));
+                if (r.rowData) Object.keys(r.rowData).forEach(k => allHeaders.add(k));
+            });
+            
+            const headers = Array.from(allHeaders);
+            console.log('📋 Headers found:', headers);
+            
+            // Student info
+            const studentName = results[0].studentName || results[0].rowData?.['Student Name'] || 'Unknown';
+            const studentId = results[0].admissionNo || results[0].rowData?.['Admission No.'] || 'Unknown';
+            document.getElementById('studentNameDisplay').innerText = studentName;
+            document.getElementById('studentIdDisplay').innerText = studentId;
+            
+            // Calculate statistics from FINAL MARKS
+            let validMarks = [];
+            results.forEach(r => {
+                if (r.rowData) {
+                    const finalMark = r.rowData['FINAL MARKS %'] || 
+                                     r.rowData['FINALMARKS'] || 
+                                     r.rowData['FINAL'] || 
+                                     r.rowData['Final Marks'] || 
+                                     r.rowData['Total'];
+                    
+                    const num = parseFloat(finalMark);
+                    if (!isNaN(num) && num >= 0 && num <= 100) {
+                        validMarks.push(num);
+                    }
+                }
+            });
+            
+            const totalExams = results.length;
+            const avg = validMarks.length ? (validMarks.reduce((a,b) => a+b,0) / validMarks.length).toFixed(1) : 'N/A';
+            const passed = validMarks.filter(m => m >= 60).length;
+            const failed = validMarks.filter(m => m < 60).length;
+            
+            // Calculate overall grade
+            let overallGrade, gradeClass;
+            if (avg !== 'N/A') {
+                const avgNum = parseFloat(avg);
+                if (avgNum >= 80) { overallGrade = 'DISTINCTION'; gradeClass = 'grade-distinction'; }
+                else if (avgNum >= 70) { overallGrade = 'CREDIT'; gradeClass = 'grade-credit'; }
+                else if (avgNum >= 60) { overallGrade = 'C'; gradeClass = 'grade-pass'; }
+                else { overallGrade = 'E'; gradeClass = 'grade-fail'; }
+            } else {
+                overallGrade = 'N/A';
+                gradeClass = 'grade-fail';
+            }
+            
+            document.getElementById('totalExamsCount').innerText = totalExams;
+            document.getElementById('averageMarkDisplay').innerText = avg;
+            document.getElementById('passedExamsCount').innerText = passed;
+            document.getElementById('failedExamsCount').innerText = failed;
+            document.getElementById('overallGradeDisplay').innerText = overallGrade;
+            document.getElementById('overallGradeDisplay').className = `grade-badge ${gradeClass} text-sm px-4 py-2`;
+            
+            // Build table
+            let html = '<div class="overflow-x-auto"><table class="data-table w-full"><thead><tr>';
+            html += '<th>Exam</th>';
+            
+            headers.forEach(header => {
+                if (header && !header.startsWith('_') && header !== 'row' && header !== 'col') {
+                    html += `<th>${header}</th>`;
+                }
+            });
+            
+            html += '<th>Actions</th></tr></thead><tbody>';
+            
+            results.forEach((result, idx) => {
+                const rowClass = idx % 2 === 0 ? 'row-even' : 'row-odd';
+                
+                html += `<tr class="${rowClass} hover:bg-gray-50 transition">`;
+                html += `<td class="font-medium">${result.sheetName || 'General'}</td>`;
+                
+                headers.forEach(header => {
+                    if (header && !header.startsWith('_') && header !== 'row' && header !== 'col') {
+                        let value = result.rowData?.[header];
+                        
+                        if (value === undefined || value === null) {
+                            value = '-';
+                        }
+                        
+                        if (typeof value === 'number') {
+                            value = value.toFixed(1);
+                        }
+                        
+                        // Color code mark columns
+                        const headerLower = String(header).toLowerCase();
+                        const isMarkColumn = headerLower.includes('cat') || 
+                                            headerLower.includes('ebe') || 
+                                            headerLower.includes('final') || 
+                                            headerLower.includes('mark') || 
+                                            headerLower.includes('total') ||
+                                            headerLower.includes('score');
+                        
+                        if (isMarkColumn) {
+                            const num = parseFloat(value);
+                            if (!isNaN(num)) {
+                                const colorClass = num >= 60 ? 'text-green-600 font-bold' : 
+                                                  (num > 0 ? 'text-red-600' : '');
+                                html += `<td class="${colorClass}">${value}</td>`;
+                            } else {
+                                html += `<td>${value}</td>`;
+                            }
+                        } else {
+                            html += `<td>${value}</td>`;
+                        }
+                    }
+                });
+                
+                html += `<td>
+                    <div class="flex gap-1">
+                        ${currentRole === 'admin' || currentRole === 'super_admin' ? 
+                            `<button onclick="openFileForEditing('${result.fileId}')" class="text-blue-600 hover:text-blue-800 text-sm p-1" title="Edit">
+                                <i class="fas fa-edit"></i>
+                            </button>` : ''}
+                        <button onclick="viewFile('${result.fileId}')" class="text-green-600 hover:text-green-800 text-sm p-1" title="View">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </td></tr>`;
+            });
+            
+            html += '</tbody></table></div>';
+            tableContainer.innerHTML = html;
+        }
+
+        // ========== TRANSCRIPT FUNCTIONS ==========
+        function downloadTranscriptPDF() {
+            if (!currentTranscriptData || currentTranscriptData.length === 0) {
+                showToast('No transcript data available', 'error');
+                return;
+            }
+            
+            try {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                
+                const studentName = document.getElementById('studentNameDisplay').innerText;
+                const studentId = document.getElementById('studentIdDisplay').innerText;
+                const avgMark = document.getElementById('averageMarkDisplay').innerText;
+                const overallGrade = document.getElementById('overallGradeDisplay').innerText;
+                const passed = document.getElementById('passedExamsCount').innerText;
+                const failed = document.getElementById('failedExamsCount').innerText;
+                
+                // Title
+                doc.setFontSize(20);
+                doc.setTextColor(40, 40, 40);
+                doc.text('NCHSN SCHOOL OF NURSING', 105, 20, { align: 'center' });
+                
+                doc.setFontSize(16);
+                doc.setTextColor(80, 80, 80);
+                doc.text('PROVISIONAL EXAM RESULTS TRANSCRIPT', 105, 30, { align: 'center' });
+                
+                // Student Info
+                doc.setFontSize(12);
+                doc.setTextColor(0, 0, 0);
+                doc.text(`Student Name: ${studentName}`, 20, 45);
+                doc.text(`Admission No: ${studentId}`, 20, 52);
+                doc.text(`Average Mark: ${avgMark}%`, 20, 59);
+                doc.text(`Overall Grade: ${overallGrade}`, 20, 66);
+                doc.text(`Passed: ${passed} | Failed: ${failed}`, 20, 73);
+                
+                // Table headers
+                const headers = [['Exam', 'Marks', 'Grade']];
+                const data = [];
+                
+                currentTranscriptData.forEach(result => {
+                    const marks = result.rowData?.['FINAL MARKS %'] || 
+                                 result.rowData?.['FINALMARKS'] || 
+                                 result.rowData?.['FINAL'] || 
+                                 result.rowData?.['Total'] || 
+                                 '-';
+                    
+                    const grade = getGrade(parseFloat(marks)).grade;
+                    
+                    data.push([
+                        result.sheetName || 'General',
+                        marks.toString(),
+                        grade
+                    ]);
+                });
+                
+                doc.autoTable({
+                    head: headers,
+                    body: data,
+                    startY: 80,
+                    theme: 'striped',
+                    headStyles: { fillColor: [30, 60, 114] },
+                    styles: { fontSize: 10 }
+                });
+                
+                // Footer
+                const today = new Date().toLocaleDateString();
+                doc.setFontSize(10);
+                doc.setTextColor(150, 150, 150);
+                doc.text(`Generated on: ${today}`, 20, doc.lastAutoTable.finalY + 10);
+                doc.text('This is a provisional transcript pending official verification.', 20, doc.lastAutoTable.finalY + 17);
+                
+                doc.save(`NCHSN_Transcript_${studentId}.pdf`);
+                showToast('PDF downloaded successfully', 'success');
+                
+            } catch (error) {
+                console.error('PDF Error:', error);
+                showToast('Error generating PDF', 'error');
+            }
+        }
+        
+        function downloadTranscriptExcel() {
+            if (!currentTranscriptData || currentTranscriptData.length === 0) {
+                showToast('No transcript data available', 'error');
+                return;
+            }
+            
+            try {
+                const studentName = document.getElementById('studentNameDisplay').innerText;
+                const studentId = document.getElementById('studentIdDisplay').innerText;
+                const avgMark = document.getElementById('averageMarkDisplay').innerText;
+                const overallGrade = document.getElementById('overallGradeDisplay').innerText;
+                
+                // Create worksheet data
+                const wsData = [
+                    ['NCHSN SCHOOL OF NURSING - PROVISIONAL RESULTS TRANSCRIPT'],
+                    [''],
+                    ['Student Name:', studentName, 'Admission No:', studentId],
+                    ['Average Mark:', avgMark + '%', 'Overall Grade:', overallGrade],
+                    [''],
+                    ['Exam', 'Marks', 'Grade']
+                ];
+                
+                currentTranscriptData.forEach(result => {
+                    const marks = result.rowData?.['FINAL MARKS %'] || 
+                                 result.rowData?.['FINALMARKS'] || 
+                                 result.rowData?.['FINAL'] || 
+                                 result.rowData?.['Total'] || 
+                                 '-';
+                    
+                    const markNum = parseFloat(marks);
+                    const grade = getGrade(markNum).grade;
+                    
+                    wsData.push([
+                        result.sheetName || 'General',
+                        marks.toString(),
+                        grade
+                    ]);
+                });
+                
+                const wb = XLSX.utils.book_new();
+                const ws = XLSX.utils.aoa_to_sheet(wsData);
+                XLSX.utils.book_append_sheet(wb, ws, 'Transcript');
+                XLSX.writeFile(wb, `NCHSN_Transcript_${studentId}.xlsx`);
+                
+                showToast('Excel transcript downloaded', 'success');
+                
+            } catch (error) {
+                console.error('Excel Error:', error);
+                showToast('Error generating Excel', 'error');
+            }
+        }
+        
+        function printTranscript() {
+            if (!currentTranscriptData || currentTranscriptData.length === 0) {
+                showToast('No transcript data available', 'error');
+                return;
+            }
+            
+            const studentName = document.getElementById('studentNameDisplay').innerText;
+            const studentId = document.getElementById('studentIdDisplay').innerText;
+            const avgMark = document.getElementById('averageMarkDisplay').innerText;
+            const overallGrade = document.getElementById('overallGradeDisplay').innerText;
+            
+            let printContent = `
+                <html>
+                <head>
+                    <title>NCHSN Transcript - ${studentName}</title>
+                    <style>
+                        body { font-family: Arial; padding: 30px; }
+                        h1 { color: #1e3c72; text-align: center; }
+                        h2 { color: #2a5298; text-align: center; }
+                        .info { margin: 20px 0; padding: 15px; background: #f0f4f8; border-radius: 8px; }
+                        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                        th { background: #1e3c72; color: white; padding: 12px; text-align: left; }
+                        td { padding: 10px; border-bottom: 1px solid #ddd; }
+                        .footer { margin-top: 30px; text-align: center; color: #666; font-size: 12px; }
+                    </style>
+                </head>
+                <body>
+                    <h1>NCHSN SCHOOL OF NURSING</h1>
+                    <h2>PROVISIONAL EXAM RESULTS TRANSCRIPT</h2>
+                    
+                    <div class="info">
+                        <p><strong>Student Name:</strong> ${studentName}</p>
+                        <p><strong>Admission No:</strong> ${studentId}</p>
+                        <p><strong>Average Mark:</strong> ${avgMark}%</p>
+                        <p><strong>Overall Grade:</strong> ${overallGrade}</p>
+                    </div>
+                    
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Exam</th>
+                                <th>Marks</th>
+                                <th>Grade</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            
+            currentTranscriptData.forEach(result => {
+                const marks = result.rowData?.['FINAL MARKS %'] || 
+                             result.rowData?.['FINALMARKS'] || 
+                             result.rowData?.['FINAL'] || 
+                             result.rowData?.['Total'] || 
+                             '-';
+                
+                const markNum = parseFloat(marks);
+                const grade = getGrade(markNum).grade;
+                
+                printContent += `
+                    <tr>
+                        <td>${result.sheetName || 'General'}</td>
+                        <td>${marks}</td>
+                        <td>${grade}</td>
+                    </tr>
+                `;
+            });
+            
+            printContent += `
+                        </tbody>
+                    </table>
+                    <div class="footer">
+                        <p>Generated on: ${new Date().toLocaleString()}</p>
+                        <p>This is a provisional transcript pending official verification.</p>
+                    </div>
+                </body>
+                </html>
+            `;
+            
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(printContent);
+            printWindow.document.close();
+            printWindow.focus();
+            printWindow.print();
+        }
+
+        // ========== OPEN FILE FOR EDITING ==========
+        async function openFileForEditing(fileId) {
+            if (currentRole !== 'admin' && currentRole !== 'super_admin') { 
+                showToast('Admins only', 'error'); 
+                return; 
+            }
+            
+            closeViewer();
+            
+            const file = sharedFiles.find(f => f.id === fileId);
+            if (!file || !file.file_data) { 
+                showToast('File not found', 'error'); 
+                return; 
+            }
+            
+            showLoading('Opening file for editing...', false, 30000);
+            
+            try {
+                console.log('📝 Opening file:', file.filename);
+                console.log('📊 File data length:', file.file_data.length);
+                
+                if (sheetCache.has(file.id)) {
+                    currentEditingFile = sheetCache.get(file.id);
+                    console.log('✅ Loaded from cache');
+                } else {
+                    const binaryData = atob(file.file_data);
+                    console.log('✅ Base64 decoded, length:', binaryData.length);
+                    
+                    const array = new Uint8Array(binaryData.length);
+                    for (let i = 0; i < binaryData.length; i++) {
+                        array[i] = binaryData.charCodeAt(i);
+                    }
+                    console.log('✅ Converted to Uint8Array');
+                    
+                    const workbook = XLSX.read(array, { type: 'array' });
+                    console.log('✅ Excel parsed, sheets:', workbook.SheetNames);
+                    
+                    currentEditingFile = { 
+                        id: file.id, 
+                        workbook, 
+                        filename: file.filename, 
+                        sheets: workbook.SheetNames, 
+                        currentSheet: workbook.SheetNames[0], 
+                        loadedSheets: new Map() 
+                    };
+                    
+                    sheetCache.set(file.id, currentEditingFile);
+                }
+                
+                document.getElementById('editingFileName').innerText = file.filename;
+                document.getElementById('excelEditorSection').classList.remove('hidden');
+                
+                const selector = document.getElementById('sheetSelector');
+                selector.innerHTML = currentEditingFile.sheets.map((sheet, i) => 
+                    `<button onclick="loadSheetForEditing('${sheet}')" 
+                        class="sheet-tab px-3 py-1.5 rounded-lg text-xs font-medium transition 
+                        ${i === 0 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">
+                        ${sheet.length > 15 ? sheet.substr(0,12)+'...' : sheet}
+                    </button>`
+                ).join('');
+                
+                hideLoading();
+                showToast('File opened successfully', 'success');
+                
+                setTimeout(() => {
+                    loadSheetForEditing(currentEditingFile.sheets[0]);
+                }, 100);
+                
+            } catch (error) { 
+                console.error('❌ Error opening file:', error);
+                hideLoading(); 
+                showToast('Error opening file: ' + error.message, 'error'); 
+            }
+        }
+
+        function loadSheetForEditing(sheetName) {
+            if (!currentEditingFile) return;
+            
+            console.log('📄 Loading sheet:', sheetName);
+            
+            document.querySelectorAll('.sheet-tab').forEach(tab => {
+                const isActive = tab.innerText.includes(sheetName) || tab.innerText === sheetName;
+                tab.className = `sheet-tab px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+                    isActive ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`;
+            });
+            
+            if (currentEditingFile.loadedSheets.has(sheetName)) {
+                console.log('✅ Loading from cache');
+                const jsonData = currentEditingFile.loadedSheets.get(sheetName);
+                initHandsontable(jsonData);
+                currentEditingFile.currentSheet = sheetName;
+                return;
+            }
+            
+            showLoading(`Loading ${sheetName}...`, false, 10000);
+            
+            try {
+                const worksheet = currentEditingFile.workbook.Sheets[sheetName];
+                if (!worksheet) { 
+                    hideLoading(); 
+                    showToast('Sheet not found', 'error'); 
+                    return; 
+                }
+                
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                console.log(`📊 Sheet has ${jsonData.length} rows`);
+                
+                currentEditingFile.loadedSheets.set(sheetName, jsonData);
+                currentEditingFile.currentSheet = sheetName;
+                
+                initHandsontable(jsonData);
+                hideLoading();
+                
+            } catch (error) { 
+                console.error('❌ Error loading sheet:', error);
+                hideLoading(); 
+                showToast('Error loading sheet: ' + error.message, 'error'); 
+            }
+        }
+
+        function initHandsontable(data) {
+            const container = document.getElementById('excelEditor');
+            
+            if (hot) {
+                hot.destroy();
+                hot = null;
+            }
+            
+            setTimeout(() => {
+                try {
+                    console.log('📊 Initializing Handsontable with', data.length, 'rows');
+                    
+                    hot = new Handsontable(container, {
+                        data: data,
+                        rowHeaders: true,
+                        colHeaders: true,
+                        height: '100%',
+                        width: '100%',
+                        licenseKey: 'non-commercial-and-evaluation',
+                        contextMenu: true,
+                        copyPaste: true,
+                        fillHandle: true,
+                        undo: true,
+                        redo: true,
+                        columnSorting: true,
+                        filters: true,
+                        
+                        cells: function(row, col) {
+                            const cellProperties = {};
+                            const header = data[0]?.[col];
+                            
+                            if (row === 0) {
+                                cellProperties.className = 'htCenter font-bold bg-gray-100';
+                            }
+                            
+                            if (row > 0 && header && typeof header === 'string') {
+                                const headerLower = header.toLowerCase();
+                                if (headerLower.includes('cat') || 
+                                    headerLower.includes('ebe') || 
+                                    headerLower.includes('final') || 
+                                    headerLower.includes('mark') ||
+                                    headerLower.includes('total')) {
+                                    
+                                    cellProperties.renderer = function(instance, td, row, col, prop, value) {
+                                        Handsontable.renderers.NumericRenderer.apply(this, arguments);
+                                        const num = parseFloat(value);
+                                        if (!isNaN(num)) {
+                                            if (num >= 80) td.style.background = '#ede9fe';
+                                            else if (num >= 70) td.style.background = '#d1fae5';
+                                            else if (num >= 60) td.style.background = '#fed7aa';
+                                            else if (num > 0) td.style.background = '#fee2e2';
+                                        }
+                                        return td;
+                                    };
+                                }
+                            }
+                            
+                            return cellProperties;
+                        }
+                    });
+                    
+                    console.log('✅ Handsontable initialized');
+                    
+                } catch (error) {
+                    console.error('❌ Handsontable error:', error);
+                    showToast('Error initializing editor', 'error');
+                }
+            }, 100);
+        }
+
+        async function saveExcelChanges() {
+            if (!hot || !currentEditingFile) { 
+                showToast('No file open', 'error'); 
+                return; 
+            }
+            showLoading('Saving...', false, 20000);
+            
+            try {
+                const updatedData = hot.getData();
+                const worksheet = XLSX.utils.aoa_to_sheet(updatedData);
+                currentEditingFile.workbook.Sheets[currentEditingFile.currentSheet] = worksheet;
+                const excelBuffer = XLSX.write(currentEditingFile.workbook, { bookType: 'xlsx', type: 'base64' });
+                
+                const { error } = await supabase
+                    .from('shared_excel_files')
+                    .update({
+                        file_data: excelBuffer, 
+                        row_count: updatedData.length - 1,
+                        last_edited_at: new Date().toISOString(), 
+                        last_edited_by: currentUser.email
+                    })
+                    .eq('id', currentEditingFile.id);
+                
+                if (error) throw error;
+                
+                sheetCache.delete(currentEditingFile.id);
+                hideLoading(); 
+                showToast('Saved!', 'success');
+                closeEditor();
+                setTimeout(() => { 
+                    loadSharedFiles(); 
+                    loadAllStudentMarks(); 
+                }, 100);
+                
+            } catch (error) { 
+                hideLoading(); 
+                showToast('Save failed: ' + error.message, 'error'); 
+            }
+        }
+
+        async function deleteFile(fileId, filename) {
+            if (currentRole !== 'admin' && currentRole !== 'super_admin') { 
+                showToast('Admins only', 'error'); 
+                return; 
+            }
+            if (!confirm(`⚠️ Delete "${filename}"?\nThis CANNOT be undone!`)) return;
+            
+            showLoading('Deleting...', false, 10000);
+            
+            try {
+                const { error } = await supabase
+                    .from('shared_excel_files')
+                    .delete()
+                    .eq('id', fileId);
+                
+                if (error) throw error;
+                
+                sheetCache.delete(fileId);
+                hideLoading(); 
+                showToast('Deleted', 'success');
+                await loadSharedFiles(); 
+                await loadAllStudentMarks();
+                
+            } catch (error) { 
+                hideLoading(); 
+                showToast('Delete failed', 'error'); 
+            }
+        }
+
+        // ========== VIEW FILE WITH BETTER TABLE RENDERING ==========
+        async function viewFile(fileId) {
+            closeEditor();
+            const file = sharedFiles.find(f => f.id === fileId);
+            if (!file || !file.file_data) { 
+                showToast('File not found', 'error'); 
+                return; 
+            }
+            
+            showLoading('Loading file...', false, 10000);
+            
+            try {
+                const binaryData = atob(file.file_data);
+                const array = new Uint8Array(binaryData.length);
+                for (let i = 0; i < binaryData.length; i++) array[i] = binaryData.charCodeAt(i);
+                
+                const workbook = XLSX.read(array, { type: 'array' });
+                
+                // Create sheet tabs
+                const sheetTabs = workbook.SheetNames.map((sheet, i) => 
+                    `<button onclick="viewSheet('${fileId}', '${sheet}')" 
+                        class="viewer-tab px-3 py-1.5 rounded-lg text-xs font-medium transition 
+                        ${i === 0 ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">
+                        ${sheet.length > 15 ? sheet.substr(0,12)+'...' : sheet}
+                    </button>`
+                ).join('');
+                
+                document.getElementById('sheetViewerSelector').innerHTML = sheetTabs;
+                document.getElementById('viewingFileName').innerText = file.filename;
+                
+                // Render first sheet with better styling
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                const htmlString = XLSX.utils.sheet_to_html(firstSheet);
+                
+                // Add better styling to the table
+                const styledHtml = htmlString.replace(
+                    '<table>',
+                    '<table class="excel-viewer-table">'
+                ).replace(
+                    /<td/g,
+                    '<td class="border border-gray-200 px-3 py-2"'
+                ).replace(
+                    /<th/g,
+                    '<th class="bg-blue-900 text-white px-3 py-2 font-semibold"'
+                );
+                
+                document.getElementById('excelViewer').innerHTML = styledHtml;
+                document.getElementById('excelViewerSection').classList.remove('hidden');
+                
+                window.currentViewingFile = { workbook };
+                hideLoading();
+                
+            } catch (error) { 
+                console.error('Error viewing file:', error);
+                hideLoading(); 
+                showToast('Error viewing file', 'error'); 
+            }
+        }
+
+        function viewSheet(fileId, sheetName) {
+            if (!window.currentViewingFile) return;
+            
+            document.querySelectorAll('.viewer-tab').forEach(tab => {
+                const isActive = tab.innerText.includes(sheetName) || tab.innerText === sheetName;
+                tab.className = `viewer-tab px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+                    isActive ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`;
+            });
+            
+            const worksheet = window.currentViewingFile.workbook.Sheets[sheetName];
+            const htmlString = XLSX.utils.sheet_to_html(worksheet);
+            
+            // Add better styling
+            const styledHtml = htmlString.replace(
+                '<table>',
+                '<table class="excel-viewer-table">'
+            ).replace(
+                /<td/g,
+                '<td class="border border-gray-200 px-3 py-2"'
+            ).replace(
+                /<th/g,
+                '<th class="bg-blue-900 text-white px-3 py-2 font-semibold"'
+            );
+            
+            document.getElementById('excelViewer').innerHTML = styledHtml;
         }
 
         function handleExcelUpload(input) {
@@ -1333,7 +1970,8 @@ function displayStudentResults(results) {
                     const workbook = XLSX.read(data, { type: 'array' });
                     const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
                     
-                    let preview = `<div class="mb-2 text-xs text-gray-600">📑 ${workbook.SheetNames.length} sheet(s)</div><table class="data-table"><thead><tr>`;
+                    let preview = `<div class="mb-2 text-xs text-gray-600">📑 ${workbook.SheetNames.length} sheet(s)</div>`;
+                    preview += '<table class="data-table"><thead><tr>';
                     if (jsonData[0]) {
                         jsonData[0].slice(0, 8).forEach(h => preview += `<th class="text-xs">${h || 'Col'}</th>`);
                         if (jsonData[0].length > 8) preview += '<th>...</th>';
@@ -1353,38 +1991,59 @@ function displayStudentResults(results) {
                     document.getElementById('filePreview').innerHTML = preview;
                     document.getElementById('filePreviewSection').classList.remove('hidden');
                     window.currentUploadData = { workbook, fileName: file.name, rowCount: jsonData.length - 1 };
-                    hideLoading(); showToast('Ready', 'success');
+                    hideLoading(); 
+                    showToast('Ready to publish', 'success');
                     
-                } catch (error) { hideLoading(); showToast('Error reading file', 'error'); }
+                } catch (error) { 
+                    hideLoading(); 
+                    showToast('Error reading file', 'error'); 
+                }
             };
             reader.readAsArrayBuffer(file);
         }
 
         async function publishFile() {
-            if (!window.currentUploadData) { showToast('No file', 'error'); return; }
+            if (!window.currentUploadData) { 
+                showToast('No file', 'error'); 
+                return; 
+            }
             showLoading('Publishing...', false, 20000);
             
             try {
                 const { workbook, fileName, rowCount } = window.currentUploadData;
                 const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'base64' });
                 
-                const { error } = await supabase.from('shared_excel_files').insert([{
-                    filename: `PROV_${Date.now()}_${fileName}`, file_data: excelBuffer, row_count: rowCount,
-                    uploaded_by: currentUser.id, uploaded_by_email: currentUser.email, uploaded_at: new Date().toISOString()
-                }]);
+                const { error } = await supabase
+                    .from('shared_excel_files')
+                    .insert([{
+                        filename: `PROV_${Date.now()}_${fileName}`, 
+                        file_data: excelBuffer, 
+                        row_count: rowCount,
+                        uploaded_by: currentUser.id, 
+                        uploaded_by_email: currentUser.email, 
+                        uploaded_at: new Date().toISOString()
+                    }]);
                 
                 if (error) throw error;
                 
-                hideLoading(); showToast('Published!', 'success');
+                hideLoading(); 
+                showToast('Published!', 'success');
                 closeFilePreview();
-                setTimeout(() => { loadSharedFiles(); loadAllStudentMarks(); }, 100);
+                setTimeout(() => { 
+                    loadSharedFiles(); 
+                    loadAllStudentMarks(); 
+                }, 100);
                 
-            } catch (error) { hideLoading(); showToast('Publish failed', 'error'); }
+            } catch (error) { 
+                hideLoading(); 
+                showToast('Publish failed', 'error'); 
+            }
         }
 
         function clearSearch() {
             document.getElementById('studentSearchInput').value = '';
             document.getElementById('studentResultsContainer').classList.add('hidden');
+            currentTranscriptData = null;
         }
         
         function closeEditor() {
@@ -1408,13 +2067,20 @@ function displayStudentResults(results) {
         }
         
         function logout() {
-            currentUser = null; currentRole = null;
+            currentUser = null; 
+            currentRole = null;
             document.getElementById('mainPortal').classList.add('hidden');
             document.getElementById('loginScreen').classList.remove('hidden');
-            closeEditor(); closeViewer(); closeFilePreview();
+            closeEditor(); 
+            closeViewer(); 
+            closeFilePreview();
+            currentTranscriptData = null;
         }
         
-        window.onload = () => console.log('🚀 NCHSN PORTAL - FIXED FOR ALL SHEET TYPES');
+        window.onload = () => {
+            console.log('🚀 NCHSN PORTAL - COMPLETE WITH FOLDERS');
+            console.log('🔗 Supabase URL:', SUPABASE_URL);
+        };
     </script>
 </body>
 </html>
