@@ -327,7 +327,7 @@
         .grading-table .grade-c { background: #fed7aa; color: #92400e; font-weight: bold; }
         .grading-table .grade-d { background: #fee2e2; color: #991b1b; font-weight: bold; }
 
-        /* Intake Modal */
+        /* Class Selection Modal */
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -346,28 +346,49 @@
             background: white;
             border-radius: 16px;
             padding: 24px;
-            max-width: 400px;
+            max-width: 500px;
             width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
             box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
         }
         
-        .intake-option {
+        .class-option {
             border: 2px solid #e2e8f0;
             border-radius: 12px;
             padding: 12px;
             margin: 8px 0;
             cursor: pointer;
             transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
         
-        .intake-option:hover {
+        .class-option:hover {
             border-color: #4f46e5;
             background: #f5f3ff;
         }
         
-        .intake-option.selected {
+        .class-option.selected {
             border-color: #4f46e5;
             background: #eef2ff;
+        }
+        
+        .class-checkbox {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #4f46e5;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            background: white;
+        }
+        
+        .class-option.selected .class-checkbox {
+            background: #4f46e5;
         }
         
         .filter-badge {
@@ -384,6 +405,28 @@
         .filter-badge.active {
             background: #4f46e5;
             color: white;
+        }
+        
+        .selected-classes-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        
+        .selected-class-tag {
+            background: #4f46e5;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .selected-class-tag i {
+            cursor: pointer;
         }
     </style>
 </head>
@@ -403,42 +446,72 @@
         </div>
     </div>
 
-    <!-- Intake Selection Modal -->
-    <div id="intakeModal" class="modal-overlay" style="display: none;">
+    <!-- Class Selection Modal -->
+    <div id="classModal" class="modal-overlay" style="display: none;">
         <div class="modal-content">
-            <h3 class="text-lg font-bold text-gray-800 mb-2">Select Intake</h3>
-            <p class="text-sm text-gray-600 mb-4">Choose the intake for this file:</p>
+            <h3 class="text-lg font-bold text-gray-800 mb-2">Select Classes</h3>
+            <p class="text-sm text-gray-600 mb-4">Choose which classes this file belongs to (you can select multiple):</p>
             
-            <div id="intakeOptions" class="space-y-2">
-                <div class="intake-option" onclick="selectIntake('March 2024')">
-                    <div class="font-semibold">March 2024</div>
-                    <div class="text-xs text-gray-500">Class of 2024</div>
+            <div id="classOptions" class="space-y-2">
+                <div class="class-option" onclick="toggleClass('2024')">
+                    <div class="class-checkbox" id="class-check-2024">
+                        <i class="fas fa-check text-xs"></i>
+                    </div>
+                    <div>
+                        <div class="font-semibold">March 2024</div>
+                        <div class="text-xs text-gray-500">Class of 2024</div>
+                    </div>
                 </div>
-                <div class="intake-option" onclick="selectIntake('March 2025')">
-                    <div class="font-semibold">March 2025</div>
-                    <div class="text-xs text-gray-500">Class of 2025</div>
+                <div class="class-option" onclick="toggleClass('2025')">
+                    <div class="class-checkbox" id="class-check-2025">
+                        <i class="fas fa-check text-xs"></i>
+                    </div>
+                    <div>
+                        <div class="font-semibold">March 2025</div>
+                        <div class="text-xs text-gray-500">Class of 2025</div>
+                    </div>
                 </div>
-                <div class="intake-option" onclick="selectIntake('March 2026')">
-                    <div class="font-semibold">March 2026</div>
-                    <div class="text-xs text-gray-500">Class of 2026</div>
+                <div class="class-option" onclick="toggleClass('2026')">
+                    <div class="class-checkbox" id="class-check-2026">
+                        <i class="fas fa-check text-xs"></i>
+                    </div>
+                    <div>
+                        <div class="font-semibold">March 2026</div>
+                        <div class="text-xs text-gray-500">Class of 2026</div>
+                    </div>
                 </div>
-                <div class="intake-option" onclick="selectIntake('March 2027')">
-                    <div class="font-semibold">March 2027</div>
-                    <div class="text-xs text-gray-500">Class of 2027</div>
+                <div class="class-option" onclick="toggleClass('2027')">
+                    <div class="class-checkbox" id="class-check-2027">
+                        <i class="fas fa-check text-xs"></i>
+                    </div>
+                    <div>
+                        <div class="font-semibold">March 2027</div>
+                        <div class="text-xs text-gray-500">Class of 2027</div>
+                    </div>
                 </div>
-                <div class="intake-option" onclick="selectIntake('March 2028')">
-                    <div class="font-semibold">March 2028</div>
-                    <div class="text-xs text-gray-500">Class of 2028</div>
+                <div class="class-option" onclick="toggleClass('2028')">
+                    <div class="class-checkbox" id="class-check-2028">
+                        <i class="fas fa-check text-xs"></i>
+                    </div>
+                    <div>
+                        <div class="font-semibold">March 2028</div>
+                        <div class="text-xs text-gray-500">Class of 2028</div>
+                    </div>
                 </div>
-                <div class="intake-option" onclick="selectIntake('Other')">
-                    <div class="font-semibold">Other</div>
-                    <div class="text-xs text-gray-500">Specify in filename</div>
+                <div class="class-option" onclick="toggleClass('other')">
+                    <div class="class-checkbox" id="class-check-other">
+                        <i class="fas fa-check text-xs"></i>
+                    </div>
+                    <div>
+                        <div class="font-semibold">Other</div>
+                        <div class="text-xs text-gray-500">Different intake</div>
+                    </div>
                 </div>
             </div>
             
             <div class="mt-4 flex justify-end gap-2">
-                <button onclick="cancelIntakeSelection()" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 text-sm">Cancel</button>
-                <button onclick="confirmIntakeSelection()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">Confirm</button>
+                <button onclick="cancelClassSelection()" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 text-sm">Cancel</button>
+                <button onclick="confirmClassSelection()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">Confirm</button>
             </div>
         </div>
     </div>
@@ -470,10 +543,9 @@
             let isProcessing = false;
             let processingQueue = [];
             let currentTranscriptData = null;
-            let currentClass = 'all';
-            let currentIntake = 'all';
+            let selectedClasses = new Set(); // For filtering
             let pendingFile = null;
-            let selectedIntake = '';
+            let pendingFileClasses = new Set(); // Classes for the file being uploaded
             
             // College Info
             const COLLEGE_NAME = 'NAKURU COLLEGE OF HEALTH SCIENCES & MANAGEMENT';
@@ -561,74 +633,38 @@
                 </div>
             </div>
 
-            <!-- Filters Section -->
+            <!-- Class Filter Section -->
             <div class="portal-card">
                 <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
-                    <i class="fas fa-filter text-purple-600 mr-2"></i> Filters
+                    <i class="fas fa-filter text-purple-600 mr-2"></i> Filter by Class
                 </h2>
                 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <!-- Class Filter -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Class Year</label>
-                        <div class="flex flex-wrap gap-2">
-                            <span onclick="filterByClass('all')" id="filter-class-all" class="filter-badge active">All Classes</span>
-                            <span onclick="filterByClass('2024')" id="filter-class-2024" class="filter-badge">March 2024</span>
-                            <span onclick="filterByClass('2025')" id="filter-class-2025" class="filter-badge">March 2025</span>
-                            <span onclick="filterByClass('2026')" id="filter-class-2026" class="filter-badge">March 2026</span>
-                            <span onclick="filterByClass('2027')" id="filter-class-2027" class="filter-badge">March 2027</span>
-                            <span onclick="filterByClass('2028')" id="filter-class-2028" class="filter-badge">March 2028</span>
-                        </div>
-                    </div>
-                    
-                    <!-- Intake Filter -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Intake</label>
-                        <div class="flex flex-wrap gap-2">
-                            <span onclick="filterByIntake('all')" id="filter-intake-all" class="filter-badge active">All Intakes</span>
-                            <span onclick="filterByIntake('March 2024')" id="filter-intake-2024" class="filter-badge">March 2024</span>
-                            <span onclick="filterByIntake('March 2025')" id="filter-intake-2025" class="filter-badge">March 2025</span>
-                            <span onclick="filterByIntake('March 2026')" id="filter-intake-2026" class="filter-badge">March 2026</span>
-                            <span onclick="filterByIntake('March 2027')" id="filter-intake-2027" class="filter-badge">March 2027</span>
-                            <span onclick="filterByIntake('March 2028')" id="filter-intake-2028" class="filter-badge">March 2028</span>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Active Filters Display -->
-                <div class="mt-3 flex items-center gap-2 text-sm">
-                    <i class="fas fa-check-circle text-green-600"></i>
-                    <span>Active: <span id="activeClassFilter">All Classes</span> | <span id="activeIntakeFilter">All Intakes</span></span>
-                    <button onclick="clearAllFilters()" class="text-xs text-red-600 hover:text-red-800 ml-2">
+                <div class="flex flex-wrap gap-2 mb-3">
+                    <button onclick="toggleAllClasses()" class="filter-badge">
+                        <i class="fas fa-check-double"></i> All Classes
+                    </button>
+                    <button onclick="clearClassFilter()" class="filter-badge">
                         <i class="fas fa-times"></i> Clear All
                     </button>
                 </div>
-            </div>
-
-            <!-- Class Folders (Legacy) -->
-            <div class="portal-card hidden">
-                <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
-                    <i class="fas fa-folder-open text-purple-600 mr-2"></i> Class Folders
-                </h2>
-                <div class="folder-container">
-                    <button onclick="filterByClass('all')" id="class-all" class="folder-btn active">
-                        <i class="fas fa-folder"></i> All Classes
-                    </button>
-                    <button onclick="filterByClass('2024')" id="class-2024" class="folder-btn">
-                        <i class="fas fa-folder"></i> March 2024
-                    </button>
-                    <button onclick="filterByClass('2025')" id="class-2025" class="folder-btn">
-                        <i class="fas fa-folder"></i> March 2025
-                    </button>
-                    <button onclick="filterByClass('2026')" id="class-2026" class="folder-btn">
-                        <i class="fas fa-folder"></i> March 2026
-                    </button>
-                    <button onclick="filterByClass('2027')" id="class-2027" class="folder-btn">
-                        <i class="fas fa-folder"></i> March 2027
-                    </button>
-                    <button onclick="filterByClass('2028')" id="class-2028" class="folder-btn">
-                        <i class="fas fa-folder"></i> March 2028
-                    </button>
+                
+                <div class="flex flex-wrap gap-2">
+                    <span onclick="toggleClassFilter('2024')" id="filter-class-2024" class="filter-badge">March 2024</span>
+                    <span onclick="toggleClassFilter('2025')" id="filter-class-2025" class="filter-badge">March 2025</span>
+                    <span onclick="toggleClassFilter('2026')" id="filter-class-2026" class="filter-badge">March 2026</span>
+                    <span onclick="toggleClassFilter('2027')" id="filter-class-2027" class="filter-badge">March 2027</span>
+                    <span onclick="toggleClassFilter('2028')" id="filter-class-2028" class="filter-badge">March 2028</span>
+                    <span onclick="toggleClassFilter('other')" id="filter-class-other" class="filter-badge">Other</span>
+                </div>
+                
+                <!-- Selected Classes Display -->
+                <div id="selectedClassesDisplay" class="selected-classes-container mt-3">
+                    <!-- Selected classes will appear here -->
+                </div>
+                
+                <div class="mt-3 text-sm text-gray-600">
+                    <i class="fas fa-info-circle mr-1"></i>
+                    Showing files that match any of the selected classes
                 </div>
             </div>
 
@@ -976,65 +1012,100 @@
             };
         }
 
-        // ========== FILTER FUNCTIONS ==========
-        function filterByClass(year) {
-            currentClass = year;
+        // ========== CLASS FILTER FUNCTIONS ==========
+        function toggleClassFilter(classYear) {
+            if (selectedClasses.has(classYear)) {
+                selectedClasses.delete(classYear);
+                document.getElementById(`filter-class-${classYear}`).classList.remove('active');
+            } else {
+                selectedClasses.add(classYear);
+                document.getElementById(`filter-class-${classYear}`).classList.add('active');
+            }
             
-            // Update UI
+            updateSelectedClassesDisplay();
+            loadSharedFiles();
+            updateFilteredCharts();
+            
+            const count = selectedClasses.size;
+            showToast(count === 0 ? 'Showing all classes' : `Filtering by ${count} class(es)`, 'success');
+        }
+
+        function toggleAllClasses() {
+            const allClasses = ['2024', '2025', '2026', '2027', '2028', 'other'];
+            const allSelected = allClasses.every(c => selectedClasses.has(c));
+            
+            if (allSelected) {
+                // Deselect all
+                selectedClasses.clear();
+                allClasses.forEach(c => {
+                    document.getElementById(`filter-class-${c}`).classList.remove('active');
+                });
+            } else {
+                // Select all
+                allClasses.forEach(c => {
+                    selectedClasses.add(c);
+                    document.getElementById(`filter-class-${c}`).classList.add('active');
+                });
+            }
+            
+            updateSelectedClassesDisplay();
+            loadSharedFiles();
+            updateFilteredCharts();
+            showToast(selectedClasses.size === 0 ? 'Showing all classes' : 'Showing all classes', 'success');
+        }
+
+        function clearClassFilter() {
+            selectedClasses.clear();
             document.querySelectorAll('[id^="filter-class-"]').forEach(el => {
                 el.classList.remove('active');
             });
-            document.getElementById(`filter-class-${year}`).classList.add('active');
-            
-            document.getElementById('activeClassFilter').innerText = year === 'all' ? 'All Classes' : `March ${year}`;
-            
-            // Refresh data
+            updateSelectedClassesDisplay();
             loadSharedFiles();
             updateFilteredCharts();
-            showToast(`Filtering by ${year === 'all' ? 'all classes' : 'March ' + year}`, 'success');
+            showToast('Showing all classes', 'success');
         }
 
-        function filterByIntake(intake) {
-            currentIntake = intake;
+        function updateSelectedClassesDisplay() {
+            const container = document.getElementById('selectedClassesDisplay');
+            const classNames = {
+                '2024': 'March 2024',
+                '2025': 'March 2025',
+                '2026': 'March 2026',
+                '2027': 'March 2027',
+                '2028': 'March 2028',
+                'other': 'Other'
+            };
             
-            // Update UI
-            document.querySelectorAll('[id^="filter-intake-"]').forEach(el => {
-                el.classList.remove('active');
-            });
-            
-            if (intake === 'all') {
-                document.getElementById('filter-intake-all').classList.add('active');
-                document.getElementById('activeIntakeFilter').innerText = 'All Intakes';
-            } else {
-                const intakeId = intake.replace(' ', '-').toLowerCase();
-                const el = document.getElementById(`filter-intake-${intakeId.split('-')[1]}`);
-                if (el) el.classList.add('active');
-                document.getElementById('activeIntakeFilter').innerText = intake;
+            if (selectedClasses.size === 0) {
+                container.innerHTML = '<span class="text-sm text-gray-500">No filters applied - showing all classes</span>';
+                return;
             }
             
-            // Refresh data
-            loadSharedFiles();
-            updateFilteredCharts();
-            showToast(`Filtering by ${intake === 'all' ? 'all intakes' : intake}`, 'success');
-        }
-
-        function clearAllFilters() {
-            filterByClass('all');
-            filterByIntake('all');
+            let html = '';
+            selectedClasses.forEach(c => {
+                html += `
+                    <span class="selected-class-tag">
+                        ${classNames[c] || c}
+                        <i class="fas fa-times" onclick="toggleClassFilter('${c}')"></i>
+                    </span>
+                `;
+            });
+            
+            container.innerHTML = html;
         }
 
         function updateFilteredCharts() {
             if (allStudentMarks.length === 0) return;
             
-            // Filter marks based on current filters
+            // Filter marks based on selected classes
             const filteredMarks = getFilteredMarks();
             
             if (filteredMarks.length === 0) {
                 // Clear charts
                 if (performanceChart) performanceChart.destroy();
                 if (distributionChart) distributionChart.destroy();
-                document.getElementById('chartFilterBadge').innerText = 'No data';
-                document.getElementById('barChartFilterBadge').innerText = 'No data';
+                document.getElementById('chartFilterBadge').innerHTML = '<i class="fas fa-filter mr-1"></i>No data';
+                document.getElementById('barChartFilterBadge').innerHTML = '<i class="fas fa-filter mr-1"></i>No data';
                 return;
             }
             
@@ -1044,9 +1115,12 @@
             const dCount = filteredMarks.filter(m => m < 60).length;
             
             // Update filter badges
-            const filterText = currentIntake !== 'all' ? currentIntake : (currentClass !== 'all' ? `Class ${currentClass}` : 'All Data');
-            document.getElementById('chartFilterBadge').innerText = filterText;
-            document.getElementById('barChartFilterBadge').innerText = filterText;
+            const filterText = selectedClasses.size > 0 ? 
+                `<i class="fas fa-filter mr-1"></i>${selectedClasses.size} class(es)` : 
+                '<i class="fas fa-globe mr-1"></i>All Classes';
+            
+            document.getElementById('chartFilterBadge').innerHTML = filterText;
+            document.getElementById('barChartFilterBadge').innerHTML = filterText;
             
             // Performance Chart
             const perfCtx = document.getElementById('performanceChart').getContext('2d');
@@ -1100,19 +1174,15 @@
             const marks = [];
             
             allStudentMarks.forEach(record => {
-                // Check if file matches filters
-                const file = sharedFiles.find(f => f.id === record.fileId);
-                if (!file) return;
-                
-                // Apply class filter
-                if (currentClass !== 'all') {
-                    const fileClass = file.filename?.match(/20\d{2}/)?.[0];
-                    if (fileClass !== currentClass) return;
-                }
-                
-                // Apply intake filter
-                if (currentIntake !== 'all') {
-                    if (!file.filename?.includes(currentIntake)) return;
+                // Check if file matches selected classes
+                if (selectedClasses.size > 0) {
+                    const file = sharedFiles.find(f => f.id === record.fileId);
+                    if (!file) return;
+                    
+                    // Check if file has any of the selected classes
+                    const fileClasses = file.classes ? file.classes.split(',') : [];
+                    const hasMatch = Array.from(selectedClasses).some(c => fileClasses.includes(c));
+                    if (!hasMatch) return;
                 }
                 
                 // Get mark
@@ -1135,53 +1205,65 @@
             return marks;
         }
 
-        // ========== INTAKE SELECTION ==========
-        function showIntakeModal() {
-            document.getElementById('intakeModal').style.display = 'flex';
-            // Reset selection
-            document.querySelectorAll('.intake-option').forEach(opt => {
+        // ========== CLASS SELECTION FOR UPLOAD ==========
+        function showClassSelectionModal() {
+            // Reset selections
+            pendingFileClasses.clear();
+            document.querySelectorAll('.class-option').forEach(opt => {
                 opt.classList.remove('selected');
+                const checkbox = opt.querySelector('.class-checkbox');
+                if (checkbox) {
+                    checkbox.style.background = 'white';
+                    checkbox.style.color = 'white';
+                }
             });
-            selectedIntake = '';
+            
+            document.getElementById('classModal').style.display = 'flex';
         }
 
-        function selectIntake(intake) {
-            document.querySelectorAll('.intake-option').forEach(opt => {
-                opt.classList.remove('selected');
-            });
-            event.currentTarget.classList.add('selected');
-            selectedIntake = intake;
+        function toggleClass(classYear) {
+            const option = event.currentTarget;
+            const checkbox = document.getElementById(`class-check-${classYear}`);
+            
+            if (pendingFileClasses.has(classYear)) {
+                pendingFileClasses.delete(classYear);
+                option.classList.remove('selected');
+                if (checkbox) {
+                    checkbox.style.background = 'white';
+                    checkbox.style.color = 'white';
+                }
+            } else {
+                pendingFileClasses.add(classYear);
+                option.classList.add('selected');
+                if (checkbox) {
+                    checkbox.style.background = '#4f46e5';
+                    checkbox.style.color = 'white';
+                }
+            }
         }
 
-        function cancelIntakeSelection() {
-            document.getElementById('intakeModal').style.display = 'none';
-            selectedIntake = '';
+        function cancelClassSelection() {
+            document.getElementById('classModal').style.display = 'none';
+            pendingFileClasses.clear();
             pendingFile = null;
         }
 
-        function confirmIntakeSelection() {
-            if (!selectedIntake) {
-                showToast('Please select an intake', 'error');
+        function confirmClassSelection() {
+            if (pendingFileClasses.size === 0) {
+                showToast('Please select at least one class', 'error');
                 return;
             }
             
-            document.getElementById('intakeModal').style.display = 'none';
+            document.getElementById('classModal').style.display = 'none';
             
-            // Add intake to filename
+            // Add classes to filename
             const filename = pendingFile.name;
-            let newFilename = filename;
+            const classList = Array.from(pendingFileClasses).join('_');
+            const fileExt = filename.split('.').pop();
+            const baseName = filename.substring(0, filename.lastIndexOf('.'));
             
-            // Check if filename already has intake
-            const hasIntake = /March 20\d{2}/.test(filename);
-            if (!hasIntake) {
-                // Add intake to filename
-                const parts = filename.split('.');
-                const ext = parts.pop();
-                newFilename = `${parts.join('.')} - ${selectedIntake}.${ext}`;
-            }
-            
-            pendingFile.intake = selectedIntake;
-            pendingFile.finalName = newFilename;
+            pendingFile.finalName = `${baseName}_[${classList}].${fileExt}`;
+            pendingFile.classList = Array.from(pendingFileClasses);
             
             // Show preview
             showFilePreview(pendingFile);
@@ -1221,8 +1303,8 @@
                         
                         hideLoading();
                         
-                        // Show intake selection modal
-                        showIntakeModal();
+                        // Show class selection modal
+                        showClassSelectionModal();
                         
                     } catch (error) {
                         console.error('Error processing file:', error);
@@ -1246,6 +1328,18 @@
             const firstSheet = workbook.SheetNames[0];
             const worksheet = workbook.Sheets[firstSheet];
             const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+            
+            // Get class names for display
+            const classNames = {
+                '2024': 'March 2024',
+                '2025': 'March 2025',
+                '2026': 'March 2026',
+                '2027': 'March 2027',
+                '2028': 'March 2028',
+                'other': 'Other'
+            };
+            
+            const classDisplay = fileData.classList.map(c => classNames[c] || c).join(', ');
             
             let previewHtml = '<div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200">';
             
@@ -1277,7 +1371,7 @@
                 previewHtml = `
                     <div class="mb-3 p-3 bg-blue-50 rounded-lg">
                         <p class="text-sm"><span class="font-semibold">File:</span> ${fileData.finalName || fileData.name}</p>
-                        <p class="text-sm"><span class="font-semibold">Intake:</span> ${fileData.intake || 'Not specified'}</p>
+                        <p class="text-sm"><span class="font-semibold">Classes:</span> ${classDisplay}</p>
                         <p class="text-sm"><span class="font-semibold">Rows:</span> ${fileData.rowCount}</p>
                     </div>
                 ` + previewHtml;
@@ -1312,7 +1406,7 @@
                         uploaded_by: currentUser.id,
                         uploaded_by_email: currentUser.email,
                         row_count: pendingFile.rowCount || 0,
-                        intake: pendingFile.intake || 'Unknown',
+                        classes: pendingFile.classList ? pendingFile.classList.join(',') : '',
                         uploaded_at: new Date().toISOString()
                     }])
                     .select();
@@ -1326,6 +1420,7 @@
                 document.getElementById('filePreview').innerHTML = '';
                 document.getElementById('excelUpload').value = '';
                 pendingFile = null;
+                pendingFileClasses.clear();
                 
                 hideLoading();
                 showToast('File published successfully', 'success');
@@ -1346,6 +1441,7 @@
             document.getElementById('filePreviewSection').classList.add('hidden');
             document.getElementById('filePreview').innerHTML = '';
             pendingFile = null;
+            pendingFileClasses.clear();
         }
 
         // ========== LOGOUT ==========
@@ -1984,22 +2080,14 @@
                 
                 sharedFiles = files || [];
                 
-                // Apply filters
+                // Apply class filter
                 let filteredFiles = sharedFiles;
-                
-                // Class filter
-                if (currentClass !== 'all') {
-                    filteredFiles = filteredFiles.filter(file => 
-                        file.filename && file.filename.includes(currentClass)
-                    );
-                }
-                
-                // Intake filter
-                if (currentIntake !== 'all') {
-                    filteredFiles = filteredFiles.filter(file => 
-                        file.filename && file.filename.includes(currentIntake) ||
-                        (file.intake && file.intake === currentIntake)
-                    );
+                if (selectedClasses.size > 0) {
+                    filteredFiles = filteredFiles.filter(file => {
+                        if (!file.classes) return false;
+                        const fileClasses = file.classes.split(',');
+                        return Array.from(selectedClasses).some(c => fileClasses.includes(c));
+                    });
                 }
                 
                 const container = document.getElementById('sharedFilesContainer');
@@ -2013,8 +2101,19 @@
                 container.innerHTML = filteredFiles.map(file => {
                     const date = new Date(file.uploaded_at).toLocaleString();
                     const canEdit = currentRole === 'admin' || currentRole === 'super_admin';
-                    const classYear = file.filename?.match(/20\d{2}/)?.[0] || 'Unknown';
-                    const intake = file.intake || (file.filename?.match(/March 20\d{2}/)?.[0] || 'Unknown');
+                    
+                    // Get class display
+                    const fileClasses = file.classes ? file.classes.split(',') : [];
+                    const classNames = {
+                        '2024': 'March 2024',
+                        '2025': 'March 2025',
+                        '2026': 'March 2026',
+                        '2027': 'March 2027',
+                        '2028': 'March 2028',
+                        'other': 'Other'
+                    };
+                    
+                    const classDisplay = fileClasses.map(c => classNames[c] || c).join(', ');
                     
                     return `
                         <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition bg-white">
@@ -2026,8 +2125,7 @@
                                     </div>
                                     <div class="flex items-center mt-1 text-xs gap-1 flex-wrap">
                                         <span class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">${file.row_count || 0} records</span>
-                                        <span class="bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full">${intake}</span>
-                                        <span class="bg-green-100 text-green-800 px-2 py-0.5 rounded-full">Class ${classYear}</span>
+                                        <span class="bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full">${classDisplay}</span>
                                     </div>
                                     <p class="text-xs text-gray-500 mt-1"><i class="fas fa-user mr-1"></i>${file.uploaded_by_email || 'Unknown'} • ${date}</p>
                                     <div class="mt-2 flex gap-1">
@@ -2062,7 +2160,7 @@
                 
                 const { data: files, error } = await supabase
                     .from('shared_excel_files')
-                    .select('id, filename, file_data, uploaded_by_email, uploaded_at, intake')
+                    .select('id, filename, file_data, uploaded_by_email, uploaded_at, classes')
                     .order('uploaded_at', { ascending: false });
                 
                 if (error) throw error;
@@ -2130,7 +2228,7 @@
                                         sheetName: sheetName,
                                         uploadedBy: file.uploaded_by_email || 'Unknown',
                                         uploadedAt: file.uploaded_at,
-                                        intake: file.intake || 'Unknown',
+                                        fileClasses: file.classes ? file.classes.split(',') : [],
                                         rowData: row,
                                         headers: headers
                                     };
