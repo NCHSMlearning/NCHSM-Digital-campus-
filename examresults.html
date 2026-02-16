@@ -2029,194 +2029,137 @@ async function loadAllStudentMarks() {
                 }
                 
                 const workbook = XLSX.read(array, { type: 'array' });
+                const isNCKFile = file.filename.toUpperCase().includes('NCK');
+                const isBlockFile = file.filename.toUpperCase().includes('BLOCK');
                 
                 for (const sheetName of workbook.SheetNames) {
                     const worksheet = workbook.Sheets[sheetName];
                     
-                    // Get the sheet as array of arrays to check top rows
+                    // Get the sheet as array of arrays
                     const sheetData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
                     
                     debugLog(`📊 Sheet "${sheetName}" has ${sheetData.length} rows total`);
                     
                     if (!sheetData || sheetData.length === 0) continue;
                     
-                    // Extract sheet-level metadata from top rows
-                    let sheetTitle = sheetName;
-                    let sheetSubject = '';
-                    let sheetExamType = '';
-                    let sheetYear = '';
-                    let sheetClass = '';
-                    
-                    // Check first few rows for metadata (headers might be in row 0,1,2,3)
-                    for (let rowIdx = 0; rowIdx < Math.min(5, sheetData.length); rowIdx++) {
-                        const row = sheetData[rowIdx] || [];
-                        const rowText = row.join(' ').toLowerCase();
-                        
-                        // Look for subject information in top rows
-                        if (rowText.includes('medical surgical') || rowText.includes('med surg')) {
-                            sheetSubject = 'Medical Surgical Nursing';
-                        } else if (rowText.includes('community health') || rowText.includes('comm health')) {
-                            sheetSubject = 'Community Health Nursing';
-                        } else if (rowText.includes('anatomy') || rowText.includes('physiology')) {
-                            sheetSubject = 'Anatomy & Physiology';
-                        } else if (rowText.includes('maternal') || rowText.includes('obstetrics')) {
-                            sheetSubject = 'Maternal Health Nursing';
-                        } else if (rowText.includes('pediatric') || rowText.includes('paediatric') || rowText.includes('child')) {
-                            sheetSubject = 'Paediatric Nursing';
-                        } else if (rowText.includes('mental') || rowText.includes('psychiatric')) {
-                            sheetSubject = 'Mental Health Nursing';
-                        } else if (rowText.includes('pharmacology')) {
-                            sheetSubject = 'Pharmacology';
-                        } else if (rowText.includes('nutrition')) {
-                            sheetSubject = 'Nutrition & Dietetics';
-                        } else if (rowText.includes('first aid')) {
-                            sheetSubject = 'First Aid & Emergency';
-                        }
-                        
-                        // Look for exam type
-                        if (rowText.includes('final')) sheetExamType = 'FINAL';
-                        else if (rowText.includes('cat')) sheetExamType = 'CAT';
-                        else if (rowText.includes('assignment')) sheetExamType = 'ASSIGNMENT';
-                        else if (rowText.includes('practical')) sheetExamType = 'PRACTICAL';
-                        
-                        // Look for year/class
-                        if (rowText.includes('2024')) sheetYear = '2024';
-                        else if (rowText.includes('2025')) sheetYear = '2025';
-                        else if (rowText.includes('2026')) sheetYear = '2026';
-                        else if (rowText.includes('2027')) sheetYear = '2027';
-                        else if (rowText.includes('2028')) sheetYear = '2028';
-                        
-                        // Look for class information
-                        if (rowText.includes('march')) sheetClass = 'March';
-                        else if (rowText.includes('september')) sheetClass = 'September';
-                        else if (rowText.includes('may')) sheetClass = 'May';
-                        else if (rowText.includes('december')) sheetClass = 'December';
-                    }
-                    
-                    // Find the header row (usually the first row with multiple non-empty cells)
+                    // Find the header row
                     let headerRowIndex = 0;
-                    for (let rowIdx = 0; rowIdx < sheetData.length; rowIdx++) {
+                    for (let rowIdx = 0; rowIdx < Math.min(10, sheetData.length); rowIdx++) {
                         const row = sheetData[rowIdx] || [];
-                        const nonEmptyCount = row.filter(cell => cell && String(cell).trim() !== '').length;
-                        if (nonEmptyCount > 2) {
+                        // Check if this row has multiple text headers
+                        const textCount = row.filter(cell => 
+                            cell && typeof cell === 'string' && 
+                            (cell.includes('NAME') || cell.includes('SCORE') || cell.includes('MARK') || 
+                             cell.includes('ASSESSMENT') || cell.includes('CLINICAL') || cell.includes('THEORY'))
+                        ).length;
+                        if (textCount > 2) {
                             headerRowIndex = rowIdx;
                             break;
                         }
                     }
                     
-                    // Get headers from the identified header row
+                    // Get headers
                     const headers = sheetData[headerRowIndex] || [];
-                    debugLog(`📋 Sheet "${sheetName}" headers: ${headers.filter(h => h).join(', ')}`);
                     
-                    // Process data rows (skip header row and any metadata rows before it)
+                    // Process data rows
                     for (let rowIdx = headerRowIndex + 1; rowIdx < sheetData.length; rowIdx++) {
                         const row = sheetData[rowIdx];
                         if (!row || row.length === 0) continue;
                         
-                        // Check if row is empty (all cells empty)
+                        // Check if row is empty
                         if (row.every(cell => !cell || String(cell).trim() === '')) continue;
                         
-                        // Create object with headers as keys
-                        const rowObj = {};
-                        headers.forEach((header, colIdx) => {
-                            if (header && String(header).trim() !== '') {
-                                rowObj[header] = row[colIdx];
-                            }
-                        });
-                        
-                        // Also add numeric indices for fallback
-                        row.forEach((cell, colIdx) => {
-                            rowObj[`col_${colIdx}`] = cell;
-                        });
-                        
-                        // Try to find student identifier
+                        // Extract student information
                         let studentId = '';
                         let studentName = '';
+                        let studentIndex = '';
+                        let admissionNo = '';
                         
-                        // Check each cell for student identification patterns
-                        Object.entries(rowObj).forEach(([key, value]) => {
-                            const keyLower = String(key).toLowerCase();
-                            const valueStr = String(value || '').toLowerCase();
+                        // Check each cell for student identification
+                        headers.forEach((header, colIdx) => {
+                            if (!header) return;
                             
-                            // Look for admission numbers (pattern like KRCHN/0100/MAR/2025)
-                            if (!studentId && valueStr.match(/krchn\/\d+\/[a-z]+\/\d+/i)) {
-                                studentId = String(value);
-                            }
-                            // Look for ID fields
-                            else if (!studentId && (
-                                keyLower.includes('adm') || 
-                                keyLower.includes('reg') || 
-                                keyLower.includes('id') || 
-                                keyLower.includes('no')
-                            )) {
-                                if (value) studentId = String(value).trim();
-                            }
+                            const headerLower = String(header).toLowerCase();
+                            const cellValue = row[colIdx];
+                            const valueStr = String(cellValue || '').trim();
                             
-                            // Look for name fields
+                            // Look for student name
                             if (!studentName && (
-                                keyLower.includes('name') || 
-                                keyLower.includes('student') ||
-                                keyLower.includes('candidate')
+                                headerLower.includes('name') || 
+                                headerLower.includes('student') ||
+                                headerLower.includes('candidate')
                             )) {
-                                if (value) studentName = String(value).trim();
+                                if (valueStr && valueStr.length > 2 && !valueStr.includes('TOTAL') && !valueStr.includes('AVERAGE')) {
+                                    studentName = valueStr;
+                                }
+                            }
+                            
+                            // Look for admission number
+                            if (!admissionNo && (
+                                headerLower.includes('adm') || 
+                                headerLower.includes('reg') || 
+                                headerLower.includes('id') ||
+                                headerLower.includes('index')
+                            )) {
+                                if (valueStr && valueStr.length > 5) {
+                                    admissionNo = valueStr;
+                                }
+                            }
+                            
+                            // Look for index number
+                            if (!studentIndex && headerLower.includes('index')) {
+                                if (valueStr && valueStr.length > 5) {
+                                    studentIndex = valueStr;
+                                }
                             }
                         });
                         
-                        // If no student identifier found, skip this row
-                        if (!studentId && !studentName) continue;
+                        // Use admission as ID
+                        studentId = admissionNo || studentIndex || '';
                         
-                        // If no name but we have ID, use ID as name
-                        if (!studentName && studentId) {
-                            studentName = studentId;
-                        }
+                        // If no student identifier found, skip
+                        if (!studentName && !studentId) continue;
                         
-                        // Extract marks - LOOK AT EVERY CELL
-                        let marks = [];
+                        // Create record
+                        const record = {
+                            fileId: file.id,
+                            filename: file.filename,
+                            sheetName: sheetName,
+                            studentId: studentId,
+                            studentName: studentName,
+                            studentIndex: studentIndex,
+                            admissionNo: admissionNo,
+                            rawData: {},
+                            marks: []
+                        };
                         
-                        // First, check if this sheet represents a specific subject
-                        if (sheetSubject) {
-                            // This sheet is for one subject, look for mark columns
-                            headers.forEach((header, colIdx) => {
-                                if (!header) return;
-                                
-                                const headerStr = String(header);
-                                const headerLower = headerStr.toLowerCase();
-                                const cellValue = row[colIdx];
-                                
-                                // Check if this column contains marks
-                                const isMarkColumn = 
-                                    headerLower.includes('mark') || 
-                                    headerLower.includes('score') ||
-                                    headerLower.includes('grade') ||
-                                    headerLower.includes('total') ||
-                                    headerLower.includes('exam') ||
-                                    headerLower.includes('final') ||
-                                    headerLower.includes('cat') ||
-                                    headerLower.includes('ass') ||
-                                    headerLower.includes('prac');
-                                
-                                if (cellValue !== undefined && cellValue !== null) {
-                                    const numValue = parseFloat(cellValue);
-                                    if (!isNaN(numValue) && numValue >= 0 && numValue <= 100) {
-                                        // Determine assessment type
-                                        let assessmentType = sheetExamType || 'EXAM';
-                                        if (headerLower.includes('cat')) assessmentType = 'CAT';
-                                        else if (headerLower.includes('final')) assessmentType = 'FINAL';
-                                        else if (headerLower.includes('ass')) assessmentType = 'ASSIGNMENT';
-                                        else if (headerLower.includes('prac')) assessmentType = 'PRACTICAL';
-                                        
-                                        marks.push({
-                                            subject: sheetSubject,
-                                            assessmentType: assessmentType,
-                                            mark: numValue,
-                                            grade: getGrade(numValue),
-                                            originalColumn: headerStr
-                                        });
-                                    }
-                                }
-                            });
-                        } else {
-                            // Multiple subjects might be in this sheet, check each column
+                        // Store raw data
+                        headers.forEach((header, colIdx) => {
+                            if (header) {
+                                record.rawData[header] = row[colIdx];
+                            }
+                        });
+                        
+                        // EXTRACT MARKS BASED ON FILE TYPE
+                        
+                        // 1. NCK CLINICAL ASSESSMENTS AND XY FORMS
+                        if (isNCKFile || sheetName.includes('XY') || sheetName.includes('CASE STUDY') || sheetName.includes('MARCH')) {
+                            
+                            // Define all NCK clinical assessments
+                            const nckAssessmentTypes = [
+                                { keywords: ['PREGNANT WOMAN', 'PREGNANT'], name: 'Pregnant Woman Assessment', type: 'CLINICAL' },
+                                { keywords: ['IMMUNIZATION'], name: 'Immunization', type: 'CLINICAL' },
+                                { keywords: ['NURSING CARE'], name: 'Nursing Care', type: 'CLINICAL' },
+                                { keywords: ['PSYCHIATRY ASSESSMENT', 'PSYCHIATRY assesment'], name: 'Psychiatry Assessment', type: 'CLINICAL' },
+                                { keywords: ['PSYCHIATRY CASE STUDY'], name: 'Psychiatry Case Study', type: 'CASE STUDY' },
+                                { keywords: ['GENERAL NURSING CASE STUDY', 'GENERAL NURSINGCASE STUDY'], name: 'General Nursing Case Study', type: 'CASE STUDY' },
+                                { keywords: ['MIDWIFERY CASE STUDY'], name: 'Midwifery Case Study', type: 'CASE STUDY' },
+                                { keywords: ['MCH CASE STUDY'], name: 'MCH Case Study', type: 'CASE STUDY' },
+                                { keywords: ['PROJECT'], name: 'Project', type: 'PROJECT' },
+                                { keywords: ['FINAL CLINICAL SCORE', 'FINAL CLINICAL'], name: 'Final Clinical Score', type: 'FINAL CLINICAL' }
+                            ];
+                            
+                            // Extract each assessment
                             headers.forEach((header, colIdx) => {
                                 if (!header) return;
                                 
@@ -2224,99 +2167,204 @@ async function loadAllStudentMarks() {
                                 const headerUpper = headerStr.toUpperCase();
                                 const cellValue = row[colIdx];
                                 
-                                if (cellValue !== undefined && cellValue !== null) {
-                                    const numValue = parseFloat(cellValue);
-                                    if (!isNaN(numValue) && numValue >= 0 && numValue <= 100) {
-                                        // Try to determine subject from header
-                                        let subjectName = headerStr;
-                                        
-                                        // Map common subject keywords
-                                        if (headerUpper.includes('MED SURG') || headerUpper.includes('MEDICAL SURGICAL')) {
-                                            subjectName = 'Medical Surgical Nursing';
-                                        } else if (headerUpper.includes('COMM HEALTH') || headerUpper.includes('COMMUNITY')) {
-                                            subjectName = 'Community Health Nursing';
-                                        } else if (headerUpper.includes('ANATOMY') || headerUpper.includes('PHYSIO')) {
-                                            subjectName = 'Anatomy & Physiology';
-                                        } else if (headerUpper.includes('MATERNAL') || headerUpper.includes('OBSTETRICS')) {
-                                            subjectName = 'Maternal Health Nursing';
-                                        } else if (headerUpper.includes('PAEDIATRIC') || headerUpper.includes('PEDIATRIC') || headerUpper.includes('CHILD')) {
-                                            subjectName = 'Paediatric Nursing';
-                                        } else if (headerUpper.includes('MENTAL') || headerUpper.includes('PSYCH')) {
-                                            subjectName = 'Mental Health Nursing';
-                                        } else if (headerUpper.includes('PHARMA')) {
-                                            subjectName = 'Pharmacology';
-                                        } else if (headerUpper.includes('NUTRITION')) {
-                                            subjectName = 'Nutrition & Dietetics';
-                                        } else if (headerUpper.includes('FIRST AID')) {
-                                            subjectName = 'First Aid & Emergency';
-                                        } else if (headerUpper.includes('FINAL MARK') || headerUpper.includes('FINAL')) {
-                                            subjectName = sheetSubject || 'Comprehensive Exam';
-                                        } else if (headerUpper.includes('CAT')) {
-                                            subjectName = sheetSubject || 'Continuous Assessment';
+                                // Skip error values
+                                if (cellValue === '#NAME?' || cellValue === '#REF!' || cellValue === '#VALUE!') return;
+                                
+                                const numValue = parseFloat(cellValue);
+                                if (!isNaN(numValue) && numValue > 0) {
+                                    // Check against known assessment types
+                                    let matched = false;
+                                    nckAssessmentTypes.forEach(assessment => {
+                                        if (assessment.keywords.some(keyword => headerUpper.includes(keyword.toUpperCase()))) {
+                                            record.marks.push({
+                                                subject: assessment.name,
+                                                assessmentType: assessment.type,
+                                                mark: numValue,
+                                                grade: getGrade(numValue),
+                                                originalColumn: headerStr,
+                                                category: 'NCK'
+                                            });
+                                            matched = true;
                                         }
+                                    });
+                                    
+                                    // If not matched but looks like a clinical score (between 50-100)
+                                    if (!matched && numValue >= 50 && numValue <= 100) {
+                                        // Try to extract a clean name from header
+                                        let cleanName = headerStr
+                                            .replace(/[_-]/g, ' ')
+                                            .replace(/\s+/g, ' ')
+                                            .trim();
                                         
-                                        marks.push({
-                                            subject: subjectName,
-                                            assessmentType: headerUpper.includes('FINAL') ? 'FINAL' : 
-                                                            headerUpper.includes('CAT') ? 'CAT' : 
-                                                            headerUpper.includes('ASS') ? 'ASSIGNMENT' : 'EXAM',
+                                        // Capitalize words
+                                        cleanName = cleanName.split(' ')
+                                            .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+                                            .join(' ');
+                                        
+                                        record.marks.push({
+                                            subject: cleanName || 'Clinical Assessment',
+                                            assessmentType: 'CLINICAL',
                                             mark: numValue,
                                             grade: getGrade(numValue),
-                                            originalColumn: headerStr
+                                            originalColumn: headerStr,
+                                            category: 'NCK'
                                         });
                                     }
                                 }
                             });
+                            
+                            // Also look for scores in specific columns for XY FORMS
+                            if (sheetName.includes('XY') || sheetName.includes('CASE STUDY')) {
+                                // Look for any numeric values that might be scores
+                                row.forEach((cell, colIdx) => {
+                                    if (cell && cell !== '#NAME?' && cell !== '#REF!' && cell !== '#VALUE!') {
+                                        const numValue = parseFloat(cell);
+                                        if (!isNaN(numValue) && numValue > 0 && numValue <= 100) {
+                                            // Check if we already have this mark
+                                            const exists = record.marks.some(m => m.mark === numValue);
+                                            if (!exists) {
+                                                record.marks.push({
+                                                    subject: `${sheetName} Assessment`,
+                                                    assessmentType: 'CASE STUDY',
+                                                    mark: numValue,
+                                                    grade: getGrade(numValue),
+                                                    originalColumn: `Column ${colIdx + 1}`,
+                                                    category: 'NCK'
+                                                });
+                                            }
+                                        }
+                                    }
+                                });
+                            }
                         }
                         
-                        // Also check the sheet name for subject context
-                        if (marks.length === 0 && sheetSubject) {
-                            // Look for any numeric values that might be marks
-                            row.forEach((cell, colIdx) => {
-                                const numValue = parseFloat(cell);
-                                if (!isNaN(numValue) && numValue >= 0 && numValue <= 100) {
-                                    marks.push({
-                                        subject: sheetSubject,
-                                        assessmentType: sheetExamType || 'EXAM',
+                        // 2. BLOCK FORMAT THEORY MARKS (CAT, EBE, FINAL)
+                        else if (isBlockFile || sheetName.match(/MIDWIFERY|PHARMACOLOGY|SPECIALISED|HEMATOLOGICAL|RESPIRATORY|IMMUNIZATION|TRAUMA|SRH|COMMUNITY|CARDIOVASCULAR/i)) {
+                            
+                            // Determine subject from sheet name
+                            let subjectName = sheetName;
+                            if (sheetName.includes('MIDWIFERY')) subjectName = 'Midwifery';
+                            else if (sheetName.includes('PHARMACOLOGY')) subjectName = 'Pharmacology II';
+                            else if (sheetName.includes('SPECIALISED')) subjectName = 'Specialised Nursing Practice';
+                            else if (sheetName.includes('HEMATOLOGICAL')) subjectName = 'Hematological Conditions';
+                            else if (sheetName.includes('RESPIRATORY')) subjectName = 'Respiratory Conditions';
+                            else if (sheetName.includes('IMMUNIZATION')) subjectName = 'Immunization';
+                            else if (sheetName.includes('TRAUMA')) subjectName = 'Trauma Nursing';
+                            else if (sheetName.includes('SRH')) subjectName = 'Sexual & Reproductive Health';
+                            else if (sheetName.includes('COMMUNITY')) subjectName = 'Community Health Nursing';
+                            else if (sheetName.includes('CARDIOVASCULAR')) subjectName = 'Cardiovascular Conditions';
+                            
+                            // Extract CAT, EBE, FINAL marks
+                            let catMark = null;
+                            let ebeMark = null;
+                            let finalMark = null;
+                            
+                            headers.forEach((header, colIdx) => {
+                                if (!header) return;
+                                
+                                const headerUpper = String(header).toUpperCase();
+                                const cellValue = row[colIdx];
+                                const numValue = parseFloat(cellValue);
+                                
+                                if (!isNaN(numValue) && numValue > 0) {
+                                    if (headerUpper.includes('CAT')) {
+                                        catMark = numValue;
+                                    } else if (headerUpper.includes('EBE')) {
+                                        ebeMark = numValue;
+                                    } else if (headerUpper.includes('FINAL') || headerUpper.includes('FINALMARKS')) {
+                                        finalMark = numValue;
+                                    }
+                                }
+                            });
+                            
+                            // Add marks
+                            if (catMark !== null) {
+                                record.marks.push({
+                                    subject: subjectName,
+                                    assessmentType: 'CAT',
+                                    mark: catMark,
+                                    grade: getGrade(catMark),
+                                    category: 'THEORY'
+                                });
+                            }
+                            
+                            if (ebeMark !== null) {
+                                record.marks.push({
+                                    subject: subjectName,
+                                    assessmentType: 'EBE',
+                                    mark: ebeMark,
+                                    grade: getGrade(ebeMark),
+                                    category: 'THEORY'
+                                });
+                            }
+                            
+                            if (finalMark !== null) {
+                                record.marks.push({
+                                    subject: subjectName,
+                                    assessmentType: 'FINAL',
+                                    mark: finalMark,
+                                    grade: getGrade(finalMark),
+                                    category: 'THEORY',
+                                    isFinal: true
+                                });
+                            }
+                        }
+                        
+                        // 3. GENERAL THEORY MARKS (any other theory sheets)
+                        else {
+                            // Look for marks in common theory columns
+                            headers.forEach((header, colIdx) => {
+                                if (!header) return;
+                                
+                                const headerLower = String(header).toLowerCase();
+                                const cellValue = row[colIdx];
+                                const numValue = parseFloat(cellValue);
+                                
+                                if (!isNaN(numValue) && numValue > 0 && numValue <= 100) {
+                                    // Determine subject from header
+                                    let subjectName = header;
+                                    let assessmentType = 'EXAM';
+                                    
+                                    if (headerLower.includes('theory') || headerLower.includes('theoretical')) {
+                                        subjectName = 'Theory Exam';
+                                        assessmentType = 'THEORY';
+                                    } else if (headerLower.includes('practical')) {
+                                        subjectName = 'Practical Exam';
+                                        assessmentType = 'PRACTICAL';
+                                    } else if (headerLower.includes('oral')) {
+                                        subjectName = 'Oral Exam';
+                                        assessmentType = 'ORAL';
+                                    } else if (headerLower.includes('osce')) {
+                                        subjectName = 'OSCE';
+                                        assessmentType = 'PRACTICAL';
+                                    }
+                                    
+                                    record.marks.push({
+                                        subject: subjectName,
+                                        assessmentType: assessmentType,
                                         mark: numValue,
                                         grade: getGrade(numValue),
-                                        originalColumn: `Column ${colIdx + 1}`
+                                        originalColumn: header,
+                                        category: 'THEORY'
                                     });
                                 }
                             });
                         }
                         
-                        // Create record
-                        const studentKey = (studentId || studentName).toLowerCase();
-                        const record = {
-                            fileId: file.id,
-                            filename: file.filename,
-                            sheetName: sheetName,
-                            sheetSubject: sheetSubject,
-                            sheetExamType: sheetExamType,
-                            sheetYear: sheetYear,
-                            sheetClass: sheetClass,
-                            studentId: studentId,
-                            studentName: studentName,
-                            marks: marks,
-                            rawData: rowObj,
-                            rawRow: row
-                        };
-                        
-                        if (!studentIndex.has(studentKey)) {
-                            studentIndex.set(studentKey, []);
-                        }
-                        
-                        studentIndex.get(studentKey).push(record);
-                        allStudentMarks.push(record);
-                        
-                        // Debug log for first few records
-                        if (allStudentMarks.length <= 10) {
-                            debugLog(`📝 ${studentName} (${studentId}): ${marks.length} marks from sheet "${sheetName}"`);
-                            if (marks.length > 0) {
-                                marks.forEach(m => {
-                                    debugLog(`   - ${m.subject} (${m.assessmentType}): ${m.mark}`);
-                                });
+                        // Only add record if it has marks or is a valid student
+                        if (record.marks.length > 0 || (studentName && studentName.length > 2)) {
+                            const studentKey = (studentId || studentName).toLowerCase();
+                            
+                            if (!studentIndex.has(studentKey)) {
+                                studentIndex.set(studentKey, []);
+                            }
+                            
+                            studentIndex.get(studentKey).push(record);
+                            allStudentMarks.push(record);
+                            
+                            // Debug log
+                            if (allStudentMarks.length <= 20) {
+                                debugLog(`📝 ${studentName || 'Unknown'} (${studentId || 'No ID'}): ${record.marks.length} marks from ${sheetName}`);
                             }
                         }
                     }
@@ -2351,7 +2399,6 @@ async function loadAllStudentMarks() {
         showToast('Error loading data: ' + error.message, 'error');
     }
 }
-
         // ========== UPDATE STATS AND CHARTS ==========
         function updateStatsAndCharts() {
             try {
