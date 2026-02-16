@@ -2473,33 +2473,28 @@ function searchStudentMarks() {
         allStudentMarks.forEach(record => {
             let found = false;
             
-            // Check student ID
-            if (record.studentId && record.studentId.toLowerCase().includes(searchTerm)) {
-                found = true;
-            }
-            
             // Check student name
-            if (record.studentName && record.studentName.toLowerCase().includes(searchTerm)) {
-                found = true;
+            if (record.studentName) {
+                const nameLower = record.studentName.toLowerCase();
+                if (nameLower.includes(searchTerm)) {
+                    found = true;
+                }
             }
             
-            // Check raw data thoroughly for ID or name
+            // Check student ID/Index
+            if (record.studentId) {
+                const idLower = record.studentId.toLowerCase();
+                if (idLower.includes(searchTerm)) {
+                    found = true;
+                }
+            }
+            
+            // Check raw data thoroughly
             if (record.rawData && !found) {
-                Object.entries(record.rawData).forEach(([key, value]) => {
+                Object.values(record.rawData).forEach(value => {
                     const valStr = String(value || '').toLowerCase();
-                    const keyLower = String(key || '').toLowerCase();
-                    
-                    // Check if this field contains the search term
                     if (valStr.includes(searchTerm)) {
                         found = true;
-                    }
-                    
-                    // Also try to extract student ID and name from common fields
-                    if (!record.studentId && (keyLower.includes('adm') || keyLower.includes('reg') || keyLower.includes('id'))) {
-                        record.studentId = String(value || '').trim();
-                    }
-                    if (!record.studentName && (keyLower.includes('name') || keyLower.includes('student'))) {
-                        record.studentName = String(value || '').trim();
                     }
                 });
             }
@@ -2518,148 +2513,281 @@ function searchStudentMarks() {
             return;
         }
         
-        // Get student info from the first record
-        const studentInfo = results[0];
-        let studentName = studentInfo.studentName || searchTerm;
-        let studentId = studentInfo.studentId || 'N/A';
+        // Extract comprehensive student information
+        let studentInfo = {
+            name: '',
+            admissionNo: '',
+            indexNumber: '',
+            idNumber: '',
+            email: '',
+            mobile: '',
+            class: ''
+        };
         
-        // Try to get better name/ID from raw data if not found
-        if ((!studentName || studentName === searchTerm) && studentInfo.rawData) {
-            Object.entries(studentInfo.rawData).forEach(([key, value]) => {
-                const keyLower = String(key).toLowerCase();
-                const valStr = String(value || '');
-                
-                if (keyLower.includes('name') || keyLower.includes('student')) {
-                    if (valStr && valStr.trim()) {
-                        studentName = valStr.trim();
-                    }
-                }
-                if (keyLower.includes('adm') || keyLower.includes('reg') || keyLower.includes('id')) {
-                    if (valStr && valStr.trim()) {
-                        studentId = valStr.trim();
-                    }
-                }
-            });
-        }
-        
-        // Group by subject (sheet name)
-        const subjectGroups = new Map();
+        // Store all assessment scores
+        const assessments = {
+            // Block format assessments (CAT, EBE, FINAL per subject)
+            blockSubjects: new Map(),
+            
+            // Clinical assessments
+            pregnantWoman: [],
+            immunization: [],
+            nursingCare: [],
+            psychiatryAssessment: [],
+            psychiatryCaseStudy: [],
+            generalNursingCaseStudy: [],
+            midwiferyCaseStudy: [],
+            mchCaseStudy: [],
+            project: [],
+            finalClinical: [],
+            
+            // NCK format assessments
+            clinical: [],
+            theoretical: [],
+            caseStudies: [],
+            practical: []
+        };
         
         results.forEach(record => {
-            const sheetName = record.sheetName || 'Unknown';
-            const filename = record.filename || 'Unknown';
+            const sheetName = record.sheetName || '';
+            const filename = record.filename || '';
             
-            // Initialize subject group if not exists
-            if (!subjectGroups.has(sheetName)) {
-                subjectGroups.set(sheetName, {
-                    subject: sheetName,
-                    catMarks: [],
-                    ebeMarks: [],
-                    finalMarks: [],
-                    files: new Set(),
-                    allMarks: []
-                });
-            }
-            
-            const group = subjectGroups.get(sheetName);
-            group.files.add(filename);
-            
-            // Extract marks from rawData
+            // Extract student information
             if (record.rawData) {
                 Object.entries(record.rawData).forEach(([key, value]) => {
-                    const keyUpper = String(key).toUpperCase();
-                    const numValue = parseFloat(value);
+                    const keyLower = String(key).toLowerCase();
+                    const valStr = String(value || '').trim();
                     
+                    // Student info
+                    if (!studentInfo.name && (keyLower.includes('student name') || keyLower.includes("student's name") || keyLower.includes('name'))) {
+                        if (valStr && !valStr.includes('S.NO') && !valStr.includes('Student')) {
+                            studentInfo.name = valStr;
+                        }
+                    }
+                    if (!studentInfo.indexNumber && (keyLower.includes('index') || keyLower.includes('index number'))) {
+                        studentInfo.indexNumber = valStr;
+                    }
+                    if (!studentInfo.idNumber && (keyLower.includes('id number') || keyLower.includes('id'))) {
+                        studentInfo.idNumber = valStr;
+                    }
+                    if (!studentInfo.admissionNo && (keyLower.includes('adm') || keyLower.includes('reg'))) {
+                        studentInfo.admissionNo = valStr;
+                    }
+                    if (!studentInfo.email && keyLower.includes('email')) {
+                        studentInfo.email = valStr;
+                    }
+                    if (!studentInfo.mobile && (keyLower.includes('mobile') || keyLower.includes('phone'))) {
+                        studentInfo.mobile = valStr;
+                    }
+                    if (!studentInfo.class && (keyLower.includes('class') || keyLower.includes('year') || keyLower.includes('march'))) {
+                        studentInfo.class = valStr;
+                    }
+                    
+                    // Assessment scores - Clinical assessments
+                    const numValue = parseFloat(value);
                     if (!isNaN(numValue) && numValue > 0 && numValue <= 100) {
-                        // Store in all marks for this subject
-                        group.allMarks.push({
-                            value: numValue,
-                            type: keyUpper.includes('CAT') ? 'CAT' : 
-                                  keyUpper.includes('EBE') ? 'EBE' : 
-                                  keyUpper.includes('FINAL') ? 'FINAL' : 'OTHER',
-                            column: key
-                        });
+                        if (keyLower.includes('pregnant') || keyLower.includes('pregnant woman')) {
+                            assessments.pregnantWoman.push(numValue);
+                        } else if (keyLower.includes('immunization')) {
+                            assessments.immunization.push(numValue);
+                        } else if (keyLower.includes('nursing care')) {
+                            assessments.nursingCare.push(numValue);
+                        } else if (keyLower.includes('psychiatry assesment') || keyLower.includes('psychiatry assessment')) {
+                            assessments.psychiatryAssessment.push(numValue);
+                        } else if (keyLower.includes('psychiatry case study')) {
+                            assessments.psychiatryCaseStudy.push(numValue);
+                        } else if (keyLower.includes('general nursing case study')) {
+                            assessments.generalNursingCaseStudy.push(numValue);
+                        } else if (keyLower.includes('midwifery case study')) {
+                            assessments.midwiferyCaseStudy.push(numValue);
+                        } else if (keyLower.includes('mch case study')) {
+                            assessments.mchCaseStudy.push(numValue);
+                        } else if (keyLower.includes('project')) {
+                            assessments.project.push(numValue);
+                        } else if (keyLower.includes('final clinical')) {
+                            assessments.finalClinical.push(numValue);
+                        }
                         
-                        // Categorize by type
-                        if (keyUpper.includes('CAT')) {
-                            group.catMarks.push(numValue);
-                        } else if (keyUpper.includes('EBE')) {
-                            group.ebeMarks.push(numValue);
-                        } else if (keyUpper.includes('FINAL') || keyUpper.includes('FINALMARKS')) {
-                            group.finalMarks.push(numValue);
+                        // NCK format
+                        if (keyLower.includes('clinical')) {
+                            assessments.clinical.push(numValue);
+                        } else if (keyLower.includes('theoretical')) {
+                            assessments.theoretical.push(numValue);
+                        } else if (keyLower.includes('case studies') || keyLower.includes('case study')) {
+                            assessments.caseStudies.push(numValue);
+                        } else if (keyLower.includes('practical')) {
+                            assessments.practical.push(numValue);
                         }
                     }
                 });
             }
             
-            // Also check marks array if available
-            if (record.marks && record.marks.length > 0) {
-                record.marks.forEach(m => {
-                    const subjectLower = (m.subject || '').toLowerCase();
-                    if (subjectLower.includes('cat')) {
-                        group.catMarks.push(m.mark);
-                    } else if (subjectLower.includes('ebe')) {
-                        group.ebeMarks.push(m.mark);
-                    } else if (subjectLower.includes('final')) {
-                        group.finalMarks.push(m.mark);
-                    }
+            // Handle Block format subjects (CAT, EBE, FINAL)
+            if (filename.includes('BLOCK') || sheetName.match(/MIDWIFERY|PHARMACOLOGY|SPECIALISED|HEMATOLOGICAL|RESPIRATORY|IMMUNIZATION|TRAUMA|SRH|COMMUNITY|CARDIOVASCULAR/i)) {
+                const subjectKey = sheetName;
+                
+                if (!assessments.blockSubjects.has(subjectKey)) {
+                    assessments.blockSubjects.set(subjectKey, {
+                        subject: subjectKey,
+                        catMarks: [],
+                        ebeMarks: [],
+                        finalMarks: []
+                    });
+                }
+                
+                const subject = assessments.blockSubjects.get(subjectKey);
+                
+                if (record.rawData) {
+                    Object.entries(record.rawData).forEach(([key, value]) => {
+                        const keyUpper = String(key).toUpperCase();
+                        const numValue = parseFloat(value);
+                        
+                        if (!isNaN(numValue) && numValue > 0 && numValue <= 100) {
+                            if (keyUpper.includes('CAT')) {
+                                subject.catMarks.push(numValue);
+                            } else if (keyUpper.includes('EBE')) {
+                                subject.ebeMarks.push(numValue);
+                            } else if (keyUpper.includes('FINAL') || keyUpper.includes('FINALMARKS')) {
+                                subject.finalMarks.push(numValue);
+                            }
+                        }
+                    });
+                }
+            }
+        });
+        
+        if (!studentInfo.name) studentInfo.name = searchTerm;
+        
+        // Build comprehensive subject list
+        const allSubjects = [];
+        
+        // Add Block format subjects
+        assessments.blockSubjects.forEach((subject, name) => {
+            const catMark = subject.catMarks.length > 0 ? [...new Set(subject.catMarks)][0] : null;
+            const ebeMark = subject.ebeMarks.length > 0 ? [...new Set(subject.ebeMarks)][0] : null;
+            const finalMark = subject.finalMarks.length > 0 ? [...new Set(subject.finalMarks)][0] : null;
+            
+            if (finalMark !== null) {
+                const grade = getGrade(finalMark);
+                const passed = finalMark >= 60;
+                
+                allSubjects.push({
+                    type: 'block',
+                    name: name,
+                    catMark: catMark,
+                    ebeMark: ebeMark,
+                    finalMark: finalMark,
+                    score: finalMark,
+                    grade: grade,
+                    passed: passed,
+                    displayName: name
                 });
             }
         });
         
-        // Calculate for each subject - take the FIRST occurrence of each mark type
-        // (since multiple files would have the same data)
-        const subjects = Array.from(subjectGroups.values()).map(group => {
-            // Take unique values (in case of duplicates)
-            const uniqueCatMarks = [...new Set(group.catMarks)];
-            const uniqueEbeMarks = [...new Set(group.ebeMarks)];
-            const uniqueFinalMarks = [...new Set(group.finalMarks)];
-            
-            // Get the first mark of each type (they should be the same)
-            const catMark = uniqueCatMarks.length > 0 ? uniqueCatMarks[0] : null;
-            const ebeMark = uniqueEbeMarks.length > 0 ? uniqueEbeMarks[0] : null;
-            const finalMark = uniqueFinalMarks.length > 0 ? uniqueFinalMarks[0] : null;
-            
-            // The FINAL mark is the actual subject score (what matters for grading)
-            const subjectScore = finalMark || 0;
-            const grade = getGrade(subjectScore);
-            
-            // Pass/Fail based on FINAL mark (≥60 = PASS)
-            const passed = finalMark ? finalMark >= 60 : false;
-            
-            // Calculate weighted average (for informational purposes only)
-            let weightedAvg = subjectScore;
-            if (catMark !== null && ebeMark !== null && finalMark !== null) {
-                weightedAvg = (catMark * 0.2) + (ebeMark * 0.3) + (finalMark * 0.5);
-            }
-            
-            return {
-                subject: group.subject,
-                catMark: catMark,
-                ebeMark: ebeMark,
-                finalMark: finalMark,
-                subjectScore: subjectScore,
-                weightedAvg: weightedAvg,
-                grade: grade,
-                passed: passed,
-                files: Array.from(group.files),
-                recordCount: group.allMarks.length
-            };
-        }).sort((a, b) => (b.finalMark || 0) - (a.finalMark || 0));
+        // Add Clinical assessments
+        const clinicalAssessments = [
+            { name: 'Pregnant Woman Assessment', marks: assessments.pregnantWoman, key: 'pregnantWoman' },
+            { name: 'Immunization', marks: assessments.immunization, key: 'immunization' },
+            { name: 'Nursing Care', marks: assessments.nursingCare, key: 'nursingCare' },
+            { name: 'Psychiatry Assessment', marks: assessments.psychiatryAssessment, key: 'psychiatryAssessment' },
+            { name: 'Psychiatry Case Study', marks: assessments.psychiatryCaseStudy, key: 'psychiatryCaseStudy' },
+            { name: 'General Nursing Case Study', marks: assessments.generalNursingCaseStudy, key: 'generalNursingCaseStudy' },
+            { name: 'Midwifery Case Study', marks: assessments.midwiferyCaseStudy, key: 'midwiferyCaseStudy' },
+            { name: 'MCH Case Study', marks: assessments.mchCaseStudy, key: 'mchCaseStudy' },
+            { name: 'Project', marks: assessments.project, key: 'project' },
+            { name: 'Final Clinical Score', marks: assessments.finalClinical, key: 'finalClinical' }
+        ];
         
-        // Calculate overall stats - use FINAL marks for average, not weighted
-        const validSubjects = subjects.filter(s => s.finalMark !== null);
-        const totalSubjectScore = validSubjects.reduce((sum, s) => sum + s.finalMark, 0);
-        const avgOverall = validSubjects.length > 0 ? totalSubjectScore / validSubjects.length : 0;
-        const totalPoints = subjects.reduce((sum, s) => sum + s.grade.points, 0);
-        const gpa = subjects.length > 0 ? (totalPoints / subjects.length).toFixed(2) : '0.00';
+        clinicalAssessments.forEach(assessment => {
+            if (assessment.marks.length > 0) {
+                const avgScore = assessment.marks.reduce((a, b) => a + b, 0) / assessment.marks.length;
+                const grade = getGrade(avgScore);
+                const passed = avgScore >= 60;
+                
+                allSubjects.push({
+                    type: 'clinical',
+                    name: assessment.name,
+                    marks: assessment.marks,
+                    score: avgScore,
+                    grade: grade,
+                    passed: passed,
+                    displayName: assessment.name
+                });
+            }
+        });
+        
+        // Add NCK assessments
+        if (assessments.clinical.length > 0) {
+            const avg = assessments.clinical.reduce((a, b) => a + b, 0) / assessments.clinical.length;
+            const grade = getGrade(avg);
+            allSubjects.push({
+                type: 'nck',
+                name: 'NCK Clinical Score',
+                marks: assessments.clinical,
+                score: avg,
+                grade: grade,
+                passed: avg >= 60,
+                displayName: 'NCK Clinical Score'
+            });
+        }
+        
+        if (assessments.theoretical.length > 0) {
+            const avg = assessments.theoretical.reduce((a, b) => a + b, 0) / assessments.theoretical.length;
+            const grade = getGrade(avg);
+            allSubjects.push({
+                type: 'nck',
+                name: 'NCK Theoretical Score',
+                marks: assessments.theoretical,
+                score: avg,
+                grade: grade,
+                passed: avg >= 60,
+                displayName: 'NCK Theoretical Score'
+            });
+        }
+        
+        if (assessments.caseStudies.length > 0) {
+            const avg = assessments.caseStudies.reduce((a, b) => a + b, 0) / assessments.caseStudies.length;
+            const grade = getGrade(avg);
+            allSubjects.push({
+                type: 'nck',
+                name: 'NCK Case Studies',
+                marks: assessments.caseStudies,
+                score: avg,
+                grade: grade,
+                passed: avg >= 60,
+                displayName: 'NCK Case Studies'
+            });
+        }
+        
+        if (assessments.practical.length > 0) {
+            const avg = assessments.practical.reduce((a, b) => a + b, 0) / assessments.practical.length;
+            const grade = getGrade(avg);
+            allSubjects.push({
+                type: 'nck',
+                name: 'NCK Practical Score',
+                marks: assessments.practical,
+                score: avg,
+                grade: grade,
+                passed: avg >= 60,
+                displayName: 'NCK Practical Score'
+            });
+        }
+        
+        // Sort subjects by score
+        allSubjects.sort((a, b) => b.score - a.score);
+        
+        // Calculate overall stats
+        const totalScore = allSubjects.reduce((sum, s) => sum + s.score, 0);
+        const avgOverall = allSubjects.length > 0 ? totalScore / allSubjects.length : 0;
+        const totalPoints = allSubjects.reduce((sum, s) => sum + s.grade.points, 0);
+        const gpa = allSubjects.length > 0 ? (totalPoints / allSubjects.length).toFixed(2) : '0.00';
         const overallGrade = getGrade(avgOverall);
         
         // Store for transcript
         currentTranscriptData = {
-            studentName: studentName,
-            studentId: studentId,
-            subjects: subjects,
+            studentInfo: studentInfo,
+            subjects: allSubjects,
             avgOverall: avgOverall,
             overallGrade: overallGrade,
             gpa: gpa,
@@ -2667,48 +2795,70 @@ function searchStudentMarks() {
         };
         
         // Update summary card
-        document.getElementById('studentNameDisplay').innerText = studentName;
-        document.getElementById('studentIdDisplay').innerHTML = `<i class="fas fa-id-card mr-1"></i>Admission No: ${studentId}`;
-        document.getElementById('studentProgramDisplay').innerHTML = `<i class="fas fa-graduation-cap mr-1"></i>Program: KRCHN (Kenya Registered Community Health Nurse)`;
+        document.getElementById('studentNameDisplay').innerText = studentInfo.name;
+        
+        let idDisplay = '';
+        if (studentInfo.admissionNo) idDisplay += `Adm: ${studentInfo.admissionNo}`;
+        if (studentInfo.indexNumber) {
+            if (idDisplay) idDisplay += ' | ';
+            idDisplay += `Index: ${studentInfo.indexNumber}`;
+        }
+        if (studentInfo.idNumber) {
+            if (idDisplay) idDisplay += ' | ';
+            idDisplay += `ID: ${studentInfo.idNumber}`;
+        }
+        document.getElementById('studentIdDisplay').innerHTML = `<i class="fas fa-id-card mr-1"></i>${idDisplay || 'N/A'}`;
+        
+        let contactDisplay = '';
+        if (studentInfo.email) contactDisplay += `📧 ${studentInfo.email}`;
+        if (studentInfo.mobile) {
+            if (contactDisplay) contactDisplay += ' | ';
+            contactDisplay += `📱 ${studentInfo.mobile}`;
+        }
+        if (studentInfo.class) {
+            if (contactDisplay) contactDisplay += ' | ';
+            contactDisplay += `📅 ${studentInfo.class}`;
+        }
+        if (contactDisplay) {
+            document.getElementById('studentProgramDisplay').innerHTML = `<i class="fas fa-phone mr-1"></i>${contactDisplay}`;
+        } else {
+            document.getElementById('studentProgramDisplay').innerHTML = `<i class="fas fa-graduation-cap mr-1"></i>Program: KRCHN`;
+        }
         
         document.getElementById('overallGradeDisplay').innerText = `Grade: ${overallGrade.grade}`;
         document.getElementById('overallGradeDisplay').className = `grade-badge ${overallGrade.class} text-sm px-4 py-2`;
         
         document.getElementById('gpaDisplay').innerHTML = `<i class="fas fa-star mr-1"></i>GPA: ${gpa}`;
         
-        document.getElementById('totalExamsCount').innerText = subjects.length;
+        document.getElementById('totalExamsCount').innerText = allSubjects.length;
         document.getElementById('averageMarkDisplay').innerText = avgOverall.toFixed(1);
         document.getElementById('totalPointsDisplay').innerText = totalPoints;
         document.getElementById('gpaValueDisplay').innerText = gpa;
         
         // Build results table
-        let tableHtml = '<table class="data-table"><thead><tr><th>Subject</th><th>CAT</th><th>EBE</th><th>FINAL</th><th>Final Score</th><th>Grade</th><th>Points</th><th>Status</th></tr></thead><tbody>';
+        let tableHtml = '<table class="data-table"><thead><tr><th>Assessment</th><th>Marks</th><th>Score</th><th>Grade</th><th>Points</th><th>Status</th></tr></thead><tbody>';
         
-        subjects.forEach(s => {
-            // Format marks
-            const catDisplay = s.catMark !== null 
-                ? `<span class="font-mono ${getGrade(s.catMark).color}">${s.catMark}</span>` 
-                : '-';
-            const ebeDisplay = s.ebeMark !== null 
-                ? `<span class="font-mono ${getGrade(s.ebeMark).color}">${s.ebeMark}</span>` 
-                : '-';
-            const finalDisplay = s.finalMark !== null 
-                ? `<span class="font-mono ${getGrade(s.finalMark).color} font-bold">${s.finalMark}</span>` 
-                : '-';
+        allSubjects.forEach(s => {
+            let marksDisplay = '';
             
-            // Row class based on pass/fail
-            const rowClass = s.passed ? '' : 'bg-red-50';
+            if (s.type === 'block') {
+                const marks = [];
+                if (s.catMark) marks.push(`CAT:${s.catMark}`);
+                if (s.ebeMark) marks.push(`EBE:${s.ebeMark}`);
+                if (s.finalMark) marks.push(`FINAL:${s.finalMark}`);
+                marksDisplay = marks.join(' | ');
+            } else {
+                marksDisplay = s.marks.map(m => `<span class="font-mono ${getGrade(m).color}">${m}</span>`).join(', ');
+            }
             
             tableHtml += `
-                <tr class="${rowClass}">
-                    <td class="font-medium">${s.subject}</td>
-                    <td class="text-center">${catDisplay}</td>
-                    <td class="text-center">${ebeDisplay}</td>
-                    <td class="text-center font-bold">${finalDisplay}</td>
-                    <td class="font-bold ${s.grade.color} text-center">${s.finalMark ? s.finalMark.toFixed(1) : '-'}</td>
-                    <td class="text-center"><span class="grade-badge ${s.grade.class}">${s.grade.grade}</span></td>
-                    <td class="text-center font-bold">${s.grade.points}</td>
-                    <td class="text-center"><span class="status-badge ${s.passed ? 'status-pass' : 'status-fail'}">${s.passed ? 'PASS' : 'FAIL'}</span></td>
+                <tr class="${s.passed ? '' : 'bg-red-50'}">
+                    <td class="font-medium">${s.displayName}</td>
+                    <td class="text-xs">${marksDisplay}</td>
+                    <td class="font-bold ${s.grade.color}">${s.score.toFixed(1)}</td>
+                    <td><span class="grade-badge ${s.grade.class}">${s.grade.grade}</span></td>
+                    <td class="text-center">${s.grade.points}</td>
+                    <td><span class="status-badge ${s.passed ? 'status-pass' : 'status-fail'}">${s.passed ? 'PASS' : 'FAIL'}</span></td>
                 </tr>
             `;
         });
@@ -2716,15 +2866,14 @@ function searchStudentMarks() {
         tableHtml += '</tbody></table>';
         
         // Add summary statistics
-        const passCount = subjects.filter(s => s.passed).length;
-        const failCount = subjects.filter(s => !s.passed).length;
-        const totalMarks = subjects.reduce((sum, s) => sum + (s.finalMark ? 1 : 0) + (s.catMark ? 1 : 0) + (s.ebeMark ? 1 : 0), 0);
+        const passCount = allSubjects.filter(s => s.passed).length;
+        const failCount = allSubjects.filter(s => !s.passed).length;
         
         tableHtml += `
             <div class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div class="bg-blue-50 p-3 rounded-lg">
-                    <div class="text-xs text-gray-600">Total Subjects</div>
-                    <div class="text-xl font-bold">${subjects.length}</div>
+                    <div class="text-xs text-gray-600">Total Assessments</div>
+                    <div class="text-xl font-bold">${allSubjects.length}</div>
                 </div>
                 <div class="bg-green-50 p-3 rounded-lg">
                     <div class="text-xs text-gray-600">Passed</div>
@@ -2735,8 +2884,8 @@ function searchStudentMarks() {
                     <div class="text-xl font-bold text-red-600">${failCount}</div>
                 </div>
                 <div class="bg-purple-50 p-3 rounded-lg">
-                    <div class="text-xs text-gray-600">Total Marks</div>
-                    <div class="text-xl font-bold">${totalMarks}</div>
+                    <div class="text-xs text-gray-600">Total Records</div>
+                    <div class="text-xl font-bold">${results.length}</div>
                 </div>
             </div>
         `;
@@ -2744,11 +2893,11 @@ function searchStudentMarks() {
         // Add data sources
         const fileMap = new Map();
         results.forEach(r => {
-            const key = `${r.filename}`;
+            const key = r.filename || 'Unknown';
             if (!fileMap.has(key)) {
                 fileMap.set(key, new Set());
             }
-            fileMap.get(key).add(r.sheetName);
+            fileMap.get(key).add(r.sheetName || 'Sheet');
         });
         
         tableHtml += `
@@ -2772,7 +2921,7 @@ function searchStudentMarks() {
         document.getElementById('studentResultsContainer').classList.remove('hidden');
         
         hideLoading();
-        showToast(`Found ${subjects.length} subjects for ${studentName}`, 'success');
+        showToast(`Found ${allSubjects.length} assessments for ${studentInfo.name}`, 'success');
         
     } catch (error) {
         console.error('Search error:', error);
