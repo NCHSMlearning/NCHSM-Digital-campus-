@@ -2465,56 +2465,34 @@ function searchStudentMarks() {
     
     try {
         console.log('🔍 Searching for:', searchTerm);
-        console.log('Total records:', allStudentMarks.length);
-        console.log('Student index size:', studentIndex.size);
         
-        // Search in student index
+        // Search for the student
         let results = [];
         
-        // Direct match in index
-        if (studentIndex.has(searchTerm)) {
-            results = studentIndex.get(searchTerm);
-            console.log('Found direct match:', results.length, 'records');
-        } else {
-            // Fuzzy search through all keys
-            for (const [key, records] of studentIndex.entries()) {
-                if (key.includes(searchTerm)) {
-                    results = results.concat(records);
-                }
+        // Try to find by admission number pattern
+        const isAdmissionPattern = searchTerm.includes('krchn') || searchTerm.includes('/');
+        
+        allStudentMarks.forEach(record => {
+            const studentNameMatch = record.studentName && record.studentName.toLowerCase().includes(searchTerm);
+            const studentIdMatch = record.studentId && record.studentId.toLowerCase().includes(searchTerm);
+            
+            // Also check raw data for admission number
+            let rawMatch = false;
+            if (record.rawData) {
+                Object.values(record.rawData).forEach(val => {
+                    const valStr = String(val || '').toLowerCase();
+                    if (valStr.includes(searchTerm) || (isAdmissionPattern && valStr.includes('krchn'))) {
+                        rawMatch = true;
+                    }
+                });
             }
             
-            // Also search through all records
-            allStudentMarks.forEach(record => {
-                const studentNameMatch = record.studentName && record.studentName.toLowerCase().includes(searchTerm);
-                const studentIdMatch = record.studentId && record.studentId.toLowerCase().includes(searchTerm);
-                
-                if (studentNameMatch || studentIdMatch) {
-                    // Check if already added
-                    const exists = results.some(r => 
-                        r.fileId === record.fileId && 
-                        r.sheetName === record.sheetName && 
-                        r.studentId === record.studentId
-                    );
-                    
-                    if (!exists) {
-                        results.push(record);
-                    }
-                }
-            });
-        }
+            if (studentNameMatch || studentIdMatch || rawMatch) {
+                results.push(record);
+            }
+        });
         
-        console.log('Total results found:', results.length);
-        
-        // Filter by selected classes
-        if (selectedClasses.size > 0) {
-            results = results.filter(record => {
-                const file = sharedFiles.find(f => f.id === record.fileId);
-                if (!file || !file.classes) return false;
-                const fileClasses = file.classes.split(',');
-                return Array.from(selectedClasses).some(c => fileClasses.includes(c));
-            });
-            console.log('After class filter:', results.length);
-        }
+        console.log(`Found ${results.length} records for student`);
         
         if (results.length === 0) {
             hideLoading();
@@ -2523,87 +2501,134 @@ function searchStudentMarks() {
             return;
         }
         
-        // Log the first result to see its structure
-        console.log('First result structure:', {
-            studentName: results[0].studentName,
-            studentId: results[0].studentId,
-            marksCount: results[0].marks?.length || 0,
-            marks: results[0].marks,
-            rawData: results[0].rawData
-        });
-        
-        // Group marks by subject
+        // Group marks by ACTUAL SUBJECT (using sheet name as the primary subject)
         const subjectGroups = new Map();
+        const sheetSubjects = new Map(); // Track which sheets we've seen
         
         results.forEach(record => {
-            // Check if marks array exists and has items
+            const sheetName = record.sheetName || 'Unknown';
+            const filename = record.filename || 'Unknown';
+            
+            // Extract the actual subject from sheet name
+            let actualSubject = sheetName;
+            
+            // Clean up sheet name to get proper subject
+            if (sheetName.includes('MIDWIFERY')) {
+                actualSubject = 'Midwifery';
+            } else if (sheetName.includes('PHARMACOLOGY')) {
+                actualSubject = 'Pharmacology II';
+            } else if (sheetName.includes('SPECIALISED')) {
+                actualSubject = 'Specialised Nursing Practice';
+            } else if (sheetName.includes('HEMATOLOGICAL')) {
+                actualSubject = 'Hematological Conditions';
+            } else if (sheetName.includes('RESPIRATORY')) {
+                actualSubject = 'Respiratory Conditions';
+            } else if (sheetName.includes('IMMUNIZATION')) {
+                actualSubject = 'Immunization';
+            } else if (sheetName.includes('TRAUMA')) {
+                actualSubject = 'Trauma Nursing';
+            } else if (sheetName.includes('SRH')) {
+                actualSubject = 'Sexual & Reproductive Health';
+            } else if (sheetName.includes('COMMUNITY HEALTH')) {
+                actualSubject = 'Community Health Nursing';
+            } else if (sheetName.includes('CARDIOVASCULAR')) {
+                actualSubject = 'Cardiovascular Conditions';
+            } else {
+                actualSubject = sheetName; // Keep original if no match
+            }
+            
+            // Track sheet subjects
+            if (!sheetSubjects.has(actualSubject)) {
+                sheetSubjects.set(actualSubject, new Set());
+            }
+            sheetSubjects.get(actualSubject).add(filename);
+            
+            // Now extract marks from this record
             if (record.marks && record.marks.length > 0) {
                 record.marks.forEach(mark => {
-                    const subject = mark.subject || 'Unknown Subject';
-                    if (!subjectGroups.has(subject)) {
-                        subjectGroups.set(subject, []);
+                    const markValue = mark.mark;
+                    const columnName = mark.subject || 'Unknown';
+                    
+                    // Determine assessment type based on column name
+                    let assessmentType = 'EXAM';
+                    const colLower = columnName.toLowerCase();
+                    
+                    if (colLower.includes('cat')) {
+                        assessmentType = 'CAT';
+                    } else if (colLower.includes('final')) {
+                        assessmentType = 'FINAL';
+                    } else if (colLower.includes('continuous') || colLower.includes('ca')) {
+                        assessmentType = 'CONTINUOUS ASSESSMENT';
+                    } else if (colLower.includes('ebe')) {
+                        assessmentType = 'EBE';
                     }
-                    subjectGroups.get(subject).push(mark.mark);
+                    
+                    // Create a unique key for this subject-assessment combination
+                    const subjectKey = `${actualSubject}`;
+                    
+                    if (!subjectGroups.has(subjectKey)) {
+                        subjectGroups.set(subjectKey, {
+                            subject: actualSubject,
+                            marks: [],
+                            assessments: new Set(),
+                            files: new Set()
+                        });
+                    }
+                    
+                    const subjectData = subjectGroups.get(subjectKey);
+                    subjectData.marks.push(markValue);
+                    subjectData.assessments.add(assessmentType);
+                    subjectData.files.add(filename);
                 });
-            } 
-            // If no marks array, try to extract from rawData
-            else if (record.rawData) {
-                console.log('No marks array, extracting from rawData:', record.rawData);
+            } else if (record.rawData) {
+                // Try to extract from rawData
                 Object.entries(record.rawData).forEach(([key, value]) => {
                     const numValue = parseFloat(value);
-                    if (!isNaN(numValue) && numValue >= 0 && numValue <= 100) {
-                        const subject = key;
-                        if (!subjectGroups.has(subject)) {
-                            subjectGroups.set(subject, []);
+                    if (!isNaN(numValue) && numValue > 0 && numValue <= 100) {
+                        const subjectKey = `${actualSubject}`;
+                        
+                        if (!subjectGroups.has(subjectKey)) {
+                            subjectGroups.set(subjectKey, {
+                                subject: actualSubject,
+                                marks: [],
+                                assessments: new Set(),
+                                files: new Set()
+                            });
                         }
-                        subjectGroups.get(subject).push(numValue);
+                        
+                        const subjectData = subjectGroups.get(subjectKey);
+                        subjectData.marks.push(numValue);
+                        
+                        // Determine assessment type from column name
+                        const colLower = key.toLowerCase();
+                        if (colLower.includes('cat')) {
+                            subjectData.assessments.add('CAT');
+                        } else if (colLower.includes('final')) {
+                            subjectData.assessments.add('FINAL');
+                        } else if (colLower.includes('ebe')) {
+                            subjectData.assessments.add('EBE');
+                        } else {
+                            subjectData.assessments.add('EXAM');
+                        }
+                        
+                        subjectData.files.add(filename);
                     }
                 });
             }
         });
         
-        console.log('Subject groups:', Array.from(subjectGroups.keys()));
-        
-        // If still no subjects found, try to extract from rawData directly
-        if (subjectGroups.size === 0) {
-            console.log('Attempting direct extraction from rawData');
-            results.forEach(record => {
-                if (record.rawData) {
-                    Object.entries(record.rawData).forEach(([key, value]) => {
-                        // Check if the column name suggests it's a mark
-                        const keyLower = key.toLowerCase();
-                        if (keyLower.includes('mark') || keyLower.includes('final') || keyLower.includes('cat')) {
-                            const numValue = parseFloat(value);
-                            if (!isNaN(numValue)) {
-                                let subjectName = 'Unknown';
-                                if (keyLower.includes('final mark') || keyLower.includes('final marks')) {
-                                    subjectName = 'Medical Surgical Nursing';
-                                } else if (keyLower.includes('cat')) {
-                                    subjectName = 'Anatomy & Physiology';
-                                } else {
-                                    subjectName = key;
-                                }
-                                
-                                if (!subjectGroups.has(subjectName)) {
-                                    subjectGroups.set(subjectName, []);
-                                }
-                                subjectGroups.get(subjectName).push(numValue);
-                            }
-                        }
-                    });
-                }
-            });
-        }
-        
-        // Calculate averages and grades
-        const subjects = Array.from(subjectGroups.entries()).map(([subject, marks]) => {
-            const avgMark = marks.reduce((a, b) => a + b, 0) / marks.length;
+        // Calculate averages and grades for each subject
+        const subjects = Array.from(subjectGroups.values()).map(data => {
+            const avgMark = data.marks.reduce((a, b) => a + b, 0) / data.marks.length;
             const grade = getGrade(avgMark);
+            
             return {
-                subject: subject,
-                marks: marks,
+                subject: data.subject,
+                marks: data.marks,
                 avgMark: avgMark,
-                grade: grade
+                grade: grade,
+                assessments: Array.from(data.assessments).join(', '),
+                files: Array.from(data.files)
             };
         }).sort((a, b) => b.avgMark - a.avgMark);
         
@@ -2614,10 +2639,25 @@ function searchStudentMarks() {
         const gpa = subjects.length > 0 ? (totalPoints / subjects.length).toFixed(2) : '0.00';
         const overallGrade = getGrade(avgOverall);
         
+        // Get student info
+        const studentInfo = results[0];
+        const studentName = studentInfo.studentName || searchTerm;
+        let studentId = studentInfo.studentId || '';
+        
+        // Try to find admission number in raw data if not found
+        if (!studentId && studentInfo.rawData) {
+            Object.entries(studentInfo.rawData).forEach(([key, value]) => {
+                const valStr = String(value || '');
+                if (valStr.includes('KRCHN/')) {
+                    studentId = valStr;
+                }
+            });
+        }
+        
         // Store for transcript
         currentTranscriptData = {
-            studentName: results[0].studentName || searchTerm,
-            studentId: results[0].studentId || 'N/A',
+            studentName: studentName,
+            studentId: studentId || 'N/A',
             subjects: subjects,
             avgOverall: avgOverall,
             overallGrade: overallGrade,
@@ -2626,9 +2666,9 @@ function searchStudentMarks() {
         };
         
         // Update summary card
-        document.getElementById('studentNameDisplay').innerText = results[0].studentName || searchTerm;
-        document.getElementById('studentIdDisplay').innerHTML = `<i class="fas fa-id-card mr-1"></i>Admission No: ${results[0].studentId || 'N/A'}`;
-        document.getElementById('studentProgramDisplay').innerHTML = `<i class="fas fa-graduation-cap mr-1"></i>Program: KRCHN`;
+        document.getElementById('studentNameDisplay').innerText = studentName;
+        document.getElementById('studentIdDisplay').innerHTML = `<i class="fas fa-id-card mr-1"></i>Admission No: ${studentId || 'N/A'}`;
+        document.getElementById('studentProgramDisplay').innerHTML = `<i class="fas fa-graduation-cap mr-1"></i>Program: KRCHN (Kenya Registered Community Health Nurse)`;
         
         document.getElementById('overallGradeDisplay').innerText = `Grade: ${overallGrade.grade}`;
         document.getElementById('overallGradeDisplay').className = `grade-badge ${overallGrade.class} text-sm px-4 py-2`;
@@ -2641,32 +2681,20 @@ function searchStudentMarks() {
         document.getElementById('gpaValueDisplay').innerText = gpa;
         
         // Build results table
-        let tableHtml = '<table class="data-table"><thead><tr><th>Subject</th><th>Marks</th><th>Average</th><th>Grade</th><th>Points</th><th>Status</th></tr></thead><tbody>';
+        let tableHtml = '<table class="data-table"><thead><tr><th>Subject</th><th>Assessment</th><th>Marks</th><th>Average</th><th>Grade</th><th>Points</th><th>Status</th></tr></thead><tbody>';
         
         subjects.forEach(s => {
-            const marksList = s.marks.map(m => `<span class="font-mono ${getGrade(m).color}">${m}</span>`).join(', ');
+            const marksList = s.marks.map(m => 
+                `<span class="font-mono ${getGrade(m).color}" title="Mark: ${m}">${m}</span>`
+            ).join(', ');
             
-            // Map subject names
-            let displaySubject = s.subject;
-            const subjectLower = s.subject.toLowerCase();
-            
-            if (subjectLower.includes('final mark') || subjectLower.includes('final marks')) {
-                displaySubject = 'Medical Surgical Nursing';
-            } else if (subjectLower.includes('cat marks') || subjectLower.includes('cat')) {
-                displaySubject = 'Anatomy & Physiology';
-            } else if (subjectLower.includes('community') || subjectLower.includes('comm health')) {
-                displaySubject = 'Community Health Nursing';
-            } else if (subjectLower.includes('mental')) {
-                displaySubject = 'Mental Health Nursing';
-            } else if (subjectLower.includes('pediatric') || subjectLower.includes('paediatric')) {
-                displaySubject = 'Paediatric Nursing';
-            } else if (subjectLower.includes('maternal')) {
-                displaySubject = 'Maternal Health Nursing';
-            }
+            // Determine row color based on grade
+            const rowClass = s.grade.pass ? '' : 'bg-red-50';
             
             tableHtml += `
-                <tr>
-                    <td class="font-medium">${displaySubject}</td>
+                <tr class="${rowClass}">
+                    <td class="font-medium">${s.subject}</td>
+                    <td><span class="text-xs bg-gray-100 px-2 py-1 rounded">${s.assessments}</span></td>
                     <td><div class="max-w-xs overflow-x-auto text-xs">${marksList}</div></td>
                     <td class="font-bold ${s.grade.color}">${s.avgMark.toFixed(1)}</td>
                     <td><span class="grade-badge ${s.grade.class}">${s.grade.grade}</span></td>
@@ -2678,15 +2706,45 @@ function searchStudentMarks() {
         
         tableHtml += '</tbody></table>';
         
-        // Add data source info
-        const sources = [...new Set(results.map(r => `${r.filename} (${r.sheetName})`))];
+        // Add summary statistics
+        const passCount = subjects.filter(s => s.grade.pass).length;
+        const failCount = subjects.filter(s => !s.grade.pass).length;
+        
         tableHtml += `
-            <div class="mt-4 p-3 bg-blue-50 rounded-lg text-xs">
-                <p class="font-semibold mb-1">📊 Data Sources:</p>
-                <ul class="list-disc list-inside">
-                    ${sources.map(s => `<li>${s}</li>`).join('')}
-                </ul>
-                <p class="mt-2 text-gray-600">Total records: ${results.length} | Total marks: ${subjects.reduce((sum, s) => sum + s.marks.length, 0)}</p>
+            <div class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div class="bg-blue-50 p-3 rounded-lg">
+                    <div class="text-xs text-gray-600">Total Subjects</div>
+                    <div class="text-xl font-bold">${subjects.length}</div>
+                </div>
+                <div class="bg-green-50 p-3 rounded-lg">
+                    <div class="text-xs text-gray-600">Passed</div>
+                    <div class="text-xl font-bold text-green-600">${passCount}</div>
+                </div>
+                <div class="bg-red-50 p-3 rounded-lg">
+                    <div class="text-xs text-gray-600">Failed</div>
+                    <div class="text-xl font-bold text-red-600">${failCount}</div>
+                </div>
+                <div class="bg-purple-50 p-3 rounded-lg">
+                    <div class="text-xs text-gray-600">Total Marks</div>
+                    <div class="text-xl font-bold">${subjects.reduce((sum, s) => sum + s.marks.length, 0)}</div>
+                </div>
+            </div>
+        `;
+        
+        // Add data sources
+        const uniqueFiles = [...new Set(results.map(r => r.filename))];
+        const uniqueSheets = [...new Set(results.map(r => `${r.filename} (${r.sheetName})`))];
+        
+        tableHtml += `
+            <div class="mt-4 p-3 bg-gray-100 rounded-lg text-xs">
+                <details open>
+                    <summary class="font-semibold cursor-pointer mb-2">📊 Data Sources (${uniqueSheets.length} sheets)</summary>
+                    <div class="max-h-40 overflow-y-auto">
+                        <ul class="list-disc list-inside space-y-1">
+                            ${uniqueSheets.map(s => `<li class="text-gray-700">${s}</li>`).join('')}
+                        </ul>
+                    </div>
+                </details>
             </div>
         `;
         
@@ -2694,7 +2752,7 @@ function searchStudentMarks() {
         document.getElementById('studentResultsContainer').classList.remove('hidden');
         
         hideLoading();
-        showToast(`Found ${subjects.length} subjects for ${results[0].studentName}`, 'success');
+        showToast(`Found ${subjects.length} subjects for ${studentName}`, 'success');
         
     } catch (error) {
         console.error('Search error:', error);
