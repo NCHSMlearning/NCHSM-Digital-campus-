@@ -2929,7 +2929,7 @@ function searchStudentMarks() {
         showToast('Error searching: ' + error.message, 'error');
     }
 }
-       // ========== TRANSCRIPT FUNCTIONS ==========
+  // ========== TRANSCRIPT FUNCTIONS ==========
 function downloadOfficialTranscriptPDF() {
     if (!currentTranscriptData) {
         showToast('No student data available', 'error');
@@ -2945,72 +2945,77 @@ function downloadOfficialTranscriptPDF() {
         });
         
         // College Header
-        doc.setFontSize(14);
+        doc.setFontSize(16);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(0, 51, 102);
         doc.text(COLLEGE_NAME, 105, 20, { align: 'center' });
         
-        doc.setFontSize(9);
+        doc.setFontSize(10);
         doc.setFont('helvetica', 'italic');
         doc.setTextColor(100, 100, 100);
         doc.text(COLLEGE_MOTTO, 105, 27, { align: 'center' });
         
-        doc.setFontSize(7);
+        doc.setFontSize(8);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(80, 80, 80);
         const addressLines = doc.splitTextToSize(COLLEGE_ADDRESS, 180);
-        doc.text(addressLines, 105, 33, { align: 'center' });
+        doc.text(addressLines, 105, 34, { align: 'center' });
         
         // Line
-        doc.setDrawColor(200, 200, 200);
+        doc.setDrawColor(0, 51, 102);
+        doc.setLineWidth(0.5);
         doc.line(20, 40, 190, 40);
         
         // Title
-        doc.setFontSize(12);
+        doc.setFontSize(14);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(0, 51, 102);
         doc.text('OFFICIAL ACADEMIC TRANSCRIPT', 105, 48, { align: 'center' });
         
-        doc.setFontSize(9);
+        doc.setFontSize(10);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(255, 0, 0);
         doc.text('PROVISIONAL RESULTS - NOT FOR OFFICIAL USE', 105, 55, { align: 'center' });
         
         // Student Info
-        doc.setFontSize(9);
+        doc.setFontSize(10);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(0, 0, 0);
         
         let yPos = 65;
         doc.text(`Student Name: ${currentTranscriptData.studentName || 'N/A'}`, 20, yPos);
         yPos += 6;
-        doc.text(`Admission No: ${currentTranscriptData.studentId || 'N/A'}`, 20, yPos);
+        
+        // Handle multiple IDs
+        let idLine = '';
+        if (currentTranscriptData.studentId) idLine += `Admission: ${currentTranscriptData.studentId}`;
+        if (currentTranscriptData.studentIndex) {
+            if (idLine) idLine += ' | ';
+            idLine += `Index: ${currentTranscriptData.studentIndex}`;
+        }
+        doc.text(idLine || 'N/A', 20, yPos);
         yPos += 6;
+        
         doc.text(`Program: ${PROGRAM_NAME} - Kenya Registered Community Health Nurse`, 20, yPos);
         yPos += 6;
         doc.text(`Date Printed: ${new Date().toLocaleDateString()}`, 20, yPos);
         yPos += 10;
         
-        // Results Table
-        const tableHeaders = [['Subject', 'CAT', 'EBE', 'FINAL', 'Average', 'Grade', 'Points', 'Status']];
-        const tableBody = currentTranscriptData.subjects.map(s => {
-            // Format CAT marks
-            const catMarks = s.catMarks && s.catMarks.length > 0 ? s.catMarks.join(', ') : '-';
-            const ebeMarks = s.ebeMarks && s.ebeMarks.length > 0 ? s.ebeMarks.join(', ') : '-';
-            const finalMarks = s.finalMarks && s.finalMarks.length > 0 ? s.finalMarks.join(', ') : '-';
-            
-            // Truncate long text
-            const subjectName = s.subject.length > 20 ? s.subject.substring(0, 17) + '...' : s.subject;
+        // Prepare table data - ONLY FINAL SCORES
+        const tableHeaders = [['#', 'Subject/Assessment', 'Final Score', 'Grade', 'Points', 'Status']];
+        const tableBody = currentTranscriptData.subjects.map((s, index) => {
+            // Get the final score (either finalMark for block subjects or score for others)
+            const finalScore = s.finalMark || s.score || 0;
+            const grade = getGrade(finalScore);
+            const status = finalScore >= 60 ? 'PASS' : 'FAIL';
             
             return [
-                subjectName,
-                catMarks,
-                ebeMarks,
-                finalMarks,
-                s.weightedAvg.toFixed(1),
-                s.grade.grade,
-                s.grade.points.toString(),
-                s.finalMarks && s.finalMarks[0] >= 60 ? 'PASS' : 'FAIL'
+                (index + 1).toString(),
+                s.displayName || s.name || s.subject,
+                finalScore.toFixed(1),
+                grade.grade,
+                grade.points.toString(),
+                status
             ];
         });
         
@@ -3020,28 +3025,25 @@ function downloadOfficialTranscriptPDF() {
             body: tableBody,
             theme: 'striped',
             styles: {
-                fontSize: 7,
-                cellPadding: 2,
+                fontSize: 9,
+                cellPadding: 4,
                 lineColor: [200, 200, 200],
-                lineWidth: 0.1,
-                overflow: 'linebreak'
+                lineWidth: 0.1
             },
             headStyles: {
                 fillColor: [0, 51, 102],
                 textColor: [255, 255, 255],
-                fontSize: 7,
+                fontSize: 9,
                 fontStyle: 'bold',
                 halign: 'center'
             },
             columnStyles: {
-                0: { cellWidth: 30, halign: 'left' },
-                1: { cellWidth: 25, halign: 'center' },
+                0: { cellWidth: 15, halign: 'center' },
+                1: { cellWidth: 80, halign: 'left' },
                 2: { cellWidth: 25, halign: 'center' },
-                3: { cellWidth: 25, halign: 'center' },
-                4: { cellWidth: 18, halign: 'center' },
-                5: { cellWidth: 12, halign: 'center' },
-                6: { cellWidth: 12, halign: 'center' },
-                7: { cellWidth: 18, halign: 'center' }
+                3: { cellWidth: 20, halign: 'center' },
+                4: { cellWidth: 20, halign: 'center' },
+                5: { cellWidth: 25, halign: 'center' }
             },
             margin: { left: 15, right: 15 }
         });
@@ -3050,19 +3052,22 @@ function downloadOfficialTranscriptPDF() {
         const finalY = doc.lastAutoTable.finalY + 10;
         
         // Summary section
-        doc.setFontSize(9);
+        doc.setFontSize(11);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(0, 51, 102);
         doc.text('SUMMARY', 20, finalY);
         
-        doc.setFontSize(8);
+        doc.setFontSize(10);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(0, 0, 0);
         
-        let summaryY = finalY + 6;
+        let summaryY = finalY + 7;
         
         // Calculate pass/fail counts
-        const passCount = currentTranscriptData.subjects.filter(s => s.finalMarks && s.finalMarks[0] >= 60).length;
+        const passCount = currentTranscriptData.subjects.filter(s => {
+            const score = s.finalMark || s.score || 0;
+            return score >= 60;
+        }).length;
         const failCount = currentTranscriptData.subjects.length - passCount;
         
         // Create summary grid
@@ -3076,15 +3081,15 @@ function downloadOfficialTranscriptPDF() {
         ];
         
         summaryData.forEach((item, index) => {
-            doc.text(item[0], 25, summaryY + (index * 5));
+            doc.text(item[0], 25, summaryY + (index * 6));
             doc.setFont('helvetica', 'bold');
-            doc.text(item[1], 70, summaryY + (index * 5));
+            doc.text(item[1], 70, summaryY + (index * 6));
             doc.setFont('helvetica', 'normal');
         });
         
         // Overall Grade with color
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(9);
+        doc.setFontSize(11);
         
         // Set color based on grade
         if (currentTranscriptData.overallGrade.grade === 'A') {
@@ -3097,17 +3102,45 @@ function downloadOfficialTranscriptPDF() {
             doc.setTextColor(204, 0, 0); // Red
         }
         
-        doc.text(`Overall Grade: ${currentTranscriptData.overallGrade.grade} - ${currentTranscriptData.overallGrade.status}`, 120, summaryY + 15);
+        doc.text(`Overall Grade: ${currentTranscriptData.overallGrade.grade} - ${currentTranscriptData.overallGrade.status}`, 120, summaryY + 20);
+        
+        // SIGNATURES SECTION
+        const signatureY = finalY + 70;
+        
+        // Line for signatures
+        doc.setDrawColor(0, 0, 0);
+        doc.setLineWidth(0.5);
+        doc.line(20, signatureY, 90, signatureY);
+        doc.line(120, signatureY, 190, signatureY);
+        
+        // Signature labels
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(0, 51, 102);
+        doc.text('HOD NURSING', 40, signatureY + 5, { align: 'center' });
+        doc.text('PRINCIPAL', 155, signatureY + 5, { align: 'center' });
+        
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'italic');
+        doc.setTextColor(100, 100, 100);
+        doc.text('(Signed & Stamped)', 40, signatureY + 10, { align: 'center' });
+        doc.text('(Signed & Stamped)', 155, signatureY + 10, { align: 'center' });
+        
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(80, 80, 80);
+        doc.text('Name: Dr. Jane Akinyi', 40, signatureY + 15, { align: 'center' });
+        doc.text('Name: Prof. James Mwangi', 155, signatureY + 15, { align: 'center' });
         
         // Grading Key
-        doc.setFontSize(6);
+        doc.setFontSize(7);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(100, 100, 100);
         const gradingKey = 'Grading: A=85-100 (Distinction, 4pts), B=75-84 (Credit, 3pts), C=60-74 (Pass, 2pts), D=0-59 (Fail, 0pts)';
         doc.text(gradingKey, 105, 260, { align: 'center' });
         
         // Footer
-        doc.setFontSize(6);
+        doc.setFontSize(7);
         doc.setTextColor(150, 150, 150);
         doc.text(COLLEGE_FOOTER, 105, 270, { align: 'center' });
         
@@ -3132,33 +3165,31 @@ function downloadTranscriptExcel() {
     try {
         const wb = XLSX.utils.book_new();
         
-        // Summary Sheet
+        // Summary Sheet - ONLY FINAL SCORES
         const summaryData = [
             ['NAKURU COLLEGE OF HEALTH SCIENCES - ACADEMIC TRANSCRIPT'],
             ['PROVISIONAL RESULTS'],
             [],
             ['Student Name:', currentTranscriptData.studentName],
-            ['Admission No:', currentTranscriptData.studentId],
+            ['Admission No:', currentTranscriptData.studentId || 'N/A'],
+            ['Index Number:', currentTranscriptData.studentIndex || 'N/A'],
             ['Program:', PROGRAM_NAME + ' - Kenya Registered Community Health Nurse'],
             ['Date:', new Date().toLocaleDateString()],
             [],
-            ['Subject', 'CAT Marks', 'EBE Marks', 'FINAL Marks', 'Weighted Avg', 'Grade', 'Points', 'Status']
+            ['#', 'Subject/Assessment', 'Final Score', 'Grade', 'Points', 'Status']
         ];
         
-        currentTranscriptData.subjects.forEach(s => {
-            const catMarks = s.catMarks && s.catMarks.length > 0 ? s.catMarks.join(', ') : '-';
-            const ebeMarks = s.ebeMarks && s.ebeMarks.length > 0 ? s.ebeMarks.join(', ') : '-';
-            const finalMarks = s.finalMarks && s.finalMarks.length > 0 ? s.finalMarks.join(', ') : '-';
-            const status = s.finalMarks && s.finalMarks[0] >= 60 ? 'PASS' : 'FAIL';
+        currentTranscriptData.subjects.forEach((s, index) => {
+            const finalScore = s.finalMark || s.score || 0;
+            const grade = getGrade(finalScore);
+            const status = finalScore >= 60 ? 'PASS' : 'FAIL';
             
             summaryData.push([
-                s.subject,
-                catMarks,
-                ebeMarks,
-                finalMarks,
-                s.weightedAvg.toFixed(1),
-                s.grade.grade,
-                s.grade.points,
+                (index + 1).toString(),
+                s.displayName || s.name || s.subject,
+                finalScore.toFixed(1),
+                grade.grade,
+                grade.points,
                 status
             ]);
         });
@@ -3167,7 +3198,10 @@ function downloadTranscriptExcel() {
         summaryData.push([]);
         
         // Calculate statistics
-        const passCount = currentTranscriptData.subjects.filter(s => s.finalMarks && s.finalMarks[0] >= 60).length;
+        const passCount = currentTranscriptData.subjects.filter(s => {
+            const score = s.finalMark || s.score || 0;
+            return score >= 60;
+        }).length;
         const failCount = currentTranscriptData.subjects.length - passCount;
         
         summaryData.push(
@@ -3178,92 +3212,26 @@ function downloadTranscriptExcel() {
             ['Overall Average:', currentTranscriptData.avgOverall.toFixed(1) + '%'],
             ['Total Points:', currentTranscriptData.totalPoints],
             ['GPA:', currentTranscriptData.gpa],
-            ['Overall Grade:', `${currentTranscriptData.overallGrade.grade} - ${currentTranscriptData.overallGrade.status}`]
+            ['Overall Grade:', `${currentTranscriptData.overallGrade.grade} - ${currentTranscriptData.overallGrade.status}`],
+            [],
+            ['SIGNED BY:'],
+            ['HOD NURSING: Dr. Jane Akinyi', '', 'PRINCIPAL: Prof. James Mwangi'],
+            ['Date: ' + new Date().toLocaleDateString(), '', 'Date: ' + new Date().toLocaleDateString()]
         );
         
         const ws = XLSX.utils.aoa_to_sheet(summaryData);
         
         // Set column widths
         ws['!cols'] = [
-            { wch: 30 }, // Subject
-            { wch: 20 }, // CAT Marks
-            { wch: 20 }, // EBE Marks
-            { wch: 20 }, // FINAL Marks
-            { wch: 12 }, // Weighted Avg
-            { wch: 8 },  // Grade
-            { wch: 8 },  // Points
-            { wch: 10 }  // Status
+            { wch: 5 },   // #
+            { wch: 40 },  // Subject
+            { wch: 12 },  // Final Score
+            { wch: 8 },   // Grade
+            { wch: 8 },   // Points
+            { wch: 10 }   // Status
         ];
         
         XLSX.utils.book_append_sheet(wb, ws, 'Transcript');
-        
-        // Detailed Marks Sheet
-        const detailsData = [
-            ['Subject', 'Assessment Type', 'Mark', 'Grade', 'Points', 'File', 'Sheet']
-        ];
-        
-        currentTranscriptData.subjects.forEach(s => {
-            // Add CAT marks
-            if (s.catMarks && s.catMarks.length > 0) {
-                s.catMarks.forEach(mark => {
-                    const grade = getGrade(mark);
-                    detailsData.push([
-                        s.subject,
-                        'CAT',
-                        mark,
-                        grade.grade,
-                        grade.points,
-                        s.files ? s.files[0] : 'Unknown',
-                        s.subject
-                    ]);
-                });
-            }
-            
-            // Add EBE marks
-            if (s.ebeMarks && s.ebeMarks.length > 0) {
-                s.ebeMarks.forEach(mark => {
-                    const grade = getGrade(mark);
-                    detailsData.push([
-                        s.subject,
-                        'EBE',
-                        mark,
-                        grade.grade,
-                        grade.points,
-                        s.files ? s.files[0] : 'Unknown',
-                        s.subject
-                    ]);
-                });
-            }
-            
-            // Add FINAL marks
-            if (s.finalMarks && s.finalMarks.length > 0) {
-                s.finalMarks.forEach(mark => {
-                    const grade = getGrade(mark);
-                    detailsData.push([
-                        s.subject,
-                        'FINAL',
-                        mark,
-                        grade.grade,
-                        grade.points,
-                        s.files ? s.files[0] : 'Unknown',
-                        s.subject
-                    ]);
-                });
-            }
-        });
-        
-        const ws2 = XLSX.utils.aoa_to_sheet(detailsData);
-        ws2['!cols'] = [
-            { wch: 30 }, // Subject
-            { wch: 15 }, // Assessment Type
-            { wch: 10 }, // Mark
-            { wch: 8 },  // Grade
-            { wch: 8 },  // Points
-            { wch: 40 }, // File
-            { wch: 20 }  // Sheet
-        ];
-        
-        XLSX.utils.book_append_sheet(wb, ws2, 'Detailed Marks');
         
         // Save file
         const fileName = `${(currentTranscriptData.studentName || 'Student').replace(/[^a-zA-Z0-9]/g, '_')}_Transcript.xlsx`;
@@ -3285,26 +3253,26 @@ function printOfficialTranscript() {
     
     try {
         // Calculate statistics
-        const passCount = currentTranscriptData.subjects.filter(s => s.finalMarks && s.finalMarks[0] >= 60).length;
+        const passCount = currentTranscriptData.subjects.filter(s => {
+            const score = s.finalMark || s.score || 0;
+            return score >= 60;
+        }).length;
         const failCount = currentTranscriptData.subjects.length - passCount;
         
-        // Generate table rows
-        const tableRows = currentTranscriptData.subjects.map(s => {
-            const catMarks = s.catMarks && s.catMarks.length > 0 ? s.catMarks.join(', ') : '-';
-            const ebeMarks = s.ebeMarks && s.ebeMarks.length > 0 ? s.ebeMarks.join(', ') : '-';
-            const finalMarks = s.finalMarks && s.finalMarks.length > 0 ? s.finalMarks.join(', ') : '-';
-            const status = s.finalMarks && s.finalMarks[0] >= 60 ? 'PASS' : 'FAIL';
+        // Generate table rows - ONLY FINAL SCORES
+        const tableRows = currentTranscriptData.subjects.map((s, index) => {
+            const finalScore = s.finalMark || s.score || 0;
+            const grade = getGrade(finalScore);
+            const status = finalScore >= 60 ? 'PASS' : 'FAIL';
             const statusClass = status === 'PASS' ? 'status-pass' : 'status-fail';
             
             return `
                 <tr>
-                    <td>${s.subject}</td>
-                    <td class="marks-cell">${catMarks}</td>
-                    <td class="marks-cell">${ebeMarks}</td>
-                    <td class="marks-cell">${finalMarks}</td>
-                    <td class="text-center ${s.grade.color}">${s.weightedAvg.toFixed(1)}</td>
-                    <td class="text-center"><span class="grade-badge grade-${s.grade.grade.toLowerCase()}">${s.grade.grade}</span></td>
-                    <td class="text-center">${s.grade.points}</td>
+                    <td class="text-center">${index + 1}</td>
+                    <td>${s.displayName || s.name || s.subject}</td>
+                    <td class="text-center font-bold ${grade.color}">${finalScore.toFixed(1)}</td>
+                    <td class="text-center"><span class="grade-badge grade-${grade.grade.toLowerCase()}">${grade.grade}</span></td>
+                    <td class="text-center">${grade.points}</td>
                     <td class="text-center ${statusClass}">${status}</td>
                 </tr>
             `;
@@ -3319,38 +3287,38 @@ function printOfficialTranscript() {
                 <style>
                     body { 
                         font-family: Arial, sans-serif; 
-                        margin: 20px;
-                        font-size: 11px;
+                        margin: 30px;
+                        font-size: 12px;
                         line-height: 1.4;
                     }
                     .header { 
                         text-align: center; 
-                        margin-bottom: 20px; 
+                        margin-bottom: 25px; 
                         border-bottom: 2px solid #003366;
-                        padding-bottom: 10px;
+                        padding-bottom: 15px;
                     }
                     .college-name { 
-                        font-size: 18px; 
+                        font-size: 20px; 
                         font-weight: bold; 
                         color: #003366; 
                         margin: 5px 0;
                     }
                     .motto { 
-                        font-size: 11px; 
+                        font-size: 12px; 
                         color: #666; 
                         margin: 5px 0; 
                         font-style: italic;
                     }
                     .address { 
-                        font-size: 9px; 
+                        font-size: 10px; 
                         color: #999; 
                         margin: 5px 0;
                     }
                     .title { 
-                        font-size: 14px; 
+                        font-size: 16px; 
                         font-weight: bold; 
                         color: #003366; 
-                        margin: 15px 0; 
+                        margin: 20px 0; 
                         text-align: center; 
                     }
                     .provisional { 
@@ -3358,48 +3326,47 @@ function printOfficialTranscript() {
                         font-weight: bold; 
                         text-align: center; 
                         margin: 10px 0;
-                        font-size: 11px;
+                        font-size: 12px;
+                        border: 1px solid red;
+                        padding: 5px;
+                        background: #ffeeee;
                     }
                     .student-info { 
-                        margin: 15px 0; 
-                        padding: 10px;
+                        margin: 20px 0; 
+                        padding: 15px;
                         background: #f5f5f5;
                         border-radius: 5px;
+                        border-left: 4px solid #003366;
                     }
                     .student-info p {
-                        margin: 3px 0;
+                        margin: 5px 0;
                     }
                     table { 
                         width: 100%; 
                         border-collapse: collapse; 
-                        margin: 15px 0;
-                        font-size: 10px;
+                        margin: 20px 0;
+                        font-size: 11px;
                     }
                     th { 
                         background: #003366; 
                         color: white; 
-                        padding: 8px; 
+                        padding: 10px; 
                         text-align: left;
                         font-weight: bold;
                     }
                     td { 
-                        padding: 6px; 
+                        padding: 8px; 
                         border: 1px solid #ddd; 
                     }
                     tr:nth-child(even) {
                         background: #f9f9f9;
                     }
-                    .marks-cell {
-                        font-size: 9px;
-                        max-width: 100px;
-                        white-space: normal;
-                        word-wrap: break-word;
-                    }
                     .grade-badge {
-                        padding: 3px 8px;
-                        border-radius: 12px;
+                        padding: 4px 10px;
+                        border-radius: 20px;
                         display: inline-block;
                         font-weight: bold;
+                        font-size: 11px;
                     }
                     .grade-a { 
                         background: #ede9fe; 
@@ -3420,54 +3387,80 @@ function printOfficialTranscript() {
                     .status-pass {
                         color: #065f46;
                         font-weight: bold;
+                        background: #dcfce7;
+                        padding: 4px 8px;
+                        border-radius: 20px;
                     }
                     .status-fail {
                         color: #991b1b;
                         font-weight: bold;
+                        background: #fee2e2;
+                        padding: 4px 8px;
+                        border-radius: 20px;
                     }
-                    .mark-excellent { color: #4F46E5; font-weight: bold; }
-                    .mark-good { color: #059669; font-weight: bold; }
-                    .mark-average { color: #D97706; font-weight: bold; }
-                    .mark-fail { color: #DC2626; font-weight: bold; }
                     .summary-container { 
-                        margin: 20px 0;
+                        margin: 30px 0;
                         display: grid;
                         grid-template-columns: repeat(3, 1fr);
-                        gap: 10px;
+                        gap: 15px;
                     }
                     .summary-item {
                         background: #f0f7ff;
-                        padding: 10px;
-                        border-radius: 5px;
+                        padding: 12px;
+                        border-radius: 8px;
                         text-align: center;
+                        border: 1px solid #cbd5e1;
                     }
                     .summary-label {
-                        font-size: 9px;
+                        font-size: 10px;
                         color: #666;
                         text-transform: uppercase;
                     }
                     .summary-value {
-                        font-size: 16px;
+                        font-size: 20px;
                         font-weight: bold;
                         color: #003366;
                     }
+                    .signatures {
+                        margin-top: 50px;
+                        display: grid;
+                        grid-template-columns: 1fr 1fr;
+                        gap: 50px;
+                    }
+                    .signature-box {
+                        text-align: center;
+                        border-top: 1px solid #000;
+                        padding-top: 10px;
+                    }
+                    .signature-title {
+                        font-weight: bold;
+                        color: #003366;
+                        margin: 5px 0;
+                    }
+                    .signature-name {
+                        font-size: 11px;
+                        color: #666;
+                        font-style: italic;
+                    }
                     .footer { 
-                        margin-top: 30px; 
-                        font-size: 8px; 
+                        margin-top: 40px; 
+                        font-size: 9px; 
                         color: #999; 
                         text-align: center; 
                         border-top: 1px solid #ccc;
-                        padding-top: 10px;
+                        padding-top: 15px;
                     }
                     .grading-key {
-                        margin: 15px 0;
-                        padding: 8px;
+                        margin: 20px 0;
+                        padding: 10px;
                         background: #f5f5f5;
-                        font-size: 8px;
+                        font-size: 9px;
                         color: #666;
                         text-align: center;
+                        border-radius: 5px;
                     }
                     .text-center { text-align: center; }
+                    .font-bold { font-weight: bold; }
                 </style>
             </head>
             <body>
@@ -3482,7 +3475,8 @@ function printOfficialTranscript() {
                 
                 <div class="student-info">
                     <p><strong>Student Name:</strong> ${currentTranscriptData.studentName}</p>
-                    <p><strong>Admission No:</strong> ${currentTranscriptData.studentId}</p>
+                    <p><strong>Admission No:</strong> ${currentTranscriptData.studentId || 'N/A'}</p>
+                    <p><strong>Index Number:</strong> ${currentTranscriptData.studentIndex || 'N/A'}</p>
                     <p><strong>Program:</strong> ${PROGRAM_NAME} - Kenya Registered Community Health Nurse</p>
                     <p><strong>Date Printed:</strong> ${new Date().toLocaleDateString()}</p>
                 </div>
@@ -3490,13 +3484,11 @@ function printOfficialTranscript() {
                 <table>
                     <thead>
                         <tr>
-                            <th>Subject</th>
-                            <th>CAT</th>
-                            <th>EBE</th>
-                            <th>FINAL</th>
-                            <th>Avg</th>
+                            <th>#</th>
+                            <th>Subject/Assessment</th>
+                            <th>Final Score</th>
                             <th>Grade</th>
-                            <th>Pts</th>
+                            <th>Points</th>
                             <th>Status</th>
                         </tr>
                     </thead>
@@ -3507,7 +3499,7 @@ function printOfficialTranscript() {
                 
                 <div class="summary-container">
                     <div class="summary-item">
-                        <div class="summary-label">Subjects</div>
+                        <div class="summary-label">Total Subjects</div>
                         <div class="summary-value">${currentTranscriptData.subjects.length}</div>
                     </div>
                     <div class="summary-item">
@@ -3527,13 +3519,28 @@ function printOfficialTranscript() {
                         <div class="summary-value">${currentTranscriptData.gpa}</div>
                     </div>
                     <div class="summary-item">
-                        <div class="summary-label">Grade</div>
+                        <div class="summary-label">Overall Grade</div>
                         <div class="summary-value">${currentTranscriptData.overallGrade.grade}</div>
                     </div>
                 </div>
                 
                 <div class="grading-key">
-                    Grading: A=85-100 (Distinction, 4pts), B=75-84 (Credit, 3pts), C=60-74 (Pass, 2pts), D=0-59 (Fail, 0pts)
+                    <strong>Grading Key:</strong> A=85-100 (Distinction, 4pts) | B=75-84 (Credit, 3pts) | C=60-74 (Pass, 2pts) | D=0-59 (Fail, 0pts)
+                </div>
+                
+                <div class="signatures">
+                    <div class="signature-box">
+                        <div class="signature-title">HOD NURSING</div>
+                        <div class="signature-name">Dr. Jane Akinyi</div>
+                        <div style="margin-top: 5px; font-size: 10px;">Signed: ___________________</div>
+                        <div style="margin-top: 5px; font-size: 10px;">Date: ${new Date().toLocaleDateString()}</div>
+                    </div>
+                    <div class="signature-box">
+                        <div class="signature-title">PRINCIPAL</div>
+                        <div class="signature-name">Prof. James Mwangi</div>
+                        <div style="margin-top: 5px; font-size: 10px;">Signed: ___________________</div>
+                        <div style="margin-top: 5px; font-size: 10px;">Date: ${new Date().toLocaleDateString()}</div>
+                    </div>
                 </div>
                 
                 <div class="footer">
@@ -3559,7 +3566,6 @@ function printOfficialTranscript() {
         showToast('Error preparing print: ' + error.message, 'error');
     }
 }
-
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', function() {
             // Check for existing session
