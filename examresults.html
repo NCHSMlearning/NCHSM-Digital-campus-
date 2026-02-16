@@ -5,9 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nakuru College of Health Sciences - Exam Portal</title>
     
-    <!-- External CSS -->
-    <link rel="stylesheet" href="examstyle.css">
-    
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
@@ -17,9 +14,8 @@
     <!-- SheetJS for Excel -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
     
-    <!-- Handsontable for Excel Editing -->
-    <script src="https://cdn.jsdelivr.net/npm/handsontable@14.2.0/dist/handsontable.full.min.js"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@14.2.0/dist/handsontable.full.min.css">
+    <!-- Google Sheets API -->
+    <script src="https://apis.google.com/js/api.js"></script>
     
     <!-- Chart.js for Graphs -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -122,34 +118,7 @@
             to { transform: translateX(0%); opacity: 1; }
         }
         
-        .excel-editor {
-            height: 500px;
-            width: 100%;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            overflow: hidden;
-            background: white;
-        }
-        
-        .handsontable th {
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-            color: white;
-            font-weight: 600;
-            position: sticky;
-            top: 0;
-            z-index: 10;
-        }
-        
-        .sheet-tab {
-            transition: all 0.15s ease;
-            cursor: pointer;
-            white-space: nowrap;
-        }
-        
-        .sheet-tab:hover {
-            transform: translateY(-1px);
-        }
-        
+        /* Data Tables */
         .data-table {
             width: 100%;
             border-collapse: collapse;
@@ -163,7 +132,7 @@
             text-align: left;
             position: sticky;
             top: 0;
-            z-index: 5;
+            z-index: 10;
         }
         
         .data-table td {
@@ -175,6 +144,7 @@
             background-color: #f8fafc;
         }
         
+        /* Cards */
         .portal-card {
             background: white;
             border-radius: 16px;
@@ -183,6 +153,7 @@
             transition: all 0.2s ease;
         }
         
+        /* Grade Badges */
         .grade-badge {
             padding: 4px 8px;
             border-radius: 9999px;
@@ -196,6 +167,7 @@
         .grade-c { background: linear-gradient(135deg, #D97706 0%, #F59E0B 100%); color: white; }
         .grade-d { background: linear-gradient(135deg, #DC2626 0%, #EF4444 100%); color: white; }
         
+        /* Status Badges */
         .status-badge {
             padding: 4px 8px;
             border-radius: 9999px;
@@ -209,6 +181,7 @@
         .status-credit { background: #dbeafe; color: #1e40af; }
         .status-distinction { background: #ede9fe; color: #5b21b6; }
         
+        /* Student Summary Card */
         .student-summary-card {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -228,6 +201,7 @@
         .stat-value { font-size: 28px; font-weight: bold; }
         .stat-label { font-size: 12px; opacity: 0.9; text-transform: uppercase; letter-spacing: 0.5px; }
         
+        /* Gradient Cards */
         .gradient-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
         .gradient-card-green { background: linear-gradient(135deg, #34b1aa 0%, #1c8f7c 100%); color: white; }
         .gradient-card-orange { background: linear-gradient(135deg, #f09351 0%, #e9692c 100%); color: white; }
@@ -236,98 +210,46 @@
         .row-even { background-color: #f9fafb; }
         .row-odd { background-color: white; }
         
-        .folder-container {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-        
-        .folder-btn {
-            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
-            color: white;
-            padding: 12px 24px;
-            border-radius: 12px;
-            font-weight: 600;
-            display: flex;
+        /* Filter Badges */
+        .filter-badge {
+            background: #e2e8f0;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            display: inline-flex;
             align-items: center;
-            gap: 10px;
-            transition: all 0.3s;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            gap: 5px;
+            cursor: pointer;
         }
         
-        .folder-btn:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 10px 20px rgba(79, 70, 229, 0.3);
-        }
-        
-        .folder-btn.active {
-            background: linear-gradient(135deg, #059669 0%, #10b981 100%);
-            box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.3);
-        }
-        
-        .excel-viewer-table {
-            border-collapse: collapse;
-            width: 100%;
-            font-size: 13px;
-        }
-        
-        .excel-viewer-table th {
-            background: #1e3c72;
+        .filter-badge.active {
+            background: #4f46e5;
             color: white;
-            padding: 10px;
-            position: sticky;
-            top: 0;
-            z-index: 10;
-            font-weight: 600;
         }
         
-        .excel-viewer-table td {
-            padding: 8px 10px;
-            border: 1px solid #e5e7eb;
-        }
-        
-        .excel-viewer-table tr:nth-child(even) {
-            background-color: #f9fafb;
-        }
-        
-        .excel-viewer-table tr:hover {
-            background-color: #e5e7eb;
-        }
-        
-        .overflow-x-auto {
-            max-height: 500px;
-            overflow: auto;
-            border: 1px solid #e5e7eb;
-            border-radius: 8px;
-        }
-
-        .grading-table {
-            width: 100%;
-            border-collapse: collapse;
+        .selected-classes-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
             margin-top: 10px;
-            font-size: 13px;
         }
         
-        .grading-table th {
-            background: #1e3c72;
+        .selected-class-tag {
+            background: #4f46e5;
             color: white;
-            padding: 8px;
-            text-align: center;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
         }
         
-        .grading-table td {
-            padding: 6px 8px;
-            border: 1px solid #e2e8f0;
-            text-align: center;
+        .selected-class-tag i {
+            cursor: pointer;
         }
         
-        .grading-table .grade-a { background: #ede9fe; color: #5b21b6; font-weight: bold; }
-        .grading-table .grade-b { background: #d1fae5; color: #065f46; font-weight: bold; }
-        .grading-table .grade-c { background: #fed7aa; color: #92400e; font-weight: bold; }
-        .grading-table .grade-d { background: #fee2e2; color: #991b1b; font-weight: bold; }
-
-        /* Class Selection Modal */
+        /* Modal Styles */
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -346,13 +268,14 @@
             background: white;
             border-radius: 16px;
             padding: 24px;
-            max-width: 500px;
-            width: 90%;
-            max-height: 80vh;
+            max-width: 1200px;
+            width: 95%;
+            max-height: 90vh;
             overflow-y: auto;
             box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
         }
         
+        /* Class Selection */
         .class-option {
             border: 2px solid #e2e8f0;
             border-radius: 12px;
@@ -391,47 +314,123 @@
             background: #4f46e5;
         }
         
-        .filter-badge {
-            background: #e2e8f0;
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-size: 12px;
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            cursor: pointer;
+        /* Sheet Tabs */
+        .sheet-tab {
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+            border-bottom: none;
+            border-radius: 8px 8px 0 0;
+            margin-right: 2px;
+            white-space: nowrap;
         }
         
-        .filter-badge.active {
-            background: #4f46e5;
+        .sheet-tab:hover {
+            transform: translateY(-1px);
+        }
+        
+        .sheet-tab.active {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
             color: white;
         }
         
-        .selected-classes-container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
+        /* Excel Viewer Table */
+        .excel-viewer-table {
+            border-collapse: collapse;
+            width: 100%;
+            font-size: 13px;
+        }
+        
+        .excel-viewer-table th {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 12px 8px;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        
+        .excel-viewer-table td {
+            padding: 8px;
+            border: 1px solid #e5e7eb;
+            white-space: nowrap;
+        }
+        
+        .excel-viewer-table tr:hover td {
+            background-color: #eff6ff !important;
+        }
+        
+        /* Mark Colors */
+        .mark-excellent { color: #4F46E5; font-weight: bold; }
+        .mark-good { color: #059669; font-weight: bold; }
+        .mark-average { color: #D97706; font-weight: bold; }
+        .mark-fail { color: #DC2626; font-weight: bold; }
+        
+        /* Google Sheets Editor */
+        .google-sheets-editor {
+            height: 70vh;
+            width: 100%;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .google-sheets-frame {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        
+        /* Scrollbar Styling */
+        .modal-content::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        .modal-content::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        
+        .modal-content::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        
+        .modal-content::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        
+        /* Grading Table */
+        .grading-table {
+            width: 100%;
+            border-collapse: collapse;
             margin-top: 10px;
+            font-size: 13px;
         }
         
-        .selected-class-tag {
-            background: #4f46e5;
+        .grading-table th {
+            background: #1e3c72;
             color: white;
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-size: 12px;
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
+            padding: 8px;
+            text-align: center;
         }
         
-        .selected-class-tag i {
-            cursor: pointer;
+        .grading-table td {
+            padding: 6px 8px;
+            border: 1px solid #e2e8f0;
+            text-align: center;
         }
+        
+        .grading-table .grade-a { background: #ede9fe; color: #5b21b6; font-weight: bold; }
+        .grading-table .grade-b { background: #d1fae5; color: #065f46; font-weight: bold; }
+        .grading-table .grade-c { background: #fed7aa; color: #92400e; font-weight: bold; }
+        .grading-table .grade-d { background: #fee2e2; color: #991b1b; font-weight: bold; }
     </style>
 </head>
 <body>
-    <!-- Loading Overlay with Debug Info -->
+    <!-- Loading Overlay -->
     <div id="loadingOverlay" class="loading-overlay" style="display: none;">
         <div style="text-align: center;">
             <div class="loading-spinner"></div>
@@ -448,7 +447,7 @@
 
     <!-- Class Selection Modal -->
     <div id="classModal" class="modal-overlay" style="display: none;">
-        <div class="modal-content">
+        <div class="modal-content" style="max-width: 500px;">
             <h3 class="text-lg font-bold text-gray-800 mb-2">Select Classes</h3>
             <p class="text-sm text-gray-600 mb-4">Choose which classes this file belongs to (you can select multiple):</p>
             
@@ -516,6 +515,31 @@
         </div>
     </div>
 
+    <!-- Google Sheets Editor Modal -->
+    <div id="googleSheetsEditor" class="modal-overlay" style="display: none;">
+        <div class="modal-content" style="max-width: 1400px; height: 90vh; padding: 16px;">
+            <div class="flex items-center justify-between mb-3">
+                <h2 class="text-lg font-bold text-gray-800 flex items-center">
+                    <i class="fab fa-google text-green-600 mr-2"></i>
+                    GOOGLE SHEETS: <span id="googleSheetsFileName" class="text-blue-600 ml-1 text-sm font-medium"></span>
+                </h2>
+                <div class="flex gap-2">
+                    <button onclick="syncFromGoogleSheets()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm flex items-center gap-2">
+                        <i class="fas fa-sync"></i> Sync to Database
+                    </button>
+                    <button onclick="closeGoogleSheetsEditor()" class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 text-sm flex items-center gap-2">
+                        <i class="fas fa-times"></i> Close
+                    </button>
+                </div>
+            </div>
+            <div class="google-sheets-editor">
+                <iframe id="googleSheetIframe" class="google-sheets-frame" 
+                        sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-downloads allow-popups-to-escape-sandbox allow-modals">
+                </iframe>
+            </div>
+        </div>
+    </div>
+
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         
         <!-- ========== SUPABASE CONFIG ========== -->
@@ -523,6 +547,10 @@
             // 🔴 YOUR SUPABASE CREDENTIALS
             const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
             const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
+            
+            // Google Sheets Configuration
+            const GOOGLE_API_KEY = 'YOUR_GOOGLE_API_KEY'; // Replace with your Google API Key
+            const GOOGLE_CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID'; // Replace with your Google Client ID
             
             // Initialize Supabase
             const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -535,17 +563,19 @@
             let sharedFiles = [];
             let allStudentMarks = [];
             let studentIndex = new Map();
-            let currentEditingFile = null;
-            let hot = null;
-            let sheetCache = new Map();
             let performanceChart = null;
             let distributionChart = null;
             let isProcessing = false;
             let processingQueue = [];
             let currentTranscriptData = null;
-            let selectedClasses = new Set(); // For filtering
+            let selectedClasses = new Set();
             let pendingFile = null;
-            let pendingFileClasses = new Set(); // Classes for the file being uploaded
+            let pendingFileClasses = new Set();
+            
+            // Google Sheets state
+            let googleAccessToken = null;
+            let currentGoogleSheetId = null;
+            let currentGoogleSheetFileId = null;
             
             // College Info
             const COLLEGE_NAME = 'NAKURU COLLEGE OF HEALTH SCIENCES & MANAGEMENT';
@@ -554,6 +584,7 @@
             const COLLEGE_EMAIL = 'info@nakurucollegeofhealth.ac.ke';
             const COLLEGE_WEBSITE = 'www.nakurucollegeofhealth.ac.ke';
             const COLLEGE_FOOTER = 'Accredited & Registered Institution | Committed to Academic Excellence | © 2026 Nakuru College of Health Sciences & Management';
+            const PROGRAM_NAME = 'KRCHN'; // Kenya Registered Community Health Nurse
         </script>
 
         <!-- ========== LOGIN SCREEN ========== -->
@@ -566,7 +597,7 @@
                     <h1 class="text-2xl font-bold text-gray-800">NAKURU COLLEGE OF HEALTH SCIENCES</h1>
                     <p class="text-gray-600 mt-1 text-sm">EXAM RESULTS PROVISIONAL PORTAL</p>
                     <div class="mt-2">
-                        <span class="provisional-badge text-xs">
+                        <span class="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs">
                             <i class="fas fa-clock mr-1"></i>
                             PROVISIONAL RESULTS
                         </span>
@@ -613,7 +644,7 @@
                         <div>
                             <h1 class="text-xl md:text-2xl font-bold text-gray-800">NAKURU COLLEGE EXAM PORTAL</h1>
                             <div class="flex items-center mt-1 text-sm">
-                                <span id="userRoleBadge" class="role-super-admin mr-2"></span>
+                                <span id="userRoleBadge" class="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-xs font-bold mr-2"></span>
                                 <span id="userDisplayName" class="text-gray-600"></span>
                                 <span class="mx-2 text-gray-400">•</span>
                                 <span id="userEmailDisplay" class="text-gray-500 text-xs"></span>
@@ -671,7 +702,7 @@
             <!-- Grading System Reference -->
             <div class="portal-card">
                 <h2 class="text-lg font-bold text-gray-800 mb-3 flex items-center">
-                    <i class="fas fa-table text-blue-600 mr-2"></i> Grading System
+                    <i class="fas fa-table text-blue-600 mr-2"></i> Grading System - KRCHN Program
                 </h2>
                 <table class="grading-table">
                     <thead>
@@ -781,11 +812,11 @@
             <!-- Student Search -->
             <div id="adminSearchSection" class="portal-card">
                 <h2 class="text-lg font-bold text-gray-800 mb-3 flex items-center">
-                    <i class="fas fa-search text-blue-600 mr-2"></i> Search Student
+                    <i class="fas fa-search text-blue-600 mr-2"></i> Search Student (Admission No. or Name)
                 </h2>
                 
                 <div class="flex gap-3 mb-6">
-                    <input type="text" id="studentSearchInput" placeholder="Admission No. or Name..." 
+                    <input type="text" id="studentSearchInput" placeholder="Enter Admission Number or Student Name..." 
                            class="flex-1 px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 text-sm">
                     <button onclick="searchStudentMarks()" 
                             class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 flex items-center text-sm">
@@ -802,7 +833,8 @@
                         <div class="flex flex-col md:flex-row items-start md:items-center justify-between mb-4">
                             <div>
                                 <h3 id="studentNameDisplay" class="text-xl font-bold">-</h3>
-                                <p id="studentIdDisplay" class="text-white/80 text-sm">-</p>
+                                <p id="studentIdDisplay" class="text-white/80 text-sm">Admission No: -</p>
+                                <p id="studentProgramDisplay" class="text-white/80 text-sm">Program: KRCHN</p>
                             </div>
                             <div class="mt-2 md:mt-0 flex gap-2">
                                 <span id="overallGradeDisplay" class="grade-badge grade-a text-sm px-4 py-2">-</span>
@@ -818,7 +850,7 @@
                         </div>
                         
                         <!-- Transcript Actions -->
-                        <div class="flex gap-2 mt-4">
+                        <div class="flex gap-2 mt-4 flex-wrap">
                             <button onclick="downloadOfficialTranscriptPDF()" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 text-sm flex items-center gap-2">
                                 <i class="fas fa-file-pdf"></i> Official Transcript
                             </button>
@@ -864,41 +896,6 @@
                             <i class="fas fa-cloud-upload-alt mr-1"></i> Publish
                         </button>
                     </div>
-                </div>
-
-                <!-- Excel Editor -->
-                <div id="excelEditorSection" class="hidden portal-card p-4">
-                    <div class="flex items-center justify-between mb-3">
-                        <h2 class="text-lg font-bold text-gray-800 flex items-center">
-                            <i class="fas fa-edit text-purple-600 mr-2"></i>
-                            EDITING: <span id="editingFileName" class="text-blue-600 ml-1 text-sm font-medium"></span>
-                        </h2>
-                        <div class="flex gap-2">
-                            <button onclick="saveExcelChanges()" class="bg-green-600 text-white px-4 py-1.5 rounded-lg hover:bg-green-700 text-sm">
-                                <i class="fas fa-save mr-1"></i> Save
-                            </button>
-                            <button onclick="closeEditor()" class="bg-gray-500 text-white px-4 py-1.5 rounded-lg hover:bg-gray-600 text-sm">
-                                <i class="fas fa-times"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <div id="sheetSelector" class="mb-3 flex gap-1 overflow-x-auto pb-1"></div>
-                    <div id="excelEditor" class="excel-editor"></div>
-                </div>
-
-                <!-- Viewer -->
-                <div id="excelViewerSection" class="hidden portal-card p-4">
-                    <div class="flex items-center justify-between mb-3">
-                        <h2 class="text-lg font-bold text-gray-800 flex items-center">
-                            <i class="fas fa-eye text-green-600 mr-2"></i>
-                            VIEWING: <span id="viewingFileName" class="text-blue-600 ml-1 text-sm font-medium"></span>
-                        </h2>
-                        <button onclick="closeViewer()" class="bg-gray-500 text-white px-4 py-1.5 rounded-lg hover:bg-gray-600 text-sm">
-                            <i class="fas fa-times mr-1"></i> Close
-                        </button>
-                    </div>
-                    <div id="sheetViewerSelector" class="mb-3 flex gap-1 overflow-x-auto pb-1"></div>
-                    <div id="excelViewer" class="overflow-x-auto bg-white rounded-lg border p-3 text-sm"></div>
                 </div>
             </div>
 
@@ -967,7 +964,6 @@
             if (loadingTimeout) clearTimeout(loadingTimeout);
         }
 
-        // ========== DEBUG LOGGING ==========
         function debugLog(message) {
             const time = new Date().toLocaleTimeString();
             const log = `[${time}] ${message}`;
@@ -987,29 +983,488 @@
                 points: 4, 
                 status: 'DISTINCTION', 
                 class: 'grade-a', 
-                pass: true 
+                pass: true,
+                color: 'mark-excellent'
             };
             if (mark >= 75) return { 
                 grade: 'B', 
                 points: 3, 
                 status: 'CREDIT', 
                 class: 'grade-b', 
-                pass: true 
+                pass: true,
+                color: 'mark-good'
             };
             if (mark >= 60) return { 
                 grade: 'C', 
                 points: 2, 
                 status: 'PASS', 
                 class: 'grade-c', 
-                pass: true 
+                pass: true,
+                color: 'mark-average'
             };
             return { 
                 grade: 'D', 
                 points: 0, 
                 status: 'FAIL', 
                 class: 'grade-d', 
-                pass: false 
+                pass: false,
+                color: 'mark-fail'
             };
+        }
+
+        // ========== GOOGLE SHEETS FUNCTIONS ==========
+        function initGoogleAPI() {
+            gapi.load('client:auth2', function() {
+                gapi.client.init({
+                    apiKey: GOOGLE_API_KEY,
+                    clientId: GOOGLE_CLIENT_ID,
+                    scope: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive',
+                    discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4']
+                }).then(function() {
+                    console.log('Google API initialized');
+                }).catch(function(error) {
+                    console.error('Google API init error:', error);
+                });
+            });
+        }
+
+        async function ensureGoogleAuth() {
+            try {
+                const authInstance = gapi.auth2.getAuthInstance();
+                if (!authInstance.isSignedIn.get()) {
+                    await authInstance.signIn();
+                }
+                googleAccessToken = authInstance.currentUser.get().getAuthResponse().access_token;
+                return true;
+            } catch (error) {
+                console.error('Google auth error:', error);
+                showToast('Please sign in to Google to use this feature', 'error');
+                return false;
+            }
+        }
+
+        async function openInGoogleSheets(fileId) {
+            if (currentRole !== 'admin' && currentRole !== 'super_admin') { 
+                showToast('Admins only', 'error'); 
+                return; 
+            }
+            
+            const file = sharedFiles.find(f => f.id === fileId);
+            if (!file) { 
+                showToast('File not found', 'error'); 
+                return; 
+            }
+            
+            showLoading('Opening in Google Sheets...', true, 60000);
+            
+            try {
+                await initGoogleAPI();
+                if (!await ensureGoogleAuth()) {
+                    hideLoading();
+                    return;
+                }
+                
+                // Check if we already have a Google Sheet ID
+                if (file.google_sheet_id) {
+                    currentGoogleSheetId = file.google_sheet_id;
+                    currentGoogleSheetFileId = fileId;
+                    document.getElementById('googleSheetsFileName').innerText = file.filename;
+                    document.getElementById('googleSheetIframe').src = `https://docs.google.com/spreadsheets/d/${file.google_sheet_id}/edit`;
+                    document.getElementById('googleSheetsEditor').style.display = 'flex';
+                    hideLoading();
+                    showToast('Opened in Google Sheets', 'success');
+                    return;
+                }
+                
+                // Create new Google Sheet from Excel data
+                const binaryData = atob(file.file_data);
+                const array = new Uint8Array(binaryData.length);
+                for (let i = 0; i < binaryData.length; i++) {
+                    array[i] = binaryData.charCodeAt(i);
+                }
+                
+                const workbook = XLSX.read(array, { type: 'array' });
+                
+                // Create new spreadsheet
+                const createResponse = await fetch('https://sheets.googleapis.com/v4/spreadsheets', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${googleAccessToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        properties: {
+                            title: file.filename
+                        }
+                    })
+                });
+                
+                const spreadsheet = await createResponse.json();
+                const spreadsheetId = spreadsheet.spreadsheetId;
+                
+                // Populate each sheet
+                for (let i = 0; i < workbook.SheetNames.length; i++) {
+                    const sheetName = workbook.SheetNames[i];
+                    const worksheet = workbook.Sheets[sheetName];
+                    const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                    
+                    if (data.length > 0) {
+                        // Add sheet if not exists (skip first sheet as it's created by default)
+                        if (i > 0) {
+                            await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`, {
+                                method: 'POST',
+                                headers: {
+                                    'Authorization': `Bearer ${googleAccessToken}`,
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({
+                                    requests: [{
+                                        addSheet: {
+                                            properties: {
+                                                title: sheetName
+                                            }
+                                        }
+                                    }]
+                                })
+                            });
+                        }
+                        
+                        // Add data
+                        const range = `${sheetName}!A1:${String.fromCharCode(64 + (data[0]?.length || 1))}${data.length}`;
+                        await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}?valueInputOption=RAW`, {
+                            method: 'PUT',
+                            headers: {
+                                'Authorization': `Bearer ${googleAccessToken}`,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                values: data
+                            })
+                        });
+                    }
+                }
+                
+                // Set permissions to anyone with link can edit
+                await fetch(`https://www.googleapis.com/drive/v3/files/${spreadsheetId}/permissions`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${googleAccessToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        role: 'writer',
+                        type: 'anyone'
+                    })
+                });
+                
+                // Save Google Sheet ID to database
+                const { error } = await supabase
+                    .from('shared_excel_files')
+                    .update({ google_sheet_id: spreadsheetId })
+                    .eq('id', fileId);
+                
+                if (error) console.error('Error saving Google Sheet ID:', error);
+                
+                currentGoogleSheetId = spreadsheetId;
+                currentGoogleSheetFileId = fileId;
+                document.getElementById('googleSheetsFileName').innerText = file.filename;
+                document.getElementById('googleSheetIframe').src = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;
+                document.getElementById('googleSheetsEditor').style.display = 'flex';
+                
+                hideLoading();
+                showToast('Google Sheet created with all sheets', 'success');
+                
+            } catch (error) {
+                console.error('Error opening in Google Sheets:', error);
+                hideLoading();
+                showToast('Error opening in Google Sheets: ' + error.message, 'error');
+            }
+        }
+
+        async function syncFromGoogleSheets() {
+            if (!currentGoogleSheetId || !currentGoogleSheetFileId) {
+                showToast('No Google Sheet open', 'error');
+                return;
+            }
+            
+            showLoading('Syncing from Google Sheets...', true, 60000);
+            
+            try {
+                if (!await ensureGoogleAuth()) {
+                    hideLoading();
+                    return;
+                }
+                
+                // Get spreadsheet metadata
+                const metadataResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${currentGoogleSheetId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${googleAccessToken}`
+                    }
+                });
+                
+                const metadata = await metadataResponse.json();
+                
+                // Create new workbook
+                const workbook = XLSX.utils.book_new();
+                
+                // Get data from each sheet
+                for (const sheet of metadata.sheets) {
+                    const sheetName = sheet.properties.title;
+                    
+                    const dataResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${currentGoogleSheetId}/values/${sheetName}`, {
+                        headers: {
+                            'Authorization': `Bearer ${googleAccessToken}`
+                        }
+                    });
+                    
+                    const data = await dataResponse.json();
+                    
+                    if (data.values) {
+                        const worksheet = XLSX.utils.aoa_to_sheet(data.values);
+                        XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+                    }
+                }
+                
+                // Convert to base64
+                const wbData = XLSX.write(workbook, { type: 'base64' });
+                
+                // Update in database
+                const { error } = await supabase
+                    .from('shared_excel_files')
+                    .update({
+                        file_data: wbData,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', currentGoogleSheetFileId);
+                
+                if (error) throw error;
+                
+                hideLoading();
+                showToast('Synced from Google Sheets successfully', 'success');
+                
+                // Refresh data
+                loadAllStudentMarks();
+                
+            } catch (error) {
+                console.error('Error syncing from Google Sheets:', error);
+                hideLoading();
+                showToast('Error syncing: ' + error.message, 'error');
+            }
+        }
+
+        function closeGoogleSheetsEditor() {
+            document.getElementById('googleSheetsEditor').style.display = 'none';
+            document.getElementById('googleSheetIframe').src = '';
+            currentGoogleSheetId = null;
+            currentGoogleSheetFileId = null;
+        }
+
+        // ========== VIEW FILE WITH MULTIPLE SHEETS ==========
+        async function viewFile(fileId) {
+            const file = sharedFiles.find(f => f.id === fileId);
+            if (!file || !file.file_data) { 
+                showToast('File not found', 'error'); 
+                return; 
+            }
+            
+            showLoading('Opening file...', false, 30000);
+            
+            try {
+                // Decode base64 data
+                const binaryData = atob(file.file_data);
+                const array = new Uint8Array(binaryData.length);
+                for (let i = 0; i < binaryData.length; i++) {
+                    array[i] = binaryData.charCodeAt(i);
+                }
+                
+                // Parse Excel workbook
+                const workbook = XLSX.read(array, { type: 'array' });
+                const sheetNames = workbook.SheetNames;
+                
+                // Create viewer modal with tabs
+                const viewerHtml = `
+                    <div class="modal-overlay" id="viewerModal" style="display: flex;">
+                        <div class="modal-content" style="max-width: 1400px;">
+                            <div class="flex items-center justify-between mb-3">
+                                <h2 class="text-lg font-bold text-gray-800 flex items-center">
+                                    <i class="fas fa-file-excel text-green-600 mr-2"></i>
+                                    ${file.filename}
+                                </h2>
+                                <button onclick="closeViewerModal()" class="text-gray-500 hover:text-gray-700">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            
+                            <!-- Sheet Tabs -->
+                            <div class="flex gap-1 overflow-x-auto pb-2 mb-3 border-b" style="scrollbar-width: thin;">
+                                ${sheetNames.map((sheet, index) => `
+                                    <button onclick="switchViewerSheet('${sheet.replace(/'/g, "\\'")}', ${index})" 
+                                        id="sheet-tab-${index}"
+                                        class="sheet-tab px-4 py-2 rounded-t-lg text-sm font-medium transition 
+                                        ${index === 0 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">
+                                        <i class="fas fa-table mr-1"></i>
+                                        ${sheet.length > 25 ? sheet.substr(0,22)+'...' : sheet}
+                                    </button>
+                                `).join('')}
+                            </div>
+                            
+                            <!-- Sheet Data Container -->
+                            <div id="sheetDataContainer" class="overflow-x-auto" style="max-height: 60vh;">
+                                <div class="text-center py-8 text-gray-500">
+                                    <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                                    <p>Loading sheet data...</p>
+                                </div>
+                            </div>
+                            
+                            <!-- Sheet Info -->
+                            <div class="mt-3 text-sm text-gray-600 flex justify-between items-center">
+                                <span>
+                                    <i class="fas fa-info-circle mr-1"></i>
+                                    <span id="sheetInfo">${sheetNames.length} sheet(s) total</span>
+                                </span>
+                                <span id="rowCount" class="text-xs bg-gray-100 px-2 py-1 rounded"></span>
+                            </div>
+                            
+                            <!-- Actions -->
+                            <div class="mt-4 flex justify-end gap-2">
+                                ${currentRole === 'admin' || currentRole === 'super_admin' ? 
+                                    `<button onclick="openInGoogleSheets('${file.id}')" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm flex items-center gap-2">
+                                        <i class="fab fa-google"></i> Edit in Sheets
+                                    </button>` : ''}
+                                <button onclick="closeViewerModal()" class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 text-sm">
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Remove any existing viewer modal
+                const existingModal = document.getElementById('viewerModal');
+                if (existingModal) existingModal.remove();
+                
+                // Add to body
+                document.body.insertAdjacentHTML('beforeend', viewerHtml);
+                
+                // Store workbook data for sheet switching
+                window.currentViewerWorkbook = workbook;
+                window.currentViewerSheetNames = sheetNames;
+                
+                // Load first sheet
+                loadViewerSheet(0);
+                
+                hideLoading();
+                
+            } catch (error) {
+                console.error('Error viewing file:', error);
+                hideLoading();
+                showToast('Error viewing file: ' + error.message, 'error');
+            }
+        }
+
+        function closeViewerModal() {
+            const modal = document.getElementById('viewerModal');
+            if (modal) modal.remove();
+            window.currentViewerWorkbook = null;
+            window.currentViewerSheetNames = null;
+        }
+
+        function switchViewerSheet(sheetName, index) {
+            // Update tab styles
+            const sheetCount = window.currentViewerSheetNames.length;
+            for (let i = 0; i < sheetCount; i++) {
+                const tab = document.getElementById(`sheet-tab-${i}`);
+                if (tab) {
+                    if (i === index) {
+                        tab.className = 'sheet-tab px-4 py-2 rounded-t-lg text-sm font-medium transition bg-blue-600 text-white';
+                    } else {
+                        tab.className = 'sheet-tab px-4 py-2 rounded-t-lg text-sm font-medium transition bg-gray-200 text-gray-700 hover:bg-gray-300';
+                    }
+                }
+            }
+            
+            // Load the selected sheet
+            loadViewerSheet(index);
+        }
+
+        function loadViewerSheet(index) {
+            const container = document.getElementById('sheetDataContainer');
+            if (!container) return;
+            
+            const workbook = window.currentViewerWorkbook;
+            const sheetNames = window.currentViewerSheetNames;
+            
+            if (!workbook || !sheetNames || index >= sheetNames.length) {
+                container.innerHTML = '<p class="text-center py-8 text-gray-500">Sheet not found</p>';
+                return;
+            }
+            
+            const sheetName = sheetNames[index];
+            const worksheet = workbook.Sheets[sheetName];
+            
+            // Convert to HTML with formatting
+            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+            
+            if (!jsonData || jsonData.length === 0) {
+                container.innerHTML = '<p class="text-center py-8 text-gray-500">No data in this sheet</p>';
+                document.getElementById('rowCount').innerText = '0 rows';
+                return;
+            }
+            
+            // Update row count
+            document.getElementById('rowCount').innerText = `${jsonData.length - 1} data rows`;
+            document.getElementById('sheetInfo').innerHTML = `Sheet: <span class="font-semibold">${sheetName}</span> • ${sheetNames.length} sheet(s) total`;
+            
+            // Build table with better styling
+            let html = '<div class="overflow-x-auto"><table class="excel-viewer-table w-full">';
+            
+            // Headers
+            const headers = jsonData[0] || [];
+            html += '<thead><tr>';
+            headers.forEach(header => {
+                html += `<th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">${header || ''}</th>`;
+            });
+            html += '</tr></thead><tbody>';
+            
+            // Data rows with alternating colors
+            for (let i = 1; i < Math.min(jsonData.length, 1000); i++) {
+                const row = jsonData[i] || [];
+                const rowClass = i % 2 === 0 ? 'bg-white' : 'bg-gray-50';
+                
+                html += `<tr class="${rowClass} hover:bg-blue-50 transition">`;
+                
+                for (let j = 0; j < headers.length; j++) {
+                    const value = row[j] !== undefined && row[j] !== null ? row[j] : '';
+                    
+                    // Check if it's a mark column
+                    const headerLower = String(headers[j] || '').toLowerCase();
+                    const isMark = headerLower.includes('mark') || 
+                                  headerLower.includes('total') || 
+                                  headerLower.includes('final') || 
+                                  headerLower.includes('score') ||
+                                  headerLower.includes('grade') ||
+                                  headerLower.includes('exam');
+                    
+                    if (isMark && !isNaN(parseFloat(value))) {
+                        const num = parseFloat(value);
+                        const grade = getGrade(num);
+                        html += `<td class="px-4 py-2 text-sm ${grade.color} font-bold">${value}</td>`;
+                    } else {
+                        html += `<td class="px-4 py-2 text-sm text-gray-700">${value}</td>`;
+                    }
+                }
+                html += '</tr>';
+            }
+            
+            if (jsonData.length > 1000) {
+                html += `<tr><td colspan="${headers.length}" class="text-center text-gray-500 py-4 text-sm">
+                    <i class="fas fa-info-circle mr-1"></i>
+                    ... and ${jsonData.length - 1000} more rows
+                </td></tr>`;
+            }
+            
+            html += '</tbody></table></div>';
+            container.innerHTML = html;
         }
 
         // ========== CLASS FILTER FUNCTIONS ==========
@@ -1025,9 +1480,6 @@
             updateSelectedClassesDisplay();
             loadSharedFiles();
             updateFilteredCharts();
-            
-            const count = selectedClasses.size;
-            showToast(count === 0 ? 'Showing all classes' : `Filtering by ${count} class(es)`, 'success');
         }
 
         function toggleAllClasses() {
@@ -1035,13 +1487,11 @@
             const allSelected = allClasses.every(c => selectedClasses.has(c));
             
             if (allSelected) {
-                // Deselect all
                 selectedClasses.clear();
                 allClasses.forEach(c => {
                     document.getElementById(`filter-class-${c}`).classList.remove('active');
                 });
             } else {
-                // Select all
                 allClasses.forEach(c => {
                     selectedClasses.add(c);
                     document.getElementById(`filter-class-${c}`).classList.add('active');
@@ -1051,7 +1501,6 @@
             updateSelectedClassesDisplay();
             loadSharedFiles();
             updateFilteredCharts();
-            showToast(selectedClasses.size === 0 ? 'Showing all classes' : 'Showing all classes', 'success');
         }
 
         function clearClassFilter() {
@@ -1062,7 +1511,6 @@
             updateSelectedClassesDisplay();
             loadSharedFiles();
             updateFilteredCharts();
-            showToast('Showing all classes', 'success');
         }
 
         function updateSelectedClassesDisplay() {
@@ -1094,120 +1542,8 @@
             container.innerHTML = html;
         }
 
-        function updateFilteredCharts() {
-            if (allStudentMarks.length === 0) return;
-            
-            // Filter marks based on selected classes
-            const filteredMarks = getFilteredMarks();
-            
-            if (filteredMarks.length === 0) {
-                // Clear charts
-                if (performanceChart) performanceChart.destroy();
-                if (distributionChart) distributionChart.destroy();
-                document.getElementById('chartFilterBadge').innerHTML = '<i class="fas fa-filter mr-1"></i>No data';
-                document.getElementById('barChartFilterBadge').innerHTML = '<i class="fas fa-filter mr-1"></i>No data';
-                return;
-            }
-            
-            const aCount = filteredMarks.filter(m => m >= 85).length;
-            const bCount = filteredMarks.filter(m => m >= 75 && m < 85).length;
-            const cCount = filteredMarks.filter(m => m >= 60 && m < 75).length;
-            const dCount = filteredMarks.filter(m => m < 60).length;
-            
-            // Update filter badges
-            const filterText = selectedClasses.size > 0 ? 
-                `<i class="fas fa-filter mr-1"></i>${selectedClasses.size} class(es)` : 
-                '<i class="fas fa-globe mr-1"></i>All Classes';
-            
-            document.getElementById('chartFilterBadge').innerHTML = filterText;
-            document.getElementById('barChartFilterBadge').innerHTML = filterText;
-            
-            // Performance Chart
-            const perfCtx = document.getElementById('performanceChart').getContext('2d');
-            if (performanceChart) performanceChart.destroy();
-            performanceChart = new Chart(perfCtx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['A (85-100) - DISTINCTION', 'B (75-84) - CREDIT', 'C (60-74) - PASS', 'D (0-59) - FAIL'],
-                    datasets: [{ 
-                        data: [aCount, bCount, cCount, dCount], 
-                        backgroundColor: ['#4F46E5', '#059669', '#D97706', '#DC2626'],
-                        borderWidth: 0
-                    }]
-                },
-                options: { 
-                    responsive: true, 
-                    maintainAspectRatio: false, 
-                    plugins: { 
-                        legend: { 
-                            position: 'bottom',
-                            labels: { font: { size: 10 } }
-                        } 
-                    } 
-                }
-            });
-            
-            // Distribution Chart
-            const distCtx = document.getElementById('distributionChart').getContext('2d');
-            if (distributionChart) distributionChart.destroy();
-            distributionChart = new Chart(distCtx, {
-                type: 'bar',
-                data: {
-                    labels: ['0-59 (D)', '60-74 (C)', '75-84 (B)', '85-100 (A)'],
-                    datasets: [{ 
-                        label: 'Number of Students', 
-                        data: [dCount, cCount, bCount, aCount], 
-                        backgroundColor: ['#DC2626', '#D97706', '#059669', '#4F46E5'],
-                        borderRadius: 8
-                    }]
-                },
-                options: { 
-                    responsive: true, 
-                    maintainAspectRatio: false, 
-                    plugins: { legend: { display: false } },
-                    scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
-                }
-            });
-        }
-
-        function getFilteredMarks() {
-            const marks = [];
-            
-            allStudentMarks.forEach(record => {
-                // Check if file matches selected classes
-                if (selectedClasses.size > 0) {
-                    const file = sharedFiles.find(f => f.id === record.fileId);
-                    if (!file) return;
-                    
-                    // Check if file has any of the selected classes
-                    const fileClasses = file.classes ? file.classes.split(',') : [];
-                    const hasMatch = Array.from(selectedClasses).some(c => fileClasses.includes(c));
-                    if (!hasMatch) return;
-                }
-                
-                // Get mark
-                if (record.rowData) {
-                    const finalMark = record.rowData['FINAL MARKS %'] || 
-                                     record.rowData['FINALMARKS'] || 
-                                     record.rowData['FINAL'] || 
-                                     record.rowData['Final Marks'] || 
-                                     record.rowData['Total'] ||
-                                     record.rowData['MARKS'] ||
-                                     record.rowData['Marks'];
-                    
-                    const num = parseFloat(finalMark);
-                    if (!isNaN(num) && num >= 0 && num <= 100) {
-                        marks.push(num);
-                    }
-                }
-            });
-            
-            return marks;
-        }
-
         // ========== CLASS SELECTION FOR UPLOAD ==========
         function showClassSelectionModal() {
-            // Reset selections
             pendingFileClasses.clear();
             document.querySelectorAll('.class-option').forEach(opt => {
                 opt.classList.remove('selected');
@@ -1256,7 +1592,6 @@
             
             document.getElementById('classModal').style.display = 'none';
             
-            // Add classes to filename
             const filename = pendingFile.name;
             const classList = Array.from(pendingFileClasses).join('_');
             const fileExt = filename.split('.').pop();
@@ -1265,7 +1600,6 @@
             pendingFile.finalName = `${baseName}_[${classList}].${fileExt}`;
             pendingFile.classList = Array.from(pendingFileClasses);
             
-            // Show preview
             showFilePreview(pendingFile);
         }
 
@@ -1287,7 +1621,6 @@
                         
                         debugLog(`📊 Workbook has ${workbook.SheetNames.length} sheets`);
                         
-                        // Store pending file
                         pendingFile = {
                             name: file.name,
                             data: XLSX.write(workbook, { type: 'base64' }),
@@ -1295,15 +1628,12 @@
                             rowCount: 0
                         };
                         
-                        // Get first sheet row count
                         const firstSheet = workbook.SheetNames[0];
                         const worksheet = workbook.Sheets[firstSheet];
                         const jsonData = XLSX.utils.sheet_to_json(worksheet);
                         pendingFile.rowCount = jsonData.length;
                         
                         hideLoading();
-                        
-                        // Show class selection modal
                         showClassSelectionModal();
                         
                     } catch (error) {
@@ -1322,14 +1652,12 @@
             }
         }
 
-        // ========== SHOW FILE PREVIEW ==========
         function showFilePreview(fileData) {
             const workbook = fileData.workbook;
             const firstSheet = workbook.SheetNames[0];
             const worksheet = workbook.Sheets[firstSheet];
             const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
             
-            // Get class names for display
             const classNames = {
                 '2024': 'March 2024',
                 '2025': 'March 2025',
@@ -1343,7 +1671,6 @@
             
             let previewHtml = '<div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200">';
             
-            // Headers
             if (jsonData.length > 0) {
                 previewHtml += '<thead class="bg-gray-50"><tr>';
                 (jsonData[0] || []).forEach(header => {
@@ -1351,7 +1678,6 @@
                 });
                 previewHtml += '</tr></thead><tbody class="bg-white divide-y divide-gray-200">';
                 
-                // First 10 rows
                 for (let i = 1; i < Math.min(jsonData.length, 11); i++) {
                     const row = jsonData[i] || [];
                     previewHtml += '<tr>';
@@ -1367,11 +1693,11 @@
                 
                 previewHtml += '</tbody></table></div>';
                 
-                // Add file info
                 previewHtml = `
                     <div class="mb-3 p-3 bg-blue-50 rounded-lg">
                         <p class="text-sm"><span class="font-semibold">File:</span> ${fileData.finalName || fileData.name}</p>
                         <p class="text-sm"><span class="font-semibold">Classes:</span> ${classDisplay}</p>
+                        <p class="text-sm"><span class="font-semibold">Sheets:</span> ${workbook.SheetNames.length}</p>
                         <p class="text-sm"><span class="font-semibold">Rows:</span> ${fileData.rowCount}</p>
                     </div>
                 ` + previewHtml;
@@ -1415,7 +1741,6 @@
                 
                 debugLog('✅ File published successfully');
                 
-                // Clear preview and refresh
                 document.getElementById('filePreviewSection').classList.add('hidden');
                 document.getElementById('filePreview').innerHTML = '';
                 document.getElementById('excelUpload').value = '';
@@ -1425,7 +1750,6 @@
                 hideLoading();
                 showToast('File published successfully', 'success');
                 
-                // Refresh file list
                 loadSharedFiles();
                 loadAllStudentMarks();
                 
@@ -1436,7 +1760,6 @@
             }
         }
 
-        // ========== CLOSE FILE PREVIEW ==========
         function closeFilePreview() {
             document.getElementById('filePreviewSection').classList.add('hidden');
             document.getElementById('filePreview').innerHTML = '';
@@ -1461,491 +1784,78 @@
             document.getElementById('studentResultsTable').innerHTML = '';
         }
 
-        // ========== CLOSE EDITOR ==========
-        function closeEditor() {
-            if (hot) {
-                try {
-                    hot.destroy();
-                } catch (e) {}
-                hot = null;
-            }
-            document.getElementById('excelEditorSection').classList.add('hidden');
-            currentEditingFile = null;
-        }
-
-        // ========== CLOSE VIEWER ==========
-        function closeViewer() {
-            document.getElementById('excelViewerSection').classList.add('hidden');
-            document.getElementById('excelViewer').innerHTML = '';
-        }
-
-        // ========== VIEW FILE ==========
-        async function viewFile(fileId) {
-            closeEditor();
-            
-            const file = sharedFiles.find(f => f.id === fileId);
-            if (!file || !file.file_data) { 
-                showToast('File not found', 'error'); 
-                return; 
-            }
-            
-            showLoading('Opening file...', false, 30000);
-            
+        // ========== LOAD SHARED FILES ==========
+        async function loadSharedFiles() {
             try {
-                const binaryData = atob(file.file_data);
-                const array = new Uint8Array(binaryData.length);
-                for (let i = 0; i < binaryData.length; i++) {
-                    array[i] = binaryData.charCodeAt(i);
-                }
-                
-                const workbook = XLSX.read(array, { type: 'array' });
-                const firstSheet = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[firstSheet];
-                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-                
-                document.getElementById('viewingFileName').innerText = file.filename;
-                document.getElementById('excelViewerSection').classList.remove('hidden');
-                
-                // Create sheet selector
-                const selector = document.getElementById('sheetViewerSelector');
-                selector.innerHTML = workbook.SheetNames.map((sheet, i) => 
-                    `<button onclick="viewSheet('${file.id}', '${sheet}')" 
-                        class="sheet-tab px-3 py-1.5 rounded-lg text-xs font-medium transition 
-                        ${i === 0 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">
-                        ${sheet.length > 15 ? sheet.substr(0,12)+'...' : sheet}
-                    </button>`
-                ).join('');
-                
-                // Display first sheet
-                displaySheetData(jsonData);
-                hideLoading();
-                
-            } catch (error) {
-                console.error('Error viewing file:', error);
-                hideLoading();
-                showToast('Error viewing file: ' + error.message, 'error');
-            }
-        }
-
-        // ========== VIEW SHEET ==========
-        async function viewSheet(fileId, sheetName) {
-            showLoading('Loading sheet...', false, 10000);
-            
-            try {
-                const file = sharedFiles.find(f => f.id === fileId);
-                if (!file || !file.file_data) throw new Error('File not found');
-                
-                const binaryData = atob(file.file_data);
-                const array = new Uint8Array(binaryData.length);
-                for (let i = 0; i < binaryData.length; i++) {
-                    array[i] = binaryData.charCodeAt(i);
-                }
-                
-                const workbook = XLSX.read(array, { type: 'array' });
-                const worksheet = workbook.Sheets[sheetName];
-                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-                
-                // Update tab styles
-                document.querySelectorAll('#sheetViewerSelector .sheet-tab').forEach(tab => {
-                    const isActive = tab.innerText.includes(sheetName) || tab.innerText === sheetName;
-                    tab.className = `sheet-tab px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                        isActive ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                    }`;
-                });
-                
-                displaySheetData(jsonData);
-                hideLoading();
-                
-            } catch (error) {
-                console.error('Error loading sheet:', error);
-                hideLoading();
-                showToast('Error loading sheet', 'error');
-            }
-        }
-
-        // ========== DISPLAY SHEET DATA ==========
-        function displaySheetData(data) {
-            if (!data || data.length === 0) {
-                document.getElementById('excelViewer').innerHTML = '<p class="text-center py-8 text-gray-500">No data in this sheet</p>';
-                return;
-            }
-            
-            let html = '<div class="overflow-x-auto"><table class="excel-viewer-table"><thead><tr>';
-            
-            // Headers from first row
-            const headers = data[0] || [];
-            headers.forEach(header => {
-                html += `<th>${header || ''}</th>`;
-            });
-            html += '</tr></thead><tbody>';
-            
-            // Data rows
-            for (let i = 1; i < Math.min(data.length, 1000); i++) {
-                const row = data[i] || [];
-                html += '<tr>';
-                for (let j = 0; j < headers.length; j++) {
-                    const value = row[j] !== undefined && row[j] !== null ? row[j] : '';
-                    
-                    // Check if it's a mark column
-                    const headerLower = String(headers[j] || '').toLowerCase();
-                    const isMark = headerLower.includes('mark') || headerLower.includes('total') || headerLower.includes('final');
-                    
-                    if (isMark && !isNaN(parseFloat(value))) {
-                        const num = parseFloat(value);
-                        const colorClass = num >= 85 ? 'text-purple-600 font-bold' :
-                                          num >= 75 ? 'text-green-600 font-bold' :
-                                          num >= 60 ? 'text-orange-600 font-bold' :
-                                          'text-red-600 font-bold';
-                        html += `<td class="${colorClass}">${value}</td>`;
-                    } else {
-                        html += `<td>${value}</td>`;
-                    }
-                }
-                html += '</tr>';
-            }
-            
-            if (data.length > 1000) {
-                html += `<tr><td colspan="${headers.length}" class="text-center text-gray-500 py-2">... and ${data.length - 1000} more rows</td></tr>`;
-            }
-            
-            html += '</tbody></table></div>';
-            document.getElementById('excelViewer').innerHTML = html;
-        }
-
-        // ========== OPEN FILE FOR EDITING ==========
-        async function openFileForEditing(fileId) {
-            if (currentRole !== 'admin' && currentRole !== 'super_admin') { 
-                showToast('Admins only', 'error'); 
-                return; 
-            }
-            
-            if (typeof Handsontable === 'undefined') {
-                console.error('Handsontable not loaded');
-                showToast('Editor library not loaded. Please refresh the page.', 'error');
-                return;
-            }
-            
-            closeViewer();
-            
-            const file = sharedFiles.find(f => f.id === fileId);
-            if (!file) { 
-                showToast('File not found', 'error'); 
-                return; 
-            }
-            
-            if (!file.file_data) { 
-                showToast('File has no data', 'error'); 
-                return; 
-            }
-            
-            showLoading('Opening Excel editor...', true, 30000);
-            debugLog(`Opening file: ${file.filename}`);
-            
-            try {
-                // Check cache first
-                if (sheetCache.has(file.id)) {
-                    currentEditingFile = sheetCache.get(file.id);
-                    debugLog('Loaded from cache');
-                } else {
-                    debugLog('Decoding base64 data...');
-                    // Decode base64 to binary
-                    const binaryData = atob(file.file_data);
-                    debugLog(`Base64 decoded, length: ${binaryData.length} bytes`);
-                    
-                    // Convert to Uint8Array
-                    const array = new Uint8Array(binaryData.length);
-                    for (let i = 0; i < binaryData.length; i++) {
-                        array[i] = binaryData.charCodeAt(i);
-                    }
-                    debugLog('Converted to Uint8Array');
-                    
-                    // Parse Excel
-                    const workbook = XLSX.read(array, { type: 'array' });
-                    debugLog(`Excel parsed, sheets: ${workbook.SheetNames.join(', ')}`);
-                    
-                    if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
-                        throw new Error('No sheets found in workbook');
-                    }
-                    
-                    currentEditingFile = { 
-                        id: file.id, 
-                        workbook, 
-                        filename: file.filename, 
-                        sheets: workbook.SheetNames, 
-                        currentSheet: workbook.SheetNames[0], 
-                        loadedSheets: new Map() 
-                    };
-                    
-                    // Cache it
-                    sheetCache.set(file.id, currentEditingFile);
-                }
-                
-                // Show editor section
-                document.getElementById('editingFileName').innerText = file.filename;
-                document.getElementById('excelEditorSection').classList.remove('hidden');
-                
-                // Create sheet selector
-                const selector = document.getElementById('sheetSelector');
-                selector.innerHTML = currentEditingFile.sheets.map((sheet, i) => 
-                    `<button onclick="loadSheetForEditing('${sheet.replace(/'/g, "\\'")}')" 
-                        class="sheet-tab px-3 py-1.5 rounded-lg text-xs font-medium transition 
-                        ${i === 0 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">
-                        ${sheet.length > 15 ? sheet.substr(0,12)+'...' : sheet}
-                    </button>`
-                ).join('');
-                
-                hideLoading();
-                showToast('File opened successfully', 'success');
-                
-                // Load first sheet after a brief delay
-                setTimeout(() => {
-                    loadSheetForEditing(currentEditingFile.sheets[0]);
-                }, 100);
-                
-            } catch (error) { 
-                console.error('❌ Error opening file:', error);
-                debugLog(`Error: ${error.message}`);
-                hideLoading(); 
-                showToast('Error opening file: ' + error.message, 'error'); 
-            }
-        }
-
-        // ========== LOAD SHEET FOR EDITING ==========
-        function loadSheetForEditing(sheetName) {
-            if (!currentEditingFile) {
-                showToast('No file open', 'error');
-                return;
-            }
-            
-            debugLog(`Loading sheet: ${sheetName}`);
-            
-            // Update tab styles
-            document.querySelectorAll('#sheetSelector .sheet-tab').forEach(tab => {
-                const isActive = tab.innerText.includes(sheetName) || tab.innerText === sheetName;
-                tab.className = `sheet-tab px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                    isActive ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`;
-            });
-            
-            // Check cache
-            if (currentEditingFile.loadedSheets.has(sheetName)) {
-                debugLog('Loading from cache');
-                const jsonData = currentEditingFile.loadedSheets.get(sheetName);
-                if (initHandsontable(jsonData)) {
-                    currentEditingFile.currentSheet = sheetName;
-                }
-                return;
-            }
-            
-            showLoading(`Loading ${sheetName}...`, false, 10000);
-            
-            try {
-                const worksheet = currentEditingFile.workbook.Sheets[sheetName];
-                if (!worksheet) { 
-                    hideLoading(); 
-                    showToast('Sheet not found', 'error'); 
-                    return; 
-                }
-                
-                // Convert to 2D array
-                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-                debugLog(`Sheet has ${jsonData.length} rows`);
-                
-                if (jsonData.length === 0) {
-                    hideLoading();
-                    showToast('Sheet is empty', 'warning');
-                    return;
-                }
-                
-                // Cache it
-                currentEditingFile.loadedSheets.set(sheetName, jsonData);
-                currentEditingFile.currentSheet = sheetName;
-                
-                if (initHandsontable(jsonData)) {
-                    hideLoading();
-                } else {
-                    hideLoading();
-                    showToast('Failed to initialize editor', 'error');
-                }
-                
-            } catch (error) { 
-                console.error('❌ Error loading sheet:', error);
-                debugLog(`Error: ${error.message}`);
-                hideLoading(); 
-                showToast('Error loading sheet: ' + error.message, 'error'); 
-            }
-        }
-
-        // ========== INIT HANDSONTABLE ==========
-        function initHandsontable(data) {
-            const container = document.getElementById('excelEditor');
-            
-            if (!container) {
-                console.error('❌ Excel editor container not found');
-                showToast('Editor container not found', 'error');
-                return false;
-            }
-            
-            // Destroy existing instance
-            if (hot) {
-                try {
-                    hot.destroy();
-                } catch (e) {
-                    console.warn('Error destroying previous instance:', e);
-                }
-                hot = null;
-            }
-            
-            // Clear container
-            container.innerHTML = '';
-            container.style.height = '500px';
-            container.style.width = '100%';
-            
-            // Ensure data is valid
-            if (!data || !Array.isArray(data) || data.length === 0) {
-                container.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500">No data to display</div>';
-                return false;
-            }
-            
-            try {
-                // Make sure Handsontable is loaded
-                if (typeof Handsontable === 'undefined') {
-                    throw new Error('Handsontable not loaded');
-                }
-                
-                console.log('Initializing Handsontable with', data.length, 'rows,', data[0]?.length || 0, 'columns');
-                
-                // Create new instance
-                hot = new Handsontable(container, {
-                    data: data,
-                    rowHeaders: true,
-                    colHeaders: true,
-                    height: '100%',
-                    width: '100%',
-                    licenseKey: 'non-commercial-and-evaluation',
-                    contextMenu: ['row_above', 'row_below', 'remove_row', 'undo', 'redo', 'copy', 'cut'],
-                    copyPaste: true,
-                    fillHandle: true,
-                    undo: true,
-                    redo: true,
-                    columnSorting: true,
-                    filters: true,
-                    manualRowResize: true,
-                    manualColumnResize: true,
-                    stretchH: 'all',
-                    wordWrap: false,
-                    search: true,
-                    
-                    // Custom cell rendering
-                    cells: function(row, col) {
-                        const cellProperties = {};
-                        
-                        // Make header row read-only
-                        if (row === 0) {
-                            cellProperties.readOnly = true;
-                            cellProperties.className = 'htCenter font-bold bg-gray-100';
-                        }
-                        
-                        // Style based on column header
-                        const header = data[0] && data[0][col] ? String(data[0][col]).toLowerCase() : '';
-                        if (header.includes('mark') || header.includes('total') || header.includes('final') || header.includes('score')) {
-                            cellProperties.className = 'htRight font-mono';
-                        }
-                        
-                        return cellProperties;
-                    },
-                    
-                    afterChange: function(changes, source) {
-                        if (source === 'load') return;
-                        if (changes && changes.length > 0) {
-                            console.log('Changes detected:', changes.length);
-                            showToast('Changes made. Remember to save.', 'info', 2000);
-                        }
-                    },
-                    
-                    // Performance settings
-                    renderAllRows: false,
-                    viewportRowRenderingOffset: 20,
-                    maxRows: 10000,
-                    maxCols: 500
-                });
-                
-                console.log('✅ Handsontable initialized successfully');
-                return true;
-                
-            } catch (error) {
-                console.error('❌ Error initializing Handsontable:', error);
-                container.innerHTML = `<div class="flex items-center justify-center h-full text-red-500">
-                    <div class="text-center">
-                        <i class="fas fa-exclamation-triangle text-3xl mb-2"></i>
-                        <p>Error loading editor: ${error.message}</p>
-                        <button onclick="retryLoadEditor()" class="mt-3 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm">
-                            Retry
-                        </button>
-                    </div>
-                </div>`;
-                return false;
-            }
-        }
-
-        // ========== RETRY LOAD EDITOR ==========
-        function retryLoadEditor() {
-            if (currentEditingFile && currentEditingFile.currentSheet) {
-                loadSheetForEditing(currentEditingFile.currentSheet);
-            }
-        }
-
-        // ========== SAVE EXCEL CHANGES ==========
-        async function saveExcelChanges() {
-            if (!currentEditingFile || !hot) {
-                showToast('No file open for editing', 'error');
-                return;
-            }
-            
-            showLoading('Saving changes...', true, 30000);
-            
-            try {
-                debugLog('💾 Saving changes...');
-                
-                const sheetName = currentEditingFile.currentSheet;
-                const data = hot.getData();
-                
-                debugLog(`📊 Data has ${data.length} rows`);
-                
-                // Update the worksheet
-                const worksheet = XLSX.utils.aoa_to_sheet(data);
-                currentEditingFile.workbook.Sheets[sheetName] = worksheet;
-                currentEditingFile.loadedSheets.set(sheetName, data);
-                
-                // Convert workbook to base64
-                const wbData = XLSX.write(currentEditingFile.workbook, { type: 'base64' });
-                
-                // Update in database
-                const { error } = await supabase
+                const { data: files, error } = await supabase
                     .from('shared_excel_files')
-                    .update({
-                        file_data: wbData,
-                        updated_at: new Date().toISOString()
-                    })
-                    .eq('id', currentEditingFile.id);
+                    .select('*')
+                    .order('uploaded_at', { ascending: false });
                 
                 if (error) throw error;
                 
-                debugLog('✅ Changes saved to database');
+                sharedFiles = files || [];
                 
-                // Clear cache for this file to force reload
-                sheetCache.delete(currentEditingFile.id);
+                let filteredFiles = sharedFiles;
+                if (selectedClasses.size > 0) {
+                    filteredFiles = filteredFiles.filter(file => {
+                        if (!file.classes) return false;
+                        const fileClasses = file.classes.split(',');
+                        return Array.from(selectedClasses).some(c => fileClasses.includes(c));
+                    });
+                }
                 
-                hideLoading();
-                showToast('Changes saved successfully', 'success');
+                const container = document.getElementById('sharedFilesContainer');
+                document.getElementById('filteredFileCount').innerText = filteredFiles.length;
                 
-                // Refresh data
-                loadAllStudentMarks();
+                if (filteredFiles.length === 0) {
+                    container.innerHTML = `<div class="col-span-3 text-center py-8 text-gray-500 text-sm">No files match the selected filters</div>`;
+                    return;
+                }
                 
-            } catch (error) {
-                console.error('Save error:', error);
-                hideLoading();
-                showToast('Error saving changes: ' + error.message, 'error');
+                container.innerHTML = filteredFiles.map(file => {
+                    const date = new Date(file.uploaded_at).toLocaleString();
+                    const canEdit = currentRole === 'admin' || currentRole === 'super_admin';
+                    
+                    const fileClasses = file.classes ? file.classes.split(',') : [];
+                    const classNames = {
+                        '2024': 'March 2024',
+                        '2025': 'March 2025',
+                        '2026': 'March 2026',
+                        '2027': 'March 2027',
+                        '2028': 'March 2028',
+                        'other': 'Other'
+                    };
+                    
+                    const classDisplay = fileClasses.map(c => classNames[c] || c).join(', ');
+                    
+                    return `
+                        <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition bg-white">
+                            <div class="flex items-start">
+                                <i class="fas fa-file-excel text-green-600 text-2xl mr-3"></i>
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex justify-between items-start">
+                                        <p class="font-semibold text-gray-800 text-sm truncate" title="${file.filename}">${file.filename}</p>
+                                    </div>
+                                    <div class="flex items-center mt-1 text-xs gap-1 flex-wrap">
+                                        <span class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">${file.row_count || 0} records</span>
+                                        <span class="bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full">${classDisplay}</span>
+                                    </div>
+                                    <p class="text-xs text-gray-500 mt-1"><i class="fas fa-user mr-1"></i>${file.uploaded_by_email || 'Unknown'} • ${date}</p>
+                                    <div class="mt-2 flex gap-1 flex-wrap">
+                                        ${canEdit ? `<button onclick="openInGoogleSheets('${file.id}')" class="text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700"><i class="fab fa-google mr-1"></i>Edit</button>` : ''}
+                                        <button onclick="viewFile('${file.id}')" class="text-xs bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700"><i class="fas fa-eye mr-1"></i>View</button>
+                                        ${canEdit ? `<button onclick="deleteFile('${file.id}', '${file.filename}')" class="text-xs bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700"><i class="fas fa-trash mr-1"></i>Delete</button>` : ''}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                
+            } catch (error) { 
+                debugLog('❌ Error loading files: ' + error.message);
+                console.error(error); 
             }
         }
 
@@ -1965,13 +1875,9 @@
                 
                 if (error) throw error;
                 
-                // Remove from cache
-                sheetCache.delete(fileId);
-                
                 hideLoading();
                 showToast('File deleted successfully', 'success');
                 
-                // Refresh
                 loadSharedFiles();
                 loadAllStudentMarks();
                 
@@ -2043,7 +1949,6 @@
                 
                 const badge = document.getElementById('userRoleBadge');
                 badge.innerText = currentRole.replace('_', ' ').toUpperCase();
-                badge.className = `role-${currentRole} px-3 py-1 rounded-full text-xs font-bold`;
                 
                 if (currentRole === 'admin' || currentRole === 'super_admin') {
                     document.getElementById('adminDashboard').classList.remove('hidden');
@@ -2068,1255 +1973,1028 @@
             }
         }
 
-        // ========== LOAD SHARED FILES ==========
-        async function loadSharedFiles() {
+       // ========== LOAD ALL STUDENT MARKS ==========
+async function loadAllStudentMarks() {
+    if (isProcessing) {
+        processingQueue.push(loadAllStudentMarks);
+        return;
+    }
+    
+    isProcessing = true;
+    showLoading('Loading data...', true, 60000);
+    
+    try {
+        debugLog('📡 Fetching files from Supabase...');
+        
+        const { data: files, error } = await supabase
+            .from('shared_excel_files')
+            .select('id, filename, file_data, uploaded_by_email, uploaded_at, classes')
+            .order('uploaded_at', { ascending: false });
+        
+        if (error) throw error;
+        
+        if (!files || files.length === 0) {
+            debugLog('⚠️ No files found');
+            document.getElementById('totalFilesStats').innerText = '0';
+            document.getElementById('totalRecordsStats').innerText = '0';
+            hideLoading();
+            isProcessing = false;
+            return;
+        }
+        
+        debugLog(`📁 Found ${files.length} files`);
+        sharedFiles = files;
+        
+        allStudentMarks = [];
+        studentIndex.clear();
+        
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const progress = (i / files.length) * 100;
+            updateProgress(progress);
+            
+            debugLog(`📊 Processing file ${i+1}/${files.length}: ${file.filename?.substring(0, 30)}...`);
+            document.getElementById('loadingMessage').innerText = `File ${i+1}/${files.length}: ${file.filename?.substring(0, 30)}...`;
+            
+            if (!file.file_data) {
+                debugLog(`⚠️ File ${i+1} has no data, skipping`);
+                continue;
+            }
+            
             try {
-                const { data: files, error } = await supabase
-                    .from('shared_excel_files')
-                    .select('*')
-                    .order('uploaded_at', { ascending: false });
+                const binaryData = atob(file.file_data);
+                const array = new Uint8Array(binaryData.length);
+                for (let j = 0; j < binaryData.length; j++) {
+                    array[j] = binaryData.charCodeAt(j);
+                }
                 
-                if (error) throw error;
+                const workbook = XLSX.read(array, { type: 'array' });
                 
-                sharedFiles = files || [];
+                for (const sheetName of workbook.SheetNames) {
+                    const worksheet = workbook.Sheets[sheetName];
+                    
+                    // Get the sheet as array of arrays to check top rows
+                    const sheetData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                    
+                    debugLog(`📊 Sheet "${sheetName}" has ${sheetData.length} rows total`);
+                    
+                    if (!sheetData || sheetData.length === 0) continue;
+                    
+                    // Extract sheet-level metadata from top rows
+                    let sheetTitle = sheetName;
+                    let sheetSubject = '';
+                    let sheetExamType = '';
+                    let sheetYear = '';
+                    let sheetClass = '';
+                    
+                    // Check first few rows for metadata (headers might be in row 0,1,2,3)
+                    for (let rowIdx = 0; rowIdx < Math.min(5, sheetData.length); rowIdx++) {
+                        const row = sheetData[rowIdx] || [];
+                        const rowText = row.join(' ').toLowerCase();
+                        
+                        // Look for subject information in top rows
+                        if (rowText.includes('medical surgical') || rowText.includes('med surg')) {
+                            sheetSubject = 'Medical Surgical Nursing';
+                        } else if (rowText.includes('community health') || rowText.includes('comm health')) {
+                            sheetSubject = 'Community Health Nursing';
+                        } else if (rowText.includes('anatomy') || rowText.includes('physiology')) {
+                            sheetSubject = 'Anatomy & Physiology';
+                        } else if (rowText.includes('maternal') || rowText.includes('obstetrics')) {
+                            sheetSubject = 'Maternal Health Nursing';
+                        } else if (rowText.includes('pediatric') || rowText.includes('paediatric') || rowText.includes('child')) {
+                            sheetSubject = 'Paediatric Nursing';
+                        } else if (rowText.includes('mental') || rowText.includes('psychiatric')) {
+                            sheetSubject = 'Mental Health Nursing';
+                        } else if (rowText.includes('pharmacology')) {
+                            sheetSubject = 'Pharmacology';
+                        } else if (rowText.includes('nutrition')) {
+                            sheetSubject = 'Nutrition & Dietetics';
+                        } else if (rowText.includes('first aid')) {
+                            sheetSubject = 'First Aid & Emergency';
+                        }
+                        
+                        // Look for exam type
+                        if (rowText.includes('final')) sheetExamType = 'FINAL';
+                        else if (rowText.includes('cat')) sheetExamType = 'CAT';
+                        else if (rowText.includes('assignment')) sheetExamType = 'ASSIGNMENT';
+                        else if (rowText.includes('practical')) sheetExamType = 'PRACTICAL';
+                        
+                        // Look for year/class
+                        if (rowText.includes('2024')) sheetYear = '2024';
+                        else if (rowText.includes('2025')) sheetYear = '2025';
+                        else if (rowText.includes('2026')) sheetYear = '2026';
+                        else if (rowText.includes('2027')) sheetYear = '2027';
+                        else if (rowText.includes('2028')) sheetYear = '2028';
+                        
+                        // Look for class information
+                        if (rowText.includes('march')) sheetClass = 'March';
+                        else if (rowText.includes('september')) sheetClass = 'September';
+                        else if (rowText.includes('may')) sheetClass = 'May';
+                        else if (rowText.includes('december')) sheetClass = 'December';
+                    }
+                    
+                    // Find the header row (usually the first row with multiple non-empty cells)
+                    let headerRowIndex = 0;
+                    for (let rowIdx = 0; rowIdx < sheetData.length; rowIdx++) {
+                        const row = sheetData[rowIdx] || [];
+                        const nonEmptyCount = row.filter(cell => cell && String(cell).trim() !== '').length;
+                        if (nonEmptyCount > 2) {
+                            headerRowIndex = rowIdx;
+                            break;
+                        }
+                    }
+                    
+                    // Get headers from the identified header row
+                    const headers = sheetData[headerRowIndex] || [];
+                    debugLog(`📋 Sheet "${sheetName}" headers: ${headers.filter(h => h).join(', ')}`);
+                    
+                    // Process data rows (skip header row and any metadata rows before it)
+                    for (let rowIdx = headerRowIndex + 1; rowIdx < sheetData.length; rowIdx++) {
+                        const row = sheetData[rowIdx];
+                        if (!row || row.length === 0) continue;
+                        
+                        // Check if row is empty (all cells empty)
+                        if (row.every(cell => !cell || String(cell).trim() === '')) continue;
+                        
+                        // Create object with headers as keys
+                        const rowObj = {};
+                        headers.forEach((header, colIdx) => {
+                            if (header && String(header).trim() !== '') {
+                                rowObj[header] = row[colIdx];
+                            }
+                        });
+                        
+                        // Also add numeric indices for fallback
+                        row.forEach((cell, colIdx) => {
+                            rowObj[`col_${colIdx}`] = cell;
+                        });
+                        
+                        // Try to find student identifier
+                        let studentId = '';
+                        let studentName = '';
+                        
+                        // Check each cell for student identification patterns
+                        Object.entries(rowObj).forEach(([key, value]) => {
+                            const keyLower = String(key).toLowerCase();
+                            const valueStr = String(value || '').toLowerCase();
+                            
+                            // Look for admission numbers (pattern like KRCHN/0100/MAR/2025)
+                            if (!studentId && valueStr.match(/krchn\/\d+\/[a-z]+\/\d+/i)) {
+                                studentId = String(value);
+                            }
+                            // Look for ID fields
+                            else if (!studentId && (
+                                keyLower.includes('adm') || 
+                                keyLower.includes('reg') || 
+                                keyLower.includes('id') || 
+                                keyLower.includes('no')
+                            )) {
+                                if (value) studentId = String(value).trim();
+                            }
+                            
+                            // Look for name fields
+                            if (!studentName && (
+                                keyLower.includes('name') || 
+                                keyLower.includes('student') ||
+                                keyLower.includes('candidate')
+                            )) {
+                                if (value) studentName = String(value).trim();
+                            }
+                        });
+                        
+                        // If no student identifier found, skip this row
+                        if (!studentId && !studentName) continue;
+                        
+                        // If no name but we have ID, use ID as name
+                        if (!studentName && studentId) {
+                            studentName = studentId;
+                        }
+                        
+                        // Extract marks - LOOK AT EVERY CELL
+                        let marks = [];
+                        
+                        // First, check if this sheet represents a specific subject
+                        if (sheetSubject) {
+                            // This sheet is for one subject, look for mark columns
+                            headers.forEach((header, colIdx) => {
+                                if (!header) return;
+                                
+                                const headerStr = String(header);
+                                const headerLower = headerStr.toLowerCase();
+                                const cellValue = row[colIdx];
+                                
+                                // Check if this column contains marks
+                                const isMarkColumn = 
+                                    headerLower.includes('mark') || 
+                                    headerLower.includes('score') ||
+                                    headerLower.includes('grade') ||
+                                    headerLower.includes('total') ||
+                                    headerLower.includes('exam') ||
+                                    headerLower.includes('final') ||
+                                    headerLower.includes('cat') ||
+                                    headerLower.includes('ass') ||
+                                    headerLower.includes('prac');
+                                
+                                if (cellValue !== undefined && cellValue !== null) {
+                                    const numValue = parseFloat(cellValue);
+                                    if (!isNaN(numValue) && numValue >= 0 && numValue <= 100) {
+                                        // Determine assessment type
+                                        let assessmentType = sheetExamType || 'EXAM';
+                                        if (headerLower.includes('cat')) assessmentType = 'CAT';
+                                        else if (headerLower.includes('final')) assessmentType = 'FINAL';
+                                        else if (headerLower.includes('ass')) assessmentType = 'ASSIGNMENT';
+                                        else if (headerLower.includes('prac')) assessmentType = 'PRACTICAL';
+                                        
+                                        marks.push({
+                                            subject: sheetSubject,
+                                            assessmentType: assessmentType,
+                                            mark: numValue,
+                                            grade: getGrade(numValue),
+                                            originalColumn: headerStr
+                                        });
+                                    }
+                                }
+                            });
+                        } else {
+                            // Multiple subjects might be in this sheet, check each column
+                            headers.forEach((header, colIdx) => {
+                                if (!header) return;
+                                
+                                const headerStr = String(header);
+                                const headerUpper = headerStr.toUpperCase();
+                                const cellValue = row[colIdx];
+                                
+                                if (cellValue !== undefined && cellValue !== null) {
+                                    const numValue = parseFloat(cellValue);
+                                    if (!isNaN(numValue) && numValue >= 0 && numValue <= 100) {
+                                        // Try to determine subject from header
+                                        let subjectName = headerStr;
+                                        
+                                        // Map common subject keywords
+                                        if (headerUpper.includes('MED SURG') || headerUpper.includes('MEDICAL SURGICAL')) {
+                                            subjectName = 'Medical Surgical Nursing';
+                                        } else if (headerUpper.includes('COMM HEALTH') || headerUpper.includes('COMMUNITY')) {
+                                            subjectName = 'Community Health Nursing';
+                                        } else if (headerUpper.includes('ANATOMY') || headerUpper.includes('PHYSIO')) {
+                                            subjectName = 'Anatomy & Physiology';
+                                        } else if (headerUpper.includes('MATERNAL') || headerUpper.includes('OBSTETRICS')) {
+                                            subjectName = 'Maternal Health Nursing';
+                                        } else if (headerUpper.includes('PAEDIATRIC') || headerUpper.includes('PEDIATRIC') || headerUpper.includes('CHILD')) {
+                                            subjectName = 'Paediatric Nursing';
+                                        } else if (headerUpper.includes('MENTAL') || headerUpper.includes('PSYCH')) {
+                                            subjectName = 'Mental Health Nursing';
+                                        } else if (headerUpper.includes('PHARMA')) {
+                                            subjectName = 'Pharmacology';
+                                        } else if (headerUpper.includes('NUTRITION')) {
+                                            subjectName = 'Nutrition & Dietetics';
+                                        } else if (headerUpper.includes('FIRST AID')) {
+                                            subjectName = 'First Aid & Emergency';
+                                        } else if (headerUpper.includes('FINAL MARK') || headerUpper.includes('FINAL')) {
+                                            subjectName = sheetSubject || 'Comprehensive Exam';
+                                        } else if (headerUpper.includes('CAT')) {
+                                            subjectName = sheetSubject || 'Continuous Assessment';
+                                        }
+                                        
+                                        marks.push({
+                                            subject: subjectName,
+                                            assessmentType: headerUpper.includes('FINAL') ? 'FINAL' : 
+                                                            headerUpper.includes('CAT') ? 'CAT' : 
+                                                            headerUpper.includes('ASS') ? 'ASSIGNMENT' : 'EXAM',
+                                            mark: numValue,
+                                            grade: getGrade(numValue),
+                                            originalColumn: headerStr
+                                        });
+                                    }
+                                }
+                            });
+                        }
+                        
+                        // Also check the sheet name for subject context
+                        if (marks.length === 0 && sheetSubject) {
+                            // Look for any numeric values that might be marks
+                            row.forEach((cell, colIdx) => {
+                                const numValue = parseFloat(cell);
+                                if (!isNaN(numValue) && numValue >= 0 && numValue <= 100) {
+                                    marks.push({
+                                        subject: sheetSubject,
+                                        assessmentType: sheetExamType || 'EXAM',
+                                        mark: numValue,
+                                        grade: getGrade(numValue),
+                                        originalColumn: `Column ${colIdx + 1}`
+                                    });
+                                }
+                            });
+                        }
+                        
+                        // Create record
+                        const studentKey = (studentId || studentName).toLowerCase();
+                        const record = {
+                            fileId: file.id,
+                            filename: file.filename,
+                            sheetName: sheetName,
+                            sheetSubject: sheetSubject,
+                            sheetExamType: sheetExamType,
+                            sheetYear: sheetYear,
+                            sheetClass: sheetClass,
+                            studentId: studentId,
+                            studentName: studentName,
+                            marks: marks,
+                            rawData: rowObj,
+                            rawRow: row
+                        };
+                        
+                        if (!studentIndex.has(studentKey)) {
+                            studentIndex.set(studentKey, []);
+                        }
+                        
+                        studentIndex.get(studentKey).push(record);
+                        allStudentMarks.push(record);
+                        
+                        // Debug log for first few records
+                        if (allStudentMarks.length <= 10) {
+                            debugLog(`📝 ${studentName} (${studentId}): ${marks.length} marks from sheet "${sheetName}"`);
+                            if (marks.length > 0) {
+                                marks.forEach(m => {
+                                    debugLog(`   - ${m.subject} (${m.assessmentType}): ${m.mark}`);
+                                });
+                            }
+                        }
+                    }
+                }
+            } catch (fileError) {
+                debugLog(`❌ Error processing file ${file.filename}: ${fileError.message}`);
+                console.error(fileError);
+            }
+        }
+        
+        debugLog(`✅ Processed ${allStudentMarks.length} student records total`);
+        
+        const totalMarks = allStudentMarks.reduce((sum, record) => sum + record.marks.length, 0);
+        debugLog(`📊 Total marks extracted: ${totalMarks}`);
+        
+        document.getElementById('totalFilesStats').innerText = files.length;
+        document.getElementById('totalRecordsStats').innerText = allStudentMarks.length;
+        
+        updateStatsAndCharts();
+        hideLoading();
+        isProcessing = false;
+        
+        if (processingQueue.length > 0) {
+            const next = processingQueue.shift();
+            setTimeout(next, 100);
+        }
+        
+    } catch (error) {
+        console.error('Error loading student marks:', error);
+        hideLoading();
+        isProcessing = false;
+        showToast('Error loading data: ' + error.message, 'error');
+    }
+}
+
+        // ========== UPDATE STATS AND CHARTS ==========
+        function updateStatsAndCharts() {
+            try {
+                // Filter marks based on selected classes
+                let filteredMarks = allStudentMarks;
                 
-                // Apply class filter
-                let filteredFiles = sharedFiles;
                 if (selectedClasses.size > 0) {
-                    filteredFiles = filteredFiles.filter(file => {
-                        if (!file.classes) return false;
+                    filteredMarks = filteredMarks.filter(mark => {
+                        const file = sharedFiles.find(f => f.id === mark.fileId);
+                        if (!file || !file.classes) return false;
                         const fileClasses = file.classes.split(',');
                         return Array.from(selectedClasses).some(c => fileClasses.includes(c));
                     });
                 }
                 
-                const container = document.getElementById('sharedFilesContainer');
-                document.getElementById('filteredFileCount').innerText = filteredFiles.length;
+                // Update chart filter badges
+                const classNames = Array.from(selectedClasses).map(c => {
+                    const map = {'2024':'Mar24','2025':'Mar25','2026':'Mar26','2027':'Mar27','2028':'Mar28','other':'Other'};
+                    return map[c] || c;
+                }).join(', ');
                 
-                if (filteredFiles.length === 0) {
-                    container.innerHTML = `<div class="col-span-3 text-center py-8 text-gray-500 text-sm">No files match the selected filters</div>`;
-                    return;
-                }
+                document.getElementById('chartFilterBadge').innerText = selectedClasses.size > 0 ? classNames : 'All Classes';
+                document.getElementById('barChartFilterBadge').innerText = selectedClasses.size > 0 ? classNames : 'All Classes';
                 
-                container.innerHTML = filteredFiles.map(file => {
-                    const date = new Date(file.uploaded_at).toLocaleString();
-                    const canEdit = currentRole === 'admin' || currentRole === 'super_admin';
-                    
-                    // Get class display
-                    const fileClasses = file.classes ? file.classes.split(',') : [];
-                    const classNames = {
-                        '2024': 'March 2024',
-                        '2025': 'March 2025',
-                        '2026': 'March 2026',
-                        '2027': 'March 2027',
-                        '2028': 'March 2028',
-                        'other': 'Other'
-                    };
-                    
-                    const classDisplay = fileClasses.map(c => classNames[c] || c).join(', ');
-                    
-                    return `
-                        <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition bg-white">
-                            <div class="flex items-start">
-                                <i class="fas fa-file-excel text-green-600 text-2xl mr-3"></i>
-                                <div class="flex-1 min-w-0">
-                                    <div class="flex justify-between items-start">
-                                        <p class="font-semibold text-gray-800 text-sm truncate" title="${file.filename}">${file.filename}</p>
-                                    </div>
-                                    <div class="flex items-center mt-1 text-xs gap-1 flex-wrap">
-                                        <span class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">${file.row_count || 0} records</span>
-                                        <span class="bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full">${classDisplay}</span>
-                                    </div>
-                                    <p class="text-xs text-gray-500 mt-1"><i class="fas fa-user mr-1"></i>${file.uploaded_by_email || 'Unknown'} • ${date}</p>
-                                    <div class="mt-2 flex gap-1">
-                                        ${canEdit ? `<button onclick="openFileForEditing('${file.id}')" class="text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700"><i class="fas fa-edit mr-1"></i>Edit</button>` : ''}
-                                        <button onclick="viewFile('${file.id}')" class="text-xs bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700"><i class="fas fa-eye mr-1"></i>View</button>
-                                        ${canEdit ? `<button onclick="deleteFile('${file.id}', '${file.filename}')" class="text-xs bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700"><i class="fas fa-trash mr-1"></i>Delete</button>` : ''}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
+                // Calculate grade distribution
+                let gradeCounts = { A: 0, B: 0, C: 0, D: 0 };
+                let markRanges = { '0-59': 0, '60-74': 0, '75-84': 0, '85-100': 0 };
                 
-            } catch (error) { 
-                debugLog('❌ Error loading files: ' + error.message);
-                console.error(error); 
-            }
-        }
-
-        // ========== LOAD ALL STUDENT MARKS ==========
-        async function loadAllStudentMarks() {
-            if (isProcessing) {
-                processingQueue.push(loadAllStudentMarks);
-                return;
-            }
-            
-            isProcessing = true;
-            showLoading('Loading data...', true, 60000);
-            
-            try {
-                debugLog('📡 Fetching files from Supabase...');
+                filteredMarks.forEach(record => {
+                    record.marks.forEach(m => {
+                        if (m.grade.grade === 'A') gradeCounts.A++;
+                        else if (m.grade.grade === 'B') gradeCounts.B++;
+                        else if (m.grade.grade === 'C') gradeCounts.C++;
+                        else gradeCounts.D++;
+                        
+                        if (m.mark < 60) markRanges['0-59']++;
+                        else if (m.mark < 75) markRanges['60-74']++;
+                        else if (m.mark < 85) markRanges['75-84']++;
+                        else markRanges['85-100']++;
+                    });
+                });
                 
-                const { data: files, error } = await supabase
-                    .from('shared_excel_files')
-                    .select('id, filename, file_data, uploaded_by_email, uploaded_at, classes')
-                    .order('uploaded_at', { ascending: false });
+                // Update pie chart
+                const ctx1 = document.getElementById('performanceChart').getContext('2d');
+                if (performanceChart) performanceChart.destroy();
                 
-                if (error) throw error;
-                
-                if (!files || files.length === 0) {
-                    debugLog('⚠️ No files found');
-                    document.getElementById('totalFilesStats').innerText = '0';
-                    document.getElementById('totalRecordsStats').innerText = '0';
-                    hideLoading();
-                    isProcessing = false;
-                    return;
-                }
-                
-                debugLog(`📁 Found ${files.length} files`);
-                sharedFiles = files;
-                
-                allStudentMarks = [];
-                studentIndex.clear();
-                
-                for (let i = 0; i < files.length; i++) {
-                    const file = files[i];
-                    const progress = (i / files.length) * 100;
-                    updateProgress(progress);
-                    
-                    debugLog(`📊 Processing file ${i+1}/${files.length}: ${file.filename?.substring(0, 30)}...`);
-                    document.getElementById('loadingMessage').innerText = `File ${i+1}/${files.length}: ${file.filename?.substring(0, 30)}...`;
-                    
-                    if (!file.file_data) {
-                        debugLog(`⚠️ File ${i+1} has no data, skipping`);
-                        continue;
-                    }
-                    
-                    try {
-                        const binaryData = atob(file.file_data);
-                        const array = new Uint8Array(binaryData.length);
-                        for (let j = 0; j < binaryData.length; j++) {
-                            array[j] = binaryData.charCodeAt(j);
+                performanceChart = new Chart(ctx1, {
+                    type: 'pie',
+                    data: {
+                        labels: ['A (85-100)', 'B (75-84)', 'C (60-74)', 'D (0-59)'],
+                        datasets: [{
+                            data: [gradeCounts.A, gradeCounts.B, gradeCounts.C, gradeCounts.D],
+                            backgroundColor: ['#4F46E5', '#059669', '#D97706', '#DC2626'],
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom' }
                         }
-                        
-                        const workbook = XLSX.read(array, { type: 'array' });
-                        
-                        for (const sheetName of workbook.SheetNames) {
-                            const worksheet = workbook.Sheets[sheetName];
-                            
-                            // Get data
-                            const jsonData = XLSX.utils.sheet_to_json(worksheet);
-                            
-                            debugLog(`📊 Sheet "${sheetName}" has ${jsonData.length} rows with data`);
-                            
-                            if (!jsonData || jsonData.length === 0) continue;
-                            
-                            const headers = Object.keys(jsonData[0] || {});
-                            
-                            // Process in chunks
-                            for (let k = 0; k < jsonData.length; k += 50) {
-                                const chunk = jsonData.slice(k, k + 50);
-                                
-                                chunk.forEach((row, idx) => {
-                                    if (!row || Object.keys(row).length === 0) return;
-                                    
-                                    const record = {
-                                        id: `${file.id}_${sheetName}_${k + idx}`,
-                                        fileId: file.id,
-                                        filename: file.filename || 'Unknown',
-                                        sheetName: sheetName,
-                                        uploadedBy: file.uploaded_by_email || 'Unknown',
-                                        uploadedAt: file.uploaded_at,
-                                        fileClasses: file.classes ? file.classes.split(',') : [],
-                                        rowData: row,
-                                        headers: headers
-                                    };
-                                    
-                                    // Smart ID/Name detection
-                                    for (const [key, value] of Object.entries(row)) {
-                                        const keyLower = key.toLowerCase();
-                                        const valueStr = value?.toString() || '';
-                                        
-                                        if (!record.admissionNo) {
-                                            if (keyLower.includes('admission')) record.admissionNo = valueStr;
-                                            else if (keyLower.includes('s/n')) record.admissionNo = valueStr;
-                                            else if (keyLower.includes('sn')) record.admissionNo = valueStr;
-                                            else if (keyLower.includes('id') && !keyLower.includes('student')) record.admissionNo = valueStr;
-                                            else if (keyLower.includes('no.')) record.admissionNo = valueStr;
-                                        }
-                                        
-                                        if (!record.studentName) {
-                                            if (keyLower.includes('student name')) record.studentName = valueStr;
-                                            else if (keyLower.includes('name') && !keyLower.includes('student')) record.studentName = valueStr;
-                                        }
-                                    }
-                                    
-                                    // Fallback
-                                    if (!record.admissionNo && headers.length > 0) {
-                                        record.admissionNo = row[headers[0]]?.toString() || '';
-                                    }
-                                    if (!record.studentName && headers.length > 1) {
-                                        record.studentName = row[headers[1]]?.toString() || '';
-                                    }
-                                    
-                                    if (record.admissionNo || record.studentName) {
-                                        allStudentMarks.push(record);
-                                        
-                                        // Index for search
-                                        if (record.admissionNo) {
-                                            const idKey = record.admissionNo.toLowerCase();
-                                            if (!studentIndex.has(idKey)) studentIndex.set(idKey, []);
-                                            studentIndex.get(idKey).push(record);
-                                        }
-                                        if (record.studentName) {
-                                            const nameKey = record.studentName.toLowerCase();
-                                            if (!studentIndex.has(nameKey)) studentIndex.set(nameKey, []);
-                                            studentIndex.get(nameKey).push(record);
-                                        }
-                                        
-                                        // Index by parts
-                                        if (record.admissionNo) {
-                                            const parts = record.admissionNo.toLowerCase().split(/[\s\/\-]+/);
-                                            parts.forEach(part => {
-                                                if (part.length > 2) {
-                                                    if (!studentIndex.has(part)) studentIndex.set(part, []);
-                                                    studentIndex.get(part).push(record);
-                                                }
-                                            });
-                                        }
-                                        if (record.studentName) {
-                                            const parts = record.studentName.toLowerCase().split(/\s+/);
-                                            parts.forEach(part => {
-                                                if (part.length > 2) {
-                                                    if (!studentIndex.has(part)) studentIndex.set(part, []);
-                                                    studentIndex.get(part).push(record);
-                                                }
-                                            });
-                                        }
-                                    }
-                                });
-                                
-                                await new Promise(resolve => setTimeout(resolve, 0));
-                            }
-                        }
-                        
-                        debugLog(`✅ File ${i+1} processed: ${allStudentMarks.length} total records`);
-                        
-                    } catch (fileError) {
-                        debugLog(`❌ Error processing file ${i+1}: ${fileError.message}`);
-                        console.error(fileError);
                     }
-                    
-                    await new Promise(resolve => setTimeout(resolve, 10));
-                }
+                });
                 
-                updateProgress(100);
-                debugLog(`✅ TOTAL: Loaded ${allStudentMarks.length} records from ${files.length} files`);
+                // Update bar chart
+                const ctx2 = document.getElementById('distributionChart').getContext('2d');
+                if (distributionChart) distributionChart.destroy();
                 
-                document.getElementById('totalFilesStats').innerText = files.length;
-                document.getElementById('totalRecordsStats').innerText = allStudentMarks.length;
-                document.getElementById('totalStaffStats').innerText = '5'; // Placeholder
-                
-                updateFilteredCharts();
-                hideLoading();
-                showToast(`Loaded ${allStudentMarks.length} records`, 'success');
+                distributionChart = new Chart(ctx2, {
+                    type: 'bar',
+                    data: {
+                        labels: ['0-59 (D)', '60-74 (C)', '75-84 (B)', '85-100 (A)'],
+                        datasets: [{
+                            label: 'Number of Marks',
+                            data: [markRanges['0-59'], markRanges['60-74'], markRanges['75-84'], markRanges['85-100']],
+                            backgroundColor: ['#DC2626', '#D97706', '#059669', '#4F46E5'],
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false }
+                        },
+                        scales: {
+                            y: { beginAtZero: true, grid: { display: false } }
+                        }
+                    }
+                });
                 
             } catch (error) {
-                debugLog('❌ Fatal error: ' + error.message);
-                console.error(error);
-                hideLoading();
-                showToast('Error loading data', 'error');
-            } finally {
-                isProcessing = false;
-                if (processingQueue.length) {
-                    const next = processingQueue.shift();
-                    setTimeout(next, 100);
-                }
+                console.error('Error updating charts:', error);
             }
         }
 
-        // ========== SEARCH STUDENT ==========
-        function searchStudentMarks() {
-            const searchTerm = document.getElementById('studentSearchInput').value.toLowerCase().trim();
-            if (!searchTerm) { 
-                showToast('Enter search term', 'error'); 
-                return; 
-            }
-            
-            if (allStudentMarks.length === 0) {
-                showToast('No data loaded yet. Please wait.', 'error');
-                return;
-            }
-            
-            showLoading('Searching...', false, 10000);
-            
-            setTimeout(() => {
-                let results = [];
-                
-                if (studentIndex.has(searchTerm)) {
-                    results = studentIndex.get(searchTerm);
+        function updateFilteredCharts() {
+            updateStatsAndCharts();
+        }
+
+// ========== SEARCH STUDENT MARKS ==========
+function searchStudentMarks() {
+    const searchTerm = document.getElementById('studentSearchInput').value.trim().toLowerCase();
+    if (!searchTerm) {
+        showToast('Please enter a search term', 'error');
+        return;
+    }
+    
+    showLoading('Searching...', false, 30000);
+    
+    try {
+        console.log('🔍 Searching for:', searchTerm);
+        console.log('Total records:', allStudentMarks.length);
+        console.log('Student index size:', studentIndex.size);
+        
+        // Search in student index
+        let results = [];
+        
+        // Direct match in index
+        if (studentIndex.has(searchTerm)) {
+            results = studentIndex.get(searchTerm);
+            console.log('Found direct match:', results.length, 'records');
+        } else {
+            // Fuzzy search through all keys
+            for (const [key, records] of studentIndex.entries()) {
+                if (key.includes(searchTerm)) {
+                    results = results.concat(records);
                 }
+            }
+            
+            // Also search through all records
+            allStudentMarks.forEach(record => {
+                const studentNameMatch = record.studentName && record.studentName.toLowerCase().includes(searchTerm);
+                const studentIdMatch = record.studentId && record.studentId.toLowerCase().includes(searchTerm);
                 
-                if (results.length === 0) {
-                    results = allStudentMarks.filter(m => 
-                        (m.admissionNo && m.admissionNo.toLowerCase().includes(searchTerm)) || 
-                        (m.studentName && m.studentName.toLowerCase().includes(searchTerm))
+                if (studentNameMatch || studentIdMatch) {
+                    // Check if already added
+                    const exists = results.some(r => 
+                        r.fileId === record.fileId && 
+                        r.sheetName === record.sheetName && 
+                        r.studentId === record.studentId
                     );
+                    
+                    if (!exists) {
+                        results.push(record);
+                    }
                 }
-                
-                if (results.length === 0) {
-                    const words = searchTerm.split(/\s+/);
-                    results = allStudentMarks.filter(m => {
-                        const admissionMatch = m.admissionNo && words.some(w => 
-                            m.admissionNo.toLowerCase().includes(w) && w.length > 1
-                        );
-                        const nameMatch = m.studentName && words.some(w => 
-                            m.studentName.toLowerCase().includes(w) && w.length > 1
-                        );
-                        return admissionMatch || nameMatch;
+            });
+        }
+        
+        console.log('Total results found:', results.length);
+        
+        // Filter by selected classes
+        if (selectedClasses.size > 0) {
+            results = results.filter(record => {
+                const file = sharedFiles.find(f => f.id === record.fileId);
+                if (!file || !file.classes) return false;
+                const fileClasses = file.classes.split(',');
+                return Array.from(selectedClasses).some(c => fileClasses.includes(c));
+            });
+            console.log('After class filter:', results.length);
+        }
+        
+        if (results.length === 0) {
+            hideLoading();
+            showToast('No results found', 'info');
+            document.getElementById('studentResultsContainer').classList.add('hidden');
+            return;
+        }
+        
+        // Log the first result to see its structure
+        console.log('First result structure:', {
+            studentName: results[0].studentName,
+            studentId: results[0].studentId,
+            marksCount: results[0].marks?.length || 0,
+            marks: results[0].marks,
+            rawData: results[0].rawData
+        });
+        
+        // Group marks by subject
+        const subjectGroups = new Map();
+        
+        results.forEach(record => {
+            // Check if marks array exists and has items
+            if (record.marks && record.marks.length > 0) {
+                record.marks.forEach(mark => {
+                    const subject = mark.subject || 'Unknown Subject';
+                    if (!subjectGroups.has(subject)) {
+                        subjectGroups.set(subject, []);
+                    }
+                    subjectGroups.get(subject).push(mark.mark);
+                });
+            } 
+            // If no marks array, try to extract from rawData
+            else if (record.rawData) {
+                console.log('No marks array, extracting from rawData:', record.rawData);
+                Object.entries(record.rawData).forEach(([key, value]) => {
+                    const numValue = parseFloat(value);
+                    if (!isNaN(numValue) && numValue >= 0 && numValue <= 100) {
+                        const subject = key;
+                        if (!subjectGroups.has(subject)) {
+                            subjectGroups.set(subject, []);
+                        }
+                        subjectGroups.get(subject).push(numValue);
+                    }
+                });
+            }
+        });
+        
+        console.log('Subject groups:', Array.from(subjectGroups.keys()));
+        
+        // If still no subjects found, try to extract from rawData directly
+        if (subjectGroups.size === 0) {
+            console.log('Attempting direct extraction from rawData');
+            results.forEach(record => {
+                if (record.rawData) {
+                    Object.entries(record.rawData).forEach(([key, value]) => {
+                        // Check if the column name suggests it's a mark
+                        const keyLower = key.toLowerCase();
+                        if (keyLower.includes('mark') || keyLower.includes('final') || keyLower.includes('cat')) {
+                            const numValue = parseFloat(value);
+                            if (!isNaN(numValue)) {
+                                let subjectName = 'Unknown';
+                                if (keyLower.includes('final mark') || keyLower.includes('final marks')) {
+                                    subjectName = 'Medical Surgical Nursing';
+                                } else if (keyLower.includes('cat')) {
+                                    subjectName = 'Anatomy & Physiology';
+                                } else {
+                                    subjectName = key;
+                                }
+                                
+                                if (!subjectGroups.has(subjectName)) {
+                                    subjectGroups.set(subjectName, []);
+                                }
+                                subjectGroups.get(subjectName).push(numValue);
+                            }
+                        }
                     });
                 }
-                
-                hideLoading();
-                
-                if (results.length > 0) {
-                    displayStudentResults(results);
-                    showToast(`Found ${results.length} results`, 'success');
-                } else {
-                    document.getElementById('studentResultsContainer').classList.remove('hidden');
-                    document.getElementById('studentResultsTable').innerHTML = 
-                        `<div class="text-center py-10 text-gray-500">
-                            <i class="fas fa-search text-4xl mb-3 text-gray-300"></i>
-                            <p>No results found for "${searchTerm}"</p>
-                            <p class="text-sm mt-2">Try a different spelling</p>
-                        </div>`;
-                    showToast('No results found', 'info');
-                }
-            }, 100);
+            });
         }
-
-        // ========== DISPLAY STUDENT RESULTS ==========
-        function displayStudentResults(results) {
-            const container = document.getElementById('studentResultsContainer');
-            const tableContainer = document.getElementById('studentResultsTable');
+        
+        // Calculate averages and grades
+        const subjects = Array.from(subjectGroups.entries()).map(([subject, marks]) => {
+            const avgMark = marks.reduce((a, b) => a + b, 0) / marks.length;
+            const grade = getGrade(avgMark);
+            return {
+                subject: subject,
+                marks: marks,
+                avgMark: avgMark,
+                grade: grade
+            };
+        }).sort((a, b) => b.avgMark - a.avgMark);
+        
+        // Calculate overall stats
+        const totalMarks = subjects.reduce((sum, s) => sum + s.avgMark, 0);
+        const avgOverall = subjects.length > 0 ? totalMarks / subjects.length : 0;
+        const totalPoints = subjects.reduce((sum, s) => sum + s.grade.points, 0);
+        const gpa = subjects.length > 0 ? (totalPoints / subjects.length).toFixed(2) : '0.00';
+        const overallGrade = getGrade(avgOverall);
+        
+        // Store for transcript
+        currentTranscriptData = {
+            studentName: results[0].studentName || searchTerm,
+            studentId: results[0].studentId || 'N/A',
+            subjects: subjects,
+            avgOverall: avgOverall,
+            overallGrade: overallGrade,
+            gpa: gpa,
+            totalPoints: totalPoints
+        };
+        
+        // Update summary card
+        document.getElementById('studentNameDisplay').innerText = results[0].studentName || searchTerm;
+        document.getElementById('studentIdDisplay').innerHTML = `<i class="fas fa-id-card mr-1"></i>Admission No: ${results[0].studentId || 'N/A'}`;
+        document.getElementById('studentProgramDisplay').innerHTML = `<i class="fas fa-graduation-cap mr-1"></i>Program: KRCHN`;
+        
+        document.getElementById('overallGradeDisplay').innerText = `Grade: ${overallGrade.grade}`;
+        document.getElementById('overallGradeDisplay').className = `grade-badge ${overallGrade.class} text-sm px-4 py-2`;
+        
+        document.getElementById('gpaDisplay').innerHTML = `<i class="fas fa-star mr-1"></i>GPA: ${gpa}`;
+        
+        document.getElementById('totalExamsCount').innerText = subjects.length;
+        document.getElementById('averageMarkDisplay').innerText = avgOverall.toFixed(1);
+        document.getElementById('totalPointsDisplay').innerText = totalPoints;
+        document.getElementById('gpaValueDisplay').innerText = gpa;
+        
+        // Build results table
+        let tableHtml = '<table class="data-table"><thead><tr><th>Subject</th><th>Marks</th><th>Average</th><th>Grade</th><th>Points</th><th>Status</th></tr></thead><tbody>';
+        
+        subjects.forEach(s => {
+            const marksList = s.marks.map(m => `<span class="font-mono ${getGrade(m).color}">${m}</span>`).join(', ');
             
-            if (!results || results.length === 0) {
-                container.classList.remove('hidden');
-                tableContainer.innerHTML = '<div class="text-center py-10 text-gray-500"><i class="fas fa-search text-4xl mb-3 text-gray-300"></i><p>No results found</p></div>';
-                return;
+            // Map subject names
+            let displaySubject = s.subject;
+            const subjectLower = s.subject.toLowerCase();
+            
+            if (subjectLower.includes('final mark') || subjectLower.includes('final marks')) {
+                displaySubject = 'Medical Surgical Nursing';
+            } else if (subjectLower.includes('cat marks') || subjectLower.includes('cat')) {
+                displaySubject = 'Anatomy & Physiology';
+            } else if (subjectLower.includes('community') || subjectLower.includes('comm health')) {
+                displaySubject = 'Community Health Nursing';
+            } else if (subjectLower.includes('mental')) {
+                displaySubject = 'Mental Health Nursing';
+            } else if (subjectLower.includes('pediatric') || subjectLower.includes('paediatric')) {
+                displaySubject = 'Paediatric Nursing';
+            } else if (subjectLower.includes('maternal')) {
+                displaySubject = 'Maternal Health Nursing';
             }
             
-            container.classList.remove('hidden');
-            
-            currentTranscriptData = results;
-            
-            const allHeaders = new Set();
-            results.forEach(r => {
-                if (r.headers) r.headers.forEach(h => allHeaders.add(h));
-                if (r.rowData) Object.keys(r.rowData).forEach(k => allHeaders.add(k));
-            });
-            
-            const headers = Array.from(allHeaders);
-            
-            let studentName = 'Unknown';
-            let studentId = 'Unknown';
-            
-            for (const result of results) {
-                if (result.studentName) {
-                    studentName = result.studentName;
-                    break;
-                }
-                if (result.rowData) {
-                    const possibleNameCols = ['Student Name', 'StudentName', 'Name', 'STUDENT_NAME'];
-                    for (const col of possibleNameCols) {
-                        if (result.rowData[col]) {
-                            studentName = result.rowData[col].toString();
-                            break;
-                        }
-                    }
-                }
-                if (studentName !== 'Unknown') break;
-            }
-            
-            for (const result of results) {
-                if (result.admissionNo) {
-                    studentId = result.admissionNo;
-                    break;
-                }
-                if (result.rowData) {
-                    const possibleIdCols = ['Admission No.', 'Admission', 'S/N', 'SN', 'ID'];
-                    for (const col of possibleIdCols) {
-                        if (result.rowData[col]) {
-                            studentId = result.rowData[col].toString();
-                            break;
-                        }
-                    }
-                }
-                if (studentId !== 'Unknown') break;
-            }
-            
-            document.getElementById('studentNameDisplay').innerText = studentName;
-            document.getElementById('studentIdDisplay').innerText = studentId;
-            
-            let validMarks = [];
-            let totalPoints = 0;
-            
-            results.forEach(result => {
-                if (result.rowData) {
-                    const candidates = [
-                        result.rowData['FINAL MARKS %'],
-                        result.rowData['FINALMARKS'],
-                        result.rowData['FINAL'],
-                        result.rowData['FINAL MARKS'],
-                        result.rowData['Final Marks'],
-                        result.rowData['Total'],
-                        result.rowData['MARKS'],
-                        result.rowData['Marks'],
-                        result.rowData['FINAL MARK'],
-                        result.rowData['Final Mark'],
-                        ...Object.entries(result.rowData)
-                            .filter(([key, value]) => 
-                                !isNaN(parseFloat(value)) && 
-                                parseFloat(value) >= 0 && 
-                                parseFloat(value) <= 100 &&
-                                (key.toLowerCase().includes('final') || 
-                                 key.toLowerCase().includes('total') || 
-                                 key.toLowerCase().includes('mark'))
-                            )
-                            .map(([_, value]) => value)
-                    ];
-                    
-                    for (const candidate of candidates) {
-                        if (candidate !== undefined && candidate !== null && candidate !== '') {
-                            const num = parseFloat(candidate);
-                            if (!isNaN(num) && num >= 0 && num <= 100) {
-                                validMarks.push(num);
-                                const grade = getGrade(num);
-                                totalPoints += grade.points;
-                                break;
-                            }
-                        }
-                    }
-                }
-            });
-            
-            const totalExams = results.length;
-            const avg = validMarks.length ? (validMarks.reduce((a,b) => a+b,0) / validMarks.length).toFixed(1) : 'N/A';
-            const gpa = validMarks.length ? (totalPoints / validMarks.length).toFixed(2) : '0.00';
-            
-            let overallGrade, gradeClass;
-            if (avg !== 'N/A') {
-                const avgNum = parseFloat(avg);
-                if (avgNum >= 85) { overallGrade = 'A'; gradeClass = 'grade-a'; }
-                else if (avgNum >= 75) { overallGrade = 'B'; gradeClass = 'grade-b'; }
-                else if (avgNum >= 60) { overallGrade = 'C'; gradeClass = 'grade-c'; }
-                else { overallGrade = 'D'; gradeClass = 'grade-d'; }
-            } else {
-                overallGrade = 'N/A';
-                gradeClass = 'grade-d';
-            }
-            
-            document.getElementById('totalExamsCount').innerText = totalExams;
-            document.getElementById('averageMarkDisplay').innerText = avg;
-            document.getElementById('totalPointsDisplay').innerText = totalPoints;
-            document.getElementById('gpaValueDisplay').innerText = gpa;
-            document.getElementById('overallGradeDisplay').innerText = overallGrade;
-            document.getElementById('overallGradeDisplay').className = `grade-badge ${gradeClass} text-sm px-4 py-2`;
-            document.getElementById('gpaDisplay').innerText = `GPA: ${gpa}`;
-            
-            // Build table
-            let html = '<div class="overflow-x-auto"><table class="data-table w-full"><thead><tr>';
-            html += '<th>Exam</th>';
-            
-            headers.forEach(header => {
-                if (header && !header.startsWith('_') && header !== 'row' && header !== 'col') {
-                    html += `<th>${header}</th>`;
-                }
-            });
-            
-            html += '<th>Grade</th><th>Points</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
-            
-            results.forEach((result, idx) => {
-                const rowClass = idx % 2 === 0 ? 'row-even' : 'row-odd';
-                
-                html += `<tr class="${rowClass} hover:bg-gray-50 transition">`;
-                html += `<td class="font-medium">${result.sheetName || 'General'}</td>`;
-                
-                let finalMark = null;
-                
-                if (result.rowData) {
-                    const candidates = [
-                        result.rowData['FINAL MARKS %'],
-                        result.rowData['FINALMARKS'],
-                        result.rowData['FINAL'],
-                        result.rowData['FINAL MARKS'],
-                        result.rowData['Final Marks'],
-                        result.rowData['Total'],
-                        result.rowData['MARKS'],
-                        result.rowData['Marks'],
-                        result.rowData['FINAL MARK'],
-                        result.rowData['Final Mark'],
-                        ...Object.entries(result.rowData)
-                            .filter(([key, value]) => 
-                                !isNaN(parseFloat(value)) && 
-                                parseFloat(value) >= 0 && 
-                                parseFloat(value) <= 100 &&
-                                (key.toLowerCase().includes('final') || 
-                                 key.toLowerCase().includes('total') || 
-                                 key.toLowerCase().includes('mark'))
-                            )
-                            .map(([_, value]) => value)
-                    ];
-                    
-                    for (const candidate of candidates) {
-                        if (candidate !== undefined && candidate !== null && candidate !== '') {
-                            const num = parseFloat(candidate);
-                            if (!isNaN(num)) {
-                                finalMark = num;
-                                break;
-                            }
-                        }
-                    }
-                }
-                
-                headers.forEach(header => {
-                    if (header && !header.startsWith('_') && header !== 'row' && header !== 'col') {
-                        let value = result.rowData?.[header];
-                        
-                        if (value === undefined || value === null) {
-                            value = '-';
-                        }
-                        
-                        if (typeof value === 'number') {
-                            value = value.toFixed(1);
-                        }
-                        
-                        const headerLower = String(header).toLowerCase();
-                        if (finalMark !== null && 
-                            (headerLower.includes('final') || 
-                             headerLower.includes('total') || 
-                             headerLower.includes('mark'))) {
-                            const num = parseFloat(value);
-                            if (!isNaN(num)) {
-                                const colorClass = num >= 85 ? 'text-purple-600 font-bold' :
-                                                  num >= 75 ? 'text-green-600 font-bold' :
-                                                  num >= 60 ? 'text-orange-600 font-bold' :
-                                                  'text-red-600 font-bold';
-                                html += `<td class="${colorClass}">${value}</td>`;
-                            } else {
-                                html += `<td>${value}</td>`;
-                            }
-                        } else {
-                            html += `<td>${value}</td>`;
-                        }
-                    }
-                });
-                
-                if (finalMark !== null) {
-                    const grade = getGrade(finalMark);
-                    html += `<td><span class="grade-badge ${grade.class}">${grade.grade}</span></td>`;
-                    html += `<td class="text-center font-bold">${grade.points}</td>`;
-                    html += `<td><span class="status-badge ${grade.pass ? 'status-pass' : 'status-fail'}">${grade.status}</span></td>`;
-                } else {
-                    html += `<td>-</td><td>-</td><td>-</td>`;
-                }
-                
-                html += `<td>
-                    <div class="flex gap-1">
-                        ${currentRole === 'admin' || currentRole === 'super_admin' ? 
-                            `<button onclick="openFileForEditing('${result.fileId}')" class="text-blue-600 hover:text-blue-800 text-sm p-1" title="Edit">
-                                <i class="fas fa-edit"></i>
-                            </button>` : ''}
-                        <button onclick="viewFile('${result.fileId}')" class="text-green-600 hover:text-green-800 text-sm p-1" title="View">
-                            <i class="fas fa-eye"></i>
-                        </button>
-                    </div>
-                </td></tr>`;
-            });
-            
-            html += '</tbody></table></div>';
-            tableContainer.innerHTML = html;
-        }
-
-        // ========== UPDATE CHARTS ==========
-        function updateCharts() {
-            updateFilteredCharts();
-        }
-
-        // ========== OFFICIAL TRANSCRIPT PDF ==========
+            tableHtml += `
+                <tr>
+                    <td class="font-medium">${displaySubject}</td>
+                    <td><div class="max-w-xs overflow-x-auto text-xs">${marksList}</div></td>
+                    <td class="font-bold ${s.grade.color}">${s.avgMark.toFixed(1)}</td>
+                    <td><span class="grade-badge ${s.grade.class}">${s.grade.grade}</span></td>
+                    <td class="text-center font-bold">${s.grade.points}</td>
+                    <td><span class="status-badge ${s.grade.pass ? 'status-pass' : 'status-fail'}">${s.grade.status}</span></td>
+                </tr>
+            `;
+        });
+        
+        tableHtml += '</tbody></table>';
+        
+        // Add data source info
+        const sources = [...new Set(results.map(r => `${r.filename} (${r.sheetName})`))];
+        tableHtml += `
+            <div class="mt-4 p-3 bg-blue-50 rounded-lg text-xs">
+                <p class="font-semibold mb-1">📊 Data Sources:</p>
+                <ul class="list-disc list-inside">
+                    ${sources.map(s => `<li>${s}</li>`).join('')}
+                </ul>
+                <p class="mt-2 text-gray-600">Total records: ${results.length} | Total marks: ${subjects.reduce((sum, s) => sum + s.marks.length, 0)}</p>
+            </div>
+        `;
+        
+        document.getElementById('studentResultsTable').innerHTML = tableHtml;
+        document.getElementById('studentResultsContainer').classList.remove('hidden');
+        
+        hideLoading();
+        showToast(`Found ${subjects.length} subjects for ${results[0].studentName}`, 'success');
+        
+    } catch (error) {
+        console.error('Search error:', error);
+        hideLoading();
+        showToast('Error searching: ' + error.message, 'error');
+    }
+}
+        // ========== TRANSCRIPT FUNCTIONS ==========
         function downloadOfficialTranscriptPDF() {
-            if (!currentTranscriptData || currentTranscriptData.length === 0) {
-                showToast('No transcript data available', 'error');
+            if (!currentTranscriptData) {
+                showToast('No student data available', 'error');
                 return;
             }
-            
-            showLoading('Generating Official Transcript...', false, 30000);
             
             try {
-                if (typeof window.jspdf === 'undefined') {
-                    throw new Error('PDF library not loaded');
-                }
-                
                 const { jsPDF } = window.jspdf;
-                const doc = new jsPDF({
-                    orientation: 'portrait',
-                    unit: 'mm',
-                    format: 'a4'
-                });
+                const doc = new jsPDF();
                 
-                const pageWidth = doc.internal.pageSize.getWidth();
-                const pageHeight = doc.internal.pageSize.getHeight();
-                
-                // ========== COLLEGE LETTERHEAD ==========
-                
-                // Top border line
-                doc.setDrawColor(0, 51, 102);
-                doc.setLineWidth(1);
-                doc.line(20, 15, pageWidth - 20, 15);
-                
-                // College Name - Large and Bold
-                doc.setFontSize(22);
-                doc.setFont('helvetica', 'bold');
-                doc.setTextColor(0, 51, 102);
-                doc.text('NAKURU COLLEGE OF HEALTH SCIENCES', pageWidth / 2, 25, { align: 'center' });
-                doc.setTextColor(0, 102, 204);
-                doc.text('& MANAGEMENT', pageWidth / 2, 32, { align: 'center' });
-                
-                // Motto
-                doc.setFontSize(11);
-                doc.setFont('helvetica', 'italic');
-                doc.setTextColor(80, 80, 80);
-                doc.text(COLLEGE_MOTTO, pageWidth / 2, 40, { align: 'center' });
-                
-                // Address line
-                doc.setFontSize(9);
-                doc.setFont('helvetica', 'normal');
-                doc.setTextColor(60, 60, 60);
-                doc.text(COLLEGE_ADDRESS, pageWidth / 2, 47, { align: 'center' });
-                
-                // Contact line
-                doc.text(`Email: ${COLLEGE_EMAIL} | Website: ${COLLEGE_WEBSITE}`, pageWidth / 2, 52, { align: 'center' });
-                
-                // Second border line
-                doc.setDrawColor(0, 51, 102);
-                doc.setLineWidth(0.5);
-                doc.line(20, 58, pageWidth - 20, 58);
-                
-                // ========== TRANSCRIPT TITLE ==========
+                // College Header
                 doc.setFontSize(16);
-                doc.setFont('helvetica', 'bold');
                 doc.setTextColor(0, 51, 102);
-                doc.text('OFFICIAL ACADEMIC TRANSCRIPT', pageWidth / 2, 68, { align: 'center' });
+                doc.text(COLLEGE_NAME, 105, 20, { align: 'center' });
                 
-                // Reference Number
-                doc.setFontSize(9);
-                doc.setFont('helvetica', 'normal');
-                doc.setTextColor(100, 100, 100);
-                const transcriptRef = `REF: TR/${new Date().getFullYear()}/${Math.floor(Math.random() * 1000)}`;
-                doc.text(transcriptRef, pageWidth - 25, 75, { align: 'right' });
-                
-                // Date
-                const today = new Date();
-                const dateStr = today.toLocaleDateString('en-GB', { 
-                    day: '2-digit', 
-                    month: 'long', 
-                    year: 'numeric' 
-                });
-                doc.text(`Date: ${dateStr}`, 20, 75);
-                
-                // ========== STUDENT INFORMATION ==========
-                const studentName = document.getElementById('studentNameDisplay').innerText;
-                const studentId = document.getElementById('studentIdDisplay').innerText;
-                const avgMark = document.getElementById('averageMarkDisplay').innerText;
-                const overallGrade = document.getElementById('overallGradeDisplay').innerText;
-                const gpa = document.getElementById('gpaValueDisplay').innerText;
-                
-                doc.setFontSize(11);
-                doc.setFont('helvetica', 'bold');
-                doc.setTextColor(0, 0, 0);
-                doc.text('STUDENT INFORMATION', 20, 88);
-                
-                doc.setFont('helvetica', 'normal');
                 doc.setFontSize(10);
-                doc.text(`Student Name: ${studentName}`, 25, 95);
-                doc.text(`Admission Number: ${studentId}`, 25, 102);
-                doc.text(`Programme: Bachelor of Science in Nursing`, 25, 109);
-                doc.text(`Year of Study: ${new Date().getFullYear()}`, 25, 116);
+                doc.setTextColor(100);
+                doc.text(COLLEGE_MOTTO, 105, 27, { align: 'center' });
                 
-                // ========== ACADEMIC SUMMARY ==========
-                doc.setFontSize(11);
-                doc.setFont('helvetica', 'bold');
-                doc.text('ACADEMIC SUMMARY', 20, 130);
+                doc.setFontSize(8);
+                doc.text(COLLEGE_ADDRESS, 105, 33, { align: 'center' });
                 
-                doc.setFont('helvetica', 'normal');
+                // Line
+                doc.setDrawColor(200);
+                doc.line(20, 38, 190, 38);
+                
+                // Title
+                doc.setFontSize(14);
+                doc.setTextColor(0, 51, 102);
+                doc.text('OFFICIAL ACADEMIC TRANSCRIPT', 105, 48, { align: 'center' });
+                
                 doc.setFontSize(10);
-                doc.text(`Total Examinations: ${document.getElementById('totalExamsCount').innerText}`, 25, 137);
-                doc.text(`Average Mark: ${avgMark}%`, 25, 144);
-                doc.text(`Overall Grade: ${overallGrade}`, 25, 151);
-                doc.text(`Grade Point Average (GPA): ${gpa}`, 25, 158);
+                doc.setTextColor(255, 0, 0);
+                doc.text('PROVISIONAL RESULTS - NOT FOR OFFICIAL USE', 105, 55, { align: 'center' });
                 
-                // ========== RESULTS TABLE ==========
-                const tableHeaders = [['Exam', 'Marks', 'Grade', 'Points', 'Status']];
-                const tableData = [];
+                // Student Info
+                doc.setTextColor(0);
+                doc.setFontSize(10);
+                doc.text(`Student Name: ${currentTranscriptData.studentName}`, 20, 65);
+                doc.text(`Admission No: ${currentTranscriptData.studentId}`, 20, 72);
+                doc.text(`Program: ${PROGRAM_NAME} - Kenya Registered Community Health Nurse`, 20, 79);
+                doc.text(`Date: ${new Date().toLocaleDateString()}`, 20, 86);
                 
-                currentTranscriptData.forEach(result => {
-                    let marks = '-';
-                    let markNum = 0;
-                    
-                    if (result.rowData) {
-                        const candidates = [
-                            result.rowData['FINAL MARKS %'],
-                            result.rowData['FINALMARKS'],
-                            result.rowData['FINAL'],
-                            result.rowData['FINAL MARKS'],
-                            result.rowData['Final Marks'],
-                            result.rowData['Total'],
-                            result.rowData['MARKS'],
-                            result.rowData['Marks'],
-                            result.rowData['FINAL MARK'],
-                            result.rowData['Final Mark'],
-                            result.rowData['EBE (x/70)'],
-                            result.rowData['EBE'],
-                            result.rowData['EXAM MARK']
-                        ];
-                        
-                        for (const candidate of candidates) {
-                            if (candidate !== undefined && candidate !== null && candidate !== '') {
-                                const num = parseFloat(candidate);
-                                if (!isNaN(num)) {
-                                    marks = num.toFixed(1);
-                                    markNum = num;
-                                    break;
-                                }
-                            }
-                        }
-                        
-                        if (marks === '-') {
-                            for (const [key, value] of Object.entries(result.rowData)) {
-                                const num = parseFloat(value);
-                                if (!isNaN(num) && num >= 0 && num <= 100) {
-                                    marks = num.toFixed(1);
-                                    markNum = num;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                    
-                    const grade = getGrade(markNum);
-                    
-                    tableData.push([
-                        result.sheetName || 'General Examination',
-                        marks,
-                        grade.grade,
-                        grade.points.toString(),
-                        grade.status
-                    ]);
-                });
+                // Results Table
+                const tableData = currentTranscriptData.subjects.map(s => [
+                    s.subject,
+                    s.marks.length.toString(),
+                    s.avgMark.toFixed(1),
+                    s.grade.grade,
+                    s.grade.points.toString(),
+                    s.grade.status
+                ]);
                 
                 doc.autoTable({
-                    head: tableHeaders,
+                    startY: 95,
+                    head: [['Subject', 'Exams', 'Average', 'Grade', 'Points', 'Status']],
                     body: tableData,
-                    startY: 170,
                     theme: 'striped',
-                    headStyles: { 
-                        fillColor: [0, 51, 102],
-                        textColor: [255, 255, 255],
-                        fontStyle: 'bold',
-                        halign: 'center'
-                    },
-                    styles: { 
-                        fontSize: 9,
-                        cellPadding: 4,
-                        lineColor: [200, 200, 200],
-                        lineWidth: 0.1
-                    },
+                    headStyles: { fillColor: [0, 51, 102] },
                     columnStyles: {
-                        0: { cellWidth: 80 },
-                        1: { cellWidth: 30, halign: 'center' },
-                        2: { cellWidth: 20, halign: 'center' },
+                        0: { cellWidth: 60 },
+                        1: { cellWidth: 20, halign: 'center' },
+                        2: { cellWidth: 25, halign: 'center' },
                         3: { cellWidth: 20, halign: 'center' },
-                        4: { cellWidth: 35, halign: 'center' }
-                    },
-                    alternateRowStyles: {
-                        fillColor: [245, 245, 245]
+                        4: { cellWidth: 20, halign: 'center' },
+                        5: { cellWidth: 30, halign: 'center' }
                     }
                 });
                 
-                // ========== GRADING SCALE ==========
                 const finalY = doc.lastAutoTable.finalY + 10;
                 
-                doc.setFontSize(11);
-                doc.setFont('helvetica', 'bold');
-                doc.text('GRADING SCALE', 20, finalY);
-                
-                doc.autoTable({
-                    startY: finalY + 5,
-                    head: [['Marks Range', 'Grade', 'Points', 'Status']],
-                    body: [
-                        ['85 - 100', 'A', '4', 'DISTINCTION'],
-                        ['75 - 84', 'B', '3', 'CREDIT'],
-                        ['60 - 74', 'C', '2', 'PASS'],
-                        ['0 - 59', 'D', '0', 'FAIL']
-                    ],
-                    theme: 'grid',
-                    headStyles: { fillColor: [100, 100, 100] },
-                    styles: { fontSize: 9, halign: 'center' },
-                    margin: { left: 20, right: 20 }
-                });
-                
-                // ========== AUTHORIZATION ==========
-                const authY = doc.lastAutoTable.finalY + 15;
-                
-                // Signature line
-                doc.line(40, authY, 90, authY);
-                doc.line(140, authY, 190, authY);
-                
+                // Summary
                 doc.setFontSize(10);
-                doc.setFont('helvetica', 'normal');
-                doc.text('Head of Nursing Department', 40, authY + 5);
-                doc.text('Registrar (Academics)', 140, authY + 5);
+                doc.text(`Total Subjects: ${currentTranscriptData.subjects.length}`, 20, finalY);
+                doc.text(`Overall Average: ${currentTranscriptData.avgOverall.toFixed(1)}%`, 20, finalY + 7);
+                doc.text(`Total Points: ${currentTranscriptData.totalPoints}`, 20, finalY + 14);
+                doc.text(`GPA: ${currentTranscriptData.gpa}`, 20, finalY + 21);
                 
-                // Date line
-                doc.text(`Date: ${dateStr}`, 40, authY + 12);
-                doc.text(`Date: ${dateStr}`, 140, authY + 12);
+                doc.setFontSize(12);
+                doc.setTextColor(currentTranscriptData.overallGrade.grade === 'A' ? [0,102,0] : 
+                               currentTranscriptData.overallGrade.grade === 'B' ? [0,102,204] :
+                               currentTranscriptData.overallGrade.grade === 'C' ? [204,102,0] : [204,0,0]);
+                doc.text(`Overall Grade: ${currentTranscriptData.overallGrade.grade} - ${currentTranscriptData.overallGrade.status}`, 120, finalY + 14);
                 
-                // ========== FOOTER ==========
+                // Grading Key
+                doc.setTextColor(100);
                 doc.setFontSize(8);
-                doc.setTextColor(100, 100, 100);
-                doc.setFont('helvetica', 'italic');
-                doc.text(COLLEGE_FOOTER, pageWidth / 2, pageHeight - 15, { align: 'center' });
+                doc.text('Grading Key: A=85-100 (Distinction, 4pts), B=75-84 (Credit, 3pts), C=60-74 (Pass, 2pts), D=0-59 (Fail, 0pts)', 20, finalY + 35);
                 
-                // Bottom border
-                doc.setDrawColor(0, 51, 102);
-                doc.setLineWidth(0.5);
-                doc.line(20, pageHeight - 20, pageWidth - 20, pageHeight - 20);
+                // Footer
+                doc.setFontSize(8);
+                doc.setTextColor(150);
+                doc.text(COLLEGE_FOOTER, 105, 280, { align: 'center' });
                 
-                hideLoading();
-                doc.save(`NCHSN_Transcript_${studentId}.pdf`);
-                showToast('Official Transcript generated successfully', 'success');
+                doc.save(`${currentTranscriptData.studentName.replace(/\s+/g, '_')}_Transcript.pdf`);
+                showToast('PDF downloaded successfully', 'success');
                 
             } catch (error) {
-                console.error('PDF Error:', error);
-                hideLoading();
+                console.error('PDF error:', error);
                 showToast('Error generating PDF: ' + error.message, 'error');
             }
         }
 
-        // ========== PRINT OFFICIAL TRANSCRIPT ==========
-        function printOfficialTranscript() {
-            if (!currentTranscriptData || currentTranscriptData.length === 0) {
-                showToast('No transcript data available', 'error');
-                return;
-            }
-            
-            const studentName = document.getElementById('studentNameDisplay').innerText;
-            const studentId = document.getElementById('studentIdDisplay').innerText;
-            const avgMark = document.getElementById('averageMarkDisplay').innerText;
-            const overallGrade = document.getElementById('overallGradeDisplay').innerText;
-            const gpa = document.getElementById('gpaValueDisplay').innerText;
-            const totalExams = document.getElementById('totalExamsCount').innerText;
-            const today = new Date().toLocaleDateString('en-GB', { 
-                day: '2-digit', 
-                month: 'long', 
-                year: 'numeric' 
-            });
-            
-            let tableRows = '';
-            currentTranscriptData.forEach(result => {
-                let marks = '-';
-                let markNum = 0;
-                
-                if (result.rowData) {
-                    const candidates = [
-                        result.rowData['FINAL MARKS %'],
-                        result.rowData['FINALMARKS'],
-                        result.rowData['FINAL'],
-                        result.rowData['FINAL MARKS'],
-                        result.rowData['Final Marks'],
-                        result.rowData['Total'],
-                        result.rowData['MARKS'],
-                        result.rowData['Marks']
-                    ];
-                    
-                    for (const candidate of candidates) {
-                        if (candidate !== undefined && candidate !== null && candidate !== '') {
-                            const num = parseFloat(candidate);
-                            if (!isNaN(num)) {
-                                marks = num.toFixed(1);
-                                markNum = num;
-                                break;
-                            }
-                        }
-                    }
-                }
-                
-                const grade = getGrade(markNum);
-                
-                tableRows += `
-                    <tr>
-                        <td>${result.sheetName || 'General Examination'}</td>
-                        <td class="center">${marks}</td>
-                        <td class="center grade-${grade.grade.toLowerCase()}">${grade.grade}</td>
-                        <td class="center">${grade.points}</td>
-                        <td class="center">${grade.status}</td>
-                    </tr>
-                `;
-            });
-            
-            const printContent = `
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <title>Official Transcript - ${studentName}</title>
-                    <style>
-                        body {
-                            font-family: 'Times New Roman', Times, serif;
-                            margin: 0;
-                            padding: 20px;
-                            background: white;
-                        }
-                        .letterhead {
-                            text-align: center;
-                            margin-bottom: 20px;
-                            border-bottom: 2px solid #003366;
-                            padding-bottom: 10px;
-                        }
-                        .college-name {
-                            font-size: 24px;
-                            font-weight: bold;
-                            color: #003366;
-                            margin: 0;
-                            line-height: 1.2;
-                        }
-                        .college-sub {
-                            font-size: 20px;
-                            font-weight: bold;
-                            color: #0066cc;
-                            margin: 0;
-                        }
-                        .motto {
-                            font-size: 12px;
-                            font-style: italic;
-                            color: #666;
-                            margin: 5px 0;
-                        }
-                        .address {
-                            font-size: 10px;
-                            color: #444;
-                            margin: 2px 0;
-                        }
-                        .title {
-                            font-size: 18px;
-                            font-weight: bold;
-                            color: #003366;
-                            text-align: center;
-                            margin: 20px 0;
-                            text-transform: uppercase;
-                        }
-                        .info-section {
-                            margin: 20px 0;
-                            padding: 15px;
-                            background: #f5f5f5;
-                            border-radius: 5px;
-                        }
-                        .info-row {
-                            display: flex;
-                            margin: 5px 0;
-                            font-size: 12px;
-                        }
-                        .info-label {
-                            font-weight: bold;
-                            width: 150px;
-                        }
-                        .info-value {
-                            flex: 1;
-                        }
-                        table {
-                            width: 100%;
-                            border-collapse: collapse;
-                            margin: 20px 0;
-                            font-size: 11px;
-                        }
-                        th {
-                            background: #003366;
-                            color: white;
-                            padding: 10px;
-                            font-weight: bold;
-                            text-align: left;
-                        }
-                        td {
-                            padding: 8px 10px;
-                            border-bottom: 1px solid #ddd;
-                        }
-                        tr:nth-child(even) {
-                            background: #f9f9f9;
-                        }
-                        .center {
-                            text-align: center;
-                        }
-                        .grade-a { color: #4F46E5; font-weight: bold; }
-                        .grade-b { color: #059669; font-weight: bold; }
-                        .grade-c { color: #D97706; font-weight: bold; }
-                        .grade-d { color: #DC2626; font-weight: bold; }
-                        .grading-scale {
-                            margin: 30px 0;
-                            font-size: 11px;
-                        }
-                        .grading-scale table {
-                            width: 50%;
-                            margin: 10px 0;
-                        }
-                        .signature-section {
-                            margin-top: 50px;
-                            display: flex;
-                            justify-content: space-between;
-                        }
-                        .signature-line {
-                            width: 200px;
-                            border-top: 1px solid black;
-                            margin-top: 30px;
-                            padding-top: 5px;
-                            text-align: center;
-                        }
-                        .footer {
-                            margin-top: 30px;
-                            text-align: center;
-                            font-size: 9px;
-                            color: #666;
-                            border-top: 1px solid #003366;
-                            padding-top: 10px;
-                        }
-                    </style>
-                </head>
-                <body>
-                    <div class="letterhead">
-                        <div class="college-name">NAKURU COLLEGE OF HEALTH SCIENCES</div>
-                        <div class="college-sub">& MANAGEMENT</div>
-                        <div class="motto">Excellence in Health Training, Research & Professional Development</div>
-                        <div class="address">Kiamunyi Campus | P.O. Box 12906 – 20100, Nakuru | Tel: 0745 215594 | 0703 345771 | 0103614355</div>
-                        <div class="address">Email: info@nakurucollegeofhealth.ac.ke | Website: www.nakurucollegeofhealth.ac.ke</div>
-                    </div>
-                    
-                    <div class="title">OFFICIAL ACADEMIC TRANSCRIPT</div>
-                    
-                    <div class="info-section">
-                        <div class="info-row">
-                            <span class="info-label">Student Name:</span>
-                            <span class="info-value">${studentName}</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">Admission Number:</span>
-                            <span class="info-value">${studentId}</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">Programme:</span>
-                            <span class="info-value">Bachelor of Science in Nursing</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">Date:</span>
-                            <span class="info-value">${today}</span>
-                        </div>
-                    </div>
-                    
-                    <h3>ACADEMIC SUMMARY</h3>
-                    <div class="info-section">
-                        <div class="info-row">
-                            <span class="info-label">Total Examinations:</span>
-                            <span class="info-value">${totalExams}</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">Average Mark:</span>
-                            <span class="info-value">${avgMark}%</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">Overall Grade:</span>
-                            <span class="info-value">${overallGrade}</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">GPA:</span>
-                            <span class="info-value">${gpa}</span>
-                        </div>
-                    </div>
-                    
-                    <h3>EXAMINATION RESULTS</h3>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Examination</th>
-                                <th class="center">Marks (%)</th>
-                                <th class="center">Grade</th>
-                                <th class="center">Points</th>
-                                <th class="center">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${tableRows}
-                        </tbody>
-                    </table>
-                    
-                    <div class="grading-scale">
-                        <h3>GRADING SCALE</h3>
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Marks Range</th>
-                                    <th>Grade</th>
-                                    <th>Points</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr><td>85 - 100</td><td class="grade-a">A</td><td class="center">4</td><td>DISTINCTION</td></tr>
-                                <tr><td>75 - 84</td><td class="grade-b">B</td><td class="center">3</td><td>CREDIT</td></tr>
-                                <tr><td>60 - 74</td><td class="grade-c">C</td><td class="center">2</td><td>PASS</td></tr>
-                                <tr><td>0 - 59</td><td class="grade-d">D</td><td class="center">0</td><td>FAIL</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    
-                    <div class="signature-section">
-                        <div class="signature-line">
-                            Head of Nursing Department<br>
-                            Date: ${today}
-                        </div>
-                        <div class="signature-line">
-                            Registrar (Academics)<br>
-                            Date: ${today}
-                        </div>
-                    </div>
-                    
-                    <div class="footer">
-                        Accredited & Registered Institution | Committed to Academic Excellence | © 2026 Nakuru College of Health Sciences & Management
-                    </div>
-                </body>
-                </html>
-            `;
-            
-            const printWindow = window.open('', '_blank');
-            printWindow.document.write(printContent);
-            printWindow.document.close();
-            printWindow.focus();
-            printWindow.print();
-        }
-
-        // ========== EXCEL TRANSCRIPT ==========
         function downloadTranscriptExcel() {
-            if (!currentTranscriptData || currentTranscriptData.length === 0) {
-                showToast('No transcript data available', 'error');
+            if (!currentTranscriptData) {
+                showToast('No student data available', 'error');
                 return;
             }
             
             try {
-                const studentName = document.getElementById('studentNameDisplay').innerText;
-                const studentId = document.getElementById('studentIdDisplay').innerText;
-                const avgMark = document.getElementById('averageMarkDisplay').innerText;
-                const overallGrade = document.getElementById('overallGradeDisplay').innerText;
-                const gpa = document.getElementById('gpaValueDisplay').innerText;
-                const totalExams = document.getElementById('totalExamsCount').innerText;
+                const wb = XLSX.utils.book_new();
                 
-                const wsData = [
-                    ['NAKURU COLLEGE OF HEALTH SCIENCES & MANAGEMENT'],
-                    ['OFFICIAL ACADEMIC TRANSCRIPT'],
-                    [''],
-                    ['Student Name:', studentName, 'Admission No:', studentId],
-                    ['Programme:', 'Bachelor of Science in Nursing', 'Date:', new Date().toLocaleDateString()],
-                    [''],
-                    ['ACADEMIC SUMMARY'],
-                    ['Total Examinations:', totalExams, 'Average Mark:', avgMark + '%'],
-                    ['Overall Grade:', overallGrade, 'GPA:', gpa],
-                    [''],
-                    ['EXAMINATION RESULTS'],
-                    ['Exam', 'Marks', 'Grade', 'Points', 'Status']
+                // Summary Sheet
+                const summaryData = [
+                    ['NAKURU COLLEGE OF HEALTH SCIENCES - ACADEMIC TRANSCRIPT'],
+                    ['PROVISIONAL RESULTS'],
+                    [],
+                    ['Student Name:', currentTranscriptData.studentName],
+                    ['Admission No:', currentTranscriptData.studentId],
+                    ['Program:', PROGRAM_NAME],
+                    ['Date:', new Date().toLocaleDateString()],
+                    [],
+                    ['Subject', 'Number of Exams', 'Average Mark', 'Grade', 'Points', 'Status']
                 ];
                 
-                currentTranscriptData.forEach(result => {
-                    let marks = '-';
-                    let markNum = 0;
-                    
-                    if (result.rowData) {
-                        const candidates = [
-                            result.rowData['FINAL MARKS %'],
-                            result.rowData['FINALMARKS'],
-                            result.rowData['FINAL'],
-                            result.rowData['FINAL MARKS'],
-                            result.rowData['Final Marks'],
-                            result.rowData['Total'],
-                            result.rowData['MARKS'],
-                            result.rowData['Marks']
-                        ];
-                        
-                        for (const candidate of candidates) {
-                            if (candidate !== undefined && candidate !== null && candidate !== '') {
-                                const num = parseFloat(candidate);
-                                if (!isNaN(num)) {
-                                    marks = num.toFixed(1);
-                                    markNum = num;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                    
-                    const grade = getGrade(markNum);
-                    
-                    wsData.push([
-                        result.sheetName || 'General Examination',
-                        marks,
-                        grade.grade,
-                        grade.points.toString(),
-                        grade.status
+                currentTranscriptData.subjects.forEach(s => {
+                    summaryData.push([
+                        s.subject,
+                        s.marks.length,
+                        s.avgMark.toFixed(1),
+                        s.grade.grade,
+                        s.grade.points,
+                        s.grade.status
                     ]);
                 });
                 
-                wsData.push([]);
-                wsData.push(['GRADING SCALE']);
-                wsData.push(['Marks Range', 'Grade', 'Points', 'Status']);
-                wsData.push(['85 - 100', 'A', '4', 'DISTINCTION']);
-                wsData.push(['75 - 84', 'B', '3', 'CREDIT']);
-                wsData.push(['60 - 74', 'C', '2', 'PASS']);
-                wsData.push(['0 - 59', 'D', '0', 'FAIL']);
+                summaryData.push(
+                    [],
+                    ['SUMMARY'],
+                    [`Total Subjects:`, currentTranscriptData.subjects.length],
+                    [`Overall Average:`, currentTranscriptData.avgOverall.toFixed(1) + '%'],
+                    [`Total Points:`, currentTranscriptData.totalPoints],
+                    [`GPA:`, currentTranscriptData.gpa],
+                    [`Overall Grade:`, `${currentTranscriptData.overallGrade.grade} - ${currentTranscriptData.overallGrade.status}`]
+                );
                 
-                const wb = XLSX.utils.book_new();
-                const ws = XLSX.utils.aoa_to_sheet(wsData);
+                const ws = XLSX.utils.aoa_to_sheet(summaryData);
+                XLSX.utils.book_append_sheet(wb, ws, 'Transcript');
                 
-                // Style the worksheet
-                ws['!cols'] = [
-                    { wch: 40 }, // Exam
-                    { wch: 10 }, // Marks
-                    { wch: 8 },  // Grade
-                    { wch: 8 },  // Points
-                    { wch: 15 }  // Status
-                ];
+                // Detailed Marks Sheet
+                const detailsData = [['Subject', 'Mark', 'Grade', 'Points', 'Status', 'File', 'Sheet']];
                 
-                XLSX.utils.book_append_sheet(wb, ws, 'Official Transcript');
-                XLSX.writeFile(wb, `NCHSN_Official_Transcript_${studentId}.xlsx`);
+                currentTranscriptData.subjects.forEach(s => {
+                    const records = allStudentMarks.filter(r => 
+                        r.studentId === currentTranscriptData.studentId || 
+                        r.studentName === currentTranscriptData.studentName
+                    );
+                    
+                    records.forEach(r => {
+                        r.marks.forEach(m => {
+                            if (m.subject === s.subject) {
+                                detailsData.push([
+                                    m.subject,
+                                    m.mark,
+                                    m.grade.grade,
+                                    m.grade.points,
+                                    m.grade.status,
+                                    r.filename,
+                                    r.sheetName
+                                ]);
+                            }
+                        });
+                    });
+                });
                 
-                showToast('Official Excel transcript downloaded', 'success');
+                const ws2 = XLSX.utils.aoa_to_sheet(detailsData);
+                XLSX.utils.book_append_sheet(wb, ws2, 'Detailed Marks');
+                
+                XLSX.writeFile(wb, `${currentTranscriptData.studentName.replace(/\s+/g, '_')}_Transcript.xlsx`);
+                showToast('Excel downloaded successfully', 'success');
                 
             } catch (error) {
-                console.error('Excel Error:', error);
-                showToast('Error generating Excel', 'error');
+                console.error('Excel error:', error);
+                showToast('Error generating Excel: ' + error.message, 'error');
             }
         }
 
-        // ========== CHECK LIBRARIES ==========
-        function checkLibraries() {
-            console.log('=== Library Check ===');
-            console.log('Handsontable:', typeof Handsontable !== 'undefined' ? '✅ Loaded' : '❌ Not loaded');
-            console.log('XLSX:', typeof XLSX !== 'undefined' ? '✅ Loaded' : '❌ Not loaded');
-            console.log('Chart:', typeof Chart !== 'undefined' ? '✅ Loaded' : '❌ Not loaded');
-            console.log('jspdf:', typeof window.jspdf !== 'undefined' ? '✅ Loaded' : '❌ Not loaded');
+        function printOfficialTranscript() {
+            if (!currentTranscriptData) {
+                showToast('No student data available', 'error');
+                return;
+            }
             
-            if (typeof Handsontable === 'undefined') {
-                showToast('Handsontable not loaded. Check internet connection.', 'error');
-            }
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <html>
+                <head>
+                    <title>Academic Transcript - ${currentTranscriptData.studentName}</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; padding: 40px; }
+                        .header { text-align: center; margin-bottom: 30px; }
+                        .college-name { font-size: 20px; font-weight: bold; color: #003366; }
+                        .motto { font-size: 12px; color: #666; margin: 5px 0; }
+                        .address { font-size: 10px; color: #999; }
+                        .title { font-size: 16px; font-weight: bold; color: #003366; margin: 20px 0; text-align: center; }
+                        .provisional { color: red; font-weight: bold; text-align: center; margin: 10px 0; }
+                        .student-info { margin: 20px 0; font-size: 12px; }
+                        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+                        th { background: #003366; color: white; padding: 8px; font-size: 11px; }
+                        td { padding: 6px; border: 1px solid #ddd; font-size: 11px; }
+                        .grade-a { background: #ede9fe; color: #5b21b6; font-weight: bold; }
+                        .grade-b { background: #d1fae5; color: #065f46; font-weight: bold; }
+                        .grade-c { background: #fed7aa; color: #92400e; font-weight: bold; }
+                        .grade-d { background: #fee2e2; color: #991b1b; font-weight: bold; }
+                        .summary { margin: 20px 0; font-size: 12px; }
+                        .footer { margin-top: 40px; font-size: 9px; color: #999; text-align: center; }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <div class="college-name">${COLLEGE_NAME}</div>
+                        <div class="motto">${COLLEGE_MOTTO}</div>
+                        <div class="address">${COLLEGE_ADDRESS}</div>
+                    </div>
+                    
+                    <div class="title">OFFICIAL ACADEMIC TRANSCRIPT</div>
+                    <div class="provisional">PROVISIONAL RESULTS - NOT FOR OFFICIAL USE</div>
+                    
+                    <div class="student-info">
+                        <p><strong>Student Name:</strong> ${currentTranscriptData.studentName}</p>
+                        <p><strong>Admission No:</strong> ${currentTranscriptData.studentId}</p>
+                        <p><strong>Program:</strong> ${PROGRAM_NAME} - Kenya Registered Community Health Nurse</p>
+                        <p><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
+                    </div>
+                    
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Subject</th>
+                                <th>Exams</th>
+                                <th>Average</th>
+                                <th>Grade</th>
+                                <th>Points</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${currentTranscriptData.subjects.map(s => `
+                                <tr>
+                                    <td>${s.subject}</td>
+                                    <td>${s.marks.length}</td>
+                                    <td>${s.avgMark.toFixed(1)}</td>
+                                    <td class="grade-${s.grade.grade.toLowerCase()}">${s.grade.grade}</td>
+                                    <td>${s.grade.points}</td>
+                                    <td>${s.grade.status}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                    
+                    <div class="summary">
+                        <p><strong>Total Subjects:</strong> ${currentTranscriptData.subjects.length}</p>
+                        <p><strong>Overall Average:</strong> ${currentTranscriptData.avgOverall.toFixed(1)}%</p>
+                        <p><strong>Total Points:</strong> ${currentTranscriptData.totalPoints}</p>
+                        <p><strong>GPA:</strong> ${currentTranscriptData.gpa}</p>
+                        <p><strong>Overall Grade:</strong> ${currentTranscriptData.overallGrade.grade} - ${currentTranscriptData.overallGrade.status}</p>
+                    </div>
+                    
+                    <div style="font-size: 9px; color: #666; margin-top: 20px;">
+                        Grading Key: A=85-100 (Distinction, 4pts), B=75-84 (Credit, 3pts), C=60-74 (Pass, 2pts), D=0-59 (Fail, 0pts)
+                    </div>
+                    
+                    <div class="footer">
+                        ${COLLEGE_FOOTER}
+                    </div>
+                </body>
+                </html>
+            `);
+            
+            printWindow.document.close();
+            printWindow.print();
         }
 
-        // Call this on page load
+        // Initialize on page load
         document.addEventListener('DOMContentLoaded', function() {
-            checkLibraries();
+            // Check for existing session
+            supabase.auth.getSession().then(({ data: { session } }) => {
+                if (session) {
+                    // Auto-login if session exists
+                    handleLogin();
+                }
+            });
         });
     </script>
 </body>
