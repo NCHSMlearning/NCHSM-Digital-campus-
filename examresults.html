@@ -2344,7 +2344,7 @@ function searchStudentMarks() {
                 }
             }
             
-            // Check student ID/Index
+            // Check student ID/Admission
             if (record.studentId) {
                 const idLower = record.studentId.toLowerCase();
                 if (idLower.includes(searchTerm)) {
@@ -2352,7 +2352,7 @@ function searchStudentMarks() {
                 }
             }
             
-            // Check raw data thoroughly
+            // Check raw data
             if (record.rawData && !found) {
                 Object.values(record.rawData).forEach(value => {
                     const valStr = String(value || '').toLowerCase();
@@ -2376,281 +2376,188 @@ function searchStudentMarks() {
             return;
         }
         
-        // Extract comprehensive student information
-        let studentInfo = {
-            name: '',
-            admissionNo: '',
-            indexNumber: '',
-            idNumber: '',
-            email: '',
-            mobile: '',
-            class: ''
-        };
-        
-        // Store all assessment scores
-        const assessments = {
-            // Block format assessments (CAT, EBE, FINAL per subject)
-            blockSubjects: new Map(),
-            
-            // Clinical assessments
-            pregnantWoman: [],
-            immunization: [],
-            nursingCare: [],
-            psychiatryAssessment: [],
-            psychiatryCaseStudy: [],
-            generalNursingCaseStudy: [],
-            midwiferyCaseStudy: [],
-            mchCaseStudy: [],
-            project: [],
-            finalClinical: [],
-            
-            // NCK format assessments
-            clinical: [],
-            theoretical: [],
-            caseStudies: [],
-            practical: []
-        };
+        // Get student info
+        let studentName = '';
+        let studentId = '';
+        let studentIndex = '';
         
         results.forEach(record => {
-            const sheetName = record.sheetName || '';
-            const filename = record.filename || '';
-            
-            // Extract student information
+            if (record.studentName && !studentName) {
+                studentName = record.studentName;
+            }
+            if (record.studentId && !studentId) {
+                studentId = record.studentId;
+            }
+            // Try to extract index from raw data
             if (record.rawData) {
                 Object.entries(record.rawData).forEach(([key, value]) => {
                     const keyLower = String(key).toLowerCase();
-                    const valStr = String(value || '').trim();
-                    
-                    // Student info
-                    if (!studentInfo.name && (keyLower.includes('student name') || keyLower.includes("student's name") || keyLower.includes('name'))) {
-                        if (valStr && !valStr.includes('S.NO') && !valStr.includes('Student')) {
-                            studentInfo.name = valStr;
-                        }
-                    }
-                    if (!studentInfo.indexNumber && (keyLower.includes('index') || keyLower.includes('index number'))) {
-                        studentInfo.indexNumber = valStr;
-                    }
-                    if (!studentInfo.idNumber && (keyLower.includes('id number') || keyLower.includes('id'))) {
-                        studentInfo.idNumber = valStr;
-                    }
-                    if (!studentInfo.admissionNo && (keyLower.includes('adm') || keyLower.includes('reg'))) {
-                        studentInfo.admissionNo = valStr;
-                    }
-                    if (!studentInfo.email && keyLower.includes('email')) {
-                        studentInfo.email = valStr;
-                    }
-                    if (!studentInfo.mobile && (keyLower.includes('mobile') || keyLower.includes('phone'))) {
-                        studentInfo.mobile = valStr;
-                    }
-                    if (!studentInfo.class && (keyLower.includes('class') || keyLower.includes('year') || keyLower.includes('march'))) {
-                        studentInfo.class = valStr;
-                    }
-                    
-                    // Assessment scores - Clinical assessments
-                    const numValue = parseFloat(value);
-                    if (!isNaN(numValue) && numValue > 0 && numValue <= 100) {
-                        if (keyLower.includes('pregnant') || keyLower.includes('pregnant woman')) {
-                            assessments.pregnantWoman.push(numValue);
-                        } else if (keyLower.includes('immunization')) {
-                            assessments.immunization.push(numValue);
-                        } else if (keyLower.includes('nursing care')) {
-                            assessments.nursingCare.push(numValue);
-                        } else if (keyLower.includes('psychiatry assesment') || keyLower.includes('psychiatry assessment')) {
-                            assessments.psychiatryAssessment.push(numValue);
-                        } else if (keyLower.includes('psychiatry case study')) {
-                            assessments.psychiatryCaseStudy.push(numValue);
-                        } else if (keyLower.includes('general nursing case study')) {
-                            assessments.generalNursingCaseStudy.push(numValue);
-                        } else if (keyLower.includes('midwifery case study')) {
-                            assessments.midwiferyCaseStudy.push(numValue);
-                        } else if (keyLower.includes('mch case study')) {
-                            assessments.mchCaseStudy.push(numValue);
-                        } else if (keyLower.includes('project')) {
-                            assessments.project.push(numValue);
-                        } else if (keyLower.includes('final clinical')) {
-                            assessments.finalClinical.push(numValue);
-                        }
-                        
-                        // NCK format
-                        if (keyLower.includes('clinical')) {
-                            assessments.clinical.push(numValue);
-                        } else if (keyLower.includes('theoretical')) {
-                            assessments.theoretical.push(numValue);
-                        } else if (keyLower.includes('case studies') || keyLower.includes('case study')) {
-                            assessments.caseStudies.push(numValue);
-                        } else if (keyLower.includes('practical')) {
-                            assessments.practical.push(numValue);
-                        }
+                    if (keyLower.includes('index') && value) {
+                        studentIndex = String(value);
                     }
                 });
             }
-            
-            // Handle Block format subjects (CAT, EBE, FINAL)
-            if (filename.includes('BLOCK') || sheetName.match(/MIDWIFERY|PHARMACOLOGY|SPECIALISED|HEMATOLOGICAL|RESPIRATORY|IMMUNIZATION|TRAUMA|SRH|COMMUNITY|CARDIOVASCULAR/i)) {
-                const subjectKey = sheetName;
-                
-                if (!assessments.blockSubjects.has(subjectKey)) {
-                    assessments.blockSubjects.set(subjectKey, {
-                        subject: subjectKey,
-                        catMarks: [],
-                        ebeMarks: [],
-                        finalMarks: []
-                    });
-                }
-                
-                const subject = assessments.blockSubjects.get(subjectKey);
-                
-                if (record.rawData) {
-                    Object.entries(record.rawData).forEach(([key, value]) => {
-                        const keyUpper = String(key).toUpperCase();
-                        const numValue = parseFloat(value);
-                        
-                        if (!isNaN(numValue) && numValue > 0 && numValue <= 100) {
-                            if (keyUpper.includes('CAT')) {
-                                subject.catMarks.push(numValue);
-                            } else if (keyUpper.includes('EBE')) {
-                                subject.ebeMarks.push(numValue);
-                            } else if (keyUpper.includes('FINAL') || keyUpper.includes('FINALMARKS')) {
-                                subject.finalMarks.push(numValue);
-                            }
-                        }
-                    });
-                }
-            }
         });
         
-        if (!studentInfo.name) studentInfo.name = searchTerm;
+        if (!studentName) studentName = searchTerm;
+        if (!studentId) studentId = studentIndex || 'N/A';
         
-        // Build comprehensive subject list
-        const allSubjects = [];
+        // Collect ALL individual marks without averaging
+        const allMarks = [];
         
-        // Add Block format subjects
-        assessments.blockSubjects.forEach((subject, name) => {
-            const catMark = subject.catMarks.length > 0 ? [...new Set(subject.catMarks)][0] : null;
-            const ebeMark = subject.ebeMarks.length > 0 ? [...new Set(subject.ebeMarks)][0] : null;
-            const finalMark = subject.finalMarks.length > 0 ? [...new Set(subject.finalMarks)][0] : null;
+        results.forEach(record => {
+            const sheetName = record.sheetName;
+            const filename = record.filename;
             
-            if (finalMark !== null) {
-                const grade = getGrade(finalMark);
-                const passed = finalMark >= 60;
+            record.marks.forEach(mark => {
+                // Create a unique entry for each mark
+                allMarks.push({
+                    id: `${record.fileId}-${sheetName}-${mark.subject}-${mark.mark}`,
+                    subject: mark.subject,
+                    assessmentType: mark.assessmentType,
+                    mark: mark.mark,
+                    grade: getGrade(mark.mark),
+                    sheetName: sheetName,
+                    filename: filename,
+                    originalColumn: mark.originalColumn,
+                    // Determine category
+                    category: mark.assessmentType === 'CAT' || mark.assessmentType === 'EBE' || mark.assessmentType === 'FINAL' ? 'theory' : 'clinical'
+                });
+            });
+        });
+        
+        // Separate theory and clinical marks
+        const theoryMarks = allMarks.filter(m => m.category === 'theory');
+        const clinicalMarks = allMarks.filter(m => m.category === 'clinical');
+        
+        // Group theory marks by subject (for block subjects)
+        const theoryGroups = new Map();
+        theoryMarks.forEach(mark => {
+            const key = mark.subject;
+            if (!theoryGroups.has(key)) {
+                theoryGroups.set(key, {
+                    subject: key,
+                    marks: [],
+                    catMarks: [],
+                    ebeMarks: [],
+                    finalMarks: []
+                });
+            }
+            const group = theoryGroups.get(key);
+            group.marks.push(mark);
+            
+            if (mark.assessmentType === 'CAT') group.catMarks.push(mark);
+            else if (mark.assessmentType === 'EBE') group.ebeMarks.push(mark);
+            else if (mark.assessmentType === 'FINAL') group.finalMarks.push(mark);
+        });
+        
+        // Build final subjects list
+        const subjects = [];
+        
+        // Add theory subjects (using FINAL mark as score)
+        theoryGroups.forEach((group, subject) => {
+            const finalMark = group.finalMarks.length > 0 ? group.finalMarks[0] : null;
+            if (finalMark) {
+                const grade = getGrade(finalMark.mark);
+                const passed = finalMark.mark >= 60;
                 
-                allSubjects.push({
-                    type: 'block',
-                    name: name,
-                    catMark: catMark,
-                    ebeMark: ebeMark,
-                    finalMark: finalMark,
-                    score: finalMark,
+                // Create assessment display string
+                const catDisplay = group.catMarks.length > 0 ? `CAT: ${group.catMarks.map(m => m.mark).join(', ')}` : '';
+                const ebeDisplay = group.ebeMarks.length > 0 ? `EBE: ${group.ebeMarks.map(m => m.mark).join(', ')}` : '';
+                const finalDisplay = `FINAL: ${finalMark.mark}`;
+                
+                const assessmentDisplay = [finalDisplay, catDisplay, ebeDisplay].filter(d => d).join(' | ');
+                
+                subjects.push({
+                    type: 'theory',
+                    name: subject,
+                    assessmentDisplay: assessmentDisplay,
+                    finalScore: finalMark.mark,
                     grade: grade,
                     passed: passed,
-                    displayName: name
+                    sheetName: group.marks[0]?.sheetName,
+                    files: [...new Set(group.marks.map(m => m.filename))]
                 });
             }
         });
         
-        // Add Clinical assessments
-        const clinicalAssessments = [
-            { name: 'Pregnant Woman Assessment', marks: assessments.pregnantWoman, key: 'pregnantWoman' },
-            { name: 'Immunization', marks: assessments.immunization, key: 'immunization' },
-            { name: 'Nursing Care', marks: assessments.nursingCare, key: 'nursingCare' },
-            { name: 'Psychiatry Assessment', marks: assessments.psychiatryAssessment, key: 'psychiatryAssessment' },
-            { name: 'Psychiatry Case Study', marks: assessments.psychiatryCaseStudy, key: 'psychiatryCaseStudy' },
-            { name: 'General Nursing Case Study', marks: assessments.generalNursingCaseStudy, key: 'generalNursingCaseStudy' },
-            { name: 'Midwifery Case Study', marks: assessments.midwiferyCaseStudy, key: 'midwiferyCaseStudy' },
-            { name: 'MCH Case Study', marks: assessments.mchCaseStudy, key: 'mchCaseStudy' },
-            { name: 'Project', marks: assessments.project, key: 'project' },
-            { name: 'Final Clinical Score', marks: assessments.finalClinical, key: 'finalClinical' }
-        ];
+        // Add ALL clinical marks as individual entries (NO AVERAGING)
+        clinicalMarks.forEach(mark => {
+            // Format the assessment name nicely
+            let displayName = mark.subject;
+            
+            // Clean up clinical rotation names
+            if (mark.subject.includes('MED')) {
+                displayName = `Medical Rotation - ${mark.subject}`;
+            } else if (mark.subject.includes('SURG')) {
+                displayName = `Surgical Rotation - ${mark.subject}`;
+            } else if (mark.subject.includes('PEAD') || mark.subject.includes('PAED')) {
+                displayName = `Paediatric Rotation - ${mark.subject}`;
+            } else if (mark.subject.includes('MAT')) {
+                displayName = `Maternity Rotation - ${mark.subject}`;
+            } else if (mark.subject.includes('MCH')) {
+                displayName = `MCH Rotation - ${mark.subject}`;
+            } else if (mark.subject.includes('PSYCH')) {
+                displayName = `Psychiatry Rotation - ${mark.subject}`;
+            } else if (mark.subject.includes('OPD')) {
+                displayName = `OPD/Casualty Rotation`;
+            } else if (mark.subject.includes('THEATRE')) {
+                displayName = `Theatre Rotation`;
+            } else if (mark.subject.includes('NBU')) {
+                displayName = `NBU Rotation - ${mark.subject}`;
+            } else if (mark.subject.includes('RURALS')) {
+                displayName = `Rural Health Rotation`;
+            } else if (mark.subject.includes('DISTRICT')) {
+                displayName = `District Hospital Rotation`;
+            } else if (mark.subject.includes('SPECIAL CLINICS')) {
+                displayName = `Special Clinics Rotation`;
+            }
+            
+            subjects.push({
+                type: 'clinical',
+                name: displayName,
+                originalName: mark.subject,
+                assessmentType: mark.assessmentType,
+                mark: mark.mark,
+                finalScore: mark.mark,
+                grade: mark.grade,
+                passed: mark.mark >= 60,
+                sheetName: mark.sheetName,
+                filename: mark.filename,
+                column: mark.originalColumn
+            });
+        });
         
-        clinicalAssessments.forEach(assessment => {
-            if (assessment.marks.length > 0) {
-                const avgScore = assessment.marks.reduce((a, b) => a + b, 0) / assessment.marks.length;
-                const grade = getGrade(avgScore);
-                const passed = avgScore >= 60;
-                
-                allSubjects.push({
-                    type: 'clinical',
-                    name: assessment.name,
-                    marks: assessment.marks,
-                    score: avgScore,
-                    grade: grade,
-                    passed: passed,
-                    displayName: assessment.name
-                });
+        // Sort subjects: theory first (by score), then clinical
+        subjects.sort((a, b) => {
+            if (a.type === 'theory' && b.type === 'theory') {
+                return b.finalScore - a.finalScore;
+            } else if (a.type === 'theory' && b.type !== 'theory') {
+                return -1;
+            } else if (a.type !== 'theory' && b.type === 'theory') {
+                return 1;
+            } else {
+                // Both clinical - sort by name
+                return a.name.localeCompare(b.name);
             }
         });
         
-        // Add NCK assessments
-        if (assessments.clinical.length > 0) {
-            const avg = assessments.clinical.reduce((a, b) => a + b, 0) / assessments.clinical.length;
-            const grade = getGrade(avg);
-            allSubjects.push({
-                type: 'nck',
-                name: 'NCK Clinical Score',
-                marks: assessments.clinical,
-                score: avg,
-                grade: grade,
-                passed: avg >= 60,
-                displayName: 'NCK Clinical Score'
-            });
-        }
-        
-        if (assessments.theoretical.length > 0) {
-            const avg = assessments.theoretical.reduce((a, b) => a + b, 0) / assessments.theoretical.length;
-            const grade = getGrade(avg);
-            allSubjects.push({
-                type: 'nck',
-                name: 'NCK Theoretical Score',
-                marks: assessments.theoretical,
-                score: avg,
-                grade: grade,
-                passed: avg >= 60,
-                displayName: 'NCK Theoretical Score'
-            });
-        }
-        
-        if (assessments.caseStudies.length > 0) {
-            const avg = assessments.caseStudies.reduce((a, b) => a + b, 0) / assessments.caseStudies.length;
-            const grade = getGrade(avg);
-            allSubjects.push({
-                type: 'nck',
-                name: 'NCK Case Studies',
-                marks: assessments.caseStudies,
-                score: avg,
-                grade: grade,
-                passed: avg >= 60,
-                displayName: 'NCK Case Studies'
-            });
-        }
-        
-        if (assessments.practical.length > 0) {
-            const avg = assessments.practical.reduce((a, b) => a + b, 0) / assessments.practical.length;
-            const grade = getGrade(avg);
-            allSubjects.push({
-                type: 'nck',
-                name: 'NCK Practical Score',
-                marks: assessments.practical,
-                score: avg,
-                grade: grade,
-                passed: avg >= 60,
-                displayName: 'NCK Practical Score'
-            });
-        }
-        
-        // Sort subjects by score
-        allSubjects.sort((a, b) => b.score - a.score);
-        
-        // Calculate overall stats
-        const totalScore = allSubjects.reduce((sum, s) => sum + s.score, 0);
-        const avgOverall = allSubjects.length > 0 ? totalScore / allSubjects.length : 0;
-        const totalPoints = allSubjects.reduce((sum, s) => sum + s.grade.points, 0);
-        const gpa = allSubjects.length > 0 ? (totalPoints / allSubjects.length).toFixed(2) : '0.00';
+        // Calculate overall stats (only using theory subjects with FINAL marks)
+        const theorySubjects = subjects.filter(s => s.type === 'theory');
+        const totalTheoryScore = theorySubjects.reduce((sum, s) => sum + s.finalScore, 0);
+        const avgOverall = theorySubjects.length > 0 ? totalTheoryScore / theorySubjects.length : 0;
+        const totalPoints = theorySubjects.reduce((sum, s) => sum + s.grade.points, 0);
+        const gpa = theorySubjects.length > 0 ? (totalPoints / theorySubjects.length).toFixed(2) : '0.00';
         const overallGrade = getGrade(avgOverall);
         
         // Store for transcript
         currentTranscriptData = {
-            studentInfo: studentInfo,
-            subjects: allSubjects,
+            studentName: studentName,
+            studentId: studentId,
+            studentIndex: studentIndex,
+            subjects: subjects,
+            theorySubjects: theorySubjects,
+            clinicalSubjects: subjects.filter(s => s.type === 'clinical'),
             avgOverall: avgOverall,
             overallGrade: overallGrade,
             gpa: gpa,
@@ -2658,67 +2565,49 @@ function searchStudentMarks() {
         };
         
         // Update summary card
-        document.getElementById('studentNameDisplay').innerText = studentInfo.name;
+        document.getElementById('studentNameDisplay').innerText = studentName;
         
-        let idDisplay = '';
-        if (studentInfo.admissionNo) idDisplay += `Adm: ${studentInfo.admissionNo}`;
-        if (studentInfo.indexNumber) {
-            if (idDisplay) idDisplay += ' | ';
-            idDisplay += `Index: ${studentInfo.indexNumber}`;
+        let idDisplay = `Admission: ${studentId}`;
+        if (studentIndex && studentIndex !== studentId) {
+            idDisplay += ` | Index: ${studentIndex}`;
         }
-        if (studentInfo.idNumber) {
-            if (idDisplay) idDisplay += ' | ';
-            idDisplay += `ID: ${studentInfo.idNumber}`;
-        }
-        document.getElementById('studentIdDisplay').innerHTML = `<i class="fas fa-id-card mr-1"></i>${idDisplay || 'N/A'}`;
-        
-        let contactDisplay = '';
-        if (studentInfo.email) contactDisplay += `📧 ${studentInfo.email}`;
-        if (studentInfo.mobile) {
-            if (contactDisplay) contactDisplay += ' | ';
-            contactDisplay += `📱 ${studentInfo.mobile}`;
-        }
-        if (studentInfo.class) {
-            if (contactDisplay) contactDisplay += ' | ';
-            contactDisplay += `📅 ${studentInfo.class}`;
-        }
-        if (contactDisplay) {
-            document.getElementById('studentProgramDisplay').innerHTML = `<i class="fas fa-phone mr-1"></i>${contactDisplay}`;
-        } else {
-            document.getElementById('studentProgramDisplay').innerHTML = `<i class="fas fa-graduation-cap mr-1"></i>Program: KRCHN`;
-        }
+        document.getElementById('studentIdDisplay').innerHTML = `<i class="fas fa-id-card mr-1"></i>${idDisplay}`;
+        document.getElementById('studentProgramDisplay').innerHTML = `<i class="fas fa-graduation-cap mr-1"></i>Program: KRCHN`;
         
         document.getElementById('overallGradeDisplay').innerText = `Grade: ${overallGrade.grade}`;
         document.getElementById('overallGradeDisplay').className = `grade-badge ${overallGrade.class} text-sm px-4 py-2`;
         
-        document.getElementById('gpaDisplay').innerHTML = `<i class="fas fa-star mr-1"></i>GPA: ${gpa}`;
+        document.getElementById('gpaDisplay').innerHTML = `<i class="fas fa-star mr-1"></i>GPA: ${gpa} (Theory only)`;
         
-        document.getElementById('totalExamsCount').innerText = allSubjects.length;
+        document.getElementById('totalExamsCount').innerText = theorySubjects.length;
         document.getElementById('averageMarkDisplay').innerText = avgOverall.toFixed(1);
         document.getElementById('totalPointsDisplay').innerText = totalPoints;
         document.getElementById('gpaValueDisplay').innerText = gpa;
         
         // Build results table
-        let tableHtml = '<table class="data-table"><thead><tr><th>Assessment</th><th>Marks</th><th>Score</th><th>Grade</th><th>Points</th><th>Status</th></tr></thead><tbody>';
+        let tableHtml = `
+            <div class="mb-4">
+                <h4 class="font-bold text-blue-800 mb-2">📚 THEORY SUBJECTS (${theorySubjects.length})</h4>
+                <table class="data-table w-full mb-6">
+                    <thead>
+                        <tr>
+                            <th>Subject</th>
+                            <th>Assessment Marks</th>
+                            <th>Final Score</th>
+                            <th>Grade</th>
+                            <th>Points</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
         
-        allSubjects.forEach(s => {
-            let marksDisplay = '';
-            
-            if (s.type === 'block') {
-                const marks = [];
-                if (s.catMark) marks.push(`CAT:${s.catMark}`);
-                if (s.ebeMark) marks.push(`EBE:${s.ebeMark}`);
-                if (s.finalMark) marks.push(`FINAL:${s.finalMark}`);
-                marksDisplay = marks.join(' | ');
-            } else {
-                marksDisplay = s.marks.map(m => `<span class="font-mono ${getGrade(m).color}">${m}</span>`).join(', ');
-            }
-            
+        theorySubjects.forEach(s => {
             tableHtml += `
                 <tr class="${s.passed ? '' : 'bg-red-50'}">
-                    <td class="font-medium">${s.displayName}</td>
-                    <td class="text-xs">${marksDisplay}</td>
-                    <td class="font-bold ${s.grade.color}">${s.score.toFixed(1)}</td>
+                    <td class="font-medium">${s.name}</td>
+                    <td class="text-xs">${s.assessmentDisplay}</td>
+                    <td class="font-bold ${s.grade.color}">${s.finalScore.toFixed(1)}</td>
                     <td><span class="grade-badge ${s.grade.class}">${s.grade.grade}</span></td>
                     <td class="text-center">${s.grade.points}</td>
                     <td><span class="status-badge ${s.passed ? 'status-pass' : 'status-fail'}">${s.passed ? 'PASS' : 'FAIL'}</span></td>
@@ -2726,29 +2615,77 @@ function searchStudentMarks() {
             `;
         });
         
-        tableHtml += '</tbody></table>';
+        tableHtml += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+        
+        // Clinical assessments table
+        const clinicalSubjects = subjects.filter(s => s.type === 'clinical');
+        if (clinicalSubjects.length > 0) {
+            tableHtml += `
+                <div class="mb-4">
+                    <h4 class="font-bold text-green-800 mb-2">🏥 CLINICAL ROTATIONS & ASSESSMENTS (${clinicalSubjects.length})</h4>
+                    <table class="data-table w-full">
+                        <thead>
+                            <tr>
+                                <th>Rotation/Assessment</th>
+                                <th>Mark</th>
+                                <th>Grade</th>
+                                <th>Points</th>
+                                <th>Status</th>
+                                <th>Source</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            
+            clinicalSubjects.forEach(s => {
+                tableHtml += `
+                    <tr class="${s.passed ? '' : 'bg-red-50'}">
+                        <td class="font-medium">${s.name}</td>
+                        <td class="font-bold ${s.grade.color}">${s.mark.toFixed(1)}</td>
+                        <td><span class="grade-badge ${s.grade.class}">${s.grade.grade}</span></td>
+                        <td class="text-center">${s.grade.points}</td>
+                        <td><span class="status-badge ${s.passed ? 'status-pass' : 'status-fail'}">${s.passed ? 'PASS' : 'FAIL'}</span></td>
+                        <td class="text-xs">${s.sheetName}</td>
+                    </tr>
+                `;
+            });
+            
+            tableHtml += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
         
         // Add summary statistics
-        const passCount = allSubjects.filter(s => s.passed).length;
-        const failCount = allSubjects.filter(s => !s.passed).length;
+        const theoryPassCount = theorySubjects.filter(s => s.passed).length;
+        const theoryFailCount = theorySubjects.length - theoryPassCount;
+        const clinicalPassCount = clinicalSubjects.filter(s => s.passed).length;
+        const clinicalFailCount = clinicalSubjects.length - clinicalPassCount;
         
         tableHtml += `
-            <div class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div class="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div class="bg-blue-50 p-3 rounded-lg">
-                    <div class="text-xs text-gray-600">Total Assessments</div>
-                    <div class="text-xl font-bold">${allSubjects.length}</div>
+                    <div class="text-xs text-gray-600">Theory Subjects</div>
+                    <div class="text-xl font-bold">${theorySubjects.length}</div>
+                    <div class="text-xs"><span class="text-green-600">${theoryPassCount} pass</span> | <span class="text-red-600">${theoryFailCount} fail</span></div>
                 </div>
                 <div class="bg-green-50 p-3 rounded-lg">
-                    <div class="text-xs text-gray-600">Passed</div>
-                    <div class="text-xl font-bold text-green-600">${passCount}</div>
-                </div>
-                <div class="bg-red-50 p-3 rounded-lg">
-                    <div class="text-xs text-gray-600">Failed</div>
-                    <div class="text-xl font-bold text-red-600">${failCount}</div>
+                    <div class="text-xs text-gray-600">Clinical Assessments</div>
+                    <div class="text-xl font-bold">${clinicalSubjects.length}</div>
+                    <div class="text-xs"><span class="text-green-600">${clinicalPassCount} pass</span> | <span class="text-red-600">${clinicalFailCount} fail</span></div>
                 </div>
                 <div class="bg-purple-50 p-3 rounded-lg">
-                    <div class="text-xs text-gray-600">Total Records</div>
-                    <div class="text-xl font-bold">${results.length}</div>
+                    <div class="text-xs text-gray-600">Total Marks</div>
+                    <div class="text-xl font-bold">${allMarks.length}</div>
+                </div>
+                <div class="bg-orange-50 p-3 rounded-lg">
+                    <div class="text-xs text-gray-600">GPA (Theory)</div>
+                    <div class="text-xl font-bold">${gpa}</div>
                 </div>
             </div>
         `;
@@ -2767,7 +2704,7 @@ function searchStudentMarks() {
             <div class="mt-4 p-3 bg-gray-100 rounded-lg text-xs">
                 <details open>
                     <summary class="font-semibold cursor-pointer mb-2">
-                        📊 Data Sources (${fileMap.size} files, ${results.length} records)
+                        📊 Data Sources (${fileMap.size} files, ${results.length} records, ${allMarks.length} individual marks)
                     </summary>
                     <div class="max-h-40 overflow-y-auto">
                         <ul class="list-disc list-inside space-y-1">
@@ -2784,7 +2721,7 @@ function searchStudentMarks() {
         document.getElementById('studentResultsContainer').classList.remove('hidden');
         
         hideLoading();
-        showToast(`Found ${allSubjects.length} assessments for ${studentInfo.name}`, 'success');
+        showToast(`Found ${theorySubjects.length} theory subjects and ${clinicalSubjects.length} clinical assessments`, 'success');
         
     } catch (error) {
         console.error('Search error:', error);
