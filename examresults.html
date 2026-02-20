@@ -1138,6 +1138,18 @@ async function openInGoogleSheets(fileId) {
         
         console.log(`✅ Created spreadsheet: ${spreadsheetId}`);
         
+        // First, get the default sheet ID (always 0 for first sheet)
+        const sheetMetadataResponse = await fetch(
+            `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?fields=sheets.properties`,
+            {
+                headers: {
+                    'Authorization': `Bearer ${googleAccessToken}`
+                }
+            }
+        );
+        const sheetMetadata = await sheetMetadataResponse.json();
+        const defaultSheetId = sheetMetadata.sheets[0].properties.sheetId;
+        
         // Populate each sheet
         for (let i = 0; i < workbook.SheetNames.length; i++) {
             const sheetName = workbook.SheetNames[i];
@@ -1147,10 +1159,42 @@ async function openInGoogleSheets(fileId) {
             console.log(`📄 Processing sheet ${i+1}: "${sheetName}" with ${data.length} rows`);
             
             if (data.length > 0) {
-                // Add sheet if not exists (skip first sheet as it's created by default)
-                if (i > 0) {
-                    try {
-                        console.log(`📝 Adding sheet: ${sheetName}`);
+                // Handle sheet creation/renaming
+                try {
+                    if (i === 0) {
+                        // FIRST SHEET: Rename the default sheet to our desired name
+                        console.log(`📝 Renaming default sheet to: "${sheetName}"`);
+                        
+                        const renameResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${googleAccessToken}`,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                requests: [{
+                                    updateSheetProperties: {
+                                        properties: {
+                                            sheetId: defaultSheetId,
+                                            title: sheetName
+                                        },
+                                        fields: 'title'
+                                    }
+                                }]
+                            })
+                        });
+                        
+                        if (!renameResponse.ok) {
+                            const errorText = await renameResponse.text();
+                            console.error('❌ Failed to rename sheet:', errorText);
+                            throw new Error(`Failed to rename sheet to: ${sheetName}`);
+                        }
+                        console.log(`✅ Sheet renamed to: "${sheetName}"`);
+                        
+                    } else {
+                        // ADDITIONAL SHEETS: Create them
+                        console.log(`📝 Adding sheet: "${sheetName}"`);
+                        
                         const addSheetResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`, {
                             method: 'POST',
                             headers: {
@@ -1173,16 +1217,15 @@ async function openInGoogleSheets(fileId) {
                             console.error('❌ Failed to add sheet:', errorText);
                             throw new Error(`Failed to create sheet: ${sheetName}`);
                         }
-                        
-                        console.log(`✅ Sheet added: ${sheetName}`);
-                        
-                        // Wait a moment for sheet to be ready
-                        await new Promise(resolve => setTimeout(resolve, 500));
-                        
-                    } catch (addError) {
-                        console.error('Error adding sheet:', addError);
-                        throw addError;
+                        console.log(`✅ Sheet added: "${sheetName}"`);
                     }
+                    
+                    // Wait a moment for sheet to be ready
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    
+                } catch (sheetError) {
+                    console.error('Error with sheet:', sheetError);
+                    throw sheetError;
                 }
                 
                 // Prepare data for Google Sheets
@@ -1211,21 +1254,12 @@ async function openInGoogleSheets(fileId) {
                     colLetter = String.fromCharCode(64 + first) + String.fromCharCode(65 + second);
                 }
                 
-                // CRITICAL FIX: Build URL manually to avoid encoding issues
-                // Sheet names with spaces need quotes, but the quotes themselves must NOT be encoded
-                const needsQuotes = sheetName.includes(' ') || sheetName.match(/[^a-zA-Z0-9]/);
-                const rangePath = needsQuotes 
-                    ? `'${sheetName}'!A1:${colLetter}${paddedData.length}`  // Keep quotes as actual characters
-                    : `${sheetName}!A1:${colLetter}${paddedData.length}`;
+                // SIMPLE FIX: Use encodeURIComponent on the full range
+                // This handles spaces and special characters correctly
+                const range = `${sheetName}!A1:${colLetter}${paddedData.length}`;
+                const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(range)}?valueInputOption=RAW`;
                 
-                // Build URL with the range as a path component, but don't encode the entire thing
-                const baseUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/`;
-                
-                // Use URL constructor for safe encoding
-                const url = new URL(baseUrl + rangePath);
-                url.searchParams.append('valueInputOption', 'RAW');
-                
-                console.log(`📤 Writing to URL: ${url.toString()}`);
+                console.log(`📤 Writing to URL: ${url}`);
                 
                 // Write data
                 try {
@@ -1243,33 +1277,7 @@ async function openInGoogleSheets(fileId) {
                     if (!writeResponse.ok) {
                         const errorText = await writeResponse.text();
                         console.error('❌ Write failed:', errorText);
-                        
-                        // Try alternative approach if this fails
-                        if (needsQuotes) {
-                            console.log('🔄 Retrying without quotes in URL...');
-                            const altRange = `${sheetName}!A1:${colLetter}${paddedData.length}`;
-                            const altUrl = new URL(baseUrl + altRange);
-                            altUrl.searchParams.append('valueInputOption', 'RAW');
-                            
-                            const altResponse = await fetch(altUrl, {
-                                method: 'PUT',
-                                headers: {
-                                    'Authorization': `Bearer ${googleAccessToken}`,
-                                    'Content-Type': 'application/json'
-                                },
-                                body: JSON.stringify({
-                                    values: paddedData
-                                })
-                            });
-                            
-                            if (!altResponse.ok) {
-                                const altError = await altResponse.text();
-                                throw new Error(`Both write attempts failed`);
-                            }
-                            console.log(`✅ Success with alternative URL`);
-                        } else {
-                            throw new Error(`Write failed: ${errorText.substring(0, 200)}`);
-                        }
+                        throw new Error(`Write failed: ${errorText.substring(0, 200)}`);
                     } else {
                         console.log(`✅ Successfully wrote ${paddedData.length} rows to ${sheetName}`);
                     }
@@ -1293,6 +1301,7 @@ async function openInGoogleSheets(fileId) {
                     type: 'anyone'
                 })
             });
+            console.log('✅ Set public permissions');
         } catch (permError) {
             console.warn('Could not set public permissions:', permError);
         }
@@ -1306,6 +1315,8 @@ async function openInGoogleSheets(fileId) {
         if (error) {
             console.error('Error saving Google Sheet ID:', error);
             showToast('Sheet created but failed to save ID', 'warning');
+        } else {
+            console.log('✅ Saved Google Sheet ID to database');
         }
         
         currentGoogleSheetId = spreadsheetId;
