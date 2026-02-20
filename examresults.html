@@ -1191,36 +1191,41 @@ async function openInGoogleSheets(fileId) {
                     return newRow;
                 });
                 
-                // Calculate column letter safely
-                const colCount = maxCols;
-                let colLetter;
-                
-                if (colCount <= 26) {
-                    colLetter = String.fromCharCode(64 + colCount);
-                } else {
-                    // Handle columns beyond Z (AA, AB, etc.)
-                    const first = Math.floor((colCount - 1) / 26);
-                    const second = (colCount - 1) % 26;
-                    colLetter = String.fromCharCode(64 + first) + String.fromCharCode(65 + second);
-                }
-                
-                // Create range: SheetName!A1:XXlastRow
-                const range = `${sheetName}!A1:${colLetter}${paddedData.length}`;
-                console.log(`📝 Writing to range: ${range}`);
-                
-                // Add data with proper URL encoding
-                try {
-                    const writeResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(range)}?valueInputOption=RAW`, {
-                        method: 'PUT',
-                        headers: {
-                            'Authorization': `Bearer ${googleAccessToken}`,
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            values: paddedData
-                        })
-                    });
-                    
+              // Calculate column letter safely
+const colCount = maxCols;
+let colLetter;
+
+if (colCount <= 26) {
+    colLetter = String.fromCharCode(64 + colCount);
+} else {
+    // Handle columns beyond Z (AA, AB, etc.)
+    const first = Math.floor((colCount - 1) / 26);
+    const second = (colCount - 1) % 26;
+    colLetter = String.fromCharCode(64 + first) + String.fromCharCode(65 + second);
+}
+
+// Add single quotes if sheet name contains spaces or special characters
+let formattedSheetName = sheetName;
+if (sheetName.includes(' ') || sheetName.match(/[^a-zA-Z0-9]/)) {
+    formattedSheetName = `'${sheetName}'`;
+}
+
+// Create range: 'Sheet Name'!A1:XXlastRow
+const range = `${formattedSheetName}!A1:${colLetter}${paddedData.length}`;
+console.log(`📝 Writing to range: ${range}`);
+
+// Add data with proper URL encoding
+try {
+    const writeResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(range)}?valueInputOption=RAW`, {
+        method: 'PUT',
+        headers: {
+            'Authorization': `Bearer ${googleAccessToken}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            values: paddedData
+        })
+    });
                     if (!writeResponse.ok) {
                         const errorText = await writeResponse.text();
                         console.error('❌ Write failed:', errorText);
