@@ -14,9 +14,8 @@
     <!-- SheetJS for Excel -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
     
-    <!-- Google Sheets API -->
-    <script src="https://apis.google.com/js/api.js"></script>
-    
+<!-- Google Identity Services -->
+<script src="https://accounts.google.com/gsi/client"></script>    
     <!-- Chart.js for Graphs -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     
@@ -1012,253 +1011,303 @@ const GOOGLE_CLIENT_ID = '843012088804-ndacuhhd0mu4lm2taum16vgj4gfi7347.apps.goo
             };
         }
 
-        // ========== GOOGLE SHEETS FUNCTIONS ==========
-        function initGoogleAPI() {
-            gapi.load('client:auth2', function() {
-                gapi.client.init({
-                    apiKey: GOOGLE_API_KEY,
-                    clientId: GOOGLE_CLIENT_ID,
-                    scope: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive',
-                    discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4']
-                }).then(function() {
-                    console.log('Google API initialized');
-                }).catch(function(error) {
-                    console.error('Google API init error:', error);
-                });
-            });
-        }
+       // ========== GOOGLE SHEETS FUNCTIONS (UPDATED FOR GIS) ==========
+let tokenClient;
+let googleAccessToken = null;
+let tokenPromiseResolve = null;
 
-        async function ensureGoogleAuth() {
-            try {
-                const authInstance = gapi.auth2.getAuthInstance();
-                if (!authInstance.isSignedIn.get()) {
-                    await authInstance.signIn();
+function initGoogleAPI() {
+    // Initialize the token client
+    tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: GOOGLE_CLIENT_ID,
+        scope: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive',
+        callback: (tokenResponse) => {
+            if (tokenResponse.error) {
+                console.error('Token error:', tokenResponse);
+                showToast('Authentication failed: ' + tokenResponse.error, 'error');
+                if (tokenPromiseResolve) {
+                    tokenPromiseResolve(false);
+                    tokenPromiseResolve = null;
                 }
-                googleAccessToken = authInstance.currentUser.get().getAuthResponse().access_token;
-                return true;
-            } catch (error) {
-                console.error('Google auth error:', error);
-                showToast('Please sign in to Google to use this feature', 'error');
-                return false;
-            }
-        }
-
-        async function openInGoogleSheets(fileId) {
-            if (currentRole !== 'admin' && currentRole !== 'super_admin') { 
-                showToast('Admins only', 'error'); 
-                return; 
-            }
-            
-            const file = sharedFiles.find(f => f.id === fileId);
-            if (!file) { 
-                showToast('File not found', 'error'); 
-                return; 
-            }
-            
-            showLoading('Opening in Google Sheets...', true, 60000);
-            
-            try {
-                await initGoogleAPI();
-                if (!await ensureGoogleAuth()) {
-                    hideLoading();
-                    return;
-                }
-                
-                // Check if we already have a Google Sheet ID
-                if (file.google_sheet_id) {
-                    currentGoogleSheetId = file.google_sheet_id;
-                    currentGoogleSheetFileId = fileId;
-                    document.getElementById('googleSheetsFileName').innerText = file.filename;
-                    document.getElementById('googleSheetIframe').src = `https://docs.google.com/spreadsheets/d/${file.google_sheet_id}/edit`;
-                    document.getElementById('googleSheetsEditor').style.display = 'flex';
-                    hideLoading();
-                    showToast('Opened in Google Sheets', 'success');
-                    return;
-                }
-                
-                // Create new Google Sheet from Excel data
-                const binaryData = atob(file.file_data);
-                const array = new Uint8Array(binaryData.length);
-                for (let i = 0; i < binaryData.length; i++) {
-                    array[i] = binaryData.charCodeAt(i);
-                }
-                
-                const workbook = XLSX.read(array, { type: 'array' });
-                
-                // Create new spreadsheet
-                const createResponse = await fetch('https://sheets.googleapis.com/v4/spreadsheets', {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${googleAccessToken}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        properties: {
-                            title: file.filename
-                        }
-                    })
-                });
-                
-                const spreadsheet = await createResponse.json();
-                const spreadsheetId = spreadsheet.spreadsheetId;
-                
-                // Populate each sheet
-                for (let i = 0; i < workbook.SheetNames.length; i++) {
-                    const sheetName = workbook.SheetNames[i];
-                    const worksheet = workbook.Sheets[sheetName];
-                    const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-                    
-                    if (data.length > 0) {
-                        // Add sheet if not exists (skip first sheet as it's created by default)
-                        if (i > 0) {
-                            await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`, {
-                                method: 'POST',
-                                headers: {
-                                    'Authorization': `Bearer ${googleAccessToken}`,
-                                    'Content-Type': 'application/json'
-                                },
-                                body: JSON.stringify({
-                                    requests: [{
-                                        addSheet: {
-                                            properties: {
-                                                title: sheetName
-                                            }
-                                        }
-                                    }]
-                                })
-                            });
-                        }
-                        
-                        // Add data
-                        const range = `${sheetName}!A1:${String.fromCharCode(64 + (data[0]?.length || 1))}${data.length}`;
-                        await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}?valueInputOption=RAW`, {
-                            method: 'PUT',
-                            headers: {
-                                'Authorization': `Bearer ${googleAccessToken}`,
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({
-                                values: data
-                            })
-                        });
-                    }
-                }
-                
-                // Set permissions to anyone with link can edit
-                await fetch(`https://www.googleapis.com/drive/v3/files/${spreadsheetId}/permissions`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${googleAccessToken}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        role: 'writer',
-                        type: 'anyone'
-                    })
-                });
-                
-                // Save Google Sheet ID to database
-                const { error } = await supabase
-                    .from('shared_excel_files')
-                    .update({ google_sheet_id: spreadsheetId })
-                    .eq('id', fileId);
-                
-                if (error) console.error('Error saving Google Sheet ID:', error);
-                
-                currentGoogleSheetId = spreadsheetId;
-                currentGoogleSheetFileId = fileId;
-                document.getElementById('googleSheetsFileName').innerText = file.filename;
-                document.getElementById('googleSheetIframe').src = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;
-                document.getElementById('googleSheetsEditor').style.display = 'flex';
-                
-                hideLoading();
-                showToast('Google Sheet created with all sheets', 'success');
-                
-            } catch (error) {
-                console.error('Error opening in Google Sheets:', error);
-                hideLoading();
-                showToast('Error opening in Google Sheets: ' + error.message, 'error');
-            }
-        }
-
-        async function syncFromGoogleSheets() {
-            if (!currentGoogleSheetId || !currentGoogleSheetFileId) {
-                showToast('No Google Sheet open', 'error');
                 return;
             }
             
-            showLoading('Syncing from Google Sheets...', true, 60000);
+            googleAccessToken = tokenResponse.access_token;
+            console.log('Google token acquired');
             
-            try {
-                if (!await ensureGoogleAuth()) {
-                    hideLoading();
-                    return;
+            if (tokenPromiseResolve) {
+                tokenPromiseResolve(true);
+                tokenPromiseResolve = null;
+            }
+        },
+    });
+    
+    console.log('Google Identity Services initialized');
+}
+
+async function ensureGoogleAuth() {
+    // If we already have a token, check if it's still valid
+    if (googleAccessToken) {
+        try {
+            // Quick validation by fetching user info
+            const response = await fetch('https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=' + googleAccessToken);
+            if (response.ok) {
+                return true;
+            }
+        } catch (e) {
+            // Token is invalid, clear it
+            googleAccessToken = null;
+        }
+    }
+    
+    // Request a new token
+    return new Promise((resolve) => {
+        tokenPromiseResolve = resolve;
+        tokenClient.requestAccessToken();
+    });
+}
+
+async function openInGoogleSheets(fileId) {
+    if (currentRole !== 'admin' && currentRole !== 'super_admin') { 
+        showToast('Admins only', 'error'); 
+        return; 
+    }
+    
+    const file = sharedFiles.find(f => f.id === fileId);
+    if (!file) { 
+        showToast('File not found', 'error'); 
+        return; 
+    }
+    
+    showLoading('Opening in Google Sheets...', true, 60000);
+    
+    try {
+        // Initialize the token client if needed
+        if (!tokenClient) {
+            initGoogleAPI();
+        }
+        
+        // Ensure we have authentication
+        const isAuthenticated = await ensureGoogleAuth();
+        if (!isAuthenticated) {
+            hideLoading();
+            return;
+        }
+        
+        // Check if we already have a Google Sheet ID
+        if (file.google_sheet_id) {
+            currentGoogleSheetId = file.google_sheet_id;
+            currentGoogleSheetFileId = fileId;
+            document.getElementById('googleSheetsFileName').innerText = file.filename;
+            document.getElementById('googleSheetIframe').src = `https://docs.google.com/spreadsheets/d/${file.google_sheet_id}/edit`;
+            document.getElementById('googleSheetsEditor').style.display = 'flex';
+            hideLoading();
+            showToast('Opened in Google Sheets', 'success');
+            return;
+        }
+        
+        // Create new Google Sheet from Excel data
+        const binaryData = atob(file.file_data);
+        const array = new Uint8Array(binaryData.length);
+        for (let i = 0; i < binaryData.length; i++) {
+            array[i] = binaryData.charCodeAt(i);
+        }
+        
+        const workbook = XLSX.read(array, { type: 'array' });
+        
+        // Create new spreadsheet
+        const createResponse = await fetch('https://sheets.googleapis.com/v4/spreadsheets', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${googleAccessToken}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                properties: {
+                    title: file.filename
                 }
-                
-                // Get spreadsheet metadata
-                const metadataResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${currentGoogleSheetId}`, {
-                    headers: {
-                        'Authorization': `Bearer ${googleAccessToken}`
-                    }
-                });
-                
-                const metadata = await metadataResponse.json();
-                
-                // Create new workbook
-                const workbook = XLSX.utils.book_new();
-                
-                // Get data from each sheet
-                for (const sheet of metadata.sheets) {
-                    const sheetName = sheet.properties.title;
-                    
-                    const dataResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${currentGoogleSheetId}/values/${sheetName}`, {
+            })
+        });
+        
+        if (!createResponse.ok) {
+            const errorData = await createResponse.json();
+            throw new Error(errorData.error?.message || 'Failed to create spreadsheet');
+        }
+        
+        const spreadsheet = await createResponse.json();
+        const spreadsheetId = spreadsheet.spreadsheetId;
+        
+        // Populate each sheet
+        for (let i = 0; i < workbook.SheetNames.length; i++) {
+            const sheetName = workbook.SheetNames[i];
+            const worksheet = workbook.Sheets[sheetName];
+            const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+            
+            if (data.length > 0) {
+                // Add sheet if not exists (skip first sheet as it's created by default)
+                if (i > 0) {
+                    const addSheetResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`, {
+                        method: 'POST',
                         headers: {
-                            'Authorization': `Bearer ${googleAccessToken}`
-                        }
+                            'Authorization': `Bearer ${googleAccessToken}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            requests: [{
+                                addSheet: {
+                                    properties: {
+                                        title: sheetName
+                                    }
+                                }
+                            }]
+                        })
                     });
                     
-                    const data = await dataResponse.json();
-                    
-                    if (data.values) {
-                        const worksheet = XLSX.utils.aoa_to_sheet(data.values);
-                        XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+                    if (!addSheetResponse.ok) {
+                        console.warn('Failed to add sheet:', sheetName);
                     }
                 }
                 
-                // Convert to base64
-                const wbData = XLSX.write(workbook, { type: 'base64' });
-                
-                // Update in database
-                const { error } = await supabase
-                    .from('shared_excel_files')
-                    .update({
-                        file_data: wbData,
-                        updated_at: new Date().toISOString()
+                // Add data
+                const range = `${sheetName}!A1:${String.fromCharCode(64 + (data[0]?.length || 1))}${data.length}`;
+                await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}?valueInputOption=RAW`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${googleAccessToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        values: data
                     })
-                    .eq('id', currentGoogleSheetFileId);
-                
-                if (error) throw error;
-                
-                hideLoading();
-                showToast('Synced from Google Sheets successfully', 'success');
-                
-                // Refresh data
-                loadAllStudentMarks();
-                
-            } catch (error) {
-                console.error('Error syncing from Google Sheets:', error);
-                hideLoading();
-                showToast('Error syncing: ' + error.message, 'error');
+                });
             }
         }
-
-        function closeGoogleSheetsEditor() {
-            document.getElementById('googleSheetsEditor').style.display = 'none';
-            document.getElementById('googleSheetIframe').src = '';
-            currentGoogleSheetId = null;
-            currentGoogleSheetFileId = null;
+        
+        // Set permissions to anyone with link can view/edit
+        try {
+            await fetch(`https://www.googleapis.com/drive/v3/files/${spreadsheetId}/permissions`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${googleAccessToken}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    role: 'writer',
+                    type: 'anyone'
+                })
+            });
+        } catch (permError) {
+            console.warn('Could not set public permissions:', permError);
+            // Non-critical error, continue
         }
+        
+        // Save Google Sheet ID to database
+        const { error } = await supabase
+            .from('shared_excel_files')
+            .update({ google_sheet_id: spreadsheetId })
+            .eq('id', fileId);
+        
+        if (error) console.error('Error saving Google Sheet ID:', error);
+        
+        currentGoogleSheetId = spreadsheetId;
+        currentGoogleSheetFileId = fileId;
+        document.getElementById('googleSheetsFileName').innerText = file.filename;
+        document.getElementById('googleSheetIframe').src = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;
+        document.getElementById('googleSheetsEditor').style.display = 'flex';
+        
+        hideLoading();
+        showToast('Google Sheet created with all sheets', 'success');
+        
+    } catch (error) {
+        console.error('Error opening in Google Sheets:', error);
+        hideLoading();
+        showToast('Error opening in Google Sheets: ' + error.message, 'error');
+    }
+}
 
+async function syncFromGoogleSheets() {
+    if (!currentGoogleSheetId || !currentGoogleSheetFileId) {
+        showToast('No Google Sheet open', 'error');
+        return;
+    }
+    
+    showLoading('Syncing from Google Sheets...', true, 60000);
+    
+    try {
+        if (!await ensureGoogleAuth()) {
+            hideLoading();
+            return;
+        }
+        
+        // Get spreadsheet metadata
+        const metadataResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${currentGoogleSheetId}`, {
+            headers: {
+                'Authorization': `Bearer ${googleAccessToken}`
+            }
+        });
+        
+        if (!metadataResponse.ok) {
+            throw new Error('Failed to fetch spreadsheet metadata');
+        }
+        
+        const metadata = await metadataResponse.json();
+        
+        // Create new workbook
+        const workbook = XLSX.utils.book_new();
+        
+        // Get data from each sheet
+        for (const sheet of metadata.sheets) {
+            const sheetName = sheet.properties.title;
+            
+            const dataResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${currentGoogleSheetId}/values/${encodeURIComponent(sheetName)}`, {
+                headers: {
+                    'Authorization': `Bearer ${googleAccessToken}`
+                }
+            });
+            
+            if (dataResponse.ok) {
+                const data = await dataResponse.json();
+                
+                if (data.values) {
+                    const worksheet = XLSX.utils.aoa_to_sheet(data.values);
+                    XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+                }
+            }
+        }
+        
+        // Convert to base64
+        const wbData = XLSX.write(workbook, { type: 'base64' });
+        
+        // Update in database
+        const { error } = await supabase
+            .from('shared_excel_files')
+            .update({
+                file_data: wbData,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', currentGoogleSheetFileId);
+        
+        if (error) throw error;
+        
+        hideLoading();
+        showToast('Synced from Google Sheets successfully', 'success');
+        
+        // Refresh data
+        loadAllStudentMarks();
+        
+    } catch (error) {
+        console.error('Error syncing from Google Sheets:', error);
+        hideLoading();
+        showToast('Error syncing: ' + error.message, 'error');
+    }
+}
+
+function closeGoogleSheetsEditor() {
+    document.getElementById('googleSheetsEditor').style.display = 'none';
+    document.getElementById('googleSheetIframe').src = '';
+    currentGoogleSheetId = null;
+    currentGoogleSheetFileId = null;
+}
         // ========== VIEW FILE WITH MULTIPLE SHEETS ==========
         async function viewFile(fileId) {
             const file = sharedFiles.find(f => f.id === fileId);
