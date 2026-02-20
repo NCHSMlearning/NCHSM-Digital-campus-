@@ -1148,34 +1148,43 @@ async function openInGoogleSheets(fileId) {
             
             if (data.length > 0) {
                 // Add sheet if not exists (skip first sheet as it's created by default)
-                if (i > 0) {
-                    try {
-                        const addSheetResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`, {
-                            method: 'POST',
-                            headers: {
-                                'Authorization': `Bearer ${googleAccessToken}`,
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({
-                                requests: [{
-                                    addSheet: {
-                                        properties: {
-                                            title: sheetName
-                                        }
-                                    }
-                                }]
-                            })
-                        });
-                        
-                        if (!addSheetResponse.ok) {
-                            console.warn('Failed to add sheet:', sheetName);
-                        } else {
-                            console.log(`✅ Added sheet: ${sheetName}`);
+             // Add sheet if not exists (skip first sheet as it's created by default)
+if (i > 0) {
+    try {
+        console.log(`📝 Adding sheet: ${sheetName}`);
+        const addSheetResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${googleAccessToken}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                requests: [{
+                    addSheet: {
+                        properties: {
+                            title: sheetName
                         }
-                    } catch (addError) {
-                        console.warn('Error adding sheet:', addError);
                     }
-                }
+                }]
+            })
+        });
+        
+        if (!addSheetResponse.ok) {
+            const errorText = await addSheetResponse.text();
+            console.error('❌ Failed to add sheet:', errorText);
+            throw new Error(`Failed to create sheet: ${sheetName}`);
+        }
+        
+        console.log(`✅ Sheet added: ${sheetName}`);
+        
+        // IMPORTANT: Wait a moment for sheet to be ready
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+    } catch (addError) {
+        console.error('Error adding sheet:', addError);
+        throw addError; // Stop if sheet can't be created
+    }
+}
                 
                 // Prepare data for Google Sheets
                 // Filter out empty rows and ensure all rows have same length
