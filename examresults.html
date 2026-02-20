@@ -1148,100 +1148,126 @@ async function openInGoogleSheets(fileId) {
             
             if (data.length > 0) {
                 // Add sheet if not exists (skip first sheet as it's created by default)
-             // Add sheet if not exists (skip first sheet as it's created by default)
-if (i > 0) {
-    try {
-        console.log(`📝 Adding sheet: ${sheetName}`);
-        const addSheetResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${googleAccessToken}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                requests: [{
-                    addSheet: {
-                        properties: {
-                            title: sheetName
+                if (i > 0) {
+                    try {
+                        console.log(`📝 Adding sheet: ${sheetName}`);
+                        const addSheetResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${googleAccessToken}`,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                requests: [{
+                                    addSheet: {
+                                        properties: {
+                                            title: sheetName
+                                        }
+                                    }
+                                }]
+                            })
+                        });
+                        
+                        if (!addSheetResponse.ok) {
+                            const errorText = await addSheetResponse.text();
+                            console.error('❌ Failed to add sheet:', errorText);
+                            throw new Error(`Failed to create sheet: ${sheetName}`);
                         }
+                        
+                        console.log(`✅ Sheet added: ${sheetName}`);
+                        
+                        // Wait a moment for sheet to be ready
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                        
+                    } catch (addError) {
+                        console.error('Error adding sheet:', addError);
+                        throw addError;
                     }
-                }]
-            })
-        });
-        
-        if (!addSheetResponse.ok) {
-            const errorText = await addSheetResponse.text();
-            console.error('❌ Failed to add sheet:', errorText);
-            throw new Error(`Failed to create sheet: ${sheetName}`);
-        }
-        
-        console.log(`✅ Sheet added: ${sheetName}`);
-        
-        // IMPORTANT: Wait a moment for sheet to be ready
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-    } catch (addError) {
-        console.error('Error adding sheet:', addError);
-        throw addError; // Stop if sheet can't be created
-    }
-}
+                }
                 
                 // Prepare data for Google Sheets
-                // Filter out empty rows and ensure all rows have same length
-                const cleanData = data.filter(row => row.some(cell => cell !== null && cell !== ''));
+                // Filter out empty rows
+                const cleanData = data.filter(row => row && row.some(cell => cell !== null && cell !== ''));
                 
                 if (cleanData.length === 0) continue;
                 
                 // Ensure all rows have same number of columns
-                const maxCols = Math.max(...cleanData.map(row => row.length));
+                const maxCols = Math.max(...cleanData.map(row => row ? row.length : 0));
                 const paddedData = cleanData.map(row => {
-                    const newRow = [...row];
+                    const newRow = row ? [...row] : [];
                     while (newRow.length < maxCols) newRow.push('');
                     return newRow;
                 });
                 
-              // Calculate column letter safely
-const colCount = maxCols;
-let colLetter;
-
-if (colCount <= 26) {
-    colLetter = String.fromCharCode(64 + colCount);
-} else {
-    // Handle columns beyond Z (AA, AB, etc.)
-    const first = Math.floor((colCount - 1) / 26);
-    const second = (colCount - 1) % 26;
-    colLetter = String.fromCharCode(64 + first) + String.fromCharCode(65 + second);
-}
-
-// Add single quotes if sheet name contains spaces or special characters
-let formattedSheetName = sheetName;
-if (sheetName.includes(' ') || sheetName.match(/[^a-zA-Z0-9]/)) {
-    formattedSheetName = `'${sheetName}'`;
-}
-
-// Create range: 'Sheet Name'!A1:XXlastRow
-const range = `${formattedSheetName}!A1:${colLetter}${paddedData.length}`;
-console.log(`📝 Writing to range: ${range}`);
-
-// Add data with proper URL encoding
-try {
-const writeResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}?valueInputOption=RAW`, {
-        method: 'PUT',
-        headers: {
-            'Authorization': `Bearer ${googleAccessToken}`,
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            values: paddedData
-        })
-    });
+                // Calculate column letter
+                const colCount = maxCols;
+                let colLetter;
+                
+                if (colCount <= 26) {
+                    colLetter = String.fromCharCode(64 + colCount);
+                } else {
+                    const first = Math.floor((colCount - 1) / 26);
+                    const second = (colCount - 1) % 26;
+                    colLetter = String.fromCharCode(64 + first) + String.fromCharCode(65 + second);
+                }
+                
+                // CRITICAL FIX: Build URL manually to avoid encoding issues
+                // Sheet names with spaces need quotes, but the quotes themselves must NOT be encoded
+                const needsQuotes = sheetName.includes(' ') || sheetName.match(/[^a-zA-Z0-9]/);
+                const rangePath = needsQuotes 
+                    ? `'${sheetName}'!A1:${colLetter}${paddedData.length}`  // Keep quotes as actual characters
+                    : `${sheetName}!A1:${colLetter}${paddedData.length}`;
+                
+                // Build URL with the range as a path component, but don't encode the entire thing
+                const baseUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/`;
+                
+                // Use URL constructor for safe encoding
+                const url = new URL(baseUrl + rangePath);
+                url.searchParams.append('valueInputOption', 'RAW');
+                
+                console.log(`📤 Writing to URL: ${url.toString()}`);
+                
+                // Write data
+                try {
+                    const writeResponse = await fetch(url, {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': `Bearer ${googleAccessToken}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            values: paddedData
+                        })
+                    });
+                    
                     if (!writeResponse.ok) {
                         const errorText = await writeResponse.text();
                         console.error('❌ Write failed:', errorText);
-                        try {
-                            const errorJson = JSON.parse(errorText);
-                            throw new Error(errorJson.error?.message || 'Failed to write data');
-                        } catch (e) {
+                        
+                        // Try alternative approach if this fails
+                        if (needsQuotes) {
+                            console.log('🔄 Retrying without quotes in URL...');
+                            const altRange = `${sheetName}!A1:${colLetter}${paddedData.length}`;
+                            const altUrl = new URL(baseUrl + altRange);
+                            altUrl.searchParams.append('valueInputOption', 'RAW');
+                            
+                            const altResponse = await fetch(altUrl, {
+                                method: 'PUT',
+                                headers: {
+                                    'Authorization': `Bearer ${googleAccessToken}`,
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({
+                                    values: paddedData
+                                })
+                            });
+                            
+                            if (!altResponse.ok) {
+                                const altError = await altResponse.text();
+                                throw new Error(`Both write attempts failed`);
+                            }
+                            console.log(`✅ Success with alternative URL`);
+                        } else {
                             throw new Error(`Write failed: ${errorText.substring(0, 200)}`);
                         }
                     } else {
@@ -1254,9 +1280,9 @@ const writeResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets
             }
         }
         
-        // Set permissions to anyone with link can view/edit
+        // Set permissions
         try {
-            const permResponse = await fetch(`https://www.googleapis.com/drive/v3/files/${spreadsheetId}/permissions`, {
+            await fetch(`https://www.googleapis.com/drive/v3/files/${spreadsheetId}/permissions`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${googleAccessToken}`,
@@ -1267,15 +1293,8 @@ const writeResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets
                     type: 'anyone'
                 })
             });
-            
-            if (permResponse.ok) {
-                console.log('✅ Set public permissions');
-            } else {
-                console.warn('Could not set public permissions');
-            }
         } catch (permError) {
             console.warn('Could not set public permissions:', permError);
-            // Non-critical error, continue
         }
         
         // Save Google Sheet ID to database
@@ -1286,9 +1305,7 @@ const writeResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets
         
         if (error) {
             console.error('Error saving Google Sheet ID:', error);
-            showToast('Sheet created but failed to save ID to database', 'warning');
-        } else {
-            console.log('✅ Saved Google Sheet ID to database');
+            showToast('Sheet created but failed to save ID', 'warning');
         }
         
         currentGoogleSheetId = spreadsheetId;
