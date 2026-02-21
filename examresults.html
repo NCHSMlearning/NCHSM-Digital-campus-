@@ -3059,406 +3059,495 @@
             updateStatsAndCharts();
         }
 
-        // ========== SEARCH STUDENT MARKS ==========
-        function searchStudentMarks() {
-            const searchTerm = document.getElementById('studentSearchInput').value.trim().toLowerCase();
-            if (!searchTerm) {
-                showToast('Please enter a search term', 'error');
-                return;
+       // ========== IMPROVED SEARCH THAT FINDS STUDENT ACROSS ALL FILES ==========
+function searchStudentMarks() {
+    const searchTerm = document.getElementById('studentSearchInput').value.trim().toLowerCase();
+    if (!searchTerm) {
+        showToast('Please enter a search term', 'error');
+        return;
+    }
+    
+    showLoading('Searching across all files...', false, 30000);
+    
+    try {
+        console.log('🔍 Searching for:', searchTerm);
+        
+        // First, find ALL potential matches for this student
+        let allMatches = [];
+        let possibleStudentNames = new Set();
+        let possibleStudentIds = new Set();
+        
+        // STEP 1: Find all records that might be this student
+        allStudentMarks.forEach(record => {
+            let matchScore = 0;
+            let matchedField = '';
+            
+            // Check student name (partial match)
+            if (record.studentName) {
+                const nameLower = record.studentName.toLowerCase();
+                if (nameLower.includes(searchTerm)) {
+                    matchScore += 10;
+                    possibleStudentNames.add(record.studentName);
+                    matchedField = 'name';
+                } else {
+                    // Check parts of the name
+                    const nameParts = nameLower.split(' ');
+                    for (const part of nameParts) {
+                        if (part.length > 2 && searchTerm.includes(part)) {
+                            matchScore += 5;
+                            possibleStudentNames.add(record.studentName);
+                            matchedField = 'name_part';
+                            break;
+                        }
+                    }
+                }
             }
             
-            showLoading('Searching...', false, 30000);
-            
-            try {
-                console.log('🔍 Searching for:', searchTerm);
-                console.log('Total records in allStudentMarks:', allStudentMarks.length);
-                
-                let results = [];
-                
-                allStudentMarks.forEach(record => {
-                    let found = false;
-                    
-                    if (record.studentName) {
-                        const nameLower = record.studentName.toLowerCase();
-                        if (nameLower.includes(searchTerm)) {
-                            found = true;
-                        }
-                    }
-                    
-                    if (record.studentId) {
-                        const idLower = record.studentId.toLowerCase();
-                        if (idLower.includes(searchTerm)) {
-                            found = true;
-                        }
-                    }
-                    
-                    if (record.rawData && !found) {
-                        Object.values(record.rawData).forEach(value => {
-                            const valStr = String(value || '').toLowerCase();
-                            if (valStr.includes(searchTerm)) {
-                                found = true;
-                            }
-                        });
-                    }
-                    
-                    if (found) {
-                        results.push(record);
-                    }
-                });
-                
-                console.log(`Found ${results.length} records for student`);
-                
-                if (results.length === 0) {
-                    hideLoading();
-                    showToast('No results found', 'info');
-                    document.getElementById('studentResultsContainer').classList.add('hidden');
-                    return;
+            // Check student ID/admission number
+            if (record.studentId) {
+                const idLower = record.studentId.toLowerCase();
+                if (idLower.includes(searchTerm)) {
+                    matchScore += 10;
+                    possibleStudentIds.add(record.studentId);
+                    matchedField = 'id';
                 }
-                
-                let studentName = '';
-                let studentId = '';
-                let studentIndex = '';
-                
-                results.forEach(record => {
-                    if (record.studentName && !studentName) {
-                        studentName = record.studentName;
-                    }
-                    if (record.studentId && !studentId) {
-                        studentId = record.studentId;
-                    }
-                    if (record.rawData) {
-                        Object.entries(record.rawData).forEach(([key, value]) => {
-                            const keyLower = String(key).toLowerCase();
-                            if (keyLower.includes('index') && value) {
-                                studentIndex = String(value);
+            }
+            
+            // Check index number
+            if (record.indexNumber) {
+                const indexLower = record.indexNumber.toLowerCase();
+                if (indexLower.includes(searchTerm)) {
+                    matchScore += 10;
+                    possibleStudentIds.add(record.indexNumber);
+                    matchedField = 'index';
+                }
+            }
+            
+            // Check all fields in raw data
+            if (record.rawData) {
+                Object.entries(record.rawData).forEach(([key, value]) => {
+                    const keyLower = key.toLowerCase();
+                    const valStr = String(value || '').toLowerCase();
+                    
+                    // Look for admission number, reg number, index number fields
+                    if (keyLower.includes('admission') || keyLower.includes('adm') || 
+                        keyLower.includes('reg') || keyLower.includes('index') || 
+                        keyLower.includes('id') || keyLower.includes('number')) {
+                        
+                        if (valStr.includes(searchTerm)) {
+                            matchScore += 8;
+                            if (value) possibleStudentIds.add(String(value));
+                            matchedField = 'raw_' + key;
+                        }
+                        
+                        // Also check if this ID matches any we already found
+                        possibleStudentIds.forEach(id => {
+                            if (id && valStr.includes(id.toLowerCase())) {
+                                matchScore += 5;
                             }
                         });
                     }
                 });
-                
-                if (!studentName) studentName = searchTerm;
-                if (!studentId) studentId = studentIndex || 'N/A';
-                
-                const theorySubjectNames = [
-                    'MIDWIFERY',
-                    'PHARMACOLOGY II',
-                    'SPECIALISED N P',
-                    'HEMATOLOGICAL CONDITIONS',
-                    'RESPIRATORY CONDITIONS',
-                    'IMMUNIZATION',
-                    'TRAUMA',
-                    'SRH',
-                    'COMMUNITY HEALTH RESULTS NURSIN',
-                    'CARDIOVASCULAR RESULTS'
-                ];
-                
-                const theorySubjects = new Map();
-                const clinicalMarks = [];
-                
-                results.forEach(record => {
-                    const sheetName = record.sheetName;
-                    const filename = record.filename;
+            }
+            
+            if (matchScore > 0) {
+                allMatches.push({
+                    record: record,
+                    score: matchScore,
+                    matchedField: matchedField
+                });
+            }
+        });
+        
+        // STEP 2: Sort by match score and get unique records
+        allMatches.sort((a, b) => b.score - a.score);
+        
+        // Get unique records (by file + sheet + maybe some ID)
+        const uniqueRecords = [];
+        const recordKeys = new Set();
+        
+        allMatches.forEach(match => {
+            const record = match.record;
+            const key = `${record.fileId}_${record.sheetName}_${record.studentName}`;
+            
+            if (!recordKeys.has(key)) {
+                recordKeys.add(key);
+                uniqueRecords.push(record);
+            }
+        });
+        
+        console.log(`📊 Found ${uniqueRecords.length} unique records for this student`);
+        
+        if (uniqueRecords.length === 0) {
+            hideLoading();
+            showToast('No results found', 'info');
+            document.getElementById('studentResultsContainer').classList.add('hidden');
+            return;
+        }
+        
+        // STEP 3: Extract student info
+        let studentName = '';
+        let studentId = '';
+        let studentIndex = '';
+        
+        uniqueRecords.forEach(record => {
+            if (!studentName && record.studentName) studentName = record.studentName;
+            if (!studentId && record.studentId) studentId = record.studentId;
+            if (!studentIndex && record.indexNumber) studentIndex = record.indexNumber;
+            
+            // Try to get from raw data
+            if (record.rawData) {
+                Object.entries(record.rawData).forEach(([key, value]) => {
+                    const keyLower = key.toLowerCase();
+                    if (!studentId && (keyLower.includes('adm') || keyLower.includes('reg'))) {
+                        studentId = String(value);
+                    }
+                    if (!studentIndex && (keyLower.includes('index'))) {
+                        studentIndex = String(value);
+                    }
+                });
+            }
+        });
+        
+        if (!studentName) studentName = searchTerm;
+        
+        // STEP 4: Organize marks
+        const theorySubjects = new Map();
+        const clinicalMarks = [];
+        
+        uniqueRecords.forEach(record => {
+            const filename = record.filename;
+            const sheetName = record.sheetName;
+            
+            // Identify theory subjects vs clinical
+            const isTheoryFile = 
+                filename.includes('RESEARCH') ||
+                filename.includes('PAEDIATRICS') ||
+                filename.includes('MIDWIFERY') ||
+                filename.includes('MEDSURG') ||
+                filename.includes('BLOCK') ||
+                filename.includes('PAPER') ||
+                filename.includes('MARKS');
+            
+            if (record.marks && record.marks.length > 0) {
+                record.marks.forEach(mark => {
+                    // Skip header rows
+                    if (!mark.subject || 
+                        mark.subject.toLowerCase().includes('s/no') || 
+                        mark.subject.toLowerCase().includes('remarks')) {
+                        return;
+                    }
                     
-                    const isTheorySubject = theorySubjectNames.includes(sheetName) || 
-                                            sheetName.includes('MIDWIFERY') ||
-                                            sheetName.includes('PHARMACOLOGY') ||
-                                            sheetName.includes('SPECIALISED') ||
-                                            sheetName.includes('HEMATOLOGICAL') ||
-                                            sheetName.includes('RESPIRATORY') ||
-                                            sheetName.includes('IMMUNIZATION') ||
-                                            sheetName.includes('TRAUMA') ||
-                                            sheetName.includes('SRH') ||
-                                            sheetName.includes('COMMUNITY') ||
-                                            sheetName.includes('CARDIOVASCULAR');
-                    
-                    if (isTheorySubject) {
-                        if (!theorySubjects.has(sheetName)) {
-                            theorySubjects.set(sheetName, {
-                                name: sheetName,
+                    if (isTheoryFile || mark.category === 'unit' || !mark.subject.includes('Clinical')) {
+                        // Theory subject
+                        const subjectKey = mark.subject || sheetName;
+                        
+                        if (!theorySubjects.has(subjectKey)) {
+                            theorySubjects.set(subjectKey, {
+                                name: subjectKey,
                                 catMarks: [],
                                 ebeMarks: [],
                                 finalMarks: [],
                                 allMarks: [],
-                                files: new Set()
+                                files: new Set(),
+                                sourceFile: filename,
+                                sourceSheet: sheetName
                             });
                         }
                         
-                        const subject = theorySubjects.get(sheetName);
+                        const subject = theorySubjects.get(subjectKey);
                         subject.files.add(filename);
                         
-                        if (record.marks && record.marks.length > 0) {
-                            record.marks.forEach(mark => {
-                                const subjectLower = mark.subject.toLowerCase();
-                                if (subjectLower.includes('s/n') || subjectLower.includes('s.no') || 
-                                    subjectLower.includes('remarks') || subjectLower.includes('admission')) {
-                                    return;
-                                }
-                                
-                                subject.allMarks.push(mark);
-                                
-                                if (mark.assessmentType === 'CAT' || subjectLower.includes('cat')) {
-                                    subject.catMarks.push(mark.mark);
-                                } else if (mark.assessmentType === 'EBE' || subjectLower.includes('ebe')) {
-                                    subject.ebeMarks.push(mark.mark);
-                                } else if (mark.assessmentType === 'FINAL' || subjectLower.includes('final')) {
-                                    subject.finalMarks.push(mark.mark);
-                                }
-                            });
+                        // Determine mark type
+                        const markType = (mark.assessmentType || '').toLowerCase();
+                        const subjectLower = (mark.subject || '').toLowerCase();
+                        
+                        if (markType.includes('cat') || subjectLower.includes('cat')) {
+                            subject.catMarks.push(mark.mark);
+                        } else if (markType.includes('ebe') || subjectLower.includes('ebe')) {
+                            subject.ebeMarks.push(mark.mark);
+                        } else if (markType.includes('final') || subjectLower.includes('final')) {
+                            subject.finalMarks.push(mark.mark);
+                        } else {
+                            // If no type, check column name from original data
+                            const colName = (mark.originalColumn || '').toLowerCase();
+                            if (colName.includes('cat')) {
+                                subject.catMarks.push(mark.mark);
+                            } else if (colName.includes('ebe')) {
+                                subject.ebeMarks.push(mark.mark);
+                            } else if (colName.includes('final')) {
+                                subject.finalMarks.push(mark.mark);
+                            } else {
+                                // Default to final mark
+                                subject.finalMarks.push(mark.mark);
+                            }
                         }
+                        
+                        subject.allMarks.push(mark);
+                        
                     } else {
-                        if (record.marks && record.marks.length > 0) {
-                            record.marks.forEach(mark => {
-                                const subjectLower = mark.subject.toLowerCase();
-                                if (subjectLower.includes('s/n') || subjectLower.includes('s.no') || 
-                                    subjectLower.includes('remarks') || subjectLower.includes('admission')) {
-                                    return;
-                                }
-                                
-                                clinicalMarks.push({
-                                    name: mark.subject,
-                                    mark: mark.mark,
-                                    grade: getGrade(mark.mark),
-                                    assessmentType: mark.assessmentType,
-                                    sheetName: sheetName,
-                                    filename: filename,
-                                    passed: mark.mark >= 60
-                                });
-                            });
-                        }
-                    }
-                });
-                
-                const theorySubjectsList = [];
-                theorySubjects.forEach((subject, name) => {
-                    const uniqueCat = [...new Set(subject.catMarks)];
-                    const uniqueEbe = [...new Set(subject.ebeMarks)];
-                    const uniqueFinal = [...new Set(subject.finalMarks)];
-                    
-                    let finalScore = null;
-                    if (uniqueFinal.length > 0) {
-                        finalScore = uniqueFinal[0];
-                    } else if (uniqueEbe.length > 0) {
-                        finalScore = uniqueEbe[0];
-                    } else if (uniqueCat.length > 0) {
-                        finalScore = uniqueCat[0];
-                    }
-                    
-                    if (finalScore !== null) {
-                        const grade = getGrade(finalScore);
-                        const passed = finalScore >= 60;
-                        
-                        const parts = [];
-                        if (uniqueCat.length > 0) parts.push(`CAT: ${uniqueCat.join(', ')}`);
-                        if (uniqueEbe.length > 0) parts.push(`EBE: ${uniqueEbe.join(', ')}`);
-                        if (uniqueFinal.length > 0) parts.push(`FINAL: ${uniqueFinal.join(', ')}`);
-                        
-                        theorySubjectsList.push({
-                            name: name,
-                            assessmentDisplay: parts.join(' | '),
-                            finalScore: finalScore,
-                            grade: grade,
-                            passed: passed,
-                            catMarks: uniqueCat,
-                            ebeMarks: uniqueEbe,
-                            finalMarks: uniqueFinal,
-                            files: Array.from(subject.files)
+                        // Clinical mark
+                        clinicalMarks.push({
+                            name: mark.subject,
+                            mark: mark.mark,
+                            grade: getGrade(mark.mark),
+                            assessmentType: mark.assessmentType,
+                            sheetName: sheetName,
+                            filename: filename,
+                            passed: mark.mark >= 60
                         });
                     }
                 });
-                
-                theorySubjectsList.sort((a, b) => a.name.localeCompare(b.name));
-                clinicalMarks.sort((a, b) => a.name.localeCompare(b.name));
-                
-                const totalTheoryScore = theorySubjectsList.reduce((sum, s) => sum + s.finalScore, 0);
-                const avgOverall = theorySubjectsList.length > 0 ? totalTheoryScore / theorySubjectsList.length : 0;
-                const totalPoints = theorySubjectsList.reduce((sum, s) => sum + s.grade.points, 0);
-                const gpa = theorySubjectsList.length > 0 ? (totalPoints / theorySubjectsList.length).toFixed(2) : '0.00';
-                const overallGrade = getGrade(avgOverall);
-                
-                currentTranscriptData = {
-                    studentName: studentName,
-                    studentId: studentId,
-                    studentIndex: studentIndex,
-                    theorySubjects: theorySubjectsList,
-                    clinicalMarks: clinicalMarks,
-                    avgOverall: avgOverall,
-                    overallGrade: overallGrade,
-                    gpa: gpa,
-                    totalPoints: totalPoints
-                };
-                
-                document.getElementById('studentNameDisplay').innerText = studentName;
-                
-                let idDisplay = `Admission: ${studentId}`;
-                if (studentIndex && studentIndex !== studentId) {
-                    idDisplay += ` | Index: ${studentIndex}`;
-                }
-                document.getElementById('studentIdDisplay').innerHTML = `<i class="fas fa-id-card mr-1"></i>${idDisplay}`;
-                document.getElementById('studentProgramDisplay').innerHTML = `<i class="fas fa-graduation-cap mr-1"></i>Program: KRCHN`;
-                
-                document.getElementById('overallGradeDisplay').innerText = `Grade: ${overallGrade.grade}`;
-                document.getElementById('overallGradeDisplay').className = `grade-badge ${overallGrade.class} text-sm px-4 py-2`;
-                
-                document.getElementById('gpaDisplay').innerHTML = `<i class="fas fa-star mr-1"></i>GPA: ${gpa}`;
-                
-                document.getElementById('totalExamsCount').innerText = theorySubjectsList.length;
-                document.getElementById('averageMarkDisplay').innerText = avgOverall.toFixed(1);
-                document.getElementById('totalPointsDisplay').innerText = totalPoints;
-                document.getElementById('gpaValueDisplay').innerText = gpa;
-                
-                let tableHtml = '';
-                
-                if (theorySubjectsList.length > 0) {
-                    tableHtml += `
-                        <div class="mb-6">
-                            <h4 class="font-bold text-blue-800 mb-2 text-lg">📚 THEORY SUBJECTS (${theorySubjectsList.length})</h4>
-                            <table class="data-table w-full">
-                                <thead>
-                                    <tr>
-                                        <th>Subject</th>
-                                        <th>CAT</th>
-                                        <th>EBE</th>
-                                        <th>FINAL</th>
-                                        <th>Final Score</th>
-                                        <th>Grade</th>
-                                        <th>Points</th>
-                                        <th>Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                    `;
-                    
-                    theorySubjectsList.forEach(s => {
-                        const catDisplay = s.catMarks.length > 0 ? s.catMarks.join(', ') : '-';
-                        const ebeDisplay = s.ebeMarks.length > 0 ? s.ebeMarks.join(', ') : '-';
-                        const finalDisplay = s.finalMarks.length > 0 ? s.finalMarks.join(', ') : '-';
-                        
-                        tableHtml += `
-                            <tr class="${s.passed ? '' : 'bg-red-50'}">
-                                <td class="font-medium">${s.name}</td>
-                                <td class="text-center">${catDisplay}</td>
-                                <td class="text-center">${ebeDisplay}</td>
-                                <td class="text-center font-bold">${finalDisplay}</td>
-                                <td class="font-bold ${s.grade.color} text-center">${s.finalScore.toFixed(1)}</td>
-                                <td class="text-center"><span class="grade-badge ${s.grade.class}">${s.grade.grade}</span></td>
-                                <td class="text-center">${s.grade.points}</td>
-                                <td class="text-center"><span class="status-badge ${s.passed ? 'status-pass' : 'status-fail'}">${s.passed ? 'PASS' : 'FAIL'}</span></td>
-                            </tr>
-                        `;
-                    });
-                    
-                    tableHtml += `
-                                </tbody>
-                            </table>
-                        </div>
-                    `;
-                }
-                
-                if (clinicalMarks.length > 0) {
-                    tableHtml += `
-                        <div class="mb-6">
-                            <h4 class="font-bold text-green-800 mb-2 text-lg">🏥 CLINICAL ROTATIONS & ASSESSMENTS (${clinicalMarks.length})</h4>
-                            <table class="data-table w-full">
-                                <thead>
-                                    <tr>
-                                        <th>Assessment/Rotation</th>
-                                        <th>Mark</th>
-                                        <th>Grade</th>
-                                        <th>Points</th>
-                                        <th>Status</th>
-                                        <th>Source Sheet</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                    `;
-                    
-                    clinicalMarks.forEach(m => {
-                        tableHtml += `
-                            <tr class="${m.passed ? '' : 'bg-red-50'}">
-                                <td class="font-medium">${m.name}</td>
-                                <td class="font-bold ${m.grade.color} text-center">${m.mark.toFixed(1)}</td>
-                                <td class="text-center"><span class="grade-badge ${m.grade.class}">${m.grade.grade}</span></td>
-                                <td class="text-center">${m.grade.points}</td>
-                                <td class="text-center"><span class="status-badge ${m.passed ? 'status-pass' : 'status-fail'}">${m.passed ? 'PASS' : 'FAIL'}</span></td>
-                                <td class="text-xs">${m.sheetName}</td>
-                            </tr>
-                        `;
-                    });
-                    
-                    tableHtml += `
-                                </tbody>
-                            </table>
-                        </div>
-                    `;
-                }
-                
-                const theoryPassCount = theorySubjectsList.filter(s => s.passed).length;
-                const theoryFailCount = theorySubjectsList.length - theoryPassCount;
-                const clinicalPassCount = clinicalMarks.filter(m => m.passed).length;
-                const clinicalFailCount = clinicalMarks.length - clinicalPassCount;
-                
-                tableHtml += `
-                    <div class="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3">
-                        <div class="bg-blue-50 p-3 rounded-lg">
-                            <div class="text-xs text-gray-600">Theory Subjects</div>
-                            <div class="text-xl font-bold">${theorySubjectsList.length}</div>
-                            <div class="text-xs"><span class="text-green-600">${theoryPassCount} pass</span> | <span class="text-red-600">${theoryFailCount} fail</span></div>
-                        </div>
-                        <div class="bg-green-50 p-3 rounded-lg">
-                            <div class="text-xs text-gray-600">Clinical Assessments</div>
-                            <div class="text-xl font-bold">${clinicalMarks.length}</div>
-                            <div class="text-xs"><span class="text-green-600">${clinicalPassCount} pass</span> | <span class="text-red-600">${clinicalFailCount} fail</span></div>
-                        </div>
-                        <div class="bg-purple-50 p-3 rounded-lg">
-                            <div class="text-xs text-gray-600">Total Marks</div>
-                            <div class="text-xl font-bold">${theorySubjectsList.reduce((sum, s) => sum + s.catMarks.length + s.ebeMarks.length + s.finalMarks.length, 0) + clinicalMarks.length}</div>
-                        </div>
-                        <div class="bg-orange-50 p-3 rounded-lg">
-                            <div class="text-xs text-gray-600">GPA (Theory)</div>
-                            <div class="text-xl font-bold">${gpa}</div>
-                        </div>
-                    </div>
-                `;
-                
-                const fileMap = new Map();
-                results.forEach(r => {
-                    const key = r.filename || 'Unknown';
-                    if (!fileMap.has(key)) {
-                        fileMap.set(key, new Set());
-                    }
-                    fileMap.get(key).add(r.sheetName || 'Sheet');
-                });
-                
-                tableHtml += `
-                    <div class="mt-4 p-3 bg-gray-100 rounded-lg text-xs">
-                        <details open>
-                            <summary class="font-semibold cursor-pointer mb-2">
-                                📊 Data Sources (${fileMap.size} files, ${results.length} records)
-                            </summary>
-                            <div class="max-h-40 overflow-y-auto">
-                                <ul class="list-disc list-inside space-y-1">
-                                    ${Array.from(fileMap.entries()).map(([file, sheets]) => 
-                                        `<li class="text-gray-700">${file} <span class="bg-blue-100 text-blue-800 px-1 rounded">${sheets.size} sheet(s)</span></li>`
-                                    ).join('')}
-                                </ul>
-                            </div>
-                        </details>
-                    </div>
-                `;
-                
-                document.getElementById('studentResultsTable').innerHTML = tableHtml;
-                document.getElementById('studentResultsContainer').classList.remove('hidden');
-                
-                hideLoading();
-                showToast(`Found ${theorySubjectsList.length} theory subjects and ${clinicalMarks.length} clinical assessments`, 'success');
-                
-            } catch (error) {
-                console.error('Search error:', error);
-                hideLoading();
-                showToast('Error searching: ' + error.message, 'error');
             }
-        }
+        });
+        
+        // STEP 5: Calculate final scores for theory subjects
+        const theorySubjectsList = [];
+        theorySubjects.forEach((subject, name) => {
+            // Get unique marks (remove duplicates)
+            const uniqueCat = [...new Set(subject.catMarks)];
+            const uniqueEbe = [...new Set(subject.ebeMarks)];
+            const uniqueFinal = [...new Set(subject.finalMarks)];
+            
+            // Determine final score (priority: FINAL > EBE > CAT)
+            let finalScore = null;
+            if (uniqueFinal.length > 0) {
+                finalScore = uniqueFinal[0]; // Take first final mark
+            } else if (uniqueEbe.length > 0) {
+                finalScore = uniqueEbe[0];
+            } else if (uniqueCat.length > 0) {
+                finalScore = uniqueCat[0];
+            }
+            
+            if (finalScore !== null) {
+                const grade = getGrade(finalScore);
+                const passed = finalScore >= 60;
+                
+                theorySubjectsList.push({
+                    name: name,
+                    catMarks: uniqueCat,
+                    ebeMarks: uniqueEbe,
+                    finalMarks: uniqueFinal,
+                    finalScore: finalScore,
+                    grade: grade,
+                    passed: passed,
+                    sourceFile: subject.sourceFile,
+                    sourceSheet: subject.sourceSheet
+                });
+            }
+        });
+        
+        // Sort subjects alphabetically
+        theorySubjectsList.sort((a, b) => a.name.localeCompare(b.name));
+        
+        // Calculate statistics
+        const totalTheoryScore = theorySubjectsList.reduce((sum, s) => sum + s.finalScore, 0);
+        const avgOverall = theorySubjectsList.length > 0 ? totalTheoryScore / theorySubjectsList.length : 0;
+        const totalPoints = theorySubjectsList.reduce((sum, s) => sum + s.grade.points, 0);
+        const gpa = theorySubjectsList.length > 0 ? (totalPoints / theorySubjectsList.length).toFixed(2) : '0.00';
+        const overallGrade = getGrade(avgOverall);
+        
+        // Store for transcript
+        currentTranscriptData = {
+            studentName: studentName,
+            studentId: studentId,
+            studentIndex: studentIndex,
+            theorySubjects: theorySubjectsList,
+            clinicalMarks: clinicalMarks,
+            avgOverall: avgOverall,
+            overallGrade: overallGrade,
+            gpa: gpa,
+            totalPoints: totalPoints
+        };
+        
+        // Update UI
+        updateStudentDisplay(studentName, studentId, studentIndex, overallGrade, gpa, 
+                           theorySubjectsList.length, avgOverall, totalPoints, 
+                           theorySubjectsList, clinicalMarks, uniqueRecords);
+        
+        hideLoading();
+        showToast(`Found ${theorySubjectsList.length} theory subjects and ${clinicalMarks.length} clinical assessments`, 'success');
+        
+    } catch (error) {
+        console.error('Search error:', error);
+        hideLoading();
+        showToast('Error searching: ' + error.message, 'error');
+    }
+}
 
+// Helper to update the display
+function updateStudentDisplay(studentName, studentId, studentIndex, overallGrade, gpa,
+                             theoryCount, avgOverall, totalPoints,
+                             theorySubjectsList, clinicalMarks, records) {
+    
+    document.getElementById('studentNameDisplay').innerText = studentName;
+    
+    let idDisplay = `Admission: ${studentId || 'N/A'}`;
+    if (studentIndex && studentIndex !== studentId) {
+        idDisplay += ` | Index: ${studentIndex}`;
+    }
+    document.getElementById('studentIdDisplay').innerHTML = `<i class="fas fa-id-card mr-1"></i>${idDisplay}`;
+    document.getElementById('studentProgramDisplay').innerHTML = `<i class="fas fa-graduation-cap mr-1"></i>Program: KRCHN`;
+    
+    document.getElementById('overallGradeDisplay').innerText = `Grade: ${overallGrade.grade}`;
+    document.getElementById('overallGradeDisplay').className = `grade-badge ${overallGrade.class} text-sm px-4 py-2`;
+    
+    document.getElementById('gpaDisplay').innerHTML = `<i class="fas fa-star mr-1"></i>GPA: ${gpa}`;
+    document.getElementById('totalExamsCount').innerText = theoryCount;
+    document.getElementById('averageMarkDisplay').innerText = avgOverall.toFixed(1);
+    document.getElementById('totalPointsDisplay').innerText = totalPoints;
+    document.getElementById('gpaValueDisplay').innerText = gpa;
+    
+    // Build the results table
+    let tableHtml = '';
+    
+    // Theory subjects table
+    if (theorySubjectsList.length > 0) {
+        tableHtml += `
+            <div class="mb-6">
+                <h4 class="font-bold text-blue-800 mb-2 text-lg">📚 THEORY SUBJECTS (${theorySubjectsList.length})</h4>
+                <table class="data-table w-full">
+                    <thead>
+                        <tr>
+                            <th>Subject</th>
+                            <th>CAT</th>
+                            <th>EBE</th>
+                            <th>FINAL</th>
+                            <th>Final Score</th>
+                            <th>Grade</th>
+                            <th>Points</th>
+                            <th>Status</th>
+                            <th>Source</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+        
+        theorySubjectsList.forEach(s => {
+            const catDisplay = s.catMarks.length > 0 ? s.catMarks.join(', ') : '-';
+            const ebeDisplay = s.ebeMarks.length > 0 ? s.ebeMarks.join(', ') : '-';
+            const finalDisplay = s.finalMarks.length > 0 ? s.finalMarks.join(', ') : '-';
+            
+            tableHtml += `
+                <tr class="${s.passed ? '' : 'bg-red-50'}">
+                    <td class="font-medium">${s.name}</td>
+                    <td class="text-center">${catDisplay}</td>
+                    <td class="text-center">${ebeDisplay}</td>
+                    <td class="text-center font-bold">${finalDisplay}</td>
+                    <td class="font-bold ${s.grade.color} text-center">${s.finalScore.toFixed(1)}</td>
+                    <td class="text-center"><span class="grade-badge ${s.grade.class}">${s.grade.grade}</span></td>
+                    <td class="text-center">${s.grade.points}</td>
+                    <td class="text-center"><span class="status-badge ${s.passed ? 'status-pass' : 'status-fail'}">${s.passed ? 'PASS' : 'FAIL'}</span></td>
+                    <td class="text-xs">${s.sourceFile.substring(0, 15)}...</td>
+                </tr>
+            `;
+        });
+        
+        tableHtml += `
+                </tbody>
+            </table>
+        </div>
+        `;
+    }
+    
+    // Clinical marks table
+    if (clinicalMarks.length > 0) {
+        tableHtml += `
+            <div class="mb-6">
+                <h4 class="font-bold text-green-800 mb-2 text-lg">🏥 CLINICAL ROTATIONS & ASSESSMENTS (${clinicalMarks.length})</h4>
+                <table class="data-table w-full">
+                    <thead>
+                        <tr>
+                            <th>Assessment/Rotation</th>
+                            <th>Mark</th>
+                            <th>Grade</th>
+                            <th>Points</th>
+                            <th>Status</th>
+                            <th>Source Sheet</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+        
+        clinicalMarks.forEach(m => {
+            tableHtml += `
+                <tr class="${m.passed ? '' : 'bg-red-50'}">
+                    <td class="font-medium">${m.name}</td>
+                    <td class="font-bold ${m.grade.color} text-center">${m.mark.toFixed(1)}</td>
+                    <td class="text-center"><span class="grade-badge ${m.grade.class}">${m.grade.grade}</span></td>
+                    <td class="text-center">${m.grade.points}</td>
+                    <td class="text-center"><span class="status-badge ${m.passed ? 'status-pass' : 'status-fail'}">${m.passed ? 'PASS' : 'FAIL'}</span></td>
+                    <td class="text-xs">${m.sheetName}</td>
+                </tr>
+            `;
+        });
+        
+        tableHtml += `
+                </tbody>
+            </table>
+        </div>
+        `;
+    }
+    
+    // Summary stats
+    const theoryPassCount = theorySubjectsList.filter(s => s.passed).length;
+    const theoryFailCount = theorySubjectsList.length - theoryPassCount;
+    const clinicalPassCount = clinicalMarks.filter(m => m.passed).length;
+    const clinicalFailCount = clinicalMarks.length - clinicalPassCount;
+    
+    tableHtml += `
+        <div class="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div class="bg-blue-50 p-3 rounded-lg">
+                <div class="text-xs text-gray-600">Theory Subjects</div>
+                <div class="text-xl font-bold">${theorySubjectsList.length}</div>
+                <div class="text-xs"><span class="text-green-600">${theoryPassCount} pass</span> | <span class="text-red-600">${theoryFailCount} fail</span></div>
+            </div>
+            <div class="bg-green-50 p-3 rounded-lg">
+                <div class="text-xs text-gray-600">Clinical Assessments</div>
+                <div class="text-xl font-bold">${clinicalMarks.length}</div>
+                <div class="text-xs"><span class="text-green-600">${clinicalPassCount} pass</span> | <span class="text-red-600">${clinicalFailCount} fail</span></div>
+            </div>
+            <div class="bg-purple-50 p-3 rounded-lg">
+                <div class="text-xs text-gray-600">Total Marks</div>
+                <div class="text-xl font-bold">${theorySubjectsList.reduce((sum, s) => sum + s.catMarks.length + s.ebeMarks.length + s.finalMarks.length, 0) + clinicalMarks.length}</div>
+            </div>
+            <div class="bg-orange-50 p-3 rounded-lg">
+                <div class="text-xs text-gray-600">GPA (Theory)</div>
+                <div class="text-xl font-bold">${gpa}</div>
+            </div>
+        </div>
+    `;
+    
+    // File sources
+    const fileMap = new Map();
+    records.forEach(r => {
+        const key = r.filename || 'Unknown';
+        if (!fileMap.has(key)) {
+            fileMap.set(key, new Set());
+        }
+        fileMap.get(key).add(r.sheetName || 'Sheet');
+    });
+    
+    tableHtml += `
+        <div class="mt-4 p-3 bg-gray-100 rounded-lg text-xs">
+            <details open>
+                <summary class="font-semibold cursor-pointer mb-2">
+                    📊 Data Sources (${fileMap.size} files, ${records.length} records)
+                </summary>
+                <div class="max-h-40 overflow-y-auto">
+                    <ul class="list-disc list-inside space-y-1">
+                        ${Array.from(fileMap.entries()).map(([file, sheets]) => 
+                            `<li class="text-gray-700">${file} <span class="bg-blue-100 text-blue-800 px-1 rounded">${sheets.size} sheet(s)</span></li>`
+                        ).join('')}
+                    </ul>
+                </div>
+            </details>
+        </div>
+    `;
+    
+    document.getElementById('studentResultsTable').innerHTML = tableHtml;
+    document.getElementById('studentResultsContainer').classList.remove('hidden');
+}
         // ========== TRANSCRIPT FUNCTIONS ==========
         function downloadOfficialTranscriptPDF() {
             if (!currentTranscriptData) {
