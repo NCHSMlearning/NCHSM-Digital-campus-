@@ -194,77 +194,78 @@
         updateCheckInButton();
     }
     
-    // Populate target options - INDEPENDENT VERSION
-    async function populateTargetOptions(sessionType) {
-        
-        const targetSelect = document.getElementById('attendance-target');
-        if (!targetSelect) return;
-        
-        // Clear existing options
-        targetSelect.innerHTML = '<option value="">Loading options...</option>';
-        targetSelect.disabled = true;
-        
-        try {
-            if (sessionType === 'clinical') {
-                // Load clinical areas independently
-                await loadClinicalTargets();
-                
-                if (attendanceCachedClinicalAreas.length === 0) {
-                    targetSelect.innerHTML = '<option value="">No clinical areas available</option>';
-                    return;
-                }
-                
-                // Populate clinical areas
-                targetSelect.innerHTML = '<option value="">Select clinical department...</option>';
-                attendanceCachedClinicalAreas.forEach(area => {
-                    const opt = document.createElement('option');
-                    opt.value = `${area.id}|${area.name}`;
-                    opt.textContent = area.name;
-                    targetSelect.appendChild(opt);
-                });
-                
-            } else if (['class', 'lab', 'tutorial'].includes(sessionType)) {
-                // Load courses INDEPENDENTLY - don't wait for courses tab
-                
-                const courses = await loadCoursesForAttendance();
-                
-                if (!courses || courses.length === 0) {
-                    targetSelect.innerHTML = '<option value="">No courses found. Please refresh.</option>';
-                    return;
-                }
-                
-                // Populate courses
-                targetSelect.innerHTML = '<option value="">Select course...</option>';
-                
-                courses.forEach(course => {
-                    const opt = document.createElement('option');
-                    const courseName = course.course_name || course.name || 'Unknown Course';
-                    const unitCode = course.unit_code || course.code || '';
-                    
-                    let displayText = courseName;
-                    if (unitCode) {
-                        displayText = `${unitCode} - ${courseName}`;
-                    }
-                    
-                    opt.value = `${course.id}|${displayText}`;
-                    opt.textContent = displayText;
-                    targetSelect.appendChild(opt);
-                });
+   // Populate target options - FIXED version
+async function populateTargetOptions(sessionType) {
+    const targetSelect = document.getElementById('attendance-target');
+    if (!targetSelect) return;
+    
+    // Clear existing options
+    targetSelect.innerHTML = '<option value="">Loading options...</option>';
+    targetSelect.disabled = true;
+    
+    try {
+        if (sessionType === 'clinical') {
+            // IMPORTANT: Wait for clinical areas to load
+            await loadClinicalTargets();
+            
+            // Check if we have data
+            if (!attendanceCachedClinicalAreas || attendanceCachedClinicalAreas.length === 0) {
+                targetSelect.innerHTML = '<option value="">No clinical areas available for your program</option>';
+                targetSelect.disabled = false;
+                return;
             }
-        } catch (error) {
-            targetSelect.innerHTML = '<option value="">Error loading options</option>';
-            return;
+            
+            // Populate clinical areas
+            targetSelect.innerHTML = '<option value="">Select clinical department...</option>';
+            attendanceCachedClinicalAreas.forEach(area => {
+                const opt = document.createElement('option');
+                opt.value = `${area.id}|${area.name}`;
+                opt.textContent = area.name;
+                targetSelect.appendChild(opt);
+            });
+            
+        } else if (['class', 'lab', 'tutorial'].includes(sessionType)) {
+            // Load courses
+            const courses = await loadCoursesForAttendance();
+            
+            if (!courses || courses.length === 0) {
+                targetSelect.innerHTML = '<option value="">No courses found. Please refresh.</option>';
+                targetSelect.disabled = false;
+                return;
+            }
+            
+            // Populate courses
+            targetSelect.innerHTML = '<option value="">Select course...</option>';
+            
+            courses.forEach(course => {
+                const opt = document.createElement('option');
+                const courseName = course.course_name || course.name || 'Unknown Course';
+                const unitCode = course.unit_code || course.code || '';
+                
+                let displayText = courseName;
+                if (unitCode) {
+                    displayText = `${unitCode} - ${courseName}`;
+                }
+                
+                opt.value = `${course.id}|${displayText}`;
+                opt.textContent = displayText;
+                targetSelect.appendChild(opt);
+            });
         }
-        
-        targetSelect.disabled = false;
-        updateRequirement('target', false);
-        
-        // Update button when selection changes
-        targetSelect.addEventListener('change', () => {
-            updateRequirement('target', targetSelect.value && targetSelect.value !== '');
-            updateCheckInButton();
-        });
+    } catch (error) {
+        console.error('Error populating targets:', error);
+        targetSelect.innerHTML = '<option value="">Error loading options</option>';
     }
+    
+    targetSelect.disabled = false;
+    updateRequirement('target', false);
+    
+    // Add change event listener
+    targetSelect.addEventListener('change', () => {
+        updateRequirement('target', targetSelect.value && targetSelect.value !== '');
+        updateCheckInButton();
+    });
+}
     
     // Load courses INDEPENDENTLY from database
     async function loadCoursesForAttendance() {
@@ -567,57 +568,89 @@
     }
     
     // Load clinical targets - FIXED VERSION
-    async function loadClinicalTargets() {
-        try {
-            const supabaseClient = window.db?.supabase;
-            if (!supabaseClient || !attendanceUserProfile) {
-                return;
-            }
-            
-            const program = attendanceUserProfile?.program;
-            const intakeYear = attendanceUserProfile?.intake_year;
-            const block = attendanceUserProfile?.block;
-            
-            if (!program || !intakeYear) {
-                return;
-            }
-            
-            // CORRECT TABLE NAME: clinical_names
-            const { data, error } = await supabaseClient
-                .from('clinical_names')
-                .select('id, clinical_area_name, latitude, longitude, program, intake_year, block_term')
-                .eq('program', program)
-                .eq('intake_year', intakeYear)
-                .or(block ? `block_term.eq.${block},block_term.is.null` : 'block_term.is.null')
-                .order('clinical_area_name');
-            
-            if (error) {
-                attendanceCachedClinicalAreas = [];
-                return;
-            }
-            
-            if (!data || data.length === 0) {
-                attendanceCachedClinicalAreas = [];
-                return;
-            }
-            
-            // CORRECT FIELD MAPPING
-            attendanceCachedClinicalAreas = data.map(area => ({
-                id: area.id,
-                name: area.clinical_area_name, // CORRECT: clinical_area_name
-                clinicalArea: area.clinical_area_name,
-                latitude: area.latitude,
-                longitude: area.longitude,
-                radius: 100, // Default radius
-                program: area.program,
-                intakeYear: area.intake_year,
-                block: area.block_term
-            }));
-            
-        } catch (error) {
+   // Load clinical targets - FIXED for your actual clinical_names table
+async function loadClinicalTargets() {
+    console.log('Loading clinical targets from clinical_names...');
+    
+    try {
+        const supabaseClient = window.db?.supabase;
+        if (!supabaseClient || !attendanceUserProfile) {
+            console.log('No supabase client or user profile');
             attendanceCachedClinicalAreas = [];
+            return [];
         }
+        
+        const program = attendanceUserProfile?.program;
+        const intakeYear = attendanceUserProfile?.intake_year;
+        const block = attendanceUserProfile?.block;
+        
+        console.log('User profile:', { program, intakeYear, block });
+        
+        // Check if user is KRCHN program
+        if (program !== 'KRCHN') {
+            console.log('Program is not KRCHN, no clinical areas');
+            attendanceCachedClinicalAreas = [];
+            return [];
+        }
+        
+        // Build query based on actual columns
+        let query = supabaseClient
+            .from('clinical_names')
+            .select('id, clinical_area_name, latitude, longitude, program, intake_year, block_term')
+            .eq('program', program);
+        
+        // Filter by intake_year if provided
+        if (intakeYear) {
+            query = query.eq('intake_year', intakeYear);
+        }
+        
+        // Filter by block_term if provided
+        if (block) {
+            query = query.eq('block_term', block);
+        }
+        
+        // Order by clinical_area_name
+        query = query.order('clinical_area_name');
+        
+        console.log('Executing query...');
+        const { data, error } = await query;
+        
+        if (error) {
+            console.error('Error loading clinical areas:', error);
+            attendanceCachedClinicalAreas = [];
+            return [];
+        }
+        
+        console.log('Clinical areas loaded:', data);
+        
+        if (!data || data.length === 0) {
+            console.log('No clinical areas found for your program');
+            attendanceCachedClinicalAreas = [];
+            return [];
+        }
+        
+        // Map the data correctly - using actual column names
+        attendanceCachedClinicalAreas = data.map(area => ({
+            id: area.id,
+            name: area.clinical_area_name, // CORRECT: clinical_area_name is the field
+            clinicalArea: area.clinical_area_name,
+            latitude: parseFloat(area.latitude) || 0, // Convert string to number
+            longitude: parseFloat(area.longitude) || 0, // Convert string to number
+            radius: 100, // Default radius
+            program: area.program,
+            intakeYear: area.intake_year,
+            block: area.block_term
+        }));
+        
+        console.log('Cached clinical areas:', attendanceCachedClinicalAreas);
+        return attendanceCachedClinicalAreas;
+        
+    } catch (error) {
+        console.error('Exception in loadClinicalTargets:', error);
+        attendanceCachedClinicalAreas = [];
+        return [];
     }
+}
     
     // Load today's attendance count
     async function loadTodayAttendanceCount() {
