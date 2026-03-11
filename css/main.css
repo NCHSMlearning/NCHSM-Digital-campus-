@@ -1,18 +1,26 @@
 /* ============================================
    NCHSM DIGITAL STUDENT DASHBOARD - ULTRA EDITION
    SCHOOL COLORS: Navy (#0B2A4A), Royal Blue (#2A5C9A), Gold (#FDB913)
-   
-   FEATURES:
-   ✅ EVERY SINGLE ELEMENT CAPTURED from HTML
-   ✅ ALL NAV ITEMS 100% IDENTICAL
-   ✅ ALL TABLES ENHANCED & BEAUTIFUL
-   ✅ EVERY CARD, FORM, MODAL STYLED
-   ✅ PREMIUM ANIMATIONS & EFFECTS
-   ✅ PERFECT RESPONSIVE DESIGN
-   ✅ ULTRA POLISHED FINISH
-   ============================================ */
 
-/* ========== CSS VARIABLES - ULTRA COMPLETE ========== */
+   
+
+ *========== CSS VARIABLES - ULTRA COMPLETE ========== */
+
+@import url('base.css');
+@import url('layout.css');
+@import url('components.css');
+@import url('messages.css');
+@import url('calendar.css');
+@import url('exams.css');
+@import url('courses.css');
+@import url('dashboard.css');
+@import url('resources.css');      /* ← ENHANCE THIS ONE */
+@import url('reader.css');
+@import url('nurseiq.css');
+@import url('loading.css');
+@import url('profile.css');
+@import url('attendance.css');
+@import url('responsive.css');
 :root {
     /* ===== SCHOOL LOGO COLORS ===== */
     --color-navy: #0B2A4A;
