@@ -141,7 +141,7 @@ async function loadExams(showLoading = true) {
 
         // Get ALL exams (from exams table)
         const { data: exams, error: examsError } = await sb
-            .from('exams')
+            .from('exams_with_courses')
             .select('*')
             .order('created_at', { ascending: true });
 
