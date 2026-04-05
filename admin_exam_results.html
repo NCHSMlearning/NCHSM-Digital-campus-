@@ -11,7 +11,7 @@
         body { font-family: 'Poppins', sans-serif; background: #f8fafc; color: #333; }
         .container { max-width: 1600px; margin: 0 auto; padding: 20px; }
         .header { background: linear-gradient(135deg, #0A3D62 0%, #073450 100%); color: white; padding: 25px; border-radius: 12px; margin-bottom: 25px; }
-        .header h1 { font-size: 2rem; margin-bottom: 10px; display: flex; align-items: center; gap: 10px; }
+        .header h1 { font-size: 2rem; margin-bottom: 10px; }
         .admin-info { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.2); }
         .logout-btn { background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 6px 15px; border-radius: 6px; cursor: pointer; }
         .tabs { display: flex; background: white; border-radius: 10px; overflow: hidden; margin-bottom: 25px; }
@@ -57,8 +57,12 @@
         .page-btn { padding: 8px 15px; border: 1px solid #E2E8F0; background: white; border-radius: 6px; cursor: pointer; }
         .page-btn.active { background: #0A3D62; color: white; }
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
-        .modal-content { background: white; padding: 30px; border-radius: 12px; max-width: 800px; max-height: 80vh; overflow-y: auto; width: 90%; }
+        .modal-content { background: white; padding: 30px; border-radius: 12px; max-width: 900px; max-height: 80vh; overflow-y: auto; width: 90%; }
         .close-modal { float: right; font-size: 28px; cursor: pointer; }
+        .preview-table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px; }
+        .preview-table th, .preview-table td { padding: 10px; text-align: left; border-bottom: 1px solid #E2E8F0; }
+        .preview-table th { background: #F1F5F9; }
+        .release-summary { background: #E0E7FF; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
         @media (max-width: 768px) { .table-header { flex-direction: column; } th, td { padding: 10px; } .tabs { flex-direction: column; } }
     </style>
 </head>
@@ -115,7 +119,48 @@
 
 <div id="studentModal" class="modal"><div class="modal-content"><span class="close-modal" onclick="closeModal()">&times;</span><h2 id="modalTitle">Details</h2><div id="modalContent"></div></div></div>
 <div id="assignExamModal" class="modal"><div class="modal-content"><span class="close-modal" onclick="closeAssignModal()">&times;</span><h2>Assign Exam</h2><select id="assignStudentSelect" style="width:100%; margin:10px 0"></select><select id="assignExamSelect" style="width:100%; margin:10px 0"></select><button class="btn btn-primary" onclick="confirmAssignExam()">Assign</button><button class="btn btn-danger" onclick="closeAssignModal()">Cancel</button></div></div>
-<div id="releaseModal" class="modal"><div class="modal-content"><span class="close-modal" onclick="closeReleaseModal()">&times;</span><h2>📢 Release Results to Student Portal</h2><select id="releaseExamFilter" style="width:100%; margin:10px 0"><option value="">-- All Exams --</option></select><select id="releaseStatusFilter" style="width:100%; margin:10px 0"><option value="">-- All Statuses --</option><option value="PASS">Pass Only</option><option value="FAIL">Fail Only</option></select><button class="btn btn-release" style="width:100%" onclick="confirmReleaseResults()">✅ Confirm Release</button></div></div>
+
+<!-- RELEASE MODAL WITH PREVIEW -->
+<div id="releaseModal" class="modal">
+    <div class="modal-content">
+        <span class="close-modal" onclick="closeReleaseModal()">&times;</span>
+        <h2>📢 Release Results to Student Portal</h2>
+        <div class="filters-grid">
+            <div class="filter-group">
+                <label>Select Exam:</label>
+                <select id="releaseExamFilter" style="width:100%;" onchange="loadReleasePreview()">
+                    <option value="">-- Select Exam --</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Filter by Status:</label>
+                <select id="releaseStatusFilter" style="width:100%;" onchange="loadReleasePreview()">
+                    <option value="">-- All Statuses --</option>
+                    <option value="PASS">Pass Only</option>
+                    <option value="FAIL">Fail Only</option>
+                </select>
+            </div>
+        </div>
+        
+        <!-- Preview Section -->
+        <div id="releasePreview" style="display:none;">
+            <div class="release-summary" id="releaseSummary"></div>
+            <h3>Students to Release:</h3>
+            <div style="max-height: 300px; overflow-y: auto;">
+                <table class="preview-table" id="releasePreviewTable">
+                    <thead>
+                        <tr><th>Student Name</th><th>Score</th><th>Percentage</th><th>Status</th><th>Current Release Status</th></tr>
+                    </thead>
+                    <tbody id="releasePreviewBody"></tbody>
+                </table>
+            </div>
+            <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;">
+                <button class="btn btn-danger" onclick="closeReleaseModal()">Cancel</button>
+                <button class="btn btn-release" id="confirmReleaseBtn" onclick="confirmReleaseResults()">✅ Confirm Release</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <script>
 (function() {
@@ -131,6 +176,7 @@
     let studentsResults = [], allStudents = [], allExams = [], examsMap = {};
     let currentPage = { students: 1, allStudents: 1, exams: 1 };
     const itemsPerPage = 15;
+    let currentPreviewData = [];
     
     function checkAdminAuth() {
         const session = localStorage.getItem('adminSession');
@@ -184,7 +230,6 @@
         if(select) programs.forEach(p => { const opt = document.createElement('option'); opt.value=p; opt.textContent=p; select.appendChild(opt); });
     }
     
-    // LOAD ALL EXAMS FIRST (for mapping)
     async function loadExamsMap() {
         const { data } = await sb.from('exams').select('id, exam_name, exam_type, course, program');
         if (data) {
@@ -194,7 +239,6 @@
         return examsMap;
     }
     
-    // LOAD STUDENTS WITH RESULTS - NO JOIN, MANUAL MAPPING
     window.loadStudentsWithResults = async function() {
         const loadingDiv = document.getElementById('studentsLoading');
         const table = document.getElementById('studentsTable');
@@ -205,10 +249,8 @@
         const status = document.getElementById('statusFilter')?.value || '';
         const search = document.getElementById('searchInput')?.value || '';
         
-        // Load exams map first
         await loadExamsMap();
         
-        // Build query for grades
         let query = sb.from('exam_grades').select('*').eq('question_id', '00000000-0000-0000-0000-000000000000');
         if(examId) query = query.eq('exam_id', parseInt(examId));
         if(status) query = query.eq('result_status', status);
@@ -216,16 +258,13 @@
         const { data: grades, error } = await query;
         if(error) { console.error(error); loadingDiv.innerHTML = 'Error loading data'; return; }
         
-        // Get release status
         const { data: releases } = await sb.from('released_exam_results').select('result_id');
         const releasedSet = new Set(releases?.map(r => r.result_id) || []);
         
-        // Get student profiles
         const studentIds = [...new Set(grades.map(g => g.student_id))];
         const { data: profiles } = await sb.from('consolidated_user_profiles_table').select('*').in('user_id', studentIds);
         const profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p]));
         
-        // Combine data with exam names from map
         studentsResults = grades.map(g => ({ 
             ...g, 
             student_profile: profileMap[g.student_id] || null, 
@@ -267,7 +306,6 @@
         renderPagination('students', studentsResults.length);
     }
     
-    // LOAD ALL STUDENTS - OPTIMIZED
     window.loadAllStudents = async function() {
         const loadingDiv = document.getElementById('allStudentsLoading');
         const table = document.getElementById('allStudentsTable');
@@ -277,19 +315,11 @@
         if(error) return;
         
         allStudents = data || [];
-        
-        // Batch get exam counts
         const studentIds = allStudents.map(s => s.user_id);
-        const { data: gradeCounts } = await sb
-            .from('exam_grades')
-            .select('student_id', { count: 'exact', head: false })
-            .eq('question_id', '00000000-0000-0000-0000-000000000000')
-            .in('student_id', studentIds);
+        const { data: gradeCounts } = await sb.from('exam_grades').select('student_id').eq('question_id', '00000000-0000-0000-0000-000000000000').in('student_id', studentIds);
         
         const countMap = {};
-        if(gradeCounts) {
-            gradeCounts.forEach(g => { countMap[g.student_id] = (countMap[g.student_id] || 0) + 1; });
-        }
+        if(gradeCounts) gradeCounts.forEach(g => { countMap[g.student_id] = (countMap[g.student_id] || 0) + 1; });
         allStudents.forEach(s => { s.examsTaken = countMap[s.user_id] || 0; });
         
         displayAllStudents();
@@ -318,7 +348,6 @@
         renderPagination('allStudents', allStudents.length);
     }
     
-    // LOAD ALL EXAMS - OPTIMIZED
     window.loadAllExams = async function() {
         const loadingDiv = document.getElementById('examsLoading');
         const table = document.getElementById('examsTable');
@@ -328,19 +357,11 @@
         if(error) return;
         
         allExams = data || [];
-        
-        // Batch get student counts
         const examIds = allExams.map(e => e.id);
-        const { data: gradeCounts } = await sb
-            .from('exam_grades')
-            .select('exam_id', { count: 'exact', head: false })
-            .eq('question_id', '00000000-0000-0000-0000-000000000000')
-            .in('exam_id', examIds);
+        const { data: gradeCounts } = await sb.from('exam_grades').select('exam_id').eq('question_id', '00000000-0000-0000-0000-000000000000').in('exam_id', examIds);
         
         const countMap = {};
-        if(gradeCounts) {
-            gradeCounts.forEach(g => { countMap[g.exam_id] = (countMap[g.exam_id] || 0) + 1; });
-        }
+        if(gradeCounts) gradeCounts.forEach(g => { countMap[g.exam_id] = (countMap[g.exam_id] || 0) + 1; });
         allExams.forEach(e => { e.studentCount = countMap[e.id] || 0; });
         
         displayAllExams();
@@ -485,32 +506,154 @@
     window.assignStudentsToExam = function(examId) { alert('Bulk assignment coming soon.'); };
     window.createNewExam = function() { alert('Create exam form coming soon.'); };
     
+    // RELEASE MODAL WITH PREVIEW
     window.openReleaseModal = async function() {
-        const { data: exams } = await sb.from('exams').select('id,exam_name');
+        const { data: exams } = await sb.from('exams').select('id,exam_name').order('exam_name');
         const select = document.getElementById('releaseExamFilter');
-        select.innerHTML = '<option value="">-- All Exams --</option>' + (exams?.map(e => `<option value="${e.id}">${e.exam_name}</option>`).join('') || '');
+        select.innerHTML = '<option value="">-- Select Exam --</option>' + (exams?.map(e => `<option value="${e.id}">${e.exam_name}</option>`).join('') || '');
+        document.getElementById('releasePreview').style.display = 'none';
         document.getElementById('releaseModal').style.display = 'flex';
+    };
+    
+    window.loadReleasePreview = async function() {
+        const examId = document.getElementById('releaseExamFilter').value;
+        const statusFilter = document.getElementById('releaseStatusFilter').value;
+        
+        if (!examId) {
+            document.getElementById('releasePreview').style.display = 'none';
+            return;
+        }
+        
+        document.getElementById('releasePreview').style.display = 'block';
+        document.getElementById('releasePreviewBody').innerHTML = '<tr><td colspan="5" class="loading">Loading preview...</td></tr>';
+        
+        // Get exam details
+        const { data: exam } = await sb.from('exams').select('exam_name').eq('id', parseInt(examId)).single();
+        
+        // Get graded results for this exam
+        let query = sb.from('exam_grades').select('id, student_id, exam_id, marks, total_score, result_status')
+            .eq('exam_id', parseInt(examId))
+            .eq('question_id', '00000000-0000-0000-0000-000000000000')
+            .in('result_status', ['PASS', 'FAIL']);
+        
+        if (statusFilter) {
+            query = query.eq('result_status', statusFilter);
+        }
+        
+        const { data: results } = await query;
+        
+        if (!results || results.length === 0) {
+            document.getElementById('releasePreviewBody').innerHTML = '<tr><td colspan="5" style="text-align:center">No graded results found for this exam</td></tr>';
+            document.getElementById('releaseSummary').innerHTML = `<strong>⚠️ No results to release for "${exam?.exam_name}"</strong>`;
+            document.getElementById('confirmReleaseBtn').disabled = true;
+            return;
+        }
+        
+        // Get student profiles
+        const studentIds = results.map(r => r.student_id);
+        const { data: profiles } = await sb.from('consolidated_user_profiles_table').select('user_id, full_name').in('user_id', studentIds);
+        const profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p]));
+        
+        // Get already released results
+        const { data: released } = await sb.from('released_exam_results').select('result_id').in('result_id', results.map(r => r.id));
+        const releasedSet = new Set(released?.map(r => r.result_id) || []);
+        
+        // Build preview
+        let notReleasedCount = 0;
+        let previewHtml = '';
+        
+        results.forEach(r => {
+            const isReleased = releasedSet.has(r.id);
+            if (!isReleased) notReleasedCount++;
+            const student = profileMap[r.student_id];
+            const percentage = parseFloat(r.total_score || 0).toFixed(1);
+            
+            previewHtml += `
+                <tr>
+                    <td>${student?.full_name || 'Unknown'}</td>
+                    <td>${r.marks || 0}</td>
+                    <td>${percentage}%</td>
+                    <td><span class="${r.result_status === 'PASS' ? 'status-pass' : 'status-fail'}">${r.result_status}</span></td>
+                    <td>${isReleased ? '✅ Already Released' : '🔒 Pending Release'}</td>
+                </tr>
+            `;
+        });
+        
+        document.getElementById('releasePreviewBody').innerHTML = previewHtml;
+        document.getElementById('releaseSummary').innerHTML = `
+            <strong>📊 Exam: ${exam?.exam_name}</strong><br>
+            Total Graded Students: ${results.length} | 
+            Pending Release: ${notReleasedCount} | 
+            Already Released: ${results.length - notReleasedCount}
+        `;
+        document.getElementById('confirmReleaseBtn').disabled = (notReleasedCount === 0);
     };
     
     window.confirmReleaseResults = async function() {
         const examId = document.getElementById('releaseExamFilter').value;
         const statusFilter = document.getElementById('releaseStatusFilter').value;
         
-        let query = sb.from('exam_grades').select('id, student_id, exam_id, result_status').eq('question_id','00000000-0000-0000-0000-000000000000');
-        if(examId) query = query.eq('exam_id', parseInt(examId));
-        if(statusFilter) query = query.eq('result_status', statusFilter);
+        if (!examId) {
+            alert('Please select an exam first');
+            return;
+        }
         
-        const { data: results, error } = await query;
-        if(error || !results?.length) { alert('No results found'); return; }
+        // Get results to release
+        let query = sb.from('exam_grades').select('id, student_id, exam_id, result_status')
+            .eq('exam_id', parseInt(examId))
+            .eq('question_id', '00000000-0000-0000-0000-000000000000')
+            .in('result_status', ['PASS', 'FAIL']);
         
-        const releaseRecords = results.map(r => ({ result_id: r.id, student_id: r.student_id, exam_id: r.exam_id, released_at: new Date().toISOString(), released_by: 'admin' }));
-        await sb.from('released_exam_results').upsert(releaseRecords, { onConflict: 'result_id' });
-        alert(`✅ Released ${results.length} result(s)!`);
-        closeReleaseModal();
-        loadStudentsWithResults();
+        if (statusFilter) {
+            query = query.eq('result_status', statusFilter);
+        }
+        
+        const { data: results } = await query;
+        
+        if (!results || results.length === 0) {
+            alert('No results found to release');
+            return;
+        }
+        
+        // Filter out already released
+        const { data: existing } = await sb.from('released_exam_results').select('result_id').in('result_id', results.map(r => r.id));
+        const existingSet = new Set(existing?.map(e => e.result_id) || []);
+        const newResults = results.filter(r => !existingSet.has(r.id));
+        
+        if (newResults.length === 0) {
+            alert('All results for this exam are already released!');
+            return;
+        }
+        
+        // Confirm with admin
+        if (!confirm(`Release ${newResults.length} result(s) to student portal?\n\nThis will make these scores visible to students immediately.`)) {
+            return;
+        }
+        
+        // Insert releases
+        const releaseRecords = newResults.map(r => ({ 
+            result_id: r.id, 
+            student_id: r.student_id, 
+            exam_id: r.exam_id, 
+            released_at: new Date().toISOString(), 
+            released_by: 'admin' 
+        }));
+        
+        const { error } = await sb.from('released_exam_results').insert(releaseRecords);
+        
+        if (error) {
+            alert('Error releasing results: ' + error.message);
+        } else {
+            alert(`✅ Successfully released ${newResults.length} result(s) to the student portal!`);
+            closeReleaseModal();
+            loadStudentsWithResults(); // Refresh the table
+        }
     };
     
-    window.closeReleaseModal = function() { document.getElementById('releaseModal').style.display = 'none'; };
+    window.closeReleaseModal = function() { 
+        document.getElementById('releaseModal').style.display = 'none'; 
+        document.getElementById('releasePreview').style.display = 'none';
+    };
     
     window.exportToExcel = function(type) { 
         let data=[]; 
