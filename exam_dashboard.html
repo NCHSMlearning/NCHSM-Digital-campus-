@@ -12,7 +12,7 @@ body { font-family: 'Poppins', sans-serif; background: #F8F9FA; padding: 20px; }
 header { text-align: center; margin-bottom: 30px; }
 .logo { width: 80px; margin-bottom: 10px; }
 h1 { color: #073450; margin-bottom: 5px; }
-.exam-list { max-width: 900px; margin: 0 auto; }
+.exam-list { max-width: 1200px; margin: 0 auto; }
 .exam-card { background: #fff; padding: 20px; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.05); transition: transform 0.2s; }
 .exam-card:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.1); }
 .filter-info { background: linear-gradient(135deg, #0A3D62 0%, #073450 100%); color: white; padding: 15px; border-radius: 12px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
@@ -30,6 +30,8 @@ button { padding: 10px 20px; border: none; border-radius: 8px; font-weight: 600;
 .btn-start:hover { background: #2F855A; transform: translateY(-2px); }
 .btn-details { background: #3B82F6; color: white; }
 .btn-details:hover { background: #2563EB; transform: translateY(-2px); }
+.btn-close-exam { background: #DC2626; color: white; }
+.btn-close-exam:hover { background: #B91C1C; }
 .refresh-btn { background: #8B5CF6; color: white; padding: 8px 16px; border-radius: 6px; font-size: 0.85rem; }
 .refresh-btn:hover { background: #7C3AED; transform: translateY(-2px); }
 .logout-btn { background: #DC2626; color: white; padding: 8px 16px; border-radius: 6px; font-size: 0.85rem; }
@@ -39,6 +41,35 @@ button { padding: 10px 20px; border: none; border-radius: 8px; font-weight: 600;
 .badge-completed { background: #D1FAE5; color: #065F46; }
 .badge-pending { background: #FEF3C7; color: #92400E; }
 .score-large { font-size: 1.8rem; font-weight: 700; display: inline-block; margin-right: 10px; }
+
+/* Exam Container - Embedded */
+.exam-container { 
+    display: none; 
+    position: fixed; 
+    top: 0; 
+    left: 0; 
+    width: 100%; 
+    height: 100%; 
+    background: white; 
+    z-index: 2000; 
+    flex-direction: column;
+}
+.exam-header-bar {
+    background: #0A3D62;
+    color: white;
+    padding: 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+.exam-header-bar h3 { margin: 0; }
+.exam-iframe {
+    flex: 1;
+    width: 100%;
+    border: none;
+}
 .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
 .modal-content { background: white; padding: 30px; border-radius: 12px; max-width: 700px; max-height: 80vh; overflow-y: auto; width: 90%; }
 .close-modal { float: right; font-size: 28px; cursor: pointer; color: #64748B; }
@@ -46,7 +77,7 @@ button { padding: 10px 20px; border: none; border-radius: 8px; font-weight: 600;
 .question-item { padding: 12px; margin: 8px 0; border-radius: 8px; }
 .question-correct { background: #D1FAE5; border-left: 3px solid #38A169; }
 .question-incorrect { background: #FEE2E2; border-left: 3px solid #DC2626; }
-.toast { position: fixed; top: 20px; right: 20px; padding: 15px 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 9999; animation: slideIn 0.3s ease; }
+.toast { position: fixed; bottom: 20px; right: 20px; padding: 15px 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 9999; animation: slideIn 0.3s ease; }
 .toast-success { background: #10B981; color: white; }
 .toast-info { background: #3B82F6; color: white; }
 .toast-warning { background: #F59E0B; color: white; }
@@ -56,6 +87,7 @@ button { padding: 10px 20px; border: none; border-radius: 8px; font-weight: 600;
     .filter-info { flex-direction: column; text-align: center; }
     .filter-info .info-text { text-align: center; }
     .exam-meta { flex-direction: column; gap: 5px; }
+    .exam-header-bar { flex-direction: column; text-align: center; }
 }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -78,6 +110,17 @@ button { padding: 10px 20px; border: none; border-radius: 8px; font-weight: 600;
     <div id="examList">Loading exams...</div>
 </div>
 
+<!-- Embedded Exam Container -->
+<div id="examContainer" class="exam-container">
+    <div class="exam-header-bar">
+        <h3 id="examTitle">Taking Exam...</h3>
+        <div>
+            <button class="btn-close-exam" onclick="closeExam()">✖ Close Exam</button>
+        </div>
+    </div>
+    <iframe id="examIframe" class="exam-iframe" src="about:blank"></iframe>
+</div>
+
 <div id="resultsModal" class="modal">
     <div class="modal-content">
         <span class="close-modal" onclick="closeModal()">&times;</span>
@@ -94,6 +137,7 @@ let currentUserId = null;
 let currentUserEmail = null;
 let studentProfile = null;
 let isLoading = false;
+let currentExamId = null;
 
 // Helper function to get the working exam link
 function getExamLink(exam) {
@@ -139,17 +183,17 @@ async function loadExams(showLoading = true) {
             📚 ${studentProfile.program || 'N/A'} | Block: ${studentProfile.block || 'N/A'} | Intake: ${studentProfile.intake_year || 'N/A'}
         `;
 
-        // Get exams from 'exams' table - ONLY those with links
+        // Get exams with links
         const { data: exams, error: examsError } = await sb
             .from('exams')
             .select('*')
-            .not('online_link', 'is', null)  // Only exams with online_link
+            .not('online_link', 'is', null)
             .order('id', { ascending: true });
 
         if (examsError) throw examsError;
 
         // Get student's exam grades
-        const { data: grades, error: gradesError } = await sb
+        const { data: grades } = await sb
             .from('exam_grades')
             .select('*')
             .eq('student_id', currentUserId)
@@ -164,9 +208,7 @@ async function loadExams(showLoading = true) {
             if (released && released.length > 0) {
                 releasedResultIds = new Set(released.map(r => r.result_id));
             }
-        } catch (e) {
-            console.log('No released_results table yet:', e.message);
-        }
+        } catch (e) {}
 
         // Check for pending answers
         const { data: pendingAnswers } = await sb
@@ -178,17 +220,12 @@ async function loadExams(showLoading = true) {
 
         const pendingExamIds = new Set(pendingAnswers?.map(a => a.exam_id) || []);
 
-        // Filter exams based on student's program, block_term, intake_year AND must have link
+        // Filter exams
         const filteredExams = (exams || []).filter(exam => {
-            // MUST have a valid link
             const examLink = getExamLink(exam);
             if (!examLink) return false;
-            
-            // Match intake year
             if (exam.intake_year && exam.intake_year != studentProfile.intake_year) return false;
-            // Match program
             if (exam.program_type && exam.program_type !== studentProfile.program && exam.program_type !== 'General') return false;
-            // Match block
             if (exam.block_term && exam.block_term !== studentProfile.block && exam.block_term !== 'General') return false;
             return true;
         });
@@ -201,7 +238,6 @@ async function loadExams(showLoading = true) {
                 <div class="exam-card">
                     <div class="exam-title">📭 No Exams Available</div>
                     <p>There are no exams currently available for your program.</p>
-                    <small>Program: ${studentProfile.program} | Intake: ${studentProfile.intake_year} | Block: ${studentProfile.block}</small>
                 </div>
             `;
             return;
@@ -212,7 +248,6 @@ async function loadExams(showLoading = true) {
             const isPendingGrading = pendingExamIds.has(exam.id);
             const isReleased = grade ? releasedResultIds.has(grade.id) : false;
             const hasGrade = grade && (grade.marks !== null || parseFloat(grade.total_score) > 0);
-            const examLink = getExamLink(exam);
             
             const div = document.createElement('div');
             div.className = 'exam-card';
@@ -231,13 +266,10 @@ async function loadExams(showLoading = true) {
                             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
                                 <div>
                                     <span class="score-large">${percentage}%</span>
-                                    <strong style="color: ${isPass ? '#065F46' : '#7F1D1D'}">${isPass ? 'PASS ✓' : 'FAIL ✗'}</strong>
+                                    <strong>${isPass ? 'PASS ✓' : 'FAIL ✗'}</strong>
                                 </div>
-                                <div style="font-size: 0.85rem;">
-                                    Score: ${grade.marks || 0} marks
-                                </div>
+                                <div>Score: ${grade.marks || 0} marks</div>
                             </div>
-                            <small>Graded: ${grade.graded_at ? new Date(grade.graded_at).toLocaleDateString() : 'N/A'}</small>
                         </div>
                     `;
                 } else {
@@ -245,7 +277,7 @@ async function loadExams(showLoading = true) {
                     gradeHtml = `
                         <div class="grade-info grade-not-released">
                             <strong>🔒 Results Under Review</strong><br>
-                            <small>Your exam has been graded but is awaiting release by the administrator.</small>
+                            <small>Waiting for admin release.</small>
                         </div>
                     `;
                 }
@@ -254,7 +286,7 @@ async function loadExams(showLoading = true) {
                 gradeHtml = `
                     <div class="grade-info grade-pending">
                         <strong>⏳ Exam Submitted</strong><br>
-                        <small>Your exam has been submitted and is pending grading by the instructor.</small>
+                        <small>Pending grading by instructor.</small>
                     </div>
                 `;
             } else {
@@ -267,18 +299,17 @@ async function loadExams(showLoading = true) {
                     <div class="exam-meta">
                         <span>📋 ${exam.exam_type || 'EXAM'}</span>
                         <span>⏱️ ${exam.duration_minutes || 30} minutes</span>
-                        <span>📅 ${exam.exam_date || 'Date TBA'}</span>
                         <span>📊 ${exam.total_marks || 'N/A'} marks</span>
                     </div>
                 </div>
                 ${gradeHtml}
                 <div class="exam-actions">
                     ${!hasGrade && !isPendingGrading ? 
-                        `<button class="btn-start" onclick="startExam('${examLink}', ${exam.id})">▶ Start Exam</button>` : 
+                        `<button class="btn-start" onclick="startExam(${exam.id}, '${exam.exam_name}')">▶ Start Exam</button>` : 
                         (hasGrade && isReleased ? 
-                            `<button class="btn-details" onclick="viewExamDetails(${exam.id})">📋 View Detailed Results</button>` : 
+                            `<button class="btn-details" onclick="viewExamDetails(${exam.id})">📋 View Results</button>` : 
                             (isPendingGrading || hasGrade ? 
-                                `<button class="btn-details" onclick="viewSubmissionStatus(${exam.id})">📋 View Submission Status</button>` : ''
+                                `<button class="btn-details" onclick="viewSubmissionStatus(${exam.id})">📋 View Status</button>` : ''
                             )
                         )
                     }
@@ -287,22 +318,12 @@ async function loadExams(showLoading = true) {
             
             container.appendChild(div);
         }
-
-        // Check URL for exam completion
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.has('exam_completed')) {
-            window.history.replaceState({}, document.title, window.location.pathname);
-            showToast('✅ Exam submitted successfully!', 'success');
-            setTimeout(refreshExams, 2000);
-        }
-
     } catch (err) {
         console.error('Error:', err);
         document.getElementById('examList').innerHTML = `
             <div class="exam-card">
                 <div class="exam-title">⚠️ Error Loading Exams</div>
                 <p>${err.message}</p>
-                <button class="refresh-btn" onclick="refreshExams()">Try Again</button>
             </div>
         `;
     } finally {
@@ -310,24 +331,63 @@ async function loadExams(showLoading = true) {
     }
 }
 
-function startExam(examLink, examId) {
+async function startExam(examId, examName) {
     if (!currentUserId) {
         showToast('Please login again', 'warning');
         logout();
         return;
     }
     
-    // Replace {user_id} placeholder if present in the link
-    let finalLink = examLink;
-    if (finalLink.includes('{user_id}')) {
-        finalLink = finalLink.replace('{user_id}', currentUserId);
+    try {
+        // Get the exam link
+        const { data: exam, error } = await sb
+            .from('exams')
+            .select('online_link, exam_link')
+            .eq('id', examId)
+            .single();
+        
+        if (error) throw error;
+        
+        let examLink = exam.exam_link || exam.online_link;
+        if (!examLink) {
+            showToast('Exam link not available', 'warning');
+            return;
+        }
+        
+        // Replace placeholders
+        examLink = examLink.replace('{user_id}', currentUserId);
+        
+        // Show embedded exam container
+        currentExamId = examId;
+        document.getElementById('examTitle').innerHTML = `📝 ${examName}`;
+        document.getElementById('examIframe').src = examLink;
+        document.getElementById('examContainer').style.display = 'flex';
+        
+        // Hide the main content
+        document.querySelector('header').style.display = 'none';
+        document.querySelector('.exam-list').style.display = 'none';
+        
+        showToast('Exam loaded. Good luck!', 'success');
+        
+    } catch (err) {
+        console.error('Error starting exam:', err);
+        showToast('Could not load exam', 'warning');
     }
+}
+
+function closeExam() {
+    // Stop iframe
+    document.getElementById('examIframe').src = 'about:blank';
+    document.getElementById('examContainer').style.display = 'none';
     
-    // Open exam in new tab
-    window.open(finalLink, '_blank');
+    // Show main content
+    document.querySelector('header').style.display = 'block';
+    document.querySelector('.exam-list').style.display = 'block';
     
-    // Show confirmation
-    showToast('📖 Exam opened in new tab. Good luck!', 'success');
+    // Refresh exams to update status
+    refreshExams();
+    
+    showToast('Exam closed. Your progress has been saved.', 'info');
 }
 
 async function viewExamDetails(examId) {
@@ -360,30 +420,27 @@ async function viewExamDetails(examId) {
         const isPass = percentage >= 60;
         
         let modalHTML = `
-            <h2>📊 ${exam.exam_name || exam.title} - Detailed Results</h2>
+            <h2>📊 ${exam.exam_name} - Results</h2>
             <div style="padding: 15px; background: ${isPass ? '#D1FAE5' : '#FEE2E2'}; border-radius: 8px; margin: 15px 0;">
-                <h3 style="color: ${isPass ? '#065F46' : '#7F1D1D'};">${isPass ? '✅ PASS' : '❌ FAIL'}</h3>
+                <h3>${isPass ? '✅ PASS' : '❌ FAIL'}</h3>
                 <p><strong>Score:</strong> ${grade?.marks || 0} marks</p>
                 <p><strong>Percentage:</strong> ${percentage}%</p>
-                <p><strong>Date:</strong> ${grade?.graded_at ? new Date(grade.graded_at).toLocaleDateString() : 'N/A'}</p>
             </div>
-            <h3>Question Breakdown</h3>
         `;
         
         if (answers && answers.length > 0) {
+            modalHTML += `<h3>Question Breakdown</h3>`;
             answers.forEach(a => {
                 const isCorrect = a.selected_answer === a.exam_questions.correct_answer;
                 modalHTML += `
                     <div class="question-item ${isCorrect ? 'question-correct' : 'question-incorrect'}">
                         <strong>Q${a.exam_questions.question_number}:</strong> ${a.exam_questions.question_text}<br>
                         <small>Your answer: ${a.selected_answer || 'Not answered'}</small><br>
-                        <small>Correct answer: ${a.exam_questions.correct_answer}</small><br>
+                        <small>Correct: ${a.exam_questions.correct_answer}</small><br>
                         <small>Marks: ${a.marks || 0}/${a.exam_questions.max_marks || 1}</small>
                     </div>
                 `;
             });
-        } else {
-            modalHTML += `<p>No detailed question data available.</p>`;
         }
         
         document.getElementById('modalContent').innerHTML = modalHTML;
@@ -402,15 +459,12 @@ async function viewSubmissionStatus(examId) {
         .eq('exam_id', examId)
         .neq('question_id', '00000000-0000-0000-0000-000000000000');
     
-    const hasAnswers = answers && answers.length > 0;
-    
     const modalHTML = `
-        <h2>📝 ${exam.exam_name || exam.title}</h2>
-        <div style="padding: 15px; background: #FEF3C7; border-radius: 8px; margin: 15px 0;">
-            <strong>⏳ Status: ${hasAnswers ? 'Submitted - Pending Grading' : 'Not Started'}</strong><br>
-            <small>Your exam submission has been received. The instructor will grade it soon.</small>
+        <h2>📝 ${exam.exam_name}</h2>
+        <div style="padding: 15px; background: #FEF3C7; border-radius: 8px;">
+            <strong>⏳ Status: ${answers?.length > 0 ? 'Submitted - Pending Grading' : 'Not Started'}</strong>
         </div>
-        ${hasAnswers ? `<p>Questions answered: ${answers.length}</p>` : ''}
+        ${answers?.length > 0 ? `<p>Questions answered: ${answers.length}</p>` : ''}
     `;
     
     document.getElementById('modalContent').innerHTML = modalHTML;
@@ -442,11 +496,21 @@ function showToast(message, type = 'info') {
     }, 4000);
 }
 
+// Listen for messages from iframe (exam completion)
+window.addEventListener('message', function(event) {
+    if (event.data === 'exam_completed' || event.data?.type === 'exam_completed') {
+        showToast('✅ Exam completed! Your answers have been saved.', 'success');
+        setTimeout(() => {
+            closeExam();
+        }, 2000);
+    }
+});
+
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshExams(); });
-window.addEventListener('focus', refreshExams);
 window.addEventListener('DOMContentLoaded', () => loadExams());
 
 window.startExam = startExam;
+window.closeExam = closeExam;
 window.viewExamDetails = viewExamDetails;
 window.viewSubmissionStatus = viewSubmissionStatus;
 window.refreshExams = refreshExams;
