@@ -15,9 +15,8 @@ h1 { color: #073450; margin-bottom: 5px; }
 .exam-list { max-width: 900px; margin: 0 auto; }
 .exam-card { background: #fff; padding: 20px; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.05); transition: transform 0.2s; }
 .exam-card:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.1); }
-.filter-info { background: linear-gradient(135deg, #0A3D62 0%, #073450 100%); color: white; padding: 15px; border-radius: 12px; margin-bottom: 20px; text-align: center; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+.filter-info { background: linear-gradient(135deg, #0A3D62 0%, #073450 100%); color: white; padding: 15px; border-radius: 12px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
 .filter-info .info-text { flex: 1; text-align: left; }
-.exam-header { margin-bottom: 15px; }
 .exam-title { font-size: 1.2rem; font-weight: 700; color: #0A3D62; margin-bottom: 5px; }
 .exam-meta { display: flex; flex-wrap: wrap; gap: 15px; font-size: 0.85rem; color: #64748B; margin-top: 8px; }
 .grade-info { margin-top: 15px; padding: 15px; border-radius: 10px; font-size: 0.9rem; }
@@ -31,7 +30,6 @@ button { padding: 10px 20px; border: none; border-radius: 8px; font-weight: 600;
 .btn-start:hover { background: #2F855A; transform: translateY(-2px); }
 .btn-details { background: #3B82F6; color: white; }
 .btn-details:hover { background: #2563EB; transform: translateY(-2px); }
-.btn-disabled { background: #9CA3AF; color: white; cursor: not-allowed; }
 .refresh-btn { background: #8B5CF6; color: white; padding: 8px 16px; border-radius: 6px; font-size: 0.85rem; }
 .refresh-btn:hover { background: #7C3AED; transform: translateY(-2px); }
 .logout-btn { background: #DC2626; color: white; padding: 8px 16px; border-radius: 6px; font-size: 0.85rem; }
@@ -48,7 +46,7 @@ button { padding: 10px 20px; border: none; border-radius: 8px; font-weight: 600;
 .question-item { padding: 12px; margin: 8px 0; border-radius: 8px; }
 .question-correct { background: #D1FAE5; border-left: 3px solid #38A169; }
 .question-incorrect { background: #FEE2E2; border-left: 3px solid #DC2626; }
-.toast { position: fixed; top: 20px; right: 20px; padding: 15px 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 9999; animation: slideIn 0.3s ease; font-family: 'Poppins', sans-serif; }
+.toast { position: fixed; top: 20px; right: 20px; padding: 15px 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 9999; animation: slideIn 0.3s ease; }
 .toast-success { background: #10B981; color: white; }
 .toast-info { background: #3B82F6; color: white; }
 .toast-warning { background: #F59E0B; color: white; }
@@ -80,7 +78,6 @@ button { padding: 10px 20px; border: none; border-radius: 8px; font-weight: 600;
     <div id="examList">Loading exams...</div>
 </div>
 
-<!-- Results Modal -->
 <div id="resultsModal" class="modal">
     <div class="modal-content">
         <span class="close-modal" onclick="closeModal()">&times;</span>
@@ -89,7 +86,6 @@ button { padding: 10px 20px; border: none; border-radius: 8px; font-weight: 600;
 </div>
 
 <script>
-// Supabase Configuration
 const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -99,7 +95,6 @@ let currentUserEmail = null;
 let studentProfile = null;
 let isLoading = false;
 
-// Load exams for student
 async function loadExams(showLoading = true) {
     if (isLoading) return;
     
@@ -109,7 +104,6 @@ async function loadExams(showLoading = true) {
             document.getElementById('examList').innerHTML = '<div class="exam-card">⏳ Loading exams...</div>';
         }
 
-        // Get current user from localStorage
         currentUserId = localStorage.getItem('currentUserId');
         currentUserEmail = localStorage.getItem('studentEmail');
         
@@ -127,36 +121,33 @@ async function loadExams(showLoading = true) {
 
         if (profileError) {
             console.error('Profile error:', profileError);
-            showToast('Could not load your profile. Please contact support.', 'warning');
+            showToast('Could not load your profile', 'warning');
             return;
         }
         
         studentProfile = profile;
 
-        // Update user info display
         document.getElementById('userInfo').innerHTML = `
             👤 <strong>${studentProfile.full_name || currentUserEmail}</strong><br>
             📚 ${studentProfile.program || 'N/A'} | Block: ${studentProfile.block || 'N/A'} | Intake: ${studentProfile.intake_year || 'N/A'}
         `;
 
-        // Get ALL exams (from exams table)
+        // Get exams from 'exams' table using correct column names
         const { data: exams, error: examsError } = await sb
-            .from('exams_with_courses')
+            .from('exams')
             .select('*')
-            .order('created_at', { ascending: true });
+            .order('id', { ascending: true });
 
         if (examsError) throw examsError;
 
-        // Get student's exam grades (overall results)
+        // Get student's exam grades
         const { data: grades, error: gradesError } = await sb
             .from('exam_grades')
             .select('*')
             .eq('student_id', currentUserId)
             .eq('question_id', '00000000-0000-0000-0000-000000000000');
 
-        console.log('Student grades:', grades);
-
-        // Get RELEASED results (what admin has approved to show)
+        // Get released results
         let releasedResultIds = new Set();
         try {
             const { data: released } = await sb
@@ -164,30 +155,29 @@ async function loadExams(showLoading = true) {
                 .select('result_id');
             if (released && released.length > 0) {
                 releasedResultIds = new Set(released.map(r => r.result_id));
-                console.log('Released result IDs:', releasedResultIds);
             }
         } catch (e) {
-            console.log('No released_results table yet or error:', e.message);
+            console.log('No released_results table yet:', e.message);
         }
 
-        // Check if student has any answers submitted (pending grading)
-        const { data: pendingAnswers, error: pendingError } = await sb
+        // Check for pending answers (submitted but not graded)
+        const { data: pendingAnswers } = await sb
             .from('exam_grades')
             .select('exam_id')
             .eq('student_id', currentUserId)
             .neq('question_id', '00000000-0000-0000-0000-000000000000')
-            .is('marks', null); // Answers not yet graded
+            .is('marks', null);
 
         const pendingExamIds = new Set(pendingAnswers?.map(a => a.exam_id) || []);
 
-        // Filter exams based on student's program/block/intake
-        const filteredExams = exams.filter(exam => {
+        // Filter exams based on student's program, block_term, intake_year
+        const filteredExams = (exams || []).filter(exam => {
             // Match intake year
-            if (exam.intake_year && exam.intake_year !== studentProfile.intake_year) return false;
-            // Match program
-            if (exam.program && exam.program !== studentProfile.program && exam.program !== 'General') return false;
-            // Match block
-            if (exam.block && exam.block !== studentProfile.block && exam.block !== 'General') return false;
+            if (exam.intake_year && exam.intake_year != studentProfile.intake_year) return false;
+            // Match program (using program_type column)
+            if (exam.program_type && exam.program_type !== studentProfile.program && exam.program_type !== 'General') return false;
+            // Match block (using block_term column)
+            if (exam.block_term && exam.block_term !== studentProfile.block && exam.block_term !== 'General') return false;
             return true;
         });
 
@@ -199,18 +189,17 @@ async function loadExams(showLoading = true) {
                 <div class="exam-card">
                     <div class="exam-title">📭 No Exams Available</div>
                     <p>There are no exams assigned to your program at this time.</p>
-                    <small>Program: ${studentProfile.program} | Intake: ${studentProfile.intake_year}</small>
+                    <small>Program: ${studentProfile.program} | Intake: ${studentProfile.intake_year} | Block: ${studentProfile.block}</small>
                 </div>
             `;
             return;
         }
 
-        // Build exam cards
         for (const exam of filteredExams) {
             const grade = grades?.find(g => g.exam_id === exam.id);
             const isPendingGrading = pendingExamIds.has(exam.id);
             const isReleased = grade ? releasedResultIds.has(grade.id) : false;
-            const hasGrade = grade && (grade.marks > 0 || grade.total_score > 0);
+            const hasGrade = grade && (grade.marks !== null || parseFloat(grade.total_score) > 0);
             
             const div = document.createElement('div');
             div.className = 'exam-card';
@@ -218,11 +207,13 @@ async function loadExams(showLoading = true) {
             let statusBadge = '';
             let gradeHtml = '';
             
-            // Determine exam status
+            // Show exam status based on exam's own status field
+            const examStatus = exam.status || 'Upcoming';
+            
             if (hasGrade) {
                 if (isReleased) {
                     statusBadge = '<span class="badge badge-completed">✅ Results Released</span>';
-                    const percentage = grade.total_score || 0;
+                    const percentage = parseFloat(grade.total_score) || 0;
                     const isPass = percentage >= 60;
                     
                     gradeHtml = `
@@ -236,7 +227,7 @@ async function loadExams(showLoading = true) {
                                     Score: ${grade.marks || 0} marks
                                 </div>
                             </div>
-                            <small>Graded: ${new Date(grade.graded_at).toLocaleDateString()}</small>
+                            <small>Graded: ${grade.graded_at ? new Date(grade.graded_at).toLocaleDateString() : 'N/A'}</small>
                         </div>
                     `;
                 } else {
@@ -244,8 +235,7 @@ async function loadExams(showLoading = true) {
                     gradeHtml = `
                         <div class="grade-info grade-not-released">
                             <strong>🔒 Results Under Review</strong><br>
-                            <small>Your exam has been graded but is awaiting release by the administrator.</small><br>
-                            <small>Check back later for your results.</small>
+                            <small>Your exam has been graded but is awaiting release by the administrator.</small>
                         </div>
                     `;
                 }
@@ -254,32 +244,32 @@ async function loadExams(showLoading = true) {
                 gradeHtml = `
                     <div class="grade-info grade-pending">
                         <strong>⏳ Exam Submitted</strong><br>
-                        <small>Your exam has been submitted and is pending grading by the instructor.</small><br>
-                        <small>Status: Under Review</small>
+                        <small>Your exam has been submitted and is pending grading by the instructor.</small>
                     </div>
                 `;
             } else {
                 statusBadge = '<span class="badge badge-upcoming">📝 Not Started</span>';
             }
             
-            // Build exam card HTML
             div.innerHTML = `
                 <div class="exam-header">
-                    <div class="exam-title">${exam.exam_name} ${statusBadge}</div>
+                    <div class="exam-title">${exam.exam_name || exam.title} ${statusBadge}</div>
                     <div class="exam-meta">
-                        <span>📖 ${exam.course || 'General'}</span>
                         <span>📋 ${exam.exam_type || 'EXAM'}</span>
-                        <span>📅 ${exam.exam_date || 'Date TBA'}</span>
                         <span>⏱️ ${exam.duration_minutes || 30} minutes</span>
+                        <span>📅 ${exam.exam_date || 'Date TBA'}</span>
+                        <span>📊 ${exam.total_marks || 'N/A'} marks</span>
                     </div>
                 </div>
                 ${gradeHtml}
                 <div class="exam-actions">
                     ${!hasGrade && !isPendingGrading ? 
-                        `<button class="btn-start" onclick="startExam('${exam.id}')">▶ Start Exam</button>` : 
+                        `<button class="btn-start" onclick="startExam(${exam.id})">▶ Start Exam</button>` : 
                         (hasGrade && isReleased ? 
-                            `<button class="btn-details" onclick="viewExamDetails('${exam.id}')">📋 View Detailed Results</button>` : 
-                            `<button class="btn-details" onclick="viewSubmissionStatus('${exam.id}')">📋 View Submission Status</button>`
+                            `<button class="btn-details" onclick="viewExamDetails(${exam.id})">📋 View Detailed Results</button>` : 
+                            (isPendingGrading || hasGrade ? 
+                                `<button class="btn-details" onclick="viewSubmissionStatus(${exam.id})">📋 View Submission Status</button>` : ''
+                            )
                         )
                     }
                 </div>
@@ -291,9 +281,8 @@ async function loadExams(showLoading = true) {
         // Check URL for exam completion
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.has('exam_completed')) {
-            const examId = urlParams.get('exam_completed');
             window.history.replaceState({}, document.title, window.location.pathname);
-            showToast('✅ Exam submitted successfully! Your answers have been recorded.', 'success');
+            showToast('✅ Exam submitted successfully!', 'success');
             setTimeout(refreshExams, 2000);
         }
 
@@ -311,52 +300,9 @@ async function loadExams(showLoading = true) {
     }
 }
 
-// View submission status (for pending/unreleased exams)
-async function viewSubmissionStatus(examId) {
-    try {
-        const { data: exam } = await sb.from('exams').select('*').eq('id', examId).single();
-        const { data: answers } = await sb.from('exam_grades')
-            .select('*')
-            .eq('student_id', currentUserId)
-            .eq('exam_id', examId)
-            .neq('question_id', '00000000-0000-0000-0000-000000000000');
-        
-        const hasAnswers = answers && answers.length > 0;
-        
-        let modalHTML = `
-            <h2>📝 ${exam.exam_name}</h2>
-            <p><strong>Type:</strong> ${exam.exam_type}</p>
-            <p><strong>Course:</strong> ${exam.course}</p>
-            <div style="padding: 15px; background: #FEF3C7; border-radius: 8px; margin: 15px 0;">
-                <strong>⏳ Status: ${hasAnswers ? 'Submitted - Pending Grading' : 'Not Started'}</strong><br>
-                <small>Your exam submission has been received. The instructor will grade it soon.</small>
-            </div>
-        `;
-        
-        if (hasAnswers) {
-            modalHTML += `
-                <p><strong>Questions Answered:</strong> ${answers.length}</p>
-                <p><strong>Submission Date:</strong> ${new Date(answers[0]?.graded_at).toLocaleString()}</p>
-                <p><strong>Next Steps:</strong> Wait for the administrator to release results.</p>
-            `;
-        }
-        
-        document.getElementById('modalContent').innerHTML = modalHTML;
-        document.getElementById('resultsModal').style.display = 'flex';
-        
-    } catch (error) {
-        console.error(error);
-        showToast('Could not load submission status', 'warning');
-    }
-}
-
-// View detailed results (only for RELEASED exams)
 async function viewExamDetails(examId) {
     try {
-        // Get exam details
         const { data: exam } = await sb.from('exams').select('*').eq('id', examId).single();
-        
-        // Get final grade (overall)
         const { data: grade } = await sb.from('exam_grades')
             .select('*')
             .eq('student_id', currentUserId)
@@ -364,18 +310,6 @@ async function viewExamDetails(examId) {
             .eq('question_id', '00000000-0000-0000-0000-000000000000')
             .single();
         
-        // Check if this result is released
-        const { data: released } = await sb.from('released_exam_results')
-            .select('result_id')
-            .eq('result_id', grade?.id)
-            .single();
-        
-        if (!released && grade) {
-            showToast('These results have not been released yet. Please wait for admin approval.', 'warning');
-            return;
-        }
-        
-        // Get all question answers
         const { data: answers } = await sb.from('exam_grades')
             .select(`
                 selected_answer,
@@ -392,65 +326,67 @@ async function viewExamDetails(examId) {
             .neq('question_id', '00000000-0000-0000-0000-000000000000')
             .order('exam_questions(question_number)');
         
-        const percentage = grade?.total_score || 0;
+        const percentage = parseFloat(grade?.total_score) || 0;
         const isPass = percentage >= 60;
         
         let modalHTML = `
-            <h2>📊 ${exam.exam_name} - Detailed Results</h2>
-            <p><strong>Type:</strong> ${exam.exam_type}</p>
-            <p><strong>Course:</strong> ${exam.course}</p>
-            
+            <h2>📊 ${exam.exam_name || exam.title} - Detailed Results</h2>
             <div style="padding: 15px; background: ${isPass ? '#D1FAE5' : '#FEE2E2'}; border-radius: 8px; margin: 15px 0;">
-                <h3 style="color: ${isPass ? '#065F46' : '#7F1D1D'}; margin: 0 0 10px 0;">
-                    ${isPass ? '✅ PASS' : '❌ FAIL'}
-                </h3>
-                <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
-                    <span><strong>Score:</strong> ${grade?.marks || 0} marks</span>
-                    <span><strong>Percentage:</strong> ${percentage}%</span>
-                    <span><strong>Date:</strong> ${new Date(grade?.graded_at).toLocaleDateString()}</span>
-                </div>
+                <h3 style="color: ${isPass ? '#065F46' : '#7F1D1D'};">${isPass ? '✅ PASS' : '❌ FAIL'}</h3>
+                <p><strong>Score:</strong> ${grade?.marks || 0} marks</p>
+                <p><strong>Percentage:</strong> ${percentage}%</p>
+                <p><strong>Date:</strong> ${grade?.graded_at ? new Date(grade.graded_at).toLocaleDateString() : 'N/A'}</p>
             </div>
-            
             <h3>Question Breakdown</h3>
         `;
         
-        // Add each question
         if (answers && answers.length > 0) {
-            let totalEarned = 0;
-            let totalPossible = 0;
-            
             answers.forEach(a => {
                 const isCorrect = a.selected_answer === a.exam_questions.correct_answer;
-                totalEarned += a.marks || 0;
-                totalPossible += a.exam_questions.max_marks || 1;
-                
                 modalHTML += `
                     <div class="question-item ${isCorrect ? 'question-correct' : 'question-incorrect'}">
                         <strong>Q${a.exam_questions.question_number}:</strong> ${a.exam_questions.question_text}<br>
-                        <small>📝 Your answer: <strong>${a.selected_answer || 'Not answered'}</strong></small><br>
-                        <small>✓ Correct answer: <strong>${a.exam_questions.correct_answer}</strong></small><br>
-                        <small>⭐ Marks: ${a.marks || 0}/${a.exam_questions.max_marks || 1}</small>
+                        <small>Your answer: ${a.selected_answer || 'Not answered'}</small><br>
+                        <small>Correct answer: ${a.exam_questions.correct_answer}</small><br>
+                        <small>Marks: ${a.marks || 0}/${a.exam_questions.max_marks || 1}</small>
                     </div>
                 `;
             });
-            
-            modalHTML += `<p style="margin-top: 15px; padding-top: 10px; border-top: 1px solid #E2E8F0;">
-                <strong>Total: ${totalEarned}/${totalPossible} marks (${((totalEarned/totalPossible)*100).toFixed(1)}%)</strong>
-            </p>`;
         } else {
             modalHTML += `<p>No detailed question data available.</p>`;
         }
         
         document.getElementById('modalContent').innerHTML = modalHTML;
         document.getElementById('resultsModal').style.display = 'flex';
-        
     } catch (error) {
-        console.error('Error loading details:', error);
+        console.error(error);
         showToast('Could not load exam details', 'warning');
     }
 }
 
-// Start exam
+async function viewSubmissionStatus(examId) {
+    const { data: exam } = await sb.from('exams').select('*').eq('id', examId).single();
+    const { data: answers } = await sb.from('exam_grades')
+        .select('*')
+        .eq('student_id', currentUserId)
+        .eq('exam_id', examId)
+        .neq('question_id', '00000000-0000-0000-0000-000000000000');
+    
+    const hasAnswers = answers && answers.length > 0;
+    
+    const modalHTML = `
+        <h2>📝 ${exam.exam_name || exam.title}</h2>
+        <div style="padding: 15px; background: #FEF3C7; border-radius: 8px; margin: 15px 0;">
+            <strong>⏳ Status: ${hasAnswers ? 'Submitted - Pending Grading' : 'Not Started'}</strong><br>
+            <small>Your exam submission has been received. The instructor will grade it soon.</small>
+        </div>
+        ${hasAnswers ? `<p>Questions answered: ${answers.length}</p>` : ''}
+    `;
+    
+    document.getElementById('modalContent').innerHTML = modalHTML;
+    document.getElementById('resultsModal').style.display = 'flex';
+}
+
 function startExam(examId) {
     if (!currentUserId) {
         showToast('Please login again', 'warning');
@@ -460,50 +396,35 @@ function startExam(examId) {
     window.location.href = `exam.html?exam_id=${examId}&user_id=${currentUserId}`;
 }
 
-// Refresh exams
 function refreshExams() {
-    console.log('Refreshing exam list...');
     loadExams(false);
 }
 
-// Close modal
 function closeModal() {
     document.getElementById('resultsModal').style.display = 'none';
 }
 
-// Logout
 function logout() {
     localStorage.removeItem('currentUserId');
     localStorage.removeItem('studentEmail');
-    sessionStorage.removeItem('currentUserId');
-    sb.auth.signOut();
     window.location.href = 'exam_login.html';
 }
 
-// Show toast notification
 function showToast(message, type = 'info') {
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
     toast.innerHTML = message;
     document.body.appendChild(toast);
-    
     setTimeout(() => {
         toast.style.animation = 'slideOut 0.3s ease';
         setTimeout(() => toast.remove(), 300);
     }, 4000);
 }
 
-// Auto-refresh when page becomes visible
-document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) refreshExams();
-});
-
+document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshExams(); });
 window.addEventListener('focus', refreshExams);
+window.addEventListener('DOMContentLoaded', () => loadExams());
 
-// Initial load
-window.addEventListener('DOMContentLoaded', loadExams);
-
-// Make functions global
 window.startExam = startExam;
 window.viewExamDetails = viewExamDetails;
 window.viewSubmissionStatus = viewSubmissionStatus;
