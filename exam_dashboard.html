@@ -95,6 +95,13 @@ let currentUserEmail = null;
 let studentProfile = null;
 let isLoading = false;
 
+// Helper function to get the working exam link
+function getExamLink(exam) {
+    if (exam.exam_link) return exam.exam_link;
+    if (exam.online_link) return exam.online_link;
+    return null;
+}
+
 async function loadExams(showLoading = true) {
     if (isLoading) return;
     
@@ -132,10 +139,11 @@ async function loadExams(showLoading = true) {
             📚 ${studentProfile.program || 'N/A'} | Block: ${studentProfile.block || 'N/A'} | Intake: ${studentProfile.intake_year || 'N/A'}
         `;
 
-        // Get exams from 'exams' table using correct column names
+        // Get exams from 'exams' table - ONLY those with links
         const { data: exams, error: examsError } = await sb
             .from('exams')
             .select('*')
+            .not('online_link', 'is', null)  // Only exams with online_link
             .order('id', { ascending: true });
 
         if (examsError) throw examsError;
@@ -160,7 +168,7 @@ async function loadExams(showLoading = true) {
             console.log('No released_results table yet:', e.message);
         }
 
-        // Check for pending answers (submitted but not graded)
+        // Check for pending answers
         const { data: pendingAnswers } = await sb
             .from('exam_grades')
             .select('exam_id')
@@ -170,13 +178,17 @@ async function loadExams(showLoading = true) {
 
         const pendingExamIds = new Set(pendingAnswers?.map(a => a.exam_id) || []);
 
-        // Filter exams based on student's program, block_term, intake_year
+        // Filter exams based on student's program, block_term, intake_year AND must have link
         const filteredExams = (exams || []).filter(exam => {
+            // MUST have a valid link
+            const examLink = getExamLink(exam);
+            if (!examLink) return false;
+            
             // Match intake year
             if (exam.intake_year && exam.intake_year != studentProfile.intake_year) return false;
-            // Match program (using program_type column)
+            // Match program
             if (exam.program_type && exam.program_type !== studentProfile.program && exam.program_type !== 'General') return false;
-            // Match block (using block_term column)
+            // Match block
             if (exam.block_term && exam.block_term !== studentProfile.block && exam.block_term !== 'General') return false;
             return true;
         });
@@ -188,7 +200,7 @@ async function loadExams(showLoading = true) {
             container.innerHTML = `
                 <div class="exam-card">
                     <div class="exam-title">📭 No Exams Available</div>
-                    <p>There are no exams assigned to your program at this time.</p>
+                    <p>There are no exams currently available for your program.</p>
                     <small>Program: ${studentProfile.program} | Intake: ${studentProfile.intake_year} | Block: ${studentProfile.block}</small>
                 </div>
             `;
@@ -200,15 +212,13 @@ async function loadExams(showLoading = true) {
             const isPendingGrading = pendingExamIds.has(exam.id);
             const isReleased = grade ? releasedResultIds.has(grade.id) : false;
             const hasGrade = grade && (grade.marks !== null || parseFloat(grade.total_score) > 0);
+            const examLink = getExamLink(exam);
             
             const div = document.createElement('div');
             div.className = 'exam-card';
             
             let statusBadge = '';
             let gradeHtml = '';
-            
-            // Show exam status based on exam's own status field
-            const examStatus = exam.status || 'Upcoming';
             
             if (hasGrade) {
                 if (isReleased) {
@@ -264,7 +274,7 @@ async function loadExams(showLoading = true) {
                 ${gradeHtml}
                 <div class="exam-actions">
                     ${!hasGrade && !isPendingGrading ? 
-                        `<button class="btn-start" onclick="startExam(${exam.id})">▶ Start Exam</button>` : 
+                        `<button class="btn-start" onclick="startExam('${examLink}', ${exam.id})">▶ Start Exam</button>` : 
                         (hasGrade && isReleased ? 
                             `<button class="btn-details" onclick="viewExamDetails(${exam.id})">📋 View Detailed Results</button>` : 
                             (isPendingGrading || hasGrade ? 
@@ -298,6 +308,26 @@ async function loadExams(showLoading = true) {
     } finally {
         isLoading = false;
     }
+}
+
+function startExam(examLink, examId) {
+    if (!currentUserId) {
+        showToast('Please login again', 'warning');
+        logout();
+        return;
+    }
+    
+    // Replace {user_id} placeholder if present in the link
+    let finalLink = examLink;
+    if (finalLink.includes('{user_id}')) {
+        finalLink = finalLink.replace('{user_id}', currentUserId);
+    }
+    
+    // Open exam in new tab
+    window.open(finalLink, '_blank');
+    
+    // Show confirmation
+    showToast('📖 Exam opened in new tab. Good luck!', 'success');
 }
 
 async function viewExamDetails(examId) {
@@ -385,15 +415,6 @@ async function viewSubmissionStatus(examId) {
     
     document.getElementById('modalContent').innerHTML = modalHTML;
     document.getElementById('resultsModal').style.display = 'flex';
-}
-
-function startExam(examId) {
-    if (!currentUserId) {
-        showToast('Please login again', 'warning');
-        logout();
-        return;
-    }
-    window.location.href = `exam.html?exam_id=${examId}&user_id=${currentUserId}`;
 }
 
 function refreshExams() {
