@@ -421,7 +421,7 @@
         <div class="table-container" id="examsTableContainer" style="display:none;">
             <div class="table-header"><h2>All Exams</h2><div class="table-actions"><button class="btn btn-info" onclick="createNewExam()">➕ Create Exam</button><button class="btn btn-secondary" onclick="exportToExcel('exams')">📥 Export Excel</button></div></div>
             <div id="examsLoading" class="loading">Loading...</div>
-            <table id="examsTable" style="display:none;"><thead><tr><th>Exam Name</th><th>Type</th><th>Course</th><th>Students</th><th>Actions</th></tr></thead><tbody id="examsBody"></tbody></table>
+            <table id="examsTable" style="display:none;"><thead><tr><th>Exam Name</th><th>Type</th><th>Course</th><th>Students</th><th>Actions</th></tr></thead><tbody id="examsBody"></tbody> Septyembre
             <div class="pagination" id="examsPagination"></div>
         </div>
     </div>
@@ -432,216 +432,446 @@
 <div id="releaseModal" class="modal"><div class="modal-content"><span class="close-modal" onclick="closeReleaseModal()">&times;</span><h2>📢 Release Results to Student Portal</h2><p>Select criteria and confirm to make results visible to students.</p><select id="releaseExamFilter" style="width:100%; margin:10px 0"><option value="">-- All Exams --</option></select><select id="releaseStatusFilter" style="width:100%; margin:10px 0"><option value="">-- All Statuses --</option><option value="PASS">Pass Only</option><option value="FAIL">Fail Only</option></select><div style="background:#FEF3C7; padding:10px; margin:15px 0; border-radius:8px">⚠️ Released results will be immediately visible in student dashboards.</div><button class="btn btn-release" style="width:100%" onclick="confirmReleaseResults()">✅ Confirm Release</button></div></div>
 
 <script>
-// FULLY WORKING ADMIN DASHBOARD WITH RELEASE RESULTS FEATURE
-const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-window.supabase = supabase;
-
-let currentTab = 'students';
-let studentsResults = [], allStudents = [], allExams = [];
-let currentPage = { students: 1, allStudents: 1, exams: 1 };
-const itemsPerPage = 15;
-
-// Auth
-function checkAdminAuth() {
-    const session = localStorage.getItem('adminSession');
-    if (!session) { window.location.href = 'admin_login.html'; return false; }
-    try {
-        const s = JSON.parse(session);
-        if (s.email !== 'admin2@exam.gmail.com') { window.location.href = 'admin_login.html'; return false; }
-        document.getElementById('adminName').innerHTML = `👤 ${s.name || 'Admin'} | ${s.email}`;
-        return true;
-    } catch(e) { window.location.href = 'admin_login.html'; return false; }
-}
-window.logout = () => { localStorage.removeItem('adminSession'); window.location.href = 'admin_login.html'; };
-
-// Tab switching
-function switchTab(tab) {
-    currentTab = tab;
-    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-    document.querySelector(`.tab-btn[data-tab="${tab}"]`).classList.add('active');
-    document.getElementById('studentsTableContainer').style.display = tab === 'students' ? 'block' : 'none';
-    document.getElementById('allStudentsTableContainer').style.display = tab === 'allStudents' ? 'block' : 'none';
-    document.getElementById('examsTableContainer').style.display = tab === 'exams' ? 'block' : 'none';
-    if (tab === 'students') loadStudentsWithResults();
-    if (tab === 'allStudents') loadAllStudents();
-    if (tab === 'exams') loadAllExams();
-    renderFilters();
-}
-window.switchTab = switchTab;
-
-// Filters UI
-function renderFilters() {
-    const container = document.getElementById('filtersContainer');
-    if (currentTab === 'students') {
-        container.innerHTML = `<h2>Filter Results</h2><div class="filters-grid"><div class="filter-group"><label>Exam</label><select id="examFilter"><option value="">All</option></select></div><div class="filter-group"><label>Status</label><select id="statusFilter"><option value="">All</option><option value="PASS">Pass</option><option value="FAIL">Fail</option></select></div></div><div class="search-box"><input type="text" id="searchInput" placeholder="Search student..."><button class="btn btn-primary" onclick="loadStudentsWithResults()">Search</button><button class="btn btn-danger" onclick="resetFilters()">Reset</button></div>`;
-        loadExamDropdown();
-    } else if (currentTab === 'allStudents') {
-        container.innerHTML = `<h2>Filter Students</h2><div class="filters-grid"><div class="filter-group"><label>Program</label><select id="programFilter"><option value="">All</option></select></div></div><div class="search-box"><input type="text" id="studentSearch" placeholder="Search..."><button class="btn btn-primary" onclick="loadAllStudents()">Search</button><button class="btn btn-danger" onclick="resetStudentFilters()">Reset</button></div>`;
-        loadProgramDropdown();
-    } else {
-        container.innerHTML = `<h2>Filter Exams</h2><div class="filters-grid"><div class="filter-group"><label>Type</label><select id="examTypeFilter"><option value="">All</option><option value="CAT_1">CAT 1</option><option value="CAT_2">CAT 2</option><option value="EXAM">Final</option></select></div></div><div class="search-box"><input type="text" id="examSearch" placeholder="Search exam..."><button class="btn btn-primary" onclick="loadAllExams()">Search</button><button class="btn btn-danger" onclick="resetExamFilters()">Reset</button></div>`;
+// FULLY WORKING ADMIN DASHBOARD - NO DUPLICATE DECLARATIONS
+(function() {
+    // Check if already initialized
+    if (window.dashboardInitialized) return;
+    window.dashboardInitialized = true;
+    
+    const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    window.supabase = supabaseClient;
+    
+    let currentTab = 'students';
+    let studentsResults = [], allStudents = [], allExams = [];
+    let currentPage = { students: 1, allStudents: 1, exams: 1 };
+    const itemsPerPage = 15;
+    
+    // Auth
+    function checkAdminAuth() {
+        const session = localStorage.getItem('adminSession');
+        if (!session) { window.location.href = 'admin_login.html'; return false; }
+        try {
+            const s = JSON.parse(session);
+            if (s.email !== 'admin2@exam.gmail.com') { window.location.href = 'admin_login.html'; return false; }
+            document.getElementById('adminName').innerHTML = `👤 ${s.name || 'Admin'} | ${s.email}`;
+            return true;
+        } catch(e) { window.location.href = 'admin_login.html'; return false; }
     }
-}
-
-async function loadExamDropdown() { const {data} = await supabase.from('exams').select('id,exam_name'); const select = document.getElementById('examFilter'); if(select && data) data.forEach(e => { const opt = document.createElement('option'); opt.value=e.id; opt.textContent=e.exam_name; select.appendChild(opt); }); }
-async function loadProgramDropdown() { const {data} = await supabase.from('consolidated_user_profiles_table').select('program'); const programs = [...new Set(data?.map(p=>p.program).filter(Boolean))]; const select = document.getElementById('programFilter'); if(select) programs.forEach(p => { const opt = document.createElement('option'); opt.value=p; opt.textContent=p; select.appendChild(opt); }); }
-
-// LOAD STUDENTS WITH RESULTS (including release status)
-async function loadStudentsWithResults() {
-    document.getElementById('studentsLoading').style.display = 'block';
-    document.getElementById('studentsTable').style.display = 'none';
-    const examId = document.getElementById('examFilter')?.value || '';
-    const status = document.getElementById('statusFilter')?.value || '';
-    const search = document.getElementById('searchInput')?.value || '';
-    let query = supabase.from('exam_grades').select('*, exams!inner(*)').eq('question_id', '00000000-0000-0000-0000-000000000000');
-    if(examId) query = query.eq('exam_id', examId);
-    if(status) query = query.eq('result_status', status);
-    const { data: grades, error } = await query;
-    if(error) { console.error(error); return; }
-    // get release status
-    const { data: releases } = await supabase.from('released_exam_results').select('result_id');
-    const releasedSet = new Set(releases?.map(r => r.result_id) || []);
-    const studentIds = [...new Set(grades.map(g => g.student_id))];
-    const { data: profiles } = await supabase.from('consolidated_user_profiles_table').select('*').in('user_id', studentIds);
-    const profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p]));
-    studentsResults = grades.map(g => ({ ...g, student_profile: profileMap[g.student_id] || null, isReleased: releasedSet.has(g.id) }));
-    if(search) studentsResults = studentsResults.filter(r => r.student_profile?.full_name?.toLowerCase().includes(search.toLowerCase()));
-    displayStudentsResults();
-    document.getElementById('studentsLoading').style.display = 'none';
-    document.getElementById('studentsTable').style.display = 'table';
-    updateStats();
-}
-function displayStudentsResults() {
-    const page = studentsResults.slice((currentPage.students-1)*itemsPerPage, currentPage.students*itemsPerPage);
-    const tbody = document.getElementById('studentsBody');
-    if(page.length === 0) { tbody.innerHTML = '<tr><td colspan="9">No results</td></tr>'; return; }
-    tbody.innerHTML = page.map(r => `<tr>
-        <td><strong>${r.student_profile?.full_name || 'Unknown'}</strong></td>
-        <td>${r.student_profile?.email || '-'}</td>
-        <td>${r.student_profile?.program || r.exams?.program || '-'}</td>
-        <td>${r.exams?.exam_name || '-'}</td>
-        <td>${r.marks || 0}</td>
-        <td>${r.total_score?.toFixed(1) || 0}%</td>
-        <td><span class="${r.result_status === 'PASS' ? 'status-pass' : 'status-fail'}">${r.result_status || 'PENDING'}</span></td>
-        <td>${r.isReleased ? '<span class="status-released">✅ Released</span>' : '<span class="status-pending">Not Released</span>'}</td>
-        <td><button class="action-btn btn-view" onclick="viewExamResult('${r.student_id}','${r.exam_id}')">View</button>
-        <button class="action-btn btn-reset" onclick="resetStudentExam('${r.student_id}','${r.exam_id}')">Reset</button></td>
-    </tr>`).join('');
-    renderPagination('students', studentsResults.length);
-}
-// LOAD ALL STUDENTS
-async function loadAllStudents() {
-    document.getElementById('allStudentsLoading').style.display = 'block';
-    let query = supabase.from('consolidated_user_profiles_table').select('*');
-    const { data, error } = await query;
-    if(error) return;
-    allStudents = data || [];
-    for(let s of allStudents) {
-        const { count } = await supabase.from('exam_grades').select('*', {count:'exact', head:true}).eq('student_id', s.user_id).eq('question_id','00000000-0000-0000-0000-000000000000');
-        s.examsTaken = count || 0;
+    
+    window.logout = function() { 
+        localStorage.removeItem('adminSession'); 
+        window.location.href = 'admin_login.html'; 
+    };
+    
+    // Tab switching
+    window.switchTab = function(tab) {
+        currentTab = tab;
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelector(`.tab-btn[data-tab="${tab}"]`).classList.add('active');
+        document.getElementById('studentsTableContainer').style.display = tab === 'students' ? 'block' : 'none';
+        document.getElementById('allStudentsTableContainer').style.display = tab === 'allStudents' ? 'block' : 'none';
+        document.getElementById('examsTableContainer').style.display = tab === 'exams' ? 'block' : 'none';
+        if (tab === 'students') loadStudentsWithResults();
+        if (tab === 'allStudents') loadAllStudents();
+        if (tab === 'exams') loadAllExams();
+        renderFilters();
+    };
+    
+    // Filters UI
+    function renderFilters() {
+        const container = document.getElementById('filtersContainer');
+        if (currentTab === 'students') {
+            container.innerHTML = `<h2>Filter Results</h2><div class="filters-grid"><div class="filter-group"><label>Exam</label><select id="examFilter"><option value="">All</option></select></div><div class="filter-group"><label>Status</label><select id="statusFilter"><option value="">All</option><option value="PASS">Pass</option><option value="FAIL">Fail</option></select></div></div><div class="search-box"><input type="text" id="searchInput" placeholder="Search student..."><button class="btn btn-primary" onclick="loadStudentsWithResults()">Search</button><button class="btn btn-danger" onclick="resetFilters()">Reset</button></div>`;
+            loadExamDropdown();
+        } else if (currentTab === 'allStudents') {
+            container.innerHTML = `<h2>Filter Students</h2><div class="filters-grid"><div class="filter-group"><label>Program</label><select id="programFilter"><option value="">All</option></select></div></div><div class="search-box"><input type="text" id="studentSearch" placeholder="Search..."><button class="btn btn-primary" onclick="loadAllStudents()">Search</button><button class="btn btn-danger" onclick="resetStudentFilters()">Reset</button></div>`;
+            loadProgramDropdown();
+        } else {
+            container.innerHTML = `<h2>Filter Exams</h2><div class="filters-grid"><div class="filter-group"><label>Type</label><select id="examTypeFilter"><option value="">All</option><option value="CAT_1">CAT 1</option><option value="CAT_2">CAT 2</option><option value="EXAM">Final</option></select></div></div><div class="search-box"><input type="text" id="examSearch" placeholder="Search exam..."><button class="btn btn-primary" onclick="loadAllExams()">Search</button><button class="btn btn-danger" onclick="resetExamFilters()">Reset</button></div>`;
+        }
     }
-    displayAllStudents();
-    document.getElementById('allStudentsLoading').style.display = 'none';
-    document.getElementById('allStudentsTable').style.display = 'table';
-}
-function displayAllStudents() {
-    const page = allStudents.slice((currentPage.allStudents-1)*itemsPerPage, currentPage.allStudents*itemsPerPage);
-    const tbody = document.getElementById('allStudentsBody');
-    tbody.innerHTML = page.map(s => `<tr><td>${s.full_name}</td><td>${s.email}</td><td>${s.program}</td><td>${s.block}</td><td>${s.examsTaken}</td><td><button class="action-btn btn-view" onclick="viewStudentProfile('${s.id}')">Profile</button><button class="action-btn btn-assign" onclick="assignExamToStudent('${s.id}')">Assign</button></td></tr>`).join('');
-    renderPagination('allStudents', allStudents.length);
-}
-// LOAD ALL EXAMS
-async function loadAllExams() {
-    document.getElementById('examsLoading').style.display = 'block';
-    const { data, error } = await supabase.from('exams').select('*');
-    if(error) return;
-    allExams = data || [];
-    for(let e of allExams) {
-        const { count } = await supabase.from('exam_grades').select('*', {count:'exact', head:true}).eq('exam_id', e.id).eq('question_id','00000000-0000-0000-0000-000000000000');
-        e.studentCount = count || 0;
+    
+    async function loadExamDropdown() { 
+        const {data} = await window.supabase.from('exams').select('id,exam_name'); 
+        const select = document.getElementById('examFilter'); 
+        if(select && data) data.forEach(e => { const opt = document.createElement('option'); opt.value=e.id; opt.textContent=e.exam_name; select.appendChild(opt); }); 
     }
-    displayAllExams();
-    document.getElementById('examsLoading').style.display = 'none';
-    document.getElementById('examsTable').style.display = 'table';
-}
-function displayAllExams() {
-    const page = allExams.slice((currentPage.exams-1)*itemsPerPage, currentPage.exams*itemsPerPage);
-    const tbody = document.getElementById('examsBody');
-    tbody.innerHTML = page.map(e => `<tr><td>${e.exam_name}</td><td>${e.exam_type}</td><td>${e.course}</td><td>${e.studentCount}</td><td><button class="action-btn btn-view" onclick="viewExamDetails('${e.id}')">View</button><button class="action-btn btn-assign" onclick="assignStudentsToExam('${e.id}')">Assign</button></td></tr>`).join('');
-    renderPagination('exams', allExams.length);
-}
-// Stats
-async function updateStats() {
-    const totalStudents = allStudents.length;
-    const passed = studentsResults.filter(r=>r.result_status==='PASS').length;
-    const failed = studentsResults.filter(r=>r.result_status==='FAIL').length;
-    const avg = studentsResults.length ? (studentsResults.reduce((a,b)=>a+(b.total_score||0),0)/studentsResults.length).toFixed(1) : 0;
-    const pending = allStudents.filter(s=>s.examsTaken===0).length;
-    document.getElementById('statsContainer').innerHTML = `<div class="stat-card total"><div class="stat-value">${totalStudents}</div><div class="stat-label">Students</div></div><div class="stat-card passed"><div class="stat-value">${passed}</div><div class="stat-label">Passed</div></div><div class="stat-card failed"><div class="stat-value">${failed}</div><div class="stat-label">Failed</div></div><div class="stat-card avg"><div class="stat-value">${avg}%</div><div class="stat-label">Avg Score</div></div><div class="stat-card pending"><div class="stat-value">${pending}</div><div class="stat-label">Pending</div></div>`;
-}
-// Pagination
-function renderPagination(type, total) {
-    const totalPages = Math.ceil(total/itemsPerPage);
-    const container = document.getElementById(type+'Pagination');
-    if(totalPages<=1) { container.innerHTML=''; return; }
-    let html = `<button class="page-btn" onclick="changePage('${type}',${currentPage[type]-1})" ${currentPage[type]===1?'disabled':''}>‹</button>`;
-    for(let i=1;i<=totalPages;i++) if(i===1||i===totalPages||(i>=currentPage[type]-2&&i<=currentPage[type]+2)) html+=`<button class="page-btn ${i===currentPage[type]?'active':''}" onclick="changePage('${type}',${i})">${i}</button>`;
-    html+=`<button class="page-btn" onclick="changePage('${type}',${currentPage[type]+1})" ${currentPage[type]===totalPages?'disabled':''}>›</button>`;
-    container.innerHTML = html;
-}
-window.changePage = (type, page) => { currentPage[type]=page; if(type==='students') displayStudentsResults(); if(type==='allStudents') displayAllStudents(); if(type==='exams') displayAllExams(); };
-// Reset filters
-window.resetFilters = () => { if(document.getElementById('examFilter')) document.getElementById('examFilter').value=''; if(document.getElementById('statusFilter')) document.getElementById('statusFilter').value=''; if(document.getElementById('searchInput')) document.getElementById('searchInput').value=''; currentPage.students=1; loadStudentsWithResults(); };
-window.resetStudentFilters = () => { if(document.getElementById('programFilter')) document.getElementById('programFilter').value=''; if(document.getElementById('studentSearch')) document.getElementById('studentSearch').value=''; currentPage.allStudents=1; loadAllStudents(); };
-window.resetExamFilters = () => { if(document.getElementById('examTypeFilter')) document.getElementById('examTypeFilter').value=''; if(document.getElementById('examSearch')) document.getElementById('examSearch').value=''; currentPage.exams=1; loadAllExams(); };
-// View details
-window.viewExamResult = async (sid, eid) => { const modal = document.getElementById('studentModal'); document.getElementById('modalTitle').innerText='Exam Result'; document.getElementById('modalContent').innerHTML='<div class="loading">Loading...</div>'; modal.style.display='flex'; const {data:grade}=await supabase.from('exam_grades').select('*, exams(*)').eq('student_id',sid).eq('exam_id',eid).eq('question_id','00000000-0000-0000-0000-000000000000').single(); const {data:profile}=await supabase.from('consolidated_user_profiles_table').select('*').eq('user_id',sid).single(); document.getElementById('modalContent').innerHTML=`<div style="background:#F0FDF4;padding:15px;border-radius:8px"><h3>${profile?.full_name}</h3><p>Exam: ${grade?.exams?.exam_name}</p><p>Score: ${grade?.marks} (${grade?.total_score}%)</p><p>Status: ${grade?.result_status}</p></div>`; };
-window.viewStudentProfile = async (pid) => { const {data:student}=await supabase.from('consolidated_user_profiles_table').select('*').eq('id',pid).single(); const modal=document.getElementById('studentModal'); document.getElementById('modalTitle').innerText=`${student.full_name}`; document.getElementById('modalContent').innerHTML=`<p><strong>Email:</strong> ${student.email}</p><p><strong>Program:</strong> ${student.program}</p><p><strong>Block:</strong> ${student.block}</p>`; modal.style.display='flex'; };
-window.viewExamDetails = async (eid) => { const {data:exam}=await supabase.from('exams').select('*').eq('id',eid).single(); document.getElementById('modalTitle').innerText=exam.exam_name; document.getElementById('modalContent').innerHTML=`<p>Type: ${exam.exam_type}</p><p>Course: ${exam.course}</p><p>Duration: ${exam.duration_minutes} min</p>`; document.getElementById('studentModal').style.display='flex'; };
-window.closeModal = () => document.getElementById('studentModal').style.display='none';
-window.resetStudentExam = async (sid, eid) => { if(confirm('Reset exam for retake?')){ await supabase.from('exam_grades').delete().eq('student_id',sid).eq('exam_id',eid); alert('Reset successful'); loadStudentsWithResults(); loadAllStudents(); } };
-// Assign exam
-window.assignExamToStudent = async (studentId=null) => { const {data:students}=await supabase.from('consolidated_user_profiles_table').select('id,full_name'); const {data:exams}=await supabase.from('exams').select('id,exam_name'); const studentSelect=document.getElementById('assignStudentSelect'); studentSelect.innerHTML=students.map(s=>`<option value="${s.id}" ${studentId===s.id?'selected':''}>${s.full_name}</option>`).join(''); const examSelect=document.getElementById('assignExamSelect'); examSelect.innerHTML=exams.map(e=>`<option value="${e.id}">${e.exam_name}</option>`).join(''); document.getElementById('assignExamModal').style.display='flex'; };
-window.confirmAssignExam = async () => { const studentId=document.getElementById('assignStudentSelect').value; const examId=document.getElementById('assignExamSelect').value; if(!studentId||!examId) return alert('Select both'); const {data:student}=await supabase.from('consolidated_user_profiles_table').select('user_id').eq('id',studentId).single(); if(!student?.user_id) return alert('No user_id'); const {error}=await supabase.from('exam_grades').insert({student_id:student.user_id, exam_id:examId, question_id:'00000000-0000-0000-0000-000000000000', marks:0, total_score:0, result_status:'Scheduled', graded_at:new Date().toISOString()}); if(error) alert('Error: '+error.message); else { alert('Assigned!'); closeAssignModal(); loadStudentsWithResults(); loadAllStudents(); loadAllExams(); } };
-window.closeAssignModal = () => document.getElementById('assignExamModal').style.display='none';
-window.assignStudentsToExam = (examId) => alert('Feature: Bulk assign coming soon');
-window.createNewExam = () => alert('Feature: Create new exam form coming soon');
-// RELEASE RESULTS TO STUDENT PORTAL (FULLY WORKING)
-async function openReleaseModal() {
-    const { data: exams } = await supabase.from('exams').select('id,exam_name');
-    const select = document.getElementById('releaseExamFilter');
-    select.innerHTML = '<option value="">-- All Exams --</option>' + (exams?.map(e => `<option value="${e.id}">${e.exam_name}</option>`).join('') || '');
-    document.getElementById('releaseModal').style.display = 'flex';
-}
-async function confirmReleaseResults() {
-    const examId = document.getElementById('releaseExamFilter').value;
-    const statusFilter = document.getElementById('releaseStatusFilter').value;
-    let query = supabase.from('exam_grades').select('id, student_id, exam_id, result_status').eq('question_id','00000000-0000-0000-0000-000000000000');
-    if(examId) query = query.eq('exam_id', examId);
-    if(statusFilter) query = query.eq('result_status', statusFilter);
-    const { data: results, error } = await query;
-    if(error || !results?.length) { alert('No results found for given criteria'); return; }
-    const releaseRecords = results.map(r => ({ result_id: r.id, student_id: r.student_id, exam_id: r.exam_id, released_at: new Date().toISOString(), released_by: 'admin' }));
-    const { error: upsertError } = await supabase.from('released_exam_results').upsert(releaseRecords, { onConflict: 'result_id' });
-    if(upsertError && upsertError.code !== '42P01') console.warn(upsertError);
-    alert(`✅ ${results.length} result(s) successfully released to student portal!`);
-    closeReleaseModal();
-    loadStudentsWithResults(); // refresh release badges
-}
-window.closeReleaseModal = () => document.getElementById('releaseModal').style.display = 'none';
-window.openReleaseModal = openReleaseModal;
-window.confirmReleaseResults = confirmReleaseResults;
-// Export & Print
-window.exportToExcel = (type) => { let data=[]; if(type==='students') data=studentsResults.map(r=>({Name:r.student_profile?.full_name, Email:r.student_profile?.email, Exam:r.exams?.exam_name, Score:r.marks, Percent:r.total_score, Status:r.result_status, Released:r.isReleased?'Yes':'No'})); if(type==='allStudents') data=allStudents.map(s=>({Name:s.full_name, Email:s.email, Program:s.program, ExamsTaken:s.examsTaken})); if(type==='exams') data=allExams.map(e=>({Exam:e.exam_name, Type:e.exam_type, Course:e.course, Students:e.studentCount})); const ws=XLSX.utils.json_to_sheet(data); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Data'); XLSX.writeFile(wb,`${type}_${new Date().toISOString().split('T')[0]}.xlsx`); };
-window.printTable = (type) => { const tableHtml = document.getElementById(type==='students'?'studentsTable':type==='allStudents'?'allStudentsTable':'examsTable').outerHTML; const win=window.open(); win.document.write(`<html><head><title>Report</title><style>table{border-collapse:collapse;width:100%}th,td{border:1px solid #ddd;padding:8px}</style></head><body>${tableHtml}</body></html>`); win.print(); };
-// Initialize
-document.addEventListener('DOMContentLoaded', () => {
-    if(!checkAdminAuth()) return;
-    document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => switchTab(btn.getAttribute('data-tab'))));
-    switchTab('students');
-});
+    
+    async function loadProgramDropdown() { 
+        const {data} = await window.supabase.from('consolidated_user_profiles_table').select('program'); 
+        const programs = [...new Set(data?.map(p=>p.program).filter(Boolean))]; 
+        const select = document.getElementById('programFilter'); 
+        if(select) programs.forEach(p => { const opt = document.createElement('option'); opt.value=p; opt.textContent=p; select.appendChild(opt); }); 
+    }
+    
+    // LOAD STUDENTS WITH RESULTS
+    window.loadStudentsWithResults = async function() {
+        const loadingDiv = document.getElementById('studentsLoading');
+        const table = document.getElementById('studentsTable');
+        loadingDiv.style.display = 'block';
+        table.style.display = 'none';
+        
+        const examId = document.getElementById('examFilter')?.value || '';
+        const status = document.getElementById('statusFilter')?.value || '';
+        const search = document.getElementById('searchInput')?.value || '';
+        
+        let query = window.supabase.from('exam_grades').select('*, exams!inner(*)').eq('question_id', '00000000-0000-0000-0000-000000000000');
+        if(examId) query = query.eq('exam_id', examId);
+        if(status) query = query.eq('result_status', status);
+        
+        const { data: grades, error } = await query;
+        if(error) { console.error(error); loadingDiv.innerHTML = 'Error loading data'; return; }
+        
+        // Get release status
+        const { data: releases } = await window.supabase.from('released_exam_results').select('result_id');
+        const releasedSet = new Set(releases?.map(r => r.result_id) || []);
+        
+        const studentIds = [...new Set(grades.map(g => g.student_id))];
+        const { data: profiles } = await window.supabase.from('consolidated_user_profiles_table').select('*').in('user_id', studentIds);
+        const profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p]));
+        
+        studentsResults = grades.map(g => ({ ...g, student_profile: profileMap[g.student_id] || null, isReleased: releasedSet.has(g.id) }));
+        
+        if(search) studentsResults = studentsResults.filter(r => r.student_profile?.full_name?.toLowerCase().includes(search.toLowerCase()));
+        
+        displayStudentsResults();
+        loadingDiv.style.display = 'none';
+        table.style.display = 'table';
+        updateStats();
+    };
+    
+    function displayStudentsResults() {
+        const start = (currentPage.students - 1) * itemsPerPage;
+        const page = studentsResults.slice(start, start + itemsPerPage);
+        const tbody = document.getElementById('studentsBody');
+        
+        if(page.length === 0) { tbody.innerHTML = '<tr><td colspan="9">No results found</td></tr>'; return; }
+        
+        tbody.innerHTML = page.map(r => `
+            <tr>
+                <td><strong>${r.student_profile?.full_name || 'Unknown'}</strong></td>
+                <td>${r.student_profile?.email || '-'}</td>
+                <td>${r.student_profile?.program || r.exams?.program || '-'}</td>
+                <td>${r.exams?.exam_name || '-'}</td>
+                <td>${r.marks || 0}</td>
+                <td>${r.total_score?.toFixed(1) || 0}%</td>
+                <td><span class="${r.result_status === 'PASS' ? 'status-pass' : 'status-fail'}">${r.result_status || 'PENDING'}</span></td>
+                <td>${r.isReleased ? '<span class="status-released">✅ Released</span>' : '<span class="status-pending">Not Released</span>'}</td>
+                <td>
+                    <button class="action-btn btn-view" onclick="viewExamResult('${r.student_id}','${r.exam_id}')">View</button>
+                    <button class="action-btn btn-reset" onclick="resetStudentExam('${r.student_id}','${r.exam_id}')">Reset</button>
+                </td>
+            </tr>
+        `).join('');
+        renderPagination('students', studentsResults.length);
+    }
+    
+    // LOAD ALL STUDENTS
+    window.loadAllStudents = async function() {
+        const loadingDiv = document.getElementById('allStudentsLoading');
+        const table = document.getElementById('allStudentsTable');
+        loadingDiv.style.display = 'block';
+        
+        let query = window.supabase.from('consolidated_user_profiles_table').select('*');
+        const { data, error } = await query;
+        if(error) return;
+        
+        allStudents = data || [];
+        for(let s of allStudents) {
+            const { count } = await window.supabase.from('exam_grades').select('*', {count:'exact', head:true}).eq('student_id', s.user_id).eq('question_id','00000000-0000-0000-0000-000000000000');
+            s.examsTaken = count || 0;
+        }
+        
+        displayAllStudents();
+        loadingDiv.style.display = 'none';
+        table.style.display = 'table';
+    };
+    
+    function displayAllStudents() {
+        const start = (currentPage.allStudents - 1) * itemsPerPage;
+        const page = allStudents.slice(start, start + itemsPerPage);
+        const tbody = document.getElementById('allStudentsBody');
+        
+        tbody.innerHTML = page.map(s => `
+            <tr>
+                <td>${s.full_name}</td>
+                <td>${s.email}</td>
+                <td>${s.program}</td>
+                <td>${s.block}</td>
+                <td>${s.examsTaken}</td>
+                <td>
+                    <button class="action-btn btn-view" onclick="viewStudentProfile('${s.id}')">Profile</button>
+                    <button class="action-btn btn-assign" onclick="assignExamToStudent('${s.id}')">Assign</button>
+                </td>
+            </tr>
+        `).join('');
+        renderPagination('allStudents', allStudents.length);
+    }
+    
+    // LOAD ALL EXAMS
+    window.loadAllExams = async function() {
+        const loadingDiv = document.getElementById('examsLoading');
+        const table = document.getElementById('examsTable');
+        loadingDiv.style.display = 'block';
+        
+        const { data, error } = await window.supabase.from('exams').select('*');
+        if(error) return;
+        
+        allExams = data || [];
+        for(let e of allExams) {
+            const { count } = await window.supabase.from('exam_grades').select('*', {count:'exact', head:true}).eq('exam_id', e.id).eq('question_id','00000000-0000-0000-0000-000000000000');
+            e.studentCount = count || 0;
+        }
+        
+        displayAllExams();
+        loadingDiv.style.display = 'none';
+        table.style.display = 'table';
+    };
+    
+    function displayAllExams() {
+        const start = (currentPage.exams - 1) * itemsPerPage;
+        const page = allExams.slice(start, start + itemsPerPage);
+        const tbody = document.getElementById('examsBody');
+        
+        tbody.innerHTML = page.map(e => `
+            <tr>
+                <td>${e.exam_name}</td>
+                <td>${e.exam_type}</td>
+                <td>${e.course}</td>
+                <td>${e.studentCount}</td>
+                <td>
+                    <button class="action-btn btn-view" onclick="viewExamDetails('${e.id}')">View</button>
+                    <button class="action-btn btn-assign" onclick="assignStudentsToExam('${e.id}')">Assign</button>
+                </td>
+            </tr>
+        `).join('');
+        renderPagination('exams', allExams.length);
+    }
+    
+    // Stats
+    async function updateStats() {
+        const totalStudents = allStudents.length;
+        const passed = studentsResults.filter(r=>r.result_status==='PASS').length;
+        const failed = studentsResults.filter(r=>r.result_status==='FAIL').length;
+        const avg = studentsResults.length ? (studentsResults.reduce((a,b)=>a+(b.total_score||0),0)/studentsResults.length).toFixed(1) : 0;
+        const pending = allStudents.filter(s=>s.examsTaken===0).length;
+        
+        document.getElementById('statsContainer').innerHTML = `
+            <div class="stat-card total"><div class="stat-value">${totalStudents}</div><div class="stat-label">Students</div></div>
+            <div class="stat-card passed"><div class="stat-value">${passed}</div><div class="stat-label">Passed</div></div>
+            <div class="stat-card failed"><div class="stat-value">${failed}</div><div class="stat-label">Failed</div></div>
+            <div class="stat-card avg"><div class="stat-value">${avg}%</div><div class="stat-label">Avg Score</div></div>
+            <div class="stat-card pending"><div class="stat-value">${pending}</div><div class="stat-label">Pending</div></div>
+        `;
+    }
+    
+    // Pagination
+    function renderPagination(type, total) {
+        const totalPages = Math.ceil(total/itemsPerPage);
+        const container = document.getElementById(type+'Pagination');
+        if(totalPages<=1) { container.innerHTML=''; return; }
+        
+        let html = `<button class="page-btn" onclick="changePage('${type}',${currentPage[type]-1})" ${currentPage[type]===1?'disabled':''}>‹</button>`;
+        for(let i=1;i<=totalPages;i++) {
+            if(i===1||i===totalPages||(i>=currentPage[type]-2&&i<=currentPage[type]+2)) {
+                html+=`<button class="page-btn ${i===currentPage[type]?'active':''}" onclick="changePage('${type}',${i})">${i}</button>`;
+            }
+        }
+        html+=`<button class="page-btn" onclick="changePage('${type}',${currentPage[type]+1})" ${currentPage[type]===totalPages?'disabled':''}>›</button>`;
+        container.innerHTML = html;
+    }
+    
+    window.changePage = function(type, page) { 
+        currentPage[type]=page; 
+        if(type==='students') displayStudentsResults(); 
+        if(type==='allStudents') displayAllStudents(); 
+        if(type==='exams') displayAllExams(); 
+    };
+    
+    // Reset filters
+    window.resetFilters = function() { 
+        if(document.getElementById('examFilter')) document.getElementById('examFilter').value=''; 
+        if(document.getElementById('statusFilter')) document.getElementById('statusFilter').value=''; 
+        if(document.getElementById('searchInput')) document.getElementById('searchInput').value=''; 
+        currentPage.students=1; 
+        loadStudentsWithResults(); 
+    };
+    
+    window.resetStudentFilters = function() { 
+        if(document.getElementById('programFilter')) document.getElementById('programFilter').value=''; 
+        if(document.getElementById('studentSearch')) document.getElementById('studentSearch').value=''; 
+        currentPage.allStudents=1; 
+        loadAllStudents(); 
+    };
+    
+    window.resetExamFilters = function() { 
+        if(document.getElementById('examTypeFilter')) document.getElementById('examTypeFilter').value=''; 
+        if(document.getElementById('examSearch')) document.getElementById('examSearch').value=''; 
+        currentPage.exams=1; 
+        loadAllExams(); 
+    };
+    
+    // View details
+    window.viewExamResult = async function(sid, eid) { 
+        const modal = document.getElementById('studentModal'); 
+        document.getElementById('modalTitle').innerText='Exam Result'; 
+        document.getElementById('modalContent').innerHTML='<div class="loading">Loading...</div>'; 
+        modal.style.display='flex'; 
+        
+        const {data:grade}=await window.supabase.from('exam_grades').select('*, exams(*)').eq('student_id',sid).eq('exam_id',eid).eq('question_id','00000000-0000-0000-0000-000000000000').single(); 
+        const {data:profile}=await window.supabase.from('consolidated_user_profiles_table').select('*').eq('user_id',sid).single(); 
+        
+        document.getElementById('modalContent').innerHTML=`
+            <div style="background:#F0FDF4;padding:15px;border-radius:8px">
+                <h3>${profile?.full_name || 'Student'}</h3>
+                <p><strong>Exam:</strong> ${grade?.exams?.exam_name}</p>
+                <p><strong>Score:</strong> ${grade?.marks} / ${grade?.exams?.total_marks || 'N/A'} (${grade?.total_score}%)</p>
+                <p><strong>Status:</strong> ${grade?.result_status}</p>
+                <p><strong>Date:</strong> ${new Date(grade?.graded_at).toLocaleString()}</p>
+            </div>
+        `; 
+    };
+    
+    window.viewStudentProfile = async function(pid) { 
+        const {data:student}=await window.supabase.from('consolidated_user_profiles_table').select('*').eq('id',pid).single(); 
+        const modal=document.getElementById('studentModal'); 
+        document.getElementById('modalTitle').innerText=`${student.full_name}`; 
+        document.getElementById('modalContent').innerHTML=`
+            <p><strong>Email:</strong> ${student.email}</p>
+            <p><strong>Program:</strong> ${student.program}</p>
+            <p><strong>Block:</strong> ${student.block}</p>
+            <p><strong>Intake:</strong> ${student.intake_year}</p>
+        `; 
+        modal.style.display='flex'; 
+    };
+    
+    window.viewExamDetails = async function(eid) { 
+        const {data:exam}=await window.supabase.from('exams').select('*').eq('id',eid).single(); 
+        document.getElementById('modalTitle').innerText=exam.exam_name; 
+        document.getElementById('modalContent').innerHTML=`
+            <p><strong>Type:</strong> ${exam.exam_type}</p>
+            <p><strong>Course:</strong> ${exam.course}</p>
+            <p><strong>Program:</strong> ${exam.program}</p>
+            <p><strong>Duration:</strong> ${exam.duration_minutes} minutes</p>
+            <p><strong>Description:</strong> ${exam.description || 'N/A'}</p>
+        `; 
+        document.getElementById('studentModal').style.display='flex'; 
+    };
+    
+    window.closeModal = function() { document.getElementById('studentModal').style.display='none'; };
+    
+    window.resetStudentExam = async function(sid, eid) { 
+        if(confirm('Reset this exam for the student? They will be able to retake it.')){ 
+            await window.supabase.from('exam_grades').delete().eq('student_id',sid).eq('exam_id',eid); 
+            alert('Reset successful! Student can now retake the exam.'); 
+            loadStudentsWithResults(); 
+            loadAllStudents(); 
+        } 
+    };
+    
+    // Assign exam
+    window.assignExamToStudent = async function(studentId=null) { 
+        const {data:students}=await window.supabase.from('consolidated_user_profiles_table').select('id,full_name'); 
+        const {data:exams}=await window.supabase.from('exams').select('id,exam_name'); 
+        const studentSelect=document.getElementById('assignStudentSelect'); 
+        studentSelect.innerHTML=students.map(s=>`<option value="${s.id}" ${studentId===s.id?'selected':''}>${s.full_name}</option>`).join(''); 
+        const examSelect=document.getElementById('assignExamSelect'); 
+        examSelect.innerHTML=exams.map(e=>`<option value="${e.id}">${e.exam_name}</option>`).join(''); 
+        document.getElementById('assignExamModal').style.display='flex'; 
+    };
+    
+    window.confirmAssignExam = async function() { 
+        const studentId=document.getElementById('assignStudentSelect').value; 
+        const examId=document.getElementById('assignExamSelect').value; 
+        if(!studentId||!examId) return alert('Select both student and exam'); 
+        
+        const {data:student}=await window.supabase.from('consolidated_user_profiles_table').select('user_id').eq('id',studentId).single(); 
+        if(!student?.user_id) return alert('Student user_id not found'); 
+        
+        const {error}=await window.supabase.from('exam_grades').insert({
+            student_id:student.user_id, 
+            exam_id:examId, 
+            question_id:'00000000-0000-0000-0000-000000000000', 
+            marks:0, 
+            total_score:0, 
+            result_status:'Scheduled', 
+            graded_at:new Date().toISOString()
+        }); 
+        
+        if(error) alert('Error: '+error.message); 
+        else { alert('Exam assigned successfully!'); closeAssignModal(); loadStudentsWithResults(); loadAllStudents(); loadAllExams(); } 
+    };
+    
+    window.closeAssignModal = function() { document.getElementById('assignExamModal').style.display='none'; };
+    window.assignStudentsToExam = function(examId) { alert('Bulk assignment feature will be available soon.'); };
+    window.createNewExam = function() { alert('Exam creation form will be available soon.'); };
+    
+    // RELEASE RESULTS TO STUDENT PORTAL
+    window.openReleaseModal = async function() {
+        const { data: exams } = await window.supabase.from('exams').select('id,exam_name');
+        const select = document.getElementById('releaseExamFilter');
+        select.innerHTML = '<option value="">-- All Exams --</option>' + (exams?.map(e => `<option value="${e.id}">${e.exam_name}</option>`).join('') || '');
+        document.getElementById('releaseModal').style.display = 'flex';
+    };
+    
+    window.confirmReleaseResults = async function() {
+        const examId = document.getElementById('releaseExamFilter').value;
+        const statusFilter = document.getElementById('releaseStatusFilter').value;
+        
+        let query = window.supabase.from('exam_grades').select('id, student_id, exam_id, result_status').eq('question_id','00000000-0000-0000-0000-000000000000');
+        if(examId) query = query.eq('exam_id', examId);
+        if(statusFilter) query = query.eq('result_status', statusFilter);
+        
+        const { data: results, error } = await query;
+        if(error || !results?.length) { alert('No results found for the selected criteria'); return; }
+        
+        const releaseRecords = results.map(r => ({ 
+            result_id: r.id, 
+            student_id: r.student_id, 
+            exam_id: r.exam_id, 
+            released_at: new Date().toISOString(), 
+            released_by: 'admin' 
+        }));
+        
+        const { error: upsertError } = await window.supabase.from('released_exam_results').upsert(releaseRecords, { onConflict: 'result_id' });
+        if(upsertError && upsertError.code !== '42P01') console.warn('Release table warning:', upsertError);
+        
+        alert(`✅ Successfully released ${results.length} result(s) to the student portal!`);
+        closeReleaseModal();
+        loadStudentsWithResults();
+    };
+    
+    window.closeReleaseModal = function() { document.getElementById('releaseModal').style.display = 'none'; };
+    
+    // Export & Print
+    window.exportToExcel = function(type) { 
+        let data=[]; 
+        if(type==='students') data=studentsResults.map(r=>({Name:r.student_profile?.full_name, Email:r.student_profile?.email, Exam:r.exams?.exam_name, Score:r.marks, Percent:r.total_score, Status:r.result_status, Released:r.isReleased?'Yes':'No'})); 
+        if(type==='allStudents') data=allStudents.map(s=>({Name:s.full_name, Email:s.email, Program:s.program, ExamsTaken:s.examsTaken})); 
+        if(type==='exams') data=allExams.map(e=>({Exam:e.exam_name, Type:e.exam_type, Course:e.course, Students:e.studentCount})); 
+        
+        const ws=XLSX.utils.json_to_sheet(data); 
+        const wb=XLSX.utils.book_new(); 
+        XLSX.utils.book_append_sheet(wb,ws,'Data'); 
+        XLSX.writeFile(wb,`${type}_${new Date().toISOString().split('T')[0]}.xlsx`); 
+    };
+    
+    window.printTable = function(type) { 
+        const tableHtml = document.getElementById(type==='students'?'studentsTable':type==='allStudents'?'allStudentsTable':'examsTable').outerHTML; 
+        const win=window.open(); 
+        win.document.write(`<html><head><title>Report</title><style>table{border-collapse:collapse;width:100%}th,td{border:1px solid #ddd;padding:8px}</style></head><body>${tableHtml}</body></html>`); 
+        win.print(); 
+    };
+    
+    // Initialize
+    document.addEventListener('DOMContentLoaded', function() {
+        if(!checkAdminAuth()) return;
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => window.switchTab(btn.getAttribute('data-tab'))));
+        window.switchTab('students');
+    });
+})();
 </script>
 </body>
 </html>
