@@ -1,4 +1,4 @@
-// exams.js - FIXED VERSION with Release Results Support
+// exams.js - FIXED VERSION with Proper CAT/Final Separation
 (function() {
     'use strict';
     
@@ -20,7 +20,7 @@
             this.currentExams = [];
             this.completedExams = [];
             this.currentFilter = 'all';
-            this.releasedResults = new Set(); // Track released result IDs
+            this.releasedResults = new Set();
             
             // Initialize user profile data
             this.userProfile = {};
@@ -92,6 +92,8 @@
                         this.loadExams();
                     }
                 }, 3000);
+            } else {
+                this.loadExams();
             }
         }
         
@@ -290,7 +292,7 @@
                     userId: this.userId
                 });
                 
-                // 🔥 FIXED: Use 'exams' table directly (not exams_with_courses)
+                // Use 'exams' table directly
                 let query = supabase
                     .from('exams')
                     .select('*')
@@ -318,7 +320,7 @@
                 
                 console.log(`📊 Found ${exams?.length || 0} exams`);
                 
-                // 🔥 Get grades for this student
+                // Get grades for this student
                 let grades = [];
                 if (this.userId) {
                     const { data: gradesData, error: gradesError } = await supabase
@@ -329,10 +331,11 @@
                     
                     if (!gradesError && gradesData) {
                         grades = gradesData;
+                        console.log(`📊 Found ${grades.length} grade records`);
                     }
                 }
                 
-                // 🔥 Get released results
+                // Get released results
                 this.releasedResults.clear();
                 const { data: released } = await supabase
                     .from('released_exam_results')
@@ -360,6 +363,7 @@
         }
         
         processExamsData(exams, grades) {
+            // Create grade map for quick lookup
             const gradeMap = new Map();
             grades.forEach(grade => {
                 gradeMap.set(String(grade.exam_id), grade);
@@ -370,19 +374,29 @@
                 const gradeId = grade?.id;
                 const isReleased = gradeId ? this.releasedResults.has(gradeId) : false;
                 
+                // SAFELY get grade values with fallbacks
+                const cat1Score = grade?.cat_1_score ?? grade?.cat_score ?? null;
+                const cat2Score = grade?.cat_2_score ?? null;
+                const finalScore = grade?.exam_score ?? null;
+                const totalPercentage = grade?.total_score ? parseFloat(grade.total_score) : null;
+                const actualMarks = grade?.marks ?? null;
+                
+                // Determine if exam is CAT or Final based on exam_type
+                const examType = (exam.exam_type || '').toUpperCase();
+                const isCatExam = examType.includes('CAT');
+                const isFinalExam = examType === 'EXAM' || examType === 'FINAL';
+                
                 // Determine if exam is completed AND released
                 let isCompleted = false;
-                let totalPercentage = null;
                 let gradeText = 'Pending Grade';
                 let gradeClass = 'pending';
                 let gradePoint = 0;
-                let actualMarks = null;
+                let displayPercentage = null;
                 
-                // Only show results if RELEASED
-                if (grade && isReleased) {
+                // Only show results if RELEASED and has grade
+                if (grade && isReleased && totalPercentage !== null) {
                     isCompleted = true;
-                    totalPercentage = parseFloat(grade.total_score) || 0;
-                    actualMarks = grade.marks || 0;
+                    displayPercentage = totalPercentage;
                     
                     // Grading scale
                     if (totalPercentage >= 85) {
@@ -402,7 +416,7 @@
                         gradeClass = 'fail';
                         gradePoint = 0.0;
                     }
-                } else if (grade && !isReleased) {
+                } else if (grade && !isReleased && totalPercentage !== null) {
                     // Has grade but NOT released yet
                     isCompleted = false;
                     gradeText = 'Pending Release';
@@ -410,43 +424,67 @@
                 }
                 
                 // Check if exam has a valid link
-                const hasValidLink = (exam.online_link && exam.online_link.trim() !== '' && exam.online_link.startsWith('http')) ||
-                                    (exam.exam_link && exam.exam_link.trim() !== '' && exam.exam_link.startsWith('http'));
-                
                 const examLink = exam.exam_link || exam.online_link;
+                const hasValidLink = examLink && examLink.trim() !== '' && examLink.startsWith('http');
                 
-                const isCatExam = exam.exam_type?.includes('CAT') || exam.exam_type === 'CAT';
+                // Format display values
+                let cat1Display = '--';
+                let cat2Display = '--';
+                let finalDisplay = '--';
+                
+                // For CAT exams: show CAT score prominently
+                if (isCatExam && cat1Score !== null) {
+                    cat1Display = `${cat1Score}%`;
+                }
+                if (isCatExam && cat2Score !== null) {
+                    cat2Display = `${cat2Score}%`;
+                }
+                
+                // For Final exams: show all scores
+                if (isFinalExam) {
+                    if (cat1Score !== null) cat1Display = `${cat1Score}%`;
+                    if (cat2Score !== null) cat2Display = `${cat2Score}%`;
+                    if (finalScore !== null) finalDisplay = `${finalScore}%`;
+                }
                 
                 return {
                     ...exam,
                     id: exam.id,
-                    exam_name: exam.exam_name || exam.title,
+                    exam_name: exam.exam_name || exam.title || 'Untitled Exam',
                     exam_type: exam.exam_type || (isCatExam ? 'CAT' : 'EXAM'),
                     isCatExam,
+                    isFinalExam,
                     isCompleted,
                     isReleased,
-                    totalPercentage,
+                    totalPercentage: displayPercentage,
                     actualMarks,
                     gradeText,
                     gradeClass,
                     gradePoint,
                     hasValidLink,
                     examLink: examLink,
-                    cat1Score: grade?.cat_1_score ?? grade?.cat_score ?? null,
-                    cat2Score: grade?.cat_2_score ?? null,
-                    finalScore: grade?.exam_score ?? null,
-                    cat1Display: (grade?.cat_1_score ?? grade?.cat_score) !== null ? `${grade?.cat_1_score ?? grade?.cat_score}%` : '--',
-                    cat2Display: grade?.cat_2_score !== null ? `${grade.cat_2_score}%` : '--',
-                    finalDisplay: grade?.exam_score !== null ? `${grade.exam_score}%` : '--',
+                    // Score values
+                    cat1Score: cat1Score,
+                    cat2Score: cat2Score,
+                    finalScore: finalScore,
+                    cat1Display: cat1Display,
+                    cat2Display: cat2Display,
+                    finalDisplay: finalDisplay,
+                    // Dates
                     formattedExamDate: exam.exam_date ? new Date(exam.exam_date).toLocaleDateString() : 'TBA',
                     formattedGradedDate: grade?.graded_at ? new Date(grade.graded_at).toLocaleDateString() : '--',
+                    // Program badges
                     programBadgeClass: exam.program_type === 'TVET' ? 'badge-tvet' : 'badge-krchn',
                     programIcon: exam.program_type === 'TVET' ? 'fa-tools' : 'fa-graduation-cap',
                     programDisplay: exam.program_type === 'TVET' ? 'TVET Program' : 'KRCHN Program'
                 };
             });
             
-            console.log(`✅ Processed ${this.allExams.length} exams, ${this.allExams.filter(e => e.isCompleted).length} completed (released)`);
+            const completedCount = this.allExams.filter(e => e.isCompleted).length;
+            const catCount = this.allExams.filter(e => e.isCatExam).length;
+            const finalCount = this.allExams.filter(e => e.isFinalExam).length;
+            
+            console.log(`✅ Processed ${this.allExams.length} exams: ${completedCount} completed, ${catCount} CAT, ${finalCount} Final`);
         }
         
         displayTables() {
@@ -454,6 +492,7 @@
             this.displayCompletedTable();
             this.updateCounts();
             this.updateEmptyStates();
+            this.adjustTableColumns();
         }
         
         displayCurrentTable() {
@@ -474,20 +513,23 @@
                     buttonClass = 'btn-disabled';
                 }
                 
-                // Show status message
+                // Status message
                 let statusHtml = `<span class="status-badge pending">Not Started</span>`;
                 if (exam.gradeText === 'Pending Release') {
                     statusHtml = `<span class="status-badge pending">⏳ Pending Release</span>`;
                 }
                 
+                // Score columns based on exam type
                 let scoreColumns;
                 if (isCatExam) {
+                    // CAT exam: Only show CAT column
                     scoreColumns = `
-                        <td class="text-center">--</td>
-                        <td class="text-center cat2-column">--</td>
-                        <td class="text-center final-column">--</td>
+                        <td class="text-center"><strong>--</strong></td>
+                        <td class="text-center cat2-column" style="display:none">--</td>
+                        <td class="text-center final-column" style="display:none">--</td>
                     `;
                 } else {
+                    // Final exam: Show all columns
                     scoreColumns = `
                         <td class="text-center">--</td>
                         <td class="text-center">--</td>
@@ -498,7 +540,7 @@
                 return `
                 <tr class="${isCatExam ? 'cat-exam' : 'final-exam'}">
                     <td>
-                        <strong>${this.escapeHtml(exam.exam_name || 'N/A')}</strong>
+                        <strong>${this.escapeHtml(exam.exam_name)}</strong>
                         <div class="program-indicator ${exam.programBadgeClass}">
                             <i class="fas ${exam.programIcon}"></i> ${this.escapeHtml(exam.programDisplay)}
                         </div>
@@ -506,8 +548,8 @@
                     <td><span class="badge ${isCatExam ? 'badge-cat' : 'badge-final'}">${isCatExam ? 'CAT' : 'Exam'}</span></td>
                     <td>${this.escapeHtml(exam.course || 'General')}</td>
                     <td class="text-center">${exam.block_term || 'General'}</td>
-                    <td>${exam.formattedExamDate}</td>
-                    <td>${statusHtml}</td>
+                    <td class="text-center">${exam.formattedExamDate}</td>
+                    <td class="text-center">${statusHtml}</td>
                     ${scoreColumns}
                     <td class="text-center">--</td>
                     <td class="text-center">
@@ -516,7 +558,7 @@
                                 target="_blank" 
                                 class="exam-link-btn ${buttonClass}"
                                 data-exam-id="${exam.id}"
-                                data-exam-name="${this.escapeHtml(exam.exam_name || '')}">
+                                data-exam-name="${this.escapeHtml(exam.exam_name)}">
                                 <i class="fas fa-external-link-alt"></i> ${buttonText}
                             </a>` :
                             `<span class="exam-link-btn ${buttonClass}" title="Exam not available">
@@ -542,14 +584,17 @@
                 const isCatExam = exam.isCatExam;
                 const percentage = exam.totalPercentage ? exam.totalPercentage.toFixed(1) : '0';
                 
+                // Score columns based on exam type
                 let scoreColumns;
                 if (isCatExam) {
+                    // CAT exam: Only show CAT score
                     scoreColumns = `
                         <td class="text-center"><strong>${exam.cat1Display}</strong></td>
-                        <td class="text-center cat2-column">--</td>
-                        <td class="text-center final-column">--</td>
+                        <td class="text-center cat2-column" style="display:none">--</td>
+                        <td class="text-center final-column" style="display:none">--</td>
                     `;
                 } else {
+                    // Final exam: Show all scores
                     scoreColumns = `
                         <td class="text-center">${exam.cat1Display}</td>
                         <td class="text-center">${exam.cat2Display}</td>
@@ -560,7 +605,7 @@
                 return `
                 <tr class="${isCatExam ? 'cat-exam' : 'final-exam'}">
                     <td>
-                        <strong>${this.escapeHtml(exam.exam_name || 'N/A')}</strong>
+                        <strong>${this.escapeHtml(exam.exam_name)}</strong>
                         <div class="program-indicator ${exam.programBadgeClass}">
                             <i class="fas ${exam.programIcon}"></i> ${this.escapeHtml(exam.programDisplay)}
                         </div>
@@ -568,8 +613,8 @@
                     <td><span class="badge ${isCatExam ? 'badge-cat' : 'badge-final'}">${isCatExam ? 'CAT' : 'Exam'}</span></td>
                     <td>${this.escapeHtml(exam.course || 'General')}</td>
                     <td class="text-center">${exam.block_term || 'General'}</td>
-                    <td>${exam.formattedGradedDate}</td>
-                    <td><span class="status-badge ${exam.gradeClass}">${exam.gradeText}</span></td>
+                    <td class="text-center">${exam.formattedGradedDate}</td>
+                    <td class="text-center"><span class="status-badge ${exam.gradeClass}">${exam.gradeText}</span></td>
                     ${scoreColumns}
                     <td class="text-center"><strong>${percentage}%</strong></td>
                     <td class="text-center">
@@ -579,6 +624,60 @@
             }).join('');
             
             this.completedTable.innerHTML = html;
+        }
+        
+        adjustTableColumns() {
+            // Check if there are any CAT exams in the list
+            const allDisplayedExams = [...this.currentExams, ...this.completedExams];
+            const hasCatExams = allDisplayedExams.some(e => e.isCatExam);
+            const hasFinalExams = allDisplayedExams.some(e => !e.isCatExam);
+            
+            // Hide/show CAT 2 and Final columns based on exam types
+            const cat2Columns = document.querySelectorAll('.cat2-column');
+            const finalColumns = document.querySelectorAll('.final-column');
+            
+            if (hasCatExams && !hasFinalExams) {
+                // Only CAT exams - hide CAT2 and Final columns
+                cat2Columns.forEach(col => col.style.display = 'none');
+                finalColumns.forEach(col => col.style.display = 'none');
+                
+                // Update table headers
+                const currentHeaders = document.querySelectorAll('.current-section thead th');
+                const completedHeaders = document.querySelectorAll('.completed-section thead th');
+                
+                if (currentHeaders.length >= 8) {
+                    currentHeaders[6].textContent = 'CAT Score';
+                    if (currentHeaders[7]) currentHeaders[7].style.display = 'none';
+                    if (currentHeaders[8]) currentHeaders[8].style.display = 'none';
+                }
+                if (completedHeaders.length >= 8) {
+                    completedHeaders[6].textContent = 'CAT Score';
+                    if (completedHeaders[7]) completedHeaders[7].style.display = 'none';
+                    if (completedHeaders[8]) completedHeaders[8].style.display = 'none';
+                }
+            } else if (hasFinalExams && !hasCatExams) {
+                // Only Final exams - show all columns normally
+                cat2Columns.forEach(col => col.style.display = '');
+                finalColumns.forEach(col => col.style.display = '');
+                
+                const currentHeaders = document.querySelectorAll('.current-section thead th');
+                const completedHeaders = document.querySelectorAll('.completed-section thead th');
+                
+                if (currentHeaders.length >= 8) {
+                    currentHeaders[6].textContent = 'CAT 1';
+                    if (currentHeaders[7]) currentHeaders[7].style.display = '';
+                    if (currentHeaders[8]) currentHeaders[8].style.display = '';
+                }
+                if (completedHeaders.length >= 8) {
+                    completedHeaders[6].textContent = 'CAT 1';
+                    if (completedHeaders[7]) completedHeaders[7].style.display = '';
+                    if (completedHeaders[8]) completedHeaders[8].style.display = '';
+                }
+            } else {
+                // Mixed - show all columns
+                cat2Columns.forEach(col => col.style.display = '');
+                finalColumns.forEach(col => col.style.display = '');
+            }
         }
         
         updateCounts() {
@@ -621,39 +720,24 @@
         }
         
         showProfessionalTranscript() {
-            // Transcript functionality (keep existing)
-            alert('Transcript feature - will show all released results');
+            const completedReleased = this.completedExams.filter(e => e.isReleased);
+            if (completedReleased.length === 0) {
+                alert('No released results available for transcript yet.');
+                return;
+            }
+            alert(`Transcript: ${completedReleased.length} completed exams. Average: ${this.completedAverage?.textContent || 'N/A'}`);
         }
         
         showLoading() {
-            const loadingHTML = (colspan) => `
-                <tr class="loading">
-                    <td colspan="${colspan}">
-                        <div class="loading-content">
-                            <div class="loading-spinner"></div>
-                            <p>Loading assessments...</p>
-                        </div>
-                    </td>
-                </tr>`;
-            
-            if (this.currentTable) this.currentTable.innerHTML = loadingHTML(11);
-            if (this.completedTable) this.completedTable.innerHTML = loadingHTML(11);
+            const loadingHTML = `<tr class="loading"><td colspan="11"><div class="loading-content"><div class="loading-spinner"></div><p>Loading assessments...</p></div></td></tr>`;
+            if (this.currentTable) this.currentTable.innerHTML = loadingHTML;
+            if (this.completedTable) this.completedTable.innerHTML = loadingHTML;
         }
         
         showError(message) {
-            const errorHTML = (colspan) => `
-                <tr class="error">
-                    <td colspan="${colspan}">
-                        <div class="error-content">
-                            <i class="fas fa-exclamation-circle"></i>
-                            <p>${message}</p>
-                            <button onclick="window.examsModule?.refresh()" class="btn btn-sm">Retry</button>
-                        </div>
-                    </td>
-                </tr>`;
-            
-            if (this.currentTable) this.currentTable.innerHTML = errorHTML(11);
-            if (this.completedTable) this.completedTable.innerHTML = errorHTML(11);
+            const errorHTML = `<tr class="error"><td colspan="11"><div class="error-content"><i class="fas fa-exclamation-circle"></i><p>${message}</p><button onclick="window.examsModule?.refresh()" class="btn btn-sm">Retry</button></div></td></tr>`;
+            if (this.currentTable) this.currentTable.innerHTML = errorHTML;
+            if (this.completedTable) this.completedTable.innerHTML = errorHTML;
         }
         
         escapeHtml(str) {
@@ -697,5 +781,5 @@
     window.loadExams = () => window.examsModule?.refresh();
     window.refreshAssessments = () => window.examsModule?.refresh();
     
-    console.log('✅ Exams module ready with RELEASE RESULTS support!');
+    console.log('✅ Exams module ready with RELEASE RESULTS support and CAT/Final separation!');
 })();
