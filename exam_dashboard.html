@@ -79,7 +79,7 @@ button { padding: 10px 20px; border: none; border-radius: 8px; font-weight: 600;
     background: white;
 }
 
-/* Question Navigation Panel - Left Side */
+/* Question Navigation Panel - Bottom Left */
 .question-nav-panel {
     position: absolute;
     bottom: 20px;
@@ -94,9 +94,12 @@ button { padding: 10px 20px; border: none; border-radius: 8px; font-weight: 600;
     border: 1px solid rgba(253,185,19,0.3);
     transition: all 0.3s ease;
 }
-.question-nav-panel:hover {
-    width: 300px;
-    background: rgba(10, 61, 98, 1);
+.question-nav-panel.collapsed {
+    width: 50px;
+}
+.question-nav-panel.collapsed .question-buttons,
+.question-nav-panel.collapsed .camera-preview-inline {
+    display: none;
 }
 .question-nav-header {
     display: flex;
@@ -179,9 +182,6 @@ button { padding: 10px 20px; border: none; border-radius: 8px; font-weight: 600;
     align-items: center;
     gap: 5px;
 }
-.camera-preview-inline .camera-label i {
-    font-size: 10px;
-}
 .camera-preview-inline video {
     width: 100%;
     height: auto;
@@ -209,9 +209,6 @@ button { padding: 10px 20px; border: none; border-radius: 8px; font-weight: 600;
 .modal-content { background: white; padding: 30px; border-radius: 12px; max-width: 700px; max-height: 80vh; overflow-y: auto; width: 90%; }
 .close-modal { float: right; font-size: 28px; cursor: pointer; color: #64748B; }
 .close-modal:hover { color: #DC2626; }
-.question-item { padding: 12px; margin: 8px 0; border-radius: 8px; }
-.question-correct { background: #D1FAE5; border-left: 3px solid #38A169; }
-.question-incorrect { background: #FEE2E2; border-left: 3px solid #DC2626; }
 .toast { position: fixed; bottom: 20px; right: 20px; padding: 15px 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 9999; animation: slideIn 0.3s ease; }
 .toast-success { background: #10B981; color: white; }
 .toast-info { background: #3B82F6; color: white; }
@@ -304,6 +301,9 @@ button { padding: 10px 20px; border: none; border-radius: 8px; font-weight: 600;
         bottom: 10px;
         left: 10px;
     }
+    .question-nav-panel.collapsed {
+        width: 50px;
+    }
     .question-btn {
         width: 30px;
         height: 30px;
@@ -340,7 +340,7 @@ button { padding: 10px 20px; border: none; border-radius: 8px; font-weight: 600;
         </div>
     </div>
     <div class="exam-content-wrapper">
-        <iframe id="examIframe" class="exam-iframe" src="about:blank"></iframe>
+        <iframe id="examIframe" class="exam-iframe" src="about:blank" sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals"></iframe>
         
         <!-- Question Navigation Panel with Camera -->
         <div id="questionNavPanel" class="question-nav-panel" style="display: none;">
@@ -349,7 +349,6 @@ button { padding: 10px 20px; border: none; border-radius: 8px; font-weight: 600;
                 <button class="toggle-nav-btn" onclick="toggleNavPanel()">−</button>
             </div>
             <div id="questionButtons" class="question-buttons">
-                <!-- Question buttons will be injected here -->
                 <div style="color: rgba(255,255,255,0.5); text-align: center; width: 100%;">Loading questions...</div>
             </div>
             
@@ -415,6 +414,7 @@ let currentUserEmail = null;
 let studentProfile = null;
 let isLoading = false;
 let currentExamId = null;
+let currentExamName = null;
 
 // Camera Proctoring Variables
 let cameraStream = null;
@@ -434,13 +434,36 @@ function getExamLink(exam) {
     return null;
 }
 
+// ========== SEND NOTIFICATION TO ADMIN ==========
+async function sendAdminNotification(alertType, details, severity = 'info') {
+    try {
+        const { error } = await sb
+            .from('admin_notifications')
+            .insert({
+                notification_type: alertType,
+                exam_id: currentExamId,
+                exam_name: currentExamName,
+                student_id: currentUserId,
+                student_name: studentProfile?.full_name || 'Unknown',
+                details: details,
+                severity: severity,
+                is_read: false,
+                timestamp: new Date().toISOString()
+            });
+        
+        if (error) console.error('Error sending admin notification:', error);
+        else console.log('✅ Admin notification sent:', alertType);
+        
+    } catch (err) {
+        console.error('Failed to send admin notification:', err);
+    }
+}
+
 // ========== QUESTION NAVIGATION FUNCTIONS ==========
 async function loadQuestionsFromIframe() {
     const iframe = document.getElementById('examIframe');
     if (!iframe || !iframe.contentWindow) return;
-    
     try {
-        // Try to communicate with iframe to get questions
         iframe.contentWindow.postMessage({ type: 'GET_QUESTIONS' }, '*');
     } catch(e) {
         console.log('Cannot communicate with iframe');
@@ -474,18 +497,9 @@ function navigateToQuestion(index) {
 
 function toggleNavPanel() {
     const panel = document.getElementById('questionNavPanel');
+    panel.classList.toggle('collapsed');
     const btn = document.querySelector('.toggle-nav-btn');
-    if (panel.style.width === '50px' || panel.style.width === '50px') {
-        panel.style.width = '280px';
-        document.getElementById('questionButtons').style.display = 'flex';
-        document.getElementById('cameraPreviewInline').style.display = 'block';
-        btn.textContent = '−';
-    } else {
-        panel.style.width = '50px';
-        document.getElementById('questionButtons').style.display = 'none';
-        document.getElementById('cameraPreviewInline').style.display = 'none';
-        btn.textContent = '+';
-    }
+    btn.textContent = panel.classList.contains('collapsed') ? '+' : '−';
 }
 
 // Listen for messages from iframe
@@ -495,6 +509,7 @@ window.addEventListener('message', function(event) {
     }
     if (event.data === 'exam_completed' || event.data?.type === 'exam_completed') {
         logProctoringEvent('exam_completed', 'Student completed the exam');
+        sendAdminNotification('exam_completed', `Student completed exam: ${currentExamName}`, 'info');
         showToast('✅ Exam completed! Your answers have been saved.', 'success');
         setTimeout(() => { closeExam(); }, 2000);
     }
@@ -641,6 +656,7 @@ function startCameraMonitoring() {
             if (faceMissingCount >= FACE_MISSING_THRESHOLD) {
                 showFaceWarning('Please stay visible in the camera frame');
                 logProctoringEvent('face_missing', 'Student not visible in camera');
+                sendAdminNotification('face_missing', `Student not visible in camera for ${currentExamName}`, 'warning');
             }
         } else {
             faceMissingCount = Math.max(0, faceMissingCount - 1);
@@ -681,7 +697,9 @@ async function logProctoringEvent(eventType, details, screenshot = null) {
     try {
         await sb.from('exam_proctoring_logs').insert({
             exam_id: currentExamId,
+            exam_name: currentExamName,
             student_id: currentUserId,
+            student_name: studentProfile?.full_name,
             event_type: eventType,
             details: details,
             screenshot_data: screenshot,
@@ -700,6 +718,7 @@ async function initCameraForExam(examId, examName) {
             if (cameraStarted) {
                 examStartTime = Date.now();
                 await logProctoringEvent('exam_started', `Started exam: ${examName}`);
+                await sendAdminNotification('exam_started', `Student started exam: ${examName}`, 'info');
                 await loadExamContent(examId, examName);
             }
         }
@@ -729,58 +748,17 @@ async function loadExamContent(examId, examName) {
         examLink = examLink.replace('{user_id}', currentUserId);
         
         currentExamId = examId;
+        currentExamName = examName;
+        
         document.getElementById('examTitle').innerHTML = `📝 ${examName}`;
         
         const iframe = document.getElementById('examIframe');
         
-        // COMPLETE FIX: Block camera completely
-        // 1. Remove any existing allow attributes
+        // Block external camera
         iframe.removeAttribute('allow');
         iframe.setAttribute('allow', '');
-        
-        // 2. Add sandbox without camera permission
         iframe.setAttribute('sandbox', 'allow-same-origin allow-scripts allow-popups allow-forms allow-modals');
-        
-        // 3. Set the source
         iframe.src = examLink;
-        
-        // 4. Try to disable camera via URL parameters (if external site supports it)
-        if (examLink.includes('nakurucollegeofhealthelearning')) {
-            // This may or may not work depending on the external site
-            const separator = examLink.includes('?') ? '&' : '?';
-            iframe.src = examLink + separator + 'camera=0&webcam=disabled&proctor=off';
-        }
-        
-        // 5. After load, try to hide any camera elements
-        iframe.onload = () => {
-            setTimeout(() => {
-                try {
-                    const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-                    if (iframeDoc) {
-                        // Hide all video elements (camera feeds)
-                        const videos = iframeDoc.querySelectorAll('video');
-                        videos.forEach(video => {
-                            if (video.srcObject) {
-                                try {
-                                    video.srcObject.getTracks().forEach(track => track.stop());
-                                } catch(e) {}
-                            }
-                            video.style.cssText = 'display:none !important; visibility:hidden !important; width:0 !important; height:0 !important;';
-                            video.pause();
-                        });
-                        
-                        // Hide any camera-related elements
-                        const cameraElements = iframeDoc.querySelectorAll('[class*="camera"], [id*="camera"], [class*="webcam"], [id*="webcam"], .proctoring, .face-detection');
-                        cameraElements.forEach(el => {
-                            el.style.cssText = 'display:none !important; visibility:hidden !important;';
-                        });
-                    }
-                } catch(e) {
-                    // Cross-origin - can't access, but sandbox helps
-                    console.log('Cross-origin iframe - camera may still be requested but will fail');
-                }
-            }, 1000);
-        };
         
         document.getElementById('examContainer').style.display = 'flex';
         document.getElementById('questionNavPanel').style.display = 'block';
@@ -790,7 +768,7 @@ async function loadExamContent(examId, examName) {
         
         setTimeout(() => loadQuestionsFromIframe(), 3000);
         
-        showToast('Exam loaded. Portal proctoring active. External camera blocked.', 'success');
+        showToast('Exam loaded. Proctoring active!', 'success');
         
     } catch (err) {
         console.error('Error loading exam:', err);
@@ -805,18 +783,47 @@ async function startExam(examId, examName) {
 }
 
 function closeExam() {
+    // Stop camera proctoring FIRST
     stopCamera();
+    
+    // Log exam end
     if (currentExamId) {
         const duration = examStartTime ? Math.round((Date.now() - examStartTime) / 1000) : null;
         logProctoringEvent('exam_closed', `Exam closed. Duration: ${duration} seconds`);
+        sendAdminNotification('exam_closed', `Student closed exam: ${currentExamName}. Duration: ${duration}s`, 'info');
     }
-    document.getElementById('examIframe').src = 'about:blank';
+    
+    // Clear exam data
+    currentExamId = null;
+    currentExamName = null;
+    examStartTime = null;
+    
+    // Stop iframe
+    const iframe = document.getElementById('examIframe');
+    iframe.src = 'about:blank';
+    iframe.srcdoc = '';
+    
+    // Hide exam container
     document.getElementById('examContainer').style.display = 'none';
     document.getElementById('questionNavPanel').style.display = 'none';
+    document.getElementById('questionNavPanel').classList.remove('collapsed');
+    
+    // Show main content
     document.querySelector('header').style.display = 'block';
     document.querySelector('.exam-list').style.display = 'block';
+    
+    // Reset camera preview
+    document.getElementById('cameraPreviewInline').style.display = 'none';
+    const video = document.getElementById('faceVideo');
+    if (video) {
+        video.srcObject = null;
+        video.pause();
+    }
+    
+    // Refresh exams to update status
     refreshExams();
-    showToast('Exam closed. Your progress has been saved.', 'info');
+    
+    showToast('Exam closed. Camera proctoring stopped.', 'info');
 }
 
 // ========== LOAD EXAMS FUNCTION ==========
