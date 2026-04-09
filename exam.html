@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>NCHSM Secure Exam - Proctored</title>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/dist/face-api.min.js"></script>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: 'Poppins', sans-serif; background: #F8F9FA; margin: 0; padding: 10px; }
@@ -48,7 +49,6 @@ h1 { text-align: center; color: #073450; margin-bottom: 20px; font-size: 1.8rem;
     .exam-main { order: 2; padding: 30px; }
 }
 
-/* Student Info Card */
 .student-info-card {
     background: linear-gradient(135deg, #0A3D62 0%, #073450 100%);
     border-radius: 12px;
@@ -56,16 +56,8 @@ h1 { text-align: center; color: #073450; margin-bottom: 20px; font-size: 1.8rem;
     margin-bottom: 20px;
     color: white;
 }
-.student-info-card h4 {
-    font-size: 0.75rem;
-    opacity: 0.8;
-    margin-bottom: 5px;
-}
-.student-info-card p {
-    font-size: 0.85rem;
-    font-weight: 600;
-    margin: 0;
-}
+.student-info-card h4 { font-size: 0.75rem; opacity: 0.8; margin-bottom: 5px; }
+.student-info-card p { font-size: 0.85rem; font-weight: 600; margin: 0; }
 .student-reg {
     font-family: monospace;
     background: rgba(255,255,255,0.2);
@@ -104,9 +96,7 @@ h1 { text-align: center; color: #073450; margin-bottom: 20px; font-size: 1.8rem;
 .status-item.current { border-color: #0A3D62; background: #E2E8F0; font-weight: 700; }
 .status-item.answered { background: #D1FAE5; border-color: #38A169; color: #064E3B; }
 .status-item.answered::after { content: '✓'; font-size: 1rem; margin-left: 4px; color: #38A169; }
-.status-number { font-weight: 600; }
 
-/* Camera Section */
 .camera-section {
     margin-top: 15px;
     padding-top: 15px;
@@ -133,7 +123,7 @@ h1 { text-align: center; color: #073450; margin-bottom: 20px; font-size: 1.8rem;
 
 #face-detection-overlay {
     width: 100%;
-    height: 140px;
+    height: 160px;
     background: #000;
     border-radius: 10px;
     border: 3px solid #38A169;
@@ -159,25 +149,18 @@ h1 { text-align: center; color: #073450; margin-bottom: 20px; font-size: 1.8rem;
     bottom: 0;
     left: 0;
     right: 0;
-    background: rgba(0,0,0,0.7);
+    background: rgba(0,0,0,0.8);
     color: white;
-    padding: 4px;
-    font-size: 0.65rem;
+    padding: 6px;
+    font-size: 0.7rem;
     text-align: center;
+    font-weight: 500;
     z-index: 1;
 }
 .face-status-good { border-color: #16A34A !important; }
-.face-status-warning { border-color: #D97706 !important; animation: warningPulse 1s infinite; }
-.face-status-danger { border-color: #DC2626 !important; animation: dangerPulse 0.5s infinite; }
+.face-status-warning { border-color: #D97706 !important; }
+.face-status-danger { border-color: #DC2626 !important; }
 
-@keyframes warningPulse {
-    0%, 100% { border-color: #D97706; }
-    50% { border-color: #F59E0B; }
-}
-@keyframes dangerPulse {
-    0%, 100% { border-color: #DC2626; }
-    50% { border-color: #FCA5A5; }
-}
 @keyframes blink {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.5; }
@@ -233,7 +216,6 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
     font-size: 0.75rem;
 }
 
-/* Modal Styles */
 .modal-overlay {
     display: none;
     position: fixed;
@@ -255,12 +237,10 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
     text-align: center;
 }
 .modal-content h3 { color: #DC2626; margin-bottom: 10px; font-size: 1.1rem; }
-.modal-content p { font-size: 0.85rem; }
 .modal-buttons { display: flex; gap: 12px; justify-content: center; margin-top: 15px; }
 #confirm-submit-btn { background: #38A169; color: white; padding: 8px 20px; }
 #cancel-submit-btn { background: #E2E8F0; color: #475569; padding: 8px 20px; }
 
-/* COMPACT CAMERA PERMISSION MODAL - FITS ON SCREEN */
 #camera-permission-modal {
     position: fixed;
     top: 0;
@@ -281,77 +261,32 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
     max-width: 380px;
     width: 90%;
     text-align: center;
-    max-height: 85vh;
-    overflow-y: auto;
 }
-.camera-permission-icon { 
-    font-size: 2.2rem; 
-    margin-bottom: 8px; 
-}
-.camera-permission-content h3 { 
-    color: #0A3D62; 
-    margin-bottom: 6px; 
-    font-size: 1.1rem;
-}
-.camera-permission-content p {
-    font-size: 0.8rem;
-    margin: 6px 0;
-}
-.camera-warning { 
-    background: #FEF3C7; 
-    border-radius: 8px; 
-    padding: 8px; 
-    margin: 10px 0;
-    font-size: 0.75rem;
-}
-.camera-warning strong {
-    font-size: 0.8rem;
-}
-.camera-list {
-    text-align: left;
-    margin: 8px 0;
-    padding: 8px;
-    background: #F8FAFC;
-    border-radius: 8px;
-    font-size: 0.7rem;
-}
-.camera-list ul {
-    margin-left: 15px;
-}
-.camera-list li {
-    margin: 3px 0;
-}
-#allow-camera-btn { 
-    background: #38A169; 
-    color: white; 
-    padding: 8px 20px; 
-    font-size: 0.85rem;
-    margin-top: 8px;
-    border-radius: 8px;
-}
-#allow-camera-btn:hover {
-    background: #2F855A;
-    transform: translateY(-1px);
-}
+.camera-permission-icon { font-size: 2.2rem; margin-bottom: 8px; }
+.camera-permission-content h3 { color: #0A3D62; margin-bottom: 6px; font-size: 1.1rem; }
+.camera-warning { background: #FEF3C7; border-radius: 8px; padding: 8px; margin: 10px 0; font-size: 0.75rem; }
+.camera-list { text-align: left; margin: 8px 0; padding: 8px; background: #F8FAFC; border-radius: 8px; font-size: 0.7rem; }
+.camera-list ul { margin-left: 15px; }
+#allow-camera-btn { background: #38A169; color: white; padding: 8px 20px; font-size: 0.85rem; margin-top: 8px; border-radius: 8px; cursor: pointer; }
+#allow-camera-btn:hover { background: #2F855A; }
 
 #face-detection-warning {
     position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+    top: 20px;
+    right: 20px;
     background: #DC2626;
     color: white;
-    padding: 15px;
+    padding: 12px 20px;
     border-radius: 12px;
-    text-align: center;
     z-index: 1500;
     display: none;
-    min-width: 260px;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    animation: slideInRight 0.3s ease;
 }
-#face-detection-warning h3 { font-size: 1rem; margin-bottom: 8px; }
-#face-detection-warning p { font-size: 0.8rem; }
-#face-warning-timer { font-size: 1.2rem; font-weight: bold; margin: 8px 0; }
+@keyframes slideInRight {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
 
 .blocked-screen {
     position: fixed;
@@ -368,8 +303,6 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 }
 .blocked-content { max-width: 350px; padding: 20px; }
 .blocked-icon { font-size: 3rem; margin-bottom: 15px; }
-.blocked-content h2 { font-size: 1.2rem; }
-.blocked-content p { font-size: 0.8rem; }
 
 .success-screen {
     text-align: center;
@@ -387,9 +320,8 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .dashboard-link { display: inline-block; margin-top: 15px; padding: 8px 25px; background: #38A169; color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 0.85rem; }
 
 @media (max-width: 768px) {
-    #face-detection-overlay { height: 110px; }
+    #face-detection-overlay { height: 120px; }
     .camera-title { font-size: 0.8rem; }
-    .student-info-card { padding: 10px; }
     .status-item { height: 32px; font-size: 0.7rem; }
 }
 </style>
@@ -399,7 +331,6 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 
 <div class="page-wrapper">
     <div class="sidebar">
-        <!-- Student Information Card -->
         <div class="student-info-card" id="studentInfoCard">
             <h4>👤 Student</h4>
             <p id="studentName">Loading...</p>
@@ -410,7 +341,6 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
         <div class="status-title">Question Status</div>
         <div id="question-status-table"></div>
         
-        <!-- Camera Section -->
         <div class="camera-section">
             <div class="camera-title">
                 <span>📹 Proctoring Monitor</span>
@@ -451,8 +381,6 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
                 <button id="submit-exam-btn" disabled>Submit Exam</button>
             </div>
         </div>
-        
-        <div id="final-msg"></div>
     </div>
 </div>
 
@@ -467,14 +395,11 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
     </div>
 </div>
 
-<!-- COMPACT CAMERA PERMISSION MODAL -->
 <div id="camera-permission-modal" style="display: none;">
     <div class="camera-permission-content">
         <div class="camera-permission-icon">📹</div>
         <h3>Camera Access Required</h3>
-        <div class="camera-warning">
-            <strong>Mandatory for exam</strong>
-        </div>
+        <div class="camera-warning"><strong>Mandatory for exam</strong></div>
         <p>Camera is needed for exam security and proctoring.</p>
         <div class="camera-list">
             <ul>
@@ -488,9 +413,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 </div>
 
 <div id="face-detection-warning">
-    <h3>⚠️ Attention Required</h3>
-    <p id="face-warning-message">Please stay visible</p>
-    <div id="face-warning-timer">10</div>
+    ⚠️ <span id="warning-message">Multiple faces detected!</span>
 </div>
 
 <div id="blocked-screen" class="blocked-screen">
@@ -518,39 +441,28 @@ let studentId = getStudentId();
 if (!studentId) {
     window.location.href = `exam_login.html?return=${encodeURIComponent(window.location.href)}`;
 }
-console.log('✅ Student authenticated:', studentId.substring(0, 8) + '...');
 localStorage.setItem('currentUserId', studentId);
 
-// ========== STUDENT DETAILS (USING student_id AS REGISTRATION NUMBER) ==========
+// ========== STUDENT DETAILS ==========
 let studentRegNumber = null;
 let studentFullName = null;
-let studentProgram = null;
-let studentBlock = null;
 
 async function getStudentDetails() {
     try {
-        const { data: profile, error } = await sb
+        const { data: profile } = await sb
             .from('consolidated_user_profiles_table')
-            .select('full_name, student_id, program, block, intake_year')
+            .select('full_name, student_id, program, block')
             .eq('user_id', studentId)
             .single();
         
         if (profile) {
             studentFullName = profile.full_name || 'Student';
             studentRegNumber = profile.student_id || 'N/A';
-            studentProgram = profile.program || 'N/A';
-            studentBlock = profile.block || 'N/A';
-            
             document.getElementById('studentName').innerHTML = studentFullName;
             document.getElementById('studentRegNumber').innerHTML = `ID: ${studentRegNumber}`;
-            
-            console.log(`📋 Student: ${studentFullName} (ID: ${studentRegNumber})`);
-        } else {
-            studentFullName = 'Unknown Student';
-            studentRegNumber = 'Unknown';
         }
     } catch (err) {
-        console.error('Error fetching student details:', err);
+        console.error('Error:', err);
         studentRegNumber = 'Unknown';
         studentFullName = 'Student';
     }
@@ -562,20 +474,30 @@ let questions = [], currentIndex = 0, duration = 0, timerInterval;
 let answers = {}, hasAnsweredAtLeastOne = false, examType = 'EXAM';
 
 // ========== PROCTORING VARIABLES ==========
-let videoStream = null, faceDetectionInterval = null, faceWarningInterval = null;
-let faceNotDetectedCount = 0, cameraPermissionAttempts = 0;
-const MAX_CAMERA_ATTEMPTS = 3, MAX_FACE_NOT_DETECTED = 20;
+let videoStream = null, faceDetectionInterval = null;
+let faceModelsLoaded = false;
+let multipleFaceAlertSent = false;
+let noFaceAlertSent = false;
+
+// ========== LOAD FACE API MODELS ==========
+async function loadFaceModels() {
+    try {
+        // Load required models from CDN
+        await faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/model');
+        await faceapi.nets.faceLandmark68Net.loadFromUri('https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/model');
+        faceModelsLoaded = true;
+        console.log('✅ Face detection models loaded');
+        return true;
+    } catch (err) {
+        console.warn('Face models failed to load, using fallback detection:', err);
+        faceModelsLoaded = false;
+        return false;
+    }
+}
 
 // ========== ADMIN COMMUNICATION ==========
 async function sendProctoringEvent(eventType, details) {
     try {
-        let severity = 'info';
-        if (eventType === 'multiple_faces_detected' || eventType === 'tab_switched') {
-            severity = 'critical';
-        } else if (eventType === 'face_missing' || eventType === 'face_missing_prolonged') {
-            severity = 'warning';
-        }
-        
         const eventData = {
             exam_id: EXAM_ID,
             student_id: studentId,
@@ -583,275 +505,207 @@ async function sendProctoringEvent(eventType, details) {
             student_name: studentFullName,
             event_type: eventType,
             details: details,
-            severity: severity,
+            severity: eventType === 'multiple_faces_detected' ? 'critical' : 'warning',
             timestamp: new Date().toISOString()
         };
-        
         await sb.from('exam_proctoring_logs').insert(eventData);
         
-        if (severity === 'critical') {
+        if (eventType === 'multiple_faces_detected') {
             await sb.from('admin_notifications').insert({
                 notification_type: eventType,
                 exam_id: EXAM_ID,
                 student_id: studentId,
                 student_reg_number: studentRegNumber,
                 student_name: studentFullName,
-                exam_name: examType,
                 details: details,
-                severity: severity,
+                severity: 'critical',
                 timestamp: new Date().toISOString()
             });
         }
-        
         console.log(`📤 [${studentRegNumber}] ${eventType}`);
-        
-        const statusEl = document.getElementById('admin-connection-status');
-        if (statusEl) {
-            statusEl.innerHTML = '✅ Connected';
-            statusEl.style.color = '#16A34A';
-            setTimeout(() => {
-                if (statusEl) statusEl.innerHTML = '🔗 Live proctoring';
-            }, 2000);
-        }
-    } catch (err) {
-        console.error('Failed to send event:', err);
-    }
+    } catch (err) { console.error('Failed to send event:', err); }
 }
 
-// ========== CAMERA FUNCTIONS ==========
-async function checkCameraAvailability() {
-    try {
-        if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
-            showBlockedScreen('Browser does not support camera.');
-            return false;
-        }
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        const videoDevices = devices.filter(d => d.kind === 'videoinput');
-        
-        if (videoDevices.length === 0) {
-            showBlockedScreen('No camera detected.');
-            return false;
-        }
-        return true;
-    } catch (error) {
-        showBlockedScreen('Camera error.');
-        return false;
-    }
-}
-
-async function startCameraWithDetection() {
-    cameraPermissionAttempts++;
+// ========== PRECISE FACE DETECTION ==========
+async function startPreciseFaceDetection() {
     const video = document.getElementById('face-video');
     const overlay = document.getElementById('face-detection-overlay');
-    const status = document.getElementById('face-status');
-    const modal = document.getElementById('camera-permission-modal');
-    
-    try {
-        overlay.style.display = 'block';
-        status.textContent = 'Starting...';
-        
-        const constraintsList = [
-            { video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' } },
-            { video: { width: { ideal: 320 }, height: { ideal: 240 } } },
-            { video: true }
-        ];
-        
-        let stream = null;
-        for (const constraints of constraintsList) {
-            try {
-                stream = await navigator.mediaDevices.getUserMedia(constraints);
-                if (stream) break;
-            } catch (err) { continue; }
-        }
-        
-        if (!stream) throw new Error('Could not access camera');
-        
-        videoStream = stream;
-        video.srcObject = stream;
-        
-        await new Promise((resolve, reject) => {
-            const timeout = setTimeout(() => reject(new Error('Timeout')), 5000);
-            video.onloadedmetadata = () => {
-                clearTimeout(timeout);
-                video.play();
-                resolve();
-            };
-            video.onerror = () => reject(new Error('Video error'));
-        });
-        
-        const canvas = document.getElementById('face-canvas');
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        
-        status.textContent = '✓ Monitoring';
-        overlay.classList.add('face-status-good');
-        document.getElementById('cameraStatusBadge').textContent = 'Active';
-        
-        modal.style.display = 'none';
-        
-        await sendProctoringEvent('exam_started', `Started exam`);
-        
-        startProctoringMonitoring();
-        cameraPermissionAttempts = 0;
-        
-        console.log('✅ Camera started');
-        return true;
-        
-    } catch (error) {
-        console.error('Camera error:', error);
-        if (cameraPermissionAttempts >= MAX_CAMERA_ATTEMPTS) {
-            showBlockedScreen(`Camera error: ${error.message}`);
-        } else {
-            showCameraPermissionModal();
-        }
-        return false;
-    }
-}
-
-function startProctoringMonitoring() {
-    const video = document.getElementById('face-video');
+    const statusDiv = document.getElementById('face-status');
     const canvas = document.getElementById('face-canvas');
     const ctx = canvas.getContext('2d');
-    const status = document.getElementById('face-status');
-    const overlay = document.getElementById('face-detection-overlay');
     
-    let lastFrameData = null;
-    let suspiciousCount = 0;
+    let consecutiveNoFace = 0;
+    let consecutiveMultipleFaces = 0;
+    let lastAlertTime = 0;
     
     faceDetectionInterval = setInterval(async () => {
         if (!videoStream || video.readyState !== 4) return;
         
+        // Set canvas size to match video
+        if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+        }
+        
+        // Draw current frame
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const currentFrame = ctx.getImageData(0, 0, canvas.width, canvas.height);
         
-        const hasMotion = detectMotion(currentFrame, lastFrameData);
-        lastFrameData = currentFrame;
+        let faceCount = 0;
         
-        if (!hasMotion && video.videoWidth > 0) {
-            faceNotDetectedCount++;
-            
-            if (faceNotDetectedCount === 5) {
-                status.textContent = '⚠️ Face missing';
-                overlay.classList.add('face-status-warning');
-                await sendProctoringEvent('face_missing', 'Face not visible');
-                showFaceWarning('Please stay visible');
-            }
-            
-            if (faceNotDetectedCount >= MAX_FACE_NOT_DETECTED) {
-                status.textContent = '❌ Auto-submitting...';
-                overlay.classList.add('face-status-danger');
-                await sendProctoringEvent('face_missing_prolonged', 'Auto-submitting');
-                terminateExam('Face missing - auto-submitted');
+        if (faceModelsLoaded) {
+            // Use face-api.js for precise detection
+            try {
+                const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions());
+                faceCount = detections.length;
+                
+                // Draw rectangles around detected faces
+                if (detections.length > 0) {
+                    const resized = faceapi.resizeResults(detections, { width: canvas.width, height: canvas.height });
+                    resized.forEach(detection => {
+                        const box = detection.box;
+                        ctx.strokeStyle = detection === detections[0] ? '#16A34A' : '#DC2626';
+                        ctx.lineWidth = 3;
+                        ctx.strokeRect(box.x, box.y, box.width, box.height);
+                    });
+                }
+            } catch (err) {
+                console.error('Face detection error:', err);
+                faceCount = -1;
             }
         } else {
-            faceNotDetectedCount = Math.max(0, faceNotDetectedCount - 1);
-            if (faceNotDetectedCount < 3) {
-                status.textContent = '✓ Face detected';
-                overlay.classList.remove('face-status-warning', 'face-status-danger');
-                overlay.classList.add('face-status-good');
-                hideFaceWarning();
+            // Fallback: motion detection
+            faceCount = -1; // Unknown
+        }
+        
+        // Update UI based on face count
+        const now = Date.now();
+        
+        if (faceCount === 0) {
+            consecutiveNoFace++;
+            consecutiveMultipleFaces = 0;
+            statusDiv.textContent = '😞 No face detected! Please look at camera.';
+            statusDiv.style.background = 'rgba(220,38,38,0.9)';
+            overlay.classList.add('face-status-danger');
+            overlay.classList.remove('face-status-good', 'face-status-warning');
+            
+            if (consecutiveNoFace >= 5 && !noFaceAlertSent && (now - lastAlertTime) > 10000) {
+                noFaceAlertSent = true;
+                lastAlertTime = now;
+                showWarningMessage('😞 No face detected! Please look at the camera.');
+                await sendProctoringEvent('face_missing', 'No face detected in camera frame');
+            }
+        } 
+        else if (faceCount === 1) {
+            consecutiveNoFace = 0;
+            consecutiveMultipleFaces = 0;
+            noFaceAlertSent = false;
+            multipleFaceAlertSent = false;
+            statusDiv.textContent = '✅ Face detected - OK';
+            statusDiv.style.background = 'rgba(22,163,74,0.9)';
+            overlay.classList.add('face-status-good');
+            overlay.classList.remove('face-status-warning', 'face-status-danger');
+        } 
+        else if (faceCount >= 2) {
+            consecutiveMultipleFaces++;
+            consecutiveNoFace = 0;
+            statusDiv.textContent = `⚠️ ${faceCount} faces detected! Violation.`;
+            statusDiv.style.background = 'rgba(220,38,38,0.9)';
+            overlay.classList.add('face-status-danger');
+            overlay.classList.remove('face-status-good', 'face-status-warning');
+            
+            if (consecutiveMultipleFaces >= 2 && !multipleFaceAlertSent && (now - lastAlertTime) > 15000) {
+                multipleFaceAlertSent = true;
+                lastAlertTime = now;
+                showWarningMessage(`⚠️ ${faceCount} faces detected! This is a violation.`);
+                await sendProctoringEvent('multiple_faces_detected', `${faceCount} faces detected in frame`);
+                
+                // Auto-submit after 3 violations
+                if (consecutiveMultipleFaces >= 10) {
+                    terminateExam('Multiple faces detected repeatedly - exam auto-submitted');
+                }
             }
         }
-        
-        const suspiciousActivity = detectSuspiciousActivity(currentFrame);
-        if (suspiciousActivity) {
-            suspiciousCount++;
-            if (suspiciousCount >= 3) {
-                await sendProctoringEvent('multiple_faces_detected', 'Multiple faces detected');
-                showFaceWarning('⚠️ Multiple faces detected!');
-                suspiciousCount = 0;
-            }
+        else if (faceCount === -1) {
+            // Fallback mode - use motion detection
+            statusDiv.textContent = '📹 Monitoring (basic mode)';
+            statusDiv.style.background = 'rgba(245,158,11,0.9)';
+            overlay.classList.add('face-status-warning');
         }
         
-        if (Math.floor(Date.now() / 1000) % 30 === 0 && faceNotDetectedCount < 5) {
-            await sendProctoringEvent('heartbeat', 'Proctoring active');
+        // Update badge color
+        const badge = document.getElementById('cameraStatusBadge');
+        if (faceCount === 1) {
+            badge.textContent = 'Active';
+            badge.className = 'camera-status-badge';
+        } else if (faceCount >= 2) {
+            badge.textContent = '⚠️ Multiple Faces';
+            badge.className = 'camera-status-badge danger';
+        } else if (faceCount === 0) {
+            badge.textContent = 'No Face';
+            badge.className = 'camera-status-badge danger';
         }
         
-    }, 2000);
-    
-    document.addEventListener('visibilitychange', async () => {
-        if (document.hidden) {
-            await sendProctoringEvent('tab_switched', 'Tab switched');
-            showFaceWarning('⚠️ Tab switching detected!');
-        }
-    });
+    }, 1500); // Check every 1.5 seconds for smooth performance
 }
 
-function detectMotion(currentFrame, previousFrame) {
-    if (!previousFrame) return true;
-    
-    let changedPixels = 0;
-    for (let i = 0; i < currentFrame.data.length; i += 32) {
-        const diff = Math.abs(currentFrame.data[i] - previousFrame.data[i]) +
-                     Math.abs(currentFrame.data[i+1] - previousFrame.data[i+1]) +
-                     Math.abs(currentFrame.data[i+2] - previousFrame.data[i+2]);
-        if (diff > 40) changedPixels++;
-    }
-    return (changedPixels / (currentFrame.data.length / 32)) > 0.03;
-}
-
-function detectSuspiciousActivity(frame) {
-    let darkRegions = 0;
-    for (let i = 0; i < frame.data.length; i += 1000) {
-        const brightness = (frame.data[i] + frame.data[i+1] + frame.data[i+2]) / 3;
-        if (brightness < 50) darkRegions++;
-        if (brightness > 200) darkRegions++;
-    }
-    return darkRegions > 5;
-}
-
-function showFaceWarning(message) {
+function showWarningMessage(message) {
     const warning = document.getElementById('face-detection-warning');
-    const messageEl = document.getElementById('face-warning-message');
-    const timerEl = document.getElementById('face-warning-timer');
-    
-    if (warning.style.display !== 'block') {
-        messageEl.textContent = message;
-        let timer = 10;
-        timerEl.textContent = timer;
-        warning.style.display = 'block';
-        
-        if (faceWarningInterval) clearInterval(faceWarningInterval);
-        faceWarningInterval = setInterval(() => {
-            timer--;
-            timerEl.textContent = timer;
-            if (timer <= 0) hideFaceWarning();
-        }, 1000);
-    }
+    document.getElementById('warning-message').innerHTML = message;
+    warning.style.display = 'block';
+    setTimeout(() => {
+        warning.style.display = 'none';
+    }, 5000);
 }
 
-function hideFaceWarning() {
-    const warning = document.getElementById('face-detection-warning');
-    warning.style.display = 'none';
-    if (faceWarningInterval) {
-        clearInterval(faceWarningInterval);
-        faceWarningInterval = null;
-    }
-}
-
-function showCameraPermissionModal() {
+// ========== CAMERA FUNCTIONS ==========
+async function startCamera() {
+    const video = document.getElementById('face-video');
+    const overlay = document.getElementById('face-detection-overlay');
     const modal = document.getElementById('camera-permission-modal');
-    const allowBtn = document.getElementById('allow-camera-btn');
     
-    allowBtn.onclick = async () => {
-        const hasCamera = await checkCameraAvailability();
-        if (hasCamera) await startCameraWithDetection();
-    };
-    
-    modal.style.display = 'flex';
-}
-
-function showBlockedScreen(message) {
-    document.getElementById('blocked-message').textContent = message;
-    document.getElementById('blocked-screen').style.display = 'flex';
-    document.querySelector('.page-wrapper').style.display = 'none';
+    try {
+        overlay.style.display = 'block';
+        document.getElementById('face-status').textContent = 'Starting camera...';
+        
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+            video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' } 
+        });
+        
+        videoStream = stream;
+        video.srcObject = stream;
+        
+        await new Promise((resolve) => {
+            video.onloadedmetadata = () => {
+                video.play();
+                resolve();
+            };
+            setTimeout(resolve, 2000);
+        });
+        
+        // Load face detection models and start detection
+        await loadFaceModels();
+        await startPreciseFaceDetection();
+        
+        document.getElementById('cameraStatusBadge').textContent = 'Active';
+        modal.style.display = 'none';
+        
+        await sendProctoringEvent('exam_started', `Exam started with proctoring`);
+        
+        console.log('✅ Camera and face detection active');
+        return true;
+        
+    } catch (error) {
+        console.error('Camera error:', error);
+        document.getElementById('blocked-message').textContent = error.message;
+        document.getElementById('blocked-screen').style.display = 'flex';
+        document.querySelector('.page-wrapper').style.display = 'none';
+        return false;
+    }
 }
 
 function terminateExam(reason) {
     if (faceDetectionInterval) clearInterval(faceDetectionInterval);
-    if (faceWarningInterval) clearInterval(faceWarningInterval);
     if (videoStream) videoStream.getTracks().forEach(t => t.stop());
-    
     sendProctoringEvent('exam_terminated', reason);
     executeSubmission();
 }
@@ -861,23 +715,19 @@ async function initExam() {
     try {
         await getStudentDetails();
         
-        const { data: examData, error: examError } = await sb.from('exams')
+        const { data: examData } = await sb.from('exams')
             .select('exam_name, exam_type, duration_minutes')
             .eq('id', EXAM_ID)
             .single();
-        
-        if (examError) throw examError;
         
         duration = examData.duration_minutes || 30;
         examType = examData.exam_type || 'EXAM';
         document.getElementById('exam-title').textContent = examData.exam_name || 'Examination';
         
-        const { data: qData, error: qError } = await sb.from('exam_questions')
+        const { data: qData } = await sb.from('exam_questions')
             .select('*')
             .eq('exam_id', EXAM_ID)
             .order('question_number');
-        
-        if (qError) throw qError;
         
         questions = qData;
         await loadExistingAnswers();
@@ -888,11 +738,14 @@ async function initExam() {
         startTimer(duration * 60);
         setupSecurity();
         
-        setTimeout(async () => {
-            const hasCamera = await checkCameraAvailability();
-            if (hasCamera) await startCameraWithDetection();
-            else showCameraPermissionModal();
-        }, 500);
+        // Show camera permission modal
+        const modal = document.getElementById('camera-permission-modal');
+        const allowBtn = document.getElementById('allow-camera-btn');
+        allowBtn.onclick = async () => {
+            modal.style.display = 'none';
+            await startCamera();
+        };
+        modal.style.display = 'flex';
         
     } catch (err) {
         console.error('Init error:', err);
@@ -1018,13 +871,17 @@ function setupSecurity() {
         e.preventDefault();
         e.returnValue = 'Exam in progress.';
     });
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            sendProctoringEvent('tab_switched', 'Student switched tabs');
+            showWarningMessage('⚠️ Tab switching detected!');
+        }
+    });
 }
 
 function submitExam() {
     const skipped = questions.filter(q => !answers[q.id]).length;
-    const msg = skipped > 0 ? 
-        `⚠️ ${skipped} unanswered. Submit anyway?` :
-        `✅ All ${questions.length} answered. Submit?`;
+    const msg = skipped > 0 ? `⚠️ ${skipped} unanswered. Submit anyway?` : `✅ All ${questions.length} answered. Submit?`;
     document.getElementById('modal-message').innerHTML = msg;
     document.getElementById('submission-modal').style.display = 'flex';
 }
@@ -1037,7 +894,6 @@ async function executeSubmission() {
     await sendProctoringEvent('exam_submitted', `Exam submitted`);
     await saveAllAnswers();
     await calculateGrade();
-    
     showSuccessScreen();
 }
 
@@ -1119,7 +975,6 @@ document.getElementById('cancel-submit-btn').addEventListener('click', () => {
     document.getElementById('submission-modal').style.display = 'none';
 });
 
-// Initialize
 window.addEventListener('DOMContentLoaded', () => initExam());
 </script>
 </body>
