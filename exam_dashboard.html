@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>NCHSM Student Exam Portal - Secure Proctoring</title>
+<title>NCHSM Student Exam Portal</title>
 <link rel="icon" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -42,29 +42,39 @@ button { padding: 10px 24px; border: none; border-radius: 10px; font-weight: 600
 .btn-start { background: #38A169; color: white; }
 .btn-start:hover { background: #2F855A; transform: translateY(-2px); }
 .btn-details { background: #3B82F6; color: white; }
-.btn-close-exam { background: #DC2626; color: white; }
 .refresh-btn { background: #8B5CF6; color: white; padding: 8px 16px; font-size: 0.8rem; }
 .logout-btn { background: #DC2626; color: white; padding: 8px 16px; font-size: 0.8rem; }
 
-.exam-container { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 2000; flex-direction: column; }
-.exam-header-bar { background: linear-gradient(135deg, #0A3D62, #073450); color: white; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+.exam-container { 
+    display: none; 
+    position: fixed; 
+    top: 0; 
+    left: 0; 
+    width: 100%; 
+    height: 100%; 
+    background: white; 
+    z-index: 2000; 
+    flex-direction: column;
+}
+.exam-header-bar {
+    background: linear-gradient(135deg, #0A3D62, #073450);
+    color: white;
+    padding: 12px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
 .exam-header-bar h3 { margin: 0; font-size: 1rem; }
-.exam-content-wrapper { display: flex; flex: 1; position: relative; overflow: hidden; }
-.exam-iframe { flex: 1; width: 100%; border: none; background: white; }
-
-.question-nav-panel { position: absolute; bottom: 20px; left: 20px; width: 280px; background: rgba(10, 61, 98, 0.95); backdrop-filter: blur(12px); border-radius: 16px; padding: 12px; z-index: 10050; box-shadow: 0 8px 25px rgba(0,0,0,0.3); border: 1px solid rgba(253, 185, 19, 0.4); }
-.question-nav-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.2); color: white; font-size: 11px; font-weight: 600; }
-.toggle-nav-btn { background: none; border: none; color: white; cursor: pointer; font-size: 14px; padding: 2px 8px; border-radius: 6px; }
-.question-buttons { display: flex; flex-wrap: wrap; gap: 6px; max-height: 100px; overflow-y: auto; margin-bottom: 10px; padding: 3px; }
-.question-btn { width: 34px; height: 34px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; font-size: 11px; background: rgba(255,255,255,0.15); color: white; }
-.question-btn.answered { background: #38A169; }
-.question-btn.current { background: #FDB913; color: #0A3D62; box-shadow: 0 0 0 2px white; }
-
-.camera-preview-inline { margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.2); }
-.camera-label { font-size: 9px; color: #FDB913; margin-bottom: 6px; display: flex; align-items: center; gap: 5px; }
-.camera-preview-inline video { width: 100%; height: auto; border-radius: 10px; border: 2px solid #FDB913; background: #000; max-height: 90px; object-fit: cover; }
-.camera-status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #38A169; animation: pulse 1.5s infinite; margin-left: 5px; }
-@keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(1.2); } }
+.btn-close-exam { background: #DC2626; color: white; padding: 8px 16px; border-radius: 8px; font-size: 0.8rem; }
+.btn-close-exam:hover { background: #B91C1C; }
+.exam-iframe {
+    flex: 1;
+    width: 100%;
+    border: none;
+    background: white;
+}
 
 .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 3000; align-items: center; justify-content: center; }
 .modal-content { background: white; padding: 30px; border-radius: 20px; max-width: 600px; max-height: 80vh; overflow-y: auto; width: 90%; }
@@ -76,10 +86,11 @@ button { padding: 10px 24px; border: none; border-radius: 10px; font-weight: 600
 .toast-warning { background: #F59E0B; color: white; }
 @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 
-.camera-permission-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 20001; align-items: center; justify-content: center; }
-.camera-permission-content { background: white; padding: 35px; border-radius: 24px; max-width: 450px; width: 90%; text-align: center; }
-
-@media (max-width: 768px) { .question-nav-panel { width: 240px; bottom: 10px; left: 10px; } .question-btn { width: 30px; height: 30px; font-size: 10px; } }
+@media (max-width: 768px) {
+    .exam-title { font-size: 1rem; }
+    .exam-meta { gap: 8px; }
+    button { padding: 8px 16px; font-size: 0.75rem; }
+}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -88,7 +99,7 @@ button { padding: 10px 24px; border: none; border-radius: 10px; font-weight: 600
 <header>
     <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" class="logo" alt="Logo">
     <h1>📚 NCHSM Exam Portal</h1>
-    <div class="header-subtitle">Secure Proctored Exams</div>
+    <div class="header-subtitle">Select an exam to begin</div>
 </header>
 
 <div class="exam-list">
@@ -102,45 +113,19 @@ button { padding: 10px 24px; border: none; border-radius: 10px; font-weight: 600
     <div id="examList">Loading exams...</div>
 </div>
 
+<!-- Exam Container (NO CAMERA HERE - just the iframe) -->
 <div id="examContainer" class="exam-container">
     <div class="exam-header-bar">
         <h3 id="examTitle">Taking Exam...</h3>
         <button class="btn-close-exam" onclick="closeExam()">✖ Close Exam</button>
     </div>
-    <div class="exam-content-wrapper">
-        <iframe id="examIframe" class="exam-iframe" src="about:blank" allow="camera *; microphone *"></iframe>
-        <div id="questionNavPanel" class="question-nav-panel" style="display: none;">
-            <div class="question-nav-header">
-                <span><i>📋</i> Question Navigator</span>
-                <button class="toggle-nav-btn" onclick="toggleNavPanel()">−</button>
-            </div>
-            <div id="questionButtons" class="question-buttons">
-                <div style="color: rgba(255,255,255,0.5); text-align: center; width: 100%;">Loading...</div>
-            </div>
-            <div class="camera-preview-inline" id="cameraPreviewInline" style="display: none;">
-                <div class="camera-label">
-                    <i>📷</i> Proctoring Active <span class="camera-status-dot"></span>
-                </div>
-                <video id="faceVideo" autoplay playsinline muted></video>
-            </div>
-        </div>
-    </div>
+    <iframe id="examIframe" class="exam-iframe" src="about:blank"></iframe>
 </div>
 
 <div id="resultsModal" class="modal">
     <div class="modal-content">
         <span class="close-modal" onclick="closeModal()">&times;</span>
         <div id="modalContent"></div>
-    </div>
-</div>
-
-<div id="cameraPermissionModal" class="camera-permission-modal">
-    <div class="camera-permission-content">
-        <div style="font-size: 48px; margin-bottom: 15px;">📷</div>
-        <h3>Camera Access Required</h3>
-        <p style="margin: 15px 0; color: #64748B;">This exam requires camera access for proctoring.</p>
-        <button id="allowCameraBtn" style="background: #38A169; color: white; padding: 12px 30px; border: none; border-radius: 10px; font-weight: 600; cursor: pointer;">Allow Camera</button>
-        <button id="cancelExamBtn" style="background: #DC2626; color: white; padding: 12px 30px; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; margin-left: 10px;">Cancel</button>
     </div>
 </div>
 
@@ -153,14 +138,10 @@ let currentUserId = null;
 let studentProfile = null;
 let currentExamId = null;
 let isLoading = false;
-let cameraStream = null;
-let cameraActive = false;
-let faceInterval = null;
-let examStartTime = null;
 
 function getExamLink(exam) { return exam.exam_link || exam.online_link || null; }
 
-// ========== AUTO-FILTERING BASED ON STUDENT PROFILE ==========
+// Filter exams based on student profile
 function filterExamsByStudent(exams) {
     if (!studentProfile) return [];
     return exams.filter(exam => {
@@ -172,72 +153,7 @@ function filterExamsByStudent(exams) {
     });
 }
 
-// ========== SIMPLIFIED CAMERA FUNCTIONS (FIXED TIMEOUT) ==========
-async function startCamera() {
-    try {
-        // Simple constraints to avoid timeout
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        cameraStream = stream;
-        const video = document.getElementById('faceVideo');
-        video.srcObject = stream;
-        
-        // Wait for video to be ready
-        await new Promise((resolve) => {
-            video.onloadedmetadata = () => {
-                video.play();
-                resolve();
-            };
-            setTimeout(resolve, 2000);
-        });
-        
-        cameraActive = true;
-        document.getElementById('cameraPreviewInline').style.display = 'block';
-        document.getElementById('cameraPermissionModal').style.display = 'none';
-        
-        // Simple face monitoring
-        faceInterval = setInterval(() => {
-            if (!cameraActive) return;
-            if (video.readyState === 4 && video.videoWidth > 0) {
-                console.log('📷 Camera active');
-            }
-        }, 5000);
-        
-        console.log('✅ Camera started successfully');
-        return true;
-    } catch (err) {
-        console.error('Camera error:', err);
-        alert('Could not access camera. Please check permissions and try again.');
-        return false;
-    }
-}
-
-function stopCamera() {
-    if (cameraStream) {
-        cameraStream.getTracks().forEach(t => t.stop());
-        cameraStream = null;
-    }
-    if (faceInterval) clearInterval(faceInterval);
-    cameraActive = false;
-    document.getElementById('cameraPreviewInline').style.display = 'none';
-    console.log('✅ Camera stopped');
-}
-
-// ========== EXAM LOADING ==========
-async function initCameraAndStartExam(examId, examName) {
-    document.getElementById('cameraPermissionModal').style.display = 'flex';
-    document.getElementById('allowCameraBtn').onclick = async () => {
-        const started = await startCamera();
-        if (started) {
-            examStartTime = Date.now();
-            await loadExamContent(examId, examName);
-        }
-    };
-    document.getElementById('cancelExamBtn').onclick = () => {
-        document.getElementById('cameraPermissionModal').style.display = 'none';
-        showToast('Exam cancelled', 'warning');
-    };
-}
-
+// Load exam content in iframe (NO CAMERA HERE)
 async function loadExamContent(examId, examName) {
     try {
         const { data: exam } = await sb.from('exams').select('online_link, exam_link').eq('id', examId).single();
@@ -252,44 +168,38 @@ async function loadExamContent(examId, examName) {
         iframe.src = link;
         
         document.getElementById('examContainer').style.display = 'flex';
-        document.getElementById('questionNavPanel').style.display = 'block';
         document.querySelector('header').style.display = 'none';
         document.querySelector('.exam-list').style.display = 'none';
         
-        showToast('Exam ready. Camera proctoring active.', 'success');
+        showToast('Exam loaded. Good luck!', 'success');
     } catch(err) {
         showToast('Error loading exam', 'warning');
-        stopCamera();
     }
 }
 
 function startExam(examId, examName) {
     if (!currentUserId) { logout(); return; }
-    initCameraAndStartExam(examId, examName);
+    loadExamContent(examId, examName);
 }
 
 function closeExam() {
-    stopCamera();
-    if (currentExamId && examStartTime) {
-        console.log(`Exam duration: ${Math.round((Date.now() - examStartTime) / 1000)}s`);
-    }
     document.getElementById('examIframe').src = 'about:blank';
     document.getElementById('examContainer').style.display = 'none';
-    document.getElementById('questionNavPanel').style.display = 'none';
     document.querySelector('header').style.display = 'block';
     document.querySelector('.exam-list').style.display = 'block';
     refreshExams();
     showToast('Exam closed. Progress saved.', 'info');
 }
 
+// Listen for exam completion from iframe
 window.addEventListener('message', function(event) {
     if (event.data === 'exam_completed' || event.data?.type === 'exam_completed') {
-        showToast('✅ Exam submitted!', 'success');
-        setTimeout(() => closeExam(), 1500);
+        showToast('✅ Exam completed!', 'success');
+        setTimeout(() => closeExam(), 2000);
     }
 });
 
-// ========== LOAD EXAMS ==========
+// Load exams from database
 async function loadExams(showLoading = true) {
     if (isLoading) return;
     isLoading = true;
@@ -330,7 +240,8 @@ async function loadExams(showLoading = true) {
             const hasGrade = grade && (grade.marks !== null || grade.total_score > 0);
             const isReleased = grade ? releasedSet.has(grade.id) : false;
             
-            let statusBadge = !hasGrade ? '<span class="badge badge-upcoming">📝 Not Started</span>' : (isReleased ? '<span class="badge badge-completed">✅ Released</span>' : '<span class="badge badge-pending">🔒 Pending</span>');
+            let statusBadge = !hasGrade ? '<span class="badge badge-upcoming">📝 Not Started</span>' : 
+                              (isReleased ? '<span class="badge badge-completed">✅ Released</span>' : '<span class="badge badge-pending">🔒 Pending</span>');
             
             let gradeHtml = '';
             if (hasGrade && isReleased) {
@@ -339,6 +250,8 @@ async function loadExams(showLoading = true) {
                     <span class="score-large">${percent}%</span> <strong>${percent >= 60 ? 'PASS ✓' : 'FAIL ✗'}</strong>
                     <div>Score: ${grade.marks || 0} marks</div>
                 </div>`;
+            } else if (hasGrade && !isReleased) {
+                gradeHtml = `<div class="grade-info grade-not-released">🔒 Results pending release</div>`;
             }
             
             container.innerHTML += `
@@ -351,37 +264,50 @@ async function loadExams(showLoading = true) {
                     </div>
                     ${gradeHtml}
                     <div class="exam-actions">
-                        ${!hasGrade ? `<button class="btn-start" onclick="startExam(${exam.id}, '${exam.exam_name.replace(/'/g, "\\'")}')">▶ Start Exam</button>` : (isReleased ? `<button class="btn-details" onclick="viewResult(${exam.id})">📋 Results</button>` : '')}
+                        ${!hasGrade ? `<button class="btn-start" onclick="startExam(${exam.id}, '${exam.exam_name.replace(/'/g, "\\'")}')">▶ Start Exam</button>` : 
+                          (isReleased ? `<button class="btn-details" onclick="viewResult(${exam.id})">📋 Results</button>` : '')}
                     </div>
                 </div>
             `;
         }
-    } catch(err) { console.error(err); document.getElementById('examList').innerHTML = '<div class="exam-card">⚠️ Error loading exams</div>'; }
+    } catch(err) { 
+        console.error(err); 
+        document.getElementById('examList').innerHTML = '<div class="exam-card">⚠️ Error loading exams</div>'; 
+    }
     isLoading = false;
 }
 
 async function viewResult(examId) {
     const { data: grade } = await sb.from('exam_grades').select('*').eq('student_id', currentUserId).eq('exam_id', examId).eq('question_id', '00000000-0000-0000-0000-000000000000').single();
     const percent = parseFloat(grade?.total_score || 0);
-    document.getElementById('modalContent').innerHTML = `<h2>📊 Results</h2><div style="background:${percent>=60?'#D1FAE5':'#FEE2E2'}; padding:20px; border-radius:12px;"><h3>${percent>=60?'✅ PASS':'❌ FAIL'}</h3><p>Score: ${grade?.marks || 0} marks</p><p>Percentage: ${percent}%</p></div>`;
+    document.getElementById('modalContent').innerHTML = `
+        <h2>📊 Results</h2>
+        <div style="background:${percent>=60?'#D1FAE5':'#FEE2E2'}; padding:20px; border-radius:12px;">
+            <h3>${percent>=60?'✅ PASS':'❌ FAIL'}</h3>
+            <p>Score: ${grade?.marks || 0} marks</p>
+            <p>Percentage: ${percent}%</p>
+        </div>
+    `;
     document.getElementById('resultsModal').style.display = 'flex';
 }
 
 function refreshExams() { loadExams(false); }
 function closeModal() { document.getElementById('resultsModal').style.display = 'none'; }
-function logout() { stopCamera(); localStorage.clear(); window.location.href = 'exam_login.html'; }
-function showToast(msg, type) { const toast = document.createElement('div'); toast.className = `toast toast-${type}`; toast.innerHTML = msg; document.body.appendChild(toast); setTimeout(() => toast.remove(), 3500); }
-function toggleNavPanel() { const panel = document.getElementById('questionNavPanel'); const btn = document.querySelector('.toggle-nav-btn'); const isSmall = panel.style.width === '50px'; panel.style.width = isSmall ? '280px' : '50px'; document.getElementById('questionButtons').style.display = isSmall ? 'flex' : 'none'; document.getElementById('cameraPreviewInline').style.display = isSmall ? 'block' : 'none'; btn.textContent = isSmall ? '−' : '+'; }
+function logout() { localStorage.clear(); window.location.href = 'exam_login.html'; }
+function showToast(msg, type) {
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.innerHTML = msg;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3500);
+}
 
 window.addEventListener('DOMContentLoaded', () => loadExams());
-window.addEventListener('pageshow', () => { if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); cameraStream = null; } });
-
 window.startExam = startExam;
 window.closeExam = closeExam;
 window.refreshExams = refreshExams;
 window.closeModal = closeModal;
 window.logout = logout;
-window.toggleNavPanel = toggleNavPanel;
 window.viewResult = viewResult;
 </script>
 </body>
