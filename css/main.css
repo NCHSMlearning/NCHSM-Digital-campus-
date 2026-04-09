@@ -3065,3 +3065,105 @@ p {
         gap: 48px !important;
     }
 }
+/* ========== COMPLETE SPACING & FONT FIX ========== */
+/* Fixes desktop spacing AND mobile font sizes */
+
+/* 1. Remove container width limitation on all screens */
+.container {
+    max-width: none !important;
+    width: 100% !important;
+}
+
+/* 2. Desktop spacing (1200px and above) */
+@media (min-width: 1200px) {
+    .main {
+        padding: 40px 48px !important;
+        width: auto !important;
+        flex: 1 !important;
+    }
+    
+    .cards-grid {
+        gap: 28px !important;
+        margin-bottom: 40px !important;
+        width: 100% !important;
+    }
+    
+    .stat-card {
+        padding: 24px 20px !important;
+    }
+    
+    .stat-value {
+        font-size: 2rem !important;
+    }
+    
+    .actions-grid {
+        gap: 28px !important;
+        margin: 40px 0 !important;
+    }
+    
+    .tab-content {
+        padding: 36px !important;
+        margin-bottom: 40px !important;
+    }
+    
+    .welcome-card {
+        padding: 20px 28px !important;
+        margin-bottom: 28px !important;
+    }
+    
+    .announcement-banner {
+        padding: 16px 28px !important;
+        margin-bottom: 28px !important;
+    }
+    
+    .horizontal-summary-row {
+        gap: 28px !important;
+        padding: 28px !important;
+        margin-bottom: 40px !important;
+    }
+    
+    .modern-table th, 
+    .modern-table td {
+        padding: 16px 24px !important;
+    }
+    
+    .app-footer {
+        margin-top: 60px !important;
+    }
+    
+    .footer-content {
+        padding: 48px 48px !important;
+        gap: 48px !important;
+    }
+}
+
+/* 3. Mobile font size fix (767px and below) */
+@media (max-width: 767px) {
+    .stat-value {
+        font-size: 1.25rem !important;
+    }
+    
+    .card-header h3 {
+        font-size: 0.7rem !important;
+    }
+    
+    .stat-subtitle {
+        font-size: 0.65rem !important;
+    }
+    
+    .welcome-header h2 {
+        font-size: 1rem !important;
+    }
+    
+    .announcement-text {
+        font-size: 0.75rem !important;
+    }
+    
+    .action-header h3 {
+        font-size: 0.8rem !important;
+    }
+    
+    .action-body p {
+        font-size: 0.75rem !important;
+    }
+}
