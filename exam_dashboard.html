@@ -445,6 +445,7 @@ async function sendAdminNotification(alertType, details, severity = 'info') {
                 exam_name: currentExamName,
                 student_id: currentUserId,
                 student_name: studentProfile?.full_name || 'Unknown',
+                student_email: studentProfile?.email || currentUserEmail,
                 details: details,
                 severity: severity,
                 is_read: false,
@@ -452,7 +453,7 @@ async function sendAdminNotification(alertType, details, severity = 'info') {
             });
         
         if (error) console.error('Error sending admin notification:', error);
-        else console.log('✅ Admin notification sent:', alertType);
+        else console.log('✅ Admin notification sent:', alertType, details);
         
     } catch (err) {
         console.error('Failed to send admin notification:', err);
@@ -463,6 +464,7 @@ async function sendAdminNotification(alertType, details, severity = 'info') {
 async function loadQuestionsFromIframe() {
     const iframe = document.getElementById('examIframe');
     if (!iframe || !iframe.contentWindow) return;
+    
     try {
         iframe.contentWindow.postMessage({ type: 'GET_QUESTIONS' }, '*');
     } catch(e) {
@@ -497,9 +499,18 @@ function navigateToQuestion(index) {
 
 function toggleNavPanel() {
     const panel = document.getElementById('questionNavPanel');
-    panel.classList.toggle('collapsed');
     const btn = document.querySelector('.toggle-nav-btn');
-    btn.textContent = panel.classList.contains('collapsed') ? '+' : '−';
+    if (panel.style.width === '50px' || panel.style.width === '50px') {
+        panel.style.width = '280px';
+        document.getElementById('questionButtons').style.display = 'flex';
+        document.getElementById('cameraPreviewInline').style.display = 'block';
+        btn.textContent = '−';
+    } else {
+        panel.style.width = '50px';
+        document.getElementById('questionButtons').style.display = 'none';
+        document.getElementById('cameraPreviewInline').style.display = 'none';
+        btn.textContent = '+';
+    }
 }
 
 // Listen for messages from iframe
@@ -509,7 +520,7 @@ window.addEventListener('message', function(event) {
     }
     if (event.data === 'exam_completed' || event.data?.type === 'exam_completed') {
         logProctoringEvent('exam_completed', 'Student completed the exam');
-        sendAdminNotification('exam_completed', `Student completed exam: ${currentExamName}`, 'info');
+        sendAdminNotification('exam_completed', `✅ Student completed exam: ${currentExamName}`, 'success');
         showToast('✅ Exam completed! Your answers have been saved.', 'success');
         setTimeout(() => { closeExam(); }, 2000);
     }
@@ -537,9 +548,23 @@ async function checkCameraAvailability() {
 async function startCamera() {
     cameraAttempts++;
     
+    // IMPROVED: Better camera constraints for better focus and quality
     const constraintsList = [
-        { video: { width: { ideal: 640 }, height: { ideal: 480 } } },
-        { video: { width: { ideal: 320 }, height: { ideal: 240 } } },
+        { 
+            video: { 
+                width: { ideal: 1280, max: 1920 },
+                height: { ideal: 720, max: 1080 },
+                facingMode: "user",
+                aspectRatio: 1.7777777778
+            } 
+        },
+        { 
+            video: { 
+                width: { ideal: 640, max: 1280 },
+                height: { ideal: 480, max: 720 },
+                facingMode: "user"
+            } 
+        },
         { video: true }
     ];
     
@@ -561,7 +586,11 @@ async function startCamera() {
         
         cameraStream = stream;
         const video = document.getElementById('faceVideo');
+        
+        // IMPROVED: Better video settings for focus
         video.srcObject = stream;
+        video.setAttribute('autoplay', '');
+        video.setAttribute('playsinline', '');
         
         await new Promise((resolve, reject) => {
             const timeout = setTimeout(() => reject(new Error('Video timeout')), 5000);
@@ -576,6 +605,17 @@ async function startCamera() {
         });
         
         await video.play();
+        
+        // IMPROVED: Try to enable autofocus if supported
+        if (stream.getVideoTracks()[0]) {
+            const track = stream.getVideoTracks()[0];
+            const capabilities = track.getCapabilities();
+            if (capabilities.focusMode && capabilities.focusMode.includes('continuous')) {
+                await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
+                console.log('✅ Continuous autofocus enabled');
+            }
+        }
+        
         cameraActive = true;
         cameraAttempts = 0;
         
@@ -583,7 +623,7 @@ async function startCamera() {
         document.getElementById('cameraModal').style.display = 'none';
         
         startCameraMonitoring();
-        console.log('✅ Camera started successfully');
+        console.log('✅ Camera started successfully with better focus');
         return true;
         
     } catch (error) {
@@ -609,7 +649,10 @@ async function startCamera() {
 
 function stopCamera() {
     if (cameraStream) {
-        cameraStream.getTracks().forEach(track => track.stop());
+        cameraStream.getTracks().forEach(track => {
+            track.stop();
+            track.enabled = false;
+        });
         cameraStream = null;
     }
     if (faceDetectionInterval) {
@@ -621,6 +664,15 @@ function stopCamera() {
         screenshotInterval = null;
     }
     cameraActive = false;
+    
+    // Clear video element
+    const video = document.getElementById('faceVideo');
+    if (video) {
+        video.srcObject = null;
+        video.pause();
+        video.load();
+    }
+    
     document.getElementById('cameraPreviewInline').style.display = 'none';
     console.log('Camera stopped');
 }
@@ -631,6 +683,7 @@ function startCameraMonitoring() {
     const ctx = canvas.getContext('2d');
     let faceMissingCount = 0;
     const FACE_MISSING_THRESHOLD = 5;
+    let notificationSentForFaceMissing = false;
     
     faceDetectionInterval = setInterval(() => {
         if (!cameraActive || !video || video.readyState !== video.HAVE_ENOUGH_DATA) return;
@@ -653,14 +706,18 @@ function startCameraMonitoring() {
         
         if (!hasContent && video.videoWidth > 0) {
             faceMissingCount++;
-            if (faceMissingCount >= FACE_MISSING_THRESHOLD) {
+            if (faceMissingCount >= FACE_MISSING_THRESHOLD && !notificationSentForFaceMissing) {
                 showFaceWarning('Please stay visible in the camera frame');
                 logProctoringEvent('face_missing', 'Student not visible in camera');
-                sendAdminNotification('face_missing', `Student not visible in camera for ${currentExamName}`, 'warning');
+                sendAdminNotification('face_missing', `⚠️ Student not visible in camera for exam: ${currentExamName}`, 'warning');
+                notificationSentForFaceMissing = true;
             }
         } else {
             faceMissingCount = Math.max(0, faceMissingCount - 1);
-            if (faceMissingCount < 2) hideFaceWarning();
+            if (faceMissingCount < 2) {
+                hideFaceWarning();
+                notificationSentForFaceMissing = false;
+            }
         }
     }, 2000);
     
@@ -718,13 +775,14 @@ async function initCameraForExam(examId, examName) {
             if (cameraStarted) {
                 examStartTime = Date.now();
                 await logProctoringEvent('exam_started', `Started exam: ${examName}`);
-                await sendAdminNotification('exam_started', `Student started exam: ${examName}`, 'info');
+                await sendAdminNotification('exam_started', `📝 Student started exam: ${examName}`, 'info');
                 await loadExamContent(examId, examName);
             }
         }
     };
     document.getElementById('cancelExamBtn').onclick = () => {
         document.getElementById('cameraModal').style.display = 'none';
+        sendAdminNotification('exam_cancelled', `❌ Student cancelled exam: ${examName}`, 'warning');
         showToast('Exam cancelled.', 'warning');
     };
 }
@@ -783,15 +841,44 @@ async function startExam(examId, examName) {
 }
 
 function closeExam() {
-    // Stop camera proctoring FIRST
-    stopCamera();
-    
-    // Log exam end
-    if (currentExamId) {
+    // Send notification that exam is closing
+    if (currentExamId && cameraActive) {
         const duration = examStartTime ? Math.round((Date.now() - examStartTime) / 1000) : null;
+        sendAdminNotification('exam_closed', `🔚 Student closed exam: ${currentExamName}. Duration: ${duration} seconds`, 'info');
         logProctoringEvent('exam_closed', `Exam closed. Duration: ${duration} seconds`);
-        sendAdminNotification('exam_closed', `Student closed exam: ${currentExamName}. Duration: ${duration}s`, 'info');
     }
+    
+    // EXTRA CLEANUP: Ensure camera is fully stopped
+    if (cameraStream) {
+        cameraStream.getTracks().forEach(track => {
+            track.stop();
+            track.enabled = false;
+        });
+        cameraStream = null;
+    }
+    
+    if (faceDetectionInterval) {
+        clearInterval(faceDetectionInterval);
+        faceDetectionInterval = null;
+    }
+    
+    if (screenshotInterval) {
+        clearInterval(screenshotInterval);
+        screenshotInterval = null;
+    }
+    
+    cameraActive = false;
+    
+    // Clear video element
+    const video = document.getElementById('faceVideo');
+    if (video) {
+        video.srcObject = null;
+        video.pause();
+        video.load();
+    }
+    
+    // Hide camera preview
+    document.getElementById('cameraPreviewInline').style.display = 'none';
     
     // Clear exam data
     currentExamId = null;
@@ -802,28 +889,23 @@ function closeExam() {
     const iframe = document.getElementById('examIframe');
     iframe.src = 'about:blank';
     iframe.srcdoc = '';
+    if (iframe.contentWindow) {
+        iframe.contentWindow.stop();
+    }
     
     // Hide exam container
     document.getElementById('examContainer').style.display = 'none';
     document.getElementById('questionNavPanel').style.display = 'none';
-    document.getElementById('questionNavPanel').classList.remove('collapsed');
+    document.getElementById('questionNavPanel').style.width = '280px';
     
     // Show main content
     document.querySelector('header').style.display = 'block';
     document.querySelector('.exam-list').style.display = 'block';
     
-    // Reset camera preview
-    document.getElementById('cameraPreviewInline').style.display = 'none';
-    const video = document.getElementById('faceVideo');
-    if (video) {
-        video.srcObject = null;
-        video.pause();
-    }
-    
     // Refresh exams to update status
     refreshExams();
     
-    showToast('Exam closed. Camera proctoring stopped.', 'info');
+    showToast('Exam closed. Camera stopped. Your progress has been saved.', 'info');
 }
 
 // ========== LOAD EXAMS FUNCTION ==========
@@ -923,7 +1005,12 @@ async function viewSubmissionStatus(examId) {
 
 function refreshExams() { loadExams(false); }
 function closeModal() { document.getElementById('resultsModal').style.display = 'none'; }
-function logout() { stopCamera(); localStorage.removeItem('currentUserId'); localStorage.removeItem('studentEmail'); window.location.href = 'exam_login.html'; }
+function logout() { 
+    stopCamera(); 
+    localStorage.removeItem('currentUserId'); 
+    localStorage.removeItem('studentEmail'); 
+    window.location.href = 'exam_login.html'; 
+}
 
 function showToast(message, type = 'info') {
     const toast = document.createElement('div');
