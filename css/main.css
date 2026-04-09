@@ -2931,3 +2931,127 @@ p {
     scrollbar-width: thin;
     scrollbar-color: var(--color-royal) var(--color-gray-100);
 }
+/* ========== DESKTOP SPACING FIXES ========== */
+
+/* Fix main content width and centering */
+.main {
+    max-width: 1400px;
+    margin: 70px auto 0 auto !important;
+    padding: 32px 40px !important;
+    width: 100%;
+}
+
+/* Fix sidebar position on desktop */
+@media (min-width: 1024px) {
+    .sidebar {
+        position: fixed;
+        top: 70px;
+        left: 0;
+        height: calc(100vh - 70px);
+        transform: translateX(0) !important;
+        width: 280px;
+        z-index: 100;
+    }
+    
+    .main {
+        margin-left: 280px !important;
+        width: calc(100% - 280px) !important;
+        max-width: calc(1400px - 280px);
+    }
+    
+    /* Fix container */
+    .container {
+        margin-top: 0;
+    }
+    
+    /* Better card spacing on desktop */
+    .cards-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 24px;
+        margin-bottom: 32px;
+    }
+    
+    /* Better action cards spacing */
+    .actions-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 24px;
+        margin: 32px 0;
+    }
+    
+    /* Increase tab content padding */
+    .tab-content {
+        padding: 32px !important;
+        margin-bottom: 32px;
+    }
+    
+    /* Better welcome card spacing */
+    .welcome-card {
+        padding: 20px 24px;
+        margin-bottom: 24px;
+    }
+    
+    /* Better announcement spacing */
+    .announcement-banner {
+        padding: 16px 24px;
+        margin-bottom: 28px;
+    }
+    
+    /* Fix horizontal summary row */
+    .horizontal-summary-row {
+        gap: 24px;
+        padding: 24px;
+        margin-bottom: 32px;
+    }
+    
+    /* Increase stat cards padding */
+    .stat-card {
+        padding: 20px;
+    }
+    
+    .stat-value {
+        font-size: 2rem;
+    }
+}
+
+/* Fix body background and overall spacing */
+body {
+    background: #f0f2f5;
+    padding: 0;
+    margin: 0;
+}
+
+/* Ensure proper spacing on all screen sizes */
+@media (min-width: 1440px) {
+    .main {
+        padding: 40px 60px !important;
+    }
+    
+    .cards-grid {
+        gap: 32px;
+    }
+}
+
+/* Fix any overflow issues */
+* {
+    box-sizing: border-box;
+}
+
+html, body {
+    overflow-x: hidden;
+}
+
+/* Better table spacing on desktop */
+.modern-table th,
+.modern-table td {
+    padding: 16px 20px;
+}
+
+/* Fix footer spacing */
+.app-footer {
+    margin-top: 48px;
+}
+
+.footer-content {
+    padding: 48px 40px;
+    gap: 48px;
+}
