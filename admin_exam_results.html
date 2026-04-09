@@ -128,6 +128,8 @@
         .btn-delete:hover { background: #B91C1C; }
         .btn-assign { background: #38A169; color: white; }
         .btn-assign:hover { background: #2F855A; }
+        .btn-reset-exam { background: #8B5CF6; color: white; }
+        .btn-reset-exam:hover { background: #7C3AED; }
         
         .loading { text-align: center; padding: 50px; color: #94A3B8; }
         .pagination { display: flex; justify-content: center; gap: 8px; margin: 25px 0; }
@@ -179,6 +181,7 @@
     <div class="filters-container" id="filtersContainer"></div>
 
     <div class="tables-container">
+        <!-- Students with Results Tab -->
         <div class="table-container" id="studentsTableContainer">
             <div class="table-header">
                 <h2><i class="fas fa-chart-line"></i> Students with Exam Results</h2>
@@ -193,13 +196,15 @@
             <div class="pagination" id="studentsPagination"></div>
         </div>
 
+        <!-- All Students Tab -->
         <div class="table-container" id="allStudentsTableContainer" style="display:none;">
             <div class="table-header"><h2><i class="fas fa-address-book"></i> All Registered Students</h2><div class="table-actions"><button class="btn btn-info" onclick="openAssignExamModal()"><i class="fas fa-plus"></i> Assign Exam</button><button class="btn btn-secondary" onclick="exportToExcel('allStudents')"><i class="fas fa-file-excel"></i> Export</button></div></div>
             <div id="allStudentsLoading" class="loading"><i class="fas fa-spinner fa-spin"></i> Loading students...</div>
-            <table id="allStudentsTable" style="display:none;"><thead><tr><th>Student ID</th><th>Name</th><th>Email</th><th>Program</th><th>Block</th><th>Exams Taken</th><th>Actions</th></tr></thead><tbody id="allStudentsBody"></tbody></tr>
+            <table id="allStudentsTable" style="display:none;"><thead><tr><th>Student ID</th><th>Name</th><th>Email</th><th>Program</th><th>Block</th><th>Exams Taken</th><th>Actions</th></tr></thead><tbody id="allStudentsBody"></tbody></td>
             <div class="pagination" id="allStudentsPagination"></div>
         </div>
 
+        <!-- Exams Management Tab -->
         <div class="table-container" id="examsTableContainer" style="display:none;">
             <div class="table-header">
                 <h2><i class="fas fa-list"></i> Exam Management</h2>
@@ -209,10 +214,11 @@
                 </div>
             </div>
             <div id="examsLoading" class="loading"><i class="fas fa-spinner fa-spin"></i> Loading exams...</div>
-            <table id="examsTable" style="display:none;"><thead><tr><th>Exam Name</th><th>Type</th><th>Course</th><th>Duration</th><th>Students</th><th>Status</th><th>Actions</th></tr></thead><tbody id="examsBody"></tbody></table>
+            <table id="examsTable" style="display:none;"><thead><tr><th>Exam Name</th><th>Type</th><th>Course</th><th>Duration</th><th>Students Assigned</th><th>Actions</th></tr></thead><tbody id="examsBody"></tbody></table>
             <div class="pagination" id="examsPagination"></div>
         </div>
 
+        <!-- Proctoring Alerts Tab -->
         <div class="table-container" id="proctoringTableContainer" style="display:none;">
             <div class="table-header">
                 <h2><i class="fas fa-exclamation-triangle"></i> Live Proctoring Alerts</h2>
@@ -312,6 +318,15 @@
         return examsMap;
     }
     
+    // ========== RESET STUDENT EXAM FUNCTION ==========
+    window.resetStudentExam = async function(studentId, examId, studentName, examName) {
+        if (confirm(`Reset ${studentName}'s exam "${examName}"? This will delete all answers and results.`)) {
+            const { error } = await sb.from('exam_grades').delete().eq('student_id', studentId).eq('exam_id', examId);
+            if (error) alert('Error: ' + error.message);
+            else { alert('Exam reset successfully!'); loadStudentsWithResults(); loadAllExams(); }
+        }
+    };
+    
     // ========== EXAM MANAGEMENT ==========
     window.openCreateExamModal = function(examId = null) {
         document.getElementById('examModalTitle').innerHTML = examId ? '<i class="fas fa-edit"></i> Edit Exam' : '<i class="fas fa-plus-circle"></i> Create New Exam';
@@ -368,7 +383,7 @@
     });
     
     window.deleteExam = async function(examId, examName) {
-        if (confirm(`Delete exam "${examName}"? This will delete all student answers.`)) {
+        if (confirm(`Delete exam "${examName}"? This will also delete all student answers.`)) {
             await sb.from('exam_grades').delete().eq('exam_id', examId);
             await sb.from('exam_questions').delete().eq('exam_id', examId);
             const { error } = await sb.from('exams').delete().eq('id', examId);
@@ -496,8 +511,8 @@
         const start = (currentPage.students - 1) * itemsPerPage;
         const page = studentsResults.slice(start, start + itemsPerPage);
         const tbody = document.getElementById('studentsBody');
-        if(page.length === 0) { tbody.innerHTML = '<td><td colspan="10">No results</td></tr>'; return; }
-        tbody.innerHTML = page.map(r => `<tr><td><span class="student-id-badge">${r.student_profile?.student_id || 'N/A'}</span></td><td><strong>${r.student_profile?.full_name || 'Unknown'}</strong></td><td>${r.student_profile?.email || '-'}</td><td>${r.student_profile?.program || '-'}</td><td>${r.exam_info?.exam_name || 'Exam ' + r.exam_id}</td><td>${r.marks || 0}</td><td>${parseFloat(r.total_score || 0).toFixed(1)}%</td><td><span class="${r.result_status === 'PASS' ? 'status-pass' : 'status-fail'}">${r.result_status || 'PENDING'}</span></td><td>${r.isReleased ? '✅ Released' : '🔒 Not Released'}</td><td><button class="action-btn btn-view" onclick="viewExamResult('${r.student_id}',${r.exam_id})">View</button></td></tr>`).join('');
+        if(page.length === 0) { tbody.innerHTML = '<tr><td colspan="10">No results</td></tr>'; return; }
+        tbody.innerHTML = page.map(r => `<tr><td><span class="student-id-badge">${r.student_profile?.student_id || 'N/A'}</span></td><td><strong>${r.student_profile?.full_name || 'Unknown'}</strong></td><td>${r.student_profile?.email || '-'}</td><td>${r.student_profile?.program || '-'}</td><td>${r.exam_info?.exam_name || 'Exam ' + r.exam_id}</td><td>${r.marks || 0}</td><td>${parseFloat(r.total_score || 0).toFixed(1)}%</td><td><span class="${r.result_status === 'PASS' ? 'status-pass' : 'status-fail'}">${r.result_status || 'PENDING'}</span></td><td>${r.isReleased ? '✅ Released' : '🔒 Not Released'}</td><td><button class="action-btn btn-view" onclick="viewExamResult('${r.student_id}',${r.exam_id})">View</button><button class="action-btn btn-reset-exam" onclick="resetStudentExam('${r.student_id}',${r.exam_id},'${r.student_profile?.full_name}','${r.exam_info?.exam_name}')">Reset</button></td></tr>`).join('');
         renderPagination('students', studentsResults.length);
     }
     
@@ -508,6 +523,12 @@
         const { data, error } = await sb.from('consolidated_user_profiles_table').select('*');
         if(error) return;
         allStudents = data || [];
+        // Count exams taken by each student
+        const studentIds = allStudents.map(s => s.user_id);
+        const { data: gradeCounts } = await sb.from('exam_grades').select('student_id').eq('question_id', '00000000-0000-0000-0000-000000000000').in('student_id', studentIds);
+        const countMap = {};
+        if(gradeCounts) gradeCounts.forEach(g => { countMap[g.student_id] = (countMap[g.student_id] || 0) + 1; });
+        allStudents.forEach(s => { s.examsTaken = countMap[s.user_id] || 0; });
         displayAllStudents();
         loadingDiv.style.display = 'none'; table.style.display = 'table';
     };
@@ -525,8 +546,14 @@
         const table = document.getElementById('examsTable');
         loadingDiv.style.display = 'block'; table.style.display = 'none';
         const { data, error } = await sb.from('exams').select('*').order('id', { ascending: true });
-        if(error) return;
+        if(error) { loadingDiv.innerHTML = 'Error loading exams'; return; }
         allExams = data || [];
+        // Count students assigned to each exam
+        const examIds = allExams.map(e => e.id);
+        const { data: gradeCounts } = await sb.from('exam_grades').select('exam_id').eq('question_id', '00000000-0000-0000-0000-000000000000').in('exam_id', examIds);
+        const countMap = {};
+        if(gradeCounts) gradeCounts.forEach(g => { countMap[g.exam_id] = (countMap[g.exam_id] || 0) + 1; });
+        allExams.forEach(e => { e.studentCount = countMap[e.id] || 0; });
         displayAllExams();
         loadingDiv.style.display = 'none'; table.style.display = 'table';
         updateStats();
@@ -536,7 +563,8 @@
         const start = (currentPage.exams - 1) * itemsPerPage;
         const page = allExams.slice(start, start + itemsPerPage);
         const tbody = document.getElementById('examsBody');
-        tbody.innerHTML = page.map(e => `<tr><td><strong>${e.exam_name}</strong></td><td>${e.exam_type || '-'}</td><td>${e.course || '-'}</td><td>${e.duration_minutes || 30} min</td><td>${e.studentCount || 0}</td><td><span class="status-pass">Active</span></td><td><button class="action-btn btn-edit" onclick="openCreateExamModal(${e.id})">Edit</button><button class="action-btn btn-assign" onclick="openAssignExamModal()">Assign</button><button class="action-btn btn-delete" onclick="deleteExam(${e.id}, '${e.exam_name}')">Delete</button></td></tr>`).join('');
+        if(page.length === 0) { tbody.innerHTML = '<tr><td colspan="6">No exams found</td></tr>'; return; }
+        tbody.innerHTML = page.map(e => `<tr><td><strong>${e.exam_name}</strong></td><td>${e.exam_type || '-'}</td><td>${e.course || '-'}</td><td>${e.duration_minutes || 30} min</td><td>${e.studentCount || 0}</td><td><button class="action-btn btn-edit" onclick="openCreateExamModal(${e.id})"><i class="fas fa-edit"></i> Edit</button><button class="action-btn btn-assign" onclick="openAssignExamModal()"><i class="fas fa-user-plus"></i> Assign</button><button class="action-btn btn-delete" onclick="deleteExam(${e.id}, '${e.exam_name}')"><i class="fas fa-trash"></i> Delete</button></td></tr>`).join('');
         renderPagination('exams', allExams.length);
     }
     
@@ -658,8 +686,8 @@
     window.exportToExcel = function(type) { 
         let data=[]; 
         if(type==='students') data=studentsResults.map(r=>({'Student ID':r.student_profile?.student_id, 'Name':r.student_profile?.full_name, 'Exam':r.exam_info?.exam_name, 'Score':r.marks, 'Percent':r.total_score, 'Status':r.result_status})); 
-        if(type==='allStudents') data=allStudents.map(s=>({'Student ID':s.student_id, 'Name':s.full_name, 'Email':s.email, 'Program':s.program})); 
-        if(type==='exams') data=allExams.map(e=>({'Exam Name':e.exam_name, 'Type':e.exam_type, 'Duration':e.duration_minutes}));
+        if(type==='allStudents') data=allStudents.map(s=>({'Student ID':s.student_id, 'Name':s.full_name, 'Email':s.email, 'Program':s.program, 'Exams Taken':s.examsTaken})); 
+        if(type==='exams') data=allExams.map(e=>({'Exam Name':e.exam_name, 'Type':e.exam_type, 'Duration':e.duration_minutes, 'Students Assigned':e.studentCount}));
         if(type==='proctoring') data=proctoringLogs.map(l=>({'Time':new Date(l.timestamp).toLocaleString(), 'Student':l.student_profile?.full_name, 'Alert':l.event_type, 'Details':l.details}));
         const ws=XLSX.utils.json_to_sheet(data); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Data'); XLSX.writeFile(wb,`${type}_${new Date().toISOString().split('T')[0]}.xlsx`); 
     };
