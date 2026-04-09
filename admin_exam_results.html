@@ -525,6 +525,7 @@ let faceInterval = null;
 let screenshotInterval = null;
 let examStartTime = null;
 let cameraAttempts = 0;
+let externalCameraKillerInterval = null;
 const MAX_ATTEMPTS = 3;
 
 // Helper
@@ -532,7 +533,102 @@ function getExamLink(exam) {
     return exam.exam_link || exam.online_link || null;
 }
 
-// ========== CAMERA FUNCTIONS ==========
+// ========== HARDCORE EXTERNAL CAMERA BLOCKER ==========
+function hardcoreBlockExternalCamera() {
+    const iframe = document.getElementById('examIframe');
+    if (!iframe || !iframe.contentWindow) {
+        // Try again later if iframe not ready
+        setTimeout(hardcoreBlockExternalCamera, 500);
+        return;
+    }
+    
+    try {
+        // Method 1: Completely destroy mediaDevices API in iframe
+        delete iframe.contentWindow.navigator.mediaDevices;
+        iframe.contentWindow.navigator.mediaDevices = {
+            getUserMedia: function() {
+                console.log('🚫 HARDCORE BLOCK: External camera request DENIED');
+                return Promise.reject(new DOMException('Camera access blocked by exam portal', 'NotAllowedError'));
+            },
+            enumerateDevices: function() {
+                return Promise.resolve([]);
+            }
+        };
+        
+        // Method 2: Block all getUserMedia variants
+        iframe.contentWindow.navigator.getUserMedia = null;
+        iframe.contentWindow.navigator.webkitGetUserMedia = null;
+        iframe.contentWindow.navigator.mozGetUserMedia = null;
+        
+        // Method 3: Override MediaDevices prototype
+        if (iframe.contentWindow.MediaDevices) {
+            iframe.contentWindow.MediaDevices.prototype.getUserMedia = function() {
+                return Promise.reject(new Error('Camera blocked'));
+            };
+        }
+        
+        // Method 4: Add sandbox to prevent camera
+        iframe.setAttribute('sandbox', 'allow-same-origin allow-scripts allow-popups allow-forms allow-modals allow-popups-to-escape-sandbox');
+        iframe.setAttribute('allow', '');
+        iframe.removeAttribute('allow');
+        
+        // Method 5: Add CSP header to block camera
+        const meta = iframe.contentWindow.document.createElement('meta');
+        meta.httpEquiv = 'Feature-Policy';
+        meta.content = "camera 'none'";
+        iframe.contentWindow.document.head.appendChild(meta);
+        
+        console.log('🔒 HARDCORE CAMERA BLOCKER ACTIVATED');
+        
+        // Start continuous killer
+        startContinuousCameraKiller();
+        
+    } catch(e) {
+        console.log('Hardcore blocker error:', e.message);
+    }
+}
+
+function startContinuousCameraKiller() {
+    if (externalCameraKillerInterval) clearInterval(externalCameraKillerInterval);
+    
+    externalCameraKillerInterval = setInterval(() => {
+        const iframe = document.getElementById('examIframe');
+        if (!iframe || !iframe.contentWindow) return;
+        
+        try {
+            // Kill all video streams in iframe
+            const videos = iframe.contentWindow.document.querySelectorAll('video');
+            videos.forEach(video => {
+                if (video.srcObject) {
+                    try {
+                        video.srcObject.getTracks().forEach(track => {
+                            track.stop();
+                            console.log('🔪 Killed external camera track');
+                        });
+                        video.srcObject = null;
+                    } catch(e) {}
+                }
+                video.pause();
+                video.style.display = 'none';
+                video.remove();
+            });
+            
+            // Remove any camera-related elements
+            const cameraElements = iframe.contentWindow.document.querySelectorAll('[class*="camera"], [id*="camera"], [class*="webcam"], [id*="webcam"], .proctoring, .face-detection, .video-feed');
+            cameraElements.forEach(el => el.remove());
+            
+        } catch(e) {}
+    }, 500); // Check every 500ms
+}
+
+function stopContinuousCameraKiller() {
+    if (externalCameraKillerInterval) {
+        clearInterval(externalCameraKillerInterval);
+        externalCameraKillerInterval = null;
+    }
+}
+
+// ========== PORTAL CAMERA FUNCTIONS ==========
 async function checkCamera() {
     try {
         const devices = await navigator.mediaDevices.enumerateDevices();
@@ -575,7 +671,7 @@ async function startCamera() {
         document.getElementById('cameraPreviewInline').style.display = 'block';
         document.getElementById('cameraPermissionModal').style.display = 'none';
         
-        startMonitoring();
+        startPortalMonitoring();
         logEvent('exam_started', 'Camera proctoring active');
         return true;
     } catch (err) {
@@ -589,7 +685,7 @@ async function startCamera() {
     }
 }
 
-function stopCamera() {
+function stopPortalCamera() {
     if (cameraStream) {
         cameraStream.getTracks().forEach(t => t.stop());
         cameraStream = null;
@@ -598,10 +694,10 @@ function stopCamera() {
     if (screenshotInterval) clearInterval(screenshotInterval);
     cameraActive = false;
     document.getElementById('cameraPreviewInline').style.display = 'none';
-    console.log('Camera stopped');
+    console.log('Portal camera stopped');
 }
 
-function startMonitoring() {
+function startPortalMonitoring() {
     const video = document.getElementById('faceVideo');
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
@@ -700,8 +796,17 @@ async function loadExamContent(examId, examName) {
         document.getElementById('examTitle').innerHTML = `📝 ${examName}`;
         
         const iframe = document.getElementById('examIframe');
+        
+        // IMPORTANT: Block external camera BEFORE loading the iframe
+        // Add camera-blocking parameters to URL
+        const blockerParams = 'camera=0&webcam=disabled&proctor=off&disable_camera=true&no_camera=1';
+        if (!link.includes('camera=0')) {
+            link = link + (link.includes('?') ? '&' : '?') + blockerParams;
+        }
+        
+        // Set iframe with no camera permissions
         iframe.removeAttribute('allow');
-        iframe.removeAttribute('sandbox');
+        iframe.setAttribute('sandbox', 'allow-same-origin allow-scripts allow-popups allow-forms allow-modals allow-popups-to-escape-sandbox');
         iframe.src = link;
         
         document.getElementById('examContainer').style.display = 'flex';
@@ -709,7 +814,10 @@ async function loadExamContent(examId, examName) {
         document.querySelector('header').style.display = 'none';
         document.querySelector('.exam-list').style.display = 'none';
         
-        // Listen for messages from iframe (exam submission)
+        // Activate hardcore camera blocker
+        setTimeout(() => hardcoreBlockExternalCamera(), 1000);
+        
+        // Listen for exam completion
         window.examCompletionHandler = (event) => {
             if (event.data === 'exam_completed' || event.data?.type === 'exam_completed' || event.data === 'submit_exam') {
                 handleExamSubmission();
@@ -717,21 +825,19 @@ async function loadExamContent(examId, examName) {
         };
         window.addEventListener('message', window.examCompletionHandler);
         
-        showToast('Exam ready. Camera proctoring active.', 'success');
+        showToast('Exam ready. External camera BLOCKED. Portal proctoring active.', 'success');
     } catch(err) {
         showToast('Error loading exam', 'warning');
-        stopCamera();
+        stopPortalCamera();
     }
 }
 
-// HANDLE EXAM SUBMISSION - AUTO CLOSE CAMERA
 function handleExamSubmission() {
     logEvent('exam_completed', 'Student submitted exam');
     showToast('✅ Exam submitted! Camera turning off...', 'success');
-    stopCamera();
-    setTimeout(() => {
-        closeExam();
-    }, 1500);
+    stopPortalCamera();
+    stopContinuousCameraKiller();
+    setTimeout(() => { closeExam(); }, 1500);
 }
 
 function startExam(examId, examName) {
@@ -740,16 +846,20 @@ function startExam(examId, examName) {
 }
 
 function closeExam() {
-    stopCamera();
+    stopPortalCamera();
+    stopContinuousCameraKiller();
+    
     if (currentExamId && examStartTime) {
         const duration = Math.round((Date.now() - examStartTime) / 1000);
         logEvent('exam_closed', `Duration: ${duration}s`);
     }
+    
     document.getElementById('examIframe').src = 'about:blank';
     document.getElementById('examContainer').style.display = 'none';
     document.getElementById('questionNavPanel').style.display = 'none';
     document.querySelector('header').style.display = 'block';
     document.querySelector('.exam-list').style.display = 'block';
+    
     window.removeEventListener('message', window.examCompletionHandler);
     refreshExams();
     showToast('Exam closed. Progress saved.', 'info');
@@ -795,7 +905,6 @@ async function loadExams(showLoading = true) {
             const grade = grades?.find(g => g.exam_id === exam.id);
             const hasGrade = grade && (grade.marks !== null || grade.total_score > 0);
             const isReleased = grade ? releasedSet.has(grade.id) : false;
-            const isPending = grade && !isReleased && hasGrade;
             
             let statusBadge = !hasGrade ? '<span class="badge badge-upcoming">📝 Not Started</span>' :
                               (isReleased ? '<span class="badge badge-completed">✅ Released</span>' : '<span class="badge badge-pending">🔒 Pending</span>');
@@ -851,7 +960,7 @@ async function viewResult(examId) {
 
 function refreshExams() { loadExams(false); }
 function closeModal() { document.getElementById('resultsModal').style.display = 'none'; }
-function logout() { stopCamera(); localStorage.clear(); window.location.href = 'exam_login.html'; }
+function logout() { stopPortalCamera(); stopContinuousCameraKiller(); localStorage.clear(); window.location.href = 'exam_login.html'; }
 function showToast(msg, type) {
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
@@ -869,14 +978,23 @@ function toggleNavPanel() {
     btn.textContent = isSmall ? '−' : '+';
 }
 
-// Message listener for iframe submission
-window.addEventListener('message', function(event) {
-    if (event.data === 'exam_completed' || event.data?.type === 'exam_completed' || event.data === 'submit_exam') {
-        handleExamSubmission();
+// Auto cleanup on page load
+window.addEventListener('DOMContentLoaded', () => {
+    loadExams();
+    // Clean up any lingering camera on page load
+    if (cameraStream) {
+        cameraStream.getTracks().forEach(t => t.stop());
+        cameraStream = null;
     }
 });
 
-window.addEventListener('DOMContentLoaded', () => loadExams());
+window.addEventListener('pageshow', function() {
+    if (cameraStream) {
+        cameraStream.getTracks().forEach(t => t.stop());
+        cameraStream = null;
+    }
+    document.getElementById('cameraPreviewInline').style.display = 'none';
+});
 
 // Expose functions globally
 window.startExam = startExam;
