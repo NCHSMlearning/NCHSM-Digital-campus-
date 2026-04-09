@@ -107,6 +107,7 @@
         .btn-info:hover { background: #3182CE; transform: translateY(-2px); }
         .btn-release { background: #8B5CF6; color: white; }
         .btn-release:hover { background: #7C3AED; transform: translateY(-2px); }
+        .btn-purple { background: #6D28D9; color: white; }
         
         .table-container { background: white; border-radius: 20px; overflow-x: auto; margin-bottom: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
         .table-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; background: #F8FAFC; border-bottom: 1px solid #E2E8F0; flex-wrap: wrap; gap: 15px; }
@@ -128,8 +129,8 @@
         .btn-delete:hover { background: #B91C1C; }
         .btn-assign { background: #38A169; color: white; }
         .btn-assign:hover { background: #2F855A; }
-        .btn-reset-exam { background: #8B5CF6; color: white; }
-        .btn-reset-exam:hover { background: #7C3AED; }
+        .btn-deallocate { background: #8B5CF6; color: white; }
+        .btn-deallocate:hover { background: #7C3AED; }
         
         .loading { text-align: center; padding: 50px; color: #94A3B8; }
         .pagination { display: flex; justify-content: center; gap: 8px; margin: 25px 0; }
@@ -153,7 +154,7 @@
 <div class="container">
     <div class="header">
         <h1><i class="fas fa-shield-alt"></i> NCHSM Exam Proctoring Center</h1>
-        <p>Complete Exam Management | Create | Assign | Monitor Proctoring</p>
+        <p>Complete Exam Management | Create | Assign | Deallocate | Monitor</p>
         <div class="admin-info">
             <div class="user" id="adminName">Loading admin profile...</div>
             <div style="display: flex; align-items: center; gap: 15px;">
@@ -200,11 +201,11 @@
         <div class="table-container" id="allStudentsTableContainer" style="display:none;">
             <div class="table-header"><h2><i class="fas fa-address-book"></i> All Registered Students</h2><div class="table-actions"><button class="btn btn-info" onclick="openAssignExamModal()"><i class="fas fa-plus"></i> Assign Exam</button><button class="btn btn-secondary" onclick="exportToExcel('allStudents')"><i class="fas fa-file-excel"></i> Export</button></div></div>
             <div id="allStudentsLoading" class="loading"><i class="fas fa-spinner fa-spin"></i> Loading students...</div>
-            <table id="allStudentsTable" style="display:none;"><thead><tr><th>Student ID</th><th>Name</th><th>Email</th><th>Program</th><th>Block</th><th>Exams Taken</th><th>Actions</th></tr></thead><tbody id="allStudentsBody"></tbody></td>
+            <table id="allStudentsTable" style="display:none;"><thead><tr><th>Student ID</th><th>Name</th><th>Email</th><th>Program</th><th>Block</th><th>Exams Taken</th><th>Actions</th></tr></thead><tbody id="allStudentsBody"></tbody></table>
             <div class="pagination" id="allStudentsPagination"></div>
         </div>
 
-        <!-- Exams Management Tab -->
+        <!-- Exams Management Tab - FULL FEATURED -->
         <div class="table-container" id="examsTableContainer" style="display:none;">
             <div class="table-header">
                 <h2><i class="fas fa-list"></i> Exam Management</h2>
@@ -214,7 +215,7 @@
                 </div>
             </div>
             <div id="examsLoading" class="loading"><i class="fas fa-spinner fa-spin"></i> Loading exams...</div>
-            <table id="examsTable" style="display:none;"><thead><tr><th>Exam Name</th><th>Type</th><th>Course</th><th>Duration</th><th>Students Assigned</th><th>Actions</th></tr></thead><tbody id="examsBody"></tbody></table>
+            <table id="examsTable" style="display:none;"><thead><tr><th>Exam Name</th><th>Type</th><th>Course</th><th>Duration</th><th>Students Assigned</th><th>Status</th><th>Actions</th></tr></thead><tbody id="examsBody"></tbody></table>
             <div class="pagination" id="examsPagination"></div>
         </div>
 
@@ -236,8 +237,59 @@
 
 <!-- Modals -->
 <div id="studentModal" class="modal"><div class="modal-content"><span class="close-modal" onclick="closeModal()">&times;</span><h2 id="modalTitle">Details</h2><div id="modalContent"></div></div></div>
-<div id="examModal" class="modal"><div class="modal-content"><span class="close-modal" onclick="closeExamModal()">&times;</span><h2 id="examModalTitle"><i class="fas fa-plus-circle"></i> Create New Exam</h2><form id="examForm"><div class="form-group"><label>Exam Name *</label><input type="text" id="examName" required placeholder="e.g., OSCE Final Exam"></div><div class="form-group"><label>Exam Type *</label><select id="examType" required><option value="EXAM">Final Exam</option><option value="CAT_1">CAT 1</option><option value="CAT_2">CAT 2</option><option value="QUIZ">Quiz</option></select></div><div class="form-group"><label>Course/Subject</label><input type="text" id="examCourse" placeholder="e.g., Clinical Medicine"></div><div class="form-group"><label>Duration (minutes) *</label><input type="number" id="examDuration" required value="30" min="1" max="180"></div><div class="form-group"><label>Total Marks</label><input type="number" id="examTotalMarks" value="100" min="1"></div><div class="form-group"><label>Exam Link / URL *</label><input type="url" id="examLink" required placeholder="https://your-exam-platform.com/exam"></div><div class="form-group"><label>Program (leave empty for all)</label><input type="text" id="examProgram" placeholder="e.g., Nursing, Clinical Medicine"></div><div class="form-group"><label>Block/Term</label><input type="text" id="examBlock" placeholder="e.g., Block 1, Semester 1"></div><div class="form-group"><label>Intake Year</label><input type="text" id="examIntakeYear" placeholder="e.g., 2024"></div><input type="hidden" id="editingExamId" value=""><div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;"><button type="button" class="btn btn-danger" onclick="closeExamModal()">Cancel</button><button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Exam</button></div></form></div></div>
-<div id="assignExamModal" class="modal"><div class="modal-content"><span class="close-modal" onclick="closeAssignExamModal()">&times;</span><h2><i class="fas fa-tasks"></i> Assign Exam to Student</h2><div class="form-group"><label>Select Student *</label><select id="assignStudentSelect" style="width:100%; padding:12px; border-radius:12px;"></select></div><div class="form-group"><label>Select Exam *</label><select id="assignExamSelect" style="width:100%; padding:12px; border-radius:12px;"></select></div><div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;"><button class="btn btn-danger" onclick="closeAssignExamModal()">Cancel</button><button class="btn btn-primary" onclick="confirmAssignExam()"><i class="fas fa-check"></i> Assign Exam</button></div></div></div>
+
+<!-- Create/Edit Exam Modal -->
+<div id="examModal" class="modal">
+    <div class="modal-content">
+        <span class="close-modal" onclick="closeExamModal()">&times;</span>
+        <h2 id="examModalTitle"><i class="fas fa-plus-circle"></i> Create New Exam</h2>
+        <form id="examForm">
+            <div class="form-group"><label>Exam Name *</label><input type="text" id="examName" required placeholder="e.g., OSCE Final Exam"></div>
+            <div class="form-group"><label>Exam Type *</label><select id="examType" required><option value="EXAM">Final Exam</option><option value="CAT_1">CAT 1</option><option value="CAT_2">CAT 2</option><option value="QUIZ">Quiz</option></select></div>
+            <div class="form-group"><label>Course/Subject</label><input type="text" id="examCourse" placeholder="e.g., Clinical Medicine"></div>
+            <div class="form-group"><label>Duration (minutes) *</label><input type="number" id="examDuration" required value="30" min="1" max="180"></div>
+            <div class="form-group"><label>Total Marks</label><input type="number" id="examTotalMarks" value="100" min="1"></div>
+            <div class="form-group"><label>Exam Link / URL *</label><input type="url" id="examLink" required placeholder="https://your-exam-platform.com/exam"></div>
+            <div class="form-group"><label>Program (leave empty for all)</label><input type="text" id="examProgram" placeholder="e.g., Nursing, Clinical Medicine"></div>
+            <div class="form-group"><label>Block/Term</label><input type="text" id="examBlock" placeholder="e.g., Block 1, Semester 1"></div>
+            <div class="form-group"><label>Intake Year</label><input type="text" id="examIntakeYear" placeholder="e.g., 2024"></div>
+            <input type="hidden" id="editingExamId" value="">
+            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                <button type="button" class="btn btn-danger" onclick="closeExamModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Exam</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Assign Exam Modal -->
+<div id="assignExamModal" class="modal">
+    <div class="modal-content">
+        <span class="close-modal" onclick="closeAssignExamModal()">&times;</span>
+        <h2><i class="fas fa-tasks"></i> Assign Exam to Student</h2>
+        <div class="form-group"><label>Select Student *</label><select id="assignStudentSelect" style="width:100%; padding:12px; border-radius:12px;"></select></div>
+        <div class="form-group"><label>Select Exam *</label><select id="assignExamSelect" style="width:100%; padding:12px; border-radius:12px;"></select></div>
+        <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+            <button class="btn btn-danger" onclick="closeAssignExamModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="confirmAssignExam()"><i class="fas fa-check"></i> Assign Exam</button>
+        </div>
+    </div>
+</div>
+
+<!-- Deallocate/Unassign Exam Modal -->
+<div id="deallocateModal" class="modal">
+    <div class="modal-content">
+        <span class="close-modal" onclick="closeDeallocateModal()">&times;</span>
+        <h2><i class="fas fa-user-minus"></i> Deallocate Exam</h2>
+        <p>Remove this exam assignment from the student? This will delete all their answers and results.</p>
+        <p id="deallocateInfo" style="background:#FEE2E2; padding:10px; border-radius:8px; margin:15px 0;"></p>
+        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+            <button class="btn btn-secondary" onclick="closeDeallocateModal()">Cancel</button>
+            <button class="btn btn-danger" onclick="confirmDeallocateExam()"><i class="fas fa-trash"></i> Deallocate</button>
+        </div>
+    </div>
+</div>
+
 <div id="releaseModal" class="modal"><div class="modal-content"><span class="close-modal" onclick="closeReleaseModal()">&times;</span><h2><i class="fas fa-share-alt"></i> Release Results</h2><div class="filters-grid"><div class="filter-group"><label>Select Exam:</label><select id="releaseExamFilter" style="width:100%;" onchange="loadReleasePreview()"><option value="">-- Select Exam --</option></select></div><div class="filter-group"><label>Filter by Status:</label><select id="releaseStatusFilter" style="width:100%;" onchange="loadReleasePreview()"><option value="">All Statuses</option><option value="PASS">Pass Only</option><option value="FAIL">Fail Only</option></select></div></div><div id="releasePreview" style="display:none;"><div id="releaseSummary"></div><div style="max-height: 300px; overflow-y: auto;"><table class="preview-table"><thead><tr><th>Student ID</th><th>Student Name</th><th>Score</th><th>%</th><th>Status</th><th>Current</th></tr></thead><tbody id="releasePreviewBody"></tbody></table></div><div style="margin-top:20px; display:flex; gap:10px; justify-content:flex-end;"><button class="btn btn-danger" onclick="closeReleaseModal()">Cancel</button><button class="btn btn-release" id="confirmReleaseBtn" onclick="confirmReleaseResults()">Confirm Release</button></div></div></div></div>
 
 <script>
@@ -287,15 +339,15 @@
     function renderFilters() {
         const container = document.getElementById('filtersContainer');
         if (currentTab === 'students') {
-            container.innerHTML = `<h3><i class="fas fa-filter"></i> Filter Results</h3><div class="filters-grid"><div class="filter-group"><label>Exam</label><select id="examFilter"><option value="">All</option></select></div><div class="filter-group"><label>Status</label><select id="statusFilter"><option value="">All</option><option value="PASS">Pass</option><option value="FAIL">Fail</option></select></div></div><div class="search-box"><input type="text" id="searchInput" placeholder="Search by name or ID..."><button class="btn btn-primary" onclick="loadStudentsWithResults()">Search</button><button class="btn btn-danger" onclick="resetFilters()">Reset</button></div>`;
+            container.innerHTML = `<h3><i class="fas fa-filter"></i> Filter Results</h3><div class="filters-grid"><div class="filter-group"><label>Exam</label><select id="examFilter"><option value="">All</option></select></div><div class="filter-group"><label>Status</label><select id="statusFilter"><option value="">All</option><option value="PASS">Pass</option><option value="FAIL">Fail</option></select></div></div><div class="search-box"><input type="text" id="searchInput" placeholder="Search by name or ID..."><button class="btn btn-primary" onclick="loadStudentsWithResults()"><i class="fas fa-search"></i> Search</button><button class="btn btn-danger" onclick="resetFilters()"><i class="fas fa-undo"></i> Reset</button></div>`;
             loadExamDropdown();
         } else if (currentTab === 'allStudents') {
-            container.innerHTML = `<h3><i class="fas fa-filter"></i> Filter Students</h3><div class="filters-grid"><div class="filter-group"><label>Program</label><select id="programFilter"><option value="">All</option></select></div></div><div class="search-box"><input type="text" id="studentSearch" placeholder="Search by name or ID..."><button class="btn btn-primary" onclick="loadAllStudents()">Search</button><button class="btn btn-danger" onclick="resetStudentFilters()">Reset</button></div>`;
+            container.innerHTML = `<h3><i class="fas fa-filter"></i> Filter Students</h3><div class="filters-grid"><div class="filter-group"><label>Program</label><select id="programFilter"><option value="">All</option></select></div></div><div class="search-box"><input type="text" id="studentSearch" placeholder="Search by name or ID..."><button class="btn btn-primary" onclick="loadAllStudents()"><i class="fas fa-search"></i> Search</button><button class="btn btn-danger" onclick="resetStudentFilters()"><i class="fas fa-undo"></i> Reset</button></div>`;
             loadProgramDropdown();
         } else if (currentTab === 'exams') {
-            container.innerHTML = `<h3><i class="fas fa-filter"></i> Filter Exams</h3><div class="filters-grid"><div class="filter-group"><label>Type</label><select id="examTypeFilter"><option value="">All</option><option value="EXAM">Final Exam</option><option value="CAT_1">CAT 1</option><option value="CAT_2">CAT 2</option><option value="QUIZ">Quiz</option></select></div></div><div class="search-box"><input type="text" id="examSearch" placeholder="Search exam name..."><button class="btn btn-primary" onclick="loadAllExams()">Search</button><button class="btn btn-danger" onclick="resetExamFilters()">Reset</button></div>`;
+            container.innerHTML = `<h3><i class="fas fa-filter"></i> Filter Exams</h3><div class="filters-grid"><div class="filter-group"><label>Type</label><select id="examTypeFilter"><option value="">All</option><option value="EXAM">Final Exam</option><option value="CAT_1">CAT 1</option><option value="CAT_2">CAT 2</option><option value="QUIZ">Quiz</option></select></div></div><div class="search-box"><input type="text" id="examSearch" placeholder="Search exam name..."><button class="btn btn-primary" onclick="loadAllExams()"><i class="fas fa-search"></i> Search</button><button class="btn btn-danger" onclick="resetExamFilters()"><i class="fas fa-undo"></i> Reset</button></div>`;
         } else {
-            container.innerHTML = `<h3><i class="fas fa-filter"></i> Filter Proctoring Alerts</h3><div class="filters-grid"><div class="filter-group"><label>Alert Type</label><select id="alertTypeFilter"><option value="">All</option><option value="multiple_faces_detected">🚨 Multiple Faces</option><option value="face_missing">😞 Face Missing</option><option value="tab_switched">📱 Tab Switched</option></select></div><div class="filter-group"><label>Severity</label><select id="severityFilter"><option value="">All</option><option value="critical">Critical</option><option value="warning">Warning</option></select></div></div><div class="search-box"><input type="text" id="proctoringSearch" placeholder="Search by student..."><button class="btn btn-primary" onclick="loadProctoringLogs()">Search</button><button class="btn btn-danger" onclick="resetProctoringFilters()">Reset</button></div>`;
+            container.innerHTML = `<h3><i class="fas fa-filter"></i> Filter Proctoring Alerts</h3><div class="filters-grid"><div class="filter-group"><label>Alert Type</label><select id="alertTypeFilter"><option value="">All</option><option value="multiple_faces_detected">🚨 Multiple Faces</option><option value="face_missing">😞 Face Missing</option><option value="tab_switched">📱 Tab Switched</option></select></div><div class="filter-group"><label>Severity</label><select id="severityFilter"><option value="">All</option><option value="critical">Critical</option><option value="warning">Warning</option></select></div></div><div class="search-box"><input type="text" id="proctoringSearch" placeholder="Search by student..."><button class="btn btn-primary" onclick="loadProctoringLogs()"><i class="fas fa-search"></i> Search</button><button class="btn btn-danger" onclick="resetProctoringFilters()"><i class="fas fa-undo"></i> Reset</button></div>`;
         }
     }
     
@@ -318,19 +370,11 @@
         return examsMap;
     }
     
-    // ========== RESET STUDENT EXAM FUNCTION ==========
-    window.resetStudentExam = async function(studentId, examId, studentName, examName) {
-        if (confirm(`Reset ${studentName}'s exam "${examName}"? This will delete all answers and results.`)) {
-            const { error } = await sb.from('exam_grades').delete().eq('student_id', studentId).eq('exam_id', examId);
-            if (error) alert('Error: ' + error.message);
-            else { alert('Exam reset successfully!'); loadStudentsWithResults(); loadAllExams(); }
-        }
-    };
-    
-    // ========== EXAM MANAGEMENT ==========
+    // ========== EXAM MANAGEMENT FUNCTIONS ==========
     window.openCreateExamModal = function(examId = null) {
         document.getElementById('examModalTitle').innerHTML = examId ? '<i class="fas fa-edit"></i> Edit Exam' : '<i class="fas fa-plus-circle"></i> Create New Exam';
         document.getElementById('editingExamId').value = examId || '';
+        
         if (examId && examsMap[examId]) {
             const exam = examsMap[examId];
             document.getElementById('examName').value = exam.exam_name || '';
@@ -372,23 +416,25 @@
             block_term: document.getElementById('examBlock').value || null,
             intake_year: document.getElementById('examIntakeYear').value || null
         };
+        
         let result;
         if (examId) {
             result = await sb.from('exams').update(examData).eq('id', parseInt(examId));
         } else {
             result = await sb.from('exams').insert([examData]);
         }
+        
         if (result.error) { alert('Error: ' + result.error.message); }
-        else { alert(examId ? 'Exam updated!' : 'Exam created!'); closeExamModal(); loadAllExams(); }
+        else { alert(examId ? 'Exam updated successfully!' : 'Exam created successfully!'); closeExamModal(); loadAllExams(); }
     });
     
     window.deleteExam = async function(examId, examName) {
-        if (confirm(`Delete exam "${examName}"? This will also delete all student answers.`)) {
+        if (confirm(`Delete exam "${examName}"? This will also delete all student answers and results for this exam.`)) {
             await sb.from('exam_grades').delete().eq('exam_id', examId);
             await sb.from('exam_questions').delete().eq('exam_id', examId);
             const { error } = await sb.from('exams').delete().eq('id', examId);
             if (error) alert('Error: ' + error.message);
-            else { alert('Exam deleted!'); loadAllExams(); loadStudentsWithResults(); }
+            else { alert('Exam deleted successfully!'); loadAllExams(); loadStudentsWithResults(); }
         }
     };
     
@@ -403,27 +449,55 @@
     window.confirmAssignExam = async function() {
         const studentId = document.getElementById('assignStudentSelect').value;
         const examId = document.getElementById('assignExamSelect').value;
-        if (!studentId || !examId) return alert('Select both');
+        if (!studentId || !examId) return alert('Select both student and exam');
+        
         const { data: student } = await sb.from('consolidated_user_profiles_table').select('user_id').eq('id', studentId).single();
         if (!student?.user_id) return alert('Student not found');
-        const { error } = await sb.from('exam_grades').insert({ student_id: student.user_id, exam_id: parseInt(examId), question_id: '00000000-0000-0000-0000-000000000000', marks: 0, total_score: 0, result_status: 'Scheduled', graded_at: new Date().toISOString() });
+        
+        const { error } = await sb.from('exam_grades').insert({
+            student_id: student.user_id, exam_id: parseInt(examId),
+            question_id: '00000000-0000-0000-0000-000000000000',
+            marks: 0, total_score: 0, result_status: 'Scheduled', graded_at: new Date().toISOString()
+        });
+        
         if (error) alert('Error: ' + error.message);
-        else { alert('Exam assigned!'); closeAssignExamModal(); loadAllExams(); loadStudentsWithResults(); }
+        else { alert('Exam assigned successfully!'); closeAssignExamModal(); loadAllExams(); loadStudentsWithResults(); }
     };
     
     window.closeAssignExamModal = function() { document.getElementById('assignExamModal').style.display = 'none'; };
+    
+    let deallocateData = null;
+    window.openDeallocateModal = function(studentId, examId, studentName, examName) {
+        deallocateData = { studentId, examId, studentName, examName };
+        document.getElementById('deallocateInfo').innerHTML = `<strong>Student:</strong> ${studentName}<br><strong>Exam:</strong> ${examName}<br><br>⚠️ This will delete all answers and results for this student.`;
+        document.getElementById('deallocateModal').style.display = 'flex';
+    };
+    
+    window.confirmDeallocateExam = async function() {
+        if (!deallocateData) return;
+        await sb.from('exam_grades').delete().eq('student_id', deallocateData.studentId).eq('exam_id', deallocateData.examId);
+        alert('Exam deallocated successfully!');
+        closeDeallocateModal();
+        loadAllExams();
+        loadStudentsWithResults();
+    };
+    
+    window.closeDeallocateModal = function() { document.getElementById('deallocateModal').style.display = 'none'; deallocateData = null; };
     
     // ========== PROCTORING FUNCTIONS ==========
     async function loadProctoringLogs() {
         const loadingDiv = document.getElementById('proctoringLoading');
         const table = document.getElementById('proctoringTable');
         loadingDiv.style.display = 'block'; table.style.display = 'none';
+        
         let query = sb.from('exam_proctoring_logs').select('*').order('timestamp', { ascending: false }).limit(500);
         const { data: logs, error } = await query;
         if (error) { console.error(error); loadingDiv.innerHTML = 'Error loading logs'; return; }
+        
         const studentIds = [...new Set(logs.map(l => l.student_id).filter(Boolean))];
         const { data: profiles } = await sb.from('consolidated_user_profiles_table').select('user_id, full_name, student_id, program').in('user_id', studentIds);
         const profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p]));
+        
         proctoringLogs = logs.map(l => ({ ...l, student_profile: profileMap[l.student_id] || null }));
         displayProctoringLogs();
         loadingDiv.style.display = 'none'; table.style.display = 'table';
@@ -435,7 +509,17 @@
         const page = proctoringLogs.slice(start, start + itemsPerPage);
         const tbody = document.getElementById('proctoringBody');
         if(page.length === 0) { tbody.innerHTML = '<tr><td colspan="8">No alerts</td></tr>'; return; }
-        tbody.innerHTML = page.map(log => `<tr style="${log.event_type === 'multiple_faces_detected' ? 'background:#FEF2F2;' : ''}"><td>${new Date(log.timestamp).toLocaleString()}</td><td><span class="student-id-badge">${log.student_profile?.student_id || log.student_id?.substring(0,8)}</span></td><td><strong>${log.student_profile?.full_name || 'Unknown'}</strong><br><small>${log.student_profile?.program || ''}</small></td><td>${examsMap[log.exam_id]?.exam_name || 'Exam ' + log.exam_id}</td><td><span class="${log.event_type === 'multiple_faces_detected' ? 'status-critical' : 'status-pending'}">${log.event_type}</span></td><td>${log.details || '-'}</td><td><span class="${log.severity === 'critical' ? 'status-critical' : 'status-pending'}">${log.severity || 'info'}</span></td><td><button class="action-btn btn-view" onclick="viewAlertDetails(${log.id})">View</button></td></tr>`).join('');
+        tbody.innerHTML = page.map(log => `
+            <tr style="${log.event_type === 'multiple_faces_detected' ? 'background:#FEF2F2;' : ''}">
+                <td>${new Date(log.timestamp).toLocaleString()}</td>
+                <td><span class="student-id-badge">${log.student_profile?.student_id || log.student_id?.substring(0,8)}</span></td>
+                <td><strong>${log.student_profile?.full_name || 'Unknown'}</strong><br><small>${log.student_profile?.program || ''}</small></td>
+                <td>${examsMap[log.exam_id]?.exam_name || 'Exam ' + log.exam_id}</td>
+                <td><span class="${log.event_type === 'multiple_faces_detected' ? 'status-critical' : 'status-pending'}">${log.event_type}</span></td>
+                <td>${log.details || '-'}</td>
+                <td><span class="${log.severity === 'critical' ? 'status-critical' : 'status-pending'}">${log.severity || 'info'}</span></td>
+                <td><button class="action-btn btn-view" onclick="viewAlertDetails(${log.id})">View</button></td>
+            </tr>`).join('');
         renderPagination('proctoring', proctoringLogs.length);
     }
     
@@ -451,6 +535,7 @@
         const { data: existingLogs } = await sb.from('exam_proctoring_logs').select('id, is_read').eq('is_read', false);
         unreadCount = existingLogs?.length || 0;
         document.getElementById('notificationCount').innerText = unreadCount;
+        
         notificationSubscription = sb.channel('proctoring-alerts').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'exam_proctoring_logs' }, async (payload) => {
             unreadCount++; document.getElementById('notificationCount').innerText = unreadCount;
             await loadNotifications();
@@ -469,7 +554,14 @@
         const profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p]));
         const container = document.getElementById('notificationList');
         if (!logs || logs.length === 0) { container.innerHTML = '<div style="padding:20px;text-align:center;">No new alerts</div>'; return; }
-        container.innerHTML = logs.map(log => `<div class="notification-item ${log.event_type === 'multiple_faces_detected' ? 'critical' : 'unread'}" onclick="markNotificationRead(${log.id})"><div class="notification-title">${log.event_type === 'multiple_faces_detected' ? '🚨 MULTIPLE FACES' : '📹 ' + log.event_type}</div><div class="notification-detail"><strong>Student:</strong> ${profileMap[log.student_id]?.full_name} (${profileMap[log.student_id]?.student_id})</div><div class="notification-detail"><strong>Exam:</strong> ${examsMap[log.exam_id]?.exam_name}</div><div class="notification-time">${new Date(log.timestamp).toLocaleString()}</div><button class="mark-read-btn" onclick="event.stopPropagation(); markNotificationRead(${log.id})">Mark read</button></div>`).join('');
+        container.innerHTML = logs.map(log => `
+            <div class="notification-item ${log.event_type === 'multiple_faces_detected' ? 'critical' : 'unread'}" onclick="markNotificationRead(${log.id})">
+                <div class="notification-title">${log.event_type === 'multiple_faces_detected' ? '🚨 MULTIPLE FACES' : '📹 ' + log.event_type}</div>
+                <div class="notification-detail"><strong>Student:</strong> ${profileMap[log.student_id]?.full_name} (${profileMap[log.student_id]?.student_id})</div>
+                <div class="notification-detail"><strong>Exam:</strong> ${examsMap[log.exam_id]?.exam_name}</div>
+                <div class="notification-time">${new Date(log.timestamp).toLocaleString()}</div>
+                <button class="mark-read-btn" onclick="event.stopPropagation(); markNotificationRead(${log.id})">Mark read</button>
+            </div>`).join('');
         document.getElementById('notificationCount').innerText = logs.length;
     }
     
@@ -488,13 +580,14 @@
         currentPage.proctoring = 1; loadProctoringLogs();
     };
     
-    // ========== CORE FUNCTIONS ==========
+    // ========== EXISTING FUNCTIONS ==========
     window.loadStudentsWithResults = async function() {
         const loadingDiv = document.getElementById('studentsLoading');
         const table = document.getElementById('studentsTable');
         loadingDiv.style.display = 'block'; table.style.display = 'none';
         await loadExamsMap();
-        const { data: grades, error } = await sb.from('exam_grades').select('*').eq('question_id', '00000000-0000-0000-0000-000000000000');
+        let query = sb.from('exam_grades').select('*').eq('question_id', '00000000-0000-0000-0000-000000000000');
+        const { data: grades, error } = await query;
         if(error) { loadingDiv.innerHTML = 'Error loading data'; return; }
         const { data: releases } = await sb.from('released_exam_results').select('result_id');
         const releasedSet = new Set(releases?.map(r => r.result_id) || []);
@@ -512,7 +605,7 @@
         const page = studentsResults.slice(start, start + itemsPerPage);
         const tbody = document.getElementById('studentsBody');
         if(page.length === 0) { tbody.innerHTML = '<tr><td colspan="10">No results</td></tr>'; return; }
-        tbody.innerHTML = page.map(r => `<tr><td><span class="student-id-badge">${r.student_profile?.student_id || 'N/A'}</span></td><td><strong>${r.student_profile?.full_name || 'Unknown'}</strong></td><td>${r.student_profile?.email || '-'}</td><td>${r.student_profile?.program || '-'}</td><td>${r.exam_info?.exam_name || 'Exam ' + r.exam_id}</td><td>${r.marks || 0}</td><td>${parseFloat(r.total_score || 0).toFixed(1)}%</td><td><span class="${r.result_status === 'PASS' ? 'status-pass' : 'status-fail'}">${r.result_status || 'PENDING'}</span></td><td>${r.isReleased ? '✅ Released' : '🔒 Not Released'}</td><td><button class="action-btn btn-view" onclick="viewExamResult('${r.student_id}',${r.exam_id})">View</button><button class="action-btn btn-reset-exam" onclick="resetStudentExam('${r.student_id}',${r.exam_id},'${r.student_profile?.full_name}','${r.exam_info?.exam_name}')">Reset</button></td></tr>`).join('');
+        tbody.innerHTML = page.map(r => `<tr><td><span class="student-id-badge">${r.student_profile?.student_id || 'N/A'}</span></td><td><strong>${r.student_profile?.full_name || 'Unknown'}</strong></td><td>${r.student_profile?.email || '-'}</td><td>${r.student_profile?.program || '-'}</td><td>${r.exam_info?.exam_name || 'Exam ' + r.exam_id}</td><td>${r.marks || 0}</td><td>${parseFloat(r.total_score || 0).toFixed(1)}%</td><td><span class="${r.result_status === 'PASS' ? 'status-pass' : 'status-fail'}">${r.result_status || 'PENDING'}</span></td><td>${r.isReleased ? '✅ Released' : '🔒 Not Released'}</td><td><button class="action-btn btn-view" onclick="viewExamResult('${r.student_id}',${r.exam_id})">View</button><button class="action-btn btn-delete" onclick="openDeallocateModal('${r.student_id}',${r.exam_id},'${r.student_profile?.full_name}','${r.exam_info?.exam_name}')">Deallocate</button></td></tr>`).join('');
         renderPagination('students', studentsResults.length);
     }
     
@@ -523,12 +616,6 @@
         const { data, error } = await sb.from('consolidated_user_profiles_table').select('*');
         if(error) return;
         allStudents = data || [];
-        // Count exams taken by each student
-        const studentIds = allStudents.map(s => s.user_id);
-        const { data: gradeCounts } = await sb.from('exam_grades').select('student_id').eq('question_id', '00000000-0000-0000-0000-000000000000').in('student_id', studentIds);
-        const countMap = {};
-        if(gradeCounts) gradeCounts.forEach(g => { countMap[g.student_id] = (countMap[g.student_id] || 0) + 1; });
-        allStudents.forEach(s => { s.examsTaken = countMap[s.user_id] || 0; });
         displayAllStudents();
         loadingDiv.style.display = 'none'; table.style.display = 'table';
     };
@@ -546,14 +633,8 @@
         const table = document.getElementById('examsTable');
         loadingDiv.style.display = 'block'; table.style.display = 'none';
         const { data, error } = await sb.from('exams').select('*').order('id', { ascending: true });
-        if(error) { loadingDiv.innerHTML = 'Error loading exams'; return; }
+        if(error) return;
         allExams = data || [];
-        // Count students assigned to each exam
-        const examIds = allExams.map(e => e.id);
-        const { data: gradeCounts } = await sb.from('exam_grades').select('exam_id').eq('question_id', '00000000-0000-0000-0000-000000000000').in('exam_id', examIds);
-        const countMap = {};
-        if(gradeCounts) gradeCounts.forEach(g => { countMap[g.exam_id] = (countMap[g.exam_id] || 0) + 1; });
-        allExams.forEach(e => { e.studentCount = countMap[e.id] || 0; });
         displayAllExams();
         loadingDiv.style.display = 'none'; table.style.display = 'table';
         updateStats();
@@ -563,8 +644,20 @@
         const start = (currentPage.exams - 1) * itemsPerPage;
         const page = allExams.slice(start, start + itemsPerPage);
         const tbody = document.getElementById('examsBody');
-        if(page.length === 0) { tbody.innerHTML = '<tr><td colspan="6">No exams found</td></tr>'; return; }
-        tbody.innerHTML = page.map(e => `<tr><td><strong>${e.exam_name}</strong></td><td>${e.exam_type || '-'}</td><td>${e.course || '-'}</td><td>${e.duration_minutes || 30} min</td><td>${e.studentCount || 0}</td><td><button class="action-btn btn-edit" onclick="openCreateExamModal(${e.id})"><i class="fas fa-edit"></i> Edit</button><button class="action-btn btn-assign" onclick="openAssignExamModal()"><i class="fas fa-user-plus"></i> Assign</button><button class="action-btn btn-delete" onclick="deleteExam(${e.id}, '${e.exam_name}')"><i class="fas fa-trash"></i> Delete</button></td></tr>`).join('');
+        tbody.innerHTML = page.map(e => `
+            <tr>
+                <td><strong>${e.exam_name}</strong></td>
+                <td>${e.exam_type || '-'}</td>
+                <td>${e.course || '-'}</td>
+                <td>${e.duration_minutes || 30} min</td>
+                <td>${e.studentCount || 0}</td>
+                <td><span class="status-pass">Active</span></td>
+                <td>
+                    <button class="action-btn btn-edit" onclick="openCreateExamModal(${e.id})"><i class="fas fa-edit"></i> Edit</button>
+                    <button class="action-btn btn-assign" onclick="openAssignExamModal()"><i class="fas fa-user-plus"></i> Assign</button>
+                    <button class="action-btn btn-delete" onclick="deleteExam(${e.id}, '${e.exam_name}')"><i class="fas fa-trash"></i> Delete</button>
+                </td>
+            </tr>`).join('');
         renderPagination('exams', allExams.length);
     }
     
@@ -574,7 +667,13 @@
         const failed = studentsResults.filter(r=>r.result_status==='FAIL').length;
         const avg = studentsResults.length ? (studentsResults.reduce((a,b)=>a+(parseFloat(b.total_score)||0),0)/studentsResults.length).toFixed(1) : 0;
         const faceAlerts = proctoringLogs.filter(l=>l.event_type==='multiple_faces_detected').length;
-        document.getElementById('statsContainer').innerHTML = `<div class="stat-card total"><div class="stat-value">${totalStudents}</div><div class="stat-label">Total Students</div></div><div class="stat-card passed"><div class="stat-value">${passed}</div><div class="stat-label">Passed</div></div><div class="stat-card failed"><div class="stat-value">${failed}</div><div class="stat-label">Failed</div></div><div class="stat-card avg"><div class="stat-value">${avg}%</div><div class="stat-label">Avg Score</div></div><div class="stat-card face-alerts"><div class="stat-value">${faceAlerts}</div><div class="stat-label">Face Violations</div></div>`;
+        document.getElementById('statsContainer').innerHTML = `
+            <div class="stat-card total"><div class="stat-value">${totalStudents}</div><div class="stat-label">Total Students</div></div>
+            <div class="stat-card passed"><div class="stat-value">${passed}</div><div class="stat-label">Passed</div></div>
+            <div class="stat-card failed"><div class="stat-value">${failed}</div><div class="stat-label">Failed</div></div>
+            <div class="stat-card avg"><div class="stat-value">${avg}%</div><div class="stat-label">Avg Score</div></div>
+            <div class="stat-card face-alerts"><div class="stat-value">${faceAlerts}</div><div class="stat-label">Face Violations</div></div>
+        `;
     }
     
     function renderPagination(type, total) {
@@ -653,7 +752,7 @@
             const isReleased = releasedSet.has(r.id);
             if (!isReleased) notReleasedCount++;
             const student = profileMap[r.student_id];
-            previewHtml += `<tr><td><span class="student-id-badge">${student?.student_id || 'N/A'}</span></td><td>${student?.full_name || 'Unknown'}</td><td>${r.marks || 0}</td><td>${parseFloat(r.total_score || 0).toFixed(1)}%</td><td><span class="${r.result_status==='PASS'?'status-pass':'status-fail'}">${r.result_status}</span></td><td>${isReleased ? '✅ Released' : '🔒 Pending'}</td></tr>`;
+            previewHtml += `<tr><td>${student?.student_id || 'N/A'}</td><td>${student?.full_name || 'Unknown'}</td><td>${r.marks || 0}</td><td>${parseFloat(r.total_score || 0).toFixed(1)}%</td><td><span class="${r.result_status==='PASS'?'status-pass':'status-fail'}">${r.result_status}</span></td><td>${isReleased ? '✅ Released' : '🔒 Pending'}</td></tr>`;
         });
         document.getElementById('releasePreviewBody').innerHTML = previewHtml;
         document.getElementById('releaseSummary').innerHTML = `<strong>Pending Release: ${notReleasedCount}</strong>`;
@@ -662,23 +761,17 @@
     
     window.confirmReleaseResults = async function() {
         const examId = document.getElementById('releaseExamFilter').value;
-        const statusFilter = document.getElementById('releaseStatusFilter').value;
-        if (!examId) { alert('Please select an exam'); return; }
-        try {
-            let query = sb.from('exam_grades').select('id, student_id, exam_id, result_status').eq('exam_id', parseInt(examId)).eq('question_id', '00000000-0000-0000-0000-000000000000').in('result_status', ['PASS', 'FAIL']);
-            if (statusFilter) query = query.eq('result_status', statusFilter);
-            const { data: results } = await query;
-            if (!results || results.length === 0) { alert('No results found'); return; }
-            const { data: existing } = await sb.from('released_exam_results').select('result_id');
-            const existingSet = new Set(existing?.map(e => e.result_id) || []);
-            const newResults = results.filter(r => !existingSet.has(r.id));
-            if (newResults.length === 0) { alert('All results already released'); return; }
-            if (!confirm(`Release ${newResults.length} result(s)?`)) return;
-            const releaseRecords = newResults.map(r => ({ result_id: r.id, student_id: r.student_id, exam_id: parseInt(examId), released_at: new Date().toISOString(), released_by: 'admin' }));
-            const { error } = await sb.from('released_exam_results').insert(releaseRecords);
-            if (error) alert('Error: ' + error.message);
-            else { alert(`Released ${newResults.length} results!`); closeReleaseModal(); loadStudentsWithResults(); }
-        } catch (err) { alert('Error: ' + err.message); }
+        let query = sb.from('exam_grades').select('id').eq('exam_id', parseInt(examId)).eq('question_id', '00000000-0000-0000-0000-000000000000').in('result_status', ['PASS', 'FAIL']);
+        const { data: results } = await query;
+        const { data: existing } = await sb.from('released_exam_results').select('result_id');
+        const existingSet = new Set(existing?.map(e => e.result_id) || []);
+        const newResults = results.filter(r => !existingSet.has(r.id));
+        if (newResults.length === 0) { alert('No new results to release'); return; }
+        if (!confirm(`Release ${newResults.length} result(s)?`)) return;
+        const releaseRecords = newResults.map(r => ({ result_id: r.id, student_id: r.student_id, exam_id: parseInt(examId), released_at: new Date().toISOString(), released_by: 'admin' }));
+        const { error } = await sb.from('released_exam_results').insert(releaseRecords);
+        if (error) alert('Error: ' + error.message);
+        else { alert(`Released ${newResults.length} results!`); closeReleaseModal(); loadStudentsWithResults(); }
     };
     
     window.closeReleaseModal = function() { document.getElementById('releaseModal').style.display = 'none'; };
@@ -686,8 +779,8 @@
     window.exportToExcel = function(type) { 
         let data=[]; 
         if(type==='students') data=studentsResults.map(r=>({'Student ID':r.student_profile?.student_id, 'Name':r.student_profile?.full_name, 'Exam':r.exam_info?.exam_name, 'Score':r.marks, 'Percent':r.total_score, 'Status':r.result_status})); 
-        if(type==='allStudents') data=allStudents.map(s=>({'Student ID':s.student_id, 'Name':s.full_name, 'Email':s.email, 'Program':s.program, 'Exams Taken':s.examsTaken})); 
-        if(type==='exams') data=allExams.map(e=>({'Exam Name':e.exam_name, 'Type':e.exam_type, 'Duration':e.duration_minutes, 'Students Assigned':e.studentCount}));
+        if(type==='allStudents') data=allStudents.map(s=>({'Student ID':s.student_id, 'Name':s.full_name, 'Email':s.email, 'Program':s.program})); 
+        if(type==='exams') data=allExams.map(e=>({'Exam Name':e.exam_name, 'Type':e.exam_type, 'Duration':e.duration_minutes}));
         if(type==='proctoring') data=proctoringLogs.map(l=>({'Time':new Date(l.timestamp).toLocaleString(), 'Student':l.student_profile?.full_name, 'Alert':l.event_type, 'Details':l.details}));
         const ws=XLSX.utils.json_to_sheet(data); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Data'); XLSX.writeFile(wb,`${type}_${new Date().toISOString().split('T')[0]}.xlsx`); 
     };
