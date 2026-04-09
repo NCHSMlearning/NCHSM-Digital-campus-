@@ -7,425 +7,79 @@
 <link rel="icon" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Poppins', sans-serif; background: #F0F2F5; min-height: 100vh; }
 
-body {
-    font-family: 'Poppins', sans-serif;
-    background: #F0F2F5;
-    min-height: 100vh;
-}
+header { text-align: center; padding: 20px; background: linear-gradient(135deg, #0A3D62 0%, #073450 100%); color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+.logo { width: 65px; margin-bottom: 8px; border-radius: 50%; border: 3px solid #FDB913; padding: 5px; background: white; }
+h1 { font-size: 1.6rem; letter-spacing: -0.5px; }
+.header-subtitle { font-size: 0.8rem; opacity: 0.9; }
 
-/* Header */
-header {
-    text-align: center;
-    padding: 20px;
-    background: linear-gradient(135deg, #0A3D62 0%, #073450 100%);
-    color: white;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-}
+.exam-list { max-width: 1200px; margin: 25px auto; padding: 0 20px; }
 
-.logo {
-    width: 65px;
-    margin-bottom: 8px;
-    border-radius: 50%;
-    border: 3px solid #FDB913;
-    padding: 5px;
-    background: white;
-}
+.user-info-bar { background: white; border-radius: 16px; padding: 15px 25px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); border-left: 4px solid #FDB913; }
+.user-details h3 { color: #0A3D62; font-size: 1rem; }
+.user-details p { color: #64748B; font-size: 0.8rem; margin-top: 3px; }
+.action-buttons { display: flex; gap: 10px; }
 
-h1 {
-    font-size: 1.6rem;
-    letter-spacing: -0.5px;
-}
+.exam-card { background: white; border-radius: 20px; padding: 20px; margin-bottom: 20px; box-shadow: 0 5px 20px rgba(0,0,0,0.05); transition: transform 0.2s; border: 1px solid #E2E8F0; }
+.exam-card:hover { transform: translateY(-3px); box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+.exam-title { font-size: 1.2rem; font-weight: 700; color: #0A3D62; }
+.exam-meta { display: flex; flex-wrap: wrap; gap: 15px; font-size: 0.8rem; color: #64748B; margin: 10px 0; }
 
-.header-subtitle {
-    font-size: 0.8rem;
-    opacity: 0.9;
-}
-
-/* Exam List Container */
-.exam-list {
-    max-width: 1200px;
-    margin: 25px auto;
-    padding: 0 20px;
-}
-
-/* User Info Bar */
-.user-info-bar {
-    background: white;
-    border-radius: 16px;
-    padding: 15px 25px;
-    margin-bottom: 25px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 15px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-    border-left: 4px solid #FDB913;
-}
-
-.user-details h3 {
-    color: #0A3D62;
-    font-size: 1rem;
-}
-
-.user-details p {
-    color: #64748B;
-    font-size: 0.8rem;
-    margin-top: 3px;
-}
-
-.action-buttons {
-    display: flex;
-    gap: 10px;
-}
-
-/* Exam Cards */
-.exam-card {
-    background: white;
-    border-radius: 20px;
-    padding: 20px;
-    margin-bottom: 20px;
-    box-shadow: 0 5px 20px rgba(0,0,0,0.05);
-    transition: transform 0.2s, box-shadow 0.2s;
-    border: 1px solid #E2E8F0;
-}
-
-.exam-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-}
-
-.exam-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: start;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-bottom: 10px;
-}
-
-.exam-title {
-    font-size: 1.2rem;
-    font-weight: 700;
-    color: #0A3D62;
-}
-
-.exam-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 15px;
-    font-size: 0.8rem;
-    color: #64748B;
-    margin: 10px 0;
-}
-
-.badge {
-    display: inline-block;
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: 0.7rem;
-    font-weight: 600;
-}
-
+.badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 0.7rem; font-weight: 600; }
 .badge-upcoming { background: #DBEAFE; color: #1E40AF; }
 .badge-completed { background: #D1FAE5; color: #065F46; }
 .badge-pending { background: #FEF3C7; color: #92400E; }
 
-.grade-info {
-    margin-top: 15px;
-    padding: 15px;
-    border-radius: 12px;
-    font-size: 0.9rem;
-}
-
+.grade-info { margin-top: 15px; padding: 15px; border-radius: 12px; font-size: 0.9rem; }
 .grade-pass { background: #D1FAE5; border-left: 4px solid #38A169; }
 .grade-fail { background: #FEE2E2; border-left: 4px solid #DC2626; }
-.grade-pending { background: #FEF3C7; border-left: 4px solid #F59E0B; }
-.grade-not-released { background: #E2E8F0; border-left: 4px solid #64748B; opacity: 0.7; }
+.score-large { font-size: 1.6rem; font-weight: 700; margin-right: 10px; }
 
-.score-large {
-    font-size: 1.6rem;
-    font-weight: 700;
-    margin-right: 10px;
-}
-
-.exam-actions {
-    display: flex;
-    gap: 12px;
-    margin-top: 15px;
-    flex-wrap: wrap;
-}
-
-button {
-    padding: 10px 24px;
-    border: none;
-    border-radius: 10px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-    font-family: inherit;
-    font-size: 0.85rem;
-}
-
+.exam-actions { display: flex; gap: 12px; margin-top: 15px; flex-wrap: wrap; }
+button { padding: 10px 24px; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-family: inherit; font-size: 0.85rem; }
 .btn-start { background: #38A169; color: white; }
 .btn-start:hover { background: #2F855A; transform: translateY(-2px); }
 .btn-details { background: #3B82F6; color: white; }
-.btn-details:hover { background: #2563EB; transform: translateY(-2px); }
 .btn-close-exam { background: #DC2626; color: white; }
-.btn-close-exam:hover { background: #B91C1C; }
 .refresh-btn { background: #8B5CF6; color: white; padding: 8px 16px; font-size: 0.8rem; }
 .logout-btn { background: #DC2626; color: white; padding: 8px 16px; font-size: 0.8rem; }
 
-/* Exam Container */
-.exam-container {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: white;
-    z-index: 2000;
-    flex-direction: column;
-}
-
-.exam-header-bar {
-    background: linear-gradient(135deg, #0A3D62, #073450);
-    color: white;
-    padding: 12px 20px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 10px;
-}
-
+.exam-container { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 2000; flex-direction: column; }
+.exam-header-bar { background: linear-gradient(135deg, #0A3D62, #073450); color: white; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
 .exam-header-bar h3 { margin: 0; font-size: 1rem; }
+.exam-content-wrapper { display: flex; flex: 1; position: relative; overflow: hidden; }
+.exam-iframe { flex: 1; width: 100%; border: none; background: white; }
 
-.exam-content-wrapper {
-    display: flex;
-    flex: 1;
-    position: relative;
-    overflow: hidden;
-}
-
-.exam-iframe {
-    flex: 1;
-    width: 100%;
-    border: none;
-    background: white;
-}
-
-/* Question Navigation + Camera Panel - LOWER LEFT CORNER */
-.question-nav-panel {
-    position: absolute;
-    bottom: 20px;
-    left: 20px;
-    width: 280px;
-    background: rgba(10, 61, 98, 0.95);
-    backdrop-filter: blur(12px);
-    border-radius: 16px;
-    padding: 12px;
-    z-index: 10050;
-    box-shadow: 0 8px 25px rgba(0,0,0,0.3);
-    border: 1px solid rgba(253, 185, 19, 0.4);
-    transition: all 0.3s ease;
-}
-
-.question-nav-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 10px;
-    padding-bottom: 8px;
-    border-bottom: 1px solid rgba(255,255,255,0.2);
-    color: white;
-    font-size: 11px;
-    font-weight: 600;
-}
-
-.question-nav-header span i { color: #FDB913; margin-right: 5px; }
-
-.toggle-nav-btn {
-    background: none;
-    border: none;
-    color: white;
-    cursor: pointer;
-    font-size: 14px;
-    padding: 2px 8px;
-    border-radius: 6px;
-}
-
-.toggle-nav-btn:hover { background: rgba(255,255,255,0.2); }
-
-.question-buttons {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    max-height: 100px;
-    overflow-y: auto;
-    margin-bottom: 10px;
-    padding: 3px;
-}
-
-.question-btn {
-    width: 34px;
-    height: 34px;
-    border-radius: 8px;
-    border: none;
-    font-weight: 600;
-    cursor: pointer;
-    font-size: 11px;
-    transition: all 0.2s;
-    background: rgba(255,255,255,0.15);
-    color: white;
-}
-
-.question-btn:hover { transform: scale(1.05); background: #FDB913; color: #0A3D62; }
-.question-btn.answered { background: #38A169; color: white; }
+.question-nav-panel { position: absolute; bottom: 20px; left: 20px; width: 280px; background: rgba(10, 61, 98, 0.95); backdrop-filter: blur(12px); border-radius: 16px; padding: 12px; z-index: 10050; box-shadow: 0 8px 25px rgba(0,0,0,0.3); border: 1px solid rgba(253, 185, 19, 0.4); }
+.question-nav-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.2); color: white; font-size: 11px; font-weight: 600; }
+.toggle-nav-btn { background: none; border: none; color: white; cursor: pointer; font-size: 14px; padding: 2px 8px; border-radius: 6px; }
+.question-buttons { display: flex; flex-wrap: wrap; gap: 6px; max-height: 100px; overflow-y: auto; margin-bottom: 10px; padding: 3px; }
+.question-btn { width: 34px; height: 34px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; font-size: 11px; background: rgba(255,255,255,0.15); color: white; }
+.question-btn.answered { background: #38A169; }
 .question-btn.current { background: #FDB913; color: #0A3D62; box-shadow: 0 0 0 2px white; }
 
-/* Camera inside panel */
-.camera-preview-inline {
-    margin-top: 10px;
-    padding-top: 10px;
-    border-top: 1px solid rgba(255,255,255,0.2);
-}
+.camera-preview-inline { margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.2); }
+.camera-label { font-size: 9px; color: #FDB913; margin-bottom: 6px; display: flex; align-items: center; gap: 5px; }
+.camera-preview-inline video { width: 100%; height: auto; border-radius: 10px; border: 2px solid #FDB913; background: #000; max-height: 90px; object-fit: cover; }
+.camera-status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #38A169; animation: pulse 1.5s infinite; margin-left: 5px; }
+@keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(1.2); } }
 
-.camera-label {
-    font-size: 9px;
-    color: #FDB913;
-    margin-bottom: 6px;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-}
+.modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 3000; align-items: center; justify-content: center; }
+.modal-content { background: white; padding: 30px; border-radius: 20px; max-width: 600px; max-height: 80vh; overflow-y: auto; width: 90%; }
+.close-modal { float: right; font-size: 28px; cursor: pointer; color: #64748B; }
 
-.camera-preview-inline video {
-    width: 100%;
-    height: auto;
-    border-radius: 10px;
-    border: 2px solid #FDB913;
-    background: #000;
-    max-height: 90px;
-    object-fit: cover;
-}
-
-.camera-status-dot {
-    display: inline-block;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: #38A169;
-    animation: pulse 1.5s infinite;
-    margin-left: 5px;
-}
-
-@keyframes pulse {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.5; transform: scale(1.2); }
-}
-
-/* Modal */
-.modal {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.5);
-    z-index: 3000;
-    align-items: center;
-    justify-content: center;
-}
-
-.modal-content {
-    background: white;
-    padding: 30px;
-    border-radius: 20px;
-    max-width: 600px;
-    max-height: 80vh;
-    overflow-y: auto;
-    width: 90%;
-}
-
-.close-modal {
-    float: right;
-    font-size: 28px;
-    cursor: pointer;
-    color: #64748B;
-}
-
-/* Toast */
-.toast {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    padding: 12px 20px;
-    border-radius: 10px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    z-index: 10000;
-    animation: slideIn 0.3s ease;
-    font-size: 0.85rem;
-}
-
+.toast { position: fixed; bottom: 20px; right: 20px; padding: 12px 20px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 10000; animation: slideIn 0.3s ease; font-size: 0.85rem; }
 .toast-success { background: #10B981; color: white; }
 .toast-info { background: #3B82F6; color: white; }
 .toast-warning { background: #F59E0B; color: white; }
+@keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 
-@keyframes slideIn {
-    from { transform: translateX(100%); opacity: 0; }
-    to { transform: translateX(0); opacity: 1; }
-}
+.camera-permission-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 20001; align-items: center; justify-content: center; }
+.camera-permission-content { background: white; padding: 35px; border-radius: 24px; max-width: 450px; width: 90%; text-align: center; }
 
-/* Camera Permission Modal */
-.camera-permission-modal {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.95);
-    z-index: 20001;
-    align-items: center;
-    justify-content: center;
-}
-
-.camera-permission-content {
-    background: white;
-    padding: 35px;
-    border-radius: 24px;
-    max-width: 450px;
-    width: 90%;
-    text-align: center;
-}
-
-.camera-warning-toast {
-    position: fixed;
-    top: 70px;
-    right: 20px;
-    background: #FEF3C7;
-    border-left: 4px solid #F59E0B;
-    padding: 10px 16px;
-    border-radius: 8px;
-    z-index: 10002;
-    display: none;
-    font-size: 0.8rem;
-}
-
-@media (max-width: 768px) {
-    .question-nav-panel { width: 240px; bottom: 10px; left: 10px; }
-    .question-btn { width: 30px; height: 30px; font-size: 10px; }
-    .exam-title { font-size: 1rem; }
-}
+@media (max-width: 768px) { .question-nav-panel { width: 240px; bottom: 10px; left: 10px; } .question-btn { width: 30px; height: 30px; font-size: 10px; } }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -448,16 +102,13 @@ button {
     <div id="examList">Loading exams...</div>
 </div>
 
-<!-- Exam Container -->
 <div id="examContainer" class="exam-container">
     <div class="exam-header-bar">
         <h3 id="examTitle">Taking Exam...</h3>
         <button class="btn-close-exam" onclick="closeExam()">✖ Close Exam</button>
     </div>
     <div class="exam-content-wrapper">
-        <iframe id="examIframe" class="exam-iframe" src="about:blank"></iframe>
-        
-        <!-- Question Navigator + Camera (LOWER LEFT) -->
+        <iframe id="examIframe" class="exam-iframe" src="about:blank" allow="camera *; microphone *"></iframe>
         <div id="questionNavPanel" class="question-nav-panel" style="display: none;">
             <div class="question-nav-header">
                 <span><i>📋</i> Question Navigator</span>
@@ -476,7 +127,6 @@ button {
     </div>
 </div>
 
-<!-- Modals -->
 <div id="resultsModal" class="modal">
     <div class="modal-content">
         <span class="close-modal" onclick="closeModal()">&times;</span>
@@ -494,173 +144,45 @@ button {
     </div>
 </div>
 
-<div id="cameraWarningToast" class="camera-warning-toast">
-    ⚠️ <span id="warningMessage">Please stay visible in camera</span>
-</div>
-
-<div id="cameraBlockedScreen" style="display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:30000; align-items:center; justify-content:center; text-align:center; color:white;">
-    <div style="max-width:400px; padding:30px;">
-        <div style="font-size:64px;">🚫</div>
-        <h2 style="color:#DC2626;">Camera Required</h2>
-        <p id="blockedMessage">No camera detected.</p>
-        <button onclick="location.reload()" style="margin-top:20px; background:#38A169; color:white; padding:10px 25px; border:none; border-radius:8px;">Try Again</button>
-    </div>
-</div>
-
 <script>
 const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// Global variables
 let currentUserId = null;
 let studentProfile = null;
 let currentExamId = null;
 let isLoading = false;
-
-// Camera variables
 let cameraStream = null;
 let cameraActive = false;
 let faceInterval = null;
-let screenshotInterval = null;
 let examStartTime = null;
 let cameraAttempts = 0;
-let externalCameraKillerInterval = null;
 const MAX_ATTEMPTS = 3;
 
-// Helper
-function getExamLink(exam) {
-    return exam.exam_link || exam.online_link || null;
-}
+function getExamLink(exam) { return exam.exam_link || exam.online_link || null; }
 
-// ========== HARDCORE EXTERNAL CAMERA BLOCKER ==========
-function hardcoreBlockExternalCamera() {
-    const iframe = document.getElementById('examIframe');
-    if (!iframe || !iframe.contentWindow) {
-        // Try again later if iframe not ready
-        setTimeout(hardcoreBlockExternalCamera, 500);
-        return;
-    }
-    
-    try {
-        // Method 1: Completely destroy mediaDevices API in iframe
-        delete iframe.contentWindow.navigator.mediaDevices;
-        iframe.contentWindow.navigator.mediaDevices = {
-            getUserMedia: function() {
-                console.log('🚫 HARDCORE BLOCK: External camera request DENIED');
-                return Promise.reject(new DOMException('Camera access blocked by exam portal', 'NotAllowedError'));
-            },
-            enumerateDevices: function() {
-                return Promise.resolve([]);
-            }
-        };
-        
-        // Method 2: Block all getUserMedia variants
-        iframe.contentWindow.navigator.getUserMedia = null;
-        iframe.contentWindow.navigator.webkitGetUserMedia = null;
-        iframe.contentWindow.navigator.mozGetUserMedia = null;
-        
-        // Method 3: Override MediaDevices prototype
-        if (iframe.contentWindow.MediaDevices) {
-            iframe.contentWindow.MediaDevices.prototype.getUserMedia = function() {
-                return Promise.reject(new Error('Camera blocked'));
-            };
-        }
-        
-        // Method 4: Add sandbox to prevent camera
-        iframe.setAttribute('sandbox', 'allow-same-origin allow-scripts allow-popups allow-forms allow-modals allow-popups-to-escape-sandbox');
-        iframe.setAttribute('allow', '');
-        iframe.removeAttribute('allow');
-        
-        // Method 5: Add CSP header to block camera
-        const meta = iframe.contentWindow.document.createElement('meta');
-        meta.httpEquiv = 'Feature-Policy';
-        meta.content = "camera 'none'";
-        iframe.contentWindow.document.head.appendChild(meta);
-        
-        console.log('🔒 HARDCORE CAMERA BLOCKER ACTIVATED');
-        
-        // Start continuous killer
-        startContinuousCameraKiller();
-        
-    } catch(e) {
-        console.log('Hardcore blocker error:', e.message);
-    }
-}
-
-function startContinuousCameraKiller() {
-    if (externalCameraKillerInterval) clearInterval(externalCameraKillerInterval);
-    
-    externalCameraKillerInterval = setInterval(() => {
-        const iframe = document.getElementById('examIframe');
-        if (!iframe || !iframe.contentWindow) return;
-        
-        try {
-            // Kill all video streams in iframe
-            const videos = iframe.contentWindow.document.querySelectorAll('video');
-            videos.forEach(video => {
-                if (video.srcObject) {
-                    try {
-                        video.srcObject.getTracks().forEach(track => {
-                            track.stop();
-                            console.log('🔪 Killed external camera track');
-                        });
-                        video.srcObject = null;
-                    } catch(e) {}
-                }
-                video.pause();
-                video.style.display = 'none';
-                video.remove();
-            });
-            
-            // Remove any camera-related elements
-            const cameraElements = iframe.contentWindow.document.querySelectorAll('[class*="camera"], [id*="camera"], [class*="webcam"], [id*="webcam"], .proctoring, .face-detection, .video-feed');
-            cameraElements.forEach(el => el.remove());
-            
-        } catch(e) {}
-    }, 500); // Check every 500ms
-}
-
-function stopContinuousCameraKiller() {
-    if (externalCameraKillerInterval) {
-        clearInterval(externalCameraKillerInterval);
-        externalCameraKillerInterval = null;
-    }
-}
-
-// ========== PORTAL CAMERA FUNCTIONS ==========
+// ========== CAMERA FUNCTIONS ==========
 async function checkCamera() {
     try {
         const devices = await navigator.mediaDevices.enumerateDevices();
         const videoDevices = devices.filter(d => d.kind === 'videoinput');
         if (videoDevices.length === 0) {
-            showBlockedScreen('No camera detected. Please connect a camera.');
+            alert('No camera detected. Please connect a camera.');
             return false;
         }
         return true;
     } catch (err) {
-        showBlockedScreen('Camera error. Please refresh.');
+        alert('Camera error. Please refresh.');
         return false;
     }
 }
 
 async function startCamera() {
     cameraAttempts++;
-    const constraintsList = [
-        { video: { width: { ideal: 640 }, height: { ideal: 480 } } },
-        { video: true }
-    ];
     
     try {
-        let stream = null;
-        for (const constraints of constraintsList) {
-            try {
-                stream = await navigator.mediaDevices.getUserMedia(constraints);
-                if (stream) break;
-            } catch(e) { continue; }
-        }
-        if (!stream) throw new Error('Camera unavailable');
-        
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 640 }, height: { ideal: 480 } } });
         cameraStream = stream;
         const video = document.getElementById('faceVideo');
         video.srcObject = stream;
@@ -671,8 +193,9 @@ async function startCamera() {
         document.getElementById('cameraPreviewInline').style.display = 'block';
         document.getElementById('cameraPermissionModal').style.display = 'none';
         
-        startPortalMonitoring();
-        logEvent('exam_started', 'Camera proctoring active');
+        // Start face monitoring
+        startFaceMonitoring();
+        
         return true;
     } catch (err) {
         if (cameraAttempts < MAX_ATTEMPTS) {
@@ -680,33 +203,34 @@ async function startCamera() {
             showToast('Camera error: ' + err.message, 'warning');
             return false;
         }
-        showBlockedScreen(err.name === 'NotAllowedError' ? 'Camera permission denied.' : 'Camera error: ' + err.message);
+        alert(err.name === 'NotAllowedError' ? 'Camera permission denied.' : 'Camera error: ' + err.message);
         return false;
     }
 }
 
-function stopPortalCamera() {
+function stopCamera() {
     if (cameraStream) {
         cameraStream.getTracks().forEach(t => t.stop());
         cameraStream = null;
     }
     if (faceInterval) clearInterval(faceInterval);
-    if (screenshotInterval) clearInterval(screenshotInterval);
     cameraActive = false;
     document.getElementById('cameraPreviewInline').style.display = 'none';
-    console.log('Portal camera stopped');
+    console.log('✅ Camera stopped');
 }
 
-function startPortalMonitoring() {
+function startFaceMonitoring() {
     const video = document.getElementById('faceVideo');
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
     let missingCount = 0;
     
     faceInterval = setInterval(() => {
         if (!cameraActive || !video || video.readyState !== 4) return;
+        
+        // Simple face detection by checking video brightness
+        const canvas = document.createElement('canvas');
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         
         const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -719,54 +243,24 @@ function startPortalMonitoring() {
         if (!hasFace && video.videoWidth > 0) {
             missingCount++;
             if (missingCount >= 5) {
-                showWarning('Please stay visible in camera');
-                logEvent('face_missing', 'Student not visible');
+                showToast('⚠️ Please stay visible in the camera frame', 'warning');
             }
         } else {
             missingCount = Math.max(0, missingCount - 1);
-            if (missingCount < 2) hideWarning();
         }
     }, 2000);
-    
-    screenshotInterval = setInterval(() => {
-        if (!cameraActive) return;
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        logEvent('screenshot', 'Periodic capture');
-    }, 30000);
-}
-
-function showWarning(msg) {
-    const el = document.getElementById('cameraWarningToast');
-    document.getElementById('warningMessage').textContent = msg;
-    el.style.display = 'block';
-    setTimeout(() => { if (el) el.style.display = 'none'; }, 4000);
-}
-
-function hideWarning() {
-    document.getElementById('cameraWarningToast').style.display = 'none';
-}
-
-function showBlockedScreen(msg) {
-    document.getElementById('blockedMessage').textContent = msg;
-    document.getElementById('cameraBlockedScreen').style.display = 'flex';
 }
 
 async function logEvent(eventType, details) {
     if (!currentExamId || !currentUserId) return;
     try {
         await sb.from('exam_proctoring_logs').insert({
-            exam_id: currentExamId,
-            student_id: currentUserId,
-            event_type: eventType,
-            details: details,
-            timestamp: new Date().toISOString()
+            exam_id: currentExamId, student_id: currentUserId, event_type: eventType, details: details, timestamp: new Date().toISOString()
         });
-    } catch(e) { console.log('Log error:', e.message); }
+    } catch(e) {}
 }
 
-// ========== EXAM LOADING WITH CAMERA ==========
+// ========== EXAM LOADING ==========
 async function initCameraAndStartExam(examId, examName) {
     document.getElementById('cameraPermissionModal').style.display = 'flex';
     document.getElementById('allowCameraBtn').onclick = async () => {
@@ -796,17 +290,8 @@ async function loadExamContent(examId, examName) {
         document.getElementById('examTitle').innerHTML = `📝 ${examName}`;
         
         const iframe = document.getElementById('examIframe');
-        
-        // IMPORTANT: Block external camera BEFORE loading the iframe
-        // Add camera-blocking parameters to URL
-        const blockerParams = 'camera=0&webcam=disabled&proctor=off&disable_camera=true&no_camera=1';
-        if (!link.includes('camera=0')) {
-            link = link + (link.includes('?') ? '&' : '?') + blockerParams;
-        }
-        
-        // Set iframe with no camera permissions
-        iframe.removeAttribute('allow');
-        iframe.setAttribute('sandbox', 'allow-same-origin allow-scripts allow-popups allow-forms allow-modals allow-popups-to-escape-sandbox');
+        // Allow camera for the iframe (it needs it)
+        iframe.setAttribute('allow', 'camera *; microphone *');
         iframe.src = link;
         
         document.getElementById('examContainer').style.display = 'flex';
@@ -814,30 +299,11 @@ async function loadExamContent(examId, examName) {
         document.querySelector('header').style.display = 'none';
         document.querySelector('.exam-list').style.display = 'none';
         
-        // Activate hardcore camera blocker
-        setTimeout(() => hardcoreBlockExternalCamera(), 1000);
-        
-        // Listen for exam completion
-        window.examCompletionHandler = (event) => {
-            if (event.data === 'exam_completed' || event.data?.type === 'exam_completed' || event.data === 'submit_exam') {
-                handleExamSubmission();
-            }
-        };
-        window.addEventListener('message', window.examCompletionHandler);
-        
-        showToast('Exam ready. External camera BLOCKED. Portal proctoring active.', 'success');
+        showToast('Exam ready. Camera proctoring active.', 'success');
     } catch(err) {
         showToast('Error loading exam', 'warning');
-        stopPortalCamera();
+        stopCamera();
     }
-}
-
-function handleExamSubmission() {
-    logEvent('exam_completed', 'Student submitted exam');
-    showToast('✅ Exam submitted! Camera turning off...', 'success');
-    stopPortalCamera();
-    stopContinuousCameraKiller();
-    setTimeout(() => { closeExam(); }, 1500);
 }
 
 function startExam(examId, examName) {
@@ -846,8 +312,7 @@ function startExam(examId, examName) {
 }
 
 function closeExam() {
-    stopPortalCamera();
-    stopContinuousCameraKiller();
+    stopCamera();
     
     if (currentExamId && examStartTime) {
         const duration = Math.round((Date.now() - examStartTime) / 1000);
@@ -860,12 +325,19 @@ function closeExam() {
     document.querySelector('header').style.display = 'block';
     document.querySelector('.exam-list').style.display = 'block';
     
-    window.removeEventListener('message', window.examCompletionHandler);
     refreshExams();
     showToast('Exam closed. Progress saved.', 'info');
 }
 
-// ========== LOAD EXAMS FROM DATABASE ==========
+// Listen for exam completion from iframe
+window.addEventListener('message', function(event) {
+    if (event.data === 'exam_completed' || event.data?.type === 'exam_completed') {
+        showToast('✅ Exam submitted!', 'success');
+        setTimeout(() => closeExam(), 1500);
+    }
+});
+
+// ========== LOAD EXAMS ==========
 async function loadExams(showLoading = true) {
     if (isLoading) return;
     isLoading = true;
@@ -895,20 +367,14 @@ async function loadExams(showLoading = true) {
         container.innerHTML = '';
         
         const filtered = (exams || []).filter(exam => getExamLink(exam));
-        
-        if (!filtered.length) {
-            container.innerHTML = '<div class="exam-card">📭 No exams available</div>';
-            return;
-        }
+        if (!filtered.length) { container.innerHTML = '<div class="exam-card">📭 No exams available</div>'; return; }
         
         for (const exam of filtered) {
             const grade = grades?.find(g => g.exam_id === exam.id);
             const hasGrade = grade && (grade.marks !== null || grade.total_score > 0);
             const isReleased = grade ? releasedSet.has(grade.id) : false;
             
-            let statusBadge = !hasGrade ? '<span class="badge badge-upcoming">📝 Not Started</span>' :
-                              (isReleased ? '<span class="badge badge-completed">✅ Released</span>' : '<span class="badge badge-pending">🔒 Pending</span>');
-            
+            let statusBadge = !hasGrade ? '<span class="badge badge-upcoming">📝 Not Started</span>' : (isReleased ? '<span class="badge badge-completed">✅ Released</span>' : '<span class="badge badge-pending">🔒 Pending</span>');
             let gradeHtml = '';
             if (hasGrade && isReleased) {
                 const percent = parseFloat(grade.total_score || 0);
@@ -916,87 +382,39 @@ async function loadExams(showLoading = true) {
                     <span class="score-large">${percent}%</span> <strong>${percent >= 60 ? 'PASS ✓' : 'FAIL ✗'}</strong>
                     <div>Score: ${grade.marks || 0} marks</div>
                 </div>`;
-            } else if (hasGrade && !isReleased) {
-                gradeHtml = `<div class="grade-info grade-not-released">🔒 Results pending release</div>`;
             }
             
             container.innerHTML += `
                 <div class="exam-card">
-                    <div class="exam-header">
-                        <div class="exam-title">${exam.exam_name} ${statusBadge}</div>
-                    </div>
-                    <div class="exam-meta">
-                        <span>📋 ${exam.exam_type || 'EXAM'}</span>
-                        <span>⏱️ ${exam.duration_minutes || 30} min</span>
-                        <span>📊 ${exam.total_marks || 'N/A'} marks</span>
-                    </div>
+                    <div class="exam-title">${exam.exam_name} ${statusBadge}</div>
+                    <div class="exam-meta"><span>📋 ${exam.exam_type || 'EXAM'}</span><span>⏱️ ${exam.duration_minutes || 30} min</span><span>📊 ${exam.total_marks || 'N/A'} marks</span></div>
                     ${gradeHtml}
                     <div class="exam-actions">
-                        ${!hasGrade ? `<button class="btn-start" onclick="startExam(${exam.id}, '${exam.exam_name.replace(/'/g, "\\'")}')">▶ Start Exam</button>` : 
-                          (isReleased ? `<button class="btn-details" onclick="viewResult(${exam.id})">📋 Results</button>` : '')}
+                        ${!hasGrade ? `<button class="btn-start" onclick="startExam(${exam.id}, '${exam.exam_name.replace(/'/g, "\\'")}')">▶ Start Exam</button>` : (isReleased ? `<button class="btn-details" onclick="viewResult(${exam.id})">📋 Results</button>` : '')}
                     </div>
                 </div>
             `;
         }
-    } catch(err) {
-        document.getElementById('examList').innerHTML = '<div class="exam-card">⚠️ Error loading exams</div>';
-    }
+    } catch(err) { document.getElementById('examList').innerHTML = '<div class="exam-card">⚠️ Error loading exams</div>'; }
     isLoading = false;
 }
 
 async function viewResult(examId) {
     const { data: grade } = await sb.from('exam_grades').select('*').eq('student_id', currentUserId).eq('exam_id', examId).eq('question_id', '00000000-0000-0000-0000-000000000000').single();
     const percent = parseFloat(grade?.total_score || 0);
-    document.getElementById('modalContent').innerHTML = `
-        <h2>📊 Results</h2>
-        <div style="background:${percent>=60?'#D1FAE5':'#FEE2E2'}; padding:20px; border-radius:12px;">
-            <h3>${percent>=60?'✅ PASS':'❌ FAIL'}</h3>
-            <p>Score: ${grade?.marks || 0} marks</p>
-            <p>Percentage: ${percent}%</p>
-        </div>
-    `;
+    document.getElementById('modalContent').innerHTML = `<h2>📊 Results</h2><div style="background:${percent>=60?'#D1FAE5':'#FEE2E2'}; padding:20px; border-radius:12px;"><h3>${percent>=60?'✅ PASS':'❌ FAIL'}</h3><p>Score: ${grade?.marks || 0} marks</p><p>Percentage: ${percent}%</p></div>`;
     document.getElementById('resultsModal').style.display = 'flex';
 }
 
 function refreshExams() { loadExams(false); }
 function closeModal() { document.getElementById('resultsModal').style.display = 'none'; }
-function logout() { stopPortalCamera(); stopContinuousCameraKiller(); localStorage.clear(); window.location.href = 'exam_login.html'; }
-function showToast(msg, type) {
-    const toast = document.createElement('div');
-    toast.className = `toast toast-${type}`;
-    toast.innerHTML = msg;
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 3500);
-}
-function toggleNavPanel() {
-    const panel = document.getElementById('questionNavPanel');
-    const btn = document.querySelector('.toggle-nav-btn');
-    const isSmall = panel.style.width === '50px';
-    panel.style.width = isSmall ? '280px' : '50px';
-    document.getElementById('questionButtons').style.display = isSmall ? 'flex' : 'none';
-    document.getElementById('cameraPreviewInline').style.display = isSmall ? 'block' : 'none';
-    btn.textContent = isSmall ? '−' : '+';
-}
+function logout() { stopCamera(); localStorage.clear(); window.location.href = 'exam_login.html'; }
+function showToast(msg, type) { const toast = document.createElement('div'); toast.className = `toast toast-${type}`; toast.innerHTML = msg; document.body.appendChild(toast); setTimeout(() => toast.remove(), 3500); }
+function toggleNavPanel() { const panel = document.getElementById('questionNavPanel'); const btn = document.querySelector('.toggle-nav-btn'); const isSmall = panel.style.width === '50px'; panel.style.width = isSmall ? '280px' : '50px'; document.getElementById('questionButtons').style.display = isSmall ? 'flex' : 'none'; document.getElementById('cameraPreviewInline').style.display = isSmall ? 'block' : 'none'; btn.textContent = isSmall ? '−' : '+'; }
 
-// Auto cleanup on page load
-window.addEventListener('DOMContentLoaded', () => {
-    loadExams();
-    // Clean up any lingering camera on page load
-    if (cameraStream) {
-        cameraStream.getTracks().forEach(t => t.stop());
-        cameraStream = null;
-    }
-});
+window.addEventListener('DOMContentLoaded', () => loadExams());
+window.addEventListener('pageshow', () => { if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); cameraStream = null; } });
 
-window.addEventListener('pageshow', function() {
-    if (cameraStream) {
-        cameraStream.getTracks().forEach(t => t.stop());
-        cameraStream = null;
-    }
-    document.getElementById('cameraPreviewInline').style.display = 'none';
-});
-
-// Expose functions globally
 window.startExam = startExam;
 window.closeExam = closeExam;
 window.refreshExams = refreshExams;
