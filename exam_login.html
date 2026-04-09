@@ -70,11 +70,11 @@ body::after {
     75% { transform: translateY(20px) translateX(10px); }
 }
 
-/* Login Container */
+/* Login Wrapper */
 .login-wrapper {
     width: 100%;
-    max-width: 460px;
-    margin: 20px;
+    max-width: 500px;
+    margin: 40px 20px;
     position: relative;
     z-index: 10;
 }
@@ -83,7 +83,7 @@ body::after {
     background: rgba(255, 255, 255, 0.98);
     backdrop-filter: blur(10px);
     border-radius: 32px;
-    padding: 40px 32px;
+    padding: 40px 32px 30px;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
     transition: transform 0.3s ease, box-shadow 0.3s ease;
     border: 1px solid rgba(253, 185, 19, 0.2);
@@ -208,7 +208,7 @@ body::after {
     cursor: not-allowed;
 }
 
-/* Loading State */
+/* Loading Spinner */
 .loading-spinner {
     display: inline-block;
     width: 18px;
@@ -247,7 +247,7 @@ body::after {
     flex: 1;
 }
 
-/* Success/Info Message */
+/* Info Message */
 .info-message {
     background: #DBEAFE;
     border-left: 4px solid #3B82F6;
@@ -271,10 +271,10 @@ body::after {
     flex: 1;
 }
 
-/* Terms & Conditions Section */
+/* Terms & Conditions */
 .terms-section {
-    margin-top: 28px;
-    padding-top: 20px;
+    margin-top: 20px;
+    padding-top: 16px;
     border-top: 1px solid #E2E8F0;
 }
 
@@ -311,22 +311,6 @@ body::after {
     color: #FDB913;
 }
 
-.terms-text {
-    font-size: 0.7rem;
-    color: #94A3B8;
-    text-align: center;
-    line-height: 1.5;
-}
-
-.terms-text a {
-    color: #0A3D62;
-    text-decoration: none;
-}
-
-.terms-text a:hover {
-    text-decoration: underline;
-}
-
 /* Help Links */
 .help-links {
     display: flex;
@@ -353,17 +337,77 @@ body::after {
     color: #0A3D62;
 }
 
-/* Footer */
-.login-footer {
-    text-align: center;
+/* Footer - College Info */
+.college-footer {
     margin-top: 24px;
-    font-size: 0.7rem;
-    color: #94A3B8;
+    padding-top: 20px;
+    border-top: 1px solid #E2E8F0;
 }
 
-.login-footer i {
-    color: #DC2626;
+.college-name {
+    text-align: center;
+    margin-bottom: 12px;
+}
+
+.college-name h3 {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #0A3D62;
+    letter-spacing: -0.3px;
+}
+
+.college-name p {
+    font-size: 0.7rem;
+    color: #64748B;
+    margin-top: 4px;
+}
+
+.contact-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin: 12px 0;
+}
+
+.contact-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.7rem;
+    color: #475569;
+}
+
+.contact-item i {
+    width: 24px;
+    color: #FDB913;
+    font-size: 0.8rem;
+}
+
+.contact-item span {
+    flex: 1;
+}
+
+.hours {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px dashed #E2E8F0;
+    font-size: 0.7rem;
+    color: #38A169;
+}
+
+.hours i {
+    color: #FDB913;
+}
+
+.copyright {
+    text-align: center;
+    margin-top: 12px;
     font-size: 0.65rem;
+    color: #94A3B8;
 }
 
 /* Responsive */
@@ -379,6 +423,11 @@ body::after {
     
     .logo-section h2 {
         font-size: 1.4rem;
+    }
+    
+    .contact-grid {
+        grid-template-columns: 1fr;
+        gap: 8px;
     }
     
     .help-links {
@@ -434,7 +483,7 @@ body::after {
                 </div>
             </div>
 
-            <!-- Terms & Conditions Checkbox -->
+            <!-- Terms & Conditions -->
             <div class="terms-section">
                 <div class="terms-checkbox">
                     <input type="checkbox" id="acceptTerms">
@@ -457,10 +506,40 @@ body::after {
             <a href="#" id="contactSupportLink"><i class="fas fa-headset"></i> Contact Support</a>
         </div>
 
-        <!-- Footer -->
-        <div class="login-footer">
-            <p><i class="fas fa-shield-alt"></i> Secure Proctored Exams</p>
-            <p style="margin-top: 5px;">&copy; 2024 NCHSM. All rights reserved.</p>
+        <!-- College Footer with Contact Info -->
+        <div class="college-footer">
+            <div class="college-name">
+                <h3>Nakuru College of Health Sciences and Management (NCHSM)</h3>
+                <p>Providing quality health sciences and management education with practical skills and digital innovation.</p>
+            </div>
+            
+            <div class="contact-grid">
+                <div class="contact-item">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <span>Kiamunyi Off Nakuru - Kabarak Rd, Along Canon Ndungu Street, Nakuru</span>
+                </div>
+                <div class="contact-item">
+                    <i class="fas fa-envelope"></i>
+                    <span>portal.nchsm@gmail.com</span>
+                </div>
+                <div class="contact-item">
+                    <i class="fas fa-phone-alt"></i>
+                    <span>0790969743</span>
+                </div>
+                <div class="contact-item">
+                    <i class="fas fa-inbox"></i>
+                    <span>P. O. Box 12906 - 20100, Nakuru</span>
+                </div>
+            </div>
+            
+            <div class="hours">
+                <i class="fas fa-clock"></i>
+                <span>Mon - Fri: 8:00 AM - 5:00 PM</span>
+            </div>
+            
+            <div class="copyright">
+                <i class="fas fa-shield-alt"></i> Secure Proctored Exams | &copy; 2024 NCHSM. All rights reserved.
+            </div>
         </div>
     </div>
 </div>
@@ -553,7 +632,7 @@ document.getElementById('forgotPasswordLink').addEventListener('click', (e) => {
 // Contact support handler
 document.getElementById('contactSupportLink').addEventListener('click', (e) => {
     e.preventDefault();
-    alert('Please email support@nchsm.edu for assistance.');
+    alert('Please email portal.nchsm@gmail.com or call 0790969743 for assistance.');
 });
 
 // Login function
@@ -561,11 +640,9 @@ async function handleLogin() {
     const email = emailInput.value.trim();
     const password = passwordInput.value;
     
-    // Hide previous error
     errorDiv.style.display = 'none';
     errorText.innerText = '';
     
-    // Validation
     if (!email || !password) {
         errorText.innerText = 'Please enter both email and password.';
         errorDiv.style.display = 'flex';
@@ -579,12 +656,10 @@ async function handleLogin() {
     }
 
     try {
-        // Show loading state
         loadingDiv.style.display = 'flex';
         loginBtn.disabled = true;
         loginBtn.innerHTML = '<span class="loading-spinner"></span><span>Logging in...</span>';
 
-        // Authenticate with Supabase
         const { data: authData, error: authError } = await sb.auth.signInWithPassword({
             email,
             password
@@ -599,7 +674,6 @@ async function handleLogin() {
             return;
         }
 
-        // Check student profile
         const { data: studentData, error: studentError } = await sb
             .from('consolidated_user_profiles_table')
             .select('user_id, program, block, intake_year, email')
@@ -610,7 +684,6 @@ async function handleLogin() {
         let finalEmail = null;
 
         if (studentError || !studentData) {
-            // Try by user_id
             const { data: studentById, error: idError } = await sb
                 .from('consolidated_user_profiles_table')
                 .select('user_id, program, block, intake_year, email')
@@ -634,16 +707,13 @@ async function handleLogin() {
             finalEmail = studentData.email || email;
         }
 
-        // Save to localStorage
         localStorage.setItem('currentUserId', finalUserId);
         localStorage.setItem('studentEmail', finalEmail);
         sessionStorage.setItem('currentUserId', finalUserId);
         sessionStorage.setItem('studentEmail', finalEmail);
 
-        // Update button to show success
         loginBtn.innerHTML = '<i class="fas fa-check"></i><span>Success! Redirecting...</span>';
         
-        // Redirect to dashboard
         setTimeout(() => {
             window.location.href = 'exam_dashboard.html';
         }, 1000);
@@ -658,10 +728,8 @@ async function handleLogin() {
     }
 }
 
-// Event listeners
 loginBtn.addEventListener('click', handleLogin);
 
-// Allow Enter key
 passwordInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter' && !loginBtn.disabled) {
         handleLogin();
@@ -674,7 +742,6 @@ emailInput.addEventListener('keypress', (e) => {
     }
 });
 
-// Check existing session
 window.addEventListener('DOMContentLoaded', async () => {
     const savedUserId = localStorage.getItem('currentUserId');
     const savedEmail = localStorage.getItem('studentEmail');
