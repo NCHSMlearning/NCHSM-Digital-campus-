@@ -1023,21 +1023,22 @@ p {
     50% { opacity: 0.7; transform: scale(1.1); }
 }
 
-/* ========== WELCOME CARD - ULTRA ========== */
+/* ========== WELCOME CARD - COMPACT ========== */
 .welcome-card {
     background: white;
-    border-radius: var(--radius-2xl);
-    padding: var(--space-6);
-    margin-bottom: var(--space-8);
+    border-radius: 12px;
+    padding: 12px 16px;
+    margin-bottom: 16px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     flex-wrap: wrap;
-    gap: var(--space-4);
-    box-shadow: var(--shadow-md);
+    gap: 12px;
+    box-shadow: var(--shadow-sm);
     border: 1px solid var(--color-gray-200);
     position: relative;
     overflow: hidden;
+    min-height: 65px;
 }
 
 .welcome-card::before {
@@ -1051,84 +1052,69 @@ p {
 }
 
 .welcome-header h2 {
-    margin: 0 0 var(--space-1) 0;
-    font-size: 1.5rem;
+    margin: 0 0 2px 0;
+    font-size: 1.1rem;
     color: var(--color-darker);
 }
 
 .welcome-header h2 i {
     color: var(--color-gold);
-    margin-right: 8px;
+    margin-right: 6px;
+    font-size: 0.9rem;
 }
 
 .welcome-subtitle {
     margin: 0;
     color: var(--color-gray-500);
-    font-size: 0.95rem;
+    font-size: 0.75rem;
 }
 
 .welcome-time {
     display: flex;
     align-items: center;
-    gap: var(--space-2);
-    padding: 8px 16px;
+    gap: 6px;
+    padding: 4px 12px;
     background: var(--color-gray-100);
-    border-radius: var(--radius-full);
+    border-radius: 20px;
     color: var(--color-gray-600);
-    font-size: 0.95rem;
+    font-size: 0.7rem;
     white-space: nowrap;
     border: 1px solid var(--color-gray-200);
 }
 
 .welcome-time i {
     color: var(--color-gold);
+    font-size: 0.7rem;
 }
-
-/* ========== ANNOUNCEMENT BANNER - ULTRA ========== */
+/* ========== ANNOUNCEMENT BANNER - COMPACT ========== */
 .announcement-banner {
     background: var(--gradient-primary);
-    border-radius: var(--radius-2xl);
-    padding: var(--space-5);
-    margin-bottom: var(--space-8);
+    border-radius: 12px;
+    padding: 10px 16px;
+    margin-bottom: 20px;
     display: flex;
     align-items: center;
-    gap: var(--space-5);
+    gap: 12px;
     color: white;
-    box-shadow: var(--shadow-lg);
+    box-shadow: var(--shadow-md);
     position: relative;
     overflow: hidden;
-    border: 2px solid var(--color-gold);
-}
-
-.announcement-banner::after {
-    content: '';
-    position: absolute;
-    top: -50%;
-    right: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(circle, rgba(253,185,19,0.2) 0%, transparent 70%);
-    animation: rotate 20s linear infinite;
-}
-
-@keyframes rotate {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+    border: 1px solid var(--color-gold);
 }
 
 .announcement-icon {
-    width: 50px;
-    height: 50px;
+    width: 36px;
+    height: 36px;
     background: rgba(253,185,19,0.2);
-    border-radius: var(--radius-full);
+    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.5rem;
+    font-size: 1rem;
     z-index: 1;
     flex-shrink: 0;
     color: var(--color-gold);
-    border: 2px solid var(--color-gold);
+    border: 1px solid var(--color-gold);
 }
 
 .announcement-content {
@@ -1137,9 +1123,9 @@ p {
 }
 
 .announcement-title {
-    font-size: 1rem;
+    font-size: 0.7rem;
     font-weight: var(--font-semibold);
-    margin-bottom: var(--space-1);
+    margin-bottom: 2px;
     color: var(--color-gold);
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -1148,9 +1134,8 @@ p {
 .announcement-text {
     margin: 0;
     opacity: 0.9;
-    font-size: 0.95rem;
+    font-size: 0.8rem;
 }
-
 /* ========== CARD GRID - ULTRA COMPACT ========== */
 .cards-grid {
     display: grid;
