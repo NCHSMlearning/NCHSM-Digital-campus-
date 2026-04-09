@@ -500,16 +500,21 @@ async function sendProctoringEvent(eventType, details) {
     try {
         const eventData = {
             exam_id: EXAM_ID,
-            student_id: studentId,
+            student_id: studentId,  // ← This connects to admin dashboard
             student_reg_number: studentRegNumber,
             student_name: studentFullName,
             event_type: eventType,
             details: details,
-            severity: eventType === 'multiple_faces_detected' ? 'critical' : 'warning',
+            severity: eventType === 'multiple_faces_detected' ? 'critical' : 
+                     (eventType === 'tab_switched' || eventType === 'face_missing') ? 'warning' : 'info',
             timestamp: new Date().toISOString()
         };
-        await sb.from('exam_proctoring_logs').insert(eventData);
         
+        // Insert into proctoring logs
+        const { error } = await sb.from('exam_proctoring_logs').insert(eventData);
+        if (error) console.error('Insert error:', error);
+        
+        // For critical events, also add to admin_notifications
         if (eventType === 'multiple_faces_detected') {
             await sb.from('admin_notifications').insert({
                 notification_type: eventType,
@@ -517,13 +522,32 @@ async function sendProctoringEvent(eventType, details) {
                 student_id: studentId,
                 student_reg_number: studentRegNumber,
                 student_name: studentFullName,
+                exam_name: examType,
                 details: details,
                 severity: 'critical',
                 timestamp: new Date().toISOString()
             });
         }
-        console.log(`📤 [${studentRegNumber}] ${eventType}`);
-    } catch (err) { console.error('Failed to send event:', err); }
+        
+        // Update connection status
+        const statusEl = document.getElementById('admin-connection-status');
+        if (statusEl) {
+            statusEl.innerHTML = '✅ Connected to admin';
+            statusEl.style.color = '#16A34A';
+            setTimeout(() => {
+                if (statusEl) statusEl.innerHTML = '🔗 Live proctoring active';
+            }, 3000);
+        }
+        
+        console.log(`📤 [${studentRegNumber}] ${eventType} sent to admin`);
+    } catch (err) {
+        console.error('Failed to send event:', err);
+        const statusEl = document.getElementById('admin-connection-status');
+        if (statusEl) {
+            statusEl.innerHTML = '⚠️ Connection issue';
+            statusEl.style.color = '#D97706';
+        }
+    }
 }
 
 // ========== PRECISE FACE DETECTION ==========
