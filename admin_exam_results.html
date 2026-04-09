@@ -1,752 +1,891 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard - NCHSM Exam Proctoring</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Poppins', sans-serif; background: #f8fafc; color: #333; }
-        .container { max-width: 1600px; margin: 0 auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, #0A3D62 0%, #073450 100%); color: white; padding: 25px; border-radius: 12px; margin-bottom: 25px; }
-        .header h1 { font-size: 2rem; margin-bottom: 10px; }
-        .admin-info { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.2); }
-        .logout-btn { background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 6px 15px; border-radius: 6px; cursor: pointer; }
-        
-        /* Notification Bell Styles */
-        .notification-bell { position: relative; cursor: pointer; margin-left: 20px; }
-        .notification-icon { font-size: 24px; }
-        .notification-count { position: absolute; top: -8px; right: -12px; background: #EF4444; color: white; border-radius: 50%; padding: 2px 6px; font-size: 11px; font-weight: bold; min-width: 18px; text-align: center; animation: pulse 1s infinite; }
-        .notification-panel { display: none; position: absolute; top: 40px; right: 0; width: 350px; max-height: 400px; background: white; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); z-index: 1000; overflow: hidden; }
-        .notification-panel.show { display: block; }
-        .notification-header { background: #0A3D62; color: white; padding: 12px 15px; font-weight: 600; }
-        .notification-list { max-height: 320px; overflow-y: auto; }
-        .notification-item { padding: 12px 15px; border-bottom: 1px solid #E2E8F0; cursor: pointer; transition: background 0.2s; }
-        .notification-item:hover { background: #F1F5F9; }
-        .notification-item.unread { background: #FEF3C7; border-left: 3px solid #F59E0B; }
-        .notification-item.critical { background: #FEE2E2; border-left: 3px solid #DC2626; animation: pulseRed 1s infinite; }
-        .notification-title { font-weight: 600; margin-bottom: 5px; }
-        .notification-time { font-size: 11px; color: #64748B; }
-        .mark-read-btn { font-size: 10px; background: none; border: none; color: #3B82F6; cursor: pointer; margin-top: 5px; }
-        
-        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
-        @keyframes pulseRed { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
-        
-        /* Face Alert Card */
-        .alert-card { background: linear-gradient(135deg, #DC2626 0%, #991B1B 100%); color: white; padding: 15px; border-radius: 10px; margin-bottom: 15px; animation: pulseRed 1s infinite; }
-        .face-alert-badge { background: #EF4444; color: white; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; display: inline-block; margin-left: 10px; animation: blink 1s infinite; }
-        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-        
-        .tabs { display: flex; background: white; border-radius: 10px; overflow: hidden; margin-bottom: 25px; flex-wrap: wrap; }
-        .tab-btn { flex: 1; padding: 15px; border: none; background: #F1F5F9; color: #64748B; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-        .tab-btn.active { background: #0A3D62; color: white; }
-        .tab-btn.proctoring-tab { background: #8B5CF6; color: white; }
-        .tab-btn.proctoring-tab.active { background: #6D28D9; }
-        
-        .stats-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 25px; }
-        .stat-card { background: white; padding: 20px; border-radius: 10px; text-align: center; border-top: 4px solid; }
-        .stat-card.total { border-color: #0A3D62; }
-        .stat-card.passed { border-color: #38A169; }
-        .stat-card.failed { border-color: #DC2626; }
-        .stat-card.avg { border-color: #F59E0B; }
-        .stat-card.pending { border-color: #4299E1; }
-        .stat-card.face-alerts { border-color: #EF4444; background: #FEF2F2; }
-        .stat-value { font-size: 2.2rem; font-weight: 700; margin: 10px 0; }
-        .stat-label { color: #64748B; font-size: 0.9rem; }
-        
-        .filters-container { background: white; padding: 25px; border-radius: 12px; margin-bottom: 25px; }
-        .filters-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 20px; }
-        .filter-group { display: flex; flex-direction: column; }
-        .filter-group label { font-weight: 600; margin-bottom: 8px; color: #475569; }
-        .filter-group select, .filter-group input { padding: 10px 12px; border: 2px solid #E2E8F0; border-radius: 8px; }
-        .search-box { display: flex; gap: 10px; margin-top: 10px; }
-        
-        .btn { padding: 10px 20px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
-        .btn-primary { background: #0A3D62; color: white; }
-        .btn-secondary { background: #38A169; color: white; }
-        .btn-danger { background: #DC2626; color: white; }
-        .btn-warning { background: #F59E0B; color: white; }
-        .btn-info { background: #4299E1; color: white; }
-        .btn-release { background: #8B5CF6; color: white; }
-        .btn-purple { background: #6D28D9; color: white; }
-        
-        .table-container { background: white; border-radius: 12px; overflow-x: auto; margin-bottom: 20px; }
-        .table-header { display: flex; justify-content: space-between; align-items: center; padding: 20px; background: #F8FAFC; border-bottom: 1px solid #E2E8F0; flex-wrap: wrap; gap: 10px; }
-        table { width: 100%; border-collapse: collapse; }
-        th { padding: 15px 20px; text-align: left; font-weight: 600; color: #0A3D62; background: #F1F5F9; border-bottom: 2px solid #E2E8F0; }
-        td { padding: 15px 20px; border-bottom: 1px solid #E2E8F0; }
-        .status-pass { background: #D1FAE5; color: #065F46; padding: 4px 10px; border-radius: 20px; display: inline-block; }
-        .status-fail { background: #FEE2E2; color: #7F1D1D; padding: 4px 10px; border-radius: 20px; display: inline-block; }
-        .status-pending { background: #DBEAFE; color: #1E40AF; padding: 4px 10px; border-radius: 20px; display: inline-block; }
-        .status-critical { background: #FEE2E2; color: #DC2626; padding: 4px 10px; border-radius: 20px; display: inline-block; animation: pulseRed 1s infinite; }
-        .action-btn { padding: 6px 12px; border-radius: 6px; border: none; font-size: 0.8rem; font-weight: 600; cursor: pointer; margin: 2px; }
-        .btn-view { background: #4299E1; color: white; }
-        .btn-reset { background: #F59E0B; color: white; }
-        
-        .loading { text-align: center; padding: 40px; color: #64748B; }
-        .pagination { display: flex; justify-content: center; gap: 10px; margin: 25px 0; }
-        .page-btn { padding: 8px 15px; border: 1px solid #E2E8F0; background: white; border-radius: 6px; cursor: pointer; }
-        .page-btn.active { background: #0A3D62; color: white; }
-        
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
-        .modal-content { background: white; padding: 30px; border-radius: 12px; max-width: 900px; max-height: 80vh; overflow-y: auto; width: 90%; }
-        .close-modal { float: right; font-size: 28px; cursor: pointer; }
-        
-        @media (max-width: 768px) { .table-header { flex-direction: column; } th, td { padding: 10px; } .tabs { flex-direction: column; } .notification-panel { width: 300px; right: -50px; } }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>NCHSM Student Exam Portal - Secure Proctoring</title>
+<link rel="icon" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Poppins', sans-serif;
+    background: #F0F2F5;
+    min-height: 100vh;
+}
+
+/* Header */
+header {
+    text-align: center;
+    padding: 20px;
+    background: linear-gradient(135deg, #0A3D62 0%, #073450 100%);
+    color: white;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.logo {
+    width: 65px;
+    margin-bottom: 8px;
+    border-radius: 50%;
+    border: 3px solid #FDB913;
+    padding: 5px;
+    background: white;
+}
+
+h1 {
+    font-size: 1.6rem;
+    letter-spacing: -0.5px;
+}
+
+.header-subtitle {
+    font-size: 0.8rem;
+    opacity: 0.9;
+}
+
+/* Exam List Container */
+.exam-list {
+    max-width: 1200px;
+    margin: 25px auto;
+    padding: 0 20px;
+}
+
+/* User Info Bar */
+.user-info-bar {
+    background: white;
+    border-radius: 16px;
+    padding: 15px 25px;
+    margin-bottom: 25px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 15px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    border-left: 4px solid #FDB913;
+}
+
+.user-details h3 {
+    color: #0A3D62;
+    font-size: 1rem;
+}
+
+.user-details p {
+    color: #64748B;
+    font-size: 0.8rem;
+    margin-top: 3px;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+/* Exam Cards */
+.exam-card {
+    background: white;
+    border-radius: 20px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+    transition: transform 0.2s, box-shadow 0.2s;
+    border: 1px solid #E2E8F0;
+}
+
+.exam-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+}
+
+.exam-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.exam-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #0A3D62;
+}
+
+.exam-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    font-size: 0.8rem;
+    color: #64748B;
+    margin: 10px 0;
+}
+
+.badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+.badge-upcoming { background: #DBEAFE; color: #1E40AF; }
+.badge-completed { background: #D1FAE5; color: #065F46; }
+.badge-pending { background: #FEF3C7; color: #92400E; }
+
+.grade-info {
+    margin-top: 15px;
+    padding: 15px;
+    border-radius: 12px;
+    font-size: 0.9rem;
+}
+
+.grade-pass { background: #D1FAE5; border-left: 4px solid #38A169; }
+.grade-fail { background: #FEE2E2; border-left: 4px solid #DC2626; }
+.grade-pending { background: #FEF3C7; border-left: 4px solid #F59E0B; }
+.grade-not-released { background: #E2E8F0; border-left: 4px solid #64748B; opacity: 0.7; }
+
+.score-large {
+    font-size: 1.6rem;
+    font-weight: 700;
+    margin-right: 10px;
+}
+
+.exam-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 15px;
+    flex-wrap: wrap;
+}
+
+button {
+    padding: 10px 24px;
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+    font-size: 0.85rem;
+}
+
+.btn-start { background: #38A169; color: white; }
+.btn-start:hover { background: #2F855A; transform: translateY(-2px); }
+.btn-details { background: #3B82F6; color: white; }
+.btn-details:hover { background: #2563EB; transform: translateY(-2px); }
+.btn-close-exam { background: #DC2626; color: white; }
+.btn-close-exam:hover { background: #B91C1C; }
+.refresh-btn { background: #8B5CF6; color: white; padding: 8px 16px; font-size: 0.8rem; }
+.logout-btn { background: #DC2626; color: white; padding: 8px 16px; font-size: 0.8rem; }
+
+/* Exam Container */
+.exam-container {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: white;
+    z-index: 2000;
+    flex-direction: column;
+}
+
+.exam-header-bar {
+    background: linear-gradient(135deg, #0A3D62, #073450);
+    color: white;
+    padding: 12px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.exam-header-bar h3 { margin: 0; font-size: 1rem; }
+
+.exam-content-wrapper {
+    display: flex;
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+}
+
+.exam-iframe {
+    flex: 1;
+    width: 100%;
+    border: none;
+    background: white;
+}
+
+/* Question Navigation + Camera Panel - LOWER LEFT CORNER */
+.question-nav-panel {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    width: 280px;
+    background: rgba(10, 61, 98, 0.95);
+    backdrop-filter: blur(12px);
+    border-radius: 16px;
+    padding: 12px;
+    z-index: 10050;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+    border: 1px solid rgba(253, 185, 19, 0.4);
+    transition: all 0.3s ease;
+}
+
+.question-nav-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255,255,255,0.2);
+    color: white;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.question-nav-header span i { color: #FDB913; margin-right: 5px; }
+
+.toggle-nav-btn {
+    background: none;
+    border: none;
+    color: white;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 2px 8px;
+    border-radius: 6px;
+}
+
+.toggle-nav-btn:hover { background: rgba(255,255,255,0.2); }
+
+.question-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    max-height: 100px;
+    overflow-y: auto;
+    margin-bottom: 10px;
+    padding: 3px;
+}
+
+.question-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 11px;
+    transition: all 0.2s;
+    background: rgba(255,255,255,0.15);
+    color: white;
+}
+
+.question-btn:hover { transform: scale(1.05); background: #FDB913; color: #0A3D62; }
+.question-btn.answered { background: #38A169; color: white; }
+.question-btn.current { background: #FDB913; color: #0A3D62; box-shadow: 0 0 0 2px white; }
+
+/* Camera inside panel */
+.camera-preview-inline {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255,255,255,0.2);
+}
+
+.camera-label {
+    font-size: 9px;
+    color: #FDB913;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.camera-preview-inline video {
+    width: 100%;
+    height: auto;
+    border-radius: 10px;
+    border: 2px solid #FDB913;
+    background: #000;
+    max-height: 90px;
+    object-fit: cover;
+}
+
+.camera-status-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #38A169;
+    animation: pulse 1.5s infinite;
+    margin-left: 5px;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(1.2); }
+}
+
+/* Modal */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 3000;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background: white;
+    padding: 30px;
+    border-radius: 20px;
+    max-width: 600px;
+    max-height: 80vh;
+    overflow-y: auto;
+    width: 90%;
+}
+
+.close-modal {
+    float: right;
+    font-size: 28px;
+    cursor: pointer;
+    color: #64748B;
+}
+
+/* Toast */
+.toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 12px 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 10000;
+    animation: slideIn 0.3s ease;
+    font-size: 0.85rem;
+}
+
+.toast-success { background: #10B981; color: white; }
+.toast-info { background: #3B82F6; color: white; }
+.toast-warning { background: #F59E0B; color: white; }
+
+@keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+/* Camera Permission Modal */
+.camera-permission-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.95);
+    z-index: 20001;
+    align-items: center;
+    justify-content: center;
+}
+
+.camera-permission-content {
+    background: white;
+    padding: 35px;
+    border-radius: 24px;
+    max-width: 450px;
+    width: 90%;
+    text-align: center;
+}
+
+.camera-warning-toast {
+    position: fixed;
+    top: 70px;
+    right: 20px;
+    background: #FEF3C7;
+    border-left: 4px solid #F59E0B;
+    padding: 10px 16px;
+    border-radius: 8px;
+    z-index: 10002;
+    display: none;
+    font-size: 0.8rem;
+}
+
+@media (max-width: 768px) {
+    .question-nav-panel { width: 240px; bottom: 10px; left: 10px; }
+    .question-btn { width: 30px; height: 30px; font-size: 10px; }
+    .exam-title { font-size: 1rem; }
+}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-<div class="container">
-    <div class="header">
-        <h1>Admin Dashboard - NCHSM Exam Proctoring</h1>
-        <p>Comprehensive view of all students, exams, results, and proctoring alerts</p>
-        <div class="admin-info">
-            <div class="user" id="adminName">Loading admin info...</div>
-            <div style="display: flex; align-items: center;">
-                <div class="notification-bell" id="notificationBell">
-                    <div class="notification-icon">🔔</div>
-                    <span class="notification-count" id="notificationCount">0</span>
-                    <div class="notification-panel" id="notificationPanel">
-                        <div class="notification-header">🔔 Proctoring Alerts</div>
-                        <div class="notification-list" id="notificationList">Loading...</div>
-                    </div>
-                </div>
-                <button class="logout-btn" onclick="logout()">Logout</button>
-            </div>
+
+<header>
+    <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" class="logo" alt="Logo">
+    <h1>📚 NCHSM Exam Portal</h1>
+    <div class="header-subtitle">Secure Proctored Exams</div>
+</header>
+
+<div class="exam-list">
+    <div class="user-info-bar" id="userInfoBar">
+        <div class="user-details" id="userInfo">Loading profile...</div>
+        <div class="action-buttons">
+            <button class="refresh-btn" onclick="refreshExams()">🔄 Refresh</button>
+            <button class="logout-btn" onclick="logout()">🚪 Logout</button>
         </div>
     </div>
+    <div id="examList">Loading exams...</div>
+</div>
 
-    <div class="tabs">
-        <button class="tab-btn active" data-tab="students">👥 Students with Results</button>
-        <button class="tab-btn" data-tab="allStudents">📚 All Registered Students</button>
-        <button class="tab-btn" data-tab="exams">📝 All Exams</button>
-        <button class="tab-btn proctoring-tab" data-tab="proctoring">🎥 Proctoring Alerts</button>
+<!-- Exam Container -->
+<div id="examContainer" class="exam-container">
+    <div class="exam-header-bar">
+        <h3 id="examTitle">Taking Exam...</h3>
+        <button class="btn-close-exam" onclick="closeExam()">✖ Close Exam</button>
     </div>
-
-    <div class="stats-container" id="statsContainer"></div>
-    <div class="filters-container" id="filtersContainer"></div>
-
-    <div class="tables-container">
-        <!-- Students with Results Tab -->
-        <div class="table-container" id="studentsTableContainer">
-            <div class="table-header">
-                <h2>Students with Exam Results</h2>
-                <div class="table-actions">
-                    <button class="btn btn-secondary" onclick="exportToExcel('students')">📥 Export Excel</button>
-                    <button class="btn btn-warning" onclick="printTable('students')">🖨️ Print</button>
-                    <button class="btn btn-release" onclick="openReleaseModal()">🎓 Release Results</button>
-                </div>
+    <div class="exam-content-wrapper">
+        <iframe id="examIframe" class="exam-iframe" src="about:blank"></iframe>
+        
+        <!-- Question Navigator + Camera (LOWER LEFT) -->
+        <div id="questionNavPanel" class="question-nav-panel" style="display: none;">
+            <div class="question-nav-header">
+                <span><i>📋</i> Question Navigator</span>
+                <button class="toggle-nav-btn" onclick="toggleNavPanel()">−</button>
             </div>
-            <div id="studentsLoading" class="loading">Loading...</div>
-            <table id="studentsTable" style="display:none;"><thead><tr><th>Student</th><th>Email</th><th>Program</th><th>Exam</th><th>Score</th><th>%</th><th>Status</th><th>Released</th><th>Actions</th></tr></thead><tbody id="studentsBody"></tbody></table>
-            <div class="pagination" id="studentsPagination"></div>
-        </div>
-
-        <!-- All Students Tab -->
-        <div class="table-container" id="allStudentsTableContainer" style="display:none;">
-            <div class="table-header"><h2>All Registered Students</h2><div class="table-actions"><button class="btn btn-info" onclick="assignExamToStudent()">➕ Assign Exam</button><button class="btn btn-secondary" onclick="exportToExcel('allStudents')">📥 Export Excel</button></div></div>
-            <div id="allStudentsLoading" class="loading">Loading...</div>
-            <table id="allStudentsTable" style="display:none;"><thead><tr><th>Name</th><th>Email</th><th>Program</th><th>Block</th><th>Exams Taken</th><th>Actions</th></tr></thead><tbody id="allStudentsBody"></tbody></table>
-            <div class="pagination" id="allStudentsPagination"></div>
-        </div>
-
-        <!-- All Exams Tab -->
-        <div class="table-container" id="examsTableContainer" style="display:none;">
-            <div class="table-header"><h2>All Exams</h2><div class="table-actions"><button class="btn btn-info" onclick="createNewExam()">➕ Create Exam</button><button class="btn btn-secondary" onclick="exportToExcel('exams')">📥 Export Excel</button></div></div>
-            <div id="examsLoading" class="loading">Loading...</div>
-            <table id="examsTable" style="display:none;"><thead><tr><th>Exam Name</th><th>Type</th><th>Course</th><th>Students</th><th>Actions</th></tr></thead><tbody id="examsBody"></tbody></table>
-            <div class="pagination" id="examsPagination"></div>
-        </div>
-
-        <!-- Proctoring Alerts Tab -->
-        <div class="table-container" id="proctoringTableContainer" style="display:none;">
-            <div class="table-header">
-                <h2>🚨 Live Proctoring Alerts - Multiple Face Detection</h2>
-                <div class="table-actions">
-                    <button class="btn btn-danger" onclick="clearAllAlerts()">Clear All Alerts</button>
-                    <button class="btn btn-secondary" onclick="exportToExcel('proctoring')">📥 Export Logs</button>
-                </div>
+            <div id="questionButtons" class="question-buttons">
+                <div style="color: rgba(255,255,255,0.5); text-align: center; width: 100%;">Loading...</div>
             </div>
-            <div id="proctoringLoading" class="loading">Loading alerts...</div>
-            <table id="proctoringTable" style="display:none;"><thead><tr><th>⚠️ Time</th><th>Student</th><th>Exam</th><th>Alert Type</th><th>Details</th><th>Severity</th><th>Actions</th></tr></thead><tbody id="proctoringBody"></tbody></table>
-            <div class="pagination" id="proctoringPagination"></div>
+            <div class="camera-preview-inline" id="cameraPreviewInline" style="display: none;">
+                <div class="camera-label">
+                    <i>📷</i> Proctoring Active <span class="camera-status-dot"></span>
+                </div>
+                <video id="faceVideo" autoplay playsinline muted></video>
+            </div>
         </div>
     </div>
 </div>
 
 <!-- Modals -->
-<div id="studentModal" class="modal"><div class="modal-content"><span class="close-modal" onclick="closeModal()">&times;</span><h2 id="modalTitle">Details</h2><div id="modalContent"></div></div></div>
-<div id="assignExamModal" class="modal"><div class="modal-content"><span class="close-modal" onclick="closeAssignModal()">&times;</span><h2>Assign Exam</h2><select id="assignStudentSelect" style="width:100%; margin:10px 0"></select><select id="assignExamSelect" style="width:100%; margin:10px 0"></select><button class="btn btn-primary" onclick="confirmAssignExam()">Assign</button><button class="btn btn-danger" onclick="closeAssignModal()">Cancel</button></div></div>
-
-<!-- Release Modal -->
-<div id="releaseModal" class="modal">
+<div id="resultsModal" class="modal">
     <div class="modal-content">
-        <span class="close-modal" onclick="closeReleaseModal()">&times;</span>
-        <h2>📢 Release Results to Student Portal</h2>
-        <div class="filters-grid">
-            <div class="filter-group"><label>Select Exam:</label><select id="releaseExamFilter" style="width:100%;" onchange="loadReleasePreview()"><option value="">-- Select Exam --</option></select></div>
-            <div class="filter-group"><label>Filter by Status:</label><select id="releaseStatusFilter" style="width:100%;" onchange="loadReleasePreview()"><option value="">-- All Statuses --</option><option value="PASS">Pass Only</option><option value="FAIL">Fail Only</option></select></div>
-        </div>
-        <div id="releasePreview" style="display:none;"><div class="release-summary" id="releaseSummary"></div><h3>Students to Release:</h3><div style="max-height: 300px; overflow-y: auto;"><table class="preview-table" id="releasePreviewTable"><thead><tr><th>Student Name</th><th>Score</th><th>Percentage</th><th>Status</th><th>Current Release Status</th></tr></thead><tbody id="releasePreviewBody"></tbody></table></div><div style="margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;"><button class="btn btn-danger" onclick="closeReleaseModal()">Cancel</button><button class="btn btn-release" id="confirmReleaseBtn" onclick="confirmReleaseResults()">✅ Confirm Release</button></div></div>
+        <span class="close-modal" onclick="closeModal()">&times;</span>
+        <div id="modalContent"></div>
+    </div>
+</div>
+
+<div id="cameraPermissionModal" class="camera-permission-modal">
+    <div class="camera-permission-content">
+        <div style="font-size: 48px; margin-bottom: 15px;">📷</div>
+        <h3>Camera Access Required</h3>
+        <p style="margin: 15px 0; color: #64748B;">This exam requires camera access for proctoring.</p>
+        <button id="allowCameraBtn" style="background: #38A169; color: white; padding: 12px 30px; border: none; border-radius: 10px; font-weight: 600; cursor: pointer;">Allow Camera</button>
+        <button id="cancelExamBtn" style="background: #DC2626; color: white; padding: 12px 30px; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; margin-left: 10px;">Cancel</button>
+    </div>
+</div>
+
+<div id="cameraWarningToast" class="camera-warning-toast">
+    ⚠️ <span id="warningMessage">Please stay visible in camera</span>
+</div>
+
+<div id="cameraBlockedScreen" style="display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:30000; align-items:center; justify-content:center; text-align:center; color:white;">
+    <div style="max-width:400px; padding:30px;">
+        <div style="font-size:64px;">🚫</div>
+        <h2 style="color:#DC2626;">Camera Required</h2>
+        <p id="blockedMessage">No camera detected.</p>
+        <button onclick="location.reload()" style="margin-top:20px; background:#38A169; color:white; padding:10px 25px; border:none; border-radius:8px;">Try Again</button>
     </div>
 </div>
 
 <script>
-(function() {
-    if (window.dashboardInitialized) return;
-    window.dashboardInitialized = true;
-    
-    const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
-    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    window.supabase = sb;
-    
-    let currentTab = 'students';
-    let studentsResults = [], allStudents = [], allExams = [], proctoringLogs = [], examsMap = {};
-    let currentPage = { students: 1, allStudents: 1, exams: 1, proctoring: 1 };
-    const itemsPerPage = 15;
-    let currentPreviewData = [];
-    let notificationSubscription = null;
-    let unreadCount = 0;
-    
-    function checkAdminAuth() {
-        const session = localStorage.getItem('adminSession');
-        if (!session) { window.location.href = 'admin_login.html'; return false; }
-        try {
-            const s = JSON.parse(session);
-            if (s.email !== 'admin2@exam.gmail.com') { window.location.href = 'admin_login.html'; return false; }
-            document.getElementById('adminName').innerHTML = `👤 ${s.name || 'Admin'} | ${s.email}`;
-            return true;
-        } catch(e) { window.location.href = 'admin_login.html'; return false; }
+const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Global variables
+let currentUserId = null;
+let studentProfile = null;
+let currentExamId = null;
+let isLoading = false;
+
+// Camera variables
+let cameraStream = null;
+let cameraActive = false;
+let faceInterval = null;
+let screenshotInterval = null;
+let examStartTime = null;
+let cameraAttempts = 0;
+const MAX_ATTEMPTS = 3;
+
+// Helper
+function getExamLink(exam) {
+    return exam.exam_link || exam.online_link || null;
+}
+
+// ========== CAMERA FUNCTIONS ==========
+async function checkCamera() {
+    try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(d => d.kind === 'videoinput');
+        if (videoDevices.length === 0) {
+            showBlockedScreen('No camera detected. Please connect a camera.');
+            return false;
+        }
+        return true;
+    } catch (err) {
+        showBlockedScreen('Camera error. Please refresh.');
+        return false;
     }
+}
+
+async function startCamera() {
+    cameraAttempts++;
+    const constraintsList = [
+        { video: { width: { ideal: 640 }, height: { ideal: 480 } } },
+        { video: true }
+    ];
     
-    window.logout = function() { localStorage.removeItem('adminSession'); window.location.href = 'admin_login.html'; };
+    try {
+        let stream = null;
+        for (const constraints of constraintsList) {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
+                if (stream) break;
+            } catch(e) { continue; }
+        }
+        if (!stream) throw new Error('Camera unavailable');
+        
+        cameraStream = stream;
+        const video = document.getElementById('faceVideo');
+        video.srcObject = stream;
+        await video.play();
+        
+        cameraActive = true;
+        cameraAttempts = 0;
+        document.getElementById('cameraPreviewInline').style.display = 'block';
+        document.getElementById('cameraPermissionModal').style.display = 'none';
+        
+        startMonitoring();
+        logEvent('exam_started', 'Camera proctoring active');
+        return true;
+    } catch (err) {
+        if (cameraAttempts < MAX_ATTEMPTS) {
+            document.getElementById('allowCameraBtn').textContent = `Retry (${cameraAttempts + 1}/${MAX_ATTEMPTS})`;
+            showToast('Camera error: ' + err.message, 'warning');
+            return false;
+        }
+        showBlockedScreen(err.name === 'NotAllowedError' ? 'Camera permission denied.' : 'Camera error: ' + err.message);
+        return false;
+    }
+}
+
+function stopCamera() {
+    if (cameraStream) {
+        cameraStream.getTracks().forEach(t => t.stop());
+        cameraStream = null;
+    }
+    if (faceInterval) clearInterval(faceInterval);
+    if (screenshotInterval) clearInterval(screenshotInterval);
+    cameraActive = false;
+    document.getElementById('cameraPreviewInline').style.display = 'none';
+    console.log('Camera stopped');
+}
+
+function startMonitoring() {
+    const video = document.getElementById('faceVideo');
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    let missingCount = 0;
     
-    window.switchTab = function(tab) {
-        currentTab = tab;
-        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-        document.querySelector(`.tab-btn[data-tab="${tab}"]`).classList.add('active');
-        document.getElementById('studentsTableContainer').style.display = tab === 'students' ? 'block' : 'none';
-        document.getElementById('allStudentsTableContainer').style.display = tab === 'allStudents' ? 'block' : 'none';
-        document.getElementById('examsTableContainer').style.display = tab === 'exams' ? 'block' : 'none';
-        document.getElementById('proctoringTableContainer').style.display = tab === 'proctoring' ? 'block' : 'none';
-        if (tab === 'students') loadStudentsWithResults();
-        if (tab === 'allStudents') loadAllStudents();
-        if (tab === 'exams') loadAllExams();
-        if (tab === 'proctoring') loadProctoringLogs();
-        renderFilters();
-    };
-    
-    function renderFilters() {
-        const container = document.getElementById('filtersContainer');
-        if (currentTab === 'students') {
-            container.innerHTML = `<h2>Filter Results</h2><div class="filters-grid"><div class="filter-group"><label>Exam</label><select id="examFilter"><option value="">All</option></select></div><div class="filter-group"><label>Status</label><select id="statusFilter"><option value="">All</option><option value="PASS">Pass</option><option value="FAIL">Fail</option></select></div></div><div class="search-box"><input type="text" id="searchInput" placeholder="Search..."><button class="btn btn-primary" onclick="loadStudentsWithResults()">Search</button><button class="btn btn-danger" onclick="resetFilters()">Reset</button></div>`;
-            loadExamDropdown();
-        } else if (currentTab === 'allStudents') {
-            container.innerHTML = `<h2>Filter Students</h2><div class="filters-grid"><div class="filter-group"><label>Program</label><select id="programFilter"><option value="">All</option></select></div></div><div class="search-box"><input type="text" id="studentSearch" placeholder="Search..."><button class="btn btn-primary" onclick="loadAllStudents()">Search</button><button class="btn btn-danger" onclick="resetStudentFilters()">Reset</button></div>`;
-            loadProgramDropdown();
-        } else if (currentTab === 'exams') {
-            container.innerHTML = `<h2>Filter Exams</h2><div class="filters-grid"><div class="filter-group"><label>Type</label><select id="examTypeFilter"><option value="">All</option><option value="CAT_1">CAT 1</option><option value="CAT_2">CAT 2</option><option value="EXAM">Final</option></select></div></div><div class="search-box"><input type="text" id="examSearch" placeholder="Search..."><button class="btn btn-primary" onclick="loadAllExams()">Search</button><button class="btn btn-danger" onclick="resetExamFilters()">Reset</button></div>`;
+    faceInterval = setInterval(() => {
+        if (!cameraActive || !video || video.readyState !== 4) return;
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        let hasFace = false;
+        for (let i = 0; i < imgData.data.length; i += 2000) {
+            const brightness = (imgData.data[i] + imgData.data[i+1] + imgData.data[i+2]) / 3;
+            if (brightness > 30 && brightness < 225) { hasFace = true; break; }
+        }
+        
+        if (!hasFace && video.videoWidth > 0) {
+            missingCount++;
+            if (missingCount >= 5) {
+                showWarning('Please stay visible in camera');
+                logEvent('face_missing', 'Student not visible');
+            }
         } else {
-            container.innerHTML = `<h2>Filter Proctoring Alerts</h2><div class="filters-grid"><div class="filter-group"><label>Alert Type</label><select id="alertTypeFilter"><option value="">All</option><option value="multiple_faces_detected">🚨 Multiple Faces</option><option value="face_missing">😞 Face Missing</option><option value="exam_started">📝 Exam Started</option><option value="exam_completed">✅ Exam Completed</option></select></div><div class="filter-group"><label>Severity</label><select id="severityFilter"><option value="">All</option><option value="critical">Critical</option><option value="warning">Warning</option><option value="info">Info</option></select></div></div><div class="search-box"><input type="text" id="proctoringSearch" placeholder="Search by student name..."><button class="btn btn-primary" onclick="loadProctoringLogs()">Search</button><button class="btn btn-danger" onclick="resetProctoringFilters()">Reset</button></div>`;
+            missingCount = Math.max(0, missingCount - 1);
+            if (missingCount < 2) hideWarning();
         }
-    }
+    }, 2000);
     
-    async function loadExamDropdown() { 
-        const {data} = await sb.from('exams').select('id,exam_name'); 
-        const select = document.getElementById('examFilter'); 
-        if(select && data) data.forEach(e => { const opt = document.createElement('option'); opt.value=e.id; opt.textContent=e.exam_name; select.appendChild(opt); }); 
-    }
-    
-    async function loadProgramDropdown() { 
-        const {data} = await sb.from('consolidated_user_profiles_table').select('program'); 
-        const programs = [...new Set(data?.map(p=>p.program).filter(Boolean))]; 
-        const select = document.getElementById('programFilter'); 
-        if(select) programs.forEach(p => { const opt = document.createElement('option'); opt.value=p; opt.textContent=p; select.appendChild(opt); });
-    }
-    
-    async function loadExamsMap() {
-        const { data } = await sb.from('exams').select('id, exam_name, exam_type, course, program');
-        if (data) { examsMap = {}; data.forEach(e => { examsMap[e.id] = e; }); }
-        return examsMap;
-    }
-    
-    // ========== PROCTORING LOGS FUNCTIONS ==========
-    async function loadProctoringLogs() {
-        const loadingDiv = document.getElementById('proctoringLoading');
-        const table = document.getElementById('proctoringTable');
-        loadingDiv.style.display = 'block';
-        table.style.display = 'none';
-        
-        const alertType = document.getElementById('alertTypeFilter')?.value || '';
-        const severity = document.getElementById('severityFilter')?.value || '';
-        const search = document.getElementById('proctoringSearch')?.value || '';
-        
-        let query = sb.from('exam_proctoring_logs').select('*').order('timestamp', { ascending: false });
-        if (alertType) query = query.eq('event_type', alertType);
-        if (severity) query = query.eq('severity', severity);
-        
-        const { data: logs, error } = await query;
-        if (error) { console.error(error); loadingDiv.innerHTML = 'Error loading proctoring logs'; return; }
-        
-        // Get student profiles for display
-        const studentIds = [...new Set(logs.map(l => l.student_id).filter(Boolean))];
-        const { data: profiles } = await sb.from('consolidated_user_profiles_table').select('user_id, full_name, program').in('user_id', studentIds);
-        const profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p]));
-        
-        proctoringLogs = logs.map(l => ({ ...l, student_profile: profileMap[l.student_id] || null }));
-        
-        if (search) {
-            proctoringLogs = proctoringLogs.filter(l => 
-                l.student_profile?.full_name?.toLowerCase().includes(search.toLowerCase()) ||
-                l.details?.toLowerCase().includes(search.toLowerCase())
-            );
-        }
-        
-        displayProctoringLogs();
-        updateStats();
-        loadingDiv.style.display = 'none';
-        table.style.display = 'table';
-    }
-    
-    function displayProctoringLogs() {
-        const start = (currentPage.proctoring - 1) * itemsPerPage;
-        const page = proctoringLogs.slice(start, start + itemsPerPage);
-        const tbody = document.getElementById('proctoringBody');
-        
-        if(page.length === 0) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center">No proctoring alerts found</td></tr>'; return; }
-        
-        tbody.innerHTML = page.map(log => {
-            const isCritical = log.event_type === 'multiple_faces_detected';
-            const alertIcon = log.event_type === 'multiple_faces_detected' ? '🚨 MULTIPLE FACES' : 
-                             (log.event_type === 'face_missing' ? '😞 Face Missing' : 
-                             (log.event_type === 'exam_started' ? '📝 Started' : '📋 ' + log.event_type));
-            
-            return `
-                <tr style="${isCritical ? 'background: #FEF2F2;' : ''}">
-                    <td>${new Date(log.timestamp).toLocaleString()}</td>
-                    <td><strong>${log.student_profile?.full_name || log.student_id || 'Unknown'}</strong><br><small>${log.student_profile?.program || ''}</small></td>
-                    <td>${examsMap[log.exam_id]?.exam_name || 'Exam ' + log.exam_id}</td>
-                    <td><span class="${isCritical ? 'status-critical' : 'status-pending'}">${alertIcon}</span></td>
-                    <td>${log.details || '-'}</td>
-                    <td><span class="${log.severity === 'critical' ? 'status-critical' : 'status-pending'}">${log.severity || 'info'}</span></td>
-                    <td><button class="action-btn btn-view" onclick="viewAlertDetails(${log.id})">View</button></td>
-                </tr>
-            `;
-        }).join('');
-        renderPagination('proctoring', proctoringLogs.length);
-    }
-    
-    window.viewAlertDetails = async function(logId) {
-        const log = proctoringLogs.find(l => l.id === logId);
-        if (!log) return;
-        
-        document.getElementById('modalTitle').innerText = 'Proctoring Alert Details';
-        document.getElementById('modalContent').innerHTML = `
-            <div style="background: ${log.event_type === 'multiple_faces_detected' ? '#FEE2E2' : '#F0FDF4'}; padding: 20px; border-radius: 8px;">
-                <p><strong>⚠️ Alert Type:</strong> ${log.event_type}</p>
-                <p><strong>Student:</strong> ${log.student_profile?.full_name || log.student_id}</p>
-                <p><strong>Exam:</strong> ${examsMap[log.exam_id]?.exam_name || 'Exam ' + log.exam_id}</p>
-                <p><strong>Time:</strong> ${new Date(log.timestamp).toLocaleString()}</p>
-                <p><strong>Details:</strong> ${log.details}</p>
-                <p><strong>Severity:</strong> ${log.severity || 'info'}</p>
-                ${log.screenshot_data ? `<p><strong>Screenshot:</strong> <a href="${log.screenshot_data}" target="_blank">View Screenshot</a></p>` : ''}
-            </div>
-        `;
-        document.getElementById('studentModal').style.display = 'flex';
-    };
-    
-    // Real-time notification subscription
-    async function setupRealtimeNotifications() {
-        const { data: existingLogs } = await sb.from('exam_proctoring_logs').select('id, is_read').eq('is_read', false);
-        unreadCount = existingLogs?.length || 0;
-        document.getElementById('notificationCount').innerText = unreadCount;
-        
-        notificationSubscription = sb
-            .channel('proctoring-alerts')
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'exam_proctoring_logs' }, 
-                async (payload) => {
-                    if (payload.new.event_type === 'multiple_faces_detected') {
-                        unreadCount++;
-                        document.getElementById('notificationCount').innerText = unreadCount;
-                        await loadNotifications();
-                        if (currentTab === 'proctoring') loadProctoringLogs();
-                        updateStats();
-                        // Play sound for critical alerts
-                        if (payload.new.severity === 'critical') {
-                            const audio = new Audio('https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3');
-                            audio.play().catch(e => console.log('Audio play failed'));
-                        }
-                    }
-                }
-            )
-            .subscribe();
-    }
-    
-    async function loadNotifications() {
-        const { data: logs } = await sb.from('exam_proctoring_logs')
-            .select('*')
-            .eq('is_read', false)
-            .order('timestamp', { ascending: false })
-            .limit(20);
-        
-        const studentIds = [...new Set(logs?.map(l => l.student_id).filter(Boolean))];
-        const { data: profiles } = await sb.from('consolidated_user_profiles_table').select('user_id, full_name').in('user_id', studentIds);
-        const profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p]));
-        
-        const container = document.getElementById('notificationList');
-        if (!logs || logs.length === 0) {
-            container.innerHTML = '<div style="padding: 15px; text-align: center; color: #64748B;">No new alerts</div>';
-            return;
-        }
-        
-        container.innerHTML = logs.map(log => `
-            <div class="notification-item ${log.event_type === 'multiple_faces_detected' ? 'critical' : 'unread'}" onclick="markNotificationRead(${log.id})">
-                <div class="notification-title">${log.event_type === 'multiple_faces_detected' ? '🚨 MULTIPLE FACES DETECTED' : '📹 ' + log.event_type}</div>
-                <div><small>Student: ${profileMap[log.student_id]?.full_name || log.student_id}</small></div>
-                <div><small>Exam: ${examsMap[log.exam_id]?.exam_name || 'Exam ' + log.exam_id}</small></div>
-                <div class="notification-time">${new Date(log.timestamp).toLocaleString()}</div>
-                <button class="mark-read-btn" onclick="event.stopPropagation(); markNotificationRead(${log.id})">Mark as read</button>
-            </div>
-        `).join('');
-        document.getElementById('notificationCount').innerText = logs.length;
-    }
-    
-    window.markNotificationRead = async function(logId) {
-        await sb.from('exam_proctoring_logs').update({ is_read: true }).eq('id', logId);
-        unreadCount--;
-        document.getElementById('notificationCount').innerText = Math.max(0, unreadCount);
-        loadNotifications();
-    };
-    
-    window.clearAllAlerts = async function() {
-        if (confirm('Clear all proctoring alerts? This cannot be undone.')) {
-            await sb.from('exam_proctoring_logs').delete().neq('id', 0);
-            loadProctoringLogs();
-            loadNotifications();
-            showToast('All alerts cleared', 'success');
-        }
-    };
-    
-    window.resetProctoringFilters = function() {
-        ['alertTypeFilter', 'severityFilter', 'proctoringSearch'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
-        currentPage.proctoring = 1;
-        loadProctoringLogs();
-    };
-    
-    // ========== EXISTING FUNCTIONS ==========
-    window.loadStudentsWithResults = async function() {
-        const loadingDiv = document.getElementById('studentsLoading');
-        const table = document.getElementById('studentsTable');
-        loadingDiv.style.display = 'block';
-        table.style.display = 'none';
-        
-        const examId = document.getElementById('examFilter')?.value || '';
-        const status = document.getElementById('statusFilter')?.value || '';
-        const search = document.getElementById('searchInput')?.value || '';
-        
-        await loadExamsMap();
-        
-        let query = sb.from('exam_grades').select('*').eq('question_id', '00000000-0000-0000-0000-000000000000');
-        if(examId) query = query.eq('exam_id', parseInt(examId));
-        if(status) query = query.eq('result_status', status);
-        
-        const { data: grades, error } = await query;
-        if(error) { console.error(error); loadingDiv.innerHTML = 'Error loading data'; return; }
-        
-        const { data: releases } = await sb.from('released_exam_results').select('result_id');
-        const releasedSet = new Set(releases?.map(r => r.result_id) || []);
-        
-        const studentIds = [...new Set(grades.map(g => g.student_id))];
-        const { data: profiles } = await sb.from('consolidated_user_profiles_table').select('*').in('user_id', studentIds);
-        const profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p]));
-        
-        studentsResults = grades.map(g => ({ ...g, student_profile: profileMap[g.student_id] || null, isReleased: releasedSet.has(g.id), exam_info: examsMap[g.exam_id] || null }));
-        
-        if(search) studentsResults = studentsResults.filter(r => r.student_profile?.full_name?.toLowerCase().includes(search.toLowerCase()));
-        
-        displayStudentsResults();
-        loadingDiv.style.display = 'none';
-        table.style.display = 'table';
-        updateStats();
-    };
-    
-    function displayStudentsResults() {
-        const start = (currentPage.students - 1) * itemsPerPage;
-        const page = studentsResults.slice(start, start + itemsPerPage);
-        const tbody = document.getElementById('studentsBody');
-        if(page.length === 0) { tbody.innerHTML = '<tr><td colspan="9">No results found</td></tr>'; return; }
-        tbody.innerHTML = page.map(r => `<tr><td><strong>${r.student_profile?.full_name || 'Unknown'}</strong></td><td>${r.student_profile?.email || '-'}</td><td>${r.student_profile?.program || r.exam_info?.program || '-'}</td><td>${r.exam_info?.exam_name || 'Exam ' + r.exam_id}</td><td>${r.marks || 0}</td><td>${parseFloat(r.total_score || 0).toFixed(1)}%</td><td><span class="${r.result_status === 'PASS' ? 'status-pass' : 'status-fail'}">${r.result_status || 'PENDING'}</span></td><td>${r.isReleased ? '<span class="status-released">✅ Released</span>' : '<span class="status-pending">Not Released</span>'}</td><td><button class="action-btn btn-view" onclick="viewExamResult('${r.student_id}',${r.exam_id})">View</button><button class="action-btn btn-reset" onclick="resetStudentExam('${r.student_id}',${r.exam_id})">Reset</button></td></tr>`).join('');
-        renderPagination('students', studentsResults.length);
-    }
-    
-    window.loadAllStudents = async function() {
-        const loadingDiv = document.getElementById('allStudentsLoading');
-        const table = document.getElementById('allStudentsTable');
-        loadingDiv.style.display = 'block';
-        const { data, error } = await sb.from('consolidated_user_profiles_table').select('*');
-        if(error) return;
-        allStudents = data || [];
-        const studentIds = allStudents.map(s => s.user_id);
-        const { data: gradeCounts } = await sb.from('exam_grades').select('student_id').eq('question_id', '00000000-0000-0000-0000-000000000000').in('student_id', studentIds);
-        const countMap = {};
-        if(gradeCounts) gradeCounts.forEach(g => { countMap[g.student_id] = (countMap[g.student_id] || 0) + 1; });
-        allStudents.forEach(s => { s.examsTaken = countMap[s.user_id] || 0; });
-        displayAllStudents();
-        loadingDiv.style.display = 'none';
-        table.style.display = 'table';
-    };
-    
-    function displayAllStudents() {
-        const start = (currentPage.allStudents - 1) * itemsPerPage;
-        const page = allStudents.slice(start, start + itemsPerPage);
-        const tbody = document.getElementById('allStudentsBody');
-        tbody.innerHTML = page.map(s => `<tr><td>${s.full_name}</td><td>${s.email}</td><td>${s.program}</td><td>${s.block}</td><td>${s.examsTaken}</td><td><button class="action-btn btn-view" onclick="viewStudentProfile('${s.id}')">Profile</button><button class="action-btn btn-assign" onclick="assignExamToStudent('${s.id}')">Assign</button></td></tr>`).join('');
-        renderPagination('allStudents', allStudents.length);
-    }
-    
-    window.loadAllExams = async function() {
-        const loadingDiv = document.getElementById('examsLoading');
-        const table = document.getElementById('examsTable');
-        loadingDiv.style.display = 'block';
-        const { data, error } = await sb.from('exams').select('*');
-        if(error) return;
-        allExams = data || [];
-        const examIds = allExams.map(e => e.id);
-        const { data: gradeCounts } = await sb.from('exam_grades').select('exam_id').eq('question_id', '00000000-0000-0000-0000-000000000000').in('exam_id', examIds);
-        const countMap = {};
-        if(gradeCounts) gradeCounts.forEach(g => { countMap[g.exam_id] = (countMap[g.exam_id] || 0) + 1; });
-        allExams.forEach(e => { e.studentCount = countMap[e.id] || 0; });
-        displayAllExams();
-        loadingDiv.style.display = 'none';
-        table.style.display = 'table';
-    };
-    
-    function displayAllExams() {
-        const start = (currentPage.exams - 1) * itemsPerPage;
-        const page = allExams.slice(start, start + itemsPerPage);
-        const tbody = document.getElementById('examsBody');
-        tbody.innerHTML = page.map(e => `<tr><td>${e.exam_name}</td><td>${e.exam_type || '-'}</td><td>${e.course || '-'}</td><td>${e.studentCount}</td><td><button class="action-btn btn-view" onclick="viewExamDetails(${e.id})">View</button><button class="action-btn btn-assign" onclick="assignStudentsToExam(${e.id})">Assign</button></td></tr>`).join('');
-        renderPagination('exams', allExams.length);
-    }
-    
-    async function updateStats() {
-        const totalStudents = allStudents.length;
-        const passed = studentsResults.filter(r=>r.result_status==='PASS').length;
-        const failed = studentsResults.filter(r=>r.result_status==='FAIL').length;
-        const avg = studentsResults.length ? (studentsResults.reduce((a,b)=>a+(parseFloat(b.total_score)||0),0)/studentsResults.length).toFixed(1) : 0;
-        const pending = allStudents.filter(s=>s.examsTaken===0).length;
-        const faceAlerts = proctoringLogs.filter(l=>l.event_type==='multiple_faces_detected').length;
-        
-        document.getElementById('statsContainer').innerHTML = `
-            <div class="stat-card total"><div class="stat-value">${totalStudents}</div><div class="stat-label">Students</div></div>
-            <div class="stat-card passed"><div class="stat-value">${passed}</div><div class="stat-label">Passed</div></div>
-            <div class="stat-card failed"><div class="stat-value">${failed}</div><div class="stat-label">Failed</div></div>
-            <div class="stat-card avg"><div class="stat-value">${avg}%</div><div class="stat-label">Avg Score</div></div>
-            <div class="stat-card pending"><div class="stat-value">${pending}</div><div class="stat-label">Pending Exams</div></div>
-            <div class="stat-card face-alerts"><div class="stat-value">${faceAlerts}</div><div class="stat-label">🚨 Multiple Face Alerts</div></div>
-        `;
-    }
-    
-    function renderPagination(type, total) {
-        const totalPages = Math.ceil(total/itemsPerPage);
-        const container = document.getElementById(type+'Pagination');
-        if(!container || totalPages<=1) { if(container) container.innerHTML=''; return; }
-        let html = `<button class="page-btn" onclick="changePage('${type}',${currentPage[type]-1})" ${currentPage[type]===1?'disabled':''}>‹</button>`;
-        for(let i=1;i<=totalPages;i++) {
-            if(i===1||i===totalPages||(i>=currentPage[type]-2&&i<=currentPage[type]+2)) {
-                html+=`<button class="page-btn ${i===currentPage[type]?'active':''}" onclick="changePage('${type}',${i})">${i}</button>`;
+    screenshotInterval = setInterval(() => {
+        if (!cameraActive) return;
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        logEvent('screenshot', 'Periodic capture');
+    }, 30000);
+}
+
+function showWarning(msg) {
+    const el = document.getElementById('cameraWarningToast');
+    document.getElementById('warningMessage').textContent = msg;
+    el.style.display = 'block';
+    setTimeout(() => { if (el) el.style.display = 'none'; }, 4000);
+}
+
+function hideWarning() {
+    document.getElementById('cameraWarningToast').style.display = 'none';
+}
+
+function showBlockedScreen(msg) {
+    document.getElementById('blockedMessage').textContent = msg;
+    document.getElementById('cameraBlockedScreen').style.display = 'flex';
+}
+
+async function logEvent(eventType, details) {
+    if (!currentExamId || !currentUserId) return;
+    try {
+        await sb.from('exam_proctoring_logs').insert({
+            exam_id: currentExamId,
+            student_id: currentUserId,
+            event_type: eventType,
+            details: details,
+            timestamp: new Date().toISOString()
+        });
+    } catch(e) { console.log('Log error:', e.message); }
+}
+
+// ========== EXAM LOADING WITH CAMERA ==========
+async function initCameraAndStartExam(examId, examName) {
+    document.getElementById('cameraPermissionModal').style.display = 'flex';
+    document.getElementById('allowCameraBtn').onclick = async () => {
+        const hasCam = await checkCamera();
+        if (hasCam) {
+            const started = await startCamera();
+            if (started) {
+                examStartTime = Date.now();
+                await loadExamContent(examId, examName);
             }
         }
-        html+=`<button class="page-btn" onclick="changePage('${type}',${currentPage[type]+1})" ${currentPage[type]===totalPages?'disabled':''}>›</button>`;
-        container.innerHTML = html;
+    };
+    document.getElementById('cancelExamBtn').onclick = () => {
+        document.getElementById('cameraPermissionModal').style.display = 'none';
+        showToast('Exam cancelled', 'warning');
+    };
+}
+
+async function loadExamContent(examId, examName) {
+    try {
+        const { data: exam } = await sb.from('exams').select('online_link, exam_link').eq('id', examId).single();
+        let link = exam?.exam_link || exam?.online_link;
+        if (!link) { showToast('No exam link', 'warning'); return; }
+        link = link.replace('{user_id}', currentUserId);
+        
+        currentExamId = examId;
+        document.getElementById('examTitle').innerHTML = `📝 ${examName}`;
+        
+        const iframe = document.getElementById('examIframe');
+        iframe.removeAttribute('allow');
+        iframe.removeAttribute('sandbox');
+        iframe.src = link;
+        
+        document.getElementById('examContainer').style.display = 'flex';
+        document.getElementById('questionNavPanel').style.display = 'block';
+        document.querySelector('header').style.display = 'none';
+        document.querySelector('.exam-list').style.display = 'none';
+        
+        // Listen for messages from iframe (exam submission)
+        window.examCompletionHandler = (event) => {
+            if (event.data === 'exam_completed' || event.data?.type === 'exam_completed' || event.data === 'submit_exam') {
+                handleExamSubmission();
+            }
+        };
+        window.addEventListener('message', window.examCompletionHandler);
+        
+        showToast('Exam ready. Camera proctoring active.', 'success');
+    } catch(err) {
+        showToast('Error loading exam', 'warning');
+        stopCamera();
+    }
+}
+
+// HANDLE EXAM SUBMISSION - AUTO CLOSE CAMERA
+function handleExamSubmission() {
+    logEvent('exam_completed', 'Student submitted exam');
+    showToast('✅ Exam submitted! Camera turning off...', 'success');
+    stopCamera();
+    setTimeout(() => {
+        closeExam();
+    }, 1500);
+}
+
+function startExam(examId, examName) {
+    if (!currentUserId) { logout(); return; }
+    initCameraAndStartExam(examId, examName);
+}
+
+function closeExam() {
+    stopCamera();
+    if (currentExamId && examStartTime) {
+        const duration = Math.round((Date.now() - examStartTime) / 1000);
+        logEvent('exam_closed', `Duration: ${duration}s`);
+    }
+    document.getElementById('examIframe').src = 'about:blank';
+    document.getElementById('examContainer').style.display = 'none';
+    document.getElementById('questionNavPanel').style.display = 'none';
+    document.querySelector('header').style.display = 'block';
+    document.querySelector('.exam-list').style.display = 'block';
+    window.removeEventListener('message', window.examCompletionHandler);
+    refreshExams();
+    showToast('Exam closed. Progress saved.', 'info');
+}
+
+// ========== LOAD EXAMS FROM DATABASE ==========
+async function loadExams(showLoading = true) {
+    if (isLoading) return;
+    isLoading = true;
+    if (showLoading) document.getElementById('examList').innerHTML = '<div class="exam-card">⏳ Loading exams...</div>';
+    
+    currentUserId = localStorage.getItem('currentUserId');
+    if (!currentUserId || currentUserId === 'null') {
+        window.location.href = 'exam_login.html';
+        return;
     }
     
-    window.changePage = function(type, page) { 
-        currentPage[type]=page; 
-        if(type==='students') displayStudentsResults(); 
-        if(type==='allStudents') displayAllStudents(); 
-        if(type==='exams') displayAllExams(); 
-        if(type==='proctoring') displayProctoringLogs(); 
-    };
-    
-    window.resetFilters = function() { 
-        ['examFilter','statusFilter','searchInput'].forEach(id => { const el = document.getElementById(id); if(el) el.value=''; });
-        currentPage.students=1; loadStudentsWithResults(); 
-    };
-    window.resetStudentFilters = function() { 
-        ['programFilter','studentSearch'].forEach(id => { const el = document.getElementById(id); if(el) el.value=''; });
-        currentPage.allStudents=1; loadAllStudents(); 
-    };
-    window.resetExamFilters = function() { 
-        ['examTypeFilter','examSearch'].forEach(id => { const el = document.getElementById(id); if(el) el.value=''; });
-        currentPage.exams=1; loadAllExams(); 
-    };
-    
-    window.viewExamResult = async function(sid, eid) { 
-        const modal = document.getElementById('studentModal'); 
-        document.getElementById('modalTitle').innerText='Exam Result'; 
-        document.getElementById('modalContent').innerHTML='<div class="loading">Loading...</div>'; 
-        modal.style.display='flex'; 
-        const {data:grade}=await sb.from('exam_grades').select('*').eq('student_id',sid).eq('exam_id',eid).eq('question_id','00000000-0000-0000-0000-000000000000').single(); 
-        const {data:exam}=await sb.from('exams').select('*').eq('id',eid).single();
-        const {data:profile}=await sb.from('consolidated_user_profiles_table').select('*').eq('user_id',sid).single(); 
-        document.getElementById('modalContent').innerHTML=`<div style="background:#F0FDF4;padding:15px;border-radius:8px"><h3>${profile?.full_name || 'Student'}</h3><p><strong>Exam:</strong> ${exam?.exam_name}</p><p><strong>Score:</strong> ${grade?.marks || 0} marks</p><p><strong>Percentage:</strong> ${grade?.total_score || 0}%</p><p><strong>Status:</strong> ${grade?.result_status}</p></div>`; 
-    };
-    
-    window.viewStudentProfile = async function(pid) { 
-        const {data:student}=await sb.from('consolidated_user_profiles_table').select('*').eq('id',pid).single(); 
-        document.getElementById('modalTitle').innerText=`${student.full_name}`; 
-        document.getElementById('modalContent').innerHTML=`<p><strong>Email:</strong> ${student.email}</p><p><strong>Program:</strong> ${student.program}</p><p><strong>Block:</strong> ${student.block}</p>`;
-        document.getElementById('studentModal').style.display='flex'; 
-    };
-    
-    window.viewExamDetails = async function(eid) { 
-        const {data:exam}=await sb.from('exams').select('*').eq('id',eid).single(); 
-        document.getElementById('modalTitle').innerText=exam.exam_name; 
-        document.getElementById('modalContent').innerHTML=`<p><strong>Type:</strong> ${exam.exam_type}</p><p><strong>Course:</strong> ${exam.course}</p><p><strong>Duration:</strong> ${exam.duration_minutes} min</p>`;
-        document.getElementById('studentModal').style.display='flex'; 
-    };
-    
-    window.closeModal = function() { document.getElementById('studentModal').style.display='none'; };
-    
-    window.resetStudentExam = async function(sid, eid) { 
-        if(confirm('Reset this exam for the student?')){ 
-            await sb.from('exam_grades').delete().eq('student_id',sid).eq('exam_id',eid); 
-            alert('Reset successful!'); loadStudentsWithResults(); loadAllStudents(); 
-        } 
-    };
-    
-    window.assignExamToStudent = async function(studentId=null) { 
-        const {data:students}=await sb.from('consolidated_user_profiles_table').select('id,full_name'); 
-        const {data:exams}=await sb.from('exams').select('id,exam_name'); 
-        document.getElementById('assignStudentSelect').innerHTML=students.map(s=>`<option value="${s.id}" ${studentId===s.id?'selected':''}>${s.full_name}</option>`).join(''); 
-        document.getElementById('assignExamSelect').innerHTML=exams.map(e=>`<option value="${e.id}">${e.exam_name}</option>`).join(''); 
-        document.getElementById('assignExamModal').style.display='flex'; 
-    };
-    
-    window.confirmAssignExam = async function() { 
-        const studentId=document.getElementById('assignStudentSelect').value; 
-        const examId=document.getElementById('assignExamSelect').value; 
-        if(!studentId||!examId) return alert('Select both'); 
-        const {data:student}=await sb.from('consolidated_user_profiles_table').select('user_id').eq('id',studentId).single(); 
-        if(!student?.user_id) return alert('Student not found'); 
-        const {error}=await sb.from('exam_grades').insert({student_id:student.user_id, exam_id:parseInt(examId), question_id:'00000000-0000-0000-0000-000000000000', marks:0, total_score:0, result_status:'Scheduled', graded_at:new Date().toISOString()}); 
-        if(error) alert('Error: '+error.message); 
-        else { alert('Assigned!'); closeAssignModal(); loadStudentsWithResults(); loadAllStudents(); loadAllExams(); } 
-    };
-    
-    window.closeAssignModal = function() { document.getElementById('assignExamModal').style.display='none'; };
-    window.assignStudentsToExam = function(examId) { alert('Bulk assignment coming soon.'); };
-    window.createNewExam = function() { alert('Create exam form coming soon.'); };
-    
-    // Release Functions
-    window.openReleaseModal = async function() {
-        const { data: exams } = await sb.from('exams').select('id,exam_name').order('exam_name');
-        const select = document.getElementById('releaseExamFilter');
-        select.innerHTML = '<option value="">-- Select Exam --</option>' + (exams?.map(e => `<option value="${e.id}">${e.exam_name}</option>`).join('') || '');
-        document.getElementById('releasePreview').style.display = 'none';
-        document.getElementById('releaseModal').style.display = 'flex';
-    };
-    
-    window.loadReleasePreview = async function() {
-        const examId = document.getElementById('releaseExamFilter').value;
-        const statusFilter = document.getElementById('releaseStatusFilter').value;
-        if (!examId) { document.getElementById('releasePreview').style.display = 'none'; return; }
-        document.getElementById('releasePreview').style.display = 'block';
-        document.getElementById('releasePreviewBody').innerHTML = '<tr><td colspan="5" class="loading">Loading preview...</td></tr>';
+    try {
+        const { data: profile } = await sb.from('consolidated_user_profiles_table').select('*').eq('user_id', currentUserId).single();
+        if (profile) studentProfile = profile;
         
-        const { data: exam } = await sb.from('exams').select('exam_name').eq('id', parseInt(examId)).single();
-        let query = sb.from('exam_grades').select('id, student_id, exam_id, marks, total_score, result_status').eq('exam_id', parseInt(examId)).eq('question_id', '00000000-0000-0000-0000-000000000000').in('result_status', ['PASS', 'FAIL']);
-        if (statusFilter) query = query.eq('result_status', statusFilter);
-        const { data: results } = await query;
-        if (!results || results.length === 0) {
-            document.getElementById('releasePreviewBody').innerHTML = '<tr><td colspan="5" style="text-align:center">No graded results found for this exam</td></tr>';
-            document.getElementById('releaseSummary').innerHTML = `<strong>⚠️ No results to release for "${exam?.exam_name}"</strong>`;
-            document.getElementById('confirmReleaseBtn').disabled = true;
+        document.getElementById('userInfo').innerHTML = `
+            <strong>👤 ${studentProfile?.full_name || 'Student'}</strong><br>
+            📚 ${studentProfile?.program || 'N/A'} | Block ${studentProfile?.block || 'N/A'} | ${studentProfile?.intake_year || 'N/A'}
+        `;
+        
+        const { data: exams } = await sb.from('exams').select('*').not('online_link', 'is', null);
+        const { data: grades } = await sb.from('exam_grades').select('*').eq('student_id', currentUserId).eq('question_id', '00000000-0000-0000-0000-000000000000');
+        const { data: released } = await sb.from('released_exam_results').select('result_id');
+        const releasedSet = new Set(released?.map(r => r.result_id) || []);
+        
+        const container = document.getElementById('examList');
+        container.innerHTML = '';
+        
+        const filtered = (exams || []).filter(exam => getExamLink(exam));
+        
+        if (!filtered.length) {
+            container.innerHTML = '<div class="exam-card">📭 No exams available</div>';
             return;
         }
         
-        const studentIds = results.map(r => r.student_id);
-        const { data: profiles } = await sb.from('consolidated_user_profiles_table').select('user_id, full_name').in('user_id', studentIds);
-        const profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p]));
-        
-        const { data: released } = await sb.from('released_exam_results').select('result_id').in('result_id', results.map(r => r.id));
-        const releasedSet = new Set(released?.map(r => r.result_id) || []);
-        
-        let notReleasedCount = 0;
-        let previewHtml = '';
-        results.forEach(r => {
-            const isReleased = releasedSet.has(r.id);
-            if (!isReleased) notReleasedCount++;
-            const student = profileMap[r.student_id];
-            const percentage = parseFloat(r.total_score || 0).toFixed(1);
-            previewHtml += `<tr><td>${student?.full_name || 'Unknown'}</td><td>${r.marks || 0}</td><td>${percentage}%</td><td><span class="${r.result_status === 'PASS' ? 'status-pass' : 'status-fail'}">${r.result_status}</span></td><td>${isReleased ? '✅ Already Released' : '🔒 Pending Release'}</td></tr>`;
-        });
-        
-        document.getElementById('releasePreviewBody').innerHTML = previewHtml;
-        document.getElementById('releaseSummary').innerHTML = `<strong>📊 Exam: ${exam?.exam_name}</strong><br>Total Graded Students: ${results.length} | Pending Release: ${notReleasedCount} | Already Released: ${results.length - notReleasedCount}`;
-        document.getElementById('confirmReleaseBtn').disabled = (notReleasedCount === 0);
-    };
-    
-    window.confirmReleaseResults = async function() {
-        const examId = document.getElementById('releaseExamFilter').value;
-        const statusFilter = document.getElementById('releaseStatusFilter').value;
-        if (!examId) { alert('Please select an exam first'); return; }
-        
-        let query = sb.from('exam_grades').select('id, student_id, exam_id, result_status').eq('exam_id', parseInt(examId)).eq('question_id', '00000000-0000-0000-0000-000000000000').in('result_status', ['PASS', 'FAIL']);
-        if (statusFilter) query = query.eq('result_status', statusFilter);
-        const { data: results } = await query;
-        if (!results || results.length === 0) { alert('No results found to release'); return; }
-        
-        const { data: existing } = await sb.from('released_exam_results').select('result_id').in('result_id', results.map(r => r.id));
-        const existingSet = new Set(existing?.map(e => e.result_id) || []);
-        const newResults = results.filter(r => !existingSet.has(r.id));
-        if (newResults.length === 0) { alert('All results for this exam are already released!'); return; }
-        if (!confirm(`Release ${newResults.length} result(s) to student portal?\n\nThis will make these scores visible to students immediately.`)) return;
-        
-        const releaseRecords = newResults.map(r => ({ result_id: r.id, student_id: r.student_id, exam_id: r.exam_id, released_at: new Date().toISOString(), released_by: 'admin' }));
-        const { error } = await sb.from('released_exam_results').insert(releaseRecords);
-        if (error) alert('Error releasing results: ' + error.message);
-        else { alert(`✅ Successfully released ${newResults.length} result(s) to the student portal!`); closeReleaseModal(); loadStudentsWithResults(); }
-    };
-    
-    window.closeReleaseModal = function() { document.getElementById('releaseModal').style.display = 'none'; document.getElementById('releasePreview').style.display = 'none'; };
-    
-    window.exportToExcel = function(type) { 
-        let data=[]; 
-        if(type==='students') data=studentsResults.map(r=>({Name:r.student_profile?.full_name, Email:r.student_profile?.email, Exam:r.exam_info?.exam_name, Score:r.marks, Percent:r.total_score, Status:r.result_status, Released:r.isReleased?'Yes':'No'})); 
-        if(type==='allStudents') data=allStudents.map(s=>({Name:s.full_name, Email:s.email, Program:s.program, ExamsTaken:s.examsTaken})); 
-        if(type==='exams') data=allExams.map(e=>({Exam:e.exam_name, Type:e.exam_type, Students:e.studentCount}));
-        if(type==='proctoring') data=proctoringLogs.map(l=>({Time:new Date(l.timestamp).toLocaleString(), Student:l.student_profile?.full_name, AlertType:l.event_type, Details:l.details, Severity:l.severity}));
-        const ws=XLSX.utils.json_to_sheet(data); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Data'); XLSX.writeFile(wb,`${type}_${new Date().toISOString().split('T')[0]}.xlsx`); 
-    };
-    
-    window.printTable = function(type) { 
-        const tableHtml = document.getElementById(type==='students'?'studentsTable':type==='allStudents'?'allStudentsTable':type==='exams'?'examsTable':'proctoringTable').outerHTML; 
-        const win=window.open(); win.document.write(`<html><head><title>Report</title><style>table{border-collapse:collapse;width:100%}th,td{border:1px solid #ddd;padding:8px}</style></head><body>${tableHtml}</body></html>`); win.print(); 
-    };
-    
-    function showToast(message, type) { alert(message); }
-    
-    // Notification panel toggle
-    document.getElementById('notificationBell').addEventListener('click', (e) => {
-        e.stopPropagation();
-        const panel = document.getElementById('notificationPanel');
-        panel.classList.toggle('show');
-        loadNotifications();
-    });
-    document.addEventListener('click', () => { document.getElementById('notificationPanel').classList.remove('show'); });
-    
-    document.addEventListener('DOMContentLoaded', function() {
-        if(!checkAdminAuth()) return;
-        document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => window.switchTab(btn.getAttribute('data-tab'))));
-        window.switchTab('students');
-        setupRealtimeNotifications();
-    });
-})();
+        for (const exam of filtered) {
+            const grade = grades?.find(g => g.exam_id === exam.id);
+            const hasGrade = grade && (grade.marks !== null || grade.total_score > 0);
+            const isReleased = grade ? releasedSet.has(grade.id) : false;
+            const isPending = grade && !isReleased && hasGrade;
+            
+            let statusBadge = !hasGrade ? '<span class="badge badge-upcoming">📝 Not Started</span>' :
+                              (isReleased ? '<span class="badge badge-completed">✅ Released</span>' : '<span class="badge badge-pending">🔒 Pending</span>');
+            
+            let gradeHtml = '';
+            if (hasGrade && isReleased) {
+                const percent = parseFloat(grade.total_score || 0);
+                gradeHtml = `<div class="grade-info ${percent >= 60 ? 'grade-pass' : 'grade-fail'}">
+                    <span class="score-large">${percent}%</span> <strong>${percent >= 60 ? 'PASS ✓' : 'FAIL ✗'}</strong>
+                    <div>Score: ${grade.marks || 0} marks</div>
+                </div>`;
+            } else if (hasGrade && !isReleased) {
+                gradeHtml = `<div class="grade-info grade-not-released">🔒 Results pending release</div>`;
+            }
+            
+            container.innerHTML += `
+                <div class="exam-card">
+                    <div class="exam-header">
+                        <div class="exam-title">${exam.exam_name} ${statusBadge}</div>
+                    </div>
+                    <div class="exam-meta">
+                        <span>📋 ${exam.exam_type || 'EXAM'}</span>
+                        <span>⏱️ ${exam.duration_minutes || 30} min</span>
+                        <span>📊 ${exam.total_marks || 'N/A'} marks</span>
+                    </div>
+                    ${gradeHtml}
+                    <div class="exam-actions">
+                        ${!hasGrade ? `<button class="btn-start" onclick="startExam(${exam.id}, '${exam.exam_name.replace(/'/g, "\\'")}')">▶ Start Exam</button>` : 
+                          (isReleased ? `<button class="btn-details" onclick="viewResult(${exam.id})">📋 Results</button>` : '')}
+                    </div>
+                </div>
+            `;
+        }
+    } catch(err) {
+        document.getElementById('examList').innerHTML = '<div class="exam-card">⚠️ Error loading exams</div>';
+    }
+    isLoading = false;
+}
+
+async function viewResult(examId) {
+    const { data: grade } = await sb.from('exam_grades').select('*').eq('student_id', currentUserId).eq('exam_id', examId).eq('question_id', '00000000-0000-0000-0000-000000000000').single();
+    const percent = parseFloat(grade?.total_score || 0);
+    document.getElementById('modalContent').innerHTML = `
+        <h2>📊 Results</h2>
+        <div style="background:${percent>=60?'#D1FAE5':'#FEE2E2'}; padding:20px; border-radius:12px;">
+            <h3>${percent>=60?'✅ PASS':'❌ FAIL'}</h3>
+            <p>Score: ${grade?.marks || 0} marks</p>
+            <p>Percentage: ${percent}%</p>
+        </div>
+    `;
+    document.getElementById('resultsModal').style.display = 'flex';
+}
+
+function refreshExams() { loadExams(false); }
+function closeModal() { document.getElementById('resultsModal').style.display = 'none'; }
+function logout() { stopCamera(); localStorage.clear(); window.location.href = 'exam_login.html'; }
+function showToast(msg, type) {
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.innerHTML = msg;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3500);
+}
+function toggleNavPanel() {
+    const panel = document.getElementById('questionNavPanel');
+    const btn = document.querySelector('.toggle-nav-btn');
+    const isSmall = panel.style.width === '50px';
+    panel.style.width = isSmall ? '280px' : '50px';
+    document.getElementById('questionButtons').style.display = isSmall ? 'flex' : 'none';
+    document.getElementById('cameraPreviewInline').style.display = isSmall ? 'block' : 'none';
+    btn.textContent = isSmall ? '−' : '+';
+}
+
+// Message listener for iframe submission
+window.addEventListener('message', function(event) {
+    if (event.data === 'exam_completed' || event.data?.type === 'exam_completed' || event.data === 'submit_exam') {
+        handleExamSubmission();
+    }
+});
+
+window.addEventListener('DOMContentLoaded', () => loadExams());
+
+// Expose functions globally
+window.startExam = startExam;
+window.closeExam = closeExam;
+window.refreshExams = refreshExams;
+window.closeModal = closeModal;
+window.logout = logout;
+window.toggleNavPanel = toggleNavPanel;
+window.viewResult = viewResult;
 </script>
 </body>
 </html>
