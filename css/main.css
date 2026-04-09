@@ -2931,207 +2931,57 @@ p {
     scrollbar-width: thin;
     scrollbar-color: var(--color-royal) var(--color-gray-100);
 }
-/* ========== DESKTOP SPACING FIXES - MOBILE SAFE ========== */
+/* ========== SIMPLE DESKTOP SPACING FIX ========== */
 
-/* Base styles that won't break mobile */
-.main {
-    width: 100%;
-    box-sizing: border-box;
-}
-
-/* Fix body background */
-body {
-    background: #f0f2f5;
-    padding: 0;
-    margin: 0;
-}
-
-/* Fix overflow issues */
-* {
-    box-sizing: border-box;
-}
-
-html, body {
-    overflow-x: hidden;
-}
-
-/* ===== DESKTOP ONLY (1024px and up) ===== */
-@media (min-width: 1024px) {
-    /* Fix main content width and centering - DESKTOP ONLY */
+/* Only apply on desktop screens */
+@media (min-width: 1200px) {
+    
+    /* Add breathing room to the main content area */
     .main {
-        max-width: 1400px;
-        margin: 70px auto 0 auto;
-        padding: 32px 40px !important;
-        width: 100%;
+        padding: 2rem 3rem !important;
     }
     
-    /* Fix sidebar position on desktop */
-    .sidebar {
-        position: fixed;
-        top: 70px;
-        left: 0;
-        height: calc(100vh - 70px);
-        transform: translateX(0) !important;
-        width: 280px;
-        z-index: 100;
-    }
-    
-    /* Adjust main with sidebar */
-    .main {
-        margin-left: 280px !important;
-        width: calc(100% - 280px) !important;
-        max-width: calc(1400px - 280px);
-    }
-    
-    /* Fix container */
-    .container {
-        margin-top: 0;
-    }
-    
-    /* Better card spacing on desktop */
+    /* Increase gap between cards */
     .cards-grid {
-        grid-template-columns: repeat(3, 1fr) !important;
-        gap: 24px !important;
-        margin-bottom: 32px !important;
+        gap: 1.75rem !important;
     }
     
-    /* Better action cards spacing */
+    /* Increase gap between action cards */
     .actions-grid {
-        grid-template-columns: repeat(2, 1fr) !important;
-        gap: 24px !important;
-        margin: 32px 0 !important;
+        gap: 1.75rem !important;
     }
     
-    /* Increase tab content padding */
-    .tab-content {
-        padding: 32px !important;
-        margin-bottom: 32px !important;
-    }
-    
-    /* Better welcome card spacing */
-    .welcome-card {
-        padding: 20px 24px !important;
-        margin-bottom: 24px !important;
-    }
-    
-    /* Better announcement spacing */
-    .announcement-banner {
-        padding: 16px 24px !important;
-        margin-bottom: 28px !important;
-    }
-    
-    /* Fix horizontal summary row */
-    .horizontal-summary-row {
-        gap: 24px !important;
-        padding: 24px !important;
-        margin-bottom: 32px !important;
-    }
-    
-    /* Increase stat cards padding */
+    /* Add more padding inside cards */
     .stat-card {
-        padding: 20px !important;
+        padding: 1.5rem !important;
     }
     
+    /* Make numbers slightly larger */
     .stat-value {
-        font-size: 2rem !important;
+        font-size: 1.8rem !important;
     }
     
-    /* Better table spacing on desktop */
-    .modern-table th,
-    .modern-table td {
-        padding: 16px 20px !important;
-    }
-    
-    /* Fix footer spacing */
-    .app-footer {
-        margin-top: 48px !important;
-    }
-    
-    .footer-content {
-        padding: 48px 40px !important;
-        gap: 48px !important;
-    }
-}
-
-/* ===== EXTRA LARGE DESKTOP (1440px and up) ===== */
-@media (min-width: 1440px) {
-    .main {
-        padding: 40px 60px !important;
-    }
-    
-    .cards-grid {
-        gap: 32px !important;
-    }
-}
-
-/* ===== MOBILE OVERRIDES (fix any desktop leaks) ===== */
-@media (max-width: 1023px) {
-    /* Ensure mobile padding returns to normal */
-    .main {
-        padding: 16px !important;
-        margin: 60px 0 0 0 !important;
-        max-width: none !important;
-    }
-    
-    /* Restore mobile card gaps */
-    .cards-grid {
-        gap: 12px !important;
-        margin-bottom: 16px !important;
-    }
-    
-    /* Restore mobile action cards */
-    .actions-grid {
-        gap: 12px !important;
-        margin: 16px 0 !important;
-    }
-    
-    /* Restore mobile tab padding */
+    /* Add spacing to tab content */
     .tab-content {
-        padding: 16px !important;
-        margin-bottom: 16px !important;
+        padding: 2rem !important;
     }
     
-    /* Restore mobile welcome card */
+    /* Better spacing for welcome section */
     .welcome-card {
-        padding: 12px 16px !important;
-        margin-bottom: 16px !important;
+        padding: 1.25rem 2rem !important;
+        margin-bottom: 2rem !important;
     }
     
-    /* Restore mobile announcement */
+    /* Better spacing for announcements */
     .announcement-banner {
-        padding: 10px 16px !important;
-        margin-bottom: 16px !important;
+        padding: 1rem 2rem !important;
+        margin-bottom: 2rem !important;
     }
     
-    /* Restore mobile summary row */
+    /* Better spacing for the summary row */
     .horizontal-summary-row {
-        gap: 12px !important;
-        padding: 16px !important;
-        margin-bottom: 16px !important;
-    }
-    
-    /* Restore mobile stat cards */
-    .stat-card {
-        padding: 12px !important;
-    }
-    
-    .stat-value {
-        font-size: 1.3rem !important;
-    }
-    
-    /* Restore mobile table padding */
-    .modern-table th,
-    .modern-table td {
-        padding: 12px !important;
-    }
-    
-    /* Restore mobile footer */
-    .app-footer {
-        margin-top: 24px !important;
-    }
-    
-    .footer-content {
-        padding: 24px 16px !important;
-        gap: 24px !important;
+        gap: 1.5rem !important;
+        padding: 1.5rem !important;
+        margin-bottom: 2rem !important;
     }
 }
