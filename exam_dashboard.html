@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>NCHSM Student Exam Portal - Unified Camera</title>
+<title>NCHSM Student Exam Portal - Secure Proctoring</title>
 <link rel="icon" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -22,19 +22,10 @@ h1 { font-size: 1.6rem; letter-spacing: -0.5px; }
 .user-details p { color: #64748B; font-size: 0.8rem; margin-top: 3px; }
 .action-buttons { display: flex; gap: 10px; }
 
-/* Filter Bar */
-.filter-bar { background: white; border-radius: 16px; padding: 15px 20px; margin-bottom: 25px; display: flex; flex-wrap: wrap; gap: 15px; align-items: center; justify-content: space-between; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
-.filter-group { display: flex; align-items: center; gap: 10px; background: #F1F5F9; padding: 8px 15px; border-radius: 30px; }
-.filter-group label { font-weight: 600; color: #0A3D62; font-size: 0.8rem; }
-.filter-group select { padding: 6px 12px; border: 1px solid #E2E8F0; border-radius: 20px; background: white; font-family: inherit; font-size: 0.8rem; cursor: pointer; }
-.filter-group select:focus { outline: none; border-color: #FDB913; }
-.filter-reset { background: #DC2626; color: white; border: none; padding: 6px 15px; border-radius: 20px; font-size: 0.75rem; cursor: pointer; }
-
 .exam-card { background: white; border-radius: 20px; padding: 20px; margin-bottom: 20px; box-shadow: 0 5px 20px rgba(0,0,0,0.05); transition: transform 0.2s; border: 1px solid #E2E8F0; }
 .exam-card:hover { transform: translateY(-3px); box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
 .exam-title { font-size: 1.2rem; font-weight: 700; color: #0A3D62; }
 .exam-meta { display: flex; flex-wrap: wrap; gap: 15px; font-size: 0.8rem; color: #64748B; margin: 10px 0; }
-.exam-restrictions { background: #FEF3C7; padding: 8px 12px; border-radius: 10px; font-size: 0.7rem; color: #92400E; margin-top: 8px; display: inline-block; }
 
 .badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 0.7rem; font-weight: 600; }
 .badge-upcoming { background: #DBEAFE; color: #1E40AF; }
@@ -88,7 +79,7 @@ button { padding: 10px 24px; border: none; border-radius: 10px; font-weight: 600
 .camera-permission-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 20001; align-items: center; justify-content: center; }
 .camera-permission-content { background: white; padding: 35px; border-radius: 24px; max-width: 450px; width: 90%; text-align: center; }
 
-@media (max-width: 768px) { .question-nav-panel { width: 240px; bottom: 10px; left: 10px; } .question-btn { width: 30px; height: 30px; font-size: 10px; } .filter-bar { flex-direction: column; align-items: stretch; } .filter-group { justify-content: space-between; } }
+@media (max-width: 768px) { .question-nav-panel { width: 240px; bottom: 10px; left: 10px; } .question-btn { width: 30px; height: 30px; font-size: 10px; } }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -97,7 +88,7 @@ button { padding: 10px 24px; border: none; border-radius: 10px; font-weight: 600
 <header>
     <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" class="logo" alt="Logo">
     <h1>📚 NCHSM Exam Portal</h1>
-    <div class="header-subtitle">Secure Proctored Exams | Strict Filtering by Program, Block & Intake</div>
+    <div class="header-subtitle">Secure Proctored Exams | Auto-filtered by Program, Block & Intake</div>
 </header>
 
 <div class="exam-list">
@@ -108,30 +99,6 @@ button { padding: 10px 24px; border: none; border-radius: 10px; font-weight: 600
             <button class="logout-btn" onclick="logout()">🚪 Logout</button>
         </div>
     </div>
-
-    <!-- Filter Bar -->
-    <div class="filter-bar" id="filterBar">
-        <div class="filter-group">
-            <label>📚 Program:</label>
-            <select id="filterProgram">
-                <option value="">All Programs</option>
-            </select>
-        </div>
-        <div class="filter-group">
-            <label>📖 Block:</label>
-            <select id="filterBlock">
-                <option value="">All Blocks</option>
-            </select>
-        </div>
-        <div class="filter-group">
-            <label>📅 Intake Year:</label>
-            <select id="filterIntake">
-                <option value="">All Years</option>
-            </select>
-        </div>
-        <button class="filter-reset" onclick="resetFilters()">Reset Filters</button>
-    </div>
-
     <div id="examList">Loading exams...</div>
 </div>
 
@@ -192,59 +159,60 @@ let faceInterval = null;
 let examStartTime = null;
 let cameraAttempts = 0;
 let allExams = [];
-let currentFilters = { program: '', block: '', intake: '' };
 const MAX_ATTEMPTS = 3;
 
 function getExamLink(exam) { return exam.exam_link || exam.online_link || null; }
 
-// ========== STRICT FILTERING FUNCTION ==========
-function filterExams(exams) {
+// ========== STRICT AUTO-FILTERING (NO FILTER BAR VISIBLE) ==========
+function filterExamsByStudent(exams) {
+    if (!studentProfile) return [];
+    
     return exams.filter(exam => {
         // Check if exam has a valid link
         if (!getExamLink(exam)) return false;
         
-        // STRICT PROGRAM FILTERING
-        if (currentFilters.program && exam.program_type) {
-            // Exact match or 'General' (available to all)
-            if (exam.program_type !== currentFilters.program && exam.program_type !== 'General') {
-                return false;
-            }
+        // PROGRAM FILTER (strict)
+        if (exam.program_type && exam.program_type !== 'General') {
+            if (exam.program_type !== studentProfile.program) return false;
         }
         
-        // STRICT BLOCK FILTERING
-        if (currentFilters.block && exam.block_term) {
-            if (exam.block_term !== currentFilters.block && exam.block_term !== 'General') {
-                return false;
-            }
+        // BLOCK FILTER (strict)
+        if (exam.block_term && exam.block_term !== 'General') {
+            if (exam.block_term !== studentProfile.block) return false;
         }
         
-        // STRICT INTAKE YEAR FILTERING
-        if (currentFilters.intake && exam.intake_year) {
-            if (exam.intake_year != currentFilters.intake && exam.intake_year !== 'General') {
-                return false;
-            }
+        // INTAKE YEAR FILTER (strict)
+        if (exam.intake_year && exam.intake_year !== 'General') {
+            if (exam.intake_year != studentProfile.intake_year) return false;
         }
         
         return true;
     });
 }
 
-// ========== LOAD FILTER OPTIONS FROM EXAMS ==========
-async function loadFilterOptions() {
-    const { data: exams } = await sb.from('exams').select('program_type, block_term, intake_year');
-    if (!exams) return;
+// ========== HIDE EXTERNAL CAMERA UI (so student only sees one) ==========
+function hideExternalCameraUI() {
+    const iframe = document.getElementById('examIframe');
+    if (!iframe || !iframe.contentWindow) return;
     
-    const programs = [...new Set(exams.map(e => e.program_type).filter(Boolean))];
-    const blocks = [...new Set(exams.map(e => e.block_term).filter(Boolean))];
-    const intakes = [...new Set(exams.map(e => e.intake_year).filter(Boolean))];
-    
-    const programSelect = document.getElementById('filterProgram');
-    const blockSelect = document.getElementById('filterBlock');
-    const intakeSelect = document.getElementById('filterIntake');
-    
-    programs.forEach(p => { const opt = document.createElement('option'); opt.value = p; opt.textContent = p; programSelect.appendChild(opt); });
-    blocks.forEach(b => { const opt = document.createElement('option'); opt.value = b; opt.textContent = b; blockSelect.appendChild(opt); });
-    intakes.forEach(i => { const opt = document.createElement('option'); opt.value = i; opt.textContent = i; intakeSelect.appendChild(opt); });
+    try {
+        // Hide all video elements in iframe (external camera feed)
+        const videos = iframe.contentWindow.document.querySelectorAll('video');
+        videos.forEach(v => {
+            v.style.cssText = 'position: absolute !important; top: -9999px !important; left: -9999px !important; width: 1px !important; height: 1px !important; opacity: 0 !important; pointer-events: none !important;';
+        });
+        
+        // Hide any camera-related UI elements
+        const cameraElements = iframe.contentWindow.document.querySelectorAll('[class*="camera"], [id*="camera"], [class*="webcam"], [id*="webcam"], .proctoring-video, .face-detection');
+        cameraElements.forEach(el => {
+            el.style.cssText = 'display: none !important; visibility: hidden !important;';
+        });
+        
+        console.log('✅ External camera UI hidden');
+    } catch(e) {
+        // Cross-origin - can't access, but that's ok
+        console.log('Cannot access iframe to hide camera (cross-origin)');
+    }
 }
 
 // ========== CAMERA FUNCTIONS ==========
@@ -374,6 +342,13 @@ async function loadExamContent(examId, examName) {
         iframe.setAttribute('allow', 'camera *; microphone *');
         iframe.src = link;
         
+        // Wait for iframe to load, then hide external camera UI
+        iframe.onload = () => {
+            setTimeout(() => hideExternalCameraUI(), 1000);
+            setTimeout(() => hideExternalCameraUI(), 3000);
+            setTimeout(() => hideExternalCameraUI(), 5000);
+        };
+        
         document.getElementById('examContainer').style.display = 'flex';
         document.getElementById('questionNavPanel').style.display = 'block';
         document.querySelector('header').style.display = 'none';
@@ -416,7 +391,7 @@ window.addEventListener('message', function(event) {
     }
 });
 
-// ========== LOAD EXAMS WITH FILTERS ==========
+// ========== LOAD EXAMS WITH AUTO-FILTERING ==========
 async function loadExams(showLoading = true) {
     if (isLoading) return;
     isLoading = true;
@@ -437,35 +412,21 @@ async function loadExams(showLoading = true) {
             📚 ${studentProfile?.program || 'N/A'} | Block ${studentProfile?.block || 'N/A'} | Intake: ${studentProfile?.intake_year || 'N/A'}
         `;
         
-        // Set default filters from student profile
-        if (!currentFilters.program && studentProfile?.program) {
-            currentFilters.program = studentProfile.program;
-            document.getElementById('filterProgram').value = studentProfile.program;
-        }
-        if (!currentFilters.block && studentProfile?.block) {
-            currentFilters.block = studentProfile.block;
-            document.getElementById('filterBlock').value = studentProfile.block;
-        }
-        if (!currentFilters.intake && studentProfile?.intake_year) {
-            currentFilters.intake = studentProfile.intake_year;
-            document.getElementById('filterIntake').value = studentProfile.intake_year;
-        }
-        
         const { data: exams } = await sb.from('exams').select('*').not('online_link', 'is', null);
         allExams = exams || [];
+        
+        // AUTO-FILTER based on student's profile (NO FILTER BAR)
+        const filteredExams = filterExamsByStudent(allExams);
         
         const { data: grades } = await sb.from('exam_grades').select('*').eq('student_id', currentUserId).eq('question_id', '00000000-0000-0000-0000-000000000000');
         const { data: released } = await sb.from('released_exam_results').select('result_id');
         const releasedSet = new Set(released?.map(r => r.result_id) || []);
         
-        // APPLY STRICT FILTERS
-        const filteredExams = filterExams(allExams);
-        
         const container = document.getElementById('examList');
         container.innerHTML = '';
         
         if (!filteredExams.length) {
-            container.innerHTML = '<div class="exam-card">📭 No exams available matching your Program, Block, or Intake Year.</div>';
+            container.innerHTML = '<div class="exam-card">📭 No exams available for your Program, Block, or Intake Year.</div>';
             return;
         }
         
@@ -485,13 +446,6 @@ async function loadExams(showLoading = true) {
                 </div>`;
             }
             
-            // Show restrictions badge
-            let restrictions = [];
-            if (exam.program_type && exam.program_type !== 'General') restrictions.push(`Program: ${exam.program_type}`);
-            if (exam.block_term && exam.block_term !== 'General') restrictions.push(`Block: ${exam.block_term}`);
-            if (exam.intake_year && exam.intake_year !== 'General') restrictions.push(`Intake: ${exam.intake_year}`);
-            const restrictionsHtml = restrictions.length ? `<div class="exam-restrictions">🔒 Only for: ${restrictions.join(' | ')}</div>` : '';
-            
             container.innerHTML += `
                 <div class="exam-card">
                     <div class="exam-title">${exam.exam_name} ${statusBadge}</div>
@@ -500,7 +454,6 @@ async function loadExams(showLoading = true) {
                         <span>⏱️ ${exam.duration_minutes || 30} min</span>
                         <span>📊 ${exam.total_marks || 'N/A'} marks</span>
                     </div>
-                    ${restrictionsHtml}
                     ${gradeHtml}
                     <div class="exam-actions">
                         ${!hasGrade ? `<button class="btn-start" onclick="startExam(${exam.id}, '${exam.exam_name.replace(/'/g, "\\'")}')">▶ Start Exam</button>` : (isReleased ? `<button class="btn-details" onclick="viewResult(${exam.id})">📋 Results</button>` : '')}
@@ -510,19 +463,6 @@ async function loadExams(showLoading = true) {
         }
     } catch(err) { document.getElementById('examList').innerHTML = '<div class="exam-card">⚠️ Error loading exams</div>'; }
     isLoading = false;
-}
-
-// Filter event listeners
-document.getElementById('filterProgram').addEventListener('change', (e) => { currentFilters.program = e.target.value; loadExams(false); });
-document.getElementById('filterBlock').addEventListener('change', (e) => { currentFilters.block = e.target.value; loadExams(false); });
-document.getElementById('filterIntake').addEventListener('change', (e) => { currentFilters.intake = e.target.value; loadExams(false); });
-
-function resetFilters() {
-    currentFilters = { program: '', block: '', intake: '' };
-    document.getElementById('filterProgram').value = '';
-    document.getElementById('filterBlock').value = '';
-    document.getElementById('filterIntake').value = '';
-    loadExams(false);
 }
 
 async function viewResult(examId) {
@@ -538,7 +478,7 @@ function logout() { stopCamera(); localStorage.clear(); window.location.href = '
 function showToast(msg, type) { const toast = document.createElement('div'); toast.className = `toast toast-${type}`; toast.innerHTML = msg; document.body.appendChild(toast); setTimeout(() => toast.remove(), 3500); }
 function toggleNavPanel() { const panel = document.getElementById('questionNavPanel'); const btn = document.querySelector('.toggle-nav-btn'); const isSmall = panel.style.width === '50px'; panel.style.width = isSmall ? '280px' : '50px'; document.getElementById('questionButtons').style.display = isSmall ? 'flex' : 'none'; document.getElementById('cameraPreviewInline').style.display = isSmall ? 'block' : 'none'; btn.textContent = isSmall ? '−' : '+'; }
 
-window.addEventListener('DOMContentLoaded', async () => { await loadFilterOptions(); loadExams(); });
+window.addEventListener('DOMContentLoaded', () => loadExams());
 window.addEventListener('pageshow', () => { if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); cameraStream = null; } });
 
 window.startExam = startExam;
@@ -548,7 +488,6 @@ window.closeModal = closeModal;
 window.logout = logout;
 window.toggleNavPanel = toggleNavPanel;
 window.viewResult = viewResult;
-window.resetFilters = resetFilters;
 </script>
 </body>
 </html>
