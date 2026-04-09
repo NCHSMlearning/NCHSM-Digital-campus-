@@ -5,70 +5,397 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>NCHSM Student Exam Portal</title>
 <link rel="icon" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png">
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
-body { font-family: 'Poppins', sans-serif; background: #F0F2F5; min-height: 100vh; }
-
-header { text-align: center; padding: 20px; background: linear-gradient(135deg, #0A3D62 0%, #073450 100%); color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-.logo { width: 65px; margin-bottom: 8px; border-radius: 50%; border: 3px solid #FDB913; padding: 5px; background: white; }
-h1 { font-size: 1.6rem; letter-spacing: -0.5px; }
-.header-subtitle { font-size: 0.8rem; opacity: 0.9; }
-
-.exam-list { max-width: 1200px; margin: 25px auto; padding: 0 20px; }
-
-.user-info-bar { background: white; border-radius: 16px; padding: 15px 25px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); border-left: 4px solid #FDB913; }
-.user-details h3 { color: #0A3D62; font-size: 1rem; }
-.user-details p { color: #64748B; font-size: 0.8rem; margin-top: 3px; }
-.action-buttons { display: flex; gap: 10px; }
-
-.exam-card { background: white; border-radius: 20px; padding: 20px; margin-bottom: 20px; box-shadow: 0 5px 20px rgba(0,0,0,0.05); transition: transform 0.2s; border: 1px solid #E2E8F0; }
-.exam-card:hover { transform: translateY(-3px); box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
-.exam-title { font-size: 1.2rem; font-weight: 700; color: #0A3D62; }
-.exam-meta { display: flex; flex-wrap: wrap; gap: 15px; font-size: 0.8rem; color: #64748B; margin: 10px 0; }
-
-.badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 0.7rem; font-weight: 600; }
-.badge-upcoming { background: #DBEAFE; color: #1E40AF; }
-.badge-completed { background: #D1FAE5; color: #065F46; }
-.badge-pending { background: #FEF3C7; color: #92400E; }
-
-.grade-info { margin-top: 15px; padding: 15px; border-radius: 12px; font-size: 0.9rem; }
-.grade-pass { background: #D1FAE5; border-left: 4px solid #38A169; }
-.grade-fail { background: #FEE2E2; border-left: 4px solid #DC2626; }
-.score-large { font-size: 1.6rem; font-weight: 700; margin-right: 10px; }
-
-.exam-actions { display: flex; gap: 12px; margin-top: 15px; flex-wrap: wrap; }
-button { padding: 10px 24px; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-family: inherit; font-size: 0.85rem; }
-.btn-start { background: #38A169; color: white; }
-.btn-start:hover { background: #2F855A; transform: translateY(-2px); }
-.btn-details { background: #3B82F6; color: white; }
-.refresh-btn { background: #8B5CF6; color: white; padding: 8px 16px; font-size: 0.8rem; }
-.logout-btn { background: #DC2626; color: white; padding: 8px 16px; font-size: 0.8rem; }
-
-.exam-container { 
-    display: none; 
-    position: fixed; 
-    top: 0; 
-    left: 0; 
-    width: 100%; 
-    height: 100%; 
-    background: white; 
-    z-index: 2000; 
-    flex-direction: column;
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
 }
+
+body {
+    font-family: 'Poppins', sans-serif;
+    background: linear-gradient(135deg, #f5f7fa 0%, #e4e8f0 100%);
+    min-height: 100vh;
+}
+
+/* Animated Background */
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle at 20% 50%, rgba(11, 42, 74, 0.03) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* Header - Modern Glassmorphism */
+header {
+    text-align: center;
+    padding: 25px 20px;
+    background: linear-gradient(135deg, #0A3D62 0%, #073450 100%);
+    color: white;
+    position: relative;
+    overflow: hidden;
+}
+
+header::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(253,185,19,0.1) 0%, transparent 70%);
+    animation: rotate 20s linear infinite;
+}
+
+@keyframes rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.logo {
+    width: 70px;
+    margin-bottom: 10px;
+    border-radius: 50%;
+    border: 3px solid #FDB913;
+    padding: 5px;
+    background: white;
+    position: relative;
+    z-index: 1;
+    transition: transform 0.3s ease;
+}
+
+.logo:hover {
+    transform: scale(1.05);
+}
+
+h1 {
+    font-size: 1.8rem;
+    letter-spacing: -0.5px;
+    font-weight: 700;
+    position: relative;
+    z-index: 1;
+}
+
+.header-subtitle {
+    font-size: 0.85rem;
+    opacity: 0.9;
+    position: relative;
+    z-index: 1;
+}
+
+/* Main Container */
+.exam-list {
+    max-width: 1400px;
+    margin: 30px auto;
+    padding: 0 25px;
+    position: relative;
+    z-index: 1;
+}
+
+/* User Info Bar - Modern Card */
+.user-info-bar {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    padding: 20px 28px;
+    margin-bottom: 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 15px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+    border: 1px solid rgba(253, 185, 19, 0.2);
+    transition: all 0.3s ease;
+}
+
+.user-info-bar:hover {
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+    transform: translateY(-2px);
+}
+
+.user-details h3 {
+    color: #0A3D62;
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.user-details p {
+    color: #64748B;
+    font-size: 0.85rem;
+    margin-top: 4px;
+}
+
+.user-details .student-id-badge {
+    display: inline-block;
+    background: #FDB913;
+    color: #0A3D62;
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    margin-top: 6px;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 12px;
+}
+
+/* Modern Buttons */
+.refresh-btn, .logout-btn {
+    padding: 10px 22px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    border: none;
+    font-family: inherit;
+}
+
+.refresh-btn {
+    background: linear-gradient(135deg, #8B5CF6, #7C3AED);
+    color: white;
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+}
+
+.refresh-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
+}
+
+.logout-btn {
+    background: linear-gradient(135deg, #EF4444, #DC2626);
+    color: white;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.logout-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
+}
+
+/* Exam Cards - Modern Design */
+.exam-card {
+    background: white;
+    border-radius: 24px;
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    position: relative;
+    overflow: hidden;
+}
+
+.exam-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: linear-gradient(90deg, #0A3D62, #FDB913, #0A3D62);
+    transform: scaleX(0);
+    transition: transform 0.5s ease;
+}
+
+.exam-card:hover::before {
+    transform: scaleX(1);
+}
+
+.exam-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+}
+
+.exam-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.exam-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #0A3D62;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.exam-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    font-size: 0.8rem;
+    color: #64748B;
+    margin: 12px 0;
+}
+
+.badge {
+    display: inline-block;
+    padding: 5px 14px;
+    border-radius: 30px;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+.badge-upcoming {
+    background: linear-gradient(135deg, #DBEAFE, #BFDBFE);
+    color: #1E40AF;
+}
+
+.badge-completed {
+    background: linear-gradient(135deg, #D1FAE5, #A7F3D0);
+    color: #065F46;
+}
+
+.badge-pending {
+    background: linear-gradient(135deg, #FEF3C7, #FDE68A);
+    color: #92400E;
+}
+
+/* Grade Info */
+.grade-info {
+    margin-top: 16px;
+    padding: 16px 20px;
+    border-radius: 16px;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+}
+
+.grade-pass {
+    background: linear-gradient(135deg, #D1FAE5, #A7F3D0);
+    border-left: 4px solid #38A169;
+}
+
+.grade-fail {
+    background: linear-gradient(135deg, #FEE2E2, #FECACA);
+    border-left: 4px solid #DC2626;
+}
+
+.grade-not-released {
+    background: #F1F5F9;
+    border-left: 4px solid #64748B;
+    opacity: 0.8;
+}
+
+.score-large {
+    font-size: 1.8rem;
+    font-weight: 800;
+    margin-right: 12px;
+    color: #0A3D62;
+}
+
+/* Action Buttons */
+.exam-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 18px;
+    flex-wrap: wrap;
+}
+
+.btn-start, .btn-details {
+    padding: 10px 24px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    border: none;
+    font-family: inherit;
+}
+
+.btn-start {
+    background: linear-gradient(135deg, #38A169, #2F855A);
+    color: white;
+    box-shadow: 0 4px 12px rgba(56, 161, 105, 0.3);
+}
+
+.btn-start:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(56, 161, 105, 0.4);
+}
+
+.btn-details {
+    background: linear-gradient(135deg, #3B82F6, #2563EB);
+    color: white;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.btn-details:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+}
+
+/* Exam Container - Full Screen */
+.exam-container {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: white;
+    z-index: 2000;
+    flex-direction: column;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
 .exam-header-bar {
     background: linear-gradient(135deg, #0A3D62, #073450);
     color: white;
-    padding: 12px 20px;
+    padding: 16px 24px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     flex-wrap: wrap;
     gap: 10px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
-.exam-header-bar h3 { margin: 0; font-size: 1rem; }
-.btn-close-exam { background: #DC2626; color: white; padding: 8px 16px; border-radius: 8px; font-size: 0.8rem; }
-.btn-close-exam:hover { background: #B91C1C; }
+
+.exam-header-bar h3 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+/* Modern Close Button - Hidden by default, only for emergency */
+.btn-close-exam {
+    background: rgba(220, 38, 38, 0.9);
+    color: white;
+    padding: 8px 18px;
+    border-radius: 10px;
+    font-size: 0.8rem;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 500;
+    display: none; /* Hidden - auto-close handles submission */
+}
+
+.btn-close-exam:hover {
+    background: #DC2626;
+    transform: scale(1.02);
+}
+
 .exam-iframe {
     flex: 1;
     width: 100%;
@@ -76,20 +403,125 @@ button { padding: 10px 24px; border: none; border-radius: 10px; font-weight: 600
     background: white;
 }
 
-.modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 3000; align-items: center; justify-content: center; }
-.modal-content { background: white; padding: 30px; border-radius: 20px; max-width: 600px; max-height: 80vh; overflow-y: auto; width: 90%; }
-.close-modal { float: right; font-size: 28px; cursor: pointer; color: #64748B; }
+/* Modal */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(8px);
+    z-index: 3000;
+    align-items: center;
+    justify-content: center;
+}
 
-.toast { position: fixed; bottom: 20px; right: 20px; padding: 12px 20px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 10000; animation: slideIn 0.3s ease; font-size: 0.85rem; }
-.toast-success { background: #10B981; color: white; }
-.toast-info { background: #3B82F6; color: white; }
-.toast-warning { background: #F59E0B; color: white; }
-@keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+.modal-content {
+    background: white;
+    padding: 32px;
+    border-radius: 28px;
+    max-width: 550px;
+    max-height: 80vh;
+    overflow-y: auto;
+    width: 90%;
+    animation: modalSlideIn 0.3s ease;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+}
 
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.close-modal {
+    float: right;
+    font-size: 28px;
+    cursor: pointer;
+    color: #64748B;
+    transition: color 0.2s;
+}
+
+.close-modal:hover {
+    color: #DC2626;
+}
+
+/* Toast Notifications */
+.toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    padding: 14px 24px;
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+    z-index: 10000;
+    animation: slideInRight 0.3s ease;
+    font-size: 0.85rem;
+    font-weight: 500;
+    backdrop-filter: blur(10px);
+}
+
+.toast-success {
+    background: linear-gradient(135deg, #10B981, #059669);
+    color: white;
+}
+
+.toast-info {
+    background: linear-gradient(135deg, #3B82F6, #2563EB);
+    color: white;
+}
+
+.toast-warning {
+    background: linear-gradient(135deg, #F59E0B, #D97706);
+    color: white;
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Loading Animation */
+.loading-skeleton {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+    border-radius: 12px;
+}
+
+@keyframes loading {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* Responsive */
 @media (max-width: 768px) {
     .exam-title { font-size: 1rem; }
-    .exam-meta { gap: 8px; }
-    button { padding: 8px 16px; font-size: 0.75rem; }
+    .exam-meta { gap: 10px; }
+    .btn-start, .btn-details { padding: 8px 16px; font-size: 0.75rem; }
+    .user-info-bar { padding: 15px 20px; }
+    .exam-card { padding: 18px; }
+    h1 { font-size: 1.3rem; }
+    .logo { width: 50px; }
+}
+
+@media (max-width: 480px) {
+    .exam-list { padding: 0 15px; }
+    .user-details h3 { font-size: 0.9rem; }
+    .exam-title { font-size: 0.9rem; }
 }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -99,7 +531,7 @@ button { padding: 10px 24px; border: none; border-radius: 10px; font-weight: 600
 <header>
     <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" class="logo" alt="Logo">
     <h1>📚 NCHSM Exam Portal</h1>
-    <div class="header-subtitle">Select an exam to begin</div>
+    <div class="header-subtitle">Secure • Proctored • Excellence</div>
 </header>
 
 <div class="exam-list">
@@ -113,11 +545,11 @@ button { padding: 10px 24px; border: none; border-radius: 10px; font-weight: 600
     <div id="examList">Loading exams...</div>
 </div>
 
-<!-- Exam Container (NO CAMERA HERE - just the iframe) -->
+<!-- Exam Container - No visible close button -->
 <div id="examContainer" class="exam-container">
     <div class="exam-header-bar">
         <h3 id="examTitle">Taking Exam...</h3>
-        <button class="btn-close-exam" onclick="closeExam()">✖ Close Exam</button>
+        <!-- Close button hidden - auto-close on submission -->
     </div>
     <iframe id="examIframe" class="exam-iframe" src="about:blank"></iframe>
 </div>
@@ -138,6 +570,7 @@ let currentUserId = null;
 let studentProfile = null;
 let currentExamId = null;
 let isLoading = false;
+let autoCloseTimeout = null;
 
 function getExamLink(exam) { return exam.exam_link || exam.online_link || null; }
 
@@ -153,7 +586,7 @@ function filterExamsByStudent(exams) {
     });
 }
 
-// Load exam content in iframe (NO CAMERA HERE)
+// Load exam content in iframe
 async function loadExamContent(examId, examName) {
     try {
         const { data: exam } = await sb.from('exams').select('online_link, exam_link').eq('id', examId).single();
@@ -182,20 +615,24 @@ function startExam(examId, examName) {
     loadExamContent(examId, examName);
 }
 
-function closeExam() {
-    document.getElementById('examIframe').src = 'about:blank';
-    document.getElementById('examContainer').style.display = 'none';
-    document.querySelector('header').style.display = 'block';
-    document.querySelector('.exam-list').style.display = 'block';
-    refreshExams();
-    showToast('Exam closed. Progress saved.', 'info');
+// Auto-close exam when completed - NO visible close button needed
+function autoCloseExam() {
+    if (autoCloseTimeout) clearTimeout(autoCloseTimeout);
+    autoCloseTimeout = setTimeout(() => {
+        document.getElementById('examIframe').src = 'about:blank';
+        document.getElementById('examContainer').style.display = 'none';
+        document.querySelector('header').style.display = 'block';
+        document.querySelector('.exam-list').style.display = 'block';
+        refreshExams();
+        showToast('Exam closed. Progress saved.', 'info');
+    }, 2000);
 }
 
-// Listen for exam completion from iframe
+// Listen for exam completion from iframe - AUTO CLOSE
 window.addEventListener('message', function(event) {
     if (event.data === 'exam_completed' || event.data?.type === 'exam_completed') {
-        showToast('✅ Exam completed!', 'success');
-        setTimeout(() => closeExam(), 2000);
+        showToast('✅ Exam completed! Redirecting...', 'success');
+        autoCloseExam();
     }
 });
 
@@ -203,7 +640,7 @@ window.addEventListener('message', function(event) {
 async function loadExams(showLoading = true) {
     if (isLoading) return;
     isLoading = true;
-    if (showLoading) document.getElementById('examList').innerHTML = '<div class="exam-card">⏳ Loading exams...</div>';
+    if (showLoading) document.getElementById('examList').innerHTML = '<div class="exam-card loading-skeleton" style="height: 200px;"></div>';
     
     currentUserId = localStorage.getItem('currentUserId');
     if (!currentUserId || currentUserId === 'null') {
@@ -215,9 +652,13 @@ async function loadExams(showLoading = true) {
         const { data: profile } = await sb.from('consolidated_user_profiles_table').select('*').eq('user_id', currentUserId).single();
         if (profile) studentProfile = profile;
         
+        // Get student ID for display
+        const studentIdDisplay = profile?.student_id ? `<span class="student-id-badge">ID: ${profile.student_id}</span>` : '';
+        
         document.getElementById('userInfo').innerHTML = `
             <strong>👤 ${studentProfile?.full_name || 'Student'}</strong><br>
             📚 ${studentProfile?.program || 'N/A'} | Block ${studentProfile?.block || 'N/A'} | Intake: ${studentProfile?.intake_year || 'N/A'}
+            <br>${studentIdDisplay}
         `;
         
         const { data: exams } = await sb.from('exams').select('*').not('online_link', 'is', null);
@@ -251,28 +692,30 @@ async function loadExams(showLoading = true) {
                     <div>Score: ${grade.marks || 0} marks</div>
                 </div>`;
             } else if (hasGrade && !isReleased) {
-                gradeHtml = `<div class="grade-info grade-not-released">🔒 Results pending release</div>`;
+                gradeHtml = `<div class="grade-info grade-not-released">🔒 Results pending release from instructor</div>`;
             }
             
             container.innerHTML += `
                 <div class="exam-card">
-                    <div class="exam-title">${exam.exam_name} ${statusBadge}</div>
+                    <div class="exam-header">
+                        <div class="exam-title">${exam.exam_name} ${statusBadge}</div>
+                    </div>
                     <div class="exam-meta">
                         <span>📋 ${exam.exam_type || 'EXAM'}</span>
-                        <span>⏱️ ${exam.duration_minutes || 30} min</span>
+                        <span>⏱️ ${exam.duration_minutes || 30} minutes</span>
                         <span>📊 ${exam.total_marks || 'N/A'} marks</span>
                     </div>
                     ${gradeHtml}
                     <div class="exam-actions">
                         ${!hasGrade ? `<button class="btn-start" onclick="startExam(${exam.id}, '${exam.exam_name.replace(/'/g, "\\'")}')">▶ Start Exam</button>` : 
-                          (isReleased ? `<button class="btn-details" onclick="viewResult(${exam.id})">📋 Results</button>` : '')}
+                          (isReleased ? `<button class="btn-details" onclick="viewResult(${exam.id})">📋 View Results</button>` : '')}
                     </div>
                 </div>
             `;
         }
     } catch(err) { 
         console.error(err); 
-        document.getElementById('examList').innerHTML = '<div class="exam-card">⚠️ Error loading exams</div>'; 
+        document.getElementById('examList').innerHTML = '<div class="exam-card">⚠️ Error loading exams. Please refresh.</div>'; 
     }
     isLoading = false;
 }
@@ -280,31 +723,41 @@ async function loadExams(showLoading = true) {
 async function viewResult(examId) {
     const { data: grade } = await sb.from('exam_grades').select('*').eq('student_id', currentUserId).eq('exam_id', examId).eq('question_id', '00000000-0000-0000-0000-000000000000').single();
     const percent = parseFloat(grade?.total_score || 0);
+    const studentIdDisplay = studentProfile?.student_id ? `<p><strong>Student ID:</strong> ${studentProfile.student_id}</p>` : '';
+    
     document.getElementById('modalContent').innerHTML = `
-        <h2>📊 Results</h2>
-        <div style="background:${percent>=60?'#D1FAE5':'#FEE2E2'}; padding:20px; border-radius:12px;">
-            <h3>${percent>=60?'✅ PASS':'❌ FAIL'}</h3>
-            <p>Score: ${grade?.marks || 0} marks</p>
-            <p>Percentage: ${percent}%</p>
+        <h2>📊 Exam Results</h2>
+        <div style="background:${percent>=60?'linear-gradient(135deg, #D1FAE5, #A7F3D0)':'linear-gradient(135deg, #FEE2E2, #FECACA)'}; padding:25px; border-radius:20px; margin:20px 0;">
+            <h3 style="margin-bottom:15px;">${percent>=60?'✅ PASS ✓':'❌ FAIL ✗'}</h3>
+            <p><strong>Score:</strong> ${grade?.marks || 0} marks</p>
+            <p><strong>Percentage:</strong> ${percent}%</p>
+            ${studentIdDisplay}
         </div>
+        <p style="color:#64748B; font-size:0.85rem;">Results have been saved to your academic record.</p>
     `;
     document.getElementById('resultsModal').style.display = 'flex';
 }
 
 function refreshExams() { loadExams(false); }
 function closeModal() { document.getElementById('resultsModal').style.display = 'none'; }
-function logout() { localStorage.clear(); window.location.href = 'exam_login.html'; }
+function logout() { 
+    if (autoCloseTimeout) clearTimeout(autoCloseTimeout);
+    localStorage.clear(); 
+    window.location.href = 'exam_login.html'; 
+}
+
 function showToast(msg, type) {
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
     toast.innerHTML = msg;
     document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 3500);
+    setTimeout(() => toast.remove(), 4000);
 }
 
 window.addEventListener('DOMContentLoaded', () => loadExams());
+
+// Expose functions globally
 window.startExam = startExam;
-window.closeExam = closeExam;
 window.refreshExams = refreshExams;
 window.closeModal = closeModal;
 window.logout = logout;
