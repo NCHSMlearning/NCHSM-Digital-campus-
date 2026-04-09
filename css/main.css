@@ -2985,3 +2985,83 @@ p {
         margin-bottom: 2rem !important;
     }
 }
+/* ========== PERMANENT SPACING FIX - DO NOT REMOVE ========== */
+/* Fixes the empty space issue on desktop */
+
+/* Remove container width limitation on all screens */
+.container {
+    max-width: none !important;
+    width: 100% !important;
+}
+
+/* Desktop-specific spacing (1200px and above) */
+@media (min-width: 1200px) {
+    /* Main content padding */
+    .main {
+        padding: 40px 48px !important;
+        width: auto !important;
+        flex: 1 !important;
+    }
+    
+    /* Cards grid spacing */
+    .cards-grid {
+        gap: 28px !important;
+        margin-bottom: 40px !important;
+        width: 100% !important;
+    }
+    
+    /* Stat cards internal padding */
+    .stat-card {
+        padding: 24px 20px !important;
+    }
+    
+    .stat-value {
+        font-size: 2rem !important;
+    }
+    
+    /* Action cards */
+    .actions-grid {
+        gap: 28px !important;
+        margin: 40px 0 !important;
+    }
+    
+    /* Tab content */
+    .tab-content {
+        padding: 36px !important;
+        margin-bottom: 40px !important;
+    }
+    
+    /* Welcome and announcement cards */
+    .welcome-card {
+        padding: 20px 28px !important;
+        margin-bottom: 28px !important;
+    }
+    
+    .announcement-banner {
+        padding: 16px 28px !important;
+        margin-bottom: 28px !important;
+    }
+    
+    /* Summary row */
+    .horizontal-summary-row {
+        gap: 28px !important;
+        padding: 28px !important;
+        margin-bottom: 40px !important;
+    }
+    
+    /* Tables */
+    .modern-table th, 
+    .modern-table td {
+        padding: 16px 24px !important;
+    }
+    
+    /* Footer */
+    .app-footer {
+        margin-top: 60px !important;
+    }
+    
+    .footer-content {
+        padding: 48px 48px !important;
+        gap: 48px !important;
+    }
+}
