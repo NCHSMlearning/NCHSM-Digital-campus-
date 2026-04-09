@@ -712,27 +712,86 @@ async function initCameraForExam(examId, examName) {
 
 async function loadExamContent(examId, examName) {
     try {
-        const { data: exam, error } = await sb.from('exams').select('online_link, exam_link').eq('id', examId).single();
+        const { data: exam, error } = await sb
+            .from('exams')
+            .select('online_link, exam_link')
+            .eq('id', examId)
+            .single();
+        
         if (error) throw error;
         
         let examLink = exam.exam_link || exam.online_link;
-        if (!examLink) { showToast('Exam link not available', 'warning'); return; }
+        if (!examLink) {
+            showToast('Exam link not available', 'warning');
+            return;
+        }
         
         examLink = examLink.replace('{user_id}', currentUserId);
-        currentExamId = examId;
         
+        currentExamId = examId;
         document.getElementById('examTitle').innerHTML = `📝 ${examName}`;
-        document.getElementById('examIframe').src = examLink;
+        
+        const iframe = document.getElementById('examIframe');
+        
+        // COMPLETE FIX: Block camera completely
+        // 1. Remove any existing allow attributes
+        iframe.removeAttribute('allow');
+        iframe.setAttribute('allow', '');
+        
+        // 2. Add sandbox without camera permission
+        iframe.setAttribute('sandbox', 'allow-same-origin allow-scripts allow-popups allow-forms allow-modals');
+        
+        // 3. Set the source
+        iframe.src = examLink;
+        
+        // 4. Try to disable camera via URL parameters (if external site supports it)
+        if (examLink.includes('nakurucollegeofhealthelearning')) {
+            // This may or may not work depending on the external site
+            const separator = examLink.includes('?') ? '&' : '?';
+            iframe.src = examLink + separator + 'camera=0&webcam=disabled&proctor=off';
+        }
+        
+        // 5. After load, try to hide any camera elements
+        iframe.onload = () => {
+            setTimeout(() => {
+                try {
+                    const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+                    if (iframeDoc) {
+                        // Hide all video elements (camera feeds)
+                        const videos = iframeDoc.querySelectorAll('video');
+                        videos.forEach(video => {
+                            if (video.srcObject) {
+                                try {
+                                    video.srcObject.getTracks().forEach(track => track.stop());
+                                } catch(e) {}
+                            }
+                            video.style.cssText = 'display:none !important; visibility:hidden !important; width:0 !important; height:0 !important;';
+                            video.pause();
+                        });
+                        
+                        // Hide any camera-related elements
+                        const cameraElements = iframeDoc.querySelectorAll('[class*="camera"], [id*="camera"], [class*="webcam"], [id*="webcam"], .proctoring, .face-detection');
+                        cameraElements.forEach(el => {
+                            el.style.cssText = 'display:none !important; visibility:hidden !important;';
+                        });
+                    }
+                } catch(e) {
+                    // Cross-origin - can't access, but sandbox helps
+                    console.log('Cross-origin iframe - camera may still be requested but will fail');
+                }
+            }, 1000);
+        };
+        
         document.getElementById('examContainer').style.display = 'flex';
         document.getElementById('questionNavPanel').style.display = 'block';
         
         document.querySelector('header').style.display = 'none';
         document.querySelector('.exam-list').style.display = 'none';
         
-        // Try to load questions after iframe loads
         setTimeout(() => loadQuestionsFromIframe(), 3000);
         
-        showToast('Exam loaded. Camera proctoring active!', 'success');
+        showToast('Exam loaded. Portal proctoring active. External camera blocked.', 'success');
+        
     } catch (err) {
         console.error('Error loading exam:', err);
         showToast('Could not load exam', 'warning');
