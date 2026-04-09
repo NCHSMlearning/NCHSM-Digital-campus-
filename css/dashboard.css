@@ -9,18 +9,18 @@
     width: 100%;
     max-width: 1400px;
     margin: 0 auto;
-    padding: 16px;
+    padding: 12px;
     animation: fadeIn 0.3s ease;
 }
 
-/* ========== WELCOME SECTION - COMPACT ========== */
+/* ========== WELCOME SECTION - EXTRA COMPACT ========== */
 .welcome-card {
     background: linear-gradient(135deg, #0B2A4A, #2A5C9A);
     color: white;
-    padding: 16px 20px;
-    border-radius: 12px;
-    margin-bottom: 20px;
-    box-shadow: 0 4px 12px rgba(11, 42, 74, 0.15);
+    padding: 10px 16px;
+    border-radius: 10px;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 8px rgba(11, 42, 74, 0.1);
     position: relative;
     overflow: hidden;
     transition: all 0.3s ease;
@@ -28,12 +28,12 @@
     justify-content: space-between;
     align-items: center;
     border: 1px solid rgba(253, 185, 19, 0.2);
-    min-height: 70px;
+    min-height: 55px;
 }
 
 .welcome-card:hover {
     transform: translateY(-1px);
-    box-shadow: 0 8px 20px rgba(42, 92, 154, 0.2);
+    box-shadow: 0 4px 12px rgba(42, 92, 154, 0.15);
 }
 
 .welcome-header {
@@ -44,52 +44,52 @@
 
 .welcome-header h2 {
     color: white;
-    font-size: 1.2rem;
+    font-size: 1rem;
     font-weight: 600;
-    margin: 0 0 2px 0;
-    line-height: 1.3;
+    margin: 0 0 1px 0;
+    line-height: 1.2;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 5px;
     flex-wrap: wrap;
 }
 
 .welcome-header h2 i {
     color: #FDB913;
-    font-size: 1.2rem;
+    font-size: 1rem;
 }
 
 #welcome-student-name {
     color: #FDB913;
     font-weight: 700;
     background: rgba(253, 185, 19, 0.15);
-    padding: 2px 8px;
-    border-radius: 20px;
-    font-size: 1rem;
+    padding: 1px 6px;
+    border-radius: 16px;
+    font-size: 0.85rem;
     margin-left: 2px;
     display: inline-block;
 }
 
 .welcome-subtitle {
-    font-size: 0.8rem;
+    font-size: 0.7rem;
     font-weight: 300;
     margin: 0;
     opacity: 0.9;
     max-width: 400px;
     color: rgba(255, 255, 255, 0.9);
-    line-height: 1.4;
+    line-height: 1.3;
 }
 
 .welcome-time {
     background: rgba(255, 255, 255, 0.1);
-    padding: 6px 12px;
-    border-radius: 30px;
+    padding: 4px 10px;
+    border-radius: 20px;
     backdrop-filter: blur(5px);
     border: 1px solid rgba(253, 185, 19, 0.3);
     display: flex;
     align-items: center;
-    gap: 6px;
-    font-size: 0.75rem;
+    gap: 5px;
+    font-size: 0.7rem;
     font-weight: 500;
     color: white;
     position: relative;
@@ -99,21 +99,21 @@
 
 .welcome-time i {
     color: #FDB913;
-    font-size: 0.8rem;
+    font-size: 0.7rem;
 }
 
 /* ========== ANNOUNCEMENT BANNER - COMPACT ========== */
 .announcement-banner {
     background: rgba(253, 185, 19, 0.05);
     border-left: 3px solid #FDB913;
-    padding: 12px 16px;
-    border-radius: 10px;
-    margin-bottom: 20px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    margin-bottom: 16px;
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
     transition: all 0.3s ease;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
     border: 1px solid rgba(253, 185, 19, 0.15);
 }
 
@@ -124,9 +124,9 @@
 
 .announcement-icon {
     background: linear-gradient(135deg, #0B2A4A, #2A5C9A);
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -136,7 +136,7 @@
 
 .announcement-icon i {
     color: #FDB913;
-    font-size: 1rem;
+    font-size: 0.85rem;
 }
 
 .announcement-content {
@@ -145,9 +145,9 @@
 
 .announcement-title {
     color: #0B2A4A;
-    font-size: 0.8rem;
+    font-size: 0.7rem;
     font-weight: 700;
-    margin: 0 0 2px 0;
+    margin: 0 0 1px 0;
     letter-spacing: 0.3px;
     text-transform: uppercase;
 }
@@ -155,15 +155,15 @@
 .announcement-text {
     color: #2A5C9A;
     margin: 0;
-    font-size: 0.85rem;
-    line-height: 1.4;
+    font-size: 0.75rem;
+    line-height: 1.3;
     font-weight: 500;
 }
 
 /* ========== SECTION HEADERS ========== */
 .section-header {
-    margin: 24px 0 16px 0;
-    padding-bottom: 8px;
+    margin: 20px 0 12px 0;
+    padding-bottom: 6px;
     border-bottom: 1px solid rgba(42, 92, 154, 0.2);
     display: flex;
     justify-content: space-between;
@@ -172,21 +172,21 @@
 
 .section-header h2 {
     color: #0B2A4A;
-    font-size: 1.2rem;
+    font-size: 1rem;
     font-weight: 600;
     margin: 0;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
 }
 
 .section-header h2 i {
     color: #FDB913;
-    font-size: 1.1rem;
+    font-size: 0.9rem;
     background: rgba(253, 185, 19, 0.1);
-    width: 26px;
-    height: 26px;
-    border-radius: 6px;
+    width: 22px;
+    height: 22px;
+    border-radius: 5px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -194,23 +194,23 @@
 
 .section-subtitle {
     color: #6b7280;
-    font-size: 0.8rem;
+    font-size: 0.7rem;
     margin: 2px 0 0 0;
 }
 
 /* ========== QUICK SNAPSHOT CARDS - EXTRA COMPACT ========== */
 .cards-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 14px;
-    margin-bottom: 24px;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+    margin-bottom: 20px;
 }
 
 .stat-card {
     background: white;
-    border-radius: 12px;
-    padding: 14px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    border-radius: 10px;
+    padding: 10px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
     border: 1px solid #edf2f7;
     cursor: pointer;
     transition: all 0.2s ease;
@@ -232,26 +232,26 @@
 }
 
 .stat-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 14px rgba(11, 42, 74, 0.08);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(11, 42, 74, 0.08);
     border-color: rgba(253, 185, 19, 0.3);
 }
 
 .card-header {
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin-bottom: 8px;
+    gap: 6px;
+    margin-bottom: 6px;
 }
 
 .card-icon {
-    width: 30px;
-    height: 30px;
-    border-radius: 8px;
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.9rem;
+    font-size: 0.8rem;
     color: white;
 }
 
@@ -278,7 +278,7 @@
 
 .card-header h3 {
     margin: 0;
-    font-size: 0.8rem;
+    font-size: 0.7rem;
     font-weight: 600;
     color: #4b5563;
     flex: 1;
@@ -293,10 +293,10 @@
 }
 
 .stat-value {
-    font-size: 1.3rem;
+    font-size: 1.1rem;
     font-weight: 700;
-    margin: 0 0 2px 0;
-    line-height: 1.2;
+    margin: 0 0 1px 0;
+    line-height: 1.1;
     color: #0B2A4A;
 }
 
@@ -322,20 +322,20 @@
 
 .stat-subtitle {
     color: #6b7280;
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     margin: 0;
     font-weight: 400;
 }
 
 .stat-details {
-    margin-top: 8px;
-    padding-top: 6px;
+    margin-top: 6px;
+    padding-top: 4px;
     border-top: 1px solid #f3f4f6;
-    font-size: 0.7rem;
+    font-size: 0.65rem;
 }
 
 .stat-details p {
-    margin: 2px 0;
+    margin: 1px 0;
     color: #6b7280;
     display: flex;
     justify-content: space-between;
@@ -344,28 +344,28 @@
 .stat-details strong {
     color: #2A5C9A;
     font-weight: 600;
-    font-size: 0.7rem;
+    font-size: 0.65rem;
 }
 
 .pending-text {
     color: #FDB913 !important;
     font-weight: 600;
-    font-size: 0.7rem;
+    font-size: 0.65rem;
 }
 
 /* ========== ACTION CARDS - COMPACT ========== */
 .actions-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 14px;
-    margin-bottom: 24px;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 10px;
+    margin-bottom: 20px;
 }
 
 .action-card {
     background: white;
-    border-radius: 12px;
-    padding: 14px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    border-radius: 10px;
+    padding: 10px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
     border: 1px solid #edf2f7;
     border-left: 3px solid #0B2A4A;
     transition: all 0.2s ease;
@@ -392,21 +392,21 @@
 
 .action-card:hover {
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.06);
 }
 
 .action-header {
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin-bottom: 8px;
+    gap: 6px;
+    margin-bottom: 6px;
 }
 
 .action-header i {
-    font-size: 1rem;
-    width: 28px;
-    height: 28px;
-    border-radius: 6px;
+    font-size: 0.85rem;
+    width: 24px;
+    height: 24px;
+    border-radius: 5px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -432,7 +432,7 @@
 
 .action-header h3 {
     margin: 0;
-    font-size: 0.85rem;
+    font-size: 0.75rem;
     font-weight: 600;
     color: #1f2937;
     flex: 1;
@@ -440,32 +440,32 @@
 
 .action-body {
     flex: 1;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
 }
 
 .action-body p {
-    margin: 0 0 4px 0;
+    margin: 0 0 3px 0;
     color: #4b5563;
-    line-height: 1.4;
-    font-size: 0.8rem;
+    line-height: 1.3;
+    font-size: 0.7rem;
 }
 
 .announcement-meta {
-    font-size: 0.7rem;
+    font-size: 0.6rem;
     color: #6b7280;
-    margin-top: 4px;
+    margin-top: 3px;
     display: flex;
-    gap: 8px;
+    gap: 6px;
 }
 
 .btn-action {
     background: linear-gradient(135deg, #0B2A4A, #2A5C9A);
     color: white;
     border: none;
-    padding: 6px 12px;
-    border-radius: 6px;
+    padding: 5px 10px;
+    border-radius: 5px;
     font-weight: 500;
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     cursor: pointer;
     transition: all 0.2s ease;
     display: inline-flex;
@@ -477,43 +477,47 @@
 .btn-action:hover {
     background: linear-gradient(135deg, #2A5C9A, #0B2A4A);
     transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(253, 185, 19, 0.3);
+    box-shadow: 0 2px 6px rgba(253, 185, 19, 0.3);
 }
 
 /* ========== RESPONSIVE ========== */
 @media (max-width: 768px) {
     .dashboard-container {
-        padding: 12px;
+        padding: 10px;
     }
     
     .cards-grid {
         grid-template-columns: 1fr;
-        gap: 12px;
+        gap: 10px;
     }
     
     .stat-card {
-        padding: 12px;
+        padding: 10px;
     }
     
     .stat-value {
-        font-size: 1.2rem;
+        font-size: 1rem;
     }
 }
 
 @media (max-width: 480px) {
     .welcome-header h2 {
-        font-size: 1rem;
-    }
-    
-    #welcome-student-name {
         font-size: 0.9rem;
     }
     
+    #welcome-student-name {
+        font-size: 0.8rem;
+    }
+    
     .welcome-subtitle {
-        font-size: 0.75rem;
+        font-size: 0.65rem;
     }
     
     .stat-value {
-        font-size: 1.1rem;
+        font-size: 0.95rem;
+    }
+    
+    .card-header h3 {
+        font-size: 0.65rem;
     }
 }
