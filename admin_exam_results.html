@@ -107,10 +107,21 @@
         .btn-info:hover { background: #3182CE; transform: translateY(-2px); }
         .btn-release { background: #8B5CF6; color: white; }
         .btn-release:hover { background: #7C3AED; transform: translateY(-2px); }
+        .btn-success { background: #10B981; color: white; }
+        .btn-success:hover { background: #059669; transform: translateY(-2px); }
         
         .table-container { background: white; border-radius: 20px; overflow-x: auto; margin-bottom: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
         .table-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; background: #F8FAFC; border-bottom: 1px solid #E2E8F0; flex-wrap: wrap; gap: 15px; }
         .table-header h2 { font-size: 1.2rem; color: #0A3D62; }
+        .exam-status-toggle { display: flex; gap: 10px; background: #F1F5F9; padding: 5px; border-radius: 40px; }
+        .status-toggle-btn { padding: 8px 20px; border: none; background: transparent; border-radius: 30px; cursor: pointer; font-weight: 600; font-size: 0.8rem; transition: all 0.2s; }
+        .status-toggle-btn.active { background: #0A3D62; color: white; }
+        .publish-toggle { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+        .publish-toggle input { width: 40px; height: 20px; appearance: none; background: #CBD5E1; border-radius: 20px; position: relative; cursor: pointer; transition: all 0.2s; }
+        .publish-toggle input:checked { background: #10B981; }
+        .publish-toggle input::before { content: ''; position: absolute; width: 16px; height: 16px; background: white; border-radius: 50%; top: 2px; left: 3px; transition: all 0.2s; }
+        .publish-toggle input:checked::before { left: 21px; }
+        
         table { width: 100%; border-collapse: collapse; }
         th { padding: 16px 20px; text-align: left; font-weight: 600; color: #0A3D62; background: #F8FAFC; border-bottom: 2px solid #E2E8F0; font-size: 0.85rem; }
         td { padding: 14px 20px; border-bottom: 1px solid #E2E8F0; font-size: 0.85rem; }
@@ -120,6 +131,8 @@
         .status-active { background: #D1FAE5; color: #065F46; padding: 4px 12px; border-radius: 30px; display: inline-block; font-size: 0.75rem; font-weight: 600; }
         .status-completed { background: #8B5CF6; color: white; padding: 4px 12px; border-radius: 30px; display: inline-block; font-size: 0.75rem; font-weight: 600; }
         .status-critical { background: #FEE2E2; color: #DC2626; padding: 4px 12px; border-radius: 30px; display: inline-block; animation: pulseRed 1s infinite; font-weight: 600; }
+        .status-published { background: #10B981; color: white; padding: 4px 12px; border-radius: 30px; display: inline-block; font-size: 0.75rem; font-weight: 600; }
+        .status-draft { background: #F59E0B; color: white; padding: 4px 12px; border-radius: 30px; display: inline-block; font-size: 0.75rem; font-weight: 600; }
         .student-id-badge { font-family: monospace; background: #F1F5F9; padding: 2px 8px; border-radius: 6px; font-size: 0.7rem; color: #475569; }
         .action-btn { padding: 6px 14px; border-radius: 8px; border: none; font-size: 0.75rem; font-weight: 600; cursor: pointer; margin: 2px; transition: all 0.2s; }
         .btn-view { background: #4299E1; color: white; }
@@ -130,6 +143,8 @@
         .btn-delete:hover { background: #B91C1C; }
         .btn-assign { background: #38A169; color: white; }
         .btn-assign:hover { background: #2F855A; }
+        .btn-reset { background: #8B5CF6; color: white; }
+        .btn-reset:hover { background: #7C3AED; }
         
         .loading { text-align: center; padding: 50px; color: #94A3B8; }
         .pagination { display: flex; justify-content: center; gap: 8px; margin: 25px 0; }
@@ -153,7 +168,7 @@
 <div class="container">
     <div class="header">
         <h1><i class="fas fa-shield-alt"></i> NCHSM Exam Proctoring Center</h1>
-        <p>Complete Exam Management | Create | Assign | Monitor</p>
+        <p>Complete Exam Management | Create | Assign | Monitor | Publish</p>
         <div class="admin-info">
             <div class="user" id="adminName">Loading admin profile...</div>
             <div style="display: flex; align-items: center; gap: 15px;">
@@ -181,6 +196,7 @@
     <div class="filters-container" id="filtersContainer"></div>
 
     <div class="tables-container">
+        <!-- Students Results Tab -->
         <div class="table-container" id="studentsTableContainer">
             <div class="table-header">
                 <h2><i class="fas fa-chart-line"></i> Students with Exam Results</h2>
@@ -195,26 +211,34 @@
             <div class="pagination" id="studentsPagination"></div>
         </div>
 
+        <!-- All Students Tab -->
         <div class="table-container" id="allStudentsTableContainer" style="display:none;">
             <div class="table-header"><h2><i class="fas fa-address-book"></i> All Registered Students</h2><div class="table-actions"><button class="btn btn-info" onclick="openAssignExamModal()"><i class="fas fa-plus"></i> Assign Exam</button><button class="btn btn-secondary" onclick="exportToExcel('allStudents')"><i class="fas fa-file-excel"></i> Export</button></div></div>
             <div id="allStudentsLoading" class="loading"><i class="fas fa-spinner fa-spin"></i> Loading students...</div>
-            <table id="allStudentsTable" style="display:none;"><thead><tr><th>Student ID</th><th>Name</th><th>Email</th><th>Program</th><th>Block</th><th>Exams Taken</th><th>Actions</th></tr></thead><tbody id="allStudentsBody"></tbody></tr>
+            <table id="allStudentsTable" style="display:none;"><thead><tr><th>Student ID</th><th>Name</th><th>Email</th><th>Program</th><th>Block</th><th>Exams Taken</th><th>Actions</th></tr></thead><tbody id="allStudentsBody"></tbody></table>
             <div class="pagination" id="allStudentsPagination"></div>
         </div>
 
+        <!-- Exams Management Tab -->
         <div class="table-container" id="examsTableContainer" style="display:none;">
             <div class="table-header">
                 <h2><i class="fas fa-list"></i> Exam Management</h2>
                 <div class="table-actions">
+                    <div class="exam-status-toggle">
+                        <button class="status-toggle-btn active" onclick="filterExamsByStatus('all')">All Exams</button>
+                        <button class="status-toggle-btn" onclick="filterExamsByStatus('active')">Active</button>
+                        <button class="status-toggle-btn" onclick="filterExamsByStatus('completed')">Completed</button>
+                    </div>
                     <button class="btn btn-primary" onclick="openCreateExamModal()"><i class="fas fa-plus-circle"></i> Create New Exam</button>
                     <button class="btn btn-secondary" onclick="exportToExcel('exams')"><i class="fas fa-file-excel"></i> Export</button>
                 </div>
             </div>
             <div id="examsLoading" class="loading"><i class="fas fa-spinner fa-spin"></i> Loading exams...</div>
-            <table id="examsTable" style="display:none;"><thead><tr><th>Exam Name</th><th>Type</th><th>Course</th><th>Duration</th><th>Students</th><th>Status</th><th>Actions</th></tr></thead><tbody id="examsBody"></tbody></table>
+            <table id="examsTable" style="display:none;"><thead><tr><th>Exam Name</th><th>Type</th><th>Course</th><th>Duration</th><th>Students</th><th>Status</th><th>Published</th><th>Actions</th></tr></thead><tbody id="examsBody"></tbody></table>
             <div class="pagination" id="examsPagination"></div>
         </div>
 
+        <!-- Proctoring Alerts Tab -->
         <div class="table-container" id="proctoringTableContainer" style="display:none;">
             <div class="table-header">
                 <h2><i class="fas fa-exclamation-triangle"></i> Live Proctoring Alerts</h2>
@@ -224,7 +248,7 @@
                 </div>
             </div>
             <div id="proctoringLoading" class="loading"><i class="fas fa-spinner fa-spin"></i> Loading proctoring alerts...</div>
-            <table id="proctoringTable" style="display:none;"><thead><tr><th>Time</th><th>Student ID</th><th>Student Name</th><th>Exam</th><th>Alert Type</th><th>Details</th><th>Severity</th><th>Actions</th></tr></thead><tbody id="proctoringBody"></tbody><tr>
+            <table id="proctoringTable" style="display:none;"><thead><tr><th>Time</th><th>Student ID</th><th>Student Name</th><th>Exam</th><th>Alert Type</th><th>Details</th><th>Severity</th><th>Actions</th></tr></thead><tbody id="proctoringBody"></tbody></table>
             <div class="pagination" id="proctoringPagination"></div>
         </div>
     </div>
@@ -235,6 +259,7 @@
 <div id="examModal" class="modal"><div class="modal-content"><span class="close-modal" onclick="closeExamModal()">&times;</span><h2 id="examModalTitle"><i class="fas fa-plus-circle"></i> Create New Exam</h2><form id="examForm"><div class="form-group"><label>Exam Name *</label><input type="text" id="examName" required placeholder="e.g., OSCE Final Exam"></div><div class="form-group"><label>Exam Type *</label><select id="examType" required><option value="EXAM">Final Exam</option><option value="CAT_1">CAT 1</option><option value="CAT_2">CAT 2</option><option value="QUIZ">Quiz</option></select></div><div class="form-group"><label>Course/Subject</label><input type="text" id="examCourse" placeholder="e.g., Clinical Medicine"></div><div class="form-group"><label>Duration (minutes) *</label><input type="number" id="examDuration" required value="30" min="1" max="180"></div><div class="form-group"><label>Total Marks</label><input type="number" id="examTotalMarks" value="100" min="1"></div><div class="form-group"><label>Exam Link / URL *</label><input type="url" id="examLink" required placeholder="https://your-exam-platform.com/exam"></div><div class="form-group"><label>Program (leave empty for all)</label><input type="text" id="examProgram" placeholder="e.g., Nursing, Clinical Medicine"></div><div class="form-group"><label>Block/Term</label><input type="text" id="examBlock" placeholder="e.g., Block 1, Semester 1"></div><div class="form-group"><label>Intake Year</label><input type="text" id="examIntakeYear" placeholder="e.g., 2024"></div><input type="hidden" id="editingExamId" value=""><div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;"><button type="button" class="btn btn-danger" onclick="closeExamModal()">Cancel</button><button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Exam</button></div></form></div></div>
 <div id="assignExamModal" class="modal"><div class="modal-content"><span class="close-modal" onclick="closeAssignExamModal()">&times;</span><h2><i class="fas fa-tasks"></i> Assign Exam to Student</h2><div class="form-group"><label>Select Student *</label><select id="assignStudentSelect" style="width:100%; padding:12px; border-radius:12px;"></select></div><div class="form-group"><label>Select Exam *</label><select id="assignExamSelect" style="width:100%; padding:12px; border-radius:12px;"></select></div><div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;"><button class="btn btn-danger" onclick="closeAssignExamModal()">Cancel</button><button class="btn btn-primary" onclick="confirmAssignExam()"><i class="fas fa-check"></i> Assign Exam</button></div></div></div>
 <div id="releaseModal" class="modal"><div class="modal-content"><span class="close-modal" onclick="closeReleaseModal()">&times;</span><h2><i class="fas fa-share-alt"></i> Release Results</h2><div class="filters-grid"><div class="filter-group"><label>Select Exam:</label><select id="releaseExamFilter" style="width:100%;" onchange="loadReleasePreview()"><option value="">-- Select Exam --</option></select></div><div class="filter-group"><label>Filter by Status:</label><select id="releaseStatusFilter" style="width:100%;" onchange="loadReleasePreview()"><option value="">All Statuses</option><option value="PASS">Pass Only</option><option value="FAIL">Fail Only</option></select></div></div><div id="releasePreview" style="display:none;"><div id="releaseSummary"></div><div style="max-height: 300px; overflow-y: auto;"><table class="preview-table"><thead><tr><th>Student ID</th><th>Student Name</th><th>Score</th><th>%</th><th>Status</th><th>Current</th></tr></thead><tbody id="releasePreviewBody"></tbody></table></div><div style="margin-top:20px; display:flex; gap:10px; justify-content:flex-end;"><button class="btn btn-danger" onclick="closeReleaseModal()">Cancel</button><button class="btn btn-release" id="confirmReleaseBtn" onclick="confirmReleaseResults()">Confirm Release</button></div></div></div></div>
+<div id="resetExamModal" class="modal"><div class="modal-content"><span class="close-modal" onclick="closeResetModal()">&times;</span><h2><i class="fas fa-trash-alt"></i> Reset Exam</h2><p>Are you sure you want to reset all student answers for this exam? This action cannot be undone.</p><div style="margin-top:20px; display:flex; gap:10px; justify-content:flex-end;"><button class="btn btn-danger" onclick="closeResetModal()">Cancel</button><button class="btn btn-warning" id="confirmResetBtn" onclick="confirmResetExam()">Reset Exam</button></div></div></div>
 
 <script>
 (function() {
@@ -249,9 +274,11 @@
     let currentTab = 'students';
     let studentsResults = [], allStudents = [], allExams = [], proctoringLogs = [], examsMap = {};
     let currentPage = { students: 1, allStudents: 1, exams: 1, proctoring: 1 };
-    const itemsPerPage = 15;
+    let currentExamFilter = 'all';
+    let itemsPerPage = 15;
     let notificationSubscription = null;
     let unreadCount = 0;
+    let examToReset = null;
     
     function checkAdminAuth() {
         const session = localStorage.getItem('adminSession');
@@ -291,7 +318,7 @@
         } else if (currentTab === 'exams') {
             container.innerHTML = `<h3><i class="fas fa-filter"></i> Filter Exams</h3><div class="filters-grid"><div class="filter-group"><label>Type</label><select id="examTypeFilter"><option value="">All</option><option value="EXAM">Final Exam</option><option value="CAT_1">CAT 1</option><option value="CAT_2">CAT 2</option><option value="QUIZ">Quiz</option></select></div></div><div class="search-box"><input type="text" id="examSearch" placeholder="Search exam name..."><button class="btn btn-primary" onclick="loadAllExams()">Search</button><button class="btn btn-danger" onclick="resetExamFilters()">Reset</button></div>`;
         } else {
-            container.innerHTML = `<h3><i class="fas fa-filter"></i> Filter Proctoring Alerts</h3><div class="filters-grid"><div class="filter-group"><label>Alert Type</label><select id="alertTypeFilter"><option value="">All</option><option value="multiple_faces_detected">🚨 Multiple Faces</option><option value="face_missing">😞 Face Missing</option><option value="tab_switched">📱 Tab Switched</option></select></div><div class="filter-group"><label>Severity</label><select id="severityFilter"><option value="">All</option><option value="critical">Critical</option><option value="warning">Warning</option></select></div></div><div class="search-box"><input type="text" id="proctoringSearch" placeholder="Search by student..."><button class="btn btn-primary" onclick="loadProctoringLogs()">Search</button><button class="btn btn-danger" onclick="resetProctoringFilters()">Reset</button></div>`;
+            container.innerHTML = `<h3><i class="fas fa-filter"></i> Filter Proctoring Alerts</h3><div class="filters-grid"><div class="filter-group"><label>Alert Type</label><select id="alertTypeFilter"><option value="">All</option><option value="multiple_faces_detected">🚨 Multiple Faces</option><option value="face_missing">😞 Face Missing</option></select></div><div class="filter-group"><label>Severity</label><select id="severityFilter"><option value="">All</option><option value="critical">Critical</option><option value="warning">Warning</option></select></div></div><div class="search-box"><input type="text" id="proctoringSearch" placeholder="Search by student..."><button class="btn btn-primary" onclick="loadProctoringLogs()">Search</button><button class="btn btn-danger" onclick="resetProctoringFilters()">Reset</button></div>`;
         }
     }
     
@@ -313,6 +340,41 @@
         if (data) { examsMap = {}; data.forEach(e => { examsMap[e.id] = e; }); }
         return examsMap;
     }
+    
+    // ========== EXAM STATUS FILTERING ==========
+    window.filterExamsByStatus = function(status) {
+        currentExamFilter = status;
+        document.querySelectorAll('.status-toggle-btn').forEach(btn => btn.classList.remove('active'));
+        event.target.classList.add('active');
+        loadAllExams();
+    };
+    
+    // ========== PUBLISH/UNPUBLISH TOGGLE ==========
+    window.togglePublish = async function(examId, currentStatus) {
+        const newStatus = currentStatus === 'published' ? 'draft' : 'published';
+        const { error } = await sb.from('exams').update({ status: newStatus }).eq('id', examId);
+        if (error) { alert('Error: ' + error.message); }
+        else { loadAllExams(); showToast(`Exam ${newStatus === 'published' ? 'published' : 'unpublished'}!`, 'success'); }
+    };
+    
+    // ========== RESET EXAM ==========
+    window.openResetModal = function(examId, examName) {
+        examToReset = { id: examId, name: examName };
+        document.getElementById('resetExamModal').style.display = 'flex';
+    };
+    
+    window.confirmResetExam = async function() {
+        if (!examToReset) return;
+        if (confirm(`Reset all student answers for "${examToReset.name}"? This cannot be undone.`)) {
+            // Delete all exam grades for this exam
+            const { error } = await sb.from('exam_grades').delete().eq('exam_id', examToReset.id);
+            if (error) { alert('Error: ' + error.message); }
+            else { alert(`Exam "${examToReset.name}" has been reset!`); loadAllExams(); loadStudentsWithResults(); }
+        }
+        closeResetModal();
+    };
+    
+    window.closeResetModal = function() { document.getElementById('resetExamModal').style.display = 'none'; examToReset = null; };
     
     // ========== EXAM MANAGEMENT FUNCTIONS ==========
     window.openCreateExamModal = function(examId = null) {
@@ -357,7 +419,8 @@
             online_link: document.getElementById('examLink').value,
             program_type: document.getElementById('examProgram').value || null,
             block_term: document.getElementById('examBlock').value || null,
-            intake_year: document.getElementById('examIntakeYear').value || null
+            intake_year: document.getElementById('examIntakeYear').value || null,
+            status: 'draft'
         };
         let result;
         if (examId) {
@@ -372,7 +435,6 @@
     window.deleteExam = async function(examId, examName) {
         if (confirm(`Delete exam "${examName}"? This will also delete all student answers.`)) {
             await sb.from('exam_grades').delete().eq('exam_id', examId);
-            await sb.from('exam_questions').delete().eq('exam_id', examId);
             const { error } = await sb.from('exams').delete().eq('id', examId);
             if (error) alert('Error: ' + error.message);
             else { alert('Exam deleted!'); loadAllExams(); loadStudentsWithResults(); }
@@ -443,9 +505,6 @@
             await loadNotifications();
             if (currentTab === 'proctoring') loadProctoringLogs();
             updateStats();
-            if (payload.new.event_type === 'multiple_faces_detected') {
-                new Audio('https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3').play().catch(e=>{});
-            }
         }).subscribe();
     }
     
@@ -475,7 +534,7 @@
         currentPage.proctoring = 1; loadProctoringLogs();
     };
     
-    // ========== FIXED STUDENTS RESULTS FUNCTIONS ==========
+    // ========== STUDENTS RESULTS FUNCTIONS ==========
     window.loadStudentsWithResults = async function() {
         const loadingDiv = document.getElementById('studentsLoading');
         const table = document.getElementById('studentsTable');
@@ -495,7 +554,6 @@
             
             studentsResults = grades.map(g => ({ ...g, student_profile: profileMap[g.student_id] || null, isReleased: releasedSet.has(g.id), exam_info: examsMap[g.exam_id] || null }));
             
-            // Apply filters
             const examFilter = document.getElementById('examFilter')?.value;
             const statusFilter = document.getElementById('statusFilter')?.value;
             const search = document.getElementById('searchInput')?.value;
@@ -517,22 +575,11 @@
         const page = studentsResults.slice(start, start + itemsPerPage);
         const tbody = document.getElementById('studentsBody');
         if(page.length === 0) { tbody.innerHTML = '<tr><td colspan="10" style="text-align:center">No results found</td></tr>'; return; }
-        tbody.innerHTML = page.map(r => `<tr>
-            <td><span class="student-id-badge">${r.student_profile?.student_id || 'N/A'}</span></td>
-            <td><strong>${r.student_profile?.full_name || 'Unknown'}</strong></td>
-            <td>${r.student_profile?.email || '-'}</td>
-            <td>${r.student_profile?.program || '-'}</td>
-            <td>${r.exam_info?.exam_name || 'Exam ' + r.exam_id}</td>
-            <td>${r.marks || 0}</td>
-            <td>${parseFloat(r.total_score || 0).toFixed(1)}%</td>
-            <td><span class="${r.result_status === 'PASS' ? 'status-pass' : 'status-fail'}">${r.result_status || 'PENDING'}</span></td>
-            <td>${r.isReleased ? '<span class="status-pass">✅ Released</span>' : '<span class="status-pending">🔒 Not Released</span>'}</td>
-            <td><button class="action-btn btn-view" onclick="viewExamResult('${r.student_id}',${r.exam_id})">View</button></td>
-        </tr>`).join('');
+        tbody.innerHTML = page.map(r => `<tr><td><span class="student-id-badge">${r.student_profile?.student_id || 'N/A'}</span></td><td><strong>${r.student_profile?.full_name || 'Unknown'}</strong></td><td>${r.student_profile?.email || '-'}</td><td>${r.student_profile?.program || '-'}</td><td>${r.exam_info?.exam_name || 'Exam ' + r.exam_id}</td><td>${r.marks || 0}</td><td>${parseFloat(r.total_score || 0).toFixed(1)}%</td><td><span class="${r.result_status === 'PASS' ? 'status-pass' : 'status-fail'}">${r.result_status || 'PENDING'}</span></td><td>${r.isReleased ? '<span class="status-pass">✅ Released</span>' : '<span class="status-pending">🔒 Not Released</span>'}</td><td><button class="action-btn btn-view" onclick="viewExamResult('${r.student_id}',${r.exam_id})">View</button></td></tr>`).join('');
         renderPagination('students', studentsResults.length);
     }
     
-    // ========== FIXED EXAMS FUNCTIONS WITH ACTIVE/COMPLETED STATUS ==========
+    // ========== EXAMS FUNCTIONS WITH STATUS FILTER ==========
     window.loadAllExams = async function() {
         const loadingDiv = document.getElementById('examsLoading');
         const table = document.getElementById('examsTable');
@@ -542,7 +589,6 @@
             if(error) throw error;
             allExams = data || [];
             
-            // Get student counts and determine if exam has any results
             const { data: grades } = await sb.from('exam_grades').select('exam_id, result_status').eq('question_id', '00000000-0000-0000-0000-000000000000');
             const countMap = {};
             const hasResultsMap = {};
@@ -555,23 +601,31 @@
                 });
             }
             
-            displayAllExams(countMap, hasResultsMap);
+            // Apply status filter
+            let filteredExams = allExams;
+            if (currentExamFilter === 'active') {
+                filteredExams = allExams.filter(e => !hasResultsMap[e.id]);
+            } else if (currentExamFilter === 'completed') {
+                filteredExams = allExams.filter(e => hasResultsMap[e.id]);
+            }
+            
+            displayAllExams(filteredExams, countMap, hasResultsMap);
             loadingDiv.style.display = 'none'; table.style.display = 'table';
             updateStats();
         } catch(err) { console.error(err); loadingDiv.innerHTML = 'Error loading exams'; }
     };
     
-    function displayAllExams(countMap, hasResultsMap) {
+    function displayAllExams(exams, countMap, hasResultsMap) {
         const start = (currentPage.exams - 1) * itemsPerPage;
-        const page = allExams.slice(start, start + itemsPerPage);
+        const page = exams.slice(start, start + itemsPerPage);
         const tbody = document.getElementById('examsBody');
-        if(page.length === 0) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center">No exams found</td></tr>'; return; }
+        if(page.length === 0) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center">No exams found</td></tr>'; return; }
         
         tbody.innerHTML = page.map(e => {
-            // Determine exam status: Active (no results) or Completed (has results)
             const hasResults = hasResultsMap && hasResultsMap[e.id];
             const examStatus = hasResults ? 'Completed' : 'Active';
             const statusClass = hasResults ? 'status-completed' : 'status-active';
+            const publishStatus = e.status || 'draft';
             
             return `<tr>
                 <td><strong>${e.exam_name}</strong></td>
@@ -580,17 +634,19 @@
                 <td>${e.duration_minutes || 30} min</td>
                 <td>${countMap?.[e.id] || 0}</td>
                 <td><span class="${statusClass}">${examStatus}</span></td>
+                <td><label class="publish-toggle"><input type="checkbox" ${publishStatus === 'published' ? 'checked' : ''} onchange="togglePublish(${e.id}, '${publishStatus}')"><span style="margin-left:8px; font-size:0.7rem;">${publishStatus === 'published' ? 'Published' : 'Draft'}</span></label></td>
                 <td>
                     <button class="action-btn btn-edit" onclick="openCreateExamModal(${e.id})"><i class="fas fa-edit"></i> Edit</button>
                     <button class="action-btn btn-assign" onclick="openAssignExamModal()"><i class="fas fa-user-plus"></i> Assign</button>
+                    <button class="action-btn btn-reset" onclick="openResetModal(${e.id}, '${e.exam_name.replace(/'/g, "\\'")}')"><i class="fas fa-sync-alt"></i> Reset</button>
                     <button class="action-btn btn-delete" onclick="deleteExam(${e.id}, '${e.exam_name.replace(/'/g, "\\'")}')"><i class="fas fa-trash"></i> Delete</button>
                 </td>
             </tr>`;
         }).join('');
-        renderPagination('exams', allExams.length);
+        renderPagination('exams', exams.length);
     }
     
-    // ========== FIXED RELEASE RESULTS FUNCTION ==========
+    // ========== RELEASE RESULTS FUNCTION ==========
     window.confirmReleaseResults = async function() {
         const examId = document.getElementById('releaseExamFilter').value;
         const statusFilter = document.getElementById('releaseStatusFilter').value;
@@ -635,15 +691,7 @@
         const start = (currentPage.allStudents - 1) * itemsPerPage;
         const page = allStudents.slice(start, start + itemsPerPage);
         const tbody = document.getElementById('allStudentsBody');
-        tbody.innerHTML = page.map(s => `<tr>
-            <td><span class="student-id-badge">${s.student_id || 'N/A'}</span></td>
-            <td><strong>${s.full_name}</strong></td>
-            <td>${s.email}</td>
-            <td>${s.program || '-'}</td>
-            <td>${s.block || '-'}</td>
-            <td>${s.examsTaken || 0}</td>
-            <td><button class="action-btn btn-view" onclick="viewStudentProfile('${s.id}')">Profile</button><button class="action-btn btn-assign" onclick="openAssignExamModal()">Assign</button></td>
-        </tr>`).join('');
+        tbody.innerHTML = page.map(s => `<tr><td><span class="student-id-badge">${s.student_id || 'N/A'}</span></td><td><strong>${s.full_name}</strong></td><td>${s.email}</td><td>${s.program || '-'}</td><td>${s.block || '-'}</td><td>${s.examsTaken || 0}</td><td><button class="action-btn btn-view" onclick="viewStudentProfile('${s.id}')">Profile</button><button class="action-btn btn-assign" onclick="openAssignExamModal()">Assign</button></td></tr>`).join('');
         renderPagination('allStudents', allStudents.length);
     }
     
@@ -680,7 +728,7 @@
         currentPage[type]=page; 
         if(type==='students') displayStudentsResults(); 
         if(type==='allStudents') displayAllStudents(); 
-        if(type==='exams') displayAllExams(); 
+        if(type==='exams') loadAllExams(); 
         if(type==='proctoring') displayProctoringLogs(); 
     };
     
@@ -758,7 +806,7 @@
         let data=[]; 
         if(type==='students') data=studentsResults.map(r=>({'Student ID':r.student_profile?.student_id, 'Name':r.student_profile?.full_name, 'Exam':r.exam_info?.exam_name, 'Score':r.marks, 'Percent':r.total_score, 'Status':r.result_status})); 
         if(type==='allStudents') data=allStudents.map(s=>({'Student ID':s.student_id, 'Name':s.full_name, 'Email':s.email, 'Program':s.program})); 
-        if(type==='exams') data=allExams.map(e=>({'Exam Name':e.exam_name, 'Type':e.exam_type, 'Duration':e.duration_minutes, 'Status':e.hasResults ? 'Completed' : 'Active'}));
+        if(type==='exams') data=allExams.map(e=>({'Exam Name':e.exam_name, 'Type':e.exam_type, 'Duration':e.duration_minutes}));
         if(type==='proctoring') data=proctoringLogs.map(l=>({'Time':new Date(l.timestamp).toLocaleString(), 'Student':l.student_profile?.full_name, 'Alert':l.event_type, 'Details':l.details}));
         const ws=XLSX.utils.json_to_sheet(data); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Data'); XLSX.writeFile(wb,`${type}_${new Date().toISOString().split('T')[0]}.xlsx`); 
     };
@@ -767,6 +815,8 @@
         const tableHtml = document.getElementById(type==='students'?'studentsTable':type==='allStudents'?'allStudentsTable':type==='exams'?'examsTable':'proctoringTable').outerHTML; 
         const win=window.open(); win.document.write(`<html><head><title>Report</title><style>table{border-collapse:collapse;width:100%}th,td{border:1px solid #ddd;padding:8px}</style></head><body>${tableHtml}</body></html>`); win.print(); 
     };
+    
+    function showToast(message, type) { alert(message); }
     
     document.getElementById('notificationBell').addEventListener('click', (e) => {
         e.stopPropagation();
@@ -778,7 +828,7 @@
     document.addEventListener('DOMContentLoaded', function() {
         if(!checkAdminAuth()) return;
         document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => window.switchTab(btn.getAttribute('data-tab'))));
-        window.switchTab('students');
+        window.switchTab('exams');
         setupRealtimeNotifications();
     });
 })();
