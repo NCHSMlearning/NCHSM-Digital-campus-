@@ -73,7 +73,7 @@ body::after {
 /* Login Wrapper */
 .login-wrapper {
     width: 100%;
-    max-width: 500px;
+    max-width: 520px;
     margin: 40px 20px;
     position: relative;
     z-index: 10;
@@ -94,10 +94,10 @@ body::after {
     box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.3);
 }
 
-/* Logo Section */
-.logo-section {
+/* College Header - TOP SECTION */
+.college-header {
     text-align: center;
-    margin-bottom: 28px;
+    margin-bottom: 24px;
 }
 
 .logo {
@@ -114,18 +114,53 @@ body::after {
     transform: scale(1.05);
 }
 
-.logo-section h2 {
-    font-size: 1.6rem;
+.college-header h1 {
+    font-size: 1.3rem;
     font-weight: 700;
     color: #0A3D62;
     margin-top: 12px;
-    letter-spacing: -0.5px;
+    letter-spacing: -0.3px;
+    line-height: 1.3;
 }
 
-.logo-section p {
-    font-size: 0.85rem;
+.college-tagline {
+    font-size: 0.75rem;
     color: #64748B;
-    margin-top: 4px;
+    margin-top: 6px;
+    line-height: 1.4;
+}
+
+/* Divider */
+.divider {
+    text-align: center;
+    margin: 20px 0;
+    position: relative;
+}
+
+.divider::before,
+.divider::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    width: calc(50% - 40px);
+    height: 1px;
+    background: #E2E8F0;
+}
+
+.divider::before {
+    left: 0;
+}
+
+.divider::after {
+    right: 0;
+}
+
+.divider span {
+    background: white;
+    padding: 0 15px;
+    color: #94A3B8;
+    font-size: 0.75rem;
+    font-weight: 500;
 }
 
 /* Form Group */
@@ -275,7 +310,6 @@ body::after {
 .terms-section {
     margin-top: 20px;
     padding-top: 16px;
-    border-top: 1px solid #E2E8F0;
 }
 
 .terms-checkbox {
@@ -337,36 +371,18 @@ body::after {
     color: #0A3D62;
 }
 
-/* Footer - College Info */
+/* Footer - Contact Info */
 .college-footer {
     margin-top: 24px;
     padding-top: 20px;
     border-top: 1px solid #E2E8F0;
 }
 
-.college-name {
-    text-align: center;
-    margin-bottom: 12px;
-}
-
-.college-name h3 {
-    font-size: 0.9rem;
-    font-weight: 700;
-    color: #0A3D62;
-    letter-spacing: -0.3px;
-}
-
-.college-name p {
-    font-size: 0.7rem;
-    color: #64748B;
-    margin-top: 4px;
-}
-
 .contact-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 12px;
-    margin: 12px 0;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+    margin-bottom: 12px;
 }
 
 .contact-item {
@@ -392,7 +408,7 @@ body::after {
     align-items: center;
     justify-content: center;
     gap: 8px;
-    margin-top: 12px;
+    margin-top: 10px;
     padding-top: 10px;
     border-top: 1px dashed #E2E8F0;
     font-size: 0.7rem;
@@ -421,8 +437,8 @@ body::after {
         height: 70px;
     }
     
-    .logo-section h2 {
-        font-size: 1.4rem;
+    .college-header h1 {
+        font-size: 1rem;
     }
     
     .contact-grid {
@@ -448,11 +464,16 @@ body::after {
 
 <div class="login-wrapper">
     <div class="login-container">
-        <!-- Logo Section -->
-        <div class="logo-section">
+        <!-- College Header - TOP SECTION with Logo -->
+        <div class="college-header">
             <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" class="logo" alt="NCHSM Logo">
-            <h2>Exam Portal Login</h2>
-            <p>Secure access to your exams</p>
+            <h1>Nakuru College of Health Sciences<br>and Management (NCHSM)</h1>
+            <p class="college-tagline">Providing quality health sciences and management education with practical skills and digital innovation.</p>
+        </div>
+
+        <!-- Divider -->
+        <div class="divider">
+            <span>Student Login</span>
         </div>
 
         <!-- Error Message -->
@@ -506,13 +527,8 @@ body::after {
             <a href="#" id="contactSupportLink"><i class="fas fa-headset"></i> Contact Support</a>
         </div>
 
-        <!-- College Footer with Contact Info -->
+        <!-- Footer with Contact Info -->
         <div class="college-footer">
-            <div class="college-name">
-                <h3>Nakuru College of Health Sciences and Management (NCHSM)</h3>
-                <p>Providing quality health sciences and management education with practical skills and digital innovation.</p>
-            </div>
-            
             <div class="contact-grid">
                 <div class="contact-item">
                     <i class="fas fa-map-marker-alt"></i>
