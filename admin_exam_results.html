@@ -759,20 +759,81 @@
         document.getElementById('confirmReleaseBtn').disabled = (notReleasedCount === 0);
     };
     
-    window.confirmReleaseResults = async function() {
-        const examId = document.getElementById('releaseExamFilter').value;
-        let query = sb.from('exam_grades').select('id').eq('exam_id', parseInt(examId)).eq('question_id', '00000000-0000-0000-0000-000000000000').in('result_status', ['PASS', 'FAIL']);
-        const { data: results } = await query;
-        const { data: existing } = await sb.from('released_exam_results').select('result_id');
+   window.confirmReleaseResults = async function() {
+    const examId = document.getElementById('releaseExamFilter').value;
+    const statusFilter = document.getElementById('releaseStatusFilter').value;
+    
+    if (!examId) { 
+        alert('Please select an exam first'); 
+        return; 
+    }
+    
+    try {
+        // IMPORTANT: Select both id AND student_id
+        let query = sb.from('exam_grades')
+            .select('id, student_id, exam_id, result_status')
+            .eq('exam_id', parseInt(examId))
+            .eq('question_id', '00000000-0000-0000-0000-000000000000')
+            .in('result_status', ['PASS', 'FAIL']);
+        
+        if (statusFilter) {
+            query = query.eq('result_status', statusFilter);
+        }
+        
+        const { data: results, error: resultsError } = await query;
+        if (resultsError) { 
+            alert('Error fetching results: ' + resultsError.message); 
+            return; 
+        }
+        
+        if (!results || results.length === 0) { 
+            alert('No results found to release'); 
+            return; 
+        }
+        
+        // Check which are already released
+        const { data: existing } = await sb
+            .from('released_exam_results')
+            .select('result_id');
+        
         const existingSet = new Set(existing?.map(e => e.result_id) || []);
         const newResults = results.filter(r => !existingSet.has(r.id));
-        if (newResults.length === 0) { alert('No new results to release'); return; }
-        if (!confirm(`Release ${newResults.length} result(s)?`)) return;
-        const releaseRecords = newResults.map(r => ({ result_id: r.id, student_id: r.student_id, exam_id: parseInt(examId), released_at: new Date().toISOString(), released_by: 'admin' }));
-        const { error } = await sb.from('released_exam_results').insert(releaseRecords);
-        if (error) alert('Error: ' + error.message);
-        else { alert(`Released ${newResults.length} results!`); closeReleaseModal(); loadStudentsWithResults(); }
-    };
+        
+        if (newResults.length === 0) { 
+            alert('All results for this exam are already released!'); 
+            return; 
+        }
+        
+        if (!confirm(`Release ${newResults.length} result(s) to student portal?\n\nThis will make these scores visible to students immediately.`)) {
+            return;
+        }
+        
+        // Create release records with student_id
+        const releaseRecords = newResults.map(r => ({ 
+            result_id: r.id, 
+            student_id: r.student_id,
+            exam_id: parseInt(examId),
+            released_at: new Date().toISOString(), 
+            released_by: 'admin' 
+        }));
+        
+        const { error: insertError } = await sb
+            .from('released_exam_results')
+            .insert(releaseRecords);
+        
+        if (insertError) {
+            alert('Error releasing results: ' + insertError.message);
+            console.error('Release error:', insertError);
+        } else {
+            alert(`✅ Successfully released ${newResults.length} result(s) to the student portal!`);
+            closeReleaseModal();
+            loadStudentsWithResults();
+        }
+    } catch (err) {
+        console.error('Release error:', err);
+        alert('Error releasing results: ' + err.message);
+    }
+};
     
     window.closeReleaseModal = function() { document.getElementById('releaseModal').style.display = 'none'; };
     
