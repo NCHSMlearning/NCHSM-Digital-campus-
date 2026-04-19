@@ -2,7 +2,6 @@
 * COMPLETE SuperAdmin Dashboard JavaScript - ALL SECTIONS WORKING
 * Program dropdowns synchronized across ALL sections
 * TVET/KRCHN integration complete
-* All functionality tested and working
 **********************************************************************************/
 
 // Hides the .html extension in the URL
