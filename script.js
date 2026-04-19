@@ -3,7 +3,7 @@
 * Program dropdowns synchronized across ALL sections
 * TVET/KRCHN integration complete
 **********************************************************************************/
-
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 // Hides the .html extension in the URL
 if (window.location.pathname.endsWith('.html')) {
     const cleanPath = window.location.pathname.replace(/\.html$/, '');
@@ -13,7 +13,8 @@ if (window.location.pathname.endsWith('.html')) {
 // Supabase Configuration
 const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+window.sb = sb;
 
 // Constants
 const RESOURCES_BUCKET = 'resources';
