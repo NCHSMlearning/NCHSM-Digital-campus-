@@ -1,8 +1,8 @@
-// courses.js - COMPLETE VERSION WITH PERFECT COLUMN ARRANGEMENT
+// courses.js - ENHANCED VERSION WITH IMPROVED FILTERING FOR COMPLETED COURSES
 (function() {
     'use strict';
     
-    console.log('✅ courses.js - Loading with perfect column arrangement...');
+    console.log('✅ courses.js - Loading with enhanced filtering...');
     
     class CoursesModule {
         constructor() {
@@ -314,64 +314,76 @@
                     programCode: this.programCode,
                     programType: this.programType,
                     level: this.programLevel,
-                    intakeYear: this.intakeYear
+                    intakeYear: this.intakeYear,
+                    block: this.userBlock,
+                    term: this.userTerm
                 });
                 
+                // Build query with proper filters
                 let query = supabase
                     .from('courses')
                     .select('*')
-                    .eq('intake_year', String(this.intakeYear))
                     .order('course_name', { ascending: true });
                 
+                // FILTER 1: Filter by intake year (applies to ALL courses - active AND completed)
+                if (this.intakeYear) {
+                    query = query.eq('intake_year', String(this.intakeYear));
+                    console.log(`📅 Filtering by intake year: ${this.intakeYear}`);
+                }
+                
+                // FILTER 2: Filter by program type (KRCHN or TVET)
                 if (this.isTVETStudent) {
                     query = query.eq('target_program', 'TVET');
+                    console.log(`🎯 Filtering by TVET program`);
                 } else {
                     query = query.or('target_program.eq.KRCHN,target_program.is.null');
+                    console.log(`🎯 Filtering by KRCHN program`);
                 }
+                
+                // Execute first query to get all courses matching program and intake year
+                let { data: allProgramCourses, error: firstError } = await query;
+                
+                if (firstError) throw firstError;
+                
+                console.log(`📊 Found ${allProgramCourses?.length || 0} courses matching program and intake year`);
+                
+                // FILTER 3: Apply block/term filter to BOTH active AND completed courses
+                let filteredCourses = allProgramCourses;
                 
                 if (this.isTVETStudent && this.userTerm) {
-                    query = query.eq('block', this.userTerm);
+                    // TVET: Filter by term (applies to all courses - both active and completed)
+                    filteredCourses = allProgramCourses.filter(course => 
+                        course.block === this.userTerm
+                    );
+                    console.log(`📚 TVET - Filtered by term '${this.userTerm}': ${filteredCourses.length} courses remaining`);
                 } else if (!this.isTVETStudent && this.userBlock) {
-                    query = query.eq('block', this.userBlock);
+                    // KRCHN: Filter by block (applies to all courses - both active and completed)
+                    filteredCourses = allProgramCourses.filter(course => 
+                        course.block === this.userBlock
+                    );
+                    console.log(`📚 KRCHN - Filtered by block '${this.userBlock}': ${filteredCourses.length} courses remaining`);
                 }
                 
-                let { data: courses, error } = await query;
-                
-                if (error) throw error;
-                
-                console.log(`📊 Found ${courses?.length || 0} courses with primary filter`);
-                
-                if (!courses || courses.length === 0) {
-                    console.log('⚠️ No courses found with strict filter, trying fallback...');
-                    
-                    let fallbackQuery = supabase
-                        .from('courses')
-                        .select('*')
-                        .eq('intake_year', String(this.intakeYear))
-                        .order('course_name', { ascending: true });
-                    
-                    if (this.isTVETStudent) {
-                        fallbackQuery = fallbackQuery.eq('target_program', 'TVET');
-                    } else {
-                        fallbackQuery = fallbackQuery.or('target_program.eq.KRCHN,target_program.is.null');
-                    }
-                    
-                    const fallbackResult = await fallbackQuery;
-                    
-                    if (fallbackResult.error) throw fallbackResult.error;
-                    
-                    courses = fallbackResult.data;
-                    console.log(`📊 Found ${courses?.length || 0} courses via fallback`);
+                // If no courses found with strict filters, try a more lenient approach
+                if (filteredCourses.length === 0 && allProgramCourses.length > 0) {
+                    console.log('⚠️ No courses found with block/term filter, showing all program courses as fallback');
+                    filteredCourses = allProgramCourses;
                 }
                 
-                if (courses && courses.length > 0) {
-                    this.processCoursesData(courses);
+                if (filteredCourses && filteredCourses.length > 0) {
+                    this.processCoursesData(filteredCourses);
                     this.applyDataFilter();
                     this.updateProgramIndicator();
                     this.loaded = true;
                     this.dispatchModuleReadyEvent();
                     this.triggerDashboardUpdate();
-                    console.log('✅ Courses loaded successfully');
+                    console.log('✅ Courses loaded successfully with filters:', {
+                        total: filteredCourses.length,
+                        active: this.activeCourses.length,
+                        completed: this.completedCourses.length,
+                        intakeYear: this.intakeYear,
+                        blockTerm: this.isTVETStudent ? this.userTerm : this.userBlock
+                    });
                 } else {
                     this.showNoCoursesFound();
                 }
@@ -424,8 +436,8 @@
                     programIcon,
                     programLevel: this.programLevel,
                     durationDisplay,
-                    formattedCreatedAt: course.created_at ? 
-                        new Date(course.created_at).toLocaleDateString('en-US', { 
+                    formattedCreatedAt: course.completed_at || course.created_at ? 
+                        new Date(course.completed_at || course.created_at).toLocaleDateString('en-US', { 
                             year: 'numeric', month: 'short', day: 'numeric' 
                         }) : '--',
                     credits: course.credits || 3
@@ -438,7 +450,9 @@
             console.log(`✅ Processed ${this.allCourses.length} courses:`, {
                 TVET: tvetCount,
                 KRCHN: krchnCount,
-                program: this.programName
+                program: this.programName,
+                intakeYear: this.intakeYear,
+                blockTerm: this.isTVETStudent ? this.userTerm : this.userBlock
             });
         }
         
@@ -462,7 +476,7 @@
                         ${this.escapeHtml(programText)}
                         <span class="ms-2">${blockTermText}</span>
                         <small class="ms-2 opacity-75">
-                            (${this.allCourses.length} courses)
+                            (${this.allCourses.length} courses total)
                         </small>
                     </span>
                 `;
@@ -474,6 +488,8 @@
             this.updateFilterButtons();
             this.showFilteredSections();
             this.applyDataFilter();
+            
+            console.log(`🔍 Filter applied: ${filterType} - Active: ${this.activeCourses.length}, Completed: ${this.completedCourses.length}`);
         }
         
         updateFilterButtons() {
@@ -516,18 +532,24 @@
         }
         
         applyDataFilter() {
+            // Filter active courses (NOT completed)
             this.activeCourses = this.allCourses.filter(course => 
-                !course.isCompleted && course.status !== 'Completed'
-            );
-            this.completedCourses = this.allCourses.filter(course => 
-                course.isCompleted || course.status === 'Completed'
+                !course.isCompleted && course.status !== 'Completed' && course.status !== 'Passed'
             );
             
+            // Filter completed courses (IS completed)
+            this.completedCourses = this.allCourses.filter(course => 
+                course.isCompleted || course.status === 'Completed' || course.status === 'Passed'
+            );
+            
+            // Apply view filter
             if (this.currentFilter === 'active') {
                 this.completedCourses = [];
             } else if (this.currentFilter === 'completed') {
                 this.activeCourses = [];
             }
+            
+            console.log(`📊 Data filter applied - Active: ${this.activeCourses.length}, Completed: ${this.completedCourses.length}`);
             
             this.displayTables();
             this.updateCounts();
@@ -559,7 +581,7 @@
                     <!-- COURSE NAME -->
                     <h4 class="course-title">${this.escapeHtml(course.displayName)}</h4>
                     
-                    <!-- 🔥 PROGRAM UNDER COURSE NAME -->
+                    <!-- PROGRAM UNDER COURSE NAME -->
                     <div class="course-program-display">
                         <span class="program-badge ${course.programBadgeClass}">
                             <i class="fas ${course.programIcon}"></i> 
@@ -604,11 +626,11 @@
                 return;
             }
             
-            // 🔥 PERFECT COLUMN ARRANGEMENT:
+            // PERFECT COLUMN ARRANGEMENT FOR COMPLETED COURSES:
             // 1. Course Name (with Program UNDER it)
             // 2. Unit Code
             // 3. Credits
-            // 4. Term Column (Block A or Term1 goes here)
+            // 4. Term Column (Block or Term)
             // 5. Completion Date
             // 6. Status
             
@@ -635,16 +657,20 @@
                         <span class="credits-badge">${course.credits || 3}</span>
                     </td>
                     
-                    <!-- 🔥 COLUMN 4: TERM COLUMN (Block A or Term1 goes here) -->
+                    <!-- COLUMN 4: TERM/BLOCK COLUMN -->
                     <td class="text-center term-column">
                         <span class="term-block-display">
                             <i class="fas ${course.isTVETCourse ? 'fa-calendar-alt' : 'fa-th-large'}"></i>
                             ${this.escapeHtml(course.block || 'General')}
                         </span>
+                        <small class="text-muted d-block">
+                            (Intake: ${course.intake_year || 'N/A'})
+                        </small>
                     </td>
                     
                     <!-- COLUMN 5: COMPLETION DATE -->
                     <td class="text-center completion-date">
+                        <i class="far fa-check-circle text-success"></i>
                         ${course.formattedCreatedAt}
                     </td>
                     
@@ -657,7 +683,7 @@
             
             this.completedTable.innerHTML = html;
             
-            // 🔥 Update credits earned
+            // Update credits earned
             this.updateCreditsEarned();
         }
         
@@ -727,9 +753,11 @@
                     <h4>No Courses Found</h4>
                     <p class="text-muted">
                         No ${programType} courses found${programText}<br>
+                        <strong>Applied Filters:</strong><br>
                         • Intake Year: ${this.intakeYear}<br>
                         • ${blockTerm}<br>
-                        • Program Code: ${this.programCode}
+                        • Program Code: ${this.programCode}<br><br>
+                        <small>Note: Both active and completed courses are filtered by intake year and block/term.</small>
                     </p>
                     <button onclick="window.coursesModule.loadCourses()" class="btn btn-primary mt-3">
                         <i class="fas fa-sync-alt"></i> Try Again
@@ -779,6 +807,8 @@
                     programName: this.programName,
                     programLevel: this.programLevel,
                     intakeYear: this.intakeYear,
+                    block: this.userBlock,
+                    term: this.userTerm,
                     timestamp: new Date().toISOString()
                 }
             });
@@ -794,6 +824,9 @@
                     isTVETStudent: this.isTVETStudent,
                     programCode: this.programCode,
                     programName: this.programName,
+                    intakeYear: this.intakeYear,
+                    block: this.userBlock,
+                    term: this.userTerm,
                     timestamp: new Date().toISOString()
                 }
             });
@@ -808,7 +841,9 @@
                 programCode: this.programCode,
                 programName: this.programName,
                 programLevel: this.programLevel,
-                intakeYear: this.intakeYear
+                intakeYear: this.intakeYear,
+                block: this.userBlock,
+                term: this.userTerm
             };
         }
         
@@ -849,7 +884,8 @@
                                 <strong>Course Display Format:</strong><br>
                                 • Course Name with Program underneath<br>
                                 • Term/Block in separate column<br>
-                                • Perfect column arrangement for completed courses
+                                • Perfect column arrangement for completed courses<br>
+                                • Both active and completed courses filtered by intake year and block/term
                             </p>
                         </div>
                     </div>
@@ -869,6 +905,27 @@
                 term: this.userTerm
             };
         }
+        
+        // New method to get completed courses with current filters
+        getCompletedCourses() {
+            return this.completedCourses;
+        }
+        
+        // New method to get active courses with current filters
+        getActiveCourses() {
+            return this.activeCourses;
+        }
+        
+        // Method to check if filters are being applied to completed courses
+        getAppliedFilters() {
+            return {
+                intakeYear: this.intakeYear,
+                block: this.userBlock,
+                term: this.userTerm,
+                programType: this.programType,
+                programCode: this.programCode
+            };
+        }
     }
     
     // Create global instance
@@ -877,6 +934,9 @@
     // Global functions
     window.getActiveCourseCount = () => window.coursesModule?.getActiveCourseCount() || 0;
     window.getAllCourses = () => window.coursesModule?.getAllCourses() || [];
+    window.getCompletedCourses = () => window.coursesModule?.getCompletedCourses() || [];
+    window.getActiveCourses = () => window.coursesModule?.getActiveCourses() || [];
+    window.getAppliedFilters = () => window.coursesModule?.getAppliedFilters() || {};
     window.loadCourses = () => window.coursesModule?.refresh();
     window.getCoursesProgramInfo = () => window.coursesModule?.getStudentProgramInfo() || {
         programCode: 'Unknown',
@@ -890,5 +950,5 @@
     };
     window.getTVETPrograms = () => window.coursesModule?.TVET_PROGRAMS || [];
     
-    console.log('✅ Courses module ready with PERFECT COLUMN ARRANGEMENT!');
+    console.log('✅ Courses module ready with ENHANCED FILTERING for completed courses!');
 })();
