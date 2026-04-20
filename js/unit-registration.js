@@ -14,7 +14,7 @@
             this.availableUnits = [];
             this.userProfile = null;
             this.loaded = false;
-            this.maxUnits = 8;
+            this.maxUnits = 15;
             
             // User data
             this.programCode = null;
@@ -543,7 +543,7 @@
                     this.maxUnits = parseInt(data.value);
                 }
             } catch (error) {
-                console.log('Using default max units: 8');
+                console.log('Using default max units: 15');
             }
             
             if (this.maxUnitsSpan) {
