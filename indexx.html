@@ -12,7 +12,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf_viewer.min.css">
     
-    <!-- SweetAlert2 -->
+    <!-- SweetAlert2 for notifications -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     
     <!-- CONFIG WILL BE INJECTED BY GITHUB ACTIONS -->
@@ -31,20 +31,15 @@
     <meta name="theme-color" content="#4C1D95">
     <meta name="msapplication-TileColor" content="#4C1D95">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    
-    <!-- PWA Manifest -->
     <link rel="manifest" href="./manifest.json">
-    
-    <!-- Icons -->
     <link rel="icon" type="image/png" sizes="192x192" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png">
     <link rel="icon" type="image/png" sizes="512x512" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png">
     <link rel="apple-touch-icon" sizes="180x180" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png">
     <meta name="msapplication-TileImage" content="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png">
     <meta name="format-detection" content="telephone=no">
     
-    <!-- ADDITIONAL INLINE STYLES FOR UNIT REGISTRATION (DOES NOT OVERRIDE EXTERNAL CSS) -->
+    <!-- ADDITIONAL STYLES FOR UNIT REGISTRATION (DOES NOT OVERRIDE EXTERNAL CSS) -->
     <style>
-        /* Unit Registration specific styles - complements external CSS */
         .unit-reg-header .header-stats {
             display: flex;
             gap: 20px;
@@ -126,18 +121,6 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
-        .toast {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background: #1f2937;
-            color: white;
-            padding: 12px 24px;
-            border-radius: 40px;
-            font-size: 0.875rem;
-            z-index: 1100;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        }
         .row {
             display: flex;
             gap: 20px;
@@ -153,35 +136,6 @@
             padding: 10px;
             border: 1px solid #d1d5db;
             border-radius: 8px;
-        }
-        .btn-primary {
-            background: #4C1D95;
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-        }
-        @media (max-width: 768px) {
-            .sidebar {
-                position: fixed;
-                left: -280px;
-                z-index: 100;
-                transition: left 0.3s;
-            }
-            .sidebar.active {
-                left: 0;
-            }
-            .overlay.active {
-                position: fixed;
-                inset: 0;
-                background: rgba(0,0,0,0.5);
-                z-index: 99;
-            }
-            .main {
-                padding: 1rem;
-            }
         }
     </style>
 </head>
@@ -202,10 +156,21 @@
                 <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
                 <div class="progress-text" id="progress-text">Preparing your portal...</div>
             </div>
+            <div class="status-steps" id="status-steps"></div>
+            <div class="fun-fact" id="fun-fact">
+                <i class="fas fa-lightbulb"></i>
+                <span>Did you know? You can access your course materials offline!</span>
+            </div>
+            <div class="loading-animation">
+                <div class="loading-dots"><span></span><span></span><span></span></div>
+            </div>
         </div>
     </div>
 
-    <!-- Main App Content -->
+    <div class="offline-indicator" id="offlineIndicator" style="display: none;">
+        <i class="fas fa-wifi-slash"></i> You are offline. Some features may be unavailable.
+    </div>
+
     <div id="app-content" style="display: none;">
         <header class="main-header">
             <div class="header-left">
@@ -239,66 +204,71 @@
             </div>
         </header>
         
-        <div class="overlay" id="overlay"></div>
+        <div class="overlay" id="overlay" role="presentation" aria-hidden="true"></div>
 
         <div class="container">
-            <!-- Sidebar Navigation - ADDED UNIT REGISTRATION -->
-            <aside class="sidebar" id="sidebar">
+            <aside class="sidebar" id="sidebar" aria-label="Main navigation">
                 <div class="sidebar-header">
                     <h2><i class="fas fa-graduation-cap"></i> Portal Menu</h2>
                     <p class="sidebar-subtitle">Navigate to sections</p>
                 </div>
-                <nav>
-                    <ul class="nav">
-                        <li><a href="#" data-tab="dashboard" class="active"><i class="fas fa-home"></i><span class="nav-text">Dashboard</span></a></li>
-                        <li><a href="#" data-tab="profile"><i class="fas fa-user-circle"></i><span class="nav-text">Profile</span></a></li>
-                        <li><a href="#" data-tab="calendar"><i class="fas fa-calendar-alt"></i><span class="nav-text">Academic Calendar</span></a></li>
-                        <li><a href="#" data-tab="courses"><i class="fas fa-book-open"></i><span class="nav-text">My Courses</span></a></li>
-                        <li><a href="#" data-tab="attendance"><i class="fas fa-check-double"></i><span class="nav-text">Attendance</span></a></li>
-                        <li><a href="#" data-tab="cats"><i class="fas fa-chart-line"></i><span class="nav-text">Exams & Grades</span></a></li>
-                        <li><a href="#" data-tab="resources"><i class="fas fa-folder-open"></i><span class="nav-text">Resources</span></a></li>
-                        <li><a href="#" data-tab="messages"><i class="fas fa-comment-dots"></i><span class="nav-text">Messages</span></a></li>
-                        <!-- NEW: Unit Registration Navigation (Like KeMU Course Registration) -->
-                        <li><a href="#" data-tab="unit-registration"><i class="fas fa-plus-circle"></i><span class="nav-text">Unit Registration</span><span class="nav-badge" id="unitRegBadge">!</span></a></li>
-                        <li><a href="#" data-tab="nurseiq"><i class="fas fa-brain"></i><span class="nav-text">NurseIQ</span></a></li>
-                        <li><a href="#" data-tab="support-tickets"><i class="fas fa-ticket-alt"></i><span class="nav-text">Support Tickets</span></a></li>
+                <nav aria-label="Primary navigation">
+                    <ul class="nav" role="menubar">
+                        <li role="none"><a href="#" data-tab="dashboard" class="active" role="menuitem"><i class="fas fa-home"></i><span class="nav-text">Dashboard</span></a></li>
+                        <li role="none"><a href="#" data-tab="profile" role="menuitem"><i class="fas fa-user-circle"></i><span class="nav-text">Profile</span></a></li>
+                        <li role="none"><a href="#" data-tab="calendar" role="menuitem"><i class="fas fa-calendar-alt"></i><span class="nav-text">Academic Calendar</span></a></li>
+                        <li role="none"><a href="#" data-tab="courses" role="menuitem"><i class="fas fa-book-open"></i><span class="nav-text">My Courses</span></a></li>
+                        <li role="none"><a href="#" data-tab="attendance" role="menuitem"><i class="fas fa-check-double"></i><span class="nav-text">Attendance</span><span class="nav-badge" id="attendanceBadge" style="display: none;">0</span></a></li>
+                        <li role="none"><a href="#" data-tab="cats" role="menuitem"><i class="fas fa-chart-line"></i><span class="nav-text">Exams & Grades</span><span class="nav-badge" id="examsBadge" style="display: none;">0</span></a></li>
+                        <li role="none"><a href="#" data-tab="resources" role="menuitem"><i class="fas fa-folder-open"></i><span class="nav-text">Resources</span><span class="nav-badge" id="resourcesBadge" style="display: none;">0</span></a></li>
+                        <li role="none"><a href="#" data-tab="messages" role="menuitem"><i class="fas fa-comment-dots"></i><span class="nav-text">Messages</span><span class="nav-badge" id="messagesBadge" style="display: none;">0</span></a></li>
+                        <!-- NEW: Unit Registration Navigation Item -->
+                        <li role="none"><a href="#" data-tab="unit-registration" role="menuitem"><i class="fas fa-plus-circle"></i><span class="nav-text">Unit Registration</span><span class="nav-badge" id="unitRegBadge" style="display: none;">0</span></a></li>
+                        <li role="none"><a href="#" data-tab="nurseiq" class="nurseiq-nav" role="menuitem"><div class="nav-icon-wrapper"><i class="fas fa-brain"></i><span class="nav-pulse"></span></div><span class="nav-text">NurseIQ</span><span class="nav-subtitle">Practice Center</span><span class="nav-badge" id="nurseiqBadge">0</span></a></li>
+                        <li role="none"><a href="#" data-tab="support-tickets" role="menuitem"><i class="fas fa-ticket-alt"></i><span class="nav-text">Support Tickets</span><span class="nav-badge" id="ticketsBadge" style="display: none;">0</span></a></li>
                     </ul>
                 </nav>
-                <div class="sidebar-footer"><p class="version-info">Portal v2.1</p></div>
+                <div class="sidebar-footer"><p class="version-info" id="sidebarVersion">Portal v2.1</p></div>
             </aside>
 
             <main class="main" id="main-content">
                 <!-- Dashboard Tab -->
-                <section id="dashboard" class="tab-content active">
-                    <div class="welcome-card">
-                        <div class="welcome-header"><h2>Welcome back, <span id="welcome-student-name">Student</span>!</h2></div>
+                <section id="dashboard" class="tab-content active" role="region">
+                    <div class="welcome-card" id="welcome-section">
+                        <div class="welcome-header"><h2 id="welcome-header">Welcome back, <span id="welcome-student-name">Student</span>!</h2><p id="student-welcome-message" class="welcome-subtitle">Access your courses, schedule, and check your attendance status.</p></div>
+                        <div class="welcome-time"><i class="fas fa-clock"></i><span id="dashboard-time"></span></div>
                     </div>
+                    <div class="announcement-banner" id="announcement-banner"><div class="announcement-icon"><i class="fas fa-bullhorn"></i></div><div class="announcement-content"><h3 class="announcement-title">Official Announcement</h3><p id="student-announcement" class="announcement-text">Loading latest announcement...</p></div></div>
+                    <h2 class="dashboard-section-title">Quick Snapshot</h2>
                     <div class="cards-grid">
-                        <div class="stat-card"><div class="card-header"><div class="card-icon attendance"><i class="fas fa-calendar-check"></i></div><h3>Attendance Rate</h3></div><div class="card-body"><p class="stat-value">92%</p></div></div>
-                        <div class="stat-card"><div class="card-header"><div class="card-icon courses"><i class="fas fa-book-open"></i></div><h3>Active Courses</h3></div><div class="card-body"><p class="stat-value">4</p></div></div>
+                        <div class="stat-card" data-tab="attendance"><div class="card-header"><div class="card-icon attendance"><i class="fas fa-calendar-check"></i></div><h3>Attendance Rate</h3></div><div class="card-body"><p class="stat-value" id="dashboard-attendance-rate">--%</p><p class="stat-subtitle">Overall attendance rate</p></div></div>
+                        <div class="stat-card" data-tab="cats"><div class="card-header"><div class="card-icon exam"><i class="fas fa-file-alt"></i></div><h3>Upcoming Exam</h3></div><div class="card-body"><p class="stat-value" id="dashboard-upcoming-exam">Loading...</p></div></div>
+                        <div class="stat-card" data-tab="courses"><div class="card-header"><div class="card-icon courses"><i class="fas fa-book-open"></i></div><h3>Active Courses</h3></div><div class="card-body"><p class="stat-value" id="dashboard-active-courses">0</p></div></div>
+                        <div class="stat-card" data-tab="resources"><div class="card-header"><div class="card-icon resources"><i class="fas fa-folder-open"></i></div><h3>New Resources</h3></div><div class="card-body"><p class="stat-value" id="dashboard-new-resources">0</p></div></div>
+                        <div class="stat-card nurseiq-card" data-tab="nurseiq"><div class="card-header"><div class="card-icon nurseiq"><i class="fas fa-brain"></i></div><h3>NurseIQ Progress</h3></div><div class="card-body"><p class="stat-value" id="dashboard-nurseiq-progress">--%</p></div></div>
                     </div>
                 </section>
 
                 <!-- Profile Tab -->
-                <section id="profile" class="tab-content" hidden><div class="card"><h2>My Profile</h2><p>Student profile information here.</p></div></section>
+                <section id="profile" class="tab-content" aria-labelledby="profile-tab" hidden><div class="profile-header"><h2>My Profile & Account</h2></div><form id="profile-form"><div class="profile-section"><h3>Personal Information</h3><div class="form-field"><label>Full Name</label><input type="text" id="profile-name" readonly></div></div></form></section>
 
                 <!-- Calendar Tab -->
-                <section id="calendar" class="tab-content" hidden><div class="card"><h2>Academic Calendar</h2></div></section>
+                <section id="calendar" class="tab-content" hidden><div class="calendar-header"><h2>Academic Calendar</h2></div></section>
 
                 <!-- Courses Tab -->
-                <section id="courses" class="tab-content" hidden><div class="card"><h2>My Courses</h2></div></section>
+                <section id="courses" class="tab-content" hidden><div class="courses-header"><h2>My Courses</h2></div></section>
 
                 <!-- Attendance Tab -->
-                <section id="attendance" class="tab-content" hidden><div class="card"><h2>Attendance</h2></div></section>
+                <section id="attendance" class="tab-content" hidden><div class="attendance-header"><h2>Daily Attendance</h2></div></section>
 
                 <!-- Exams Tab -->
-                <section id="cats" class="tab-content" hidden><div class="card"><h2>Exams & Grades</h2></div></section>
+                <section id="cats" class="tab-content" hidden><div class="exams-header"><h2>Assessments & Grades</h2></div></section>
 
                 <!-- Resources Tab -->
-                <section id="resources" class="tab-content" hidden><div class="card"><h2>Learning Resources</h2></div></section>
+                <section id="resources" class="tab-content" hidden><div class="resources-header"><h2>Learning Resources</h2></div></section>
 
                 <!-- Messages Tab -->
-                <section id="messages" class="tab-content" hidden><div class="card"><h2>Messages</h2></div></section>
+                <section id="messages" class="tab-content" hidden><div class="messages-header"><h2>Message Center</h2></div></section>
 
                 <!-- ========== UNIT REGISTRATION TAB (Like KeMU Portal) ========== -->
                 <section id="unit-registration" class="tab-content" hidden>
@@ -312,7 +282,6 @@
                         </div>
                     </div>
 
-                    <!-- Registration Type Selection (Like KeMU's RegType) -->
                     <div class="card reg-type-section">
                         <div class="card-body">
                             <div class="row">
@@ -324,296 +293,238 @@
                         </div>
                     </div>
 
-                    <!-- Available Units Table (Like KeMU's tblProgUnit) -->
                     <div class="card available-units-section">
                         <div class="card-header"><h4><i class="fas fa-list"></i> Available Units for Registration</h4><p>Maximum: <strong id="maxUnitsAllowed">8</strong> units per trimester</p></div>
-                        <div class="card-body">
-                            <div class="table-responsive">
-                                <table class="units-table" id="tblAvailableUnits">
-                                    <thead><tr><th><input type="checkbox" id="selectAllUnits"></th><th>Unit Code</th><th>Unit Name</th><th>Block</th><th>Type</th><th>Credits</th><th>Prerequisites</th><th>Status</th></tr></thead>
-                                    <tbody id="availableUnitsBody"><tr class="loading-row"><td colspan="8"><div class="loading-spinner"></div> Loading units...</td></tr></tbody>
-                                </table>
-                            </div>
-                        </div>
+                        <div class="card-body"><div class="table-responsive"><table class="units-table" id="tblAvailableUnits"><thead><tr><th><input type="checkbox" id="selectAllUnits"></th><th>Unit Code</th><th>Unit Name</th><th>Block</th><th>Type</th><th>Credits</th><th>Prerequisites</th><th>Status</th></tr></thead><tbody id="availableUnitsBody"><tr class="loading-row"><td colspan="8"><div class="loading-spinner"></div> Loading units...</td></tr></tbody></table></div></div>
                     </div>
 
-                    <!-- My Registered Units (Like KeMU's registered units) -->
                     <div class="card registered-units-section">
                         <div class="card-header"><h4><i class="fas fa-clipboard-list"></i> My Registered Units</h4></div>
-                        <div class="card-body">
-                            <div class="table-responsive">
-                                <table class="units-table" id="tblRegisteredUnits">
-                                    <thead><tr><th>Unit Code</th><th>Unit Name</th><th>Block</th><th>Reg Type</th><th>Status</th><th>Approval Date</th><th>Action</th></tr></thead>
-                                    <tbody id="registeredUnitsBody"><tr class="loading-row"><td colspan="7"><div class="loading-spinner"></div> Loading your registered units...</td></tr></tbody>
-                                </table>
-                            </div>
-                        </div>
+                        <div class="card-body"><div class="table-responsive"><table class="units-table" id="tblRegisteredUnits"><thead><tr><th>Unit Code</th><th>Unit Name</th><th>Block</th><th>Reg Type</th><th>Status</th><th>Approval Date</th><th>Action</th></tr></thead><tbody id="registeredUnitsBody"><tr class="loading-row"><td colspan="7"><div class="loading-spinner"></div> Loading your registered units...</td></tr></tbody></table></div></div>
                     </div>
                 </section>
 
                 <!-- NurseIQ Tab -->
-                <section id="nurseiq" class="tab-content" hidden><div class="card"><h2>NurseIQ Question Bank</h2></div></section>
+                <section id="nurseiq" class="tab-content" hidden><h1>NurseIQ Question Bank</h1><p class="subtitle">NSCHEQ Curriculum practice questions</p></section>
 
                 <!-- Support Tickets Tab -->
-                <section id="support-tickets" class="tab-content" hidden><div class="card"><h2>Support Tickets</h2></div></section>
+                <section id="support-tickets" class="tab-content" hidden><div class="tickets-container"><h2>Support Tickets</h2></div></section>
 
-                <footer class="app-footer"><div class="footer-bottom"><div class="copyright">© 2026 NCHSM. All rights reserved.</div></div></footer>
+                <footer class="app-footer"><div class="footer-content"><div class="footer-section"><h3>NCHSM</h3><p>Providing quality health sciences education.</p></div></div><div class="footer-bottom"><div class="copyright">© 2026 NCHSM. All rights reserved.</div></div></footer>
             </main>
         </div>
     </div>
 
     <div class="toast" id="toast" style="display: none;"></div>
 
+    <!-- JavaScript Files -->
+    <script src="./js/database.js"></script>
+    <script src="./js/utils.js"></script>
+    <script src="./js/ui.js"></script>
+    <script src="./js/dashboard.js"></script>
+    <script src="./js/profile.js"></script>
+    <script src="./js/attendance.js"></script>
+    <script src="./js/courses.js"></script>
+    <script src="./js/exams.js"></script>
+    <script src="./js/resources.js"></script>
+    <script src="./js/calendar.js"></script>
+    <script src="./js/messages.js"></script>
+    <script src="./js/student-tickets.js"></script>                       
+    <script src="./js/nurseiq.js"></script>
+
     <script>
-        // ==================== UNIT REGISTRATION MODULE (Like KeMU Portal) ====================
-        let allUnits = [];
-        let registeredUnits = [];
-        let selectedForSubmission = [];
-        let maxUnits = 8;
-        
-        // Mock data - Admin adds all units per trimester (Introductory to Final Block)
-        const mockAvailableUnits = [
-            { code: "NUR101", name: "Introduction to Nursing", block: "Introductory", type: "Core", credits: 3, prerequisites: "None" },
-            { code: "ANA101", name: "Human Anatomy", block: "Introductory", type: "Core", credits: 4, prerequisites: "None" },
-            { code: "PHY101", name: "Physiology", block: "Introductory", type: "Core", credits: 3, prerequisites: "ANA101" },
-            { code: "NUR201", name: "Medical-Surgical Nursing", block: "Block 1", type: "Core", credits: 4, prerequisites: "NUR101" },
-            { code: "PHM201", name: "Pharmacology", block: "Block 1", type: "Core", credits: 3, prerequisites: "PHY101" },
-            { code: "NUR202", name: "Community Health Nursing", block: "Block 2", type: "Core", credits: 3, prerequisites: "NUR201" },
-            { code: "NUR301", name: "Mental Health Nursing", block: "Block 3", type: "Core", credits: 3, prerequisites: "NUR202" },
-            { code: "NUR401", name: "Leadership & Management", block: "Block 4", type: "Core", credits: 3, prerequisites: "NUR301" },
-            { code: "ELE401", name: "Palliative Care", block: "Block 4", type: "Elective", credits: 2, prerequisites: "NUR301" },
-            { code: "NUR501", name: "Research Methods", block: "Block 5", type: "Core", credits: 3, prerequisites: "NUR401" },
-            { code: "NUR601", name: "Clinical Practicum", block: "Final", type: "Core", credits: 6, prerequisites: "All previous" },
-            { code: "ELE601", name: "Health Informatics", block: "Final", type: "Elective", credits: 2, prerequisites: "NUR501" }
-        ];
-        
-        // Load available units from Admin (in production: AJAX to /Course/GetProgramUnits)
-        function loadAvailableUnits() {
-            const blockFilter = $('#BlockFilter').val();
-            const typeFilter = $('#UnitTypeFilter').val();
-            
-            let filtered = [...mockAvailableUnits];
-            if (blockFilter) filtered = filtered.filter(u => u.block === blockFilter);
-            if (typeFilter) filtered = filtered.filter(u => u.type === typeFilter);
-            
-            const tbody = $('#availableUnitsBody');
-            if (filtered.length === 0) {
-                tbody.html('<tr><td colspan="8" style="text-align:center">No units available for this selection</td></tr>');
-                return;
-            }
-            
-            let html = '';
-            filtered.forEach(unit => {
-                const isSelected = selectedForSubmission.includes(unit.code);
-                const isRegistered = registeredUnits.some(r => r.code === unit.code);
-                const statusText = isRegistered ? (registeredUnits.find(r => r.code === unit.code)?.status || 'Registered') : 'Available';
-                html += `<tr>
-                    <td>${!isRegistered ? `<input type="checkbox" class="unit-checkbox" data-code="${unit.code}" ${isSelected ? 'checked' : ''}>` : '—'}
-                    <td><strong>${unit.code}</strong></td>
-                    <td>${unit.name}</td>
-                    <td>${unit.block}</td>
-                    <td><span class="status-badge status-registered">${unit.type}</span></td>
-                    <td>${unit.credits}</td>
+    // ==================== UNIT REGISTRATION MODULE (Like KeMU Portal) ====================
+    let allUnits = [];
+    let registeredUnits = [];
+    let selectedForSubmission = [];
+    let maxUnits = 8;
+    
+    const mockAvailableUnits = [
+        { code: "NUR101", name: "Introduction to Nursing", block: "Introductory", type: "Core", credits: 3, prerequisites: "None" },
+        { code: "ANA101", name: "Human Anatomy", block: "Introductory", type: "Core", credits: 4, prerequisites: "None" },
+        { code: "PHY101", name: "Physiology", block: "Introductory", type: "Core", credits: 3, prerequisites: "ANA101" },
+        { code: "NUR201", name: "Medical-Surgical Nursing", block: "Block 1", type: "Core", credits: 4, prerequisites: "NUR101" },
+        { code: "PHM201", name: "Pharmacology", block: "Block 1", type: "Core", credits: 3, prerequisites: "PHY101" },
+        { code: "NUR202", name: "Community Health Nursing", block: "Block 2", type: "Core", credits: 3, prerequisites: "NUR201" },
+        { code: "NUR301", name: "Mental Health Nursing", block: "Block 3", type: "Core", credits: 3, prerequisites: "NUR202" },
+        { code: "NUR401", name: "Leadership & Management", block: "Block 4", type: "Core", credits: 3, prerequisites: "NUR301" },
+        { code: "ELE401", name: "Palliative Care", block: "Block 4", type: "Elective", credits: 2, prerequisites: "NUR301" },
+        { code: "NUR501", name: "Research Methods", block: "Block 5", type: "Core", credits: 3, prerequisites: "NUR401" },
+        { code: "NUR601", name: "Clinical Practicum", block: "Final", type: "Core", credits: 6, prerequisites: "All previous" }
+    ];
+    
+    function loadAvailableUnits() {
+        const blockFilter = $('#BlockFilter').val();
+        const typeFilter = $('#UnitTypeFilter').val();
+        let filtered = [...mockAvailableUnits];
+        if (blockFilter) filtered = filtered.filter(u => u.block === blockFilter);
+        if (typeFilter) filtered = filtered.filter(u => u.type === typeFilter);
+        const tbody = $('#availableUnitsBody');
+        if (filtered.length === 0) { tbody.html('<tr><td colspan="8" style="text-align:center">No units available</td></tr>'); return; }
+        let html = '';
+        filtered.forEach(unit => {
+            const isRegistered = registeredUnits.some(r => r.code === unit.code);
+            const isSelected = selectedForSubmission.includes(unit.code);
+            html += `<tr><td>${!isRegistered ? `<input type="checkbox" class="unit-checkbox" data-code="${unit.code}" ${isSelected ? 'checked' : ''}>` : '—'}</td>
+                    <td><strong>${unit.code}</strong></td><td>${unit.name}</td><td>${unit.block}</td>
+                    <td><span class="status-badge status-registered">${unit.type}</span></td><td>${unit.credits}</td>
                     <td>${unit.prerequisites}</td>
-                    <td><span class="status-badge ${isRegistered ? 'status-approved' : 'status-pending'}">${statusText}</span></td>
-                </tr>`;
+                    <td><span class="status-badge ${isRegistered ? 'status-approved' : 'status-pending'}">${isRegistered ? 'Registered' : 'Available'}</span></td></tr>`;
+        });
+        tbody.html(html);
+        updateSelectedCount();
+    }
+    
+    function loadRegisteredUnits() {
+        const stored = localStorage.getItem('nchsm_registered_units');
+        if (stored) { try { registeredUnits = JSON.parse(stored); } catch(e) { registeredUnits = []; } } 
+        else { registeredUnits = []; }
+        const tbody = $('#registeredUnitsBody');
+        if (registeredUnits.length === 0) { tbody.html('<tr><td colspan="7" style="text-align:center">No units registered yet</td></tr>'); }
+        else {
+            let html = '';
+            registeredUnits.forEach(unit => {
+                const statusClass = unit.status === 'approved' ? 'status-approved' : 'status-pending';
+                const statusText = unit.status === 'approved' ? '✅ Approved' : '⏳ Pending';
+                html += `<tr><td><strong>${unit.code}</strong></td><td>${unit.name}</td><td>${unit.block}</td>
+                        <td>${unit.regType}</td><td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                        <td>${unit.approvalDate || '—'}</td>
+                        <td>${unit.status === 'pending' ? `<button class="action-btn-drop" onclick="dropUnit('${unit.code}')"><i class="fas fa-trash"></i> Drop</button>` : '—'}</td></tr>`;
             });
             tbody.html(html);
-            updateSelectedCount();
         }
-        
-        // Load student's registered units (from server/localStorage)
-        function loadRegisteredUnits() {
-            const stored = localStorage.getItem('nchsm_registered_units');
-            if (stored) {
-                try { registeredUnits = JSON.parse(stored); } catch(e) { registeredUnits = []; }
-            } else {
-                // Demo registered units (pending approval)
-                registeredUnits = [
-                    { code: "NUR101", name: "Introduction to Nursing", block: "Introductory", regType: "Normal", status: "approved", approvalDate: "2025-01-15" },
-                    { code: "ANA101", name: "Human Anatomy", block: "Introductory", regType: "Normal", status: "approved", approvalDate: "2025-01-15" },
-                    { code: "NUR201", name: "Medical-Surgical Nursing", block: "Block 1", regType: "Normal", status: "pending", approvalDate: null }
-                ];
+        const approved = registeredUnits.filter(u => u.status === 'approved').length;
+        const pending = registeredUnits.filter(u => u.status === 'pending').length;
+        $('#approved-units-count').text(approved);
+        $('#pending-units-count').text(pending);
+        if (pending > 0) { $('#unitRegBadge').text(pending).show(); } else { $('#unitRegBadge').hide(); }
+    }
+    
+    function saveRegisteredUnits() { localStorage.setItem('nchsm_registered_units', JSON.stringify(registeredUnits)); }
+    function updateSelectedCount() { const checked = $('.unit-checkbox:checked').length; $('#selected-units-count').text(checked); }
+    
+    window.submitRegistration = function() {
+        const regType = $('#RegType').val();
+        if (!regType) { Swal.fire('Warning', 'Please select Registration Type', 'warning'); return; }
+        const selectedCodes = []; $('.unit-checkbox:checked').each(function() { selectedCodes.push($(this).data('code')); });
+        if (selectedCodes.length === 0) { Swal.fire('Warning', 'No units selected', 'warning'); return; }
+        if (selectedCodes.length + registeredUnits.filter(u => u.status === 'pending' || u.status === 'approved').length > maxUnits) {
+            Swal.fire('Limit Exceeded', `You can only register up to ${maxUnits} units total`, 'warning'); return;
+        }
+        Swal.fire({ title: 'Confirm Registration', text: `Submit ${selectedCodes.length} unit(s) for approval?`, icon: 'question', showCancelButton: true }).then(result => {
+            if (result.isConfirmed) {
+                const newUnits = [];
+                selectedCodes.forEach(code => {
+                    const unit = mockAvailableUnits.find(u => u.code === code);
+                    if (unit && !registeredUnits.some(r => r.code === code)) {
+                        newUnits.push({ code: unit.code, name: unit.name, block: unit.block, regType: regType, status: 'pending', approvalDate: null });
+                    }
+                });
+                registeredUnits = [...registeredUnits, ...newUnits];
                 saveRegisteredUnits();
-            }
-            
-            const tbody = $('#registeredUnitsBody');
-            if (registeredUnits.length === 0) {
-                tbody.html('<tr><td colspan="7" style="text-align:center">No units registered yet</td></tr>');
-            } else {
-                let html = '';
-                registeredUnits.forEach(unit => {
-                    const statusClass = unit.status === 'approved' ? 'status-approved' : (unit.status === 'pending' ? 'status-pending' : 'status-rejected');
-                    const statusText = unit.status === 'approved' ? '✅ Approved' : (unit.status === 'pending' ? '⏳ Pending' : '❌ Rejected');
-                    html += `<tr>
-                        <td><strong>${unit.code}</strong></td>
-                        <td>${unit.name}</td>
-                        <td>${unit.block}</td>
-                        <td>${unit.regType}</td>
-                        <td><span class="status-badge ${statusClass}">${statusText}</span></td>
-                        <td>${unit.approvalDate || '—'}</td>
-                        <td>${unit.status === 'pending' ? `<button class="action-btn-drop" onclick="dropUnit('${unit.code}')"><i class="fas fa-trash"></i> Drop</button>` : '—'}</td>
-                    </tr>`;
-                });
-                tbody.html(html);
-            }
-            
-            // Update stats
-            const approved = registeredUnits.filter(u => u.status === 'approved').length;
-            const pending = registeredUnits.filter(u => u.status === 'pending').length;
-            $('#approved-units-count').text(approved);
-            $('#pending-units-count').text(pending);
-            if (pending > 0) $('#unitRegBadge').text(pending).show(); else $('#unitRegBadge').hide();
-        }
-        
-        function saveRegisteredUnits() { localStorage.setItem('nchsm_registered_units', JSON.stringify(registeredUnits)); }
-        
-        function updateSelectedCount() {
-            const checked = $('.unit-checkbox:checked').length;
-            $('#selected-units-count').text(checked);
-        }
-        
-        // Submit Selected Units (Like KeMU's SubmitSelectedUnits)
-        window.submitRegistration = function() {
-            const regType = $('#RegType').val();
-            if (!regType) { Swal.fire('Warning', 'Please select Registration Type', 'warning'); return; }
-            
-            const selectedCodes = [];
-            $('.unit-checkbox:checked').each(function() { selectedCodes.push($(this).data('code')); });
-            
-            if (selectedCodes.length === 0) { Swal.fire('Warning', 'No units selected', 'warning'); return; }
-            if (selectedCodes.length + registeredUnits.filter(u => u.status === 'pending' || u.status === 'approved').length > maxUnits) {
-                Swal.fire('Limit Exceeded', `You can only register up to ${maxUnits} units total`, 'warning');
-                return;
-            }
-            
-            Swal.fire({ title: 'Confirm Registration', text: `Submit ${selectedCodes.length} unit(s) for approval?`, icon: 'question', showCancelButton: true }).then(result => {
-                if (result.isConfirmed) {
-                    // Add selected units to registered with pending status
-                    const newUnits = [];
-                    selectedCodes.forEach(code => {
-                        const unit = mockAvailableUnits.find(u => u.code === code);
-                        if (unit && !registeredUnits.some(r => r.code === code)) {
-                            newUnits.push({
-                                code: unit.code, name: unit.name, block: unit.block,
-                                regType: regType, status: 'pending', approvalDate: null
-                            });
-                        }
-                    });
-                    registeredUnits = [...registeredUnits, ...newUnits];
-                    saveRegisteredUnits();
-                    selectedForSubmission = [];
-                    loadAvailableUnits();
-                    loadRegisteredUnits();
-                    Swal.fire('Success', 'Units submitted for admin approval', 'success');
-                }
-            });
-        };
-        
-        // Drop Unit (Like KeMU's DropRegisteredUnit)
-        window.dropUnit = function(unitCode) {
-            Swal.fire({ title: 'Drop Unit?', text: 'You won\'t be able to revert this!', icon: 'warning', showCancelButton: true }).then(result => {
-                if (result.isConfirmed) {
-                    registeredUnits = registeredUnits.filter(u => u.code !== unitCode);
-                    saveRegisteredUnits();
-                    loadAvailableUnits();
-                    loadRegisteredUnits();
-                    Swal.fire('Dropped', 'Unit has been dropped', 'success');
-                }
-            });
-        };
-        
-        // Select All functionality
-        function bindEvents() {
-            $('#selectAllUnits').off('change').on('change', function() {
-                $('.unit-checkbox').prop('checked', $(this).prop('checked'));
-                updateSelectedCount();
-            });
-            $(document).off('change', '.unit-checkbox').on('change', '.unit-checkbox', updateSelectedCount);
-            $('#refreshUnitsBtn').off('click').on('click', loadAvailableUnits);
-            $('#submitRegistrationBtn').off('click').on('click', submitRegistration);
-            $('#RegType, #BlockFilter, #UnitTypeFilter').off('change').on('change', loadAvailableUnits);
-        }
-        
-        // ==================== APP INITIALIZATION ====================
-        window.app = { config: null, supabase: null, db: null, isInitialized: false };
-        
-        async function initializeApp() {
-            try {
-                document.getElementById('loading-screen').style.display = 'none';
-                document.getElementById('app-content').style.display = 'block';
-                
-                // Set user info
-                const userName = "Student User";
-                document.getElementById('welcome-student-name').innerText = userName;
-                document.getElementById('header-user-name').innerText = userName;
-                
-                // Initialize Unit Registration
-                loadRegisteredUnits();
+                selectedForSubmission = [];
                 loadAvailableUnits();
-                bindEvents();
-                
-                // Setup tabs
-                setupTabs();
-                
-                // Logout
-                document.getElementById('header-logout')?.addEventListener('click', () => { localStorage.clear(); window.location.href = 'login.html'; });
-                document.getElementById('header-refresh')?.addEventListener('click', () => location.reload());
-                
-                window.app.isInitialized = true;
-            } catch (error) {
-                console.error('Init error:', error);
-                document.getElementById('loading-screen').style.display = 'none';
-                document.getElementById('app-content').style.display = 'block';
+                loadRegisteredUnits();
+                Swal.fire('Success', 'Units submitted for admin approval', 'success');
             }
-        }
-        
-        function setupTabs() {
-            const tabs = document.querySelectorAll('.nav a');
-            const contents = document.querySelectorAll('.tab-content');
-            function switchTab(tabId) {
-                contents.forEach(c => { c.classList.remove('active'); c.hidden = true; });
-                const activeTab = document.getElementById(tabId);
-                if (activeTab) { activeTab.classList.add('active'); activeTab.hidden = false; }
-                tabs.forEach(link => {
-                    const linkTab = link.getAttribute('data-tab');
-                    if (linkTab === tabId) link.classList.add('active');
-                    else link.classList.remove('active');
-                });
-                if (tabId === 'unit-registration') { loadRegisteredUnits(); loadAvailableUnits(); }
-                localStorage.setItem('nchsm_last_tab', tabId);
-            }
-            tabs.forEach(link => {
-                link.addEventListener('click', (e) => { e.preventDefault(); switchTab(link.getAttribute('data-tab')); });
-            });
-            const lastTab = localStorage.getItem('nchsm_last_tab');
-            switchTab(lastTab && document.getElementById(lastTab) ? lastTab : 'dashboard');
-        }
-        
-        // Mobile menu
-        document.addEventListener('DOMContentLoaded', function() {
-            const toggleBtn = document.getElementById('mobile-menu-toggle');
-            const sidebar = document.getElementById('sidebar');
-            const overlay = document.getElementById('overlay');
-            if (toggleBtn) {
-                toggleBtn.addEventListener('click', () => {
-                    sidebar.classList.toggle('active');
-                    overlay.classList.toggle('active');
-                    overlay.style.display = overlay.classList.contains('active') ? 'block' : 'none';
-                });
-            }
-            if (overlay) overlay.addEventListener('click', () => { sidebar.classList.remove('active'); overlay.classList.remove('active'); overlay.style.display = 'none'; });
-            initializeApp();
         });
-        
-        window.showTab = function(tabId) {
-            const tab = document.getElementById(tabId);
-            if (tab) {
-                document.querySelectorAll('.tab-content').forEach(t => { t.classList.remove('active'); t.hidden = true; });
-                tab.classList.add('active'); tab.hidden = false;
-                if (tabId === 'unit-registration') { loadRegisteredUnits(); loadAvailableUnits(); }
+    };
+    
+    window.dropUnit = function(unitCode) {
+        Swal.fire({ title: 'Drop Unit?', text: 'You won\'t be able to revert this!', icon: 'warning', showCancelButton: true }).then(result => {
+            if (result.isConfirmed) {
+                registeredUnits = registeredUnits.filter(u => u.code !== unitCode);
+                saveRegisteredUnits();
+                loadAvailableUnits();
+                loadRegisteredUnits();
+                Swal.fire('Dropped', 'Unit has been dropped', 'success');
             }
-        };
+        });
+    };
+    
+    function bindUnitEvents() {
+        $('#selectAllUnits').off('change').on('change', function() { $('.unit-checkbox').prop('checked', $(this).prop('checked')); updateSelectedCount(); });
+        $(document).off('change', '.unit-checkbox').on('change', '.unit-checkbox', updateSelectedCount);
+        $('#refreshUnitsBtn').off('click').on('click', loadAvailableUnits);
+        $('#submitRegistrationBtn').off('click').on('click', submitRegistration);
+        $('#RegType, #BlockFilter, #UnitTypeFilter').off('change').on('change', loadAvailableUnits);
+    }
+    
+    // Extend original initialization
+    const originalInitUI = window.initUI;
+    window.initUI = function() {
+        if (originalInitUI) originalInitUI();
+        loadRegisteredUnits();
+        loadAvailableUnits();
+        bindUnitEvents();
+    };
+    
+    // Global app state
+    window.app = { config: null, supabase: null, db: null, user: null, isInitialized: false };
+    
+    async function initializeApp() {
+        try {
+            console.log('Starting app initialization...');
+            if (!window.APP_CONFIG) throw new Error('Configuration not loaded');
+            const config = window.APP_CONFIG;
+            window.app.config = config;
+            if (typeof window.db === 'undefined') throw new Error('Database module not loaded');
+            await window.db.initialize();
+            let userSession = null;
+            if (window.db.supabase) {
+                const { data } = await window.db.supabase.auth.getSession();
+                userSession = data.session;
+            }
+            if (!userSession) { window.location.href = 'login.html'; return; }
+            window.db.currentUserId = userSession.user.id;
+            window.db.currentUserProfile = { id: userSession.user.id, email: userSession.user.email, full_name: userSession.user.email.split('@')[0] };
+            document.getElementById('loading-screen').style.display = 'none';
+            document.getElementById('app-content').style.display = 'block';
+            window.supabase = window.db.supabase;
+            window.currentUserId = window.db.currentUserId;
+            window.currentUserProfile = window.db.currentUserProfile;
+            const welcomeHeader = document.getElementById('welcome-header');
+            if (welcomeHeader && window.db.currentUserProfile.full_name) welcomeHeader.textContent = 'Welcome back, ' + window.db.currentUserProfile.full_name + '!';
+            const headerName = document.getElementById('header-user-name');
+            if (headerName && window.db.currentUserProfile.full_name) headerName.textContent = window.db.currentUserProfile.full_name;
+            if (typeof initUI === 'function') initUI();
+            if (window.ui && typeof window.ui.showTab === 'function') {
+                const hash = window.location.hash.substring(1);
+                const lastTab = localStorage.getItem('nchsm_last_tab');
+                let targetTab = 'dashboard';
+                if (hash && window.ui.isValidTab(hash)) targetTab = hash;
+                else if (lastTab && window.ui.isValidTab(lastTab)) targetTab = lastTab;
+                window.ui.showTab(targetTab);
+                if (hash !== targetTab) history.replaceState(null, null, '#' + targetTab);
+            }
+            window.app.isInitialized = true;
+            document.dispatchEvent(new CustomEvent('appReady', { detail: { userId: window.currentUserId, userProfile: window.currentUserProfile, database: window.db } }));
+        } catch (error) {
+            console.error('Init error:', error);
+            document.getElementById('loading-screen').style.display = 'none';
+            document.getElementById('app-content').style.display = 'block';
+        }
+    }
+    
+    window.showTab = function(tabId) {
+        if (window.ui && typeof window.ui.showTab === 'function') window.ui.showTab(tabId);
+        else { document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active')); const selectedTab = document.getElementById(tabId); if (selectedTab) selectedTab.classList.add('active'); }
+    };
+    
+    window.logout = async function() {
+        localStorage.removeItem('nchsm_last_tab');
+        if (window.db && window.db.logout) await window.db.logout();
+        else if (window.app.supabase) await window.app.supabase.auth.signOut();
+        localStorage.clear();
+        sessionStorage.clear();
+        window.location.href = 'login.html';
+    };
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.tab-content').forEach(tab => tab.style.removeProperty('display'));
+        if (typeof initializeApp === 'function') initializeApp();
+        else { document.getElementById('loading-screen').style.display = 'none'; document.getElementById('app-content').style.display = 'block'; }
+    });
     </script>
 </body>
 </html>
