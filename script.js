@@ -4226,7 +4226,9 @@ async function loadRegistrationStats() {
     }
 }
 
-// Load pending registrations for approval
+// =====================================================
+// FIXED: Load pending registrations for approval
+// =====================================================
 async function loadPendingRegistrations() {
     const container = document.getElementById('pending-registrations-list');
     const btn = event?.target;
@@ -4238,20 +4240,41 @@ async function loadPendingRegistrations() {
         if (btn) btn.innerHTML = '<i class="fas fa-times"></i> Hide Pending Approvals';
         
         try {
-            const { data, error } = await sb
+            // Query pending registrations from student_unit_registrations table
+            const { data: registrations, error } = await sb
                 .from('student_unit_registrations')
-                .select(`
-                    *,
-                    profiles:student_id (full_name, email)
-                `)
+                .select('*')
                 .eq('status', 'pending')
                 .order('submitted_date', { ascending: false });
             
             if (error) throw error;
             
-            if (!data || data.length === 0) {
+            if (!registrations || registrations.length === 0) {
                 container.innerHTML = '<p>No pending registrations.</p>';
                 return;
+            }
+            
+            // Get student names separately from consolidated_user_profiles_table
+            const studentIds = [...new Set(registrations.map(r => r.student_id))];
+            let studentNames = {};
+            
+            try {
+                const { data: profiles } = await sb
+                    .from('consolidated_user_profiles_table')
+                    .select('user_id, full_name')
+                    .in('user_id', studentIds);
+                
+                if (profiles) {
+                    profiles.forEach(p => {
+                        studentNames[p.user_id] = p.full_name;
+                    });
+                }
+            } catch (profileError) {
+                console.warn('Could not fetch student names:', profileError);
+                // Use fallback names
+                registrations.forEach(r => {
+                    studentNames[r.student_id] = `Student ${r.student_id?.substring(0, 8) || 'Unknown'}`;
+                });
             }
             
             let html = `
@@ -4262,6 +4285,7 @@ async function loadPendingRegistrations() {
                             <th>Unit Code</th>
                             <th>Unit Name</th>
                             <th>Block</th>
+                            <th>Registration Type</th>
                             <th>Submitted</th>
                             <th>Actions</th>
                         </tr>
@@ -4269,15 +4293,20 @@ async function loadPendingRegistrations() {
                     <tbody>
             `;
             
-            for (const reg of data) {
-                const studentName = reg.profiles?.full_name || 'Unknown';
+            for (const reg of registrations) {
+                const studentName = studentNames[reg.student_id] || `Student ${reg.student_id?.substring(0, 8) || 'Unknown'}`;
+                const submittedDate = reg.submitted_date ? new Date(reg.submitted_date).toLocaleString() : 'Unknown';
+                
                 html += `
                     <tr>
-                        <td>${escapeHtml(studentName)}</td>
-                        <td><strong>${escapeHtml(reg.unit_code)}</strong></td>
+                        <td><strong>${escapeHtml(studentName)}</strong><br>
+                            <small style="color:#6b7280;">ID: ${reg.student_id?.substring(0, 8) || 'N/A'}...</small>
+                        </td>
+                        <td><code>${escapeHtml(reg.unit_code)}</code></td>
                         <td>${escapeHtml(reg.unit_name)}</td>
                         <td>${escapeHtml(reg.block)}</td>
-                        <td>${new Date(reg.submitted_date).toLocaleString()}</td>
+                        <td>${escapeHtml(reg.reg_type || 'Normal')}</td>
+                        <td>${submittedDate}</td>
                         <td>
                             <button class="btn-sm btn-edit" onclick="approveRegistration('${reg.id}')">
                                 <i class="fas fa-check"></i> Approve
@@ -4285,8 +4314,8 @@ async function loadPendingRegistrations() {
                             <button class="btn-sm btn-delete" onclick="rejectRegistration('${reg.id}')">
                                 <i class="fas fa-times"></i> Reject
                             </button>
-                          </td>
-                    </table>
+                         </td>
+                     </tr>
                 `;
             }
             
@@ -4295,14 +4324,13 @@ async function loadPendingRegistrations() {
             
         } catch (error) {
             console.error('Error loading pending registrations:', error);
-            container.innerHTML = '<p style="color: red;">Error loading pending registrations.</p>';
+            container.innerHTML = `<p style="color: red;">Error loading pending registrations: ${error.message}</p>`;
         }
     } else {
         container.style.display = 'none';
         if (btn) btn.innerHTML = '<i class="fas fa-clock"></i> View Pending Approvals';
     }
 }
-
 // Approve a student's unit registration
 async function approveRegistration(regId) {
     if (!confirm('Approve this unit registration?')) return;
