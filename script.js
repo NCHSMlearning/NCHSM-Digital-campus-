@@ -510,6 +510,7 @@ async function loadSectionData(tabId) {
     loadAllUnits(); 
     loadUnitBlocks();
     loadRegistrationStats();
+    loadApprovedRegistrations();
     break;
         case 'resources': 
             loadResources(); 
