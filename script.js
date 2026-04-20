@@ -4806,7 +4806,288 @@ function setupEventListeners() {
 
     // ANNOUNCEMENTS
     $('save-announcement')?.addEventListener('click', saveOfficialAnnouncement);
+    /*******************************************************
+ * APPROVED REGISTRATIONS MANAGEMENT - VIEW & DE-APPROVE
+ *******************************************************/
+
+let approvedRegistrationsData = [];
+let selectedApprovedIds = new Set();
+
+// Load approved registrations
+async function loadApprovedRegistrations() {
+    const tbody = document.getElementById('approved-registrations-body');
+    if (!tbody) return;
     
+    tbody.innerHTML = '<tr><td colspan="10">Loading approved registrations...</td></tr>';
+    
+    try {
+        // Get all approved registrations
+        const { data: registrations, error } = await sb
+            .from('student_unit_registrations')
+            .select('*')
+            .eq('status', 'approved')
+            .order('approval_date', { ascending: false });
+        
+        if (error) throw error;
+        
+        approvedRegistrationsData = registrations || [];
+        
+        if (approvedRegistrationsData.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="10">No approved registrations found.</td></tr>';
+            return;
+        }
+        
+        // Get student names and approved by names
+        const studentIds = [...new Set(approvedRegistrationsData.map(r => r.student_id))];
+        const approverIds = [...new Set(approvedRegistrationsData.map(r => r.approved_by).filter(Boolean))];
+        
+        let studentNames = {};
+        let approverNames = {};
+        let studentIds_map = {};
+        
+        // Fetch student names
+        const { data: students } = await sb
+            .from('consolidated_user_profiles_table')
+            .select('user_id, full_name, student_id')
+            .in('user_id', studentIds);
+        
+        if (students) {
+            students.forEach(s => {
+                studentNames[s.user_id] = {
+                    name: s.full_name,
+                    student_id: s.student_id || s.user_id.substring(0, 8)
+                };
+            });
+        }
+        
+        // Fetch approver names
+        if (approverIds.length > 0) {
+            const { data: approvers } = await sb
+                .from('consolidated_user_profiles_table')
+                .select('user_id, full_name')
+                .in('user_id', approverIds);
+            
+            if (approvers) {
+                approvers.forEach(a => {
+                    approverNames[a.user_id] = a.full_name;
+                });
+            }
+        }
+        
+        // Build table
+        let html = '';
+        for (const reg of approvedRegistrationsData) {
+            const studentInfo = studentNames[reg.student_id] || { name: 'Unknown', student_id: 'N/A' };
+            const approverName = reg.approved_by ? (approverNames[reg.approved_by] || 'System') : 'System';
+            const approvalDate = reg.approval_date ? new Date(reg.approval_date).toLocaleDateString() : 'N/A';
+            
+            html += `
+                <tr>
+                    <td style="text-align: center;">
+                        <input type="checkbox" class="approved-checkbox" data-reg-id="${reg.id}" onchange="updateApprovedSelectedCount()">
+                    </td>
+                    <td><strong>${escapeHtml(studentInfo.name)}</strong></td>
+                    <td><code>${escapeHtml(studentInfo.student_id)}</code></td>
+                    <td><code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px;">${escapeHtml(reg.unit_code)}</code></td>
+                    <td>${escapeHtml(reg.unit_name)}</td>
+                    <td><span class="badge" style="background: #e0e7ff;">${escapeHtml(reg.block)}</span></td>
+                    <td>${escapeHtml(reg.reg_type || 'Normal')}</td>
+                    <td>${approvalDate}</td>
+                    <td>${escapeHtml(approverName)}</td>
+                    <td>
+                        <button onclick="deapproveSingleRegistration('${reg.id}', '${escapeHtml(reg.unit_code)}', '${escapeHtml(studentInfo.name)}')" 
+                                class="btn-danger btn-sm" style="background: #dc2626; padding: 4px 10px;">
+                            <i class="fas fa-undo-alt"></i> De-approve
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }
+        
+        tbody.innerHTML = html;
+        
+        // Show/hide bulk deapprove button
+        const bulkBtn = document.getElementById('bulkDeapproveBtn');
+        if (bulkBtn && approvedRegistrationsData.length > 0) {
+            bulkBtn.style.display = 'inline-flex';
+        }
+        
+    } catch (error) {
+        console.error('Error loading approved registrations:', error);
+        tbody.innerHTML = `<tr><td colspan="10">Error loading approved registrations: ${error.message}</td></tr>`;
+    }
+}
+
+// Update approved selected count
+function updateApprovedSelectedCount() {
+    const checkboxes = document.querySelectorAll('.approved-checkbox:checked');
+    const count = checkboxes.length;
+    const countElement = document.getElementById('approvedSelectedCount');
+    if (countElement) countElement.textContent = count;
+    
+    selectedApprovedIds.clear();
+    checkboxes.forEach(cb => {
+        const regId = cb.getAttribute('data-reg-id');
+        if (regId) selectedApprovedIds.add(regId);
+    });
+}
+
+// Toggle select all approved registrations
+function toggleSelectAllApproved() {
+    const isChecked = document.getElementById('selectAllApproved').checked;
+    const allCheckboxes = document.querySelectorAll('.approved-checkbox');
+    
+    allCheckboxes.forEach(cb => {
+        cb.checked = isChecked;
+        const regId = cb.getAttribute('data-reg-id');
+        if (isChecked) {
+            selectedApprovedIds.add(regId);
+        } else {
+            selectedApprovedIds.delete(regId);
+        }
+    });
+    
+    updateApprovedSelectedCount();
+}
+
+// Filter approved registrations by search
+function filterApprovedRegistrations() {
+    const searchTerm = document.getElementById('approved-search')?.value.toLowerCase() || '';
+    const rows = document.querySelectorAll('#approved-registrations-body tr');
+    
+    rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        if (text.includes(searchTerm)) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+
+// Export approved registrations to CSV
+function exportApprovedRegistrations() {
+    const headers = ['Student Name', 'Student ID', 'Unit Code', 'Unit Name', 'Block', 'Registration Type', 'Approval Date', 'Approved By'];
+    const rows = [];
+    
+    document.querySelectorAll('#approved-registrations-body tr').forEach(row => {
+        const cells = row.querySelectorAll('td');
+        if (cells.length >= 9 && cells[0].querySelector('input') === null) {
+            rows.push([
+                cells[1]?.textContent.trim() || '',
+                cells[2]?.textContent.trim() || '',
+                cells[3]?.textContent.trim() || '',
+                cells[4]?.textContent.trim() || '',
+                cells[5]?.textContent.trim() || '',
+                cells[6]?.textContent.trim() || '',
+                cells[7]?.textContent.trim() || '',
+                cells[8]?.textContent.trim() || ''
+            ]);
+        }
+    });
+    
+    const csvContent = [headers, ...rows].map(row => row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.href = url;
+    link.setAttribute('download', 'approved_registrations.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    showFeedback('Approved registrations exported successfully!', 'success');
+}
+
+// De-approve a single registration
+async function deapproveSingleRegistration(regId, unitCode, studentName) {
+    if (!confirm(`De-approve ${unitCode} for ${studentName}? This will revert the status to pending.`)) return;
+    
+    try {
+        const { error } = await sb
+            .from('student_unit_registrations')
+            .update({ 
+                status: 'pending',
+                approved_by: null,
+                approval_date: null,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', regId);
+        
+        if (error) throw error;
+        
+        showFeedback(`Unit ${unitCode} de-approved and moved back to pending!`, 'success');
+        await logAudit('UNIT_REG_DEAPPROVE', `De-approved unit ${unitCode} for student ${studentName}`, regId, 'SUCCESS');
+        
+        // Refresh both tables
+        await loadApprovedRegistrations();
+        await loadUnitRegistrationStats();
+        await loadUnitPendingRegistrations();
+        
+    } catch (error) {
+        console.error('Error de-approving registration:', error);
+        showFeedback(`Error: ${error.message}`, 'error');
+    }
+}
+
+// Bulk de-approve selected registrations
+async function bulkDeapproveSelected() {
+    const selectedIds = Array.from(selectedApprovedIds);
+    
+    if (selectedIds.length === 0) {
+        showFeedback('No registrations selected for de-approval.', 'warning');
+        return;
+    }
+    
+    if (!confirm(`De-approve ${selectedIds.length} selected registration(s)? They will move back to pending status.`)) return;
+    
+    try {
+        const { error } = await sb
+            .from('student_unit_registrations')
+            .update({ 
+                status: 'pending',
+                approved_by: null,
+                approval_date: null,
+                updated_at: new Date().toISOString()
+            })
+            .in('id', selectedIds);
+        
+        if (error) throw error;
+        
+        showFeedback(`${selectedIds.length} registration(s) de-approved and moved to pending!`, 'success');
+        await logAudit('UNIT_REG_BULK_DEAPPROVE', `Bulk de-approved ${selectedIds.length} registrations`, null, 'SUCCESS');
+        
+        selectedApprovedIds.clear();
+        await loadApprovedRegistrations();
+        await loadUnitRegistrationStats();
+        await loadUnitPendingRegistrations();
+        
+    } catch (error) {
+        console.error('Error in bulk de-approve:', error);
+        showFeedback(`Error: ${error.message}`, 'error');
+    }
+}
+
+// Update loadSectionData to include approved registrations
+// Add this to your existing loadSectionData function for case 'unit-management':
+
+// In your loadSectionData function, update the 'unit-management' case:
+// case 'unit-management': 
+//     loadAllUnits(); 
+//     loadUnitBlocks();
+//     loadUnitRegistrationStats();
+//     loadApprovedRegistrations();  // ADD THIS LINE
+//     break;
+
+// Global function references
+window.loadApprovedRegistrations = loadApprovedRegistrations;
+window.filterApprovedRegistrations = filterApprovedRegistrations;
+window.exportApprovedRegistrations = exportApprovedRegistrations;
+window.deapproveSingleRegistration = deapproveSingleRegistration;
+window.bulkDeapproveSelected = bulkDeapproveSelected;
+window.toggleSelectAllApproved = toggleSelectAllApproved;
+window.updateApprovedSelectedCount = updateApprovedSelectedCount;
     // =====================================================
     // UNIT REGISTRATION MANAGEMENT (NEW SECTION)
     // =====================================================
