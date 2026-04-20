@@ -506,6 +506,11 @@ async function loadSectionData(tabId) {
         case 'calendar': 
             renderFullCalendar(); 
             break;
+            case 'unit-management': 
+    loadAllUnits(); 
+    loadUnitBlocks();
+    loadRegistrationStats();
+    break;
         case 'resources': 
             loadResources(); 
             updateProgramDropdown($('resource_program'));
@@ -3946,7 +3951,464 @@ function filterErrors(severity) {
 function updateVisualization() {
     showFeedback('Updating visualization with new parameters...', 'info');
 }
+/*******************************************************
+ * 21. UNIT REGISTRATION MANAGEMENT (NEW SECTION)
+ *******************************************************/
 
+// Global variables for unit management
+let allUnits = [];
+let currentBlockFilter = 'all';
+
+// Load all units from catalog
+async function loadAllUnits() {
+    const container = document.getElementById('units-list-container');
+    if (!container) return;
+    
+    container.innerHTML = '<div class="loading-spinner"></div><p>Loading units...</p>';
+    
+    try {
+        const { data, error } = await sb
+            .from('units_catalog')
+            .select('*')
+            .order('block', { ascending: true })
+            .order('unit_code', { ascending: true });
+        
+        if (error) throw error;
+        
+        allUnits = data || [];
+        renderUnits();
+        loadRegistrationStats();
+        
+    } catch (error) {
+        console.error('Error loading units:', error);
+        container.innerHTML = '<p style="color: red;">Error loading units. Please refresh.</p>';
+        await logAudit('UNIT_LOAD', `Failed to load units: ${error.message}`, null, 'FAILURE');
+    }
+}
+
+// Render units based on filters
+function renderUnits() {
+    const container = document.getElementById('units-list-container');
+    if (!container) return;
+    
+    const searchTerm = document.getElementById('unit_search')?.value.toLowerCase() || '';
+    const programFilter = document.getElementById('unit_filter_program')?.value || '';
+    const yearFilter = document.getElementById('unit_filter_year')?.value || '';
+    
+    let filtered = [...allUnits];
+    
+    if (searchTerm) {
+        filtered = filtered.filter(u => 
+            u.unit_code?.toLowerCase().includes(searchTerm) || 
+            u.unit_name?.toLowerCase().includes(searchTerm)
+        );
+    }
+    if (programFilter) {
+        filtered = filtered.filter(u => u.program === programFilter);
+    }
+    if (yearFilter) {
+        filtered = filtered.filter(u => u.year == yearFilter);
+    }
+    if (currentBlockFilter !== 'all') {
+        filtered = filtered.filter(u => u.block === currentBlockFilter);
+    }
+    
+    if (filtered.length === 0) {
+        container.innerHTML = '<p>No units found. Add units using the form above.</p>';
+        return;
+    }
+    
+    let html = '<div class="units-grid">';
+    filtered.forEach(unit => {
+        const typeClass = unit.unit_type === 'Core' ? 'badge-core' : 'badge-elective';
+        const programName = getProgramDisplayName(unit.program);
+        
+        html += `
+            <div class="unit-card" data-unit-id="${unit.id}">
+                <div class="unit-header">
+                    <div>
+                        <span class="unit-code">${escapeHtml(unit.unit_code)}</span>
+                        <span class="unit-name">${escapeHtml(unit.unit_name)}</span>
+                    </div>
+                    <div class="unit-actions">
+                        <button class="btn-sm btn-edit" onclick="editUnit(${unit.id})"><i class="fas fa-edit"></i> Edit</button>
+                        <button class="btn-sm btn-delete" onclick="deleteUnit(${unit.id}, '${escapeHtml(unit.unit_code)}')"><i class="fas fa-trash"></i> Delete</button>
+                    </div>
+                </div>
+                <div class="unit-meta">
+                    <span><i class="fas fa-tag"></i> ${escapeHtml(programName)}</span>
+                    <span><i class="fas fa-layer-group"></i> ${escapeHtml(unit.block)}</span>
+                    <span><i class="fas fa-calendar"></i> Year: ${unit.year || 'N/A'}</span>
+                    <span><i class="fas fa-star"></i> ${unit.credits || 3} Credits</span>
+                    <span><i class="fas fa-clock"></i> ${unit.hours || 0} Hours</span>
+                    <span class="${typeClass}"><i class="fas fa-book"></i> ${unit.unit_type || 'Core'}</span>
+                    ${unit.prerequisites ? `<span><i class="fas fa-link"></i> Pre: ${escapeHtml(unit.prerequisites)}</span>` : ''}
+                </div>
+            </div>
+        `;
+    });
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+// Add new unit
+async function addNewUnit() {
+    const unitCode = document.getElementById('new_unit_code')?.value;
+    const unitName = document.getElementById('new_unit_name')?.value;
+    const program = document.getElementById('new_unit_program')?.value;
+    const block = document.getElementById('new_unit_block')?.value;
+    const year = parseInt(document.getElementById('new_unit_year')?.value);
+    const credits = parseInt(document.getElementById('new_unit_credits')?.value);
+    const hours = parseInt(document.getElementById('new_unit_hours')?.value);
+    const unitType = document.getElementById('new_unit_type')?.value;
+    const prerequisites = document.getElementById('new_unit_prerequisites')?.value || null;
+    
+    if (!unitCode || !unitName) {
+        showFeedback('Please fill in Unit Code and Unit Name', 'error');
+        return;
+    }
+    
+    const newUnit = {
+        unit_code: unitCode,
+        unit_name: unitName,
+        program: program,
+        block: block,
+        year: year,
+        credits: credits,
+        hours: hours,
+        unit_type: unitType,
+        prerequisites: prerequisites,
+        status: 'active'
+    };
+    
+    try {
+        const { data, error } = await sb
+            .from('units_catalog')
+            .insert([newUnit])
+            .select();
+        
+        if (error) throw error;
+        
+        showFeedback(`Unit "${unitCode}" added successfully!`, 'success');
+        await logAudit('UNIT_ADD', `Added unit: ${unitCode} - ${unitName}`, data?.[0]?.id, 'SUCCESS');
+        
+        // Clear form
+        document.getElementById('new_unit_code').value = '';
+        document.getElementById('new_unit_name').value = '';
+        document.getElementById('new_unit_prerequisites').value = '';
+        
+        loadAllUnits();
+        
+    } catch (error) {
+        console.error('Error adding unit:', error);
+        showFeedback(`Error adding unit: ${error.message}`, 'error');
+        await logAudit('UNIT_ADD', `Failed to add unit: ${error.message}`, null, 'FAILURE');
+    }
+}
+
+// Edit unit
+async function editUnit(unitId) {
+    const unit = allUnits.find(u => u.id === unitId);
+    if (!unit) return;
+    
+    document.getElementById('edit_unit_id').value = unit.id;
+    document.getElementById('edit_unit_code').value = unit.unit_code;
+    document.getElementById('edit_unit_name').value = unit.unit_name;
+    document.getElementById('edit_unit_program').value = unit.program;
+    document.getElementById('edit_unit_block').value = unit.block;
+    document.getElementById('edit_unit_year').value = unit.year;
+    document.getElementById('edit_unit_credits').value = unit.credits;
+    document.getElementById('edit_unit_hours').value = unit.hours || 0;
+    document.getElementById('edit_unit_type').value = unit.unit_type || 'Core';
+    document.getElementById('edit_unit_prerequisites').value = unit.prerequisites || '';
+    
+    document.getElementById('editUnitModal').style.display = 'flex';
+    
+    document.getElementById('edit-unit-form').onsubmit = async (e) => {
+        e.preventDefault();
+        
+        const updatedUnit = {
+            unit_code: document.getElementById('edit_unit_code').value,
+            unit_name: document.getElementById('edit_unit_name').value,
+            program: document.getElementById('edit_unit_program').value,
+            block: document.getElementById('edit_unit_block').value,
+            year: parseInt(document.getElementById('edit_unit_year').value),
+            credits: parseInt(document.getElementById('edit_unit_credits').value),
+            hours: parseInt(document.getElementById('edit_unit_hours').value),
+            unit_type: document.getElementById('edit_unit_type').value,
+            prerequisites: document.getElementById('edit_unit_prerequisites').value || null
+        };
+        
+        try {
+            const { error } = await sb
+                .from('units_catalog')
+                .update(updatedUnit)
+                .eq('id', unitId);
+            
+            if (error) throw error;
+            
+            showFeedback('Unit updated successfully!', 'success');
+            await logAudit('UNIT_EDIT', `Edited unit: ${updatedUnit.unit_code}`, unitId, 'SUCCESS');
+            closeModal('editUnitModal');
+            loadAllUnits();
+            
+        } catch (error) {
+            console.error('Error updating unit:', error);
+            showFeedback(`Error updating unit: ${error.message}`, 'error');
+            await logAudit('UNIT_EDIT', `Failed to edit unit: ${error.message}`, unitId, 'FAILURE');
+        }
+    };
+}
+
+// Delete unit
+async function deleteUnit(unitId, unitCode) {
+    if (!confirm(`Are you sure you want to delete unit "${unitCode}"? This may affect student registrations.`)) return;
+    
+    try {
+        const { error } = await sb
+            .from('units_catalog')
+            .delete()
+            .eq('id', unitId);
+        
+        if (error) throw error;
+        
+        showFeedback(`Unit "${unitCode}" deleted successfully!`, 'success');
+        await logAudit('UNIT_DELETE', `Deleted unit: ${unitCode}`, unitId, 'SUCCESS');
+        loadAllUnits();
+        
+    } catch (error) {
+        console.error('Error deleting unit:', error);
+        showFeedback(`Error deleting unit: ${error.message}`, 'error');
+        await logAudit('UNIT_DELETE', `Failed to delete unit: ${error.message}`, unitId, 'FAILURE');
+    }
+}
+
+// Filter units by search
+function filterUnits() {
+    renderUnits();
+}
+
+// Filter units by block
+function filterByBlock(block) {
+    currentBlockFilter = block;
+    
+    document.querySelectorAll('.block-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.getAttribute('data-block') === block) {
+            btn.classList.add('active');
+        }
+    });
+    
+    renderUnits();
+}
+
+// Load registration statistics
+async function loadRegistrationStats() {
+    try {
+        const { data, error } = await sb
+            .from('student_unit_registrations')
+            .select('status', { count: 'exact' });
+        
+        if (!error && data) {
+            const pending = data.filter(r => r.status === 'pending').length;
+            const approved = data.filter(r => r.status === 'approved').length;
+            
+            const pendingEl = document.getElementById('pendingRegistrations');
+            const approvedEl = document.getElementById('approvedRegistrations');
+            const totalEl = document.getElementById('totalRegistrations');
+            
+            if (pendingEl) pendingEl.textContent = pending;
+            if (approvedEl) approvedEl.textContent = approved;
+            if (totalEl) totalEl.textContent = data.length;
+        }
+    } catch (error) {
+        console.error('Error loading registration stats:', error);
+    }
+}
+
+// Load pending registrations for approval
+async function loadPendingRegistrations() {
+    const container = document.getElementById('pending-registrations-list');
+    const btn = event?.target;
+    
+    if (!container) return;
+    
+    if (container.style.display === 'none' || container.style.display === '') {
+        container.style.display = 'block';
+        if (btn) btn.innerHTML = '<i class="fas fa-times"></i> Hide Pending Approvals';
+        
+        try {
+            const { data, error } = await sb
+                .from('student_unit_registrations')
+                .select(`
+                    *,
+                    profiles:student_id (full_name, email)
+                `)
+                .eq('status', 'pending')
+                .order('submitted_date', { ascending: false });
+            
+            if (error) throw error;
+            
+            if (!data || data.length === 0) {
+                container.innerHTML = '<p>No pending registrations.</p>';
+                return;
+            }
+            
+            let html = `
+                <table style="width:100%; border-collapse: collapse;">
+                    <thead>
+                        <tr>
+                            <th>Student</th>
+                            <th>Unit Code</th>
+                            <th>Unit Name</th>
+                            <th>Block</th>
+                            <th>Submitted</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            for (const reg of data) {
+                const studentName = reg.profiles?.full_name || 'Unknown';
+                html += `
+                    <tr>
+                        <td>${escapeHtml(studentName)}</td>
+                        <td><strong>${escapeHtml(reg.unit_code)}</strong></td>
+                        <td>${escapeHtml(reg.unit_name)}</td>
+                        <td>${escapeHtml(reg.block)}</td>
+                        <td>${new Date(reg.submitted_date).toLocaleString()}</td>
+                        <td>
+                            <button class="btn-sm btn-edit" onclick="approveRegistration('${reg.id}')">
+                                <i class="fas fa-check"></i> Approve
+                            </button>
+                            <button class="btn-sm btn-delete" onclick="rejectRegistration('${reg.id}')">
+                                <i class="fas fa-times"></i> Reject
+                            </button>
+                          </td>
+                    </table>
+                `;
+            }
+            
+            html += '</tbody></table>';
+            container.innerHTML = html;
+            
+        } catch (error) {
+            console.error('Error loading pending registrations:', error);
+            container.innerHTML = '<p style="color: red;">Error loading pending registrations.</p>';
+        }
+    } else {
+        container.style.display = 'none';
+        if (btn) btn.innerHTML = '<i class="fas fa-clock"></i> View Pending Approvals';
+    }
+}
+
+// Approve a student's unit registration
+async function approveRegistration(regId) {
+    if (!confirm('Approve this unit registration?')) return;
+    
+    try {
+        const { error } = await sb
+            .from('student_unit_registrations')
+            .update({ 
+                status: 'approved', 
+                approval_date: new Date().toISOString().split('T')[0]
+            })
+            .eq('id', regId);
+        
+        if (error) throw error;
+        
+        showFeedback('Registration approved!', 'success');
+        await logAudit('UNIT_REG_APPROVE', `Approved registration ID: ${regId}`, regId, 'SUCCESS');
+        loadPendingRegistrations();
+        loadRegistrationStats();
+        
+    } catch (error) {
+        console.error('Error approving registration:', error);
+        showFeedback(`Error approving registration: ${error.message}`, 'error');
+        await logAudit('UNIT_REG_APPROVE', `Failed to approve registration: ${error.message}`, regId, 'FAILURE');
+    }
+}
+
+// Reject a student's unit registration
+async function rejectRegistration(regId) {
+    const reason = prompt('Enter rejection reason (optional):');
+    if (!confirm('Reject this unit registration?')) return;
+    
+    try {
+        const { error } = await sb
+            .from('student_unit_registrations')
+            .update({ 
+                status: 'rejected', 
+                rejection_reason: reason || null
+            })
+            .eq('id', regId);
+        
+        if (error) throw error;
+        
+        showFeedback('Registration rejected!', 'success');
+        await logAudit('UNIT_REG_REJECT', `Rejected registration ID: ${regId}. Reason: ${reason || 'No reason provided'}`, regId, 'SUCCESS');
+        loadPendingRegistrations();
+        loadRegistrationStats();
+        
+    } catch (error) {
+        console.error('Error rejecting registration:', error);
+        showFeedback(`Error rejecting registration: ${error.message}`, 'error');
+        await logAudit('UNIT_REG_REJECT', `Failed to reject registration: ${error.message}`, regId, 'FAILURE');
+    }
+}
+
+// Get all available blocks for filter
+async function loadUnitBlocks() {
+    try {
+        const { data, error } = await sb
+            .from('units_catalog')
+            .select('block')
+            .eq('status', 'active');
+        
+        if (!error && data) {
+            const blocks = [...new Set(data.map(b => b.block))];
+            const blockSelect = document.getElementById('unit_filter_block');
+            if (blockSelect) {
+                blockSelect.innerHTML = '<option value="">All Blocks</option>';
+                blocks.forEach(block => {
+                    blockSelect.innerHTML += `<option value="${escapeHtml(block)}">${escapeHtml(block)}</option>`;
+                });
+            }
+        }
+    } catch (error) {
+        console.error('Error loading blocks:', error);
+    }
+}
+
+// Update block filter when changed
+function filterByBlockSelect() {
+    const blockSelect = document.getElementById('unit_filter_block');
+    if (blockSelect) {
+        currentBlockFilter = blockSelect.value || 'all';
+        renderUnits();
+    }
+}
+
+// Global function references for Unit Registration
+window.loadAllUnits = loadAllUnits;
+window.addNewUnit = addNewUnit;
+window.editUnit = editUnit;
+window.deleteUnit = deleteUnit;
+window.filterUnits = filterUnits;
+window.filterByBlock = filterByBlock;
+window.filterByBlockSelect = filterByBlockSelect;
+window.loadPendingRegistrations = loadPendingRegistrations;
+window.approveRegistration = approveRegistration;
+window.rejectRegistration = rejectRegistration;
+
+// Add to loadSectionData switch case
+// Add this case to your existing loadSectionData function:
+// case 'unit-management': 
+//     loadAllUnits(); 
+//     loadUnitBlocks();
+//     loadRegistrationStats();
+//     break;
 /*******************************************************
  * 20. INITIALIZATION & EVENT LISTENERS
  *******************************************************/
@@ -4003,6 +4465,102 @@ function setupEventListeners() {
 
     // ANNOUNCEMENTS
     $('save-announcement')?.addEventListener('click', saveOfficialAnnouncement);
+    
+    // =====================================================
+    // UNIT REGISTRATION MANAGEMENT (NEW SECTION)
+    // =====================================================
+    
+    // Add New Unit Form
+    const addUnitBtn = document.getElementById('add-unit-btn');
+    if (addUnitBtn) {
+        addUnitBtn.addEventListener('click', addNewUnit);
+    }
+    
+    // Alternative: If using form submission instead of button click
+    const addUnitForm = document.getElementById('add-unit-form');
+    if (addUnitForm) {
+        addUnitForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            addNewUnit();
+        });
+    }
+    
+    // Unit filter inputs
+    const unitSearch = document.getElementById('unit_search');
+    if (unitSearch) {
+        unitSearch.addEventListener('keyup', filterUnits);
+    }
+    
+    const unitFilterProgram = document.getElementById('unit_filter_program');
+    if (unitFilterProgram) {
+        unitFilterProgram.addEventListener('change', filterUnits);
+    }
+    
+    const unitFilterYear = document.getElementById('unit_filter_year');
+    if (unitFilterYear) {
+        unitFilterYear.addEventListener('change', filterUnits);
+    }
+    
+    const unitFilterBlock = document.getElementById('unit_filter_block');
+    if (unitFilterBlock) {
+        unitFilterBlock.addEventListener('change', filterByBlockSelect);
+    }
+    
+    // Block filter buttons (if using button-based filtering)
+    const blockBtns = document.querySelectorAll('.block-btn');
+    blockBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const block = this.getAttribute('data-block');
+            filterByBlock(block);
+        });
+    });
+    
+    // Refresh units button
+    const refreshUnitsBtn = document.getElementById('refresh-units-btn');
+    if (refreshUnitsBtn) {
+        refreshUnitsBtn.addEventListener('click', loadAllUnits);
+    }
+    
+    // View pending registrations button
+    const viewPendingBtn = document.getElementById('view-pending-registrations');
+    if (viewPendingBtn) {
+        viewPendingBtn.addEventListener('click', loadPendingRegistrations);
+    }
+    
+    // Program dropdown for new unit form - update block options based on program
+    const newUnitProgram = document.getElementById('new_unit_program');
+    const newUnitBlock = document.getElementById('new_unit_block');
+    if (newUnitProgram && newUnitBlock) {
+        newUnitProgram.addEventListener('change', function() {
+            const program = this.value;
+            const isTVET = program !== 'KRCHN';
+            
+            // Update block options based on program type
+            newUnitBlock.innerHTML = '';
+            
+            if (isTVET) {
+                // TVET uses Terms
+                const terms = ['Term1', 'Term2', 'Term3', 'Term4', 'Term5', 'Term6'];
+                terms.forEach(term => {
+                    const option = document.createElement('option');
+                    option.value = term;
+                    option.textContent = term;
+                    newUnitBlock.appendChild(option);
+                });
+            } else {
+                // KRCHN uses Blocks
+                const blocks = ['Introductory', 'Block A', 'Block B', 'Block C', 'Block D', 'Block E', 'Final'];
+                blocks.forEach(block => {
+                    const option = document.createElement('option');
+                    option.value = block;
+                    option.textContent = block;
+                    newUnitBlock.appendChild(option);
+                });
+            }
+        });
+        // Trigger initial load
+        newUnitProgram.dispatchEvent(new Event('change'));
+    }
 }
 
 function initializeModals() {
