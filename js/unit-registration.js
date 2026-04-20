@@ -1,29 +1,32 @@
-// ==================== UNIT REGISTRATION MODULE ====================
-// Like KeMU Portal - Students can view all units, select, submit for approval
+// js/unit-registration.js - Updated to work with Supabase directly
+console.log('📦 Unit Registration module loading...');
 
 // Global variables
 let registeredUnits = [];
 let maxUnits = 8;
+let currentUser = null;
 
-// Show/Hide Progress functions (use existing ones from your app)
-function showProgress() {
-    if (typeof ShowProgress === 'function') {
-        ShowProgress();
-    } else {
-        Swal.fire({ title: 'Loading...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+// Get current user from Supabase
+async function getCurrentUser() {
+    try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+            const { data: profile } = await supabase
+                .from('consolidated_user_profiles_table')
+                .select('*')
+                .eq('user_id', user.id)
+                .single();
+            return profile || user;
+        }
+        return null;
+    } catch (error) {
+        console.error('Error getting user:', error);
+        return null;
     }
 }
 
-function hideProgress() {
-    if (typeof HideProgress === 'function') {
-        HideProgress();
-    } else {
-        Swal.close();
-    }
-}
-
-// Load available units from server (Admin adds these per trimester)
-function loadAvailableUnits() {
+// Load available units from Supabase (Admin adds these per trimester)
+async function loadAvailableUnits() {
     const regType = $('#RegType').val();
     const block = $('#BlockFilter').val();
     const unitType = $('#UnitTypeFilter').val();
@@ -33,101 +36,137 @@ function loadAvailableUnits() {
         return;
     }
     
-    showProgress();
-    $.ajax({
-        url: '/Course/GetProgramUnits',
-        type: 'POST',
-        data: JSON.stringify({ Type: regType, Block: block, UnitType: unitType }),
-        contentType: 'application/json',
-        success: function(data) {
-            hideProgress();
-            if (data.success && data.units && data.units.length > 0) {
-                let html = '';
-                data.units.forEach(unit => {
-                    const isRegistered = registeredUnits.some(r => r.code === unit.code);
-                    html += `<tr>
-                        <td>${!isRegistered ? `<input type="checkbox" class="unit-checkbox" data-code="${unit.code}" data-classcode="${unit.classCode || ''}">` : '—'}</td>
-                        <td><strong>${escapeHtml(unit.code)}</strong></td>
-                        <td>${escapeHtml(unit.name)}</td>
-                        <td>${escapeHtml(unit.block || '')}</td>
-                        <td><span class="status-badge status-registered">${escapeHtml(unit.type || 'Core')}</span></td>
-                        <td>${unit.credits || '3'}</td>
-                        <td>${escapeHtml(unit.prerequisites || 'None')}</td>
-                        <td><span class="status-badge ${isRegistered ? 'status-approved' : 'status-pending'}">${isRegistered ? 'Registered' : 'Available'}</span></td>
-                    </tr>`;
-                });
-                $('#availableUnitsBody').html(html);
-                updateSelectedCount();
-                attachCheckboxEvents();
-            } else {
-                $('#availableUnitsBody').html('<tr><td colspan="8" style="text-align:center">No units available for the selected criteria</td></tr>');
-            }
-        },
-        error: function() {
-            hideProgress();
-            $('#availableUnitsBody').html('<tr><td colspan="8" style="text-align:center">Error loading units. Please try again.</td></tr>');
-            Swal.fire('Error', 'Failed to load units. Please check your connection.', 'error');
+    // Get current user to determine their program
+    if (!currentUser) {
+        currentUser = await getCurrentUser();
+    }
+    
+    const userProgram = currentUser?.program || 'KRCHN';
+    const userIntake = currentUser?.intake_year || new Date().getFullYear();
+    
+    $('#availableUnitsBody').html('<tr class="loading-row"><td colspan="8"><div class="loading-spinner"></div> Loading units...</td></tr>');
+    
+    try {
+        // Query units from Supabase units_catalog table
+        let query = supabase
+            .from('units_catalog')
+            .select('*')
+            .eq('program', userProgram)
+            .eq('status', 'active');
+        
+        if (block && block !== "") {
+            query = query.eq('block', block);
         }
-    });
+        if (unitType && unitType !== "") {
+            query = query.eq('unit_type', unitType);
+        }
+        
+        const { data: units, error } = await query.order('block', { ascending: true }).order('unit_code', { ascending: true });
+        
+        if (error) throw error;
+        
+        if (!units || units.length === 0) {
+            $('#availableUnitsBody').html('<tr><td colspan="8" style="text-align:center">No units available for your program</td></tr>');
+            return;
+        }
+        
+        let html = '';
+        for (const unit of units) {
+            // Check if already registered
+            const { data: existing } = await supabase
+                .from('student_unit_registrations')
+                .select('status')
+                .eq('student_id', currentUser?.user_id || currentUser?.id)
+                .eq('unit_code', unit.unit_code)
+                .maybeSingle();
+            
+            const isRegistered = existing !== null;
+            const regStatus = existing?.status || 'available';
+            
+            html += `<tr>
+                         <td>${!isRegistered ? `<input type="checkbox" class="unit-checkbox" data-code="${unit.unit_code}" data-classcode="${unit.unit_code}">` : '—'}</td>
+                         <td><strong>${escapeHtml(unit.unit_code)}</strong></td>
+                         <td>${escapeHtml(unit.unit_name)}</td>
+                         <td>${escapeHtml(unit.block)}</td>
+                         <td><span class="status-badge status-registered">${escapeHtml(unit.unit_type || 'Core')}</span></td>
+                         <td>${unit.credits || 3}</td>
+                         <td>${escapeHtml(unit.prerequisites || 'None')}</td>
+                         <td><span class="status-badge ${isRegistered ? (regStatus === 'approved' ? 'status-approved' : 'status-pending') : 'status-pending'}">${isRegistered ? (regStatus === 'approved' ? 'Registered' : 'Pending') : 'Available'}</span></td>
+                     </tr>`;
+        }
+        $('#availableUnitsBody').html(html);
+        updateSelectedCount();
+        attachCheckboxEvents();
+        
+    } catch (error) {
+        console.error('Error loading units:', error);
+        $('#availableUnitsBody').html('<tr><td colspan="8" style="text-align:center">Error loading units. Please try again.</td></tr>');
+    }
 }
 
-// Load student's registered units
-function loadRegisteredUnits() {
-    showProgress();
-    $.ajax({
-        url: '/Course/GetStudentRegisteredUnits',
-        type: 'GET',
-        dataType: 'json',
-        success: function(data) {
-            hideProgress();
-            if (data.success) {
-                registeredUnits = data.units || [];
-                
-                // Update statistics
-                const approved = registeredUnits.filter(u => u.status === 'approved').length;
-                const pending = registeredUnits.filter(u => u.status === 'pending').length;
-                $('#approved-units-count').text(approved);
-                $('#pending-units-count').text(pending);
-                
-                // Update badge on sidebar
-                if (pending > 0) {
-                    $('#unitRegBadge').text(pending).show();
-                } else {
-                    $('#unitRegBadge').hide();
-                }
-                
-                // Render registered units table
-                let html = '';
-                if (registeredUnits.length === 0) {
-                    html = '<tr><td colspan="7" style="text-align:center">No units registered yet. Select units above and submit for approval.</td></tr>';
-                } else {
-                    registeredUnits.forEach(unit => {
-                        const statusClass = unit.status === 'approved' ? 'status-approved' : 'status-pending';
-                        const statusText = unit.status === 'approved' ? '✅ Approved' : '⏳ Pending Approval';
-                        html += `<tr>
-                            <td><strong>${escapeHtml(unit.code)}</strong></td>
-                            <td>${escapeHtml(unit.name)}</td>
-                            <td>${escapeHtml(unit.block || '')}</td>
-                            <td>${escapeHtml(unit.regType || 'Normal')}</td>
-                            <td><span class="status-badge ${statusClass}">${statusText}</span></td>
-                            <td>${unit.approvalDate || '—'}</td>
-                            <td>${unit.status === 'pending' ? `<button class="action-btn-drop" onclick="dropUnit('${unit.code}')"><i class="fas fa-trash"></i> Drop</button>` : '—'}</td>
-                        </tr>`;
-                    });
-                }
-                $('#registeredUnitsBody').html(html);
-            } else {
-                $('#registeredUnitsBody').html('<tr><td colspan="7" style="text-align:center">Error loading registered units</td></tr>');
-            }
-        },
-        error: function() {
-            hideProgress();
-            $('#registeredUnitsBody').html('<tr><td colspan="7" style="text-align:center">Error loading registered units. Please refresh.</td></tr>');
+// Load student's registered units from Supabase
+async function loadRegisteredUnits() {
+    if (!currentUser) {
+        currentUser = await getCurrentUser();
+    }
+    
+    if (!currentUser) {
+        $('#registeredUnitsBody').html('<tr><td colspan="7" style="text-align:center">Please log in to view registered units</td></tr>');
+        return;
+    }
+    
+    const studentId = currentUser?.user_id || currentUser?.id;
+    
+    $('#registeredUnitsBody').html('<tr class="loading-row"><td colspan="7"><div class="loading-spinner"></div> Loading your registered units...</td></tr>');
+    
+    try {
+        const { data: registrations, error } = await supabase
+            .from('student_unit_registrations')
+            .select('*')
+            .eq('student_id', studentId)
+            .order('submitted_date', { ascending: false });
+        
+        if (error) throw error;
+        
+        registeredUnits = registrations || [];
+        
+        const approved = registeredUnits.filter(u => u.status === 'approved').length;
+        const pending = registeredUnits.filter(u => u.status === 'pending').length;
+        $('#approved-units-count').text(approved);
+        $('#pending-units-count').text(pending);
+        
+        if (pending > 0) {
+            $('#unitRegBadge').text(pending).show();
+        } else {
+            $('#unitRegBadge').hide();
         }
-    });
+        
+        let html = '';
+        if (registeredUnits.length === 0) {
+            html = '<tr><td colspan="7" style="text-align:center">No units registered yet. Select units above and submit for approval.</td></tr>';
+        } else {
+            for (const unit of registeredUnits) {
+                const statusClass = unit.status === 'approved' ? 'status-approved' : 'status-pending';
+                const statusText = unit.status === 'approved' ? '✅ Approved' : '⏳ Pending Approval';
+                html += `<tr>
+                             <td><strong>${escapeHtml(unit.unit_code)}</strong></td>
+                             <td>${escapeHtml(unit.unit_name)}</td>
+                             <td>${escapeHtml(unit.block)}</td>
+                             <td>${escapeHtml(unit.reg_type || 'Normal')}</td>
+                             <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                             <td>${unit.approval_date || '—'}</td>
+                             <td>${unit.status === 'pending' ? `<button class="action-btn-drop" onclick="dropUnit('${unit.unit_code}')"><i class="fas fa-trash"></i> Drop</button>` : '—'}</td>
+                         </tr>`;
+            }
+        }
+        $('#registeredUnitsBody').html(html);
+        
+    } catch (error) {
+        console.error('Error loading registered units:', error);
+        $('#registeredUnitsBody').html('<tr><td colspan="7" style="text-align:center">Error loading registered units</td></tr>');
+    }
 }
 
-// Update selected units count
 function updateSelectedCount() {
     const checked = $('.unit-checkbox:checked').length;
     $('#selected-units-count').text(checked);
@@ -140,11 +179,8 @@ function updateSelectedCount() {
     }
 }
 
-// Attach checkbox change events
 function attachCheckboxEvents() {
-    $('.unit-checkbox').off('change').on('change', function() {
-        updateSelectedCount();
-    });
+    $('.unit-checkbox').off('change').on('change', updateSelectedCount);
 }
 
 // Select/Deselect all units
@@ -166,11 +202,20 @@ function selectAllUnits() {
     updateSelectedCount();
 }
 
-// Submit selected units for approval (Like KeMU's SubmitSelectedUnits)
-window.submitUnitRegistration = function() {
+// Submit selected units for approval (saves to Supabase)
+window.submitUnitRegistration = async function() {
     const regType = $('#RegType').val();
     if (!regType) {
         Swal.fire('Warning', 'Please select Registration Type', 'warning');
+        return;
+    }
+    
+    if (!currentUser) {
+        currentUser = await getCurrentUser();
+    }
+    
+    if (!currentUser) {
+        Swal.fire('Error', 'Please log in to register units', 'error');
         return;
     }
     
@@ -200,37 +245,65 @@ window.submitUnitRegistration = function() {
         showCancelButton: true,
         confirmButtonText: 'Yes, Submit',
         cancelButtonText: 'Cancel'
-    }).then(result => {
+    }).then(async (result) => {
         if (result.isConfirmed) {
-            showProgress();
-            $.ajax({
-                url: '/Course/SaveSelectedUnits',
-                type: 'POST',
-                data: JSON.stringify({ UnitReg: selectedUnits, Type: regType }),
-                contentType: 'application/json',
-                success: function(response) {
-                    hideProgress();
-                    if (response.success) {
-                        Swal.fire('Success', response.message, 'success');
-                        $('.unit-checkbox:checked').prop('checked', false);
-                        loadRegisteredUnits();
-                        loadAvailableUnits();
-                        updateSelectedCount();
-                    } else {
-                        Swal.fire('Warning', response.message, 'warning');
-                    }
-                },
-                error: function() {
-                    hideProgress();
-                    Swal.fire('Error', 'An error occurred while saving units. Please try again.', 'error');
+            Swal.fire({ title: 'Submitting...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+            
+            try {
+                // Get unit details for each selected code
+                const { data: units, error: unitsError } = await supabase
+                    .from('units_catalog')
+                    .select('*')
+                    .in('unit_code', selectedUnits.map(u => u.code));
+                
+                if (unitsError) throw unitsError;
+                
+                const studentId = currentUser?.user_id || currentUser?.id;
+                const registrations = [];
+                
+                for (const unit of units) {
+                    registrations.push({
+                        student_id: studentId,
+                        unit_code: unit.unit_code,
+                        unit_name: unit.unit_name,
+                        program: unit.program,
+                        block: unit.block,
+                        reg_type: regType,
+                        status: 'pending',
+                        submitted_date: new Date().toISOString()
+                    });
                 }
-            });
+                
+                const { error: insertError } = await supabase
+                    .from('student_unit_registrations')
+                    .insert(registrations);
+                
+                if (insertError) throw insertError;
+                
+                Swal.close();
+                Swal.fire('Success', `${registrations.length} unit(s) submitted for approval!`, 'success');
+                
+                // Clear selections and refresh
+                $('.unit-checkbox:checked').prop('checked', false);
+                await loadRegisteredUnits();
+                await loadAvailableUnits();
+                updateSelectedCount();
+                
+            } catch (error) {
+                Swal.close();
+                console.error('Error submitting registration:', error);
+                Swal.fire('Error', `Failed to submit registration: ${error.message}`, 'error');
+            }
         }
     });
 };
 
-// Drop a registered unit (Like KeMU's DropRegisteredUnit)
-window.dropUnit = function(unitCode) {
+// Drop a registered unit (delete from Supabase)
+window.dropUnit = async function(unitCode) {
+    if (!currentUser) {
+        currentUser = await getCurrentUser();
+    }
+    
     Swal.fire({
         title: 'Drop Unit?',
         text: 'Are you sure you want to drop this unit? You will need to re-register if needed.',
@@ -238,75 +311,87 @@ window.dropUnit = function(unitCode) {
         showCancelButton: true,
         confirmButtonText: 'Yes, Drop',
         cancelButtonText: 'Cancel'
-    }).then(result => {
+    }).then(async (result) => {
         if (result.isConfirmed) {
-            showProgress();
-            $.ajax({
-                url: '/Course/DropRegisteredUnit',
-                type: 'POST',
-                data: JSON.stringify({ UnitCode: unitCode }),
-                contentType: 'application/json',
-                success: function(response) {
-                    hideProgress();
-                    if (response.success) {
-                        Swal.fire('Success', response.message, 'success');
-                        loadRegisteredUnits();
-                        loadAvailableUnits();
-                    } else {
-                        Swal.fire('Warning', response.message, 'warning');
-                    }
-                },
-                error: function() {
-                    hideProgress();
-                    Swal.fire('Error', 'Error dropping unit. Please try again.', 'error');
-                }
-            });
+            Swal.fire({ title: 'Processing...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+            
+            try {
+                const studentId = currentUser?.user_id || currentUser?.id;
+                const { error } = await supabase
+                    .from('student_unit_registrations')
+                    .delete()
+                    .eq('student_id', studentId)
+                    .eq('unit_code', unitCode)
+                    .eq('status', 'pending');
+                
+                if (error) throw error;
+                
+                Swal.close();
+                Swal.fire('Success', 'Unit dropped successfully!', 'success');
+                await loadRegisteredUnits();
+                await loadAvailableUnits();
+                
+            } catch (error) {
+                Swal.close();
+                console.error('Error dropping unit:', error);
+                Swal.fire('Error', `Failed to drop unit: ${error.message}`, 'error');
+            }
         }
     });
 };
 
-// Load blocks for filter dropdown
-function loadBlocks() {
-    $.ajax({
-        url: '/Course/GetBlocks',
-        type: 'GET',
-        success: function(data) {
-            if (data.success && data.blocks) {
-                let options = '<option value="">All Blocks</option>';
-                data.blocks.forEach(block => {
-                    options += `<option value="${escapeHtml(block)}">${escapeHtml(block)}</option>`;
-                });
-                $('#BlockFilter').html(options);
-            }
-        },
-        error: function() {
-            console.log('Could not load blocks');
-        }
-    });
+// Load blocks for filter dropdown from Supabase
+async function loadBlocks() {
+    try {
+        const { data: units, error } = await supabase
+            .from('units_catalog')
+            .select('block')
+            .eq('status', 'active');
+        
+        if (error) throw error;
+        
+        const blocks = [...new Set(units.map(u => u.block))];
+        let options = '<option value="">All Blocks</option>';
+        blocks.sort().forEach(block => {
+            options += `<option value="${escapeHtml(block)}">${escapeHtml(block)}</option>`;
+        });
+        $('#BlockFilter').html(options);
+        
+    } catch (error) {
+        console.error('Error loading blocks:', error);
+        // Fallback default blocks
+        const defaultBlocks = ['Introductory', 'Block A', 'Block B', 'Block C', 'Block D', 'Block E', 'Final'];
+        let options = '<option value="">All Blocks</option>';
+        defaultBlocks.forEach(block => {
+            options += `<option value="${block}">${block}</option>`;
+        });
+        $('#BlockFilter').html(options);
+    }
 }
 
-// Get max units allowed from server
-function loadMaxUnits() {
-    $.ajax({
-        url: '/Course/GetMaxUnitsAllowed',
-        type: 'GET',
-        success: function(data) {
-            if (data.success && data.maxUnits) {
-                maxUnits = data.maxUnits;
-                $('#maxUnitsAllowed').text(maxUnits);
-            }
-        },
-        error: function() {
-            console.log('Using default max units: 8');
+// Get max units allowed (from settings or default)
+async function loadMaxUnits() {
+    try {
+        const { data: settings, error } = await supabase
+            .from('app_settings')
+            .select('value')
+            .eq('key', 'max_units_per_trimester')
+            .single();
+        
+        if (!error && settings) {
+            maxUnits = parseInt(settings.value);
+            $('#maxUnitsAllowed').text(maxUnits);
         }
-    });
+    } catch (error) {
+        console.log('Using default max units: 8');
+    }
 }
 
 // Refresh all unit registration data
-function refreshUnitRegistration() {
-    loadRegisteredUnits();
+async function refreshUnitRegistration() {
+    await loadRegisteredUnits();
     if ($('#RegType').val()) {
-        loadAvailableUnits();
+        await loadAvailableUnits();
     }
     Swal.fire('Refreshed', 'Unit registration data has been refreshed.', 'success');
 }
@@ -323,12 +408,16 @@ function escapeHtml(str) {
 }
 
 // Initialize Unit Registration module
-function initUnitRegistration() {
+async function initUnitRegistration() {
     console.log('Initializing Unit Registration module...');
     
-    loadMaxUnits();
-    loadBlocks();
-    loadRegisteredUnits();
+    // Get current user first
+    currentUser = await getCurrentUser();
+    console.log('Current user:', currentUser);
+    
+    await loadMaxUnits();
+    await loadBlocks();
+    await loadRegisteredUnits();
     
     $('#selectAllUnits').off('change').on('change', selectAllUnits);
     $('#refreshUnitsBtn').off('click').on('click', refreshUnitRegistration);
@@ -336,7 +425,7 @@ function initUnitRegistration() {
     $('#RegType, #BlockFilter, #UnitTypeFilter').off('change').on('change', loadAvailableUnits);
     
     if ($('#RegType').val()) {
-        loadAvailableUnits();
+        await loadAvailableUnits();
     }
 }
 
@@ -355,6 +444,8 @@ $(document).ready(function() {
     if ($('#unit-registration').length) {
         setTimeout(function() {
             initUnitRegistration();
-        }, 500);
+        }, 1000);
     }
 });
+
+console.log('✅ Unit Registration module loaded (Supabase version)');
