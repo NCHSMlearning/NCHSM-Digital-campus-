@@ -3978,8 +3978,8 @@ async function loadAllUnits() {
         if (error) throw error;
         
         allUnits = data || [];
-        renderUnits();
-        loadRegistrationStats();
+        renderUnitsCatalog();
+        loadUnitRegistrationStats();
         
     } catch (error) {
         console.error('Error loading units:', error);
@@ -3989,7 +3989,7 @@ async function loadAllUnits() {
 }
 
 // Render units based on filters
-function renderUnits() {
+function renderUnitsCatalog() {
     const container = document.getElementById('units-list-container');
     if (!container) return;
     
@@ -4033,8 +4033,8 @@ function renderUnits() {
                         <span class="unit-name">${escapeHtml(unit.unit_name)}</span>
                     </div>
                     <div class="unit-actions">
-                        <button class="btn-sm btn-edit" onclick="editUnit(${unit.id})"><i class="fas fa-edit"></i> Edit</button>
-                        <button class="btn-sm btn-delete" onclick="deleteUnit(${unit.id}, '${escapeHtml(unit.unit_code)}')"><i class="fas fa-trash"></i> Delete</button>
+                        <button class="btn-sm btn-edit" onclick="editUnitRecord(${unit.id})"><i class="fas fa-edit"></i> Edit</button>
+                        <button class="btn-sm btn-delete" onclick="deleteUnitRecord(${unit.id}, '${escapeHtml(unit.unit_code)}')"><i class="fas fa-trash"></i> Delete</button>
                     </div>
                 </div>
                 <div class="unit-meta">
@@ -4054,7 +4054,7 @@ function renderUnits() {
 }
 
 // Add new unit
-async function addNewUnit() {
+async function addNewUnitRecord() {
     const unitCode = document.getElementById('new_unit_code')?.value;
     const unitName = document.getElementById('new_unit_name')?.value;
     const program = document.getElementById('new_unit_program')?.value;
@@ -4109,7 +4109,7 @@ async function addNewUnit() {
 }
 
 // Edit unit
-async function editUnit(unitId) {
+async function editUnitRecord(unitId) {
     const unit = allUnits.find(u => u.id === unitId);
     if (!unit) return;
     
@@ -4163,7 +4163,7 @@ async function editUnit(unitId) {
 }
 
 // Delete unit
-async function deleteUnit(unitId, unitCode) {
+async function deleteUnitRecord(unitId, unitCode) {
     if (!confirm(`Are you sure you want to delete unit "${unitCode}"? This may affect student registrations.`)) return;
     
     try {
@@ -4186,12 +4186,12 @@ async function deleteUnit(unitId, unitCode) {
 }
 
 // Filter units by search
-function filterUnits() {
-    renderUnits();
+function filterUnitsCatalog() {
+    renderUnitsCatalog();
 }
 
 // Filter units by block
-function filterByBlock(block) {
+function filterUnitsByBlock(block) {
     currentBlockFilter = block;
     
     document.querySelectorAll('.block-btn').forEach(btn => {
@@ -4201,11 +4201,11 @@ function filterByBlock(block) {
         }
     });
     
-    renderUnits();
+    renderUnitsCatalog();
 }
 
-// Load registration statistics with detailed breakdown
-async function loadRegistrationStats() {
+// Load registration statistics
+async function loadUnitRegistrationStats() {
     try {
         const { data, error } = await sb
             .from('student_unit_registrations')
@@ -4215,18 +4215,6 @@ async function loadRegistrationStats() {
             const pending = data.filter(r => r.status === 'pending').length;
             const approved = data.filter(r => r.status === 'approved').length;
             
-            // Get per-student stats
-            const studentStats = {};
-            data.forEach(r => {
-                if (!studentStats[r.student_id]) {
-                    studentStats[r.student_id] = { pending: 0, approved: 0, total: 0 };
-                }
-                studentStats[r.student_id][r.status]++;
-                studentStats[r.student_id].total++;
-            });
-            
-            const studentsWithPending = Object.keys(studentStats).filter(id => studentStats[id].pending > 0).length;
-            
             const pendingEl = document.getElementById('pendingRegistrations');
             const approvedEl = document.getElementById('approvedRegistrations');
             const totalEl = document.getElementById('totalRegistrations');
@@ -4234,33 +4222,14 @@ async function loadRegistrationStats() {
             if (pendingEl) pendingEl.textContent = pending;
             if (approvedEl) approvedEl.textContent = approved;
             if (totalEl) totalEl.textContent = data.length;
-            
-            // Add students with pending if element exists
-            let studentsPendingEl = document.getElementById('studentsWithPending');
-            if (!studentsPendingEl) {
-                // Create the element if it doesn't exist
-                const statsContainer = document.querySelector('#unit-management .cards');
-                if (statsContainer && statsContainer.children.length === 3) {
-                    const newCard = document.createElement('div');
-                    newCard.className = 'card';
-                    newCard.innerHTML = `
-                        <h3>Students with Pending</h3>
-                        <p class="data" id="studentsWithPending">${studentsWithPending}</p>
-                        <p class="minor-data">Students awaiting approval</p>
-                    `;
-                    statsContainer.appendChild(newCard);
-                }
-            } else {
-                studentsPendingEl.textContent = studentsWithPending;
-            }
         }
     } catch (error) {
         console.error('Error loading registration stats:', error);
     }
 }
 
-// Load pending registrations for approval (GROUPED BY STUDENT)
-async function loadPendingRegistrations() {
+// Load pending registrations for approval
+async function loadUnitPendingRegistrations() {
     const container = document.getElementById('pending-registrations-list');
     const btn = event?.target;
     
@@ -4271,7 +4240,6 @@ async function loadPendingRegistrations() {
         if (btn) btn.innerHTML = '<i class="fas fa-times"></i> Hide Pending Approvals';
         
         try {
-            // Get all pending registrations
             const { data: registrations, error } = await sb
                 .from('student_unit_registrations')
                 .select('*')
@@ -4328,13 +4296,13 @@ async function loadPendingRegistrations() {
                         <button onclick="selectAllPendingUnits()" class="btn-action" style="background: #4C1D95;">
                             <i class="fas fa-check-double"></i> Select All Units
                         </button>
-                        <button onclick="clearUnitSelections()" class="btn-secondary">
+                        <button onclick="clearAllUnitSelections()" class="btn-secondary">
                             <i class="fas fa-times"></i> Clear Selection
                         </button>
-                        <button onclick="bulkApproveSelected()" class="btn-success" style="background: #059669;">
-                            <i class="fas fa-check-circle"></i> Approve Selected (<span id="selectedCount">0</span>)
+                        <button onclick="bulkApproveSelectedUnits()" class="btn-success" style="background: #059669;">
+                            <i class="fas fa-check-circle"></i> Approve Selected (<span id="selectedUnitsCount">0</span>)
                         </button>
-                        <button onclick="bulkRejectSelected()" class="btn-danger">
+                        <button onclick="bulkRejectSelectedUnits()" class="btn-danger">
                             <i class="fas fa-times-circle"></i> Reject Selected
                         </button>
                         <span style="margin-left: auto; font-size: 14px; color: #6b7280;">
@@ -4353,7 +4321,7 @@ async function loadPendingRegistrations() {
                     <div class="student-group-card" style="background: white; border: 1px solid #e5e7eb; border-radius: 12px; margin-bottom: 20px; overflow: hidden;">
                         <div class="student-group-header" style="background: #f9fafb; padding: 15px 20px; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
                             <div>
-                                <input type="checkbox" id="student_${studentId}" class="student-select-checkbox" data-student-id="${studentId}" onchange="toggleStudentSelection('${studentId}')" style="margin-right: 12px; transform: scale(1.2);">
+                                <input type="checkbox" id="student_${studentId}" class="student-select-checkbox" data-student-id="${studentId}" onchange="toggleStudentUnitsSelection('${studentId}')" style="margin-right: 12px; transform: scale(1.2);">
                                 <label for="student_${studentId}" style="font-weight: bold; font-size: 16px;">
                                     <i class="fas fa-user-graduate"></i> ${escapeHtml(studentInfo.name)}
                                 </label>
@@ -4370,10 +4338,10 @@ async function loadPendingRegistrations() {
                                 </div>
                             </div>
                             <div class="student-actions">
-                                <button onclick="approveStudentUnits('${studentId}')" class="btn-success btn-sm" style="background: #059669; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer;">
+                                <button onclick="approveStudentAllUnits('${studentId}')" class="btn-success btn-sm" style="background: #059669; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer;">
                                     <i class="fas fa-check-circle"></i> Approve All (${studentRegs.length})
                                 </button>
-                                <button onclick="rejectStudentUnits('${studentId}')" class="btn-danger btn-sm" style="background: #dc2626; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; margin-left: 8px;">
+                                <button onclick="rejectStudentAllUnits('${studentId}')" class="btn-danger btn-sm" style="background: #dc2626; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; margin-left: 8px;">
                                     <i class="fas fa-times-circle"></i> Reject All
                                 </button>
                             </div>
@@ -4401,18 +4369,18 @@ async function loadPendingRegistrations() {
                     html += `
                         <tr style="border-bottom: 1px solid #f3f4f6;">
                             <td style="padding: 10px; text-align: center;">
-                                <input type="checkbox" id="${checkboxId}" class="unit-checkbox-item" data-reg-id="${reg.id}" data-student-id="${studentId}" onchange="updateSelectedCount()">
-                            </table>
+                                <input type="checkbox" id="${checkboxId}" class="unit-checkbox-item" data-reg-id="${reg.id}" data-student-id="${studentId}" onchange="updateSelectedUnitsCount()">
+                            </td>
                             <td style="padding: 10px;"><code style="background: #f3f4f6; padding: 3px 6px; border-radius: 4px;">${escapeHtml(reg.unit_code)}</code></td>
                             <td style="padding: 10px;">${escapeHtml(reg.unit_name)}</td>
                             <td style="padding: 10px;"><span class="badge" style="background: #e0e7ff;">${escapeHtml(reg.block)}</span></td>
                             <td style="padding: 10px;">${escapeHtml(reg.reg_type || 'Normal')}</td>
                             <td style="padding: 10px; font-size: 12px;">${submittedDate}</td>
                             <td style="padding: 10px; text-align: center;">
-                                <button onclick="approveSingleUnit('${reg.id}')" class="btn-success btn-sm" style="background: #10b981; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                                <button onclick="approveSingleUnitRecord('${reg.id}')" class="btn-success btn-sm" style="background: #10b981; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;">
                                     <i class="fas fa-check"></i> Approve
                                 </button>
-                                <button onclick="rejectSingleUnit('${reg.id}')" class="btn-danger btn-sm" style="background: #ef4444; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; margin-left: 5px;">
+                                <button onclick="rejectSingleUnitRecord('${reg.id}')" class="btn-danger btn-sm" style="background: #ef4444; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; margin-left: 5px;">
                                     <i class="fas fa-times"></i> Reject
                                 </button>
                             </td>
@@ -4451,7 +4419,6 @@ function selectAllPendingUnits() {
         if (regId) selectedRegistrationIds.add(regId);
     });
     
-    // Check all student-level checkboxes
     document.querySelectorAll('.student-select-checkbox').forEach(cb => {
         cb.checked = true;
     });
@@ -4460,11 +4427,11 @@ function selectAllPendingUnits() {
         cb.checked = true;
     });
     
-    updateSelectedCount();
+    updateSelectedUnitsCount();
 }
 
 // Clear all unit selections
-function clearUnitSelections() {
+function clearAllUnitSelections() {
     const allCheckboxes = document.querySelectorAll('.unit-checkbox-item');
     allCheckboxes.forEach(cb => {
         cb.checked = false;
@@ -4479,15 +4446,14 @@ function clearUnitSelections() {
     });
     
     selectedRegistrationIds.clear();
-    updateSelectedCount();
+    updateSelectedUnitsCount();
 }
 
 // Toggle selection for a student's all units
-function toggleStudentSelection(studentId) {
+function toggleStudentUnitsSelection(studentId) {
     const studentCheckbox = document.getElementById(`student_${studentId}`);
     const isChecked = studentCheckbox?.checked || false;
     
-    // Select/deselect all units for this student
     const unitCheckboxes = document.querySelectorAll(`.unit-checkbox-item[data-student-id="${studentId}"]`);
     unitCheckboxes.forEach(cb => {
         cb.checked = isChecked;
@@ -4499,11 +4465,10 @@ function toggleStudentSelection(studentId) {
         }
     });
     
-    // Also check the table header checkbox
     const headerCheckbox = document.querySelector(`.unit-select-checkbox[data-student-id="${studentId}"]`);
     if (headerCheckbox) headerCheckbox.checked = isChecked;
     
-    updateSelectedCount();
+    updateSelectedUnitsCount();
 }
 
 // Toggle selection for units within a student
@@ -4514,11 +4479,9 @@ function toggleStudentUnitSelection(studentId) {
     
     if (headerCheckbox) headerCheckbox.checked = allChecked;
     
-    // Update student-level checkbox
     const studentCheckbox = document.getElementById(`student_${studentId}`);
     if (studentCheckbox) studentCheckbox.checked = allChecked;
     
-    // Update selected IDs set
     unitCheckboxes.forEach(cb => {
         const regId = cb.getAttribute('data-reg-id');
         if (cb.checked) {
@@ -4528,18 +4491,18 @@ function toggleStudentUnitSelection(studentId) {
         }
     });
     
-    updateSelectedCount();
+    updateSelectedUnitsCount();
 }
 
 // Update selected count display
-function updateSelectedCount() {
+function updateSelectedUnitsCount() {
     const count = document.querySelectorAll('.unit-checkbox-item:checked').length;
-    const countElement = document.getElementById('selectedCount');
+    const countElement = document.getElementById('selectedUnitsCount');
     if (countElement) countElement.textContent = count;
 }
 
 // Approve a single unit
-async function approveSingleUnit(regId) {
+async function approveSingleUnitRecord(regId) {
     if (!confirm('Approve this unit registration?')) return;
     
     try {
@@ -4556,8 +4519,8 @@ async function approveSingleUnit(regId) {
         showFeedback('Unit approved successfully!', 'success');
         await logAudit('UNIT_REG_APPROVE', `Approved registration ID: ${regId}`, regId, 'SUCCESS');
         
-        await loadPendingRegistrations();
-        await loadRegistrationStats();
+        await loadUnitPendingRegistrations();
+        await loadUnitRegistrationStats();
         
     } catch (error) {
         console.error('Error approving registration:', error);
@@ -4566,7 +4529,7 @@ async function approveSingleUnit(regId) {
 }
 
 // Reject a single unit
-async function rejectSingleUnit(regId) {
+async function rejectSingleUnitRecord(regId) {
     const reason = prompt('Enter rejection reason (optional):');
     if (!confirm('Reject this unit registration?')) return;
     
@@ -4584,8 +4547,8 @@ async function rejectSingleUnit(regId) {
         showFeedback('Unit rejected!', 'success');
         await logAudit('UNIT_REG_REJECT', `Rejected registration ID: ${regId}. Reason: ${reason || 'No reason provided'}`, regId, 'SUCCESS');
         
-        await loadPendingRegistrations();
-        await loadRegistrationStats();
+        await loadUnitPendingRegistrations();
+        await loadUnitRegistrationStats();
         
     } catch (error) {
         console.error('Error rejecting registration:', error);
@@ -4594,7 +4557,7 @@ async function rejectSingleUnit(regId) {
 }
 
 // Approve all units for a student
-async function approveStudentUnits(studentId) {
+async function approveStudentAllUnits(studentId) {
     const studentUnits = pendingRegistrationsData.filter(r => r.student_id === studentId);
     if (studentUnits.length === 0) return;
     
@@ -4615,8 +4578,8 @@ async function approveStudentUnits(studentId) {
         showFeedback(`Approved ${studentUnits.length} unit(s) for student!`, 'success');
         await logAudit('UNIT_REG_BULK_APPROVE', `Approved ${studentUnits.length} units for student ${studentId}`, studentId, 'SUCCESS');
         
-        await loadPendingRegistrations();
-        await loadRegistrationStats();
+        await loadUnitPendingRegistrations();
+        await loadUnitRegistrationStats();
         
     } catch (error) {
         console.error('Error approving student units:', error);
@@ -4625,7 +4588,7 @@ async function approveStudentUnits(studentId) {
 }
 
 // Reject all units for a student
-async function rejectStudentUnits(studentId) {
+async function rejectStudentAllUnits(studentId) {
     const studentUnits = pendingRegistrationsData.filter(r => r.student_id === studentId);
     if (studentUnits.length === 0) return;
     
@@ -4647,8 +4610,8 @@ async function rejectStudentUnits(studentId) {
         showFeedback(`Rejected ${studentUnits.length} unit(s) for student!`, 'success');
         await logAudit('UNIT_REG_BULK_REJECT', `Rejected ${studentUnits.length} units for student ${studentId}. Reason: ${reason || 'No reason'}`, studentId, 'SUCCESS');
         
-        await loadPendingRegistrations();
-        await loadRegistrationStats();
+        await loadUnitPendingRegistrations();
+        await loadUnitRegistrationStats();
         
     } catch (error) {
         console.error('Error rejecting student units:', error);
@@ -4657,7 +4620,7 @@ async function rejectStudentUnits(studentId) {
 }
 
 // Bulk approve selected units
-async function bulkApproveSelected() {
+async function bulkApproveSelectedUnits() {
     const selectedIds = [];
     document.querySelectorAll('.unit-checkbox-item:checked').forEach(cb => {
         const regId = cb.getAttribute('data-reg-id');
@@ -4686,8 +4649,8 @@ async function bulkApproveSelected() {
         await logAudit('UNIT_REG_BULK_APPROVE', `Bulk approved ${selectedIds.length} units`, null, 'SUCCESS');
         
         selectedRegistrationIds.clear();
-        await loadPendingRegistrations();
-        await loadRegistrationStats();
+        await loadUnitPendingRegistrations();
+        await loadUnitRegistrationStats();
         
     } catch (error) {
         console.error('Error in bulk approve:', error);
@@ -4696,7 +4659,7 @@ async function bulkApproveSelected() {
 }
 
 // Bulk reject selected units
-async function bulkRejectSelected() {
+async function bulkRejectSelectedUnits() {
     const selectedIds = [];
     document.querySelectorAll('.unit-checkbox-item:checked').forEach(cb => {
         const regId = cb.getAttribute('data-reg-id');
@@ -4726,8 +4689,8 @@ async function bulkRejectSelected() {
         await logAudit('UNIT_REG_BULK_REJECT', `Bulk rejected ${selectedIds.length} units. Reason: ${reason || 'No reason'}`, null, 'SUCCESS');
         
         selectedRegistrationIds.clear();
-        await loadPendingRegistrations();
-        await loadRegistrationStats();
+        await loadUnitPendingRegistrations();
+        await loadUnitRegistrationStats();
         
     } catch (error) {
         console.error('Error in bulk reject:', error);
@@ -4759,34 +4722,34 @@ async function loadUnitBlocks() {
 }
 
 // Update block filter when changed
-function filterByBlockSelect() {
+function filterUnitsByBlockSelect() {
     const blockSelect = document.getElementById('unit_filter_block');
     if (blockSelect) {
         currentBlockFilter = blockSelect.value || 'all';
-        renderUnits();
+        renderUnitsCatalog();
     }
 }
 
 // Global function references for Unit Registration
 window.loadAllUnits = loadAllUnits;
-window.addNewUnit = addNewUnit;
-window.editUnit = editUnit;
-window.deleteUnit = deleteUnit;
-window.filterUnits = filterUnits;
-window.filterByBlock = filterByBlock;
-window.filterByBlockSelect = filterByBlockSelect;
-window.loadPendingRegistrations = loadPendingRegistrations;
+window.addNewUnitRecord = addNewUnitRecord;
+window.editUnitRecord = editUnitRecord;
+window.deleteUnitRecord = deleteUnitRecord;
+window.filterUnitsCatalog = filterUnitsCatalog;
+window.filterUnitsByBlock = filterUnitsByBlock;
+window.filterUnitsByBlockSelect = filterUnitsByBlockSelect;
+window.loadUnitPendingRegistrations = loadUnitPendingRegistrations;
 window.selectAllPendingUnits = selectAllPendingUnits;
-window.clearUnitSelections = clearUnitSelections;
-window.toggleStudentSelection = toggleStudentSelection;
+window.clearAllUnitSelections = clearAllUnitSelections;
+window.toggleStudentUnitsSelection = toggleStudentUnitsSelection;
 window.toggleStudentUnitSelection = toggleStudentUnitSelection;
-window.updateSelectedCount = updateSelectedCount;
-window.approveSingleUnit = approveSingleUnit;
-window.rejectSingleUnit = rejectSingleUnit;
-window.approveStudentUnits = approveStudentUnits;
-window.rejectStudentUnits = rejectStudentUnits;
-window.bulkApproveSelected = bulkApproveSelected;
-window.bulkRejectSelected = bulkRejectSelected;
+window.updateSelectedUnitsCount = updateSelectedUnitsCount;
+window.approveSingleUnitRecord = approveSingleUnitRecord;
+window.rejectSingleUnitRecord = rejectSingleUnitRecord;
+window.approveStudentAllUnits = approveStudentAllUnits;
+window.rejectStudentAllUnits = rejectStudentAllUnits;
+window.bulkApproveSelectedUnits = bulkApproveSelectedUnits;
+window.bulkRejectSelectedUnits = bulkRejectSelectedUnits;
 /*******************************************************
  * 20. INITIALIZATION & EVENT LISTENERS
  *******************************************************/
