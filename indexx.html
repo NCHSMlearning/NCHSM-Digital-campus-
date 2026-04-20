@@ -3,21 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NCHSM Digital Student Dashboard</title>
+    <title>NCHSM Digital Student Dashboard | Unit Registration</title>
     
     <!-- External Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf_viewer.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    
+    <!-- CONFIG -->
     <script src="./config.js"></script>
     
+    <!-- CSS Files -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="css/main.css">
     
+    <!-- PWA METADATA -->
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="application-name" content="NCHSM Portal">
@@ -70,7 +77,7 @@
         .edit-field-input:focus {
             outline: none;
             border-color: #4C1D95;
-            ring: 2px solid #4C1D95;
+            box-shadow: 0 0 0 2px rgba(76,29,149,0.1);
         }
         
         /* Unit Registration Styles */
@@ -116,6 +123,7 @@
             cursor: pointer;
             font-weight: 600;
         }
+        .btn-success:hover { background: #047857; }
         .btn-danger {
             background: #dc2626;
             color: white;
@@ -137,7 +145,9 @@
             color: #dc2626;
             cursor: pointer;
             padding: 5px 10px;
+            border-radius: 6px;
         }
+        .action-btn-drop:hover { background: #fee2e2; }
         .loading-row td {
             text-align: center;
             padding: 40px;
@@ -164,145 +174,122 @@
             flex: 1;
             min-width: 200px;
         }
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #1f2937;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 40px;
+            font-size: 0.875rem;
+            z-index: 1100;
+        }
+        .card {
+            background: white;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 1.5rem;
+        }
+        .card-header {
+            margin-bottom: 1rem;
+            border-bottom: 1px solid #e5e7eb;
+            padding-bottom: 0.75rem;
+        }
+        .btn-primary {
+            background: #4C1D95;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .btn-primary:hover { background: #6d28d9; }
     </style>
 </head>
 <body>
-    <div id="loading-screen">
-        <div class="loading-container">
-            <div class="logo-animation">
-                <div class="logo-circle"><i class="fas fa-graduation-cap"></i></div>
-                <div class="logo-ring"></div>
-                <div class="logo-pulse"></div>
-            </div>
-            <div class="welcome-text">
-                <h1>Welcome to NCHSM Student Portal</h1>
-                <p class="subtitle">Your gateway to academic excellence</p>
-            </div>
-            <div class="progress-container">
-                <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
-                <div class="progress-text" id="progress-text">Preparing your portal...</div>
-            </div>
-            <div class="status-steps" id="status-steps"></div>
-            <div class="fun-fact" id="fun-fact">
-                <i class="fas fa-lightbulb"></i>
-                <span>Did you know? You can access your course materials offline!</span>
-            </div>
-            <div class="loading-animation">
-                <div class="loading-dots"><span></span><span></span><span></span></div>
-            </div>
-        </div>
+    <div id="loading-screen" style="position:fixed; inset:0; background:linear-gradient(135deg,#4C1D95,#2e1065); display:flex; align-items:center; justify-content:center; z-index:1000;">
+        <div style="text-align:center; color:white;"><h1>Welcome to NCHSM Student Portal</h1><p>Loading...</p></div>
     </div>
 
-    <div class="offline-indicator" id="offlineIndicator" style="display: none;">
-        <i class="fas fa-wifi-slash"></i> You are offline. Some features may be unavailable.
-    </div>
-
-    <div id="app-content" style="display: none;">
-        <header class="main-header">
+    <div id="app-content" style="display:none;">
+        <header class="main-header" style="background:white; padding:1rem 2rem; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e5e7eb;">
             <div class="header-left">
-                <div class="logo-container">
-                    <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo" class="header-logo">
-                    <div class="header-titles">
-                        <h1 class="main-title">NCHSM</h1>
-                        <h2 class="subtitle">Digital Student Portal</h2>
-                    </div>
+                <div style="display:flex; align-items:center; gap:1rem;">
+                    <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="Logo" style="width:48px; height:48px;">
+                    <div><h1 style="font-size:1.5rem;">NCHSM</h1><h2 style="font-size:0.875rem;">Digital Student Portal</h2></div>
                 </div>
             </div>
-            <div class="header-right">
-                <button class="mobile-menu-toggle icon-btn" id="mobile-menu-toggle"><i class="fas fa-bars"></i></button>
-                <div class="user-profile-dropdown">
-                    <div class="profile-trigger">
-                        <img id="header-profile-photo" src="https://ui-avatars.com/api/?name=Kevin+Matoka&background=667eea&color=fff&size=100" alt="Profile" class="profile-avatar round">
-                        <div class="profile-info">
-                            <span class="profile-name" id="header-user-name">Kevin Matoka Tiong`i</span>
-                            <span class="profile-role">Student</span>
-                        </div>
-                        <i class="fas fa-chevron-down dropdown-icon"></i>
+            <div class="header-right" style="display:flex; align-items:center; gap:1rem;">
+                <button id="mobile-menu-toggle" style="background:none; border:none; font-size:1.5rem; cursor:pointer; display:none;"><i class="fas fa-bars"></i></button>
+                <div class="user-profile-dropdown" style="position:relative;">
+                    <div class="profile-trigger" style="display:flex; align-items:center; gap:10px; cursor:pointer;">
+                        <img id="header-profile-photo" src="https://ui-avatars.com/api/?name=Kevin+Matoka&background=667eea&color=fff&size=100" style="width:40px; height:40px; border-radius:50%;">
+                        <span id="header-user-name">Kevin Matoka Tiong`i</span>
+                        <i class="fas fa-chevron-down"></i>
                     </div>
-                    <div class="dropdown-menu" style="display: none;">
-                        <a href="#" data-tab="profile"><i class="fas fa-user"></i> My Profile</a>
-                        <div class="dropdown-divider"></div>
-                        <a href="#" id="header-logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                    <div class="dropdown-menu" style="display:none; position:absolute; right:0; top:100%; background:white; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.1); z-index:100;">
+                        <a href="#" data-tab="profile" style="display:block; padding:10px 20px; text-decoration:none; color:#333;"><i class="fas fa-user"></i> My Profile</a>
+                        <div style="height:1px; background:#e5e7eb;"></div>
+                        <a href="#" id="header-logout" style="display:block; padding:10px 20px; text-decoration:none; color:#333;"><i class="fas fa-sign-out-alt"></i> Logout</a>
                     </div>
                 </div>
-                <div class="current-time"><i class="fas fa-clock"></i><span id="header-time">Loading...</span></div>
-                <div class="header-actions"><button class="icon-btn" id="header-refresh"><i class="fas fa-redo"></i></button></div>
+                <div><i class="fas fa-clock"></i> <span id="header-time">Loading...</span></div>
+                <button id="header-refresh" style="background:none; border:none; cursor:pointer;"><i class="fas fa-redo"></i></button>
             </div>
         </header>
         
-        <div class="overlay" id="overlay" role="presentation" aria-hidden="true"></div>
-
-        <div class="container">
-            <aside class="sidebar" id="sidebar" aria-label="Main navigation">
-                <div class="sidebar-header">
-                    <h2><i class="fas fa-graduation-cap"></i> Portal Menu</h2>
-                    <p class="sidebar-subtitle">Navigate to sections</p>
-                </div>
-                <nav aria-label="Primary navigation">
-                    <ul class="nav" role="menubar">
-                        <li role="none"><a href="#" data-tab="dashboard" class="active" role="menuitem"><i class="fas fa-home"></i><span class="nav-text">Dashboard</span></a></li>
-                        <li role="none"><a href="#" data-tab="profile" role="menuitem"><i class="fas fa-user-circle"></i><span class="nav-text">Profile</span></a></li>
-                        <li role="none"><a href="#" data-tab="calendar" role="menuitem"><i class="fas fa-calendar-alt"></i><span class="nav-text">Academic Calendar</span></a></li>
-                        <li role="none"><a href="#" data-tab="courses" role="menuitem"><i class="fas fa-book-open"></i><span class="nav-text">My Courses</span></a></li>
-                        <li role="none"><a href="#" data-tab="attendance" role="menuitem"><i class="fas fa-check-double"></i><span class="nav-text">Attendance</span><span class="nav-badge" id="attendanceBadge" style="display: none;">0</span></a></li>
-                        <li role="none"><a href="#" data-tab="cats" role="menuitem"><i class="fas fa-chart-line"></i><span class="nav-text">Exams & Grades</span><span class="nav-badge" id="examsBadge" style="display: none;">0</span></a></li>
-                        <li role="none"><a href="#" data-tab="resources" role="menuitem"><i class="fas fa-folder-open"></i><span class="nav-text">Resources</span><span class="nav-badge" id="resourcesBadge" style="display: none;">0</span></a></li>
-                        <li role="none"><a href="#" data-tab="messages" role="menuitem"><i class="fas fa-comment-dots"></i><span class="nav-text">Messages</span><span class="nav-badge" id="messagesBadge" style="display: none;">0</span></a></li>
-                        <li role="none"><a href="#" data-tab="nurseiq" class="nurseiq-nav" role="menuitem"><div class="nav-icon-wrapper"><i class="fas fa-brain"></i><span class="nav-pulse"></span></div><span class="nav-text">NurseIQ</span><span class="nav-subtitle">Practice Center</span><span class="nav-badge" id="nurseiqBadge">0</span></a></li>
-                        <li role="none"><a href="#" data-tab="support-tickets" role="menuitem"><i class="fas fa-ticket-alt"></i><span class="nav-text">Support Tickets</span><span class="nav-badge" id="ticketsBadge" style="display: none;">0</span></a></li>
-                        <!-- NEW: Unit Registration Navigation -->
-                        <li role="none"><a href="#" data-tab="unit-registration" role="menuitem"><i class="fas fa-plus-circle"></i><span class="nav-text">Unit Registration</span><span class="nav-badge" id="unitRegBadge" style="display: none;">0</span></a></li>
+        <div style="display:flex; min-height:calc(100vh - 80px);">
+            <aside class="sidebar" id="sidebar" style="width:280px; background:white; border-right:1px solid #e5e7eb;">
+                <div style="padding:1.5rem; border-bottom:1px solid #e5e7eb;"><h2><i class="fas fa-graduation-cap"></i> Portal Menu</h2></div>
+                <nav>
+                    <ul style="list-style:none; padding:1rem 0;">
+                        <li><a href="#" data-tab="dashboard" style="display:flex; align-items:center; gap:12px; padding:12px 24px; color:#4b5563; text-decoration:none;"><i class="fas fa-home"></i> Dashboard</a></li>
+                        <li><a href="#" data-tab="profile" style="display:flex; align-items:center; gap:12px; padding:12px 24px; color:#4b5563; text-decoration:none;"><i class="fas fa-user-circle"></i> Profile</a></li>
+                        <li><a href="#" data-tab="calendar" style="display:flex; align-items:center; gap:12px; padding:12px 24px; color:#4b5563; text-decoration:none;"><i class="fas fa-calendar-alt"></i> Academic Calendar</a></li>
+                        <li><a href="#" data-tab="courses" style="display:flex; align-items:center; gap:12px; padding:12px 24px; color:#4b5563; text-decoration:none;"><i class="fas fa-book-open"></i> My Courses</a></li>
+                        <li><a href="#" data-tab="attendance" style="display:flex; align-items:center; gap:12px; padding:12px 24px; color:#4b5563; text-decoration:none;"><i class="fas fa-check-double"></i> Attendance</a></li>
+                        <li><a href="#" data-tab="cats" style="display:flex; align-items:center; gap:12px; padding:12px 24px; color:#4b5563; text-decoration:none;"><i class="fas fa-chart-line"></i> Exams & Grades</a></li>
+                        <li><a href="#" data-tab="resources" style="display:flex; align-items:center; gap:12px; padding:12px 24px; color:#4b5563; text-decoration:none;"><i class="fas fa-folder-open"></i> Resources</a></li>
+                        <li><a href="#" data-tab="messages" style="display:flex; align-items:center; gap:12px; padding:12px 24px; color:#4b5563; text-decoration:none;"><i class="fas fa-comment-dots"></i> Messages</a></li>
+                        <li><a href="#" data-tab="nurseiq" style="display:flex; align-items:center; gap:12px; padding:12px 24px; color:#4b5563; text-decoration:none;"><i class="fas fa-brain"></i> NurseIQ</a></li>
+                        <li><a href="#" data-tab="support-tickets" style="display:flex; align-items:center; gap:12px; padding:12px 24px; color:#4b5563; text-decoration:none;"><i class="fas fa-ticket-alt"></i> Support Tickets</a></li>
+                        <li><a href="#" data-tab="unit-registration" style="display:flex; align-items:center; gap:12px; padding:12px 24px; color:#4b5563; text-decoration:none;"><i class="fas fa-plus-circle"></i> Unit Registration <span id="unitRegBadge" style="background:#ef4444; color:white; border-radius:20px; padding:2px 8px; font-size:11px; margin-left:auto; display:none;">0</span></a></li>
                     </ul>
                 </nav>
-                <div class="sidebar-footer"><p class="version-info" id="sidebarVersion">Portal v2.1</p></div>
             </aside>
 
-            <main class="main" id="main-content">
+            <main style="flex:1; padding:2rem; overflow-x:auto;">
                 <!-- Dashboard Tab -->
-                <section id="dashboard" class="tab-content active" role="region">
-                    <div class="welcome-card" id="welcome-section">
-                        <div class="welcome-header">
-                            <h2 id="welcome-header">Welcome back, <span id="welcome-student-name">Kevin</span>!</h2>
-                            <p id="student-welcome-message" class="welcome-subtitle">Access your courses, schedule, and check your attendance status.</p>
-                        </div>
-                        <div class="welcome-time"><i class="fas fa-clock"></i><span id="dashboard-time"></span></div>
+                <section id="dashboard" class="tab-content" style="display:block;">
+                    <div style="background:white; border-radius:1rem; padding:1.5rem; margin-bottom:1.5rem;">
+                        <h2 id="welcome-header">Welcome back, <span id="welcome-student-name">Kevin</span>!</h2>
+                        <p>Access your courses, schedule, and check your attendance status.</p>
                     </div>
-                    <div class="announcement-banner" id="announcement-banner"><div class="announcement-icon"><i class="fas fa-bullhorn"></i></div><div class="announcement-content"><h3 class="announcement-title">Official Announcement</h3><p id="student-announcement" class="announcement-text">Loading latest announcement...</p></div></div>
-                    <h2 class="dashboard-section-title">Quick Snapshot</h2>
-                    <div class="cards-grid">
-                        <div class="stat-card" data-tab="attendance"><div class="card-header"><div class="card-icon attendance"><i class="fas fa-calendar-check"></i></div><h3>Attendance Rate</h3></div><div class="card-body"><p class="stat-value" id="dashboard-attendance-rate">--%</p></div></div>
-                        <div class="stat-card" data-tab="cats"><div class="card-header"><div class="card-icon exam"><i class="fas fa-file-alt"></i></div><h3>Upcoming Exam</h3></div><div class="card-body"><p class="stat-value" id="dashboard-upcoming-exam">Loading...</p></div></div>
-                        <div class="stat-card" data-tab="courses"><div class="card-header"><div class="card-icon courses"><i class="fas fa-book-open"></i></div><h3>Active Courses</h3></div><div class="card-body"><p class="stat-value" id="dashboard-active-courses">0</p></div></div>
-                        <div class="stat-card" data-tab="resources"><div class="card-header"><div class="card-icon resources"><i class="fas fa-folder-open"></i></div><h3>New Resources</h3></div><div class="card-body"><p class="stat-value" id="dashboard-new-resources">0</p></div></div>
-                        <div class="stat-card nurseiq-card" data-tab="nurseiq"><div class="card-header"><div class="card-icon nurseiq"><i class="fas fa-brain"></i></div><h3>NurseIQ Progress</h3></div><div class="card-body"><p class="stat-value" id="dashboard-nurseiq-progress">--%</p></div></div>
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:20px;">
+                        <div style="background:white; border-radius:1rem; padding:1.5rem;"><h3>Attendance Rate</h3><p style="font-size:2rem; font-weight:bold;">92%</p></div>
+                        <div style="background:white; border-radius:1rem; padding:1.5rem;"><h3>Active Courses</h3><p style="font-size:2rem; font-weight:bold;">4</p></div>
                     </div>
                 </section>
 
-                <!-- Profile Tab - ENHANCED with ALL KeMU Fields -->
-                <section id="profile" class="tab-content" aria-labelledby="profile-tab" hidden>
-                    <header class="profile-header">
-                        <h2>My Profile & Account</h2>
-                        <p class="profile-subtitle">View and manage your account information</p>
-                    </header>
-                    <form id="profile-form" class="profile-form" novalidate>
-                        <div class="profile-section">
-                            <h3 class="section-title">Profile Photo</h3>
-                            <div class="profile-media">
-                                <figure class="passport-photo-container">
-                                    <img id="passport-preview" src="https://ui-avatars.com/api/?name=Kevin+Matoka&background=4C1D95&color=fff&size=150" alt="Your passport photo" width="150" height="150">
-                                    <figcaption class="photo-caption">Passport-style photo</figcaption>
-                                </figure>
-                                <div class="photo-controls">
-                                    <input type="file" id="passport-file-input" accept="image/jpeg,image/png,image/webp">
-                                    <label for="passport-file-input" class="button button-secondary"><span class="button-icon">📷</span> Change Photo</label>
-                                    <div id="photo-help" class="help-text">Accepted formats: JPG, PNG, WebP. Max size: 2MB</div>
-                                    <button type="button" id="upload-button" class="button button-primary" style="display: none;"><span class="button-icon">💾</span> Save Photo</button>
-                                </div>
+                <!-- Profile Tab - Enhanced with all KeMU fields -->
+                <section id="profile" class="tab-content" style="display:none;">
+                    <div style="background:white; border-radius:1rem; padding:1.5rem;">
+                        <h2><i class="fas fa-user-circle"></i> My Profile & Account</h2>
+                        <p>View and manage your account information</p>
+                        
+                        <div style="margin-top:1.5rem;">
+                            <h3>Profile Photo</h3>
+                            <div style="display:flex; align-items:center; gap:20px; flex-wrap:wrap;">
+                                <img id="passport-preview" src="https://ui-avatars.com/api/?name=Kevin+Matoka&background=4C1D95&color=fff&size=120" style="width:120px; height:120px; border-radius:50%;">
+                                <div><input type="file" id="passport-file-input" accept="image/*" style="display:none;"><button id="change-photo-btn" class="btn-primary">Change Photo</button></div>
                             </div>
                         </div>
-
-                        <div class="profile-section">
-                            <h3 class="section-title">Personal Information</h3>
+                        
+                        <div style="margin-top:2rem;">
+                            <h3>Personal Information</h3>
                             <div id="profile-view-mode">
                                 <div class="profile-enhanced-grid">
                                     <div class="profile-field-card"><div class="field-label"><i class="fas fa-id-card"></i> REG. NO</div><div class="field-value" id="view-regno">BSN-1-8255-3/2017</div></div>
@@ -319,7 +306,7 @@
                                     <div class="profile-field-card"><div class="field-label"><i class="fas fa-calendar-alt"></i> INTAKE YEAR</div><div class="field-value" id="view-intake">2024</div></div>
                                 </div>
                             </div>
-                            <div id="profile-edit-mode" style="display: none;">
+                            <div id="profile-edit-mode" style="display:none;">
                                 <div class="profile-enhanced-grid">
                                     <div class="profile-field-card"><div class="field-label">REG. NO</div><input type="text" id="edit-regno" class="edit-field-input" value="BSN-1-8255-3/2017" readonly></div>
                                     <div class="profile-field-card"><div class="field-label">FULL NAME</div><input type="text" id="edit-name" class="edit-field-input" value="Kevin Matoka Tiong`i"></div>
@@ -335,96 +322,62 @@
                                     <div class="profile-field-card"><div class="field-label">INTAKE YEAR</div><input type="text" id="edit-intake" class="edit-field-input" value="2024"></div>
                                 </div>
                             </div>
+                            <div style="margin-top:1.5rem; display:flex; gap:10px;">
+                                <button id="edit-profile-button" class="btn-primary">✏️ Edit Profile</button>
+                                <button id="save-profile-button" class="btn-success" style="display:none;">💾 Save Changes</button>
+                                <button id="cancel-edit-button" style="display:none; background:#e5e7eb; border:none; padding:10px 20px; border-radius:8px; cursor:pointer;">Cancel</button>
+                            </div>
                         </div>
-
-                        <div class="form-actions">
-                            <button type="button" id="edit-profile-button" class="button button-primary"><span class="button-icon">✏️</span> Edit Profile</button>
-                            <button type="submit" id="save-profile-button" class="button button-success" style="display: none;"><span class="button-icon">💾</span> Save Changes</button>
-                            <button type="button" id="cancel-edit-button" class="button button-text" style="display: none;">Cancel</button>
-                        </div>
-                        <div class="form-status"><p id="profile-status" role="alert" aria-live="polite"></p></div>
-                    </form>
+                    </div>
                 </section>
 
                 <!-- Calendar Tab -->
-                <section id="calendar" class="tab-content" hidden><div class="calendar-header"><h2>Academic Calendar</h2></div></section>
+                <section id="calendar" class="tab-content" style="display:none;"><div class="card"><h2>Academic Calendar</h2></div></section>
+                <section id="courses" class="tab-content" style="display:none;"><div class="card"><h2>My Courses</h2></div></section>
+                <section id="attendance" class="tab-content" style="display:none;"><div class="card"><h2>Attendance</h2></div></section>
+                <section id="cats" class="tab-content" style="display:none;"><div class="card"><h2>Exams & Grades</h2></div></section>
+                <section id="resources" class="tab-content" style="display:none;"><div class="card"><h2>Learning Resources</h2></div></section>
+                <section id="messages" class="tab-content" style="display:none;"><div class="card"><h2>Messages</h2></div></section>
+                <section id="nurseiq" class="tab-content" style="display:none;"><div class="card"><h2>NurseIQ Question Bank</h2></div></section>
+                <section id="support-tickets" class="tab-content" style="display:none;"><div class="card"><h2>Support Tickets</h2></div></section>
 
-                <!-- Courses Tab -->
-                <section id="courses" class="tab-content" hidden><div class="courses-header"><h2>My Courses</h2></div></section>
-
-                <!-- Attendance Tab -->
-                <section id="attendance" class="tab-content" hidden><div class="attendance-header"><h2>Daily Attendance</h2></div></section>
-
-                <!-- Exams Tab -->
-                <section id="cats" class="tab-content" hidden><div class="exams-header"><h2>Assessments & Grades</h2></div></section>
-
-                <!-- Resources Tab -->
-                <section id="resources" class="tab-content" hidden><div class="resources-header"><h2>Learning Resources</h2></div></section>
-
-                <!-- Messages Tab -->
-                <section id="messages" class="tab-content" hidden><div class="messages-header"><h2>Message Center</h2></div></section>
-
-                <!-- UNIT REGISTRATION TAB - FULL SYSTEM -->
-                <section id="unit-registration" class="tab-content" hidden>
+                <!-- UNIT REGISTRATION TAB -->
+                <section id="unit-registration" class="tab-content" style="display:none;">
                     <div class="unit-reg-header">
                         <h2><i class="fas fa-book"></i> Unit Registration</h2>
-                        <p class="subtitle">Select your units for the current trimester. Admin will review and approve your selections.</p>
+                        <p>Select your units for the current trimester. Admin will review and approve your selections.</p>
                         <div class="header-stats">
-                            <div class="stat-card"><div class="stat-icon selected"><i class="fas fa-check-circle"></i></div><div class="stat-info"><span class="stat-value" id="selected-units-count">0</span><span class="stat-label">Selected Units</span></div></div>
-                            <div class="stat-card"><div class="stat-icon approved"><i class="fas fa-user-check"></i></div><div class="stat-info"><span class="stat-value" id="approved-units-count">0</span><span class="stat-label">Approved</span></div></div>
-                            <div class="stat-card"><div class="stat-icon pending"><i class="fas fa-clock"></i></div><div class="stat-info"><span class="stat-value" id="pending-units-count">0</span><span class="stat-label">Pending</span></div></div>
+                            <div class="stat-card" style="background:white; border-radius:12px; padding:15px 25px; flex:1;"><div class="stat-icon selected"><i class="fas fa-check-circle"></i></div><div><span class="stat-value" id="selected-units-count">0</span><br><span>Selected Units</span></div></div>
+                            <div class="stat-card" style="background:white; border-radius:12px; padding:15px 25px; flex:1;"><div class="stat-icon approved"><i class="fas fa-user-check"></i></div><div><span class="stat-value" id="approved-units-count">0</span><br><span>Approved</span></div></div>
+                            <div class="stat-card" style="background:white; border-radius:12px; padding:15px 25px; flex:1;"><div class="stat-icon pending"><i class="fas fa-clock"></i></div><div><span class="stat-value" id="pending-units-count">0</span><br><span>Pending</span></div></div>
                         </div>
                     </div>
 
-                    <div class="card reg-type-section">
-                        <div class="card-body">
-                            <div class="row">
-                                <div class="col-md-4"><label><i class="fas fa-tag"></i> Registration Type</label><select id="RegType" class="modern-select"><option value="">-- Select --</option><option value="Normal">Normal Registration</option><option value="Supplementary">Supplementary</option><option value="Special">Special</option></select></div>
-                                <div class="col-md-4"><label><i class="fas fa-layer-group"></i> Block/Trimester</label><select id="BlockFilter" class="modern-select"><option value="">All Blocks</option><option value="Introductory">Introductory Block</option><option value="Block A">Block A</option><option value="Block B">Block B</option><option value="Block C">Block C</option><option value="Block D">Block D</option><option value="Block E">Block E</option><option value="Final">Final Block</option></select></div>
-                                <div class="col-md-4"><label><i class="fas fa-filter"></i> Unit Type</label><select id="UnitTypeFilter" class="modern-select"><option value="">All Types</option><option value="Core">Core Units</option><option value="Elective">Elective Units</option></select></div>
-                            </div>
-                            <div class="row"><div class="col-md-12"><button id="refreshUnitsBtn" class="btn-primary"><i class="fas fa-sync-alt"></i> Load Available Units</button><button id="submitRegistrationBtn" class="btn-success" style="margin-left:10px"><i class="fas fa-paper-plane"></i> Submit Registration</button></div></div>
+                    <div class="card">
+                        <div class="row">
+                            <div class="col-md-4"><label>Registration Type</label><select id="RegType" class="modern-select"><option value="">-- Select --</option><option value="Normal">Normal Registration</option><option value="Supplementary">Supplementary</option><option value="Special">Special</option></select></div>
+                            <div class="col-md-4"><label>Block/Trimester</label><select id="BlockFilter" class="modern-select"><option value="">All Blocks</option><option value="Introductory">Introductory Block</option><option value="Block A">Block A</option><option value="Block B">Block B</option><option value="Block C">Block C</option><option value="Block D">Block D</option><option value="Block E">Block E</option><option value="Final">Final Block</option></select></div>
+                            <div class="col-md-4"><label>Unit Type</label><select id="UnitTypeFilter" class="modern-select"><option value="">All Types</option><option value="Core">Core Units</option><option value="Elective">Elective Units</option></select></div>
                         </div>
+                        <div class="row"><div class="col-md-12"><button id="refreshUnitsBtn" class="btn-primary"><i class="fas fa-sync-alt"></i> Load Available Units</button><button id="submitRegistrationBtn" class="btn-success" style="margin-left:10px"><i class="fas fa-paper-plane"></i> Submit Registration</button></div></div>
                     </div>
 
-                    <div class="card available-units-section">
+                    <div class="card">
                         <div class="card-header"><h4><i class="fas fa-list"></i> Available Units for Registration</h4><p>Maximum: <strong id="maxUnitsAllowed">8</strong> units per trimester</p></div>
-                        <div class="card-body"><div class="table-responsive"><table class="units-table" id="tblAvailableUnits"><thead><tr><th><input type="checkbox" id="selectAllUnits"></th><th>Unit Code</th><th>Unit Name</th><th>Block</th><th>Type</th><th>Credits</th><th>Prerequisites</th><th>Status</th></tr></thead><tbody id="availableUnitsBody"><tr class="loading-row"><td colspan="8"><div class="loading-spinner"></div> Loading units...<\/td><\/tr><\/tbody><\/table><\/div><\/div><\/div>
+                        <div class="table-responsive"><table class="units-table" id="tblAvailableUnits"><thead><tr><th><input type="checkbox" id="selectAllUnits"></th><th>Unit Code</th><th>Unit Name</th><th>Block</th><th>Type</th><th>Credits</th><th>Prerequisites</th><th>Status</th></tr></thead><tbody id="availableUnitsBody"><tr class="loading-row"><td colspan="8"><div class="loading-spinner"></div> Loading units...</td></tr></tbody></table></div>
+                    </div>
 
-                    <div class="card registered-units-section">
-                        <div class="card-header"><h4><i class="fas fa-clipboard-list"></i> My Registered Units</h4><\/div>
-                        <div class="card-body"><div class="table-responsive"><table class="units-table" id="tblRegisteredUnits"><thead><tr><th>Unit Code</th><th>Unit Name</th><th>Block</th><th>Reg Type</th><th>Status</th><th>Approval Date</th><th>Action</th></tr></thead><tbody id="registeredUnitsBody"><tr class="loading-row"><td colspan="7"><div class="loading-spinner"></div> Loading your registered units...<\/td><\/tr><\/tbody><\/table><\/div><\/div><\/div>
-                <\/section>
-
-                <!-- NurseIQ Tab -->
-                <section id="nurseiq" class="tab-content" hidden><h1>NurseIQ Question Bank</h1><p class="subtitle">NSCHEQ Curriculum practice questions</p><\/section>
-
-                <!-- Support Tickets Tab -->
-                <section id="support-tickets" class="tab-content" hidden><div class="tickets-container"><h2>Support Tickets</h2><\/div><\/section>
-
-                <footer class="app-footer"><div class="footer-content"><div class="footer-section"><h3>NCHSM</h3><p>Providing quality health sciences education.</p><\/div><\/div><div class="footer-bottom"><div class="copyright">© 2026 NCHSM. All rights reserved.<\/div><\/div><\/footer>
-            <\/main>
-        <\/div>
-    <\/div>
-
-    <div class="toast" id="toast" style="display: none;"><\/div>
-
-    <script src="./js/database.js"><\/script>
-    <script src="./js/utils.js"><\/script>
-    <script src="./js/ui.js"><\/script>
-    <script src="./js/dashboard.js"><\/script>
-    <script src="./js/profile.js"><\/script>
-    <script src="./js/attendance.js"><\/script>
-    <script src="./js/courses.js"><\/script>
-    <script src="./js/exams.js"><\/script>
-    <script src="./js/resources.js"><\/script>
-    <script src="./js/calendar.js"><\/script>
-    <script src="./js/messages.js"><\/script>
-    <script src="./js/student-tickets.js"><\/script>                       
-    <script src="./js/nurseiq.js"><\/script>
+                    <div class="card">
+                        <div class="card-header"><h4><i class="fas fa-clipboard-list"></i> My Registered Units</h4></div>
+                        <div class="table-responsive"><table class="units-table" id="tblRegisteredUnits"><thead><tr><th>Unit Code</th><th>Unit Name</th><th>Block</th><th>Reg Type</th><th>Status</th><th>Approval Date</th><th>Action</th></tr></thead><tbody id="registeredUnitsBody"><tr class="loading-row"><td colspan="7"><div class="loading-spinner"></div> Loading your registered units...</td></tr></tbody></table></div>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
 
     <script>
-    // ==================== PROFILE DATA ====================
+    // ==================== PROFILE MANAGEMENT ====================
     let profileData = {
         regno: "BSN-1-8255-3/2017", name: "Kevin Matoka Tiong`i", idno: "36635393", gender: "Male",
         address: "250 - 40109", email: "tkevin8255@stu.kemu.ac.ke", dob: "01/01/1999", campus: "MERU",
@@ -432,30 +385,51 @@
     };
 
     function updateProfileDisplay() {
-        document.getElementById('view-regno').textContent = profileData.regno;
-        document.getElementById('view-name').textContent = profileData.name;
-        document.getElementById('view-idno').textContent = profileData.idno;
-        document.getElementById('view-gender').textContent = profileData.gender;
-        document.getElementById('view-address').textContent = profileData.address;
-        document.getElementById('view-email').textContent = profileData.email;
-        document.getElementById('view-dob').textContent = profileData.dob;
-        document.getElementById('view-campus').textContent = profileData.campus;
-        document.getElementById('view-phone').textContent = profileData.phone;
-        document.getElementById('view-program').textContent = profileData.program;
-        document.getElementById('view-block').textContent = profileData.block;
-        document.getElementById('view-intake').textContent = profileData.intake;
-        document.getElementById('header-user-name').textContent = profileData.name;
-        document.getElementById('welcome-student-name').textContent = profileData.name.split(' ')[0];
-        const welcomeHeader = document.getElementById('welcome-header');
-        if (welcomeHeader) welcomeHeader.textContent = 'Welcome back, ' + profileData.name.split(' ')[0] + '!';
+        $('#view-regno').text(profileData.regno);
+        $('#view-name').text(profileData.name);
+        $('#view-idno').text(profileData.idno);
+        $('#view-gender').text(profileData.gender);
+        $('#view-address').text(profileData.address);
+        $('#view-email').text(profileData.email);
+        $('#view-dob').text(profileData.dob);
+        $('#view-campus').text(profileData.campus);
+        $('#view-phone').text(profileData.phone);
+        $('#view-program').text(profileData.program);
+        $('#view-block').text(profileData.block);
+        $('#view-intake').text(profileData.intake);
+        $('#header-user-name').text(profileData.name);
+        $('#welcome-student-name').text(profileData.name.split(' ')[0]);
+        $('#welcome-header').text('Welcome back, ' + profileData.name.split(' ')[0] + '!');
+    }
+
+    function toggleEditMode(isEditing) {
+        $('#profile-view-mode').toggle(!isEditing);
+        $('#profile-edit-mode').toggle(isEditing);
+        $('#edit-profile-button').toggle(!isEditing);
+        $('#save-profile-button').toggle(isEditing);
+        $('#cancel-edit-button').toggle(isEditing);
+        if (isEditing) $('#edit-dob').val(profileData.dob.split('/').reverse().join('-'));
+    }
+
+    function saveProfileChanges() {
+        profileData = {
+            regno: $('#edit-regno').val(), name: $('#edit-name').val(), idno: $('#edit-idno').val(),
+            gender: $('#edit-gender').val(), address: $('#edit-address').val(), email: $('#edit-email').val(),
+            dob: $('#edit-dob').val().split('-').reverse().join('/'), campus: $('#edit-campus').val(),
+            phone: $('#edit-phone').val(), program: $('#edit-program').val(), block: $('#edit-block').val(),
+            intake: $('#edit-intake').val()
+        };
+        updateProfileDisplay();
+        localStorage.setItem('nchsm_profile_data', JSON.stringify(profileData));
+        toggleEditMode(false);
+        Swal.fire('Success', 'Profile updated successfully!', 'success');
     }
 
     // ==================== UNIT REGISTRATION SYSTEM ====================
-    let allUnits = [];
     let registeredUnits = [];
     let maxUnits = 8;
     
-    const mockAvailableUnits = [
+    const unitCatalog = [
         { code: "NUR101", name: "Introduction to Nursing", block: "Introductory", type: "Core", credits: 3, prerequisites: "None" },
         { code: "ANA101", name: "Human Anatomy", block: "Introductory", type: "Core", credits: 4, prerequisites: "None" },
         { code: "PHY101", name: "Physiology", block: "Introductory", type: "Core", credits: 3, prerequisites: "ANA101" },
@@ -471,11 +445,13 @@
     function loadAvailableUnits() {
         const blockFilter = $('#BlockFilter').val();
         const typeFilter = $('#UnitTypeFilter').val();
-        let filtered = [...mockAvailableUnits];
+        let filtered = [...unitCatalog];
         if (blockFilter) filtered = filtered.filter(u => u.block === blockFilter);
         if (typeFilter) filtered = filtered.filter(u => u.type === typeFilter);
+        
         const tbody = $('#availableUnitsBody');
         if (filtered.length === 0) { tbody.html('<tr><td colspan="8" style="text-align:center">No units available</td></tr>'); return; }
+        
         let html = '';
         filtered.forEach(unit => {
             const isRegistered = registeredUnits.some(r => r.code === unit.code);
@@ -488,19 +464,20 @@
                         <td>${unit.credits}</td>
                         <td>${unit.prerequisites}</td>
                         <td><span class="status-badge ${isRegistered ? 'status-approved' : 'status-pending'}">${isRegistered ? 'Registered' : 'Available'}</span></td>
-                    </tr>`;
+                     </tr>`;
         });
         tbody.html(html);
-        updateSelectedCount();
+        $('#selected-units-count').text($('.unit-checkbox:checked').length);
     }
     
     function loadRegisteredUnits() {
         const stored = localStorage.getItem('nchsm_registered_units');
-        if (stored) { try { registeredUnits = JSON.parse(stored); } catch(e) { registeredUnits = []; } } 
-        else { registeredUnits = []; }
+        registeredUnits = stored ? JSON.parse(stored) : [];
+        
         const tbody = $('#registeredUnitsBody');
-        if (registeredUnits.length === 0) { tbody.html('<tr><td colspan="7" style="text-align:center">No units registered yet</td></tr>'); }
-        else {
+        if (registeredUnits.length === 0) {
+            tbody.html('<tr><td colspan="7" style="text-align:center">No units registered yet</td></tr>');
+        } else {
             let html = '';
             registeredUnits.forEach(unit => {
                 const statusClass = unit.status === 'approved' ? 'status-approved' : 'status-pending';
@@ -513,10 +490,11 @@
                             <td><span class="status-badge ${statusClass}">${statusText}</span></td>
                             <td>${unit.approvalDate || '—'}</td>
                             <td>${unit.status === 'pending' ? `<button class="action-btn-drop" onclick="dropUnit('${unit.code}')"><i class="fas fa-trash"></i> Drop</button>` : '—'}</td>
-                        </tr>`;
+                         </tr>`;
             });
             tbody.html(html);
         }
+        
         const approved = registeredUnits.filter(u => u.status === 'approved').length;
         const pending = registeredUnits.filter(u => u.status === 'pending').length;
         $('#approved-units-count').text(approved);
@@ -525,21 +503,19 @@
     }
     
     function saveRegisteredUnits() { localStorage.setItem('nchsm_registered_units', JSON.stringify(registeredUnits)); }
-    function updateSelectedCount() { const checked = $('.unit-checkbox:checked').length; $('#selected-units-count').text(checked); }
     
-    window.submitRegistration = function() {
+    window.submitUnitRegistration = function() {
         const regType = $('#RegType').val();
         if (!regType) { Swal.fire('Warning', 'Please select Registration Type', 'warning'); return; }
+        
         const selectedCodes = []; $('.unit-checkbox:checked').each(function() { selectedCodes.push($(this).data('code')); });
         if (selectedCodes.length === 0) { Swal.fire('Warning', 'No units selected', 'warning'); return; }
-        if (selectedCodes.length + registeredUnits.filter(u => u.status === 'pending' || u.status === 'approved').length > maxUnits) {
-            Swal.fire('Limit Exceeded', `You can only register up to ${maxUnits} units total`, 'warning'); return;
-        }
+        
         Swal.fire({ title: 'Confirm Registration', text: `Submit ${selectedCodes.length} unit(s) for approval?`, icon: 'question', showCancelButton: true }).then(result => {
             if (result.isConfirmed) {
                 const newUnits = [];
                 selectedCodes.forEach(code => {
-                    const unit = mockAvailableUnits.find(u => u.code === code);
+                    const unit = unitCatalog.find(u => u.code === code);
                     if (unit && !registeredUnits.some(r => r.code === code)) {
                         newUnits.push({ code: unit.code, name: unit.name, block: unit.block, regType: regType, status: 'pending', approvalDate: null });
                     }
@@ -566,121 +542,64 @@
     };
     
     function bindUnitEvents() {
-        $('#selectAllUnits').off('change').on('change', function() { $('.unit-checkbox').prop('checked', $(this).prop('checked')); updateSelectedCount(); });
-        $(document).off('change', '.unit-checkbox').on('change', '.unit-checkbox', updateSelectedCount);
+        $('#selectAllUnits').off('change').on('change', function() { $('.unit-checkbox').prop('checked', $(this).prop('checked')); $('#selected-units-count').text($('.unit-checkbox:checked').length); });
+        $(document).off('change', '.unit-checkbox').on('change', '.unit-checkbox', function() { $('#selected-units-count').text($('.unit-checkbox:checked').length); });
         $('#refreshUnitsBtn').off('click').on('click', loadAvailableUnits);
-        $('#submitRegistrationBtn').off('click').on('click', submitRegistration);
+        $('#submitRegistrationBtn').off('click').on('click', window.submitUnitRegistration);
         $('#RegType, #BlockFilter, #UnitTypeFilter').off('change').on('change', loadAvailableUnits);
     }
 
     // ==================== APP INITIALIZATION ====================
-    window.app = { config: null, supabase: null, db: null, user: null, isInitialized: false };
-    
-    // Extend original initUI
-    const originalInitUI = window.initUI;
-    window.initUI = function() {
-        if (originalInitUI) originalInitUI();
+    $(document).ready(function() {
+        // Load saved profile
+        const saved = localStorage.getItem('nchsm_profile_data');
+        if (saved) { try { Object.assign(profileData, JSON.parse(saved)); } catch(e) {} }
+        updateProfileDisplay();
+        
+        // Profile buttons
+        $('#edit-profile-button').click(() => toggleEditMode(true));
+        $('#save-profile-button').click(saveProfileChanges);
+        $('#cancel-edit-button').click(() => toggleEditMode(false));
+        $('#change-photo-btn').click(() => $('#passport-file-input').click());
+        $('#passport-file-input').change(function(e) {
+            if (e.target.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(ev) { $('#passport-preview').attr('src', ev.target.result); $('#header-profile-photo').attr('src', ev.target.result); };
+                reader.readAsDataURL(e.target.files[0]);
+            }
+        });
+        
+        // Initialize Unit Registration
         loadRegisteredUnits();
         loadAvailableUnits();
         bindUnitEvents();
-    };
-    
-    function toggleEditMode(isEditing) {
-        document.getElementById('profile-view-mode').style.display = isEditing ? 'none' : 'block';
-        document.getElementById('profile-edit-mode').style.display = isEditing ? 'block' : 'none';
-        document.getElementById('edit-profile-button').style.display = isEditing ? 'none' : 'inline-flex';
-        document.getElementById('save-profile-button').style.display = isEditing ? 'inline-flex' : 'none';
-        document.getElementById('cancel-edit-button').style.display = isEditing ? 'inline-flex' : 'none';
-        if (isEditing) {
-            document.getElementById('edit-dob').value = profileData.dob.split('/').reverse().join('-');
-        }
-    }
-
-    function saveProfileChanges() {
-        profileData = {
-            regno: document.getElementById('edit-regno').value,
-            name: document.getElementById('edit-name').value,
-            idno: document.getElementById('edit-idno').value,
-            gender: document.getElementById('edit-gender').value,
-            address: document.getElementById('edit-address').value,
-            email: document.getElementById('edit-email').value,
-            dob: document.getElementById('edit-dob').value.split('-').reverse().join('/'),
-            campus: document.getElementById('edit-campus').value,
-            phone: document.getElementById('edit-phone').value,
-            program: document.getElementById('edit-program').value,
-            block: document.getElementById('edit-block').value,
-            intake: document.getElementById('edit-intake').value
-        };
-        updateProfileDisplay();
-        localStorage.setItem('nchsm_profile_data', JSON.stringify(profileData));
-        toggleEditMode(false);
-        const statusMsg = document.getElementById('profile-status');
-        if (statusMsg) { statusMsg.textContent = 'Profile updated successfully!'; statusMsg.style.color = '#10b981'; setTimeout(() => statusMsg.textContent = '', 3000); }
-    }
-
-    const savedProfile = localStorage.getItem('nchsm_profile_data');
-    if (savedProfile) { try { const parsed = JSON.parse(savedProfile); profileData = { ...profileData, ...parsed }; } catch(e) {} }
-    updateProfileDisplay();
-
-    async function initializeApp() {
-        try {
-            if (!window.APP_CONFIG) throw new Error('Configuration not loaded');
-            window.app.config = window.APP_CONFIG;
-            if (typeof window.db === 'undefined') throw new Error('Database module not loaded');
-            await window.db.initialize();
-            let userSession = null;
-            if (window.db.supabase) { const { data } = await window.db.supabase.auth.getSession(); userSession = data.session; }
-            if (!userSession) { window.location.href = 'login.html'; return; }
-            window.db.currentUserId = userSession.user.id;
-            window.db.currentUserProfile = { id: userSession.user.id, email: userSession.user.email, full_name: profileData.name };
-            document.getElementById('loading-screen').style.display = 'none';
-            document.getElementById('app-content').style.display = 'block';
-            window.supabase = window.db.supabase;
-            window.currentUserId = window.db.currentUserId;
-            window.currentUserProfile = window.db.currentUserProfile;
-            if (typeof initUI === 'function') initUI();
-            
-            document.getElementById('edit-profile-button').addEventListener('click', () => toggleEditMode(true));
-            document.getElementById('save-profile-button').addEventListener('click', saveProfileChanges);
-            document.getElementById('cancel-edit-button').addEventListener('click', () => toggleEditMode(false));
-            
-            if (window.ui && typeof window.ui.showTab === 'function') {
-                const hash = window.location.hash.substring(1);
-                const lastTab = localStorage.getItem('nchsm_last_tab');
-                let targetTab = 'dashboard';
-                if (hash && window.ui.isValidTab(hash)) targetTab = hash;
-                else if (lastTab && window.ui.isValidTab(lastTab)) targetTab = lastTab;
-                window.ui.showTab(targetTab);
-            }
-            window.app.isInitialized = true;
-        } catch (error) {
-            console.error('Init error:', error);
-            document.getElementById('loading-screen').style.display = 'none';
-            document.getElementById('app-content').style.display = 'block';
-        }
-    }
-
-    window.showTab = function(tabId) {
-        if (window.ui && typeof window.ui.showTab === 'function') window.ui.showTab(tabId);
-        else { document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active')); const selectedTab = document.getElementById(tabId); if (selectedTab) selectedTab.classList.add('active'); }
-        if (tabId === 'unit-registration') { loadRegisteredUnits(); loadAvailableUnits(); }
-    };
-
-    window.logout = async function() {
-        localStorage.removeItem('nchsm_last_tab');
-        if (window.db && window.db.logout) await window.db.logout();
-        else if (window.app.supabase) await window.app.supabase.auth.signOut();
-        localStorage.clear(); sessionStorage.clear();
-        window.location.href = 'login.html';
-    };
-
-    document.getElementById('header-logout')?.addEventListener('click', (e) => { e.preventDefault(); window.logout(); });
-    document.getElementById('header-refresh')?.addEventListener('click', () => location.reload());
-
-    document.addEventListener('DOMContentLoaded', function() {
-        document.querySelectorAll('.tab-content').forEach(tab => tab.style.removeProperty('display'));
-        if (typeof initializeApp === 'function') initializeApp();
-        else { document.getElementById('loading-screen').style.display = 'none'; document.getElementById('app-content').style.display = 'block'; }
+        
+        // Tab switching
+        $('.nav a').click(function(e) {
+            e.preventDefault();
+            const tabId = $(this).data('tab');
+            $('.tab-content').hide();
+            $(`#${tabId}`).show();
+            $('.nav a').css({background:'none', borderLeft:'none'});
+            $(this).css({background:'#f3e8ff', borderLeft:'3px solid #4C1D95'});
+            localStorage.setItem('nchsm_last_tab', tabId);
+            if (tabId === 'unit-registration') { loadRegisteredUnits(); loadAvailableUnits(); }
+        });
+        
+        const lastTab = localStorage.getItem('nchsm_last_tab');
+        if (lastTab && $(`#${lastTab}`).length) { $(`.nav a[data-tab="${lastTab}"]`).click(); }
+        
+        // Logout
+        $('#header-logout').click(function(e) {
+            e.preventDefault();
+            localStorage.clear();
+            window.location.href = 'login.html';
+        });
+        $('#header-refresh').click(() => location.reload());
+        
+        // Hide loading screen
+        $('#loading-screen').fadeOut();
+        $('#app-content').show();
     });
     </script>
 </body>
