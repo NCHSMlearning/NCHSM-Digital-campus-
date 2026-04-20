@@ -3988,10 +3988,225 @@ async function loadAllUnits() {
     }
 }
 
+// Render units based on filters
+function renderUnits() {
+    const container = document.getElementById('units-list-container');
+    if (!container) return;
+    
+    const searchTerm = document.getElementById('unit_search')?.value.toLowerCase() || '';
+    const programFilter = document.getElementById('unit_filter_program')?.value || '';
+    const yearFilter = document.getElementById('unit_filter_year')?.value || '';
+    
+    let filtered = [...allUnits];
+    
+    if (searchTerm) {
+        filtered = filtered.filter(u => 
+            u.unit_code?.toLowerCase().includes(searchTerm) || 
+            u.unit_name?.toLowerCase().includes(searchTerm)
+        );
+    }
+    if (programFilter) {
+        filtered = filtered.filter(u => u.program === programFilter);
+    }
+    if (yearFilter) {
+        filtered = filtered.filter(u => u.year == yearFilter);
+    }
+    if (currentBlockFilter !== 'all') {
+        filtered = filtered.filter(u => u.block === currentBlockFilter);
+    }
+    
+    if (filtered.length === 0) {
+        container.innerHTML = '<p>No units found. Add units using the form above.</p>';
+        return;
+    }
+    
+    let html = '<div class="units-grid">';
+    filtered.forEach(unit => {
+        const typeClass = unit.unit_type === 'Core' ? 'badge-core' : 'badge-elective';
+        const programName = getProgramDisplayName(unit.program);
+        
+        html += `
+            <div class="unit-card" data-unit-id="${unit.id}">
+                <div class="unit-header">
+                    <div>
+                        <span class="unit-code">${escapeHtml(unit.unit_code)}</span>
+                        <span class="unit-name">${escapeHtml(unit.unit_name)}</span>
+                    </div>
+                    <div class="unit-actions">
+                        <button class="btn-sm btn-edit" onclick="editUnit(${unit.id})"><i class="fas fa-edit"></i> Edit</button>
+                        <button class="btn-sm btn-delete" onclick="deleteUnit(${unit.id}, '${escapeHtml(unit.unit_code)}')"><i class="fas fa-trash"></i> Delete</button>
+                    </div>
+                </div>
+                <div class="unit-meta">
+                    <span><i class="fas fa-tag"></i> ${escapeHtml(programName)}</span>
+                    <span><i class="fas fa-layer-group"></i> ${escapeHtml(unit.block)}</span>
+                    <span><i class="fas fa-calendar"></i> Year: ${unit.year || 'N/A'}</span>
+                    <span><i class="fas fa-star"></i> ${unit.credits || 3} Credits</span>
+                    <span><i class="fas fa-clock"></i> ${unit.hours || 0} Hours</span>
+                    <span class="${typeClass}"><i class="fas fa-book"></i> ${unit.unit_type || 'Core'}</span>
+                    ${unit.prerequisites ? `<span><i class="fas fa-link"></i> Pre: ${escapeHtml(unit.prerequisites)}</span>` : ''}
+                </div>
+            </div>
+        `;
+    });
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+// Add new unit
+async function addNewUnit() {
+    const unitCode = document.getElementById('new_unit_code')?.value;
+    const unitName = document.getElementById('new_unit_name')?.value;
+    const program = document.getElementById('new_unit_program')?.value;
+    const block = document.getElementById('new_unit_block')?.value;
+    const year = parseInt(document.getElementById('new_unit_year')?.value);
+    const credits = parseInt(document.getElementById('new_unit_credits')?.value);
+    const hours = parseInt(document.getElementById('new_unit_hours')?.value);
+    const unitType = document.getElementById('new_unit_type')?.value;
+    const prerequisites = document.getElementById('new_unit_prerequisites')?.value || null;
+    
+    if (!unitCode || !unitName) {
+        showFeedback('Please fill in Unit Code and Unit Name', 'error');
+        return;
+    }
+    
+    const newUnit = {
+        unit_code: unitCode,
+        unit_name: unitName,
+        program: program,
+        block: block,
+        year: year,
+        credits: credits,
+        hours: hours,
+        unit_type: unitType,
+        prerequisites: prerequisites,
+        status: 'active'
+    };
+    
+    try {
+        const { data, error } = await sb
+            .from('units_catalog')
+            .insert([newUnit])
+            .select();
+        
+        if (error) throw error;
+        
+        showFeedback(`Unit "${unitCode}" added successfully!`, 'success');
+        await logAudit('UNIT_ADD', `Added unit: ${unitCode} - ${unitName}`, data?.[0]?.id, 'SUCCESS');
+        
+        // Clear form
+        document.getElementById('new_unit_code').value = '';
+        document.getElementById('new_unit_name').value = '';
+        document.getElementById('new_unit_prerequisites').value = '';
+        
+        loadAllUnits();
+        
+    } catch (error) {
+        console.error('Error adding unit:', error);
+        showFeedback(`Error adding unit: ${error.message}`, 'error');
+        await logAudit('UNIT_ADD', `Failed to add unit: ${error.message}`, null, 'FAILURE');
+    }
+}
+
+// Edit unit
+async function editUnit(unitId) {
+    const unit = allUnits.find(u => u.id === unitId);
+    if (!unit) return;
+    
+    document.getElementById('edit_unit_id').value = unit.id;
+    document.getElementById('edit_unit_code').value = unit.unit_code;
+    document.getElementById('edit_unit_name').value = unit.unit_name;
+    document.getElementById('edit_unit_program').value = unit.program;
+    document.getElementById('edit_unit_block').value = unit.block;
+    document.getElementById('edit_unit_year').value = unit.year;
+    document.getElementById('edit_unit_credits').value = unit.credits;
+    document.getElementById('edit_unit_hours').value = unit.hours || 0;
+    document.getElementById('edit_unit_type').value = unit.unit_type || 'Core';
+    document.getElementById('edit_unit_prerequisites').value = unit.prerequisites || '';
+    
+    document.getElementById('editUnitModal').style.display = 'flex';
+    
+    document.getElementById('edit-unit-form').onsubmit = async (e) => {
+        e.preventDefault();
+        
+        const updatedUnit = {
+            unit_code: document.getElementById('edit_unit_code').value,
+            unit_name: document.getElementById('edit_unit_name').value,
+            program: document.getElementById('edit_unit_program').value,
+            block: document.getElementById('edit_unit_block').value,
+            year: parseInt(document.getElementById('edit_unit_year').value),
+            credits: parseInt(document.getElementById('edit_unit_credits').value),
+            hours: parseInt(document.getElementById('edit_unit_hours').value),
+            unit_type: document.getElementById('edit_unit_type').value,
+            prerequisites: document.getElementById('edit_unit_prerequisites').value || null
+        };
+        
+        try {
+            const { error } = await sb
+                .from('units_catalog')
+                .update(updatedUnit)
+                .eq('id', unitId);
+            
+            if (error) throw error;
+            
+            showFeedback('Unit updated successfully!', 'success');
+            await logAudit('UNIT_EDIT', `Edited unit: ${updatedUnit.unit_code}`, unitId, 'SUCCESS');
+            closeModal('editUnitModal');
+            loadAllUnits();
+            
+        } catch (error) {
+            console.error('Error updating unit:', error);
+            showFeedback(`Error updating unit: ${error.message}`, 'error');
+            await logAudit('UNIT_EDIT', `Failed to edit unit: ${error.message}`, unitId, 'FAILURE');
+        }
+    };
+}
+
+// Delete unit
+async function deleteUnit(unitId, unitCode) {
+    if (!confirm(`Are you sure you want to delete unit "${unitCode}"? This may affect student registrations.`)) return;
+    
+    try {
+        const { error } = await sb
+            .from('units_catalog')
+            .delete()
+            .eq('id', unitId);
+        
+        if (error) throw error;
+        
+        showFeedback(`Unit "${unitCode}" deleted successfully!`, 'success');
+        await logAudit('UNIT_DELETE', `Deleted unit: ${unitCode}`, unitId, 'SUCCESS');
+        loadAllUnits();
+        
+    } catch (error) {
+        console.error('Error deleting unit:', error);
+        showFeedback(`Error deleting unit: ${error.message}`, 'error');
+        await logAudit('UNIT_DELETE', `Failed to delete unit: ${error.message}`, unitId, 'FAILURE');
+    }
+}
+
+// Filter units by search
+function filterUnits() {
+    renderUnits();
+}
+
+// Filter units by block
+function filterByBlock(block) {
+    currentBlockFilter = block;
+    
+    document.querySelectorAll('.block-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.getAttribute('data-block') === block) {
+            btn.classList.add('active');
+        }
+    });
+    
+    renderUnits();
+}
+
 // Load registration statistics with detailed breakdown
 async function loadRegistrationStats() {
     try {
-        // Get all registrations
         const { data, error } = await sb
             .from('student_unit_registrations')
             .select('*');
@@ -3999,13 +4214,12 @@ async function loadRegistrationStats() {
         if (!error && data) {
             const pending = data.filter(r => r.status === 'pending').length;
             const approved = data.filter(r => r.status === 'approved').length;
-            const rejected = data.filter(r => r.status === 'rejected').length;
             
             // Get per-student stats
             const studentStats = {};
             data.forEach(r => {
                 if (!studentStats[r.student_id]) {
-                    studentStats[r.student_id] = { pending: 0, approved: 0, rejected: 0, total: 0 };
+                    studentStats[r.student_id] = { pending: 0, approved: 0, total: 0 };
                 }
                 studentStats[r.student_id][r.status]++;
                 studentStats[r.student_id].total++;
@@ -4016,19 +4230,36 @@ async function loadRegistrationStats() {
             const pendingEl = document.getElementById('pendingRegistrations');
             const approvedEl = document.getElementById('approvedRegistrations');
             const totalEl = document.getElementById('totalRegistrations');
-            const studentsPendingEl = document.getElementById('studentsWithPending');
             
             if (pendingEl) pendingEl.textContent = pending;
             if (approvedEl) approvedEl.textContent = approved;
             if (totalEl) totalEl.textContent = data.length;
-            if (studentsPendingEl) studentsPendingEl.textContent = studentsWithPending;
+            
+            // Add students with pending if element exists
+            let studentsPendingEl = document.getElementById('studentsWithPending');
+            if (!studentsPendingEl) {
+                // Create the element if it doesn't exist
+                const statsContainer = document.querySelector('#unit-management .cards');
+                if (statsContainer && statsContainer.children.length === 3) {
+                    const newCard = document.createElement('div');
+                    newCard.className = 'card';
+                    newCard.innerHTML = `
+                        <h3>Students with Pending</h3>
+                        <p class="data" id="studentsWithPending">${studentsWithPending}</p>
+                        <p class="minor-data">Students awaiting approval</p>
+                    `;
+                    statsContainer.appendChild(newCard);
+                }
+            } else {
+                studentsPendingEl.textContent = studentsWithPending;
+            }
         }
     } catch (error) {
         console.error('Error loading registration stats:', error);
     }
 }
 
-// Load pending registrations grouped by student
+// Load pending registrations for approval (GROUPED BY STUDENT)
 async function loadPendingRegistrations() {
     const container = document.getElementById('pending-registrations-list');
     const btn = event?.target;
@@ -4092,12 +4323,12 @@ async function loadPendingRegistrations() {
             });
             
             let html = `
-                <div style="margin-bottom: 20px;">
-                    <div class="bulk-actions-bar" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 10px; background: #f8f9fa; border-radius: 8px;">
-                        <button onclick="selectAllPending()" class="btn-action" style="background: #4C1D95;">
-                            <i class="fas fa-check-double"></i> Select All
+                <div style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                        <button onclick="selectAllPendingUnits()" class="btn-action" style="background: #4C1D95;">
+                            <i class="fas fa-check-double"></i> Select All Units
                         </button>
-                        <button onclick="clearSelection()" class="btn-secondary">
+                        <button onclick="clearUnitSelections()" class="btn-secondary">
                             <i class="fas fa-times"></i> Clear Selection
                         </button>
                         <button onclick="bulkApproveSelected()" class="btn-success" style="background: #059669;">
@@ -4107,7 +4338,7 @@ async function loadPendingRegistrations() {
                             <i class="fas fa-times-circle"></i> Reject Selected
                         </button>
                         <span style="margin-left: auto; font-size: 14px; color: #6b7280;">
-                            <i class="fas fa-users"></i> Total: ${Object.keys(groupedByStudent).length} students | 
+                            <i class="fas fa-users"></i> ${Object.keys(groupedByStudent).length} students | 
                             <i class="fas fa-file-alt"></i> ${pendingRegistrationsData.length} units pending
                         </span>
                     </div>
@@ -4117,14 +4348,13 @@ async function loadPendingRegistrations() {
             
             for (const [studentId, studentRegs] of Object.entries(groupedByStudent)) {
                 const studentInfo = studentNames[studentId] || { name: 'Unknown', program: 'N/A', intake: 'N/A' };
-                const studentCheckboxId = `student_${studentId}`;
                 
                 html += `
                     <div class="student-group-card" style="background: white; border: 1px solid #e5e7eb; border-radius: 12px; margin-bottom: 20px; overflow: hidden;">
                         <div class="student-group-header" style="background: #f9fafb; padding: 15px 20px; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
                             <div>
-                                <input type="checkbox" id="${studentCheckboxId}" class="student-select-checkbox" data-student-id="${studentId}" onchange="toggleStudentSelection('${studentId}')" style="margin-right: 12px; transform: scale(1.2);">
-                                <label for="${studentCheckboxId}" style="font-weight: bold; font-size: 16px;">
+                                <input type="checkbox" id="student_${studentId}" class="student-select-checkbox" data-student-id="${studentId}" onchange="toggleStudentSelection('${studentId}')" style="margin-right: 12px; transform: scale(1.2);">
+                                <label for="student_${studentId}" style="font-weight: bold; font-size: 16px;">
                                     <i class="fas fa-user-graduate"></i> ${escapeHtml(studentInfo.name)}
                                 </label>
                                 <div style="margin-top: 5px; font-size: 13px; color: #6b7280;">
@@ -4172,7 +4402,7 @@ async function loadPendingRegistrations() {
                         <tr style="border-bottom: 1px solid #f3f4f6;">
                             <td style="padding: 10px; text-align: center;">
                                 <input type="checkbox" id="${checkboxId}" class="unit-checkbox-item" data-reg-id="${reg.id}" data-student-id="${studentId}" onchange="updateSelectedCount()">
-                            </td>
+                            </table>
                             <td style="padding: 10px;"><code style="background: #f3f4f6; padding: 3px 6px; border-radius: 4px;">${escapeHtml(reg.unit_code)}</code></td>
                             <td style="padding: 10px;">${escapeHtml(reg.unit_name)}</td>
                             <td style="padding: 10px;"><span class="badge" style="background: #e0e7ff;">${escapeHtml(reg.block)}</span></td>
@@ -4201,9 +4431,6 @@ async function loadPendingRegistrations() {
             html += '</div>';
             container.innerHTML = html;
             
-            // Add select all checkbox for main bulk actions
-            addSelectAllCheckbox();
-            
         } catch (error) {
             console.error('Error loading pending registrations:', error);
             container.innerHTML = `<p style="color: red;">Error loading pending registrations: ${error.message}</p>`;
@@ -4215,30 +4442,16 @@ async function loadPendingRegistrations() {
     }
 }
 
-// Add select all checkbox to header
-function addSelectAllCheckbox() {
-    const bulkBar = document.querySelector('.bulk-actions-bar');
-    if (bulkBar && !document.getElementById('selectAllStudentsCheckbox')) {
-        const selectAllDiv = document.createElement('div');
-        selectAllDiv.innerHTML = `
-            <label style="display: flex; align-items: center; gap: 8px;">
-                <input type="checkbox" id="selectAllStudentsCheckbox" onchange="selectAllStudents()">
-                <span style="font-size: 13px;">Select All Students</span>
-            </label>
-        `;
-        bulkBar.insertBefore(selectAllDiv, bulkBar.firstChild);
-    }
-}
-
-// Select all pending registrations
-function selectAllPending() {
+// Select all pending units
+function selectAllPendingUnits() {
     const allCheckboxes = document.querySelectorAll('.unit-checkbox-item');
     allCheckboxes.forEach(cb => {
         cb.checked = true;
-        selectedRegistrationIds.add(cb.getAttribute('data-reg-id'));
+        const regId = cb.getAttribute('data-reg-id');
+        if (regId) selectedRegistrationIds.add(regId);
     });
     
-    // Also check student-level checkboxes
+    // Check all student-level checkboxes
     document.querySelectorAll('.student-select-checkbox').forEach(cb => {
         cb.checked = true;
     });
@@ -4250,8 +4463,8 @@ function selectAllPending() {
     updateSelectedCount();
 }
 
-// Clear all selections
-function clearSelection() {
+// Clear all unit selections
+function clearUnitSelections() {
     const allCheckboxes = document.querySelectorAll('.unit-checkbox-item');
     allCheckboxes.forEach(cb => {
         cb.checked = false;
@@ -4267,19 +4480,6 @@ function clearSelection() {
     
     selectedRegistrationIds.clear();
     updateSelectedCount();
-}
-
-// Select all students
-function selectAllStudents() {
-    const isChecked = document.getElementById('selectAllStudentsCheckbox')?.checked || false;
-    
-    document.querySelectorAll('.student-select-checkbox').forEach(cb => {
-        cb.checked = isChecked;
-        const studentId = cb.getAttribute('data-student-id');
-        if (studentId) {
-            toggleStudentSelection(studentId);
-        }
-    });
 }
 
 // Toggle selection for a student's all units
@@ -4356,7 +4556,6 @@ async function approveSingleUnit(regId) {
         showFeedback('Unit approved successfully!', 'success');
         await logAudit('UNIT_REG_APPROVE', `Approved registration ID: ${regId}`, regId, 'SUCCESS');
         
-        // Refresh the pending list
         await loadPendingRegistrations();
         await loadRegistrationStats();
         
@@ -4536,29 +4735,49 @@ async function bulkRejectSelected() {
     }
 }
 
-// Update stats display to include students with pending
-function updateStatsWithStudentCount() {
-    // Add this to your HTML - a new card in the stats section
-    const statsContainer = document.querySelector('.cards');
-    if (statsContainer && !document.getElementById('studentsWithPending')) {
-        const studentCard = document.createElement('div');
-        studentCard.className = 'card';
-        studentCard.innerHTML = `
-            <h3>Students with Pending</h3>
-            <p class="data" id="studentsWithPending">0</p>
-            <p class="minor-data">Students awaiting approval</p>
-        `;
-        statsContainer.appendChild(studentCard);
+// Get all available blocks for filter
+async function loadUnitBlocks() {
+    try {
+        const { data, error } = await sb
+            .from('units_catalog')
+            .select('block')
+            .eq('status', 'active');
+        
+        if (!error && data) {
+            const blocks = [...new Set(data.map(b => b.block))];
+            const blockSelect = document.getElementById('unit_filter_block');
+            if (blockSelect) {
+                blockSelect.innerHTML = '<option value="">All Blocks</option>';
+                blocks.forEach(block => {
+                    blockSelect.innerHTML += `<option value="${escapeHtml(block)}">${escapeHtml(block)}</option>`;
+                });
+            }
+        }
+    } catch (error) {
+        console.error('Error loading blocks:', error);
     }
 }
 
-// Add the stats update to loadRegistrationStats function (add this line)
-// studentsPendingEl.textContent = studentsWithPending;
+// Update block filter when changed
+function filterByBlockSelect() {
+    const blockSelect = document.getElementById('unit_filter_block');
+    if (blockSelect) {
+        currentBlockFilter = blockSelect.value || 'all';
+        renderUnits();
+    }
+}
 
-// Global function references
-window.selectAllPending = selectAllPending;
-window.clearSelection = clearSelection;
-window.selectAllStudents = selectAllStudents;
+// Global function references for Unit Registration
+window.loadAllUnits = loadAllUnits;
+window.addNewUnit = addNewUnit;
+window.editUnit = editUnit;
+window.deleteUnit = deleteUnit;
+window.filterUnits = filterUnits;
+window.filterByBlock = filterByBlock;
+window.filterByBlockSelect = filterByBlockSelect;
+window.loadPendingRegistrations = loadPendingRegistrations;
+window.selectAllPendingUnits = selectAllPendingUnits;
+window.clearUnitSelections = clearUnitSelections;
 window.toggleStudentSelection = toggleStudentSelection;
 window.toggleStudentUnitSelection = toggleStudentUnitSelection;
 window.updateSelectedCount = updateSelectedCount;
