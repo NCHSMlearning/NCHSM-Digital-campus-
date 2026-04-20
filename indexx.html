@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NCHSM Digital Student Dashboard | Unit Registration</title>
+    <title>NCHSM Digital Student Dashboard</title>
     
     <!-- External Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -16,7 +16,7 @@
     <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     
-    <!-- CONFIG -->
+    <!-- CONFIG WILL BE INJECTED BY GITHUB ACTIONS -->
     <script src="./config.js"></script>
     
     <!-- CSS Files -->
@@ -124,14 +124,6 @@
             font-weight: 600;
         }
         .btn-success:hover { background: #047857; }
-        .btn-danger {
-            background: #dc2626;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 6px;
-            cursor: pointer;
-        }
         .modern-select {
             width: 100%;
             padding: 10px;
@@ -174,17 +166,6 @@
             flex: 1;
             min-width: 200px;
         }
-        .toast {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background: #1f2937;
-            color: white;
-            padding: 12px 24px;
-            border-radius: 40px;
-            font-size: 0.875rem;
-            z-index: 1100;
-        }
         .card {
             background: white;
             border-radius: 1rem;
@@ -207,6 +188,17 @@
             font-weight: 600;
         }
         .btn-primary:hover { background: #6d28d9; }
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #1f2937;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 40px;
+            font-size: 0.875rem;
+            z-index: 1100;
+        }
     </style>
 </head>
 <body>
@@ -226,8 +218,8 @@
                 <button id="mobile-menu-toggle" style="background:none; border:none; font-size:1.5rem; cursor:pointer; display:none;"><i class="fas fa-bars"></i></button>
                 <div class="user-profile-dropdown" style="position:relative;">
                     <div class="profile-trigger" style="display:flex; align-items:center; gap:10px; cursor:pointer;">
-                        <img id="header-profile-photo" src="https://ui-avatars.com/api/?name=Kevin+Matoka&background=667eea&color=fff&size=100" style="width:40px; height:40px; border-radius:50%;">
-                        <span id="header-user-name">Kevin Matoka Tiong`i</span>
+                        <img id="header-profile-photo" src="https://ui-avatars.com/api/?name=Student&background=667eea&color=fff&size=100" style="width:40px; height:40px; border-radius:50%;">
+                        <span id="header-user-name">Student</span>
                         <i class="fas fa-chevron-down"></i>
                     </div>
                     <div class="dropdown-menu" style="display:none; position:absolute; right:0; top:100%; background:white; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.1); z-index:100;">
@@ -265,16 +257,16 @@
                 <!-- Dashboard Tab -->
                 <section id="dashboard" class="tab-content" style="display:block;">
                     <div style="background:white; border-radius:1rem; padding:1.5rem; margin-bottom:1.5rem;">
-                        <h2 id="welcome-header">Welcome back, <span id="welcome-student-name">Kevin</span>!</h2>
+                        <h2 id="welcome-header">Welcome back, <span id="welcome-student-name">Student</span>!</h2>
                         <p>Access your courses, schedule, and check your attendance status.</p>
                     </div>
                     <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:20px;">
-                        <div style="background:white; border-radius:1rem; padding:1.5rem;"><h3>Attendance Rate</h3><p style="font-size:2rem; font-weight:bold;">92%</p></div>
-                        <div style="background:white; border-radius:1rem; padding:1.5rem;"><h3>Active Courses</h3><p style="font-size:2rem; font-weight:bold;">4</p></div>
+                        <div style="background:white; border-radius:1rem; padding:1.5rem;"><h3>Attendance Rate</h3><p style="font-size:2rem; font-weight:bold;" id="dashboard-attendance-rate">--%</p></div>
+                        <div style="background:white; border-radius:1rem; padding:1.5rem;"><h3>Active Courses</h3><p style="font-size:2rem; font-weight:bold;" id="dashboard-active-courses">0</p></div>
                     </div>
                 </section>
 
-                <!-- Profile Tab - Enhanced with all KeMU fields -->
+                <!-- Profile Tab - Enhanced with all fields -->
                 <section id="profile" class="tab-content" style="display:none;">
                     <div style="background:white; border-radius:1rem; padding:1.5rem;">
                         <h2><i class="fas fa-user-circle"></i> My Profile & Account</h2>
@@ -283,7 +275,7 @@
                         <div style="margin-top:1.5rem;">
                             <h3>Profile Photo</h3>
                             <div style="display:flex; align-items:center; gap:20px; flex-wrap:wrap;">
-                                <img id="passport-preview" src="https://ui-avatars.com/api/?name=Kevin+Matoka&background=4C1D95&color=fff&size=120" style="width:120px; height:120px; border-radius:50%;">
+                                <img id="passport-preview" src="https://ui-avatars.com/api/?name=Student&background=4C1D95&color=fff&size=120" style="width:120px; height:120px; border-radius:50%;">
                                 <div><input type="file" id="passport-file-input" accept="image/*" style="display:none;"><button id="change-photo-btn" class="btn-primary">Change Photo</button></div>
                             </div>
                         </div>
@@ -292,34 +284,34 @@
                             <h3>Personal Information</h3>
                             <div id="profile-view-mode">
                                 <div class="profile-enhanced-grid">
-                                    <div class="profile-field-card"><div class="field-label"><i class="fas fa-id-card"></i> REG. NO</div><div class="field-value" id="view-regno">BSN-1-8255-3/2017</div></div>
-                                    <div class="profile-field-card"><div class="field-label"><i class="fas fa-user"></i> FULL NAME</div><div class="field-value" id="view-name">Kevin Matoka Tiong`i</div></div>
-                                    <div class="profile-field-card"><div class="field-label"><i class="fas fa-id-card"></i> ID NO</div><div class="field-value" id="view-idno">36635393</div></div>
-                                    <div class="profile-field-card"><div class="field-label"><i class="fas fa-venus-mars"></i> GENDER</div><div class="field-value" id="view-gender">Male</div></div>
-                                    <div class="profile-field-card"><div class="field-label"><i class="fas fa-map-marker-alt"></i> ADDRESS</div><div class="field-value" id="view-address">250 - 40109</div></div>
-                                    <div class="profile-field-card"><div class="field-label"><i class="fas fa-envelope"></i> EMAIL</div><div class="field-value" id="view-email">tkevin8255@stu.kemu.ac.ke</div></div>
-                                    <div class="profile-field-card"><div class="field-label"><i class="fas fa-calendar"></i> DATE OF BIRTH</div><div class="field-value" id="view-dob">01/01/1999</div></div>
-                                    <div class="profile-field-card"><div class="field-label"><i class="fas fa-university"></i> CAMPUS</div><div class="field-value" id="view-campus">MERU</div></div>
-                                    <div class="profile-field-card"><div class="field-label"><i class="fas fa-phone"></i> PHONE NUMBER</div><div class="field-value" id="view-phone">+254712345678</div></div>
-                                    <div class="profile-field-card"><div class="field-label"><i class="fas fa-graduation-cap"></i> PROGRAM</div><div class="field-value" id="view-program">KRCHN</div></div>
-                                    <div class="profile-field-card"><div class="field-label"><i class="fas fa-layer-group"></i> BLOCK</div><div class="field-value" id="view-block">A</div></div>
-                                    <div class="profile-field-card"><div class="field-label"><i class="fas fa-calendar-alt"></i> INTAKE YEAR</div><div class="field-value" id="view-intake">2024</div></div>
+                                    <div class="profile-field-card"><div class="field-label"><i class="fas fa-id-card"></i> REG. NO</div><div class="field-value" id="view-regno">--</div></div>
+                                    <div class="profile-field-card"><div class="field-label"><i class="fas fa-user"></i> FULL NAME</div><div class="field-value" id="view-name">--</div></div>
+                                    <div class="profile-field-card"><div class="field-label"><i class="fas fa-id-card"></i> ID NO</div><div class="field-value" id="view-idno">--</div></div>
+                                    <div class="profile-field-card"><div class="field-label"><i class="fas fa-venus-mars"></i> GENDER</div><div class="field-value" id="view-gender">--</div></div>
+                                    <div class="profile-field-card"><div class="field-label"><i class="fas fa-map-marker-alt"></i> ADDRESS</div><div class="field-value" id="view-address">--</div></div>
+                                    <div class="profile-field-card"><div class="field-label"><i class="fas fa-envelope"></i> EMAIL</div><div class="field-value" id="view-email">--</div></div>
+                                    <div class="profile-field-card"><div class="field-label"><i class="fas fa-calendar"></i> DATE OF BIRTH</div><div class="field-value" id="view-dob">--</div></div>
+                                    <div class="profile-field-card"><div class="field-label"><i class="fas fa-university"></i> CAMPUS</div><div class="field-value" id="view-campus">--</div></div>
+                                    <div class="profile-field-card"><div class="field-label"><i class="fas fa-phone"></i> PHONE NUMBER</div><div class="field-value" id="view-phone">--</div></div>
+                                    <div class="profile-field-card"><div class="field-label"><i class="fas fa-graduation-cap"></i> PROGRAM</div><div class="field-value" id="view-program">--</div></div>
+                                    <div class="profile-field-card"><div class="field-label"><i class="fas fa-layer-group"></i> BLOCK</div><div class="field-value" id="view-block">--</div></div>
+                                    <div class="profile-field-card"><div class="field-label"><i class="fas fa-calendar-alt"></i> INTAKE YEAR</div><div class="field-value" id="view-intake">--</div></div>
                                 </div>
                             </div>
                             <div id="profile-edit-mode" style="display:none;">
                                 <div class="profile-enhanced-grid">
-                                    <div class="profile-field-card"><div class="field-label">REG. NO</div><input type="text" id="edit-regno" class="edit-field-input" value="BSN-1-8255-3/2017" readonly></div>
-                                    <div class="profile-field-card"><div class="field-label">FULL NAME</div><input type="text" id="edit-name" class="edit-field-input" value="Kevin Matoka Tiong`i"></div>
-                                    <div class="profile-field-card"><div class="field-label">ID NO</div><input type="text" id="edit-idno" class="edit-field-input" value="36635393"></div>
-                                    <div class="profile-field-card"><div class="field-label">GENDER</div><select id="edit-gender" class="edit-field-input"><option value="Male" selected>Male</option><option value="Female">Female</option></select></div>
-                                    <div class="profile-field-card"><div class="field-label">ADDRESS</div><input type="text" id="edit-address" class="edit-field-input" value="250 - 40109"></div>
-                                    <div class="profile-field-card"><div class="field-label">EMAIL</div><input type="email" id="edit-email" class="edit-field-input" value="tkevin8255@stu.kemu.ac.ke"></div>
-                                    <div class="profile-field-card"><div class="field-label">DATE OF BIRTH</div><input type="date" id="edit-dob" class="edit-field-input" value="1999-01-01"></div>
-                                    <div class="profile-field-card"><div class="field-label">CAMPUS</div><select id="edit-campus" class="edit-field-input"><option value="MERU" selected>MERU</option><option value="NAKURU">NAKURU</option><option value="NAIROBI">NAIROBI</option></select></div>
-                                    <div class="profile-field-card"><div class="field-label">PHONE NUMBER</div><input type="tel" id="edit-phone" class="edit-field-input" value="+254712345678"></div>
-                                    <div class="profile-field-card"><div class="field-label">PROGRAM</div><input type="text" id="edit-program" class="edit-field-input" value="KRCHN"></div>
-                                    <div class="profile-field-card"><div class="field-label">BLOCK</div><input type="text" id="edit-block" class="edit-field-input" value="A"></div>
-                                    <div class="profile-field-card"><div class="field-label">INTAKE YEAR</div><input type="text" id="edit-intake" class="edit-field-input" value="2024"></div>
+                                    <div class="profile-field-card"><div class="field-label">REG. NO</div><input type="text" id="edit-regno" class="edit-field-input" readonly></div>
+                                    <div class="profile-field-card"><div class="field-label">FULL NAME</div><input type="text" id="edit-name" class="edit-field-input"></div>
+                                    <div class="profile-field-card"><div class="field-label">ID NO</div><input type="text" id="edit-idno" class="edit-field-input"></div>
+                                    <div class="profile-field-card"><div class="field-label">GENDER</div><select id="edit-gender" class="edit-field-input"><option value="Male">Male</option><option value="Female">Female</option></select></div>
+                                    <div class="profile-field-card"><div class="field-label">ADDRESS</div><input type="text" id="edit-address" class="edit-field-input"></div>
+                                    <div class="profile-field-card"><div class="field-label">EMAIL</div><input type="email" id="edit-email" class="edit-field-input"></div>
+                                    <div class="profile-field-card"><div class="field-label">DATE OF BIRTH</div><input type="date" id="edit-dob" class="edit-field-input"></div>
+                                    <div class="profile-field-card"><div class="field-label">CAMPUS</div><select id="edit-campus" class="edit-field-input"><option value="MERU">MERU</option><option value="NAKURU">NAKURU</option><option value="NAIROBI">NAIROBI</option></select></div>
+                                    <div class="profile-field-card"><div class="field-label">PHONE NUMBER</div><input type="tel" id="edit-phone" class="edit-field-input"></div>
+                                    <div class="profile-field-card"><div class="field-label">PROGRAM</div><input type="text" id="edit-program" class="edit-field-input"></div>
+                                    <div class="profile-field-card"><div class="field-label">BLOCK</div><input type="text" id="edit-block" class="edit-field-input"></div>
+                                    <div class="profile-field-card"><div class="field-label">INTAKE YEAR</div><input type="text" id="edit-intake" class="edit-field-input"></div>
                                 </div>
                             </div>
                             <div style="margin-top:1.5rem; display:flex; gap:10px;">
@@ -331,7 +323,7 @@
                     </div>
                 </section>
 
-                <!-- Calendar Tab -->
+                <!-- Other Tabs -->
                 <section id="calendar" class="tab-content" style="display:none;"><div class="card"><h2>Academic Calendar</h2></div></section>
                 <section id="courses" class="tab-content" style="display:none;"><div class="card"><h2>My Courses</h2></div></section>
                 <section id="attendance" class="tab-content" style="display:none;"><div class="card"><h2>Attendance</h2></div></section>
@@ -341,22 +333,22 @@
                 <section id="nurseiq" class="tab-content" style="display:none;"><div class="card"><h2>NurseIQ Question Bank</h2></div></section>
                 <section id="support-tickets" class="tab-content" style="display:none;"><div class="card"><h2>Support Tickets</h2></div></section>
 
-                <!-- UNIT REGISTRATION TAB -->
+                <!-- UNIT REGISTRATION TAB - NO MOCK DATA, ALL FROM BACKEND -->
                 <section id="unit-registration" class="tab-content" style="display:none;">
                     <div class="unit-reg-header">
                         <h2><i class="fas fa-book"></i> Unit Registration</h2>
                         <p>Select your units for the current trimester. Admin will review and approve your selections.</p>
                         <div class="header-stats">
-                            <div class="stat-card" style="background:white; border-radius:12px; padding:15px 25px; flex:1;"><div class="stat-icon selected"><i class="fas fa-check-circle"></i></div><div><span class="stat-value" id="selected-units-count">0</span><br><span>Selected Units</span></div></div>
-                            <div class="stat-card" style="background:white; border-radius:12px; padding:15px 25px; flex:1;"><div class="stat-icon approved"><i class="fas fa-user-check"></i></div><div><span class="stat-value" id="approved-units-count">0</span><br><span>Approved</span></div></div>
-                            <div class="stat-card" style="background:white; border-radius:12px; padding:15px 25px; flex:1;"><div class="stat-icon pending"><i class="fas fa-clock"></i></div><div><span class="stat-value" id="pending-units-count">0</span><br><span>Pending</span></div></div>
+                            <div class="stat-card" style="background:white; border-radius:12px; padding:15px 25px; flex:1;"><div><span class="stat-value" id="selected-units-count">0</span><br><span>Selected Units</span></div></div>
+                            <div class="stat-card" style="background:white; border-radius:12px; padding:15px 25px; flex:1;"><div><span class="stat-value" id="approved-units-count">0</span><br><span>Approved</span></div></div>
+                            <div class="stat-card" style="background:white; border-radius:12px; padding:15px 25px; flex:1;"><div><span class="stat-value" id="pending-units-count">0</span><br><span>Pending</span></div></div>
                         </div>
                     </div>
 
                     <div class="card">
                         <div class="row">
                             <div class="col-md-4"><label>Registration Type</label><select id="RegType" class="modern-select"><option value="">-- Select --</option><option value="Normal">Normal Registration</option><option value="Supplementary">Supplementary</option><option value="Special">Special</option></select></div>
-                            <div class="col-md-4"><label>Block/Trimester</label><select id="BlockFilter" class="modern-select"><option value="">All Blocks</option><option value="Introductory">Introductory Block</option><option value="Block A">Block A</option><option value="Block B">Block B</option><option value="Block C">Block C</option><option value="Block D">Block D</option><option value="Block E">Block E</option><option value="Final">Final Block</option></select></div>
+                            <div class="col-md-4"><label>Block/Trimester</label><select id="BlockFilter" class="modern-select"><option value="">All Blocks</option></select></div>
                             <div class="col-md-4"><label>Unit Type</label><select id="UnitTypeFilter" class="modern-select"><option value="">All Types</option><option value="Core">Core Units</option><option value="Elective">Elective Units</option></select></div>
                         </div>
                         <div class="row"><div class="col-md-12"><button id="refreshUnitsBtn" class="btn-primary"><i class="fas fa-sync-alt"></i> Load Available Units</button><button id="submitRegistrationBtn" class="btn-success" style="margin-left:10px"><i class="fas fa-paper-plane"></i> Submit Registration</button></div></div>
@@ -364,42 +356,93 @@
 
                     <div class="card">
                         <div class="card-header"><h4><i class="fas fa-list"></i> Available Units for Registration</h4><p>Maximum: <strong id="maxUnitsAllowed">8</strong> units per trimester</p></div>
-                        <div class="table-responsive"><table class="units-table" id="tblAvailableUnits"><thead><tr><th><input type="checkbox" id="selectAllUnits"></th><th>Unit Code</th><th>Unit Name</th><th>Block</th><th>Type</th><th>Credits</th><th>Prerequisites</th><th>Status</th></tr></thead><tbody id="availableUnitsBody"><tr class="loading-row"><td colspan="8"><div class="loading-spinner"></div> Loading units...</td></tr></tbody></table></div>
-                    </div>
+                        <div class="table-responsive"><table class="units-table" id="tblAvailableUnits"><thead><tr><th><input type="checkbox" id="selectAllUnits"></th><th>Unit Code</th><th>Unit Name</th><th>Block</th><th>Type</th><th>Credits</th><th>Prerequisites</th><th>Status</th></tr></thead><tbody id="availableUnitsBody"><tr class="loading-row"><td colspan="8"><div class="loading-spinner"></div> Loading units...<\/td><\/tr><\/tbody><\/table><\/div><\/div>
 
                     <div class="card">
-                        <div class="card-header"><h4><i class="fas fa-clipboard-list"></i> My Registered Units</h4></div>
-                        <div class="table-responsive"><table class="units-table" id="tblRegisteredUnits"><thead><tr><th>Unit Code</th><th>Unit Name</th><th>Block</th><th>Reg Type</th><th>Status</th><th>Approval Date</th><th>Action</th></tr></thead><tbody id="registeredUnitsBody"><tr class="loading-row"><td colspan="7"><div class="loading-spinner"></div> Loading your registered units...</td></tr></tbody></table></div>
-                    </div>
-                </section>
-            </main>
-        </div>
-    </div>
+                        <div class="card-header"><h4><i class="fas fa-clipboard-list"></i> My Registered Units</h4><\/div>
+                        <div class="table-responsive"><table class="units-table" id="tblRegisteredUnits"><thead><tr><th>Unit Code</th><th>Unit Name</th><th>Block</th><th>Reg Type</th><th>Status</th><th>Approval Date</th><th>Action</th></tr></thead><tbody id="registeredUnitsBody"><tr class="loading-row"><td colspan="7"><div class="loading-spinner"></div> Loading your registered units...<\/td><\/tr><\/tbody><\/table><\/div><\/div>
+                <\/section>
+            <\/main>
+        <\/div>
+    <\/div>
 
     <script>
-    // ==================== PROFILE MANAGEMENT ====================
-    let profileData = {
-        regno: "BSN-1-8255-3/2017", name: "Kevin Matoka Tiong`i", idno: "36635393", gender: "Male",
-        address: "250 - 40109", email: "tkevin8255@stu.kemu.ac.ke", dob: "01/01/1999", campus: "MERU",
-        phone: "+254712345678", program: "KRCHN", block: "A", intake: "2024"
-    };
+    // Global variables
+    let registeredUnits = [];
+    let maxUnits = 8;
+    let currentUser = null;
 
-    function updateProfileDisplay() {
-        $('#view-regno').text(profileData.regno);
-        $('#view-name').text(profileData.name);
-        $('#view-idno').text(profileData.idno);
-        $('#view-gender').text(profileData.gender);
-        $('#view-address').text(profileData.address);
-        $('#view-email').text(profileData.email);
-        $('#view-dob').text(profileData.dob);
-        $('#view-campus').text(profileData.campus);
-        $('#view-phone').text(profileData.phone);
-        $('#view-program').text(profileData.program);
-        $('#view-block').text(profileData.block);
-        $('#view-intake').text(profileData.intake);
-        $('#header-user-name').text(profileData.name);
-        $('#welcome-student-name').text(profileData.name.split(' ')[0]);
-        $('#welcome-header').text('Welcome back, ' + profileData.name.split(' ')[0] + '!');
+    // Helper function to show loading
+    function ShowProgress() { Swal.fire({ title: 'Loading...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } }); }
+    function HideProgress() { Swal.close(); }
+
+    // ==================== PROFILE MANAGEMENT ====================
+    function loadProfileData() {
+        $.ajax({
+            url: '/api/student/profile',
+            type: 'GET',
+            dataType: 'json',
+            success: function(data) {
+                if (data.success) {
+                    const p = data.profile;
+                    $('#view-regno').text(p.regno || '--');
+                    $('#view-name').text(p.full_name || '--');
+                    $('#view-idno').text(p.idno || '--');
+                    $('#view-gender').text(p.gender || '--');
+                    $('#view-address').text(p.address || '--');
+                    $('#view-email').text(p.email || '--');
+                    $('#view-dob').text(p.dob || '--');
+                    $('#view-campus').text(p.campus || '--');
+                    $('#view-phone').text(p.phone || '--');
+                    $('#view-program').text(p.program || '--');
+                    $('#view-block').text(p.block || '--');
+                    $('#view-intake').text(p.intake_year || '--');
+                    
+                    $('#header-user-name').text(p.full_name || 'Student');
+                    $('#welcome-student-name').text((p.full_name || 'Student').split(' ')[0]);
+                    $('#welcome-header').text('Welcome back, ' + (p.full_name || 'Student').split(' ')[0] + '!');
+                    
+                    // Store for edit mode
+                    currentUser = p;
+                }
+            },
+            error: function() { console.log('Error loading profile'); }
+        });
+    }
+
+    function saveProfileChanges() {
+        const updatedData = {
+            full_name: $('#edit-name').val(),
+            idno: $('#edit-idno').val(),
+            gender: $('#edit-gender').val(),
+            address: $('#edit-address').val(),
+            email: $('#edit-email').val(),
+            dob: $('#edit-dob').val(),
+            campus: $('#edit-campus').val(),
+            phone: $('#edit-phone').val(),
+            program: $('#edit-program').val(),
+            block: $('#edit-block').val(),
+            intake_year: $('#edit-intake').val()
+        };
+        
+        ShowProgress();
+        $.ajax({
+            url: '/api/student/profile/update',
+            type: 'POST',
+            data: JSON.stringify(updatedData),
+            contentType: 'application/json',
+            success: function(response) {
+                HideProgress();
+                if (response.success) {
+                    Swal.fire('Success', 'Profile updated successfully!', 'success');
+                    loadProfileData();
+                    toggleEditMode(false);
+                } else {
+                    Swal.fire('Error', response.message || 'Update failed', 'error');
+                }
+            },
+            error: function() { HideProgress(); Swal.fire('Error', 'Server error', 'error'); }
+        });
     }
 
     function toggleEditMode(isEditing) {
@@ -408,142 +451,241 @@
         $('#edit-profile-button').toggle(!isEditing);
         $('#save-profile-button').toggle(isEditing);
         $('#cancel-edit-button').toggle(isEditing);
-        if (isEditing) $('#edit-dob').val(profileData.dob.split('/').reverse().join('-'));
+        if (isEditing && currentUser) {
+            $('#edit-name').val(currentUser.full_name || '');
+            $('#edit-idno').val(currentUser.idno || '');
+            $('#edit-gender').val(currentUser.gender || 'Male');
+            $('#edit-address').val(currentUser.address || '');
+            $('#edit-email').val(currentUser.email || '');
+            $('#edit-dob').val(currentUser.dob || '');
+            $('#edit-campus').val(currentUser.campus || 'MERU');
+            $('#edit-phone').val(currentUser.phone || '');
+            $('#edit-program').val(currentUser.program || '');
+            $('#edit-block').val(currentUser.block || '');
+            $('#edit-intake').val(currentUser.intake_year || '');
+        }
     }
 
-    function saveProfileChanges() {
-        profileData = {
-            regno: $('#edit-regno').val(), name: $('#edit-name').val(), idno: $('#edit-idno').val(),
-            gender: $('#edit-gender').val(), address: $('#edit-address').val(), email: $('#edit-email').val(),
-            dob: $('#edit-dob').val().split('-').reverse().join('/'), campus: $('#edit-campus').val(),
-            phone: $('#edit-phone').val(), program: $('#edit-program').val(), block: $('#edit-block').val(),
-            intake: $('#edit-intake').val()
-        };
-        updateProfileDisplay();
-        localStorage.setItem('nchsm_profile_data', JSON.stringify(profileData));
-        toggleEditMode(false);
-        Swal.fire('Success', 'Profile updated successfully!', 'success');
-    }
-
-    // ==================== UNIT REGISTRATION SYSTEM ====================
-    let registeredUnits = [];
-    let maxUnits = 8;
+    // ==================== UNIT REGISTRATION (REAL BACKEND CALLS) ====================
     
-    const unitCatalog = [
-        { code: "NUR101", name: "Introduction to Nursing", block: "Introductory", type: "Core", credits: 3, prerequisites: "None" },
-        { code: "ANA101", name: "Human Anatomy", block: "Introductory", type: "Core", credits: 4, prerequisites: "None" },
-        { code: "PHY101", name: "Physiology", block: "Introductory", type: "Core", credits: 3, prerequisites: "ANA101" },
-        { code: "NUR201", name: "Medical-Surgical Nursing", block: "Block A", type: "Core", credits: 4, prerequisites: "NUR101" },
-        { code: "PHM201", name: "Pharmacology", block: "Block A", type: "Core", credits: 3, prerequisites: "PHY101" },
-        { code: "NUR202", name: "Community Health Nursing", block: "Block B", type: "Core", credits: 3, prerequisites: "NUR201" },
-        { code: "NUR301", name: "Mental Health Nursing", block: "Block C", type: "Core", credits: 3, prerequisites: "NUR202" },
-        { code: "NUR401", name: "Leadership & Management", block: "Block D", type: "Core", credits: 3, prerequisites: "NUR301" },
-        { code: "ELE401", name: "Palliative Care", block: "Block D", type: "Elective", credits: 2, prerequisites: "NUR301" },
-        { code: "NUR501", name: "Research Methods", block: "Block E", type: "Core", credits: 3, prerequisites: "NUR401" }
-    ];
-
+    // Load available units from server (Admin adds these)
     function loadAvailableUnits() {
-        const blockFilter = $('#BlockFilter').val();
-        const typeFilter = $('#UnitTypeFilter').val();
-        let filtered = [...unitCatalog];
-        if (blockFilter) filtered = filtered.filter(u => u.block === blockFilter);
-        if (typeFilter) filtered = filtered.filter(u => u.type === typeFilter);
+        const block = $('#BlockFilter').val();
+        const unitType = $('#UnitTypeFilter').val();
+        const regType = $('#RegType').val();
         
-        const tbody = $('#availableUnitsBody');
-        if (filtered.length === 0) { tbody.html('<tr><td colspan="8" style="text-align:center">No units available</td></tr>'); return; }
+        if (!regType) {
+            $('#availableUnitsBody').html('<tr><td colspan="8">Please select Registration Type first<\/td><\/tr>');
+            return;
+        }
         
-        let html = '';
-        filtered.forEach(unit => {
-            const isRegistered = registeredUnits.some(r => r.code === unit.code);
-            html += `<tr>
-                        <td>${!isRegistered ? `<input type="checkbox" class="unit-checkbox" data-code="${unit.code}">` : '—'}</td>
-                        <td><strong>${unit.code}</strong></td>
-                        <td>${unit.name}</td>
-                        <td>${unit.block}</td>
-                        <td><span class="status-badge status-registered">${unit.type}</span></td>
-                        <td>${unit.credits}</td>
-                        <td>${unit.prerequisites}</td>
-                        <td><span class="status-badge ${isRegistered ? 'status-approved' : 'status-pending'}">${isRegistered ? 'Registered' : 'Available'}</span></td>
-                     </tr>`;
+        ShowProgress();
+        $.ajax({
+            url: '/Course/GetProgramUnits',  // Your backend endpoint
+            type: 'POST',
+            data: JSON.stringify({ Type: regType, Block: block, UnitType: unitType }),
+            contentType: 'application/json',
+            success: function(data) {
+                HideProgress();
+                if (data.success) {
+                    const units = data.units;
+                    const tbody = $('#availableUnitsBody');
+                    if (!units || units.length === 0) {
+                        tbody.html('<tr><td colspan="8" style="text-align:center">No units available for the selected criteria<\/td><\/tr>');
+                        return;
+                    }
+                    
+                    let html = '';
+                    units.forEach(unit => {
+                        const isRegistered = registeredUnits.some(r => r.code === unit.code);
+                        html += `<tr>
+                            <td>${!isRegistered ? `<input type="checkbox" class="unit-checkbox" data-code="${unit.code}">` : '—'}<\/td>
+                            <td><strong>${unit.code}<\/strong><\/td>
+                            <td>${unit.name}<\/td>
+                            <td>${unit.block}<\/td>
+                            <td><span class="status-badge status-registered">${unit.type}<\/span><\/td>
+                            <td>${unit.credits}<\/td>
+                            <td>${unit.prerequisites || 'None'}<\/td>
+                            <td><span class="status-badge ${isRegistered ? 'status-approved' : 'status-pending'}">${isRegistered ? 'Registered' : 'Available'}<\/span><\/td>
+                        <\/tr>`;
+                    });
+                    tbody.html(html);
+                    updateSelectedCount();
+                } else {
+                    $('#availableUnitsBody').html(`<tr><td colspan="8">${data.message || 'Error loading units'}<\/td><\/tr>`);
+                }
+            },
+            error: function() {
+                HideProgress();
+                $('#availableUnitsBody').html('<tr><td colspan="8">Error loading units. Please try again.<\/td><\/tr>');
+            }
         });
-        tbody.html(html);
+    }
+    
+    // Load student's registered units
+    function loadRegisteredUnits() {
+        ShowProgress();
+        $.ajax({
+            url: '/Course/GetStudentRegisteredUnits',
+            type: 'GET',
+            dataType: 'json',
+            success: function(data) {
+                HideProgress();
+                if (data.success) {
+                    registeredUnits = data.units || [];
+                    const tbody = $('#registeredUnitsBody');
+                    if (registeredUnits.length === 0) {
+                        tbody.html('<tr><td colspan="7" style="text-align:center">No units registered yet<\/td><\/tr>');
+                    } else {
+                        let html = '';
+                        registeredUnits.forEach(unit => {
+                            const statusClass = unit.status === 'approved' ? 'status-approved' : 'status-pending';
+                            const statusText = unit.status === 'approved' ? '✅ Approved' : '⏳ Pending';
+                            html += `<tr>
+                                <td><strong>${unit.code}<\/strong><\/td>
+                                <td>${unit.name}<\/td>
+                                <td>${unit.block}<\/td>
+                                <td>${unit.regType}<\/td>
+                                <td><span class="status-badge ${statusClass}">${statusText}<\/span><\/td>
+                                <td>${unit.approvalDate || '—'}<\/td>
+                                <td>${unit.status === 'pending' ? `<button class="action-btn-drop" onclick="dropUnit('${unit.code}')"><i class="fas fa-trash"></i> Drop<\/button>` : '—'}<\/td>
+                            <\/tr>`;
+                        });
+                        tbody.html(html);
+                    }
+                    
+                    const approved = registeredUnits.filter(u => u.status === 'approved').length;
+                    const pending = registeredUnits.filter(u => u.status === 'pending').length;
+                    $('#approved-units-count').text(approved);
+                    $('#pending-units-count').text(pending);
+                    if (pending > 0) { $('#unitRegBadge').text(pending).show(); } else { $('#unitRegBadge').hide(); }
+                } else {
+                    $('#registeredUnitsBody').html(`<tr><td colspan="7">${data.message || 'Error loading units'}<\/td><\/tr>`);
+                }
+            },
+            error: function() {
+                HideProgress();
+                $('#registeredUnitsBody').html('<tr><td colspan="7">Error loading registered units<\/td><\/tr>');
+            }
+        });
+    }
+    
+    function updateSelectedCount() {
         $('#selected-units-count').text($('.unit-checkbox:checked').length);
     }
     
-    function loadRegisteredUnits() {
-        const stored = localStorage.getItem('nchsm_registered_units');
-        registeredUnits = stored ? JSON.parse(stored) : [];
-        
-        const tbody = $('#registeredUnitsBody');
-        if (registeredUnits.length === 0) {
-            tbody.html('<tr><td colspan="7" style="text-align:center">No units registered yet</td></tr>');
-        } else {
-            let html = '';
-            registeredUnits.forEach(unit => {
-                const statusClass = unit.status === 'approved' ? 'status-approved' : 'status-pending';
-                const statusText = unit.status === 'approved' ? '✅ Approved' : '⏳ Pending';
-                html += `<tr>
-                            <td><strong>${unit.code}</strong></td>
-                            <td>${unit.name}</td>
-                            <td>${unit.block}</td>
-                            <td>${unit.regType}</td>
-                            <td><span class="status-badge ${statusClass}">${statusText}</span></td>
-                            <td>${unit.approvalDate || '—'}</td>
-                            <td>${unit.status === 'pending' ? `<button class="action-btn-drop" onclick="dropUnit('${unit.code}')"><i class="fas fa-trash"></i> Drop</button>` : '—'}</td>
-                         </tr>`;
-            });
-            tbody.html(html);
-        }
-        
-        const approved = registeredUnits.filter(u => u.status === 'approved').length;
-        const pending = registeredUnits.filter(u => u.status === 'pending').length;
-        $('#approved-units-count').text(approved);
-        $('#pending-units-count').text(pending);
-        if (pending > 0) { $('#unitRegBadge').text(pending).show(); } else { $('#unitRegBadge').hide(); }
-    }
-    
-    function saveRegisteredUnits() { localStorage.setItem('nchsm_registered_units', JSON.stringify(registeredUnits)); }
-    
+    // Submit selected units (Like KeMU's SubmitSelectedUnits)
     window.submitUnitRegistration = function() {
         const regType = $('#RegType').val();
-        if (!regType) { Swal.fire('Warning', 'Please select Registration Type', 'warning'); return; }
+        if (!regType) {
+            Swal.fire('Warning', 'Please select Registration Type', 'warning');
+            return;
+        }
         
-        const selectedCodes = []; $('.unit-checkbox:checked').each(function() { selectedCodes.push($(this).data('code')); });
-        if (selectedCodes.length === 0) { Swal.fire('Warning', 'No units selected', 'warning'); return; }
+        const selectedUnits = [];
+        $('.unit-checkbox:checked').each(function() {
+            selectedUnits.push({
+                code: $(this).data('code'),
+                classCode: $(this).closest('tr').find('td:eq(1)').text().trim()
+            });
+        });
         
-        Swal.fire({ title: 'Confirm Registration', text: `Submit ${selectedCodes.length} unit(s) for approval?`, icon: 'question', showCancelButton: true }).then(result => {
+        if (selectedUnits.length === 0) {
+            Swal.fire('Warning', 'No units selected', 'warning');
+            return;
+        }
+        
+        Swal.fire({
+            title: 'Confirm Registration',
+            text: `Submit ${selectedUnits.length} unit(s) for approval?`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, Submit'
+        }).then(result => {
             if (result.isConfirmed) {
-                const newUnits = [];
-                selectedCodes.forEach(code => {
-                    const unit = unitCatalog.find(u => u.code === code);
-                    if (unit && !registeredUnits.some(r => r.code === code)) {
-                        newUnits.push({ code: unit.code, name: unit.name, block: unit.block, regType: regType, status: 'pending', approvalDate: null });
+                ShowProgress();
+                $.ajax({
+                    url: '/Course/SaveSelectedUnits',
+                    type: 'POST',
+                    data: JSON.stringify({ UnitReg: selectedUnits, Type: regType }),
+                    contentType: 'application/json',
+                    success: function(response) {
+                        HideProgress();
+                        if (response.success) {
+                            Swal.fire('Success', response.message, 'success');
+                            loadRegisteredUnits();
+                            loadAvailableUnits();
+                        } else {
+                            Swal.fire('Warning', response.message, 'warning');
+                        }
+                    },
+                    error: function() {
+                        HideProgress();
+                        Swal.fire('Error', 'An error occurred while saving units', 'error');
                     }
                 });
-                registeredUnits = [...registeredUnits, ...newUnits];
-                saveRegisteredUnits();
-                loadAvailableUnits();
-                loadRegisteredUnits();
-                Swal.fire('Success', 'Units submitted for admin approval', 'success');
             }
         });
     };
     
+    // Drop a registered unit (Like KeMU's DropRegisteredUnit)
     window.dropUnit = function(unitCode) {
-        Swal.fire({ title: 'Drop Unit?', text: 'You won\'t be able to revert this!', icon: 'warning', showCancelButton: true }).then(result => {
+        Swal.fire({
+            title: 'Drop Unit?',
+            text: 'You won\'t be able to revert this!',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, Drop'
+        }).then(result => {
             if (result.isConfirmed) {
-                registeredUnits = registeredUnits.filter(u => u.code !== unitCode);
-                saveRegisteredUnits();
-                loadAvailableUnits();
-                loadRegisteredUnits();
-                Swal.fire('Dropped', 'Unit has been dropped', 'success');
+                ShowProgress();
+                $.ajax({
+                    url: '/Course/DropRegisteredUnit',
+                    type: 'POST',
+                    data: JSON.stringify({ UnitCode: unitCode }),
+                    contentType: 'application/json',
+                    success: function(response) {
+                        HideProgress();
+                        if (response.success) {
+                            Swal.fire('Success', response.message, 'success');
+                            loadRegisteredUnits();
+                            loadAvailableUnits();
+                        } else {
+                            Swal.fire('Warning', response.message, 'warning');
+                        }
+                    },
+                    error: function() {
+                        HideProgress();
+                        Swal.fire('Error', 'Error dropping unit', 'error');
+                    }
+                });
             }
         });
     };
+    
+    // Load blocks for filter dropdown
+    function loadBlocks() {
+        $.ajax({
+            url: '/Course/GetBlocks',
+            type: 'GET',
+            success: function(data) {
+                if (data.success && data.blocks) {
+                    let options = '<option value="">All Blocks</option>';
+                    data.blocks.forEach(block => {
+                        options += `<option value="${block}">${block}</option>`;
+                    });
+                    $('#BlockFilter').html(options);
+                }
+            }
+        });
+    }
     
     function bindUnitEvents() {
-        $('#selectAllUnits').off('change').on('change', function() { $('.unit-checkbox').prop('checked', $(this).prop('checked')); $('#selected-units-count').text($('.unit-checkbox:checked').length); });
-        $(document).off('change', '.unit-checkbox').on('change', '.unit-checkbox', function() { $('#selected-units-count').text($('.unit-checkbox:checked').length); });
+        $('#selectAllUnits').off('change').on('change', function() {
+            $('.unit-checkbox').prop('checked', $(this).prop('checked'));
+            updateSelectedCount();
+        });
+        $(document).off('change', '.unit-checkbox').on('change', '.unit-checkbox', updateSelectedCount);
         $('#refreshUnitsBtn').off('click').on('click', loadAvailableUnits);
         $('#submitRegistrationBtn').off('click').on('click', window.submitUnitRegistration);
         $('#RegType, #BlockFilter, #UnitTypeFilter').off('change').on('change', loadAvailableUnits);
@@ -551,10 +693,11 @@
 
     // ==================== APP INITIALIZATION ====================
     $(document).ready(function() {
-        // Load saved profile
-        const saved = localStorage.getItem('nchsm_profile_data');
-        if (saved) { try { Object.assign(profileData, JSON.parse(saved)); } catch(e) {} }
-        updateProfileDisplay();
+        // Load data
+        loadProfileData();
+        loadBlocks();
+        loadRegisteredUnits();
+        bindUnitEvents();
         
         // Profile buttons
         $('#edit-profile-button').click(() => toggleEditMode(true));
@@ -564,15 +707,13 @@
         $('#passport-file-input').change(function(e) {
             if (e.target.files[0]) {
                 const reader = new FileReader();
-                reader.onload = function(ev) { $('#passport-preview').attr('src', ev.target.result); $('#header-profile-photo').attr('src', ev.target.result); };
+                reader.onload = function(ev) {
+                    $('#passport-preview').attr('src', ev.target.result);
+                    $('#header-profile-photo').attr('src', ev.target.result);
+                };
                 reader.readAsDataURL(e.target.files[0]);
             }
         });
-        
-        // Initialize Unit Registration
-        loadRegisteredUnits();
-        loadAvailableUnits();
-        bindUnitEvents();
         
         // Tab switching
         $('.nav a').click(function(e) {
@@ -580,26 +721,36 @@
             const tabId = $(this).data('tab');
             $('.tab-content').hide();
             $(`#${tabId}`).show();
-            $('.nav a').css({background:'none', borderLeft:'none'});
-            $(this).css({background:'#f3e8ff', borderLeft:'3px solid #4C1D95'});
+            $('.nav a').css({background: 'none', borderLeft: 'none'});
+            $(this).css({background: '#f3e8ff', borderLeft: '3px solid #4C1D95'});
             localStorage.setItem('nchsm_last_tab', tabId);
-            if (tabId === 'unit-registration') { loadRegisteredUnits(); loadAvailableUnits(); }
+            if (tabId === 'unit-registration') {
+                loadRegisteredUnits();
+                if ($('#RegType').val()) loadAvailableUnits();
+            }
         });
         
         const lastTab = localStorage.getItem('nchsm_last_tab');
-        if (lastTab && $(`#${lastTab}`).length) { $(`.nav a[data-tab="${lastTab}"]`).click(); }
+        if (lastTab && $(`#${lastTab}`).length) {
+            $(`.nav a[data-tab="${lastTab}"]`).click();
+        }
         
         // Logout
         $('#header-logout').click(function(e) {
             e.preventDefault();
-            localStorage.clear();
-            window.location.href = 'login.html';
+            $.ajax({ url: '/Account/Logout', type: 'POST', success: () => { window.location.href = 'login.html'; } });
         });
         $('#header-refresh').click(() => location.reload());
         
         // Hide loading screen
         $('#loading-screen').fadeOut();
         $('#app-content').show();
+        
+        // Update time
+        setInterval(() => {
+            $('#header-time').text(new Date().toLocaleTimeString());
+            $('#dashboard-time').text(new Date().toLocaleString());
+        }, 1000);
     });
     </script>
 </body>
