@@ -373,6 +373,49 @@
                         <!-- Pending registrations will load here -->
                     </div>
                 </div>
+                <!-- Approved Registrations Section -->
+<div style="margin-top: 30px;">
+    <h3><i class="fas fa-check-circle" style="color: #059669;"></i> Approved Registrations</h3>
+    <p>View and manage approved unit registrations. You can revoke approval if needed.</p>
+    
+    <div class="toolbar">
+        <input type="text" id="approved-search" placeholder="Search by student or unit..." onkeyup="filterApprovedRegistrations()">
+        <button onclick="exportApprovedRegistrations()" class="btn-action export-btn">
+            <i class="fas fa-download"></i> Export Approved (CSV)
+        </button>
+        <button onclick="loadApprovedRegistrations()" class="btn-action">
+            <i class="fas fa-sync-alt"></i> Refresh
+        </button>
+    </div>
+    
+    <div class="table-responsive">
+        <table class="data-table" id="approved-registrations-table">
+            <thead>
+                <tr>
+                    <th><input type="checkbox" id="selectAllApproved" onchange="toggleSelectAllApproved()"></th>
+                    <th>Student Name</th>
+                    <th>Student ID</th>
+                    <th>Unit Code</th>
+                    <th>Unit Name</th>
+                    <th>Block</th>
+                    <th>Reg Type</th>
+                    <th>Approval Date</th>
+                    <th>Approved By</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="approved-registrations-body">
+                <tr><td colspan="10">Loading approved registrations...</td></tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="bulk-actions" style="margin-top: 15px; display: flex; gap: 10px; align-items: center;">
+        <button onclick="bulkDeapproveSelected()" class="btn-danger" id="bulkDeapproveBtn" style="display: none;">
+            <i class="fas fa-times-circle"></i> De-approve Selected (<span id="approvedSelectedCount">0</span>)
+        </button>
+    </div>
+</div>
             </section>
 
             <!-- Keep all your existing sections below -->
