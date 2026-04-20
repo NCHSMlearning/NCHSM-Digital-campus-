@@ -1,13 +1,28 @@
 // ==================== UNIT REGISTRATION MODULE ====================
 // Like KeMU Portal - Students can view all units, select, submit for approval
-// Admin adds units per trimester (Introductory Block to Final Block)
 
 // Global variables
 let registeredUnits = [];
-let selectedForSubmission = [];
 let maxUnits = 8;
 
-// Load available units from server (Admin adds these)
+// Show/Hide Progress functions (use existing ones from your app)
+function showProgress() {
+    if (typeof ShowProgress === 'function') {
+        ShowProgress();
+    } else {
+        Swal.fire({ title: 'Loading...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+    }
+}
+
+function hideProgress() {
+    if (typeof HideProgress === 'function') {
+        HideProgress();
+    } else {
+        Swal.close();
+    }
+}
+
+// Load available units from server (Admin adds these per trimester)
 function loadAvailableUnits() {
     const regType = $('#RegType').val();
     const block = $('#BlockFilter').val();
@@ -18,25 +33,18 @@ function loadAvailableUnits() {
         return;
     }
     
-    ShowProgress();
+    showProgress();
     $.ajax({
-        url: '/Course/GetProgramUnits',  // Your backend endpoint like KeMU
+        url: '/Course/GetProgramUnits',
         type: 'POST',
-        data: JSON.stringify({ 
-            Type: regType, 
-            Block: block, 
-            UnitType: unitType 
-        }),
+        data: JSON.stringify({ Type: regType, Block: block, UnitType: unitType }),
         contentType: 'application/json',
         success: function(data) {
-            HideProgress();
+            hideProgress();
             if (data.success && data.units && data.units.length > 0) {
                 let html = '';
                 data.units.forEach(unit => {
                     const isRegistered = registeredUnits.some(r => r.code === unit.code);
-                    const isPending = registeredUnits.some(r => r.code === unit.code && r.status === 'pending');
-                    const isApproved = registeredUnits.some(r => r.code === unit.code && r.status === 'approved');
-                    
                     html += `<tr>
                         <td>${!isRegistered ? `<input type="checkbox" class="unit-checkbox" data-code="${unit.code}" data-classcode="${unit.classCode || ''}">` : '—'}</td>
                         <td><strong>${escapeHtml(unit.code)}</strong></td>
@@ -45,7 +53,7 @@ function loadAvailableUnits() {
                         <td><span class="status-badge status-registered">${escapeHtml(unit.type || 'Core')}</span></td>
                         <td>${unit.credits || '3'}</td>
                         <td>${escapeHtml(unit.prerequisites || 'None')}</td>
-                        <td><span class="status-badge ${isRegistered ? (isApproved ? 'status-approved' : 'status-pending') : 'status-pending'}">${isRegistered ? (isApproved ? 'Registered' : 'Pending') : 'Available'}</span></td>
+                        <td><span class="status-badge ${isRegistered ? 'status-approved' : 'status-pending'}">${isRegistered ? 'Registered' : 'Available'}</span></td>
                     </tr>`;
                 });
                 $('#availableUnitsBody').html(html);
@@ -56,22 +64,22 @@ function loadAvailableUnits() {
             }
         },
         error: function() {
-            HideProgress();
+            hideProgress();
             $('#availableUnitsBody').html('<tr><td colspan="8" style="text-align:center">Error loading units. Please try again.</td></tr>');
             Swal.fire('Error', 'Failed to load units. Please check your connection.', 'error');
         }
     });
 }
 
-// Load student's registered units from server
+// Load student's registered units
 function loadRegisteredUnits() {
-    ShowProgress();
+    showProgress();
     $.ajax({
-        url: '/Course/GetStudentRegisteredUnits',  // Your backend endpoint
+        url: '/Course/GetStudentRegisteredUnits',
         type: 'GET',
         dataType: 'json',
         success: function(data) {
-            HideProgress();
+            hideProgress();
             if (data.success) {
                 registeredUnits = data.units || [];
                 
@@ -113,7 +121,7 @@ function loadRegisteredUnits() {
             }
         },
         error: function() {
-            HideProgress();
+            hideProgress();
             $('#registeredUnitsBody').html('<tr><td colspan="7" style="text-align:center">Error loading registered units. Please refresh.</td></tr>');
         }
     });
@@ -124,7 +132,6 @@ function updateSelectedCount() {
     const checked = $('.unit-checkbox:checked').length;
     $('#selected-units-count').text(checked);
     
-    // Show/hide max units warning
     const currentTotal = registeredUnits.filter(u => u.status === 'pending' || u.status === 'approved').length;
     if (checked + currentTotal > maxUnits) {
         $('#maxUnitsWarning').show();
@@ -195,22 +202,17 @@ window.submitUnitRegistration = function() {
         cancelButtonText: 'Cancel'
     }).then(result => {
         if (result.isConfirmed) {
-            ShowProgress();
+            showProgress();
             $.ajax({
-                url: '/Course/SaveSelectedUnits',  // Your backend endpoint like KeMU
+                url: '/Course/SaveSelectedUnits',
                 type: 'POST',
-                data: JSON.stringify({ 
-                    UnitReg: selectedUnits, 
-                    Type: regType 
-                }),
+                data: JSON.stringify({ UnitReg: selectedUnits, Type: regType }),
                 contentType: 'application/json',
                 success: function(response) {
-                    HideProgress();
+                    hideProgress();
                     if (response.success) {
                         Swal.fire('Success', response.message, 'success');
-                        // Clear selections
                         $('.unit-checkbox:checked').prop('checked', false);
-                        // Refresh data
                         loadRegisteredUnits();
                         loadAvailableUnits();
                         updateSelectedCount();
@@ -219,7 +221,7 @@ window.submitUnitRegistration = function() {
                     }
                 },
                 error: function() {
-                    HideProgress();
+                    hideProgress();
                     Swal.fire('Error', 'An error occurred while saving units. Please try again.', 'error');
                 }
             });
@@ -238,14 +240,14 @@ window.dropUnit = function(unitCode) {
         cancelButtonText: 'Cancel'
     }).then(result => {
         if (result.isConfirmed) {
-            ShowProgress();
+            showProgress();
             $.ajax({
-                url: '/Course/DropRegisteredUnit',  // Your backend endpoint like KeMU
+                url: '/Course/DropRegisteredUnit',
                 type: 'POST',
                 data: JSON.stringify({ UnitCode: unitCode }),
                 contentType: 'application/json',
                 success: function(response) {
-                    HideProgress();
+                    hideProgress();
                     if (response.success) {
                         Swal.fire('Success', response.message, 'success');
                         loadRegisteredUnits();
@@ -255,7 +257,7 @@ window.dropUnit = function(unitCode) {
                     }
                 },
                 error: function() {
-                    HideProgress();
+                    hideProgress();
                     Swal.fire('Error', 'Error dropping unit. Please try again.', 'error');
                 }
             });
@@ -266,7 +268,7 @@ window.dropUnit = function(unitCode) {
 // Load blocks for filter dropdown
 function loadBlocks() {
     $.ajax({
-        url: '/Course/GetBlocks',  // Your backend endpoint
+        url: '/Course/GetBlocks',
         type: 'GET',
         success: function(data) {
             if (data.success && data.blocks) {
@@ -309,34 +311,7 @@ function refreshUnitRegistration() {
     Swal.fire('Refreshed', 'Unit registration data has been refreshed.', 'success');
 }
 
-// Export registration data (optional feature)
-function exportRegistrationData() {
-    const data = {
-        student: {
-            name: $('#header-user-name').text(),
-            regNo: $('#profile-student-id').val(),
-            program: $('#profile-program').val(),
-            block: $('#profile-block').val()
-        },
-        registeredUnits: registeredUnits,
-        exportDate: new Date().toISOString()
-    };
-    
-    const dataStr = JSON.stringify(data, null, 2);
-    const blob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `unit_registration_${$('#profile-student-id').val() || 'student'}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    Swal.fire('Exported', 'Registration data exported successfully.', 'success');
-}
-
-// Helper function to escape HTML
+// Escape HTML helper
 function escapeHtml(str) {
     if (!str) return '';
     return str.replace(/[&<>]/g, function(m) {
@@ -347,65 +322,37 @@ function escapeHtml(str) {
     });
 }
 
-// Show progress (using your existing ShowProgress function)
-function ShowProgress() {
-    if (typeof window.ShowProgress === 'function') {
-        window.ShowProgress();
-    } else {
-        Swal.fire({ title: 'Loading...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
-    }
-}
-
-function HideProgress() {
-    if (typeof window.HideProgress === 'function') {
-        window.HideProgress();
-    } else {
-        Swal.close();
-    }
-}
-
 // Initialize Unit Registration module
 function initUnitRegistration() {
     console.log('Initializing Unit Registration module...');
     
-    // Load configuration
     loadMaxUnits();
     loadBlocks();
     loadRegisteredUnits();
     
-    // Bind events
     $('#selectAllUnits').off('change').on('change', selectAllUnits);
     $('#refreshUnitsBtn').off('click').on('click', refreshUnitRegistration);
     $('#submitRegistrationBtn').off('click').on('click', window.submitUnitRegistration);
     $('#RegType, #BlockFilter, #UnitTypeFilter').off('change').on('change', loadAvailableUnits);
     
-    // Optional: Add export button handler if export button exists
-    if ($('#exportRegBtn').length) {
-        $('#exportRegBtn').off('click').on('click', exportRegistrationData);
-    }
-    
-    // Load available units if registration type is already selected
     if ($('#RegType').val()) {
         loadAvailableUnits();
     }
 }
 
-// Make functions available globally
+// Export functions globally
 window.unitRegistration = {
     init: initUnitRegistration,
     loadUnits: loadAvailableUnits,
     loadRegistered: loadRegisteredUnits,
     submit: window.submitUnitRegistration,
     drop: window.dropUnit,
-    refresh: refreshUnitRegistration,
-    export: exportRegistrationData
+    refresh: refreshUnitRegistration
 };
 
-// Auto-initialize when document is ready and unit-registration tab exists
+// Auto-initialize when document is ready
 $(document).ready(function() {
-    // Check if unit-registration tab exists in the DOM
     if ($('#unit-registration').length) {
-        // Wait a bit for other modules to initialize
         setTimeout(function() {
             initUnitRegistration();
         }, 500);
