@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NCHSM Digital Student Dashboard | Unit Registration</title>
+    
+    <!-- External Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- PDF.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf_viewer.min.css">
+    
+    <!-- CONFIG WILL BE INJECTED BY GITHUB ACTIONS -->
+    <script src="./config.js"></script>
+    
+    <!-- CSS Files -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/main.css">
+    
+    <!-- ===== ESSENTIAL PWA METADATA ===== -->
+    
+    <!-- Primary PWA Tags -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="NCHSM Portal">
+    <meta name="apple-mobile-web-app-title" content="NCHSM Portal">
+    
+    <!-- Theme Color (Use ONE consistent color) -->
+    <meta name="theme-color" content="#4C1D95">
+    <meta name="msapplication-TileColor" content="#4C1D95">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="./manifest.json">
+    
+    <!-- ===== ICONS ===== -->
+    
+    <!-- For Manifest -->
+    <link rel="icon" type="image/png" sizes="192x192" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png">
+    
+    <!-- Apple Touch Icons - CORRECT SIZE ORDER -->
+    <link rel="apple-touch-icon" sizes="180x180" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png">
+    <link rel="apple-touch-icon" sizes="120x120" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png">
+    
+    <!-- Windows Metro -->
+    <meta name="msapplication-TileImage" content="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png">
+    
+    <!-- ===== APP SCREEN OPTIMIZATION ===== -->
+    <meta name="format-detection" content="telephone=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    
+    <style>
+        /* Additional styles for unit registration tab */
+        .unit-registration-form {
+            background: white;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #374151;
+        }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            font-family: inherit;
+            transition: 0.2s;
+        }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: #4C1D95;
+            box-shadow: 0 0 0 3px rgba(76,29,149,0.1);
+        }
+        .btn-primary {
+            background: #4C1D95;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .btn-primary:hover {
+            background: #6d28d9;
+            transform: translateY(-1px);
+        }
+        .btn-secondary {
+            background: #e5e7eb;
+            color: #1f2937;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 0.875rem;
+        }
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 0.875rem;
+        }
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+        .units-list {
+            margin-top: 1rem;
+        }
+        .unit-card {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.75rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        .unit-info {
+            flex: 1;
+        }
+        .unit-name {
+            font-weight: 700;
+            color: #1f2937;
+        }
+        .unit-code {
+            font-size: 0.875rem;
+            color: #6b7280;
+            margin-left: 0.5rem;
+        }
+        .unit-details {
+            font-size: 0.875rem;
+            color: #6b7280;
+            margin-top: 0.25rem;
+        }
+        .unit-status {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .status-pending {
+            background: #fef3c7;
+            color: #d97706;
+        }
+        .status-approved {
+            background: #d1fae5;
+            color: #059669;
+        }
+        .status-rejected {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #1f2937;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 40px;
+            font-size: 0.875rem;
+            z-index: 1100;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .empty-state {
+            text-align: center;
+            padding: 2rem;
+            color: #6b7280;
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading-screen">
+        <div class="loading-container">
+            <div class="logo-animation">
+                <div class="logo-circle">
+                    <i class="fas fa-graduation-cap"></i>
+                </div>
+                <div class="logo-ring"></div>
+                <div class="logo-pulse"></div>
+            </div>
+            <div class="welcome-text">
+                <h1>Welcome to NCHSM Student Portal</h1>
+                <p class="subtitle">Your gateway to academic excellence</p>
+            </div>
+            <div class="progress-container">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress-fill"></div>
+                </div>
+                <div class="progress-text" id="progress-text">Preparing your portal...</div>
+            </div>
+            <div class="status-steps" id="status-steps"></div>
+            <div class="fun-fact" id="fun-fact">
+                <i class="fas fa-lightbulb"></i>
+                <span>Did you know? You can access your course materials offline!</span>
+            </div>
+            <div class="loading-animation">
+                <div class="loading-dots">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Offline Indicator -->
+    <div class="offline-indicator" id="offlineIndicator" style="display: none;">
+        <i class="fas fa-wifi-slash"></i> You are offline. Some features may be unavailable.
+    </div>
+
+    <!-- Main App Content (Initially hidden) -->
+    <div id="app-content" style="display: none;">
+        <!-- CLEAN HEADER WITHOUT QUICK STATS -->
+        <header class="main-header">
+            <div class="header-left">
+                <div class="logo-container">
+                    <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" 
+                         alt="NCHSM Logo" class="header-logo">
+                    <div class="header-titles">
+                        <h1 class="main-title">NCHSM</h1>
+                        <h2 class="subtitle">Digital Student Portal</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="header-right">
+                <button class="mobile-menu-toggle icon-btn" id="mobile-menu-toggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="user-profile-dropdown">
+                    <div class="profile-trigger">
+                        <img id="header-profile-photo" 
+                             src="https://ui-avatars.com/api/?name=Student&background=667eea&color=fff&size=100" 
+                             alt="Profile" class="profile-avatar round">
+                        <div class="profile-info">
+                            <span class="profile-name" id="header-user-name">Student</span>
+                            <span class="profile-role">Student</span>
+                        </div>
+                        <i class="fas fa-chevron-down dropdown-icon"></i>
+                    </div>
+                    <div class="dropdown-menu" style="display: none;">
+                        <a href="#" data-tab="profile"><i class="fas fa-user"></i> My Profile</a>
+                        <div class="dropdown-divider"></div>
+                        <a href="#" id="header-logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                    </div>
+                </div>
+                <div class="current-time">
+                    <i class="fas fa-clock"></i>
+                    <span id="header-time">Loading...</span>
+                </div>
+                <div class="header-actions">
+                    <button class="icon-btn" id="header-refresh" title="Refresh Dashboard">
+                        <i class="fas fa-redo"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+        
+        <div class="overlay" id="overlay" role="presentation" aria-hidden="true"></div>
+
+        <div class="container">
+            <!-- Sidebar Navigation - ADDED REGISTER UNITS TAB -->
+            <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+                <div class="sidebar-header">
+                    <h2><i class="fas fa-graduation-cap"></i> Portal Menu</h2>
+                    <p class="sidebar-subtitle">Navigate to sections</p>
+                </div>
+                <nav aria-label="Primary navigation">
+                    <ul class="nav" role="menubar">
+                        <li role="none"><a href="#" data-tab="dashboard" class="active" role="menuitem"><i class="fas fa-home"></i><span class="nav-text">Dashboard</span></a></li>
+                        <li role="none"><a href="#" data-tab="profile" role="menuitem"><i class="fas fa-user-circle"></i><span class="nav-text">Profile</span></a></li>
+                        <li role="none"><a href="#" data-tab="calendar" role="menuitem"><i class="fas fa-calendar-alt"></i><span class="nav-text">Academic Calendar</span></a></li>
+                        <li role="none"><a href="#" data-tab="courses" role="menuitem"><i class="fas fa-book-open"></i><span class="nav-text">My Courses</span></a></li>
+                        <li role="none"><a href="#" data-tab="attendance" role="menuitem"><i class="fas fa-check-double"></i><span class="nav-text">Attendance</span></a></li>
+                        <li role="none"><a href="#" data-tab="cats" role="menuitem"><i class="fas fa-chart-line"></i><span class="nav-text">Exams & Grades</span></a></li>
+                        <li role="none"><a href="#" data-tab="resources" role="menuitem"><i class="fas fa-folder-open"></i><span class="nav-text">Resources</span></a></li>
+                        <li role="none"><a href="#" data-tab="messages" role="menuitem"><i class="fas fa-comment-dots"></i><span class="nav-text">Messages</span></a></li>
+                        <!-- NEW: Register Own Units Navigation Item -->
+                        <li role="none"><a href="#" data-tab="register-units" role="menuitem"><i class="fas fa-plus-circle"></i><span class="nav-text">Register Own Units</span></a></li>
+                        <li role="none"><a href="#" data-tab="nurseiq" class="nurseiq-nav" role="menuitem"><i class="fas fa-brain"></i><span class="nav-text">NurseIQ</span></a></li>
+                        <li role="none"><a href="#" data-tab="support-tickets" role="menuitem"><i class="fas fa-ticket-alt"></i><span class="nav-text">Support Tickets</span></a></li>
+                    </ul>
+                </nav>
+                <div class="sidebar-footer">
+                    <p class="version-info" id="sidebarVersion">Portal v2.1</p>
+                </div>
+            </aside>
+
+            <!-- Main Content -->
+            <main class="main" id="main-content">
+                <!-- Dashboard Tab -->
+                <section id="dashboard" class="tab-content active" role="region">
+                    <div class="welcome-card" id="welcome-section">
+                        <div class="welcome-header">
+                            <h2 id="welcome-header">Welcome back, <span id="welcome-student-name">Student</span>!</h2>
+                            <p id="student-welcome-message" class="welcome-subtitle">Access your courses, schedule, and check your attendance status.</p>
+                        </div>
+                    </div>
+                    <div class="cards-grid" role="group">
+                        <div class="stat-card" data-tab="attendance"><div class="card-header"><div class="card-icon attendance"><i class="fas fa-calendar-check"></i></div><h3>Attendance Rate</h3></div><div class="card-body"><p class="stat-value" id="dashboard-attendance-rate">--%</p></div></div>
+                        <div class="stat-card" data-tab="courses"><div class="card-header"><div class="card-icon courses"><i class="fas fa-book-open"></i></div><h3>Active Courses</h3></div><div class="card-body"><p class="stat-value" id="dashboard-active-courses">0</p></div></div>
+                    </div>
+                </section>
+
+                <!-- Profile Tab (simplified) -->
+                <section id="profile" class="tab-content" hidden>
+                    <div class="profile-header"><h2>My Profile & Account</h2></div>
+                    <form id="profile-form"><div class="profile-section"><h3>Personal Information</h3><div class="form-field"><label>Full Name</label><input type="text" id="profile-name" readonly></div></div></form>
+                </section>
+
+                <!-- Calendar Tab -->
+                <section id="calendar" class="tab-content" hidden><div class="calendar-header"><h2>Academic Calendar</h2></div><div class="table-container"><p>Calendar events will load here.</p></div></section>
+
+                <!-- Courses Tab -->
+                <section id="courses" class="tab-content" hidden><div class="courses-header"><h2>My Courses</h2></div><div id="active-courses-grid"><p>Loading courses...</p></div></section>
+
+                <!-- Attendance Tab -->
+                <section id="attendance" class="tab-content" hidden><div class="attendance-header"><h2>Daily Attendance</h2></div></section>
+
+                <!-- Exams Tab -->
+                <section id="cats" class="tab-content" hidden><div class="exams-header"><h2>Assessments & Grades</h2></div></section>
+
+                <!-- Resources Tab -->
+                <section id="resources" class="tab-content" hidden><div class="resources-header"><h2>Learning Resources</h2></div></section>
+
+                <!-- Messages Tab -->
+                <section id="messages" class="tab-content" hidden><div class="messages-header"><h2>Message Center</h2></div></section>
+
+                <!-- ========== REGISTER OWN UNITS TAB ========== -->
+                <section id="register-units" class="tab-content" hidden>
+                    <div class="unit-registration-form">
+                        <h2><i class="fas fa-pen-ruler"></i> Propose a New Unit / Module</h2>
+                        <p>Submit a request to register your own unit. The academic office will review your proposal.</p>
+                        
+                        <form id="proposeUnitForm">
+                            <div class="form-group">
+                                <label for="unitName">Unit Name *</label>
+                                <input type="text" id="unitName" required placeholder="e.g., Advanced Clinical Nursing">
+                            </div>
+                            <div class="form-group">
+                                <label for="unitCode">Proposed Unit Code (Optional)</label>
+                                <input type="text" id="unitCode" placeholder="e.g., NUR 402">
+                            </div>
+                            <div class="form-group">
+                                <label for="unitCredits">Credits</label>
+                                <select id="unitCredits">
+                                    <option value="2">2 Credits</option>
+                                    <option value="3" selected>3 Credits</option>
+                                    <option value="4">4 Credits</option>
+                                    <option value="5">5 Credits</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="justification">Justification / Reason *</label>
+                                <textarea id="justification" rows="3" placeholder="Explain why this unit is important for your program..."></textarea>
+                            </div>
+                            <button type="submit" class="btn-primary"><i class="fas fa-paper-plane"></i> Submit Registration Request</button>
+                        </form>
+                    </div>
+
+                    <div class="unit-registration-form">
+                        <h3><i class="fas fa-list"></i> My Proposed Units</h3>
+                        <div id="proposedUnitsList">
+                            <div class="empty-state">No units proposed yet. Use the form above to register your own unit.</div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- NurseIQ Tab -->
+                <section id="nurseiq" class="tab-content" hidden><h1>NurseIQ Question Bank</h1></section>
+
+                <!-- Support Tickets Tab -->
+                <section id="support-tickets" class="tab-content" hidden><div class="tickets-container"><h2>Support Tickets</h2></div></section>
+
+                <footer class="app-footer">
+                    <div class="footer-content">
+                        <div class="footer-section"><h3>Nakuru College of Health Sciences and Management</h3><p>Providing quality health sciences education.</p></div>
+                        <div class="footer-bottom"><div class="copyright">© 2026 NCHSM. All rights reserved.</div></div>
+                    </div>
+                </footer>
+            </main>
+        </div>
+    </div>
+
+    <div class="toast" id="toast" style="display: none;"></div>
+
+    <script>
+        // ==================== UNIT REGISTRATION MODULE ====================
+        // Uses localStorage to persist proposed units (no demo data - starts empty)
+        // In production, this would connect to Supabase
+        
+        let currentUser = null;
+        let proposedUnits = [];
+
+        // Load proposed units from localStorage
+        function loadProposedUnits() {
+            const stored = localStorage.getItem('nchsm_proposed_units');
+            if (stored) {
+                try {
+                    proposedUnits = JSON.parse(stored);
+                } catch(e) { proposedUnits = []; }
+            } else {
+                proposedUnits = []; // Empty by default - NO DEMO DATA
+            }
+        }
+
+        // Save proposed units to localStorage
+        function saveProposedUnits() {
+            localStorage.setItem('nchsm_proposed_units', JSON.stringify(proposedUnits));
+        }
+
+        // Render the list of proposed units
+        function renderProposedUnits() {
+            const container = document.getElementById('proposedUnitsList');
+            if (!container) return;
+            
+            if (!proposedUnits.length) {
+                container.innerHTML = '<div class="empty-state"><i class="fas fa-inbox"></i><p>No units proposed yet. Use the form above to register your own unit.</p></div>';
+                return;
+            }
+            
+            let html = '<div class="units-list">';
+            proposedUnits.forEach((unit, index) => {
+                let statusClass = '';
+                let statusText = '';
+                switch(unit.status) {
+                    case 'pending': statusClass = 'status-pending'; statusText = 'Pending Review'; break;
+                    case 'approved': statusClass = 'status-approved'; statusText = 'Approved'; break;
+                    case 'rejected': statusClass = 'status-rejected'; statusText = 'Rejected'; break;
+                    default: statusClass = 'status-pending'; statusText = 'Pending';
+                }
+                
+                html += `
+                    <div class="unit-card">
+                        <div class="unit-info">
+                            <div>
+                                <span class="unit-name">${escapeHtml(unit.name)}</span>
+                                ${unit.code ? `<span class="unit-code">(${escapeHtml(unit.code)})</span>` : ''}
+                            </div>
+                            <div class="unit-details">
+                                Credits: ${unit.credits} | Submitted: ${new Date(unit.dateSubmitted).toLocaleDateString()}
+                            </div>
+                            <div class="unit-details">
+                                <strong>Justification:</strong> ${escapeHtml(unit.justification.substring(0, 100))}${unit.justification.length > 100 ? '...' : ''}
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 1rem;">
+                            <span class="unit-status ${statusClass}">${statusText}</span>
+                            ${unit.status === 'pending' ? `<button class="btn-secondary" onclick="cancelUnitProposal(${index})"><i class="fas fa-trash"></i> Cancel</button>` : ''}
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>]/g, function(m) {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                return m;
+            });
+        }
+
+        // Submit new unit proposal
+        async function submitUnitProposal(event) {
+            event.preventDefault();
+            
+            const unitName = document.getElementById('unitName').value.trim();
+            const unitCode = document.getElementById('unitCode').value.trim();
+            const unitCredits = document.getElementById('unitCredits').value;
+            const justification = document.getElementById('justification').value.trim();
+            
+            if (!unitName) {
+                showToast('Please enter a unit name.', 'error');
+                return;
+            }
+            if (!justification) {
+                showToast('Please provide a justification for this unit.', 'error');
+                return;
+            }
+            
+            const newUnit = {
+                id: Date.now().toString(),
+                name: unitName,
+                code: unitCode,
+                credits: unitCredits,
+                justification: justification,
+                status: 'pending',
+                dateSubmitted: new Date().toISOString()
+            };
+            
+            proposedUnits.unshift(newUnit);
+            saveProposedUnits();
+            renderProposedUnits();
+            
+            // Reset form
+            document.getElementById('proposeUnitForm').reset();
+            showToast(`Unit "${unitName}" submitted for review!`, 'success');
+        }
+
+        // Cancel a pending proposal
+        window.cancelUnitProposal = function(index) {
+            if (confirm('Are you sure you want to cancel this unit proposal?')) {
+                proposedUnits.splice(index, 1);
+                saveProposedUnits();
+                renderProposedUnits();
+                showToast('Proposal cancelled.', 'info');
+            }
+        };
+
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.style.display = 'block';
+            toast.style.backgroundColor = type === 'success' ? '#10b981' : (type === 'error' ? '#ef4444' : '#4C1D95');
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, 3000);
+        }
+
+        // ==================== APP INITIALIZATION ====================
+        window.app = { config: null, supabase: null, db: null, user: null, isInitialized: false };
+
+        async function initializeApp() {
+            try {
+                console.log('Initializing app...');
+                
+                if (!window.APP_CONFIG) {
+                    throw new Error('Configuration not loaded.');
+                }
+                
+                const config = window.APP_CONFIG;
+                window.app.config = config;
+                
+                // Mock database initialization for demo (replace with actual Supabase in production)
+                window.db = {
+                    supabase: null,
+                    currentUserId: 'demo-user-123',
+                    currentUserProfile: { full_name: 'Student User', email: 'student@nchsm.edu', student_id: 'STU001' },
+                    initialize: async () => true
+                };
+                
+                // Simulate user session
+                const userSession = { user: { id: 'demo-user-123', email: 'student@nchsm.edu' } };
+                window.db.currentUserId = userSession.user.id;
+                window.db.currentUserProfile = {
+                    id: userSession.user.id,
+                    email: userSession.user.email,
+                    full_name: 'Student User',
+                    student_id: 'NCHSM2024001',
+                    program: 'Nursing',
+                    block: 'Year 2',
+                    intake_year: '2024'
+                };
+                
+                currentUser = window.db.currentUserProfile;
+                
+                // Hide loading screen, show app
+                document.getElementById('loading-screen').style.display = 'none';
+                document.getElementById('app-content').style.display = 'block';
+                
+                // Update UI with user info
+                const welcomeName = document.getElementById('welcome-student-name');
+                if (welcomeName) welcomeName.textContent = currentUser.full_name;
+                
+                const headerName = document.getElementById('header-user-name');
+                if (headerName) headerName.textContent = currentUser.full_name;
+                
+                const profileName = document.getElementById('profile-name');
+                if (profileName) profileName.value = currentUser.full_name;
+                
+                // Load proposed units from storage
+                loadProposedUnits();
+                renderProposedUnits();
+                
+                // Setup tab switching
+                setupTabs();
+                
+                // Setup form submission
+                const form = document.getElementById('proposeUnitForm');
+                if (form) form.addEventListener('submit', submitUnitProposal);
+                
+                // Setup logout
+                const logoutBtn = document.getElementById('header-logout');
+                if (logoutBtn) logoutBtn.addEventListener('click', () => { window.location.href = 'login.html'; });
+                
+                // Setup refresh
+                const refreshBtn = document.getElementById('header-refresh');
+                if (refreshBtn) refreshBtn.addEventListener('click', () => location.reload());
+                
+                window.app.isInitialized = true;
+                console.log('App initialized successfully');
+                
+            } catch (error) {
+                console.error('Init error:', error);
+                document.getElementById('loading-screen').style.display = 'none';
+                document.getElementById('app-content').style.display = 'block';
+                showToast('Error loading application. Please refresh.', 'error');
+            }
+        }
+
+        function setupTabs() {
+            const tabs = document.querySelectorAll('.nav a');
+            const contents = document.querySelectorAll('.tab-content');
+            
+            function switchTab(tabId) {
+                contents.forEach(content => {
+                    content.classList.remove('active');
+                    content.hidden = true;
+                });
+                const activeTab = document.getElementById(tabId);
+                if (activeTab) {
+                    activeTab.classList.add('active');
+                    activeTab.hidden = false;
+                }
+                
+                tabs.forEach(link => {
+                    const linkTab = link.getAttribute('data-tab');
+                    if (linkTab === tabId) {
+                        link.classList.add('active');
+                    } else {
+                        link.classList.remove('active');
+                    }
+                });
+                
+                localStorage.setItem('nchsm_last_tab', tabId);
+                
+                // Refresh unit list when switching to register-units tab
+                if (tabId === 'register-units') {
+                    renderProposedUnits();
+                }
+            }
+            
+            tabs.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const tabId = link.getAttribute('data-tab');
+                    if (tabId) switchTab(tabId);
+                });
+            });
+            
+            // Restore last tab or use dashboard
+            const lastTab = localStorage.getItem('nchsm_last_tab');
+            const hash = window.location.hash.substring(1);
+            let targetTab = 'dashboard';
+            if (hash && document.getElementById(hash)) targetTab = hash;
+            else if (lastTab && document.getElementById(lastTab)) targetTab = lastTab;
+            switchTab(targetTab);
+        }
+
+        // Mobile menu toggle
+        document.addEventListener('DOMContentLoaded', function() {
+            const toggleBtn = document.getElementById('mobile-menu-toggle');
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('overlay');
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', () => {
+                    sidebar.classList.toggle('active');
+                    overlay.classList.toggle('active');
+                    overlay.style.display = overlay.classList.contains('active') ? 'block' : 'none';
+                });
+            }
+            if (overlay) {
+                overlay.addEventListener('click', () => {
+                    sidebar.classList.remove('active');
+                    overlay.classList.remove('active');
+                    overlay.style.display = 'none';
+                });
+            }
+            
+            if (typeof initializeApp === 'function') {
+                initializeApp();
+            }
+        });
+        
+        // Global helper for tab switching
+        window.showTab = function(tabId) {
+            const tab = document.getElementById(tabId);
+            if (tab) {
+                document.querySelectorAll('.tab-content').forEach(t => { t.classList.remove('active'); t.hidden = true; });
+                tab.classList.add('active');
+                tab.hidden = false;
+                if (tabId === 'register-units') renderProposedUnits();
+            }
+        };
+    </script>
+</body>
+</html>
