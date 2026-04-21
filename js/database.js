@@ -956,71 +956,101 @@ class Database {
         console.log('🧹 Cache cleared');
     }
     
-    async updateProfile(updates) {
-        try {
-            const { error } = await this.supabase
+   async updateProfile(updates) {
+    try {
+        // First check if profile exists
+        const { data: existingProfile, error: checkError } = await this.supabase
+            .from('consolidated_user_profiles_table')
+            .select('user_id')
+            .eq('user_id', this.currentUserId)
+            .maybeSingle();
+        
+        let result;
+        
+        if (!existingProfile) {
+            // Insert new profile
+            result = await this.supabase
+                .from('consolidated_user_profiles_table')
+                .insert({
+                    user_id: this.currentUserId,
+                    ...updates,
+                    updated_at: new Date().toISOString(),
+                    created_at: new Date().toISOString()
+                });
+        } else {
+            // Update existing profile
+            result = await this.supabase
                 .from('consolidated_user_profiles_table')
                 .update({
                     ...updates,
                     updated_at: new Date().toISOString()
                 })
                 .eq('user_id', this.currentUserId);
-            
-            if (error) throw error;
-            
-            this.currentUserProfile = { ...this.currentUserProfile, ...updates };
-            
-            if (window.currentUser) {
-                window.currentUser = { ...window.currentUser, ...updates };
-            }
-            
-            return { success: true };
-            
-        } catch (error) {
-            console.error('Failed to update profile:', error);
-            return { success: false, error: error.message };
         }
-    }
-    
-    async uploadPassportPhoto(file) {
-        try {
-            const fileExt = file.name.split('.').pop();
-            const filePath = `${this.currentUserId}.${fileExt}`;
-            
-            const { error: uploadError } = await this.supabase.storage
-                .from('passports')
-                .upload(filePath, file, { cacheControl: '3600', upsert: true });
-            
-            if (uploadError) throw uploadError;
-            
-            const { error: updateError } = await this.supabase
-                .from('consolidated_user_profiles_table')
-                .update({ 
-                    passport_url: filePath,
-                    updated_at: new Date().toISOString() 
-                })
-                .eq('user_id', this.currentUserId);
-            
-            if (updateError) throw updateError;
-            
-            if (this.currentUserProfile) {
-                this.currentUserProfile.passport_url = filePath;
-            }
-            
-            return { success: true, filePath };
-            
-        } catch (error) {
-            console.error('Failed to upload photo:', error);
-            return { success: false, error: error.message };
+        
+        if (result.error) throw result.error;
+        
+        // Update cached profile
+        this.currentUserProfile = { ...this.currentUserProfile, ...updates };
+        
+        if (window.currentUser) {
+            window.currentUser = { ...window.currentUser, ...updates };
         }
+        
+        return { success: true };
+        
+    } catch (error) {
+        console.error('Failed to update profile:', error);
+        return { success: false, error: error.message };
     }
-    
-    getCurrentUserProfile() {
-        return this.currentUserProfile;
-    }
-    
-    getInstance() {
-        return this;
+}
+
+async uploadPassportPhoto(file) {
+    try {
+        const fileExt = file.name.split('.').pop();
+        const filePath = `passport_photos/${this.currentUserId}.${fileExt}`;
+        
+        // Upload to storage
+        const { error: uploadError } = await this.supabase.storage
+            .from('passports')
+            .upload(filePath, file, { 
+                cacheControl: '3600', 
+                upsert: true,
+                contentType: file.type
+            });
+        
+        if (uploadError) throw uploadError;
+        
+        // Get public URL
+        const { data: urlData } = this.supabase.storage
+            .from('passports')
+            .getPublicUrl(filePath);
+        
+        const publicUrl = urlData.publicUrl;
+        
+        // Update profile with photo URL - use upsert to handle both insert and update
+        const { error: updateError } = await this.supabase
+            .from('consolidated_user_profiles_table')
+            .upsert({ 
+                user_id: this.currentUserId,
+                passport_url: publicUrl,
+                updated_at: new Date().toISOString()
+            }, { 
+                onConflict: 'user_id' 
+            });
+        
+        if (updateError) throw updateError;
+        
+        // Update cached profile
+        if (this.currentUserProfile) {
+            this.currentUserProfile.passport_url = publicUrl;
+        }
+        
+        return { success: true, filePath, publicUrl };
+        
+    } catch (error) {
+        console.error('Failed to upload photo:', error);
+        return { success: false, error: error.message };
     }
 }
 
