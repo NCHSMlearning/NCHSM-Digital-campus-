@@ -15,10 +15,10 @@ RewriteEngine On
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^(.*)/$ /$1 [L,R=301]
 
-# Remove .html extension from URLs (optional - for other .html pages if any)
-# RewriteCond %{REQUEST_FILENAME} !-d
-# RewriteCond %{REQUEST_FILENAME}\.html -f
-# RewriteRule ^(.*)$ $1.html [NC,L]
+# ------------------------------------------------------------------
+# SPECIFIC ROUTE: /home -> index.html (dashboard)
+# ------------------------------------------------------------------
+RewriteRule ^home$ /index.html [L,QSA]
 
 # ------------------------------------------------------------------
 # SPA ROUTING - MOST IMPORTANT PART
