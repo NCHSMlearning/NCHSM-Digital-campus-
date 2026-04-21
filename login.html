@@ -2,550 +2,47 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <title>NCHSM Digital Portal - Secure Login</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NCHSM Digital Portal - Login</title>
     <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png">
     
-    <!-- Google Fonts for refined typography -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+    <!-- External CSS -->
+    <link rel="stylesheet" href="login-styles.css">
     
-    <!-- Feather Icons -->
+    <!-- Only load Feather Icons in head -->
     <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
     
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Inter', sans-serif;
-            background: #f0f4f8;
-            color: #1e293b;
-            line-height: 1.5;
-            min-height: 100vh;
-        }
-
-        .skip-to-content {
-            position: absolute;
-            left: -9999px;
-            top: auto;
-            width: 1px;
-            height: 1px;
-            overflow: hidden;
-            background: #0f3b2c;
-            color: white;
-            text-decoration: none;
-            padding: 8px 12px;
-            border-radius: 8px;
-            z-index: 1000;
-        }
-        .skip-to-content:focus {
-            left: 20px;
-            top: 20px;
-            width: auto;
-            height: auto;
-        }
-
-        /* CONTAINER */
-        .container {
-            display: flex;
-            min-height: 100vh;
-            width: 100%;
-        }
-
-        /* LEFT PANEL (DESKTOP) — now enhanced with the external image background */
+        /* Additional inline styles to ensure the image is properly displayed */
         .left-panel {
-            flex: 1.1;
-            background: linear-gradient(135deg, rgba(2, 48, 32, 0.92), rgba(1, 33, 22, 0.88)), 
+            background: linear-gradient(135deg, rgba(2, 48, 32, 0.88), rgba(1, 33, 22, 0.85)), 
                         url('https://nakurucollegeofhealth.ac.ke/wp-content/uploads/2026/02/IMG_20251219_080858_996-rotated.jpg');
             background-size: cover;
             background-position: center 30%;
             background-repeat: no-repeat;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            backdrop-filter: brightness(0.98);
         }
-
-        /* subtle overlay to maintain readability */
-        .left-panel::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 20, 12, 0.35);
-            pointer-events: none;
-        }
-
-        .panel-content {
-            position: relative;
-            z-index: 2;
-            padding: 3rem 2.5rem;
-            max-width: 550px;
-            width: 100%;
-            color: white;
-            text-shadow: 0 2px 8px rgba(0,0,0,0.2);
-        }
-
-        .logo-wrapper {
-            text-align: center;
-            margin-bottom: 2.5rem;
-        }
-
-        .logo img {
-            height: 85px;
-            width: auto;
-            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2));
-            background: transparent;
-        }
-
-        .college-name {
-            font-size: 1.7rem;
-            font-weight: 700;
-            margin-top: 1rem;
-            letter-spacing: -0.3px;
-            line-height: 1.3;
-        }
-
-        .welcome-section h2 {
-            font-size: 2rem;
-            font-weight: 700;
-            margin-bottom: 0.75rem;
-        }
-
-        .tagline {
-            font-size: 1.1rem;
-            opacity: 0.9;
-            margin-bottom: 2rem;
-            border-left: 3px solid #4ade80;
-            padding-left: 1rem;
-        }
-
-        .features-list {
-            display: flex;
-            flex-direction: column;
-            gap: 1.5rem;
-            margin: 2rem 0 2.5rem;
-        }
-
-        .feature {
-            display: flex;
-            gap: 1rem;
-            align-items: flex-start;
-        }
-
-        .feature i {
-            width: 28px;
-            height: 28px;
-            stroke-width: 1.8;
-            flex-shrink: 0;
-            color: #bef264;
-        }
-
-        .feature h3 {
-            font-size: 1.1rem;
-            font-weight: 600;
-            margin-bottom: 0.2rem;
-        }
-
-        .feature p {
-            font-size: 0.85rem;
-            opacity: 0.85;
-        }
-
-        .stats {
-            display: flex;
-            justify-content: space-between;
-            background: rgba(255,255,255,0.12);
-            backdrop-filter: blur(8px);
-            border-radius: 1.5rem;
-            padding: 1.2rem 1rem;
-            margin-top: 1rem;
-        }
-
-        .stat {
-            text-align: center;
-        }
-
-        .stat .number {
-            display: block;
-            font-size: 1.6rem;
-            font-weight: 800;
-        }
-
-        .stat .label {
-            font-size: 0.8rem;
-            opacity: 0.8;
-        }
-
-        /* RIGHT PANEL (LOGIN) */
-        .right-panel {
-            flex: 1;
-            background: #ffffff;
-            display: flex;
-            flex-direction: column;
-            box-shadow: -8px 0 30px rgba(0, 0, 0, 0.05);
-        }
-
-        .mobile-header {
-            display: none;
-            background: white;
-            padding: 1rem 1.5rem;
-            border-bottom: 1px solid #e2e8f0;
-        }
-
-        .header-content {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .header-content .logo img {
-            height: 48px;
-        }
-
-        .college-info .college-name {
-            font-size: 1.2rem;
-            margin: 0;
-            color: #0f3b2c;
-        }
-
-        .college-tagline {
-            font-size: 0.7rem;
-            color: #5b6e8c;
-        }
-
-        .main-content {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 2rem 1.5rem;
-        }
-
-        .login-card {
-            max-width: 460px;
-            width: 100%;
-            background: white;
-            border-radius: 2rem;
-            padding: 2rem 1.8rem;
-            box-shadow: 0 20px 35px -12px rgba(0,0,0,0.08);
-            transition: all 0.2s ease;
-        }
-
-        .welcome-icon {
-            background: #e6f7ef;
-            width: 56px;
-            height: 56px;
-            border-radius: 30px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 1rem;
-        }
-
-        .welcome-icon i {
-            width: 28px;
-            height: 28px;
-            color: #0f5c3e;
-        }
-
-        .welcome-title {
-            font-size: 1.8rem;
-            font-weight: 700;
-            color: #0f2b1f;
-            margin-bottom: 0.4rem;
-        }
-
-        .welcome-subtitle {
-            color: #5b6e8c;
-            margin-bottom: 1.8rem;
-            font-size: 0.9rem;
-        }
-
-        .error-message {
-            background: #fee2e2;
-            border-left: 4px solid #dc2626;
-            padding: 0.8rem 1rem;
-            border-radius: 1rem;
-            margin-bottom: 1.5rem;
-            display: flex;
-            align-items: center;
-            gap: 0.7rem;
-            display: none;
-        }
-
-        .error-message.show {
-            display: flex;
-        }
-
-        .error-icon {
-            width: 18px;
-            height: 18px;
-            color: #dc2626;
-        }
-
-        .error-text {
-            font-size: 0.85rem;
-            color: #991b1b;
-            font-weight: 500;
-        }
-
-        .login-form {
-            display: flex;
-            flex-direction: column;
-            gap: 1.2rem;
-        }
-
-        .form-group {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
-
-        .form-label {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-weight: 600;
-            font-size: 0.85rem;
-            color: #334155;
-        }
-
-        .input-wrapper {
-            position: relative;
-            display: flex;
-            align-items: center;
-        }
-
-        .input-icon {
-            position: absolute;
-            left: 14px;
-            width: 18px;
-            height: 18px;
-            color: #94a3b8;
-            pointer-events: none;
-        }
-
-        .form-input {
-            width: 100%;
-            padding: 0.9rem 1rem 0.9rem 2.8rem;
-            border: 1.5px solid #e2e8f0;
-            border-radius: 1rem;
-            font-size: 0.95rem;
-            transition: all 0.2s;
-            background: #fafcff;
-            font-family: 'Inter', monospace;
-        }
-
-        .form-input:focus {
-            outline: none;
-            border-color: #0f5c3e;
-            box-shadow: 0 0 0 3px rgba(15,92,62,0.2);
-        }
-
-        .password-toggle {
-            position: absolute;
-            right: 14px;
-            background: none;
-            border: none;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            padding: 4px;
-            color: #64748b;
-        }
-
-        .form-options {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin: 0.2rem 0 0.2rem;
-        }
-
-        .remember-me {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            cursor: pointer;
-        }
-
-        .checkbox-wrapper {
-            position: relative;
-            display: inline-block;
-        }
-
-        .remember-checkbox {
-            opacity: 0;
-            position: absolute;
-            width: 18px;
-            height: 18px;
-        }
-
-        .checkbox-custom {
-            display: inline-block;
-            width: 18px;
-            height: 18px;
-            border: 2px solid #cbd5e1;
-            border-radius: 5px;
-            background: white;
-            transition: 0.1s;
-        }
-
-        .remember-checkbox:checked + .checkbox-custom {
-            background-color: #0f5c3e;
-            border-color: #0f5c3e;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'%3E%3C/polyline%3E%3C/svg%3E");
-            background-size: 12px;
-            background-position: center;
-            background-repeat: no-repeat;
-        }
-
-        .forgot-link {
-            font-size: 0.8rem;
-            color: #0f5c3e;
-            text-decoration: none;
-            font-weight: 600;
-        }
-
-        .login-button {
-            background: #0f5c3e;
-            color: white;
-            border: none;
-            padding: 1rem;
-            border-radius: 2rem;
-            font-weight: 700;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: 0.2s;
-            display: flex;
-            justify-content: center;
-            margin-top: 0.5rem;
-        }
-
-        .login-button:hover {
-            background: #0a4630;
-            transform: scale(0.98);
-        }
-
-        .divider {
-            text-align: center;
-            margin: 1.5rem 0 0.8rem;
-            font-size: 0.8rem;
-            color: #94a3b8;
-            position: relative;
-        }
-
-        .signup-section {
-            text-align: center;
-            margin-bottom: 1rem;
-        }
-
-        .signup-link {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            background: #f1f5f9;
-            padding: 0.7rem 1.5rem;
-            border-radius: 2rem;
-            text-decoration: none;
-            color: #0f5c3e;
-            font-weight: 600;
-            font-size: 0.9rem;
-            transition: all 0.2s;
-        }
-
-        .quick-links {
-            display: flex;
-            justify-content: center;
-            gap: 1.5rem;
-            margin-top: 1rem;
-            flex-wrap: wrap;
-        }
-
-        .quick-link {
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            font-size: 0.75rem;
-            color: #5b6e8c;
-            text-decoration: none;
-        }
-
-        .footer {
-            border-top: 1px solid #eef2f6;
-            padding: 1.2rem 1.5rem;
-            text-align: center;
-            font-size: 0.7rem;
-            color: #6c7a91;
-        }
-
-        .footer-links {
-            display: flex;
-            justify-content: center;
-            gap: 1rem;
-            margin-top: 0.5rem;
-        }
-
-        .footer-link {
-            color: #5b6e8c;
-            text-decoration: none;
-        }
-
-        .sr-only {
-            position: absolute;
-            width: 1px;
-            height: 1px;
-            padding: 0;
-            margin: -1px;
-            overflow: hidden;
-            clip: rect(0,0,0,0);
-            border: 0;
-        }
-
-        /* MOBILE RESPONSIVE */
-        @media (max-width: 900px) {
+        
+        /* Ensure responsive behavior */
+        @media (max-width: 768px) {
             .left-panel {
                 display: none;
-            }
-            .right-panel {
-                flex: 1;
-            }
-            .mobile-header {
-                display: block;
-            }
-            .login-card {
-                box-shadow: none;
-                padding: 1rem 1rem;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .login-card {
-                padding: 1rem;
-            }
-            .welcome-title {
-                font-size: 1.5rem;
             }
         }
     </style>
 </head>
 <body>
+    <!-- Skip to content link -->
     <a href="#main-content" class="skip-to-content">Skip to main content</a>
     
     <div class="container">
-        <!-- LEFT PANEL: with external image background + content -->
+        <!-- Left Panel for Desktop with NEW IMAGE -->
         <div class="left-panel">
             <div class="panel-content">
                 <div class="logo-wrapper">
                     <div class="logo">
                         <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" 
-                             alt="NCHSM Logo" loading="eager">
+                             alt="NCHSM Logo" 
+                             loading="eager">
                     </div>
                     <h1 class="college-name">NAKURU COLLEGE OF HEALTH SCIENCES AND MANAGEMENT</h1>
                 </div>
@@ -603,12 +100,15 @@
             </div>
         </div>
 
-        <!-- RIGHT PANEL (LOGIN SECTION) -->
+        <!-- Right Panel / Main Content -->
         <div class="right-panel">
+            <!-- Mobile Header -->
             <header class="mobile-header">
                 <div class="header-content">
                     <div class="logo">
-                        <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo">
+                        <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" 
+                             alt="NCHSM Logo" 
+                             loading="eager">
                     </div>
                     <div class="college-info">
                         <h1 class="college-name">NCHSM</h1>
@@ -617,13 +117,16 @@
                 </div>
             </header>
 
+            <!-- Main Content -->
             <main id="main-content" class="main-content">
                 <div class="login-card">
-                    <div class="welcome-icon">
-                        <i data-feather="lock"></i>
+                    <div class="welcome-section">
+                        <div class="welcome-icon">
+                            <i data-feather="lock"></i>
+                        </div>
+                        <h2 class="welcome-title">Welcome Back</h2>
+                        <p class="welcome-subtitle">Sign in to access your digital learning portal</p>
                     </div>
-                    <h2 class="welcome-title">Welcome Back</h2>
-                    <p class="welcome-subtitle">Sign in to access your digital learning portal</p>
                     
                     <div id="errorMsg" class="error-message" role="alert" aria-live="assertive">
                         <i data-feather="alert-circle" class="error-icon"></i>
@@ -638,9 +141,13 @@
                             </label>
                             <div class="input-wrapper">
                                 <i data-feather="mail" class="input-icon"></i>
-                                <input type="email" id="email" class="form-input" 
-                                       placeholder="student@nchsm.ac.ke" required
-                                       autocomplete="email" aria-describedby="emailHelp">
+                                <input type="email" 
+                                       id="email" 
+                                       class="form-input" 
+                                       placeholder="student@nchsm.ac.ke" 
+                                       required
+                                       autocomplete="email"
+                                       aria-describedby="emailHelp">
                             </div>
                             <small id="emailHelp" class="sr-only">Enter your college email address</small>
                         </div>
@@ -652,10 +159,17 @@
                             </label>
                             <div class="input-wrapper">
                                 <i data-feather="lock" class="input-icon"></i>
-                                <input type="password" id="password" class="form-input" 
-                                       placeholder="Enter your password" required
-                                       autocomplete="current-password" aria-describedby="passwordHelp">
-                                <button type="button" id="password-toggle-btn" class="password-toggle" aria-label="Toggle password visibility">
+                                <input type="password" 
+                                       id="password" 
+                                       class="form-input" 
+                                       placeholder="Enter your password" 
+                                       required
+                                       autocomplete="current-password"
+                                       aria-describedby="passwordHelp">
+                                <button type="button" 
+                                        id="password-toggle-btn" 
+                                        class="password-toggle"
+                                        aria-label="Toggle password visibility">
                                     <i data-feather="eye-off" id="toggle-icon"></i>
                                 </button>
                             </div>
@@ -665,15 +179,25 @@
                         <div class="form-options">
                             <label class="remember-me">
                                 <div class="checkbox-wrapper">
-                                    <input type="checkbox" id="rememberMe" class="remember-checkbox" aria-label="Remember me on this device">
+                                    <input type="checkbox" 
+                                           id="rememberMe" 
+                                           class="remember-checkbox"
+                                           aria-label="Remember me on this device">
                                     <span class="checkbox-custom"></span>
                                 </div>
                                 <span class="remember-label">Remember me</span>
                             </label>
-                            <a href="#" class="forgot-link" aria-label="Forgot password?" id="forgotPasswordLink">Forgot Password?</a>
+                            <a href="forgot-password.html" 
+                               class="forgot-link"
+                               aria-label="Forgot password?">
+                                Forgot Password?
+                            </a>
                         </div>
                         
-                        <button type="submit" id="loginButton" class="login-button" aria-live="polite">
+                        <button type="submit" 
+                                id="loginButton" 
+                                class="login-button"
+                                aria-live="polite">
                             <span id="button-text">Sign In</span>
                         </button>
                     </form>
@@ -683,18 +207,18 @@
                     </div>
                     
                     <div class="signup-section">
-                        <a href="#" class="signup-link" id="signupLink">
+                        <a href="register.html" class="signup-link">
                             <i data-feather="user-plus"></i>
                             Create New Account
                         </a>
                     </div>
                     
                     <div class="quick-links">
-                        <a href="#" class="quick-link" id="helpLink">
+                        <a href="help.html" class="quick-link">
                             <i data-feather="help-circle"></i>
                             Need Help?
                         </a>
-                        <a href="#" class="quick-link" id="contactLink">
+                        <a href="contact.html" class="quick-link">
                             <i data-feather="phone"></i>
                             Contact Support
                         </a>
@@ -702,155 +226,31 @@
                 </div>
             </main>
 
+            <!-- Footer -->
             <footer class="footer">
                 <div class="footer-content">
                     <p class="copyright">© 2025 Nakuru College of Health Sciences and Management</p>
                     <div class="footer-links">
-                        <a href="#" class="footer-link">Privacy</a>
-                        <a href="#" class="footer-link">Terms</a>
-                        <a href="#" class="footer-link">Contact</a>
-                        <a href="#" class="footer-link">Support</a>
+                        <a href="privacy.html" class="footer-link">Privacy</a>
+                        <a href="terms.html" class="footer-link">Terms</a>
+                        <a href="contact.html" class="footer-link">Contact</a>
+                        <a href="support.html" class="footer-link">Support</a>
                     </div>
                 </div>
             </footer>
         </div>
     </div>
 
+    <!-- Load scripts at the END (EXACTLY as original) -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="login-script.js"></script>
+    
     <script>
-        // FEATHER ICONS REPLACE
+        // Initialize Feather Icons
         document.addEventListener('DOMContentLoaded', function() {
             if (typeof feather !== 'undefined') {
                 feather.replace();
             }
-            
-            // Password visibility toggle
-            const toggleBtn = document.getElementById('password-toggle-btn');
-            const passwordField = document.getElementById('password');
-            const toggleIcon = document.getElementById('toggle-icon');
-            
-            if (toggleBtn) {
-                toggleBtn.addEventListener('click', function() {
-                    const type = passwordField.getAttribute('type') === 'password' ? 'text' : 'password';
-                    passwordField.setAttribute('type', type);
-                    if (type === 'text') {
-                        toggleIcon.setAttribute('data-feather', 'eye');
-                    } else {
-                        toggleIcon.setAttribute('data-feather', 'eye-off');
-                    }
-                    feather.replace();
-                });
-            }
-            
-            // LOGIN SIMULATION (robust demo validation)
-            const form = document.getElementById('loginForm');
-            const errorDiv = document.getElementById('errorMsg');
-            const errorText = document.querySelector('.error-text');
-            const loginBtn = document.getElementById('loginButton');
-            const buttonSpan = document.getElementById('button-text');
-            
-            // Show error helper
-            function showError(message) {
-                errorText.innerText = message;
-                errorDiv.classList.add('show');
-                setTimeout(() => {
-                    errorDiv.classList.remove('show');
-                }, 4000);
-            }
-            
-            // Handle login submit (mock authentication - secure demo)
-            form.addEventListener('submit', async function(e) {
-                e.preventDefault();
-                const email = document.getElementById('email').value.trim();
-                const password = document.getElementById('password').value;
-                
-                // Basic validation
-                if (!email) {
-                    showError('Email address is required.');
-                    return;
-                }
-                if (!password) {
-                    showError('Password is required.');
-                    return;
-                }
-                if (!email.match(/^[^\s@]+@([^\s@]+\.)+[^\s@]+$/)) {
-                    showError('Please enter a valid email address (e.g., name@nchsm.ac.ke).');
-                    return;
-                }
-                
-                // Simulate loading state
-                const originalText = buttonSpan.innerText;
-                buttonSpan.innerText = 'Signing in...';
-                loginBtn.disabled = true;
-                
-                // Simulate API call / authentication check (mock)
-                setTimeout(() => {
-                    // Simple demo credentials acceptance (for showcase)
-                    // In real integration, you'd call Supabase or your backend.
-                    if (email.includes('@') && password.length >= 1) {
-                        // success redirect simulation
-                        showError('✓ Demo login successful! (Integration ready)');
-                        errorDiv.style.background = "#e0f2e9";
-                        errorText.style.color = "#0a4630";
-                        errorText.innerText = 'Login successful! Redirecting to dashboard...';
-                        errorDiv.classList.add('show');
-                        setTimeout(() => {
-                            alert('Welcome to NCHSM Digital Portal! (Demo mode — connect to actual auth)');
-                            // optional reset for demo purposes
-                            window.location.href = '#';  // placeholder
-                        }, 1200);
-                    } else {
-                        showError('Invalid credentials. Please check your email/password.');
-                    }
-                    buttonSpan.innerText = originalText;
-                    loginBtn.disabled = false;
-                    setTimeout(() => {
-                        if (errorDiv.classList.contains('show') && errorText.innerText.includes('successful')) {
-                            errorDiv.classList.remove('show');
-                        }
-                    }, 2800);
-                }, 800);
-            });
-            
-            // Remember me feature via localStorage (optional demo)
-            const rememberCheck = document.getElementById('rememberMe');
-            const emailInput = document.getElementById('email');
-            if (localStorage.getItem('nchsm_remembered_email')) {
-                emailInput.value = localStorage.getItem('nchsm_remembered_email');
-                rememberCheck.checked = true;
-            }
-            
-            // Save remember me if checked on submit (additional)
-            form.addEventListener('submit', function() {
-                if (rememberCheck.checked && emailInput.value.trim()) {
-                    localStorage.setItem('nchsm_remembered_email', emailInput.value.trim());
-                } else if (!rememberCheck.checked) {
-                    localStorage.removeItem('nchsm_remembered_email');
-                }
-            });
-            
-            // Interactive links with accessible feedback
-            document.getElementById('forgotPasswordLink')?.addEventListener('click', (e) => {
-                e.preventDefault();
-                showError('Password reset link would be sent to your registered email. (Demo)');
-            });
-            document.getElementById('signupLink')?.addEventListener('click', (e) => {
-                e.preventDefault();
-                showError('New account registration portal coming soon. Contact admin.');
-            });
-            document.getElementById('helpLink')?.addEventListener('click', (e) => {
-                e.preventDefault();
-                alert('Help & Support: Visit our IT helpdesk or call +254 700 123456');
-            });
-            document.getElementById('contactLink')?.addEventListener('click', (e) => {
-                e.preventDefault();
-                alert('Email: support@nchsm.ac.ke | Phone: +254 700 987654');
-            });
-            document.querySelectorAll('.footer-link').forEach(link => {
-                link.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    showError(`Legal information (${link.innerText}) — under development`);
-                });
-            });
         });
     </script>
 </body>
