@@ -3648,14 +3648,15 @@ p {
     background: #fef3c7;
     color: #92400e;
 }
-/* ===== ONLY CARDS - NCHSM COLORS ===== */
-/* Stat Cards, Summary Cards, Action Cards, Welcome Cards, Course Cards */
+/* ===== ALL CARDS EXCEPT DASHBOARD METRICS - NCHSM COLORS ===== */
 
-.stat-card,
+/* Target all cards but exclude dashboard metrics */
+.stat-card:not(.dashboard .stat-card):not([class*="dashboard"]),
 .summary-card,
 .action-card,
 .welcome-card,
-.course-card {
+.course-card,
+.card:not(.dashboard .card) {
     background: linear-gradient(135deg, #0B2A4A, #2A5C9A) !important;
     border: 2px solid #FDB913 !important;
     border-radius: 12px !important;
@@ -3664,8 +3665,8 @@ p {
 }
 
 /* Text inside cards - WHITE */
-.stat-card .stat-value,
-.stat-card .stat-label,
+.stat-card:not(.dashboard .stat-card) .stat-value,
+.stat-card:not(.dashboard .stat-card) .stat-label,
 .summary-card .summary-value,
 .summary-card .summary-title,
 .action-card .action-header h3,
@@ -3680,7 +3681,7 @@ p {
 }
 
 /* Icons inside cards - GOLD */
-.stat-card i,
+.stat-card:not(.dashboard .stat-card) i,
 .summary-card i,
 .action-card i,
 .welcome-card i,
@@ -3688,14 +3689,19 @@ p {
     color: #FDB913 !important;
 }
 
-/* Card headers */
-.stat-card .card-header h3,
-.summary-card .card-header h4,
-.action-card .action-header h3 {
-    color: white !important;
+/* Keep DASHBOARD metrics cards unchanged (white background) */
+.dashboard .stat-card,
+.dashboard .cards-grid .stat-card {
+    background: white !important;
+    border: 1px solid #e5e7eb !important;
+    color: #1f2937 !important;
 }
 
-/* Stat icons background */
-.stat-card .stat-icon {
-    background: rgba(253, 185, 19, 0.15) !important;
+.dashboard .stat-card .stat-value,
+.dashboard .stat-card .stat-label {
+    color: #1f2937 !important;
+}
+
+.dashboard .stat-card i {
+    color: #0B2A4A !important;
 }
