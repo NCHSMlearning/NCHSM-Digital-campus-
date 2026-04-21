@@ -104,6 +104,36 @@ class Database {
         }
     }
     
+    // Helper: Safe query to handle 406 errors
+    async safeQuery(table, select, filters, returnSingle = true) {
+        try {
+            let query = this.supabase.from(table).select(select);
+            
+            // Apply filters
+            Object.entries(filters).forEach(([key, value]) => {
+                if (value !== undefined && value !== null) {
+                    query = query.eq(key, value);
+                }
+            });
+            
+            // Use maybeSingle() to avoid 406 errors
+            if (returnSingle) {
+                const { data, error } = await query.maybeSingle();
+                // PGRST116 means no rows returned - that's fine
+                if (error && error.code === 'PGRST116') {
+                    return { data: null, error: null };
+                }
+                return { data, error };
+            } else {
+                const { data, error } = await query;
+                return { data, error };
+            }
+        } catch (error) {
+            console.error(`Error querying ${table}:`, error);
+            return { data: null, error };
+        }
+    }
+    
     // Show configuration error UI
     showConfigurationError(error) {
         const errorHtml = `
@@ -113,7 +143,7 @@ class Database {
                 left: 0;
                 right: 0;
                 bottom: 0;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                background: linear-gradient(135deg, #144886 0%, #6897cf 100%);
                 display: flex;
                 align-items: center;
                 justify-content: center;
@@ -134,7 +164,7 @@ class Database {
                         <div style="
                             width: 80px;
                             height: 80px;
-                            background: #ef4444;
+                            background: #cb2c37;
                             border-radius: 50%;
                             display: flex;
                             align-items: center;
@@ -192,7 +222,7 @@ class Database {
                     
                     <div style="display: flex; gap: 10px; justify-content: center;">
                         <button onclick="window.location.reload()" style="
-                            background: #4f46e5;
+                            background: #144886;
                             color: white;
                             border: none;
                             padding: 12px 24px;
@@ -272,42 +302,81 @@ class Database {
         try {
             console.log('👤 Loading user profile...');
             
-            const { data: profile, error } = await this.supabase
-                .from('consolidated_user_profiles_table')
-                .select('*')
-                .eq('user_id', this.currentUserId)
-                .single();
+            // Use safeQuery to avoid 406 errors
+            const { data: profile, error } = await this.safeQuery(
+                'consolidated_user_profiles_table',
+                '*',
+                { user_id: this.currentUserId },
+                true
+            );
             
-            if (error) throw error;
-            
-            this.currentUserProfile = profile;
-            console.log('✅ User profile loaded:', profile.full_name);
+            if (error) {
+                console.warn('Error loading from consolidated table:', error);
+                // Try profiles table as fallback
+                const { data: fallbackProfile, error: fallbackError } = await this.safeQuery(
+                    'profiles',
+                    '*',
+                    { id: this.currentUserId },
+                    true
+                );
+                
+                if (!fallbackError && fallbackProfile) {
+                    this.currentUserProfile = fallbackProfile;
+                    console.log('✅ User loaded from profiles table');
+                } else {
+                    // Create fallback profile
+                    this.currentUserProfile = {
+                        user_id: this.currentUserId,
+                        id: this.currentUserId,
+                        full_name: 'Student',
+                        email: (await this.supabase.auth.getSession()).data.session?.user?.email || 'student@nchsm.ac.ke',
+                        program: 'KRCHN',
+                        block: 'A',
+                        intake_year: new Date().getFullYear().toString()
+                    };
+                    console.log('✅ Using fallback profile');
+                }
+            } else if (profile) {
+                this.currentUserProfile = profile;
+                console.log('✅ User profile loaded:', profile.full_name);
+            } else {
+                // No profile found, create fallback
+                this.currentUserProfile = {
+                    user_id: this.currentUserId,
+                    full_name: 'Student',
+                    email: (await this.supabase.auth.getSession()).data.session?.user?.email || 'student@nchsm.ac.ke',
+                    program: 'KRCHN',
+                    block: 'A',
+                    intake_year: new Date().getFullYear().toString()
+                };
+                console.log('✅ Using fallback profile (no existing profile)');
+            }
             
             // Make user data globally accessible
             window.currentUserId = this.currentUserId;
-            window.currentUser = profile;
-            window.userProfile = profile;
+            window.currentUser = this.currentUserProfile;
+            window.userProfile = this.currentUserProfile;
             window.db = this;
             
-            console.log('🌐 Global user data set:', {
-                id: window.currentUserId,
-                name: profile.full_name,
-                studentId: profile.student_id || profile.reg_no,
-                email: profile.email
-            });
+            console.log('🌐 Global user data set');
             
-            return profile;
+            return this.currentUserProfile;
             
         } catch (error) {
             console.error('Failed to load profile:', error);
-            this.currentUserProfile = {};
+            this.currentUserProfile = {
+                user_id: this.currentUserId,
+                full_name: 'Student',
+                program: 'KRCHN',
+                block: 'A',
+                intake_year: new Date().getFullYear().toString()
+            };
             
-            // Still set global variables
             window.currentUserId = this.currentUserId;
-            window.currentUser = {};
-            window.userProfile = {};
+            window.currentUser = this.currentUserProfile;
+            window.userProfile = this.currentUserProfile;
             
-            return {};
+            return this.currentUserProfile;
         }
     }
     
@@ -460,26 +529,17 @@ class Database {
             
             if (examsError) throw examsError;
             
-            // Fetch grades
-            const { data: grades, error: gradesError } = await this.supabase
-                .from('exam_grades')
-                .select(`
-                    exam_id,
-                    student_id,
-                    cat_1_score,
-                    cat_2_score,
-                    exam_score,
-                    total_score,
-                    result_status,
-                    marks,
-                    graded_by,
-                    graded_at
-                `)
-                .eq('student_id', studentId)
-                .eq('question_id', '00000000-0000-0000-0000-000000000000')
-                .order('graded_at', { ascending: false });
+            // Fetch grades - use safeQuery to avoid 406
+            const { data: grades, error: gradesError } = await this.safeQuery(
+                'exam_grades',
+                'exam_id, student_id, cat_1_score, cat_2_score, exam_score, total_score, result_status, marks, graded_by, graded_at',
+                { student_id: studentId, question_id: '00000000-0000-0000-0000-000000000000' },
+                false
+            );
             
-            if (gradesError) throw gradesError;
+            if (gradesError) {
+                console.warn('Error loading grades:', gradesError);
+            }
             
             // Combine exams with grades
             this.cachedData.exams = exams.map(exam => {
@@ -622,7 +682,7 @@ class Database {
             }
             
             // Calculate distance
-            const R = 6371000; // Earth radius in meters
+            const R = 6371000;
             const toRad = x => x * Math.PI / 180;
             const dLat = toRad(location.lat - target.latitude);
             const dLon = toRad(location.lon - target.longitude);
@@ -631,7 +691,7 @@ class Database {
             const a = Math.sin(dLat/2)**2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon/2)**2;
             const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
             const distanceMeters = R * c;
-            const isVerified = distanceMeters <= 200; // 200m radius
+            const isVerified = distanceMeters <= 200;
             
             // RPC call to insert check-in
             const { error } = await this.supabase.rpc('check_in_and_defer_fk', {
@@ -864,12 +924,10 @@ class Database {
                 coursesMap[courseId].stats.total++;
                 coursesMap[courseId].stats.active++;
                 
-                // Count by difficulty
                 if (question.difficulty === 'hard') coursesMap[courseId].stats.hard++;
                 else if (question.difficulty === 'medium') coursesMap[courseId].stats.medium++;
                 else if (question.difficulty === 'easy') coursesMap[courseId].stats.easy++;
                 
-                // Track last updated
                 if (question.updated_at) {
                     const updatedDate = new Date(question.updated_at);
                     if (!coursesMap[courseId].stats.lastUpdated || updatedDate > coursesMap[courseId].stats.lastUpdated) {
@@ -910,10 +968,8 @@ class Database {
             
             if (error) throw error;
             
-            // Update cached profile
             this.currentUserProfile = { ...this.currentUserProfile, ...updates };
             
-            // Also update global reference
             if (window.currentUser) {
                 window.currentUser = { ...window.currentUser, ...updates };
             }
@@ -931,14 +987,12 @@ class Database {
             const fileExt = file.name.split('.').pop();
             const filePath = `${this.currentUserId}.${fileExt}`;
             
-            // Upload to storage
             const { error: uploadError } = await this.supabase.storage
                 .from('passports')
                 .upload(filePath, file, { cacheControl: '3600', upsert: true });
             
             if (uploadError) throw uploadError;
             
-            // Update profile with photo URL
             const { error: updateError } = await this.supabase
                 .from('consolidated_user_profiles_table')
                 .update({ 
@@ -949,7 +1003,6 @@ class Database {
             
             if (updateError) throw updateError;
             
-            // Update cached profile
             if (this.currentUserProfile) {
                 this.currentUserProfile.passport_url = filePath;
             }
@@ -962,12 +1015,10 @@ class Database {
         }
     }
     
-    // Get current user profile for other modules
     getCurrentUserProfile() {
         return this.currentUserProfile;
     }
     
-    // Get database instance
     getInstance() {
         return this;
     }
@@ -975,10 +1026,8 @@ class Database {
 
 // ========== GLOBAL INITIALIZATION ==========
 
-// Create global instance
 window.db = new Database();
 
-// Helper function to make database globally accessible
 window.getDatabase = async function() {
     if (!window.db.supabase) {
         await window.db.initialize();
@@ -986,7 +1035,6 @@ window.getDatabase = async function() {
     return window.db;
 };
 
-// Make sure the database is initialized when needed
 window.initDatabase = async function() {
     try {
         console.log('🔧 Initializing database via global function...');
@@ -999,38 +1047,23 @@ window.initDatabase = async function() {
     }
 };
 
-// Helper function for GitHub Secrets help
 function showGitHubSecretsHelp() {
-    const helpText = `
-# GitHub Secrets Configuration
+    const helpText = `# GitHub Secrets Configuration
 
-## Required Secrets:
+Required Secrets:
 1. SUPABASE_URL - Your Supabase project URL
-   Example: https://lwhtjozfsmbyihenfunw.supabase.co
-
 2. SUPABASE_ANON_KEY - Your Supabase anonymous key
-   Example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+3. LOCATIONIQ_API_KEY - LocationIQ API key (optional)
 
-3. LOCATIONIQ_API_KEY - LocationIQ API key (optional for geolocation)
-
-## How to Add Secrets:
-1. Go to your GitHub repository
+How to Add Secrets:
+1. Go to GitHub repository
 2. Click Settings → Secrets and variables → Actions
 3. Click "New repository secret"
-4. Add each secret with the correct name and value
-
-## Verification:
-After adding secrets, push your code. GitHub Actions will:
-1. Generate config.js from your secrets
-2. Deploy to GitHub Pages
-3. Your app will connect to Supabase automatically
-    `;
+4. Add each secret with the correct name and value`;
     
     alert(helpText);
 }
 
-// Auto-initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
     console.log('📄 database.js loaded - DOM ready');
-    // The main app will call window.db.initialize() when needed
 });
