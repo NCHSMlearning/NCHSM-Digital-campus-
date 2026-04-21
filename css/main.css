@@ -3677,7 +3677,7 @@ p {
 .course-card .course-description,
 .course-card .course-code,
 .course-card .course-credits {
-    color: white !important;
+    color: black !important;
 }
 
 /* Icons inside cards - GOLD */
