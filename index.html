@@ -2337,7 +2337,108 @@
             }
         }
     }
-
+// ========== HANDLE PAGE REFRESHES AND DEEP LINKING ==========
+(function() {
+    // Function to get current tab from hash
+    function getCurrentTabFromHash() {
+        const hash = window.location.hash.substring(1);
+        const validTabs = ['dashboard', 'profile', 'calendar', 'learning-hub', 'attendance', 'cats', 'resources', 'messages', 'support-tickets', 'nurseiq'];
+        
+        if (hash && validTabs.includes(hash)) {
+            return hash;
+        }
+        return 'dashboard';
+    }
+    
+    // Function to show tab based on hash
+    function showTabFromHash() {
+        const tab = getCurrentTabFromHash();
+        console.log('📍 Loading tab from hash:', tab);
+        
+        if (window.ui && typeof window.ui.showTab === 'function') {
+            window.ui.showTab(tab);
+        } else {
+            // Wait for UI to be ready
+            const checkUI = setInterval(function() {
+                if (window.ui && typeof window.ui.showTab === 'function') {
+                    clearInterval(checkUI);
+                    window.ui.showTab(tab);
+                }
+            }, 100);
+            
+            // Timeout after 5 seconds
+            setTimeout(function() {
+                clearInterval(checkUI);
+                console.log('⚠️ UI not loaded, showing dashboard');
+                const dashboardTab = document.getElementById('dashboard');
+                if (dashboardTab) {
+                    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+                    dashboardTab.classList.add('active');
+                }
+            }, 5000);
+        }
+    }
+    
+    // Update URL when tab changes (without full page reload)
+    function updateURLForTab(tab) {
+        if (tab && tab !== 'dashboard') {
+            const newUrl = window.location.pathname + '#' + tab;
+            history.pushState({ tab: tab }, '', newUrl);
+        } else if (tab === 'dashboard') {
+            const newUrl = window.location.pathname;
+            history.pushState({ tab: 'dashboard' }, '', newUrl);
+        }
+    }
+    
+    // Listen for hash changes (browser back/forward)
+    window.addEventListener('hashchange', function() {
+        const tab = getCurrentTabFromHash();
+        if (window.ui && typeof window.ui.showTab === 'function') {
+            window.ui.showTab(tab);
+        }
+    });
+    
+    // Listen for popstate (back/forward buttons)
+    window.addEventListener('popstate', function(event) {
+        const tab = getCurrentTabFromHash();
+        if (window.ui && typeof window.ui.showTab === 'function') {
+            window.ui.showTab(tab);
+        }
+    });
+    
+    // Show tab on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        showTabFromHash();
+    });
+    
+    // Also show tab when app is ready
+    document.addEventListener('appReady', function() {
+        showTabFromHash();
+    });
+    
+    // Override the showTab function to update URL
+    const originalShowTab = window.ui ? window.ui.showTab : null;
+    if (window.ui) {
+        const originalShowTabFn = window.ui.showTab;
+        window.ui.showTab = function(tab) {
+            updateURLForTab(tab);
+            if (originalShowTabFn) {
+                originalShowTabFn(tab);
+            }
+        };
+    }
+    
+    // Export functions globally
+    window.router = {
+        getCurrentTab: getCurrentTabFromHash,
+        navigateTo: function(tab) {
+            updateURLForTab(tab);
+            if (window.ui && typeof window.ui.showTab === 'function') {
+                window.ui.showTab(tab);
+            }
+        }
+    };
+})();
     // Start initialization when DOM is loaded
     document.addEventListener('DOMContentLoaded', function() {
         console.log('📱 DOM ready, starting app initialization...');
