@@ -3648,29 +3648,54 @@ p {
     background: #fef3c7;
     color: #92400e;
 }
-/* ===== COURSES PAGE HEADER STATISTICS CARDS ===== */
-/* Target ONLY the stat cards inside courses-header */
+/* ===== ONLY CARDS - NCHSM COLORS ===== */
+/* Stat Cards, Summary Cards, Action Cards, Welcome Cards, Course Cards */
 
-.courses-header .stat-card {
+.stat-card,
+.summary-card,
+.action-card,
+.welcome-card,
+.course-card {
     background: linear-gradient(135deg, #0B2A4A, #2A5C9A) !important;
     border: 2px solid #FDB913 !important;
     border-radius: 12px !important;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
-    padding: 20px !important;
+    color: white !important;
 }
 
-/* White text for all stat content */
-.courses-header .stat-value,
-.courses-header .stat-label {
-    color: #ffffff !important;
+/* Text inside cards - WHITE */
+.stat-card .stat-value,
+.stat-card .stat-label,
+.summary-card .summary-value,
+.summary-card .summary-title,
+.action-card .action-header h3,
+.action-card .action-body p,
+.welcome-card .welcome-header h2,
+.welcome-card .welcome-subtitle,
+.course-card .course-title,
+.course-card .course-description,
+.course-card .course-code,
+.course-card .course-credits {
+    color: white !important;
 }
 
-/* Gold icons */
-.courses-header .stat-icon i {
+/* Icons inside cards - GOLD */
+.stat-card i,
+.summary-card i,
+.action-card i,
+.welcome-card i,
+.course-card i {
     color: #FDB913 !important;
 }
 
-/* Keep the stat icons background subtle */
-.courses-header .stat-icon {
+/* Card headers */
+.stat-card .card-header h3,
+.summary-card .card-header h4,
+.action-card .action-header h3 {
+    color: white !important;
+}
+
+/* Stat icons background */
+.stat-card .stat-icon {
     background: rgba(253, 185, 19, 0.15) !important;
 }
