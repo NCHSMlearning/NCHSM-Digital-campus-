@@ -1,4 +1,21 @@
-/* ========== COURSES TAB STYLES ========== */
+/* ========== COMPLETE COURSES TAB STYLES WITH FIXED BACKGROUND ========== */
+
+/* Global Fix - Set catalog/page background */
+body,
+.main-container,
+.catalog-container,
+[class*="catalog"],
+.page-wrapper {
+    background: #f0f2f5 !important;
+    min-height: 100vh;
+}
+
+/* Courses Main Container */
+.courses-container {
+    background: #f0f2f5;
+    padding: 20px;
+    min-height: 100vh;
+}
 
 /* Courses Header */
 .courses-header {
@@ -10,6 +27,7 @@
     display: flex;
     flex-direction: column;
     gap: 20px;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
 }
 
 .header-content h2 {
@@ -143,6 +161,7 @@
 /* Courses Section */
 .courses-section {
     margin-bottom: 30px;
+    background: transparent;
 }
 
 .section-header {
@@ -152,6 +171,7 @@
     margin-bottom: 20px;
     padding-bottom: 15px;
     border-bottom: 2px solid #e2e8f0;
+    background: transparent;
 }
 
 .section-header h3 {
@@ -202,14 +222,14 @@
     background: white;
     border-radius: 12px;
     padding: 25px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    border: 1px solid #e5e7eb;
     transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .course-card:hover {
     transform: translateY(-3px);
-    box-shadow: 0 4px 15px rgba(0,0,0,0.12);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.15);
 }
 
 .course-header {
@@ -284,8 +304,9 @@
     background: white;
     border-radius: 12px;
     overflow: hidden;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     margin-bottom: 25px;
+    border: 1px solid #e5e7eb;
 }
 
 .courses-table {
@@ -354,8 +375,8 @@
     background: white;
     border-radius: 12px;
     padding: 25px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    border: 1px solid #e5e7eb;
 }
 
 .card-header {
@@ -413,7 +434,7 @@
     padding: 60px 20px;
     background: white;
     border-radius: 12px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     border: 2px dashed #e2e8f0;
 }
 
@@ -457,6 +478,35 @@
     100% { transform: rotate(360deg); }
 }
 
+/* Additional Fixes for White Background Issues */
+.courses-wrapper {
+    background: #f0f2f5;
+    padding: 20px;
+}
+
+/* Make sure any parent containers have proper background */
+div[class*="background"],
+div[class*="catalog"],
+main, 
+.content,
+.page-content {
+    background: #f0f2f5 !important;
+}
+
+/* Ensure text is readable on all backgrounds */
+.text-muted,
+.help-text,
+.secondary-text {
+    color: #6c757d;
+}
+
+/* Add visual separation between sections */
+.courses-section + .courses-section {
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid #d1d5db;
+}
+
 /* Responsive Design */
 @media (max-width: 1023px) {
     .header-stats {
@@ -484,6 +534,10 @@
 }
 
 @media (max-width: 767px) {
+    .courses-container {
+        padding: 15px;
+    }
+    
     .header-stats {
         grid-template-columns: 1fr;
     }
