@@ -16,14 +16,23 @@ class UIModule {
         // Store tab state
         this.storageKey = 'nchsm_last_tab';
         
-        // Define valid tabs - ADDED unit-registration
+        // Define valid tabs - ADDED unit-registration AND learning-hub
         this.validTabs = [
-            'dashboard', 'profile', 'calendar', 'courses', 
-            'attendance', 'cats', 'resources', 'messages', 
-            'support-tickets', 'nurseiq', 'unit-registration'  // ← ADDED HERE
+            'dashboard', 
+            'profile', 
+            'calendar', 
+            'courses', 
+            'attendance', 
+            'cats', 
+            'resources', 
+            'messages', 
+            'support-tickets', 
+            'nurseiq', 
+            'unit-registration',      // ← Original unit registration
+            'learning-hub'             // ← NEW unified learning hub
         ];
         
-        // Define clean URL paths - ADDED unit-registration
+        // Define clean URL paths - ADDED unit-registration AND learning-hub
         this.tabPaths = {
             'dashboard': '/',
             'profile': '/profile', 
@@ -35,7 +44,8 @@ class UIModule {
             'messages': '/messages',
             'support-tickets': '/support-tickets',
             'nurseiq': '/nurseiq',
-            'unit-registration': '/unit-registration'  // ← ADDED HERE
+            'unit-registration': '/unit-registration',   // ← Original
+            'learning-hub': '/learning-hub'              // ← NEW unified hub
         };
         
         // Reverse lookup
@@ -43,6 +53,22 @@ class UIModule {
         for (const [tabId, path] of Object.entries(this.tabPaths)) {
             this.pathToTab[path] = tabId;
         }
+        
+        // Tab display names
+        this.tabNames = {
+            'dashboard': 'Dashboard',
+            'profile': 'Profile',
+            'calendar': 'Academic Calendar',
+            'courses': 'My Courses',
+            'attendance': 'Attendance',
+            'cats': 'Exams & Grades',
+            'resources': 'Resources',
+            'messages': 'Messages',
+            'support-tickets': 'Support Tickets',
+            'nurseiq': 'NurseIQ',
+            'unit-registration': 'Unit Registration',
+            'learning-hub': 'My Learning Hub'    // ← NEW
+        };
         
         // Footer buttons
         this.clearCacheBtn = document.getElementById('clearCacheBtn');
@@ -744,33 +770,56 @@ class UIModule {
                     if (typeof loadDashboard === 'function') loadDashboard();
                     else if (window.dashboardModule?.loadDashboard) window.dashboardModule.loadDashboard();
                     break;
+                    
                 case 'profile':
                     if (typeof loadProfile === 'function') loadProfile();
                     else if (window.profileModule?.loadProfileData) window.profileModule.loadProfileData();
                     break;
+                    
                 case 'calendar':
                     if (typeof loadAcademicCalendar === 'function') loadAcademicCalendar();
                     break;
+                    
                 case 'courses':
                     if (typeof loadCourses === 'function') loadCourses();
                     break;
+                    
+                case 'learning-hub':  // ← NEW unified learning hub
+                    console.log('📦 Loading Unified Learning Hub (Courses + Registration)');
+                    if (typeof loadCourses === 'function') loadCourses();
+                    if (typeof loadUnitRegistration === 'function') loadUnitRegistration();
+                    if (window.unitRegistration && typeof window.unitRegistration.loadRegistered === 'function') {
+                        window.unitRegistration.loadRegistered();
+                        window.unitRegistration.loadUnits();
+                    }
+                    break;
+                    
                 case 'attendance':
                     if (typeof loadAttendance === 'function') loadAttendance();
                     else if (window.attendanceModule?.loadAttendanceData) window.attendanceModule.loadAttendanceData();
                     break;
+                    
                 case 'cats':
                     if (typeof loadExams === 'function') loadExams();
                     break;
+                    
                 case 'resources':
                     if (typeof loadResources === 'function') loadResources();
                     break;
+                    
                 case 'messages':
                     if (typeof loadMessages === 'function') loadMessages();
                     break;
+                    
                 case 'nurseiq':
                     if (typeof loadNurseIQ === 'function') loadNurseIQ();
                     break;
-                case 'unit-registration':  // ← ADDED CASE FOR UNIT REGISTRATION
+                    
+                case 'support-tickets':
+                    if (typeof loadSupportTickets === 'function') loadSupportTickets();
+                    break;
+                    
+                case 'unit-registration':  // ← Keep for backward compatibility
                     console.log('📦 Loading Unit Registration module');
                     if (typeof loadUnitRegistration === 'function') {
                         loadUnitRegistration();
@@ -779,6 +828,9 @@ class UIModule {
                         window.unitRegistration.loadUnits();
                     }
                     break;
+                    
+                default:
+                    console.log(`No specific loader for tab: ${tabId}`);
             }
         }, 300);
     }
@@ -1148,21 +1200,7 @@ class UIModule {
     }
     
     updatePageTitle(tabId) {
-        const tabNames = {
-            'dashboard': 'Dashboard',
-            'profile': 'Profile',
-            'calendar': 'Academic Calendar',
-            'courses': 'My Courses',
-            'attendance': 'Attendance',
-            'cats': 'Exams & Grades',
-            'resources': 'Resources',
-            'messages': 'Messages',
-            'support-tickets': 'Support Tickets',
-            'nurseiq': 'NurseIQ',
-            'unit-registration': 'Unit Registration'  // ← ADDED
-        };
-        
-        const tabName = tabNames[tabId] || 'Dashboard';
+        const tabName = this.tabNames[tabId] || 'Dashboard';
         document.title = `${tabName} - NCHSM Student Portal`;
     }
     
@@ -1372,6 +1410,7 @@ class UIModule {
         console.log('- URL path:', this.getCurrentPath());
         console.log('- Current user ID:', window.currentUserId);
         console.log('- Valid tabs:', this.validTabs);
+        console.log('- Tab names:', this.tabNames);
     }
 }
 
