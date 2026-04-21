@@ -6,6 +6,23 @@
    ============================================ */
 
 /* ========== CSS VARIABLES - UPDATED WITH LOGO COLORS ========== */
+*========== CSS VARIABLES - ULTRA COMPLETE ========== */
+
+@import url('base.css');
+@import url('layout.css');
+@import url('components.css');
+@import url('messages.css');
+@import url('calendar.css');
+@import url('exams.css');
+@import url('courses.css');
+@import url('dashboard.css');
+@import url('resources.css');      
+@import url('reader.css');
+@import url('nurseiq.css');
+@import url('loading.css');
+@import url('profile.css');
+@import url('attendance.css');
+@import url('responsive.css');
 
 :root {
     /* ===== NEW LOGO COLORS (from NCHSM logo) ===== */
