@@ -125,7 +125,182 @@ const cache = {
         this.data.clear();
     }
 };
+// ========== SPA ROUTER - Handle page refreshes and deep linking ==========
+const SPA_ROUTER = {
+    // Valid tabs in your app
+    validTabs: ['dashboard', 'profile', 'calendar', 'learning-hub', 'attendance', 'cats', 'resources', 'messages', 'support-tickets', 'nurseiq'],
+    
+    // Get current tab from URL hash
+    getCurrentTabFromHash() {
+        let hash = window.location.hash.substring(1);
+        
+        // Remove any query parameters
+        if (hash.includes('?')) {
+            hash = hash.split('?')[0];
+        }
+        
+        // Validate tab
+        if (hash && this.validTabs.includes(hash)) {
+            return hash;
+        }
+        
+        // Default to dashboard
+        return 'dashboard';
+    },
+    
+    // Show the correct tab based on URL
+    showTabFromURL() {
+        const targetTab = this.getCurrentTabFromHash();
+        console.log('📍 Loading tab from URL:', targetTab);
+        
+        // Function to actually show the tab
+        const activateTab = () => {
+            if (window.ui && typeof window.ui.showTab === 'function') {
+                window.ui.showTab(targetTab);
+            } else {
+                // Fallback: manually show tab
+                document.querySelectorAll('.tab-content').forEach(tab => {
+                    tab.classList.remove('active');
+                    tab.hidden = true;
+                });
+                
+                const targetElement = document.getElementById(targetTab);
+                if (targetElement) {
+                    targetElement.classList.add('active');
+                    targetElement.hidden = false;
+                }
+                
+                // Update active nav link
+                document.querySelectorAll('.nav a').forEach(link => {
+                    link.classList.remove('active');
+                    const linkTab = link.getAttribute('data-tab');
+                    if (linkTab === targetTab) {
+                        link.classList.add('active');
+                    }
+                });
+            }
+        };
+        
+        // Try immediately, or wait for app to load
+        if (window.ui && window.ui.showTab) {
+            activateTab();
+        } else {
+            document.addEventListener('appReady', activateTab);
+            // Also try DOMContentLoaded
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', activateTab);
+            } else {
+                activateTab();
+            }
+        }
+    },
+    
+    // Update URL when tab changes (without page reload)
+    updateURL(tab) {
+        let newUrl = window.location.pathname;
+        
+        if (tab && tab !== 'dashboard') {
+            newUrl = window.location.pathname + '#' + tab;
+        }
+        
+        // Update URL without triggering reload
+        if (window.location.pathname + window.location.hash !== newUrl) {
+            history.pushState({ tab: tab }, '', newUrl);
+        }
+    },
+    
+    // Initialize router
+    init() {
+        // Listen for hash changes (browser back/forward)
+        window.addEventListener('hashchange', () => {
+            const tab = this.getCurrentTabFromHash();
+            if (window.ui && typeof window.ui.showTab === 'function') {
+                window.ui.showTab(tab);
+            } else {
+                // Fallback
+                document.querySelectorAll('.tab-content').forEach(t => {
+                    t.classList.remove('active');
+                    t.hidden = true;
+                });
+                const targetTab = document.getElementById(tab);
+                if (targetTab) {
+                    targetTab.classList.add('active');
+                    targetTab.hidden = false;
+                }
+            }
+        });
+        
+        // Listen for popstate (back/forward buttons)
+        window.addEventListener('popstate', () => {
+            const tab = this.getCurrentTabFromHash();
+            if (window.ui && typeof window.ui.showTab === 'function') {
+                window.ui.showTab(tab);
+            }
+        });
+        
+        // Override the global showTab function if it exists
+        if (window.ui && window.ui.showTab) {
+            const originalShowTab = window.ui.showTab;
+            window.ui.showTab = (tab) => {
+                this.updateURL(tab);
+                return originalShowTab.call(window.ui, tab);
+            };
+        }
+        
+        // Watch for tab clicks on navigation
+        document.addEventListener('click', (e) => {
+            const link = e.target.closest('.nav a, [data-tab]');
+            if (link && link.getAttribute('data-tab')) {
+                const tab = link.getAttribute('data-tab');
+                if (tab && this.validTabs.includes(tab)) {
+                    e.preventDefault();
+                    this.updateURL(tab);
+                    
+                    if (window.ui && typeof window.ui.showTab === 'function') {
+                        window.ui.showTab(tab);
+                    } else {
+                        // Fallback
+                        document.querySelectorAll('.tab-content').forEach(t => {
+                            t.classList.remove('active');
+                            t.hidden = true;
+                        });
+                        const targetTab = document.getElementById(tab);
+                        if (targetTab) {
+                            targetTab.classList.add('active');
+                            targetTab.hidden = false;
+                        }
+                        document.querySelectorAll('.nav a').forEach(navLink => {
+                            navLink.classList.remove('active');
+                        });
+                        link.classList.add('active');
+                    }
+                }
+            }
+        });
+        
+        // Initialize - show correct tab on page load
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => this.showTabFromURL());
+        } else {
+            this.showTabFromURL();
+        }
+        
+        // Also handle when app is ready
+        document.addEventListener('appReady', () => this.showTabFromURL());
+        
+        console.log('✅ SPA Router initialized');
+    }
+};
 
+// Initialize router when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => SPA_ROUTER.init());
+} else {
+    SPA_ROUTER.init();
+}
+
+// Export router globally
+window.SPA_ROUTER = SPA_ROUTER;
 // Export the utilities
 window.escapeHtml = escapeHtml;
 window.AppUtils = AppUtils;
