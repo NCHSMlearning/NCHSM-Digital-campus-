@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>NCHSM Student Portal</title>
+    <script>
+        // Get the current path and hash
+        const path = window.location.pathname;
+        const hash = window.location.hash;
+        const search = window.location.search;
+        
+        // Map paths to hash URLs (preserve the hash)
+        const pathMap = {
+            '/': '#dashboard',
+            '/home': '#dashboard',
+            '/index.html': '#dashboard',
+            '/profile': '#profile',
+            '/calendar': '#calendar',
+            '/courses': '#learning-hub',
+            '/learning-hub': '#learning-hub',
+            '/attendance': '#attendance',
+            '/exams': '#cats',
+            '/cats': '#cats',
+            '/grades': '#cats',
+            '/resources': '#resources',
+            '/messages': '#messages',
+            '/support-tickets': '#support-tickets',
+            '/nurseiq': '#nurseiq',
+            '/practice': '#nurseiq'
+        };
+        
+        // Clean the path (remove trailing slash)
+        let cleanPath = path.replace(/\/$/, '');
+        
+        // Get the target hash from path map
+        let targetHash = pathMap[cleanPath] || '#dashboard';
+        
+        // If there's already a hash in the URL, keep it (for refreshes)
+        if (hash && hash.length > 1) {
+            targetHash = hash;
+        }
+        
+        // Preserve search parameters if any
+        const queryString = search || '';
+        
+        // Build the final URL
+        let finalUrl = '/index.html' + targetHash + queryString;
+        
+        // Check if we need to redirect
+        if (window.location.pathname !== '/index.html' && !window.location.pathname.includes('index.html')) {
+            // Replace the current URL to keep history clean
+            window.location.replace(finalUrl);
+        } else {
+            // Already on index.html, just update the hash
+            if (window.location.hash !== targetHash) {
+                window.location.hash = targetHash;
+            }
+        }
+    </script>
+</head>
+<body>
+    <div style="text-align: center; font-family: Arial, sans-serif; padding: 50px;">
+        <h2>NCHSM Student Portal</h2>
+        <p>Loading your dashboard...</p>
+        <div style="margin-top: 20px;">
+            <div class="loading-spinner" style="width: 40px; height: 40px; border: 3px solid #f3f3f3; border-top: 3px solid #cb2c37; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto;"></div>
+        </div>
+    </div>
+    <style>
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</body>
+</html>
