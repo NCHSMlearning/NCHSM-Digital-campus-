@@ -5,16 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>NCHSM Digital Student Dashboard</title>
     
-    <!-- External Libraries -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <!-- PDF.js -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf_viewer.min.css">
-    
-    <!-- CONFIG WILL BE INJECTED BY GITHUB ACTIONS -->
-    <script src="./config.js"></script>
-    
+ <!-- External Libraries -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- PDF.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf_viewer.min.css">
+
+<!-- SweetAlert2 -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<!-- jQuery - ADD THIS LINE -->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+<!-- CONFIG -->
+<script src="./config.js"></script>
     <!-- CSS Files -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -228,6 +233,12 @@
                                 <span class="nav-badge" id="examsBadge" style="display: none;">0</span>
                             </a>
                         </li>
+                        <li role="none">
+    <a href="#" data-tab="unit-registration" role="menuitem">
+        <i class="fas fa-plus-circle"></i>
+        <span class="nav-text">Register Units</span>
+    </a>
+</li>
                         <li role="none">
                             <a href="#" data-tab="resources" role="menuitem">
                                 <i class="fas fa-folder-open"></i>
@@ -1398,6 +1409,89 @@
         </div>
     </div>
 </section>
+                            <!-- Unit Registration Tab -->
+<section id="unit-registration" class="tab-content" hidden>
+    <div class="unit-reg-header">
+        <h2><i class="fas fa-book"></i> Unit Registration</h2>
+        <p class="subtitle">Select your units for the current trimester. Admin will review and approve your selections.</p>
+        <div class="header-stats">
+            <div class="stat-card" style="background:white; border-radius:12px; padding:15px 25px; flex:1;">
+                <div><span class="stat-value" id="selected-units-count">0</span><br><span>Selected Units</span></div>
+            </div>
+            <div class="stat-card" style="background:white; border-radius:12px; padding:15px 25px; flex:1;">
+                <div><span class="stat-value" id="approved-units-count">0</span><br><span>Approved</span></div>
+            </div>
+            <div class="stat-card" style="background:white; border-radius:12px; padding:15px 25px; flex:1;">
+                <div><span class="stat-value" id="pending-units-count">0</span><br><span>Pending</span></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="row">
+            <div class="col-md-4">
+                <label>Registration Type</label>
+                <select id="RegType" class="modern-select">
+                    <option value="">-- Select --</option>
+                    <option value="Normal">Normal Registration</option>
+                    <option value="Supplementary">Supplementary</option>
+                    <option value="Special">Special</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label>Block/Trimester</label>
+                <select id="BlockFilter" class="modern-select">
+                    <option value="">All Blocks</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label>Unit Type</label>
+                <select id="UnitTypeFilter" class="modern-select">
+                    <option value="">All Types</option>
+                    <option value="Core">Core Units</option>
+                    <option value="Elective">Elective Units</option>
+                </select>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-12">
+                <button id="refreshUnitsBtn" class="btn-primary"><i class="fas fa-sync-alt"></i> Load Available Units</button>
+                <button id="submitRegistrationBtn" class="btn-success" style="margin-left:10px"><i class="fas fa-paper-plane"></i> Submit Registration</button>
+            </div>
+        </div>
+        <div id="maxUnitsWarning" style="display:none; margin-top:10px; color:#dc2626; font-size:12px;">
+            <i class="fas fa-exclamation-triangle"></i> You have reached the maximum allowed units!
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header"><h4><i class="fas fa-list"></i> Available Units for Registration</h4><p>Maximum: <strong id="maxUnitsAllowed">8</strong> units per trimester</p></div>
+        <div class="table-responsive">
+            <table class="units-table" id="tblAvailableUnits">
+                <thead>
+                    <tr><th><input type="checkbox" id="selectAllUnits"></th><th>Unit Code</th><th>Unit Name</th><th>Block</th><th>Type</th><th>Credits</th><th>Prerequisites</th><th>Status</th></tr>
+                </thead>
+                <tbody id="availableUnitsBody">
+                    <tr class="loading-row"><td colspan="8"><div class="loading-spinner"></div> Loading units...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header"><h4><i class="fas fa-clipboard-list"></i> My Registered Units</h4></div>
+        <div class="table-responsive">
+            <table class="units-table" id="tblRegisteredUnits">
+                <thead>
+                    <tr><th>Unit Code</th><th>Unit Name</th><th>Block</th><th>Reg Type</th><th>Status</th><th>Approval Date</th><th>Action</th></tr>
+                </thead>
+                <tbody id="registeredUnitsBody">
+                    <tr class="loading-row"><td colspan="7"><div class="loading-spinner"></div> Loading your registered units...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
 
                 <!-- Enhanced Resources Tab - VIEW ONLY -->
                 <section id="resources" class="tab-content">
@@ -2162,20 +2256,20 @@
         </div>
     </div>
 
-    <!-- JavaScript Files -->
-    <script src="./js/database.js"></script>
-    <script src="./js/utils.js"></script>
-    <script src="./js/ui.js"></script>
-    <script src="./js/dashboard.js"></script>
-    <script src="./js/profile.js"></script>
-    <script src="./js/attendance.js"></script>
-    <script src="./js/courses.js"></script>
-    <script src="./js/exams.js"></script>
-    <script src="./js/resources.js"></script>
-    <script src="./js/calendar.js"></script>
-    <script src="./js/messages.js"></script>
-    <script src="./js/student-tickets.js"></script>                       
-    <script src="./js/nurseiq.js"></script>
+<script src="./js/database.js"></script>
+<script src="./js/utils.js"></script>
+<script src="./js/ui.js"></script>
+<script src="./js/dashboard.js"></script>
+<script src="./js/profile.js"></script>
+<script src="./js/attendance.js"></script>
+<script src="./js/courses.js"></script>
+<script src="./js/exams.js"></script>
+<script src="./js/unit-registration.js"></script>  <!-- Add this here -->
+<script src="./js/resources.js"></script>
+<script src="./js/calendar.js"></script>
+<script src="./js/messages.js"></script>
+<script src="./js/student-tickets.js"></script>                       
+<script src="./js/nurseiq.js"></script>
 
      <!-- Initialize App -->
 <!-- Initialize App -->
@@ -2527,6 +2621,11 @@ async function loadTabData(tabId) {
             case 'resources':
                 if (typeof loadResources === 'function') {
                     await loadResources();
+                }
+                break;
+                 case 'Register Units':
+                if (typeof RegisterUnits === 'function') {
+                    await lRegisterUnitsd();
                 }
                 break;
             case 'messages':
