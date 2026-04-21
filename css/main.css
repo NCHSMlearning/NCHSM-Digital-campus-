@@ -3648,3 +3648,191 @@ p {
     background: #fef3c7;
     color: #92400e;
 }
+/* ========== CHANGE GOLD TO RED (per logo) ========== */
+:root {
+    --color-gold: #cb2c37 !important;
+    --color-accent: #cb2c37 !important;
+    --color-accent-light: #d4454f !important;
+    --color-accent-dark: #a8222c !important;
+    
+    --gradient-gold: linear-gradient(135deg, #cb2c37, #d4454f) !important;
+    --gradient-gold-hover: linear-gradient(135deg, #d4454f, #cb2c37) !important;
+    
+    --shadow-gold: 0 4px 14px rgba(203,44,55,0.3) !important;
+    --shadow-gold-lg: 0 10px 25px rgba(203,44,55,0.4) !important;
+}
+
+/* Update header border */
+.main-header {
+    border-bottom: 3px solid #cb2c37 !important;
+}
+
+/* Update sidebar border */
+.sidebar {
+    border-right: 3px solid #cb2c37 !important;
+}
+
+.sidebar-header {
+    border-bottom: 3px solid #cb2c37 !important;
+}
+
+/* Update navigation active/hover */
+.nav a:hover,
+.nav a.active {
+    border-left-color: #cb2c37 !important;
+}
+
+.nav a:hover i,
+.nav a.active i {
+    color: #cb2c37 !important;
+}
+
+.nav-badge {
+    background: #cb2c37 !important;
+}
+
+/* Update tab content border */
+.tab-content {
+    border: 2px solid #cb2c37 !important;
+}
+
+/* Update welcome card */
+.welcome-card::before {
+    background: linear-gradient(135deg, var(--color-navy), var(--color-royal), #cb2c37) !important;
+}
+
+.welcome-header h2 i,
+.welcome-time i {
+    color: #cb2c37 !important;
+}
+
+/* Update announcement banner */
+.announcement-banner {
+    border: 1px solid #cb2c37 !important;
+}
+
+.announcement-icon {
+    color: #cb2c37 !important;
+    border: 1px solid #cb2c37 !important;
+}
+
+/* Update stat cards hover border */
+.stat-card:hover {
+    border-color: #cb2c37 !important;
+}
+
+.stat-card::before {
+    background: linear-gradient(90deg, var(--color-navy), var(--color-royal), #cb2c37) !important;
+}
+
+/* Update action cards */
+.action-card.nurseiq {
+    border-left: 4px solid #cb2c37 !important;
+}
+
+/* Update buttons */
+.btn-action:hover {
+    box-shadow: 0 4px 14px rgba(203,44,55,0.3) !important;
+}
+
+/* Update tables */
+.modern-table th,
+.courses-table th,
+.attendance-table th,
+.calendar-table th,
+.assessments-table th {
+    border-bottom: 2px solid #cb2c37 !important;
+}
+
+/* Update summary row */
+.summary-icon {
+    border: 2px solid #cb2c37 !important;
+    box-shadow: 0 4px 14px rgba(203,44,55,0.3) !important;
+}
+
+/* Update check-in card */
+.check-in-card .card-header h3 i {
+    color: #cb2c37 !important;
+}
+
+.gps-status i,
+.control-group label i,
+.select-arrow {
+    color: #cb2c37 !important;
+}
+
+.accuracy-dot.accurate {
+    background: #cb2c37 !important;
+}
+
+.btn-checkin {
+    border: 2px solid #cb2c37 !important;
+}
+
+/* Update message filters */
+.filter-btn.active {
+    border-color: #cb2c37 !important;
+}
+
+.filter-count {
+    background: #cb2c37 !important;
+}
+
+/* Update support tickets */
+.new-ticket-form {
+    border: 2px solid #cb2c37 !important;
+}
+
+.form-header h3 i {
+    color: #cb2c37 !important;
+}
+
+.file-upload:hover {
+    border-color: #cb2c37 !important;
+}
+
+/* Update modal */
+.modal-container {
+    border: 3px solid #cb2c37 !important;
+}
+
+.modal-header {
+    border-bottom: 2px solid #cb2c37 !important;
+}
+
+.modal-header h3 i {
+    color: #cb2c37 !important;
+}
+
+/* Update footer */
+.app-footer {
+    border-top: 3px solid #cb2c37 !important;
+}
+
+.footer-section h3 {
+    border-bottom: 2px solid #cb2c37 !important;
+}
+
+.contact-item i,
+.footer-links a:hover i {
+    color: #cb2c37 !important;
+}
+
+.social-icon {
+    border: 2px solid #cb2c37 !important;
+}
+
+.social-icon:hover {
+    background: #cb2c37 !important;
+}
+
+/* Update scrollbar */
+::-webkit-scrollbar-thumb:hover {
+    background: #cb2c37 !important;
+}
+
+/* Update utility classes */
+.bg-gold { background-color: #cb2c37 !important; }
+.text-gold { color: #cb2c37 !important; }
+.border-gold { border-color: #cb2c37 !important; }
+.shadow-gold { box-shadow: 0 4px 14px rgba(203,44,55,0.3) !important; }
