@@ -3648,3 +3648,231 @@ p {
     background: #fef3c7;
     color: #92400e;
 }
+/* ========== FIX FOR WHITE BACKGROUND VISIBILITY ISSUE ========== */
+
+/* Force catalog/page background to be visible */
+body,
+.main,
+.container,
+[class*="catalog"],
+[class*="background"],
+.page-wrapper {
+    background: #eef2f6 !important;
+}
+
+/* Make tab content stand out with proper contrast */
+.tab-content {
+    background: #ffffff !important;
+    border: 2px solid var(--color-gold) !important;
+    border-radius: var(--radius-2xl) !important;
+    box-shadow: var(--shadow-xl) !important;
+}
+
+/* Ensure courses header is visible on any background */
+.courses-header {
+    background: linear-gradient(135deg, #4C1D95, #6D28D9) !important;
+    border-radius: 16px !important;
+    margin-bottom: 25px !important;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15) !important;
+}
+
+/* Fix any white-on-white issues in tables */
+.modern-table th,
+.courses-table th,
+.attendance-table th,
+.calendar-table th,
+.assessments-table th,
+.tickets-table th {
+    background: var(--gradient-primary) !important;
+    color: white !important;
+}
+
+.modern-table td,
+.courses-table td,
+.attendance-table td,
+.calendar-table td {
+    background: white !important;
+    color: var(--color-gray-700) !important;
+}
+
+/* Fix stat cards visibility */
+.stat-card {
+    background: white !important;
+    border: 1px solid var(--color-gray-200) !important;
+    box-shadow: var(--shadow-md) !important;
+}
+
+.stat-card .stat-value {
+    color: var(--color-darker) !important;
+}
+
+.stat-card .card-header h3 {
+    color: var(--color-gray-600) !important;
+}
+
+/* Fix action cards */
+.action-card {
+    background: white !important;
+    border: 1px solid var(--color-gray-200) !important;
+}
+
+.action-header {
+    background: var(--color-gray-50) !important;
+}
+
+.action-body p {
+    color: var(--color-gray-600) !important;
+}
+
+/* Fix welcome card */
+.welcome-card {
+    background: white !important;
+    border: 1px solid var(--color-gray-200) !important;
+}
+
+.welcome-header h2 {
+    color: var(--color-darker) !important;
+}
+
+.welcome-subtitle {
+    color: var(--color-gray-500) !important;
+}
+
+/* Fix announcement banner */
+.announcement-banner {
+    background: var(--gradient-primary) !important;
+    border: 1px solid var(--color-gold) !important;
+}
+
+/* Fix summary row */
+.horizontal-summary-row {
+    background: white !important;
+    border: 1px solid var(--color-gray-200) !important;
+}
+
+.summary-value {
+    color: var(--color-darker) !important;
+}
+
+.summary-title {
+    color: var(--color-gray-600) !important;
+}
+
+/* Fix any empty states */
+.empty-state {
+    background: white !important;
+    border: 2px dashed var(--color-gray-300) !important;
+}
+
+.empty-state h3 {
+    color: var(--color-gray-700) !important;
+}
+
+.empty-state p {
+    color: var(--color-gray-500) !important;
+}
+
+/* Ensure all card-like elements have proper backgrounds */
+.course-card,
+.summary-card,
+.message-info-card,
+.check-in-card,
+.question-bank-section,
+.unit-reg-header .stat-card,
+.card {
+    background: white !important;
+    border: 1px solid var(--color-gray-200) !important;
+}
+
+/* Fix any potential white text on white background */
+.text-muted,
+.help-text,
+.secondary-text,
+.label {
+    color: var(--color-gray-500) !important;
+}
+
+/* Ensure the main content area has contrast */
+.main {
+    background: #f0f2f5 !important;
+}
+
+/* Fix the unit registration section */
+.unit-reg-header .stat-card {
+    background: white !important;
+}
+
+.units-table th {
+    background: var(--gradient-primary) !important;
+    color: white !important;
+}
+
+.units-table td {
+    background: white !important;
+    color: var(--color-gray-700) !important;
+}
+
+/* Fix filter and search boxes */
+.search-box input,
+.modern-select {
+    background: white !important;
+    border: 1px solid var(--color-gray-300) !important;
+    color: var(--color-gray-800) !important;
+}
+
+/* Ensure buttons are visible */
+.btn-primary {
+    background: var(--gradient-primary) !important;
+    color: white !important;
+}
+
+.btn-success {
+    background: var(--color-success) !important;
+    color: white !important;
+}
+
+.btn-danger {
+    background: var(--color-danger) !important;
+    color: white !important;
+}
+
+/* Fix any overlay/modals */
+.modal-container {
+    background: white !important;
+}
+
+.modal-header {
+    background: var(--gradient-primary) !important;
+    color: white !important;
+}
+
+.modal-body {
+    background: white !important;
+    color: var(--color-gray-700) !important;
+}
+
+/* ========== ADDITIONAL FIX FOR "TOP CATALOG BACKGROUND" ========== */
+/* If there's a specific element with class containing "catalog" or "background" */
+[class*="catalog"]:not(.tab-content):not(.course-card),
+[class*="background"]:not(.tab-content) {
+    background: #eef2f6 !important;
+}
+
+/* Ensure the body background shows through */
+html, body {
+    background-color: #f0f2f5 !important;
+}
+
+/* Fix for any white containers that should show the gray background */
+div:not(.tab-content):not(.course-card):not(.stat-card):not(.action-card):not(.welcome-card):not(.announcement-banner):not(.horizontal-summary-row):not(.empty-state):not(.modal-container):not(.card):not(.summary-card) {
+    /* Don't force background on all divs - only specific ones */
+}
+
+/* Make sure the catalog background is visible */
+.catalog-container,
+.top-catalog,
+.catalog-background,
+[class*="catalog-bg"] {
+    background: #eef2f6 !important;
+    min-height: 100vh;
+}
