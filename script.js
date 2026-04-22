@@ -4945,23 +4945,6 @@ async function initSession() {
     loadSectionData('dashboard');
 }
 
-// =====================================================
-// LOGOUT FUNCTION
-// =====================================================
-async function logout() {
-    try {
-        if (currentUserProfile) {
-            await logAudit('LOGOUT', `User ${currentUserProfile.full_name} logged out.`);
-        }
-        await sb.auth.signOut();
-        localStorage.clear();
-        sessionStorage.clear();
-        window.location.href = "login.html";
-    } catch (error) {
-        console.error('Logout error:', error);
-        window.location.href = "login.html";
-    }
-}
 
 // =====================================================
 // INITIALIZE THE APPLICATION - ONLY ONE EVENT LISTENER
