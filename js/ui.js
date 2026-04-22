@@ -28,8 +28,9 @@ class UIModule {
             'messages', 
             'support-tickets', 
             'nurseiq', 
-            'unit-registration',      // ← Original unit registration
-            'learning-hub'             // ← NEW unified learning hub
+            'unit-registration',     
+            'learning-hub'             
+            'exam-card'    
         ];
         
         // Define clean URL paths - ADDED unit-registration AND learning-hub
@@ -44,8 +45,9 @@ class UIModule {
             'messages': '/messages',
             'support-tickets': '/support-tickets',
             'nurseiq': '/nurseiq',
-            'unit-registration': '/unit-registration',   // ← Original
-            'learning-hub': '/learning-hub'              // ← NEW unified hub
+            'unit-registration': '/unit-registration',   
+            'learning-hub': '/learning-hub'              
+            'exam-card': '/exam-card'
         };
         
         // Reverse lookup
