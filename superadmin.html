@@ -1260,26 +1260,62 @@
         </div>
     </div>
     
-    <div id="userEditModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header"><h3>Edit User Profile</h3><span class="close" onclick="closeModal('userEditModal')">&times;</span></div>
-            <form id="edit-user-form">
-                <input type="hidden" id="edit_user_id">
-                <label>Full Name</label><input type="text" id="edit_user_name" required>
-                <label>Email</label><input type="email" id="edit_user_email" required>
-                <label>Role</label><select id="edit_user_role" required><option value="student">Student</option><option value="lecturer">Lecturer</option><option value="admin">Admin</option><option value="superadmin">Super Admin</option></select>
-                <label>Program Type</label><select id="edit_user_program" required><option value="KRCHN">KRCHN</option><option value="TVET">TVET</option></select>
-                <label>Intake Year</label><input type="text" id="edit_user_intake" required>
-                <label>Block/Term</label><select id="edit_user_block" required><option value="">-- Select --</option></select>
-                <label>Blocked Status</label><select id="edit_user_block_status" required><option value="false">Active</option><option value="true">BLOCKED</option></select>
-                <hr>
-                <h3>Password Reset (Optional)</h3>
-                <label>New Password</label><input type="password" id="edit_user_new_password">
-                <label>Confirm Password</label><input type="password" id="edit_user_confirm_password">
-                <button type="submit" class="btn-action">Save Changes</button>
-            </form>
+   <div id="userEditModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Edit User Profile</h3>
+            <span class="close" onclick="closeModal('userEditModal')">&times;</span>
         </div>
+        <form id="edit-user-form">
+            <input type="hidden" id="edit_user_id">
+            <!-- ADD THIS LINE BELOW -->
+            <p class="subtitle">Editing User ID: <span id="edit_user_id_display">N/A</span></p>
+            
+            <label>Full Name</label>
+            <input type="text" id="edit_user_name" required>
+            
+            <label>Email</label>
+            <input type="email" id="edit_user_email" required>
+            
+            <label>Role</label>
+            <select id="edit_user_role" required>
+                <option value="student">Student</option>
+                <option value="lecturer">Lecturer</option>
+                <option value="admin">Admin</option>
+                <option value="superadmin">Super Admin</option>
+            </select>
+            
+            <label>Program Type</label>
+            <select id="edit_user_program" required>
+                <option value="KRCHN">KRCHN</option>
+                <option value="TVET">TVET</option>
+            </select>
+            
+            <label>Intake Year</label>
+            <input type="text" id="edit_user_intake" required>
+            
+            <label>Block/Term</label>
+            <select id="edit_user_block" required>
+                <option value="">-- Select --</option>
+            </select>
+            
+            <label>Blocked Status</label>
+            <select id="edit_user_block_status" required>
+                <option value="false">Active</option>
+                <option value="true">BLOCKED</option>
+            </select>
+            
+            <hr>
+            <h3>Password Reset (Optional)</h3>
+            <label>New Password</label>
+            <input type="password" id="edit_user_new_password">
+            <label>Confirm Password</label>
+            <input type="password" id="edit_user_confirm_password">
+            
+            <button type="submit" class="btn-action">Save Changes</button>
+        </form>
     </div>
+</div>
 
     <div id="examEditModal" class="modal">
         <div class="modal-content">
