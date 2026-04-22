@@ -1,464 +1,522 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NCHSM Super Admin Dashboard</title>
-    <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" sizes="32x32">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>NCHSM Super Admin Dashboard | Complete Control</title>
+    <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png">
     
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <!-- External Libraries (CSS) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/main.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Your external style.css (if any) -->
     <link rel="stylesheet" href="style.css">
     
     <style>
-        /* Additional styles for Unit Registration Management */
-        .units-management-section { margin-top: 30px; }
-        .unit-form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; padding: 20px; background: #f8f9fa; border-radius: 12px; }
-        .unit-card { background: white; border: 1px solid #e5e7eb; border-radius: 10px; padding: 15px; margin-bottom: 12px; transition: all 0.2s; }
-        .unit-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        .unit-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
-        .unit-code { font-weight: bold; color: #4C1D95; font-size: 16px; }
-        .unit-name { font-size: 14px; color: #374151; }
-        .unit-meta { display: flex; gap: 15px; margin-top: 8px; font-size: 12px; color: #6b7280; flex-wrap: wrap; }
-        .unit-meta span { background: #f3f4f6; padding: 3px 8px; border-radius: 12px; }
-        .unit-actions { display: flex; gap: 8px; }
-        .btn-sm { padding: 5px 12px; font-size: 12px; border-radius: 6px; cursor: pointer; border: none; }
-        .btn-edit { background: #3b82f6; color: white; }
-        .btn-delete { background: #ef4444; color: white; }
-        .filter-bar { display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; }
-        .filter-bar input, .filter-bar select { padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; }
-        .units-grid { max-height: 600px; overflow-y: auto; }
-        .badge-core { background: #dbeafe; color: #2563eb; padding: 2px 8px; border-radius: 12px; }
-        .badge-elective { background: #fef3c7; color: #d97706; padding: 2px 8px; border-radius: 12px; }
-        .block-selector { margin-bottom: 20px; }
-        .block-buttons { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
-        .block-btn { padding: 8px 16px; background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 20px; cursor: pointer; transition: all 0.2s; }
-        .block-btn.active { background: #4C1D95; color: white; border-color: #4C1D95; }
-        .toolbar { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
-        .health-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
-        .health-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .progress-bar { background: #e5e7eb; border-radius: 10px; overflow: hidden; height: 20px; margin: 10px 0; }
-        .progress-fill { background: #4C1D95; height: 100%; transition: width 0.3s; }
-        .status-approved { color: #059669; font-weight: bold; }
-        .status-pending { color: #d97706; font-weight: bold; }
-        .status-danger { color: #dc2626; font-weight: bold; }
-        .program-badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 10px; margin-top: 4px; }
-        .badge-tvet { background: #fef3c7; color: #92400e; }
-        .badge-krchn { background: #dbeafe; color: #1e40af; }
-        .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; margin-bottom: 5px; font-weight: 500; }
-        .form-input { width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; }
-        .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb; }
-        .btn-primary { background: #4C1D95; color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; }
-        .btn-secondary { background: #6c757d; color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; }
-        .btn-danger { background: #dc2626; color: white; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; }
-        .btn-success { background: #059669; color: white; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; }
-        .warning-text { color: #dc2626; font-size: 12px; margin-top: 5px; }
-        .mobile-nav-toggle { display: none; }
-        
+        /* ========= GLOBAL & RESETS ========= */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        body {
+            background: #f3f4f6;
+            overflow-x: hidden;
+        }
+
+        /* Layout */
+        .container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* ========= SIDEBAR (DARK THEME) ========= */
+        .sidebar {
+            width: 280px;
+            background: linear-gradient(180deg, #0f172a 0%, #1e1b4b 100%);
+            color: #e2e8f0;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+            transition: transform 0.3s ease;
+            z-index: 1000;
+            box-shadow: 4px 0 20px rgba(0,0,0,0.1);
+        }
+
+        .sidebar-header {
+            padding: 24px 20px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .sidebar-header img {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            object-fit: cover;
+            background: white;
+            padding: 5px;
+            margin-bottom: 12px;
+        }
+
+        .sidebar-header h2 {
+            font-size: 1.3rem;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+
+        .nav {
+            list-style: none;
+            padding: 20px 0 40px;
+        }
+
+        .nav li {
+            margin: 4px 0;
+        }
+
+        .nav a {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 12px 24px;
+            color: #cbd5e1;
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .nav a i {
+            width: 22px;
+            font-size: 1.1rem;
+        }
+
+        .nav a:hover, .nav a.active {
+            background: rgba(139, 92, 246, 0.2);
+            color: white;
+            border-left: 3px solid #facc15;
+        }
+
+        .logout {
+            position: sticky;
+            bottom: 20px;
+            margin-top: 30px;
+            padding: 15px 24px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .logout a {
+            color: #fca5a5;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        /* ========= MAIN CONTENT ========= */
+        .main {
+            flex: 1;
+            margin-left: 280px;
+            padding: 24px 28px;
+            transition: margin 0.3s;
+        }
+
+        header {
+            background: white;
+            padding: 20px 28px;
+            border-radius: 24px;
+            margin-bottom: 28px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+        }
+
+        header h1 {
+            color: #1e1b4b;
+            font-size: 1.8rem;
+        }
+
+        /* ========= CARDS ========= */
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 22px;
+            margin-bottom: 32px;
+        }
+
+        .card {
+            background: white;
+            padding: 22px 20px;
+            border-radius: 20px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+            border: 1px solid #eef2ff;
+        }
+
+        .card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 20px rgba(0,0,0,0.08);
+        }
+
+        .card h3 {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #6b7280;
+            margin-bottom: 12px;
+        }
+
+        .card .data {
+            font-size: 2.8rem;
+            font-weight: 800;
+            color: #4C1D95;
+            line-height: 1.1;
+        }
+
+        /* ========= TAB CONTENT ========= */
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.25s ease;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px);}
+            to { opacity: 1; transform: translateY(0);}
+        }
+
+        /* ========= FORMS & TABLES ========= */
+        .inline-form {
+            background: #f9fafb;
+            padding: 20px;
+            border-radius: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+            margin-bottom: 28px;
+            align-items: flex-end;
+        }
+
+        .inline-form input, .inline-form select, .inline-form textarea {
+            padding: 10px 14px;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            background: white;
+            font-size: 0.85rem;
+            min-width: 160px;
+            flex: 1;
+        }
+
+        .inline-form button, .btn-action, .btn-primary {
+            background: #4C1D95;
+            color: white;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 40px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .btn-danger {
+            background: #dc2626;
+        }
+        .btn-success {
+            background: #059669;
+        }
+        .btn-secondary {
+            background: #475569;
+        }
+
+        .data-table {
+            width: 100%;
+            background: white;
+            border-radius: 20px;
+            overflow: hidden;
+            border-collapse: collapse;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+
+        .data-table th, .data-table td {
+            padding: 14px 16px;
+            text-align: left;
+            border-bottom: 1px solid #edf2f7;
+        }
+
+        .data-table th {
+            background: #f8fafc;
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        /* ========= MODALS ========= */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.6);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 28px;
+            width: 90%;
+            max-width: 650px;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 24px 28px;
+            box-shadow: 0 25px 40px rgba(0,0,0,0.2);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #f1f5f9;
+            padding-bottom: 12px;
+            margin-bottom: 20px;
+        }
+        .modal-header .close {
+            font-size: 28px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+        .form-group label {
+            font-weight: 600;
+            display: block;
+            margin-bottom: 6px;
+            font-size: 0.85rem;
+        }
+        .form-input, select.form-input {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid #cbd5e1;
+            border-radius: 14px;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        /* unit management extras */
+        .unit-card { background: white; border-radius: 16px; padding: 16px; margin-bottom: 12px; border: 1px solid #eef2ff; }
+        .unit-header { display: flex; justify-content: space-between; align-items: center; }
+        .unit-code { font-weight: 800; color: #4C1D95; }
+        .unit-meta { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px; font-size: 12px; }
+        .block-buttons { display: flex; gap: 8px; flex-wrap: wrap; margin: 15px 0; }
+        .block-btn { padding: 6px 14px; background: #eef2ff; border-radius: 30px; cursor: pointer; }
+        .block-btn.active { background: #4C1D95; color: white; }
+
+        /* mobile */
+        .mobile-nav-toggle {
+            display: none;
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 1100;
+            background: #4C1D95;
+            padding: 10px 12px;
+            border-radius: 12px;
+            color: white;
+            cursor: pointer;
+        }
         @media (max-width: 768px) {
             .sidebar { transform: translateX(-100%); }
             .sidebar.active { transform: translateX(0); }
-            .main { margin-left: 0; }
-            .mobile-nav-toggle { display: block; position: fixed; top: 20px; left: 20px; z-index: 101; cursor: pointer; }
+            .main { margin-left: 0; padding: 70px 16px 20px; }
+            .mobile-nav-toggle { display: block; }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="mobile-nav-toggle" id="mobileNavToggle">
-            <span></span><span></span><span></span>
+<div class="mobile-nav-toggle" id="mobileNavToggle">☰ Menu</div>
+<div class="container">
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM">
+            <h2>Super Admin</h2>
         </div>
-
-        <aside class="sidebar" id="sidebar">
-            <div class="sidebar-header">
-                <img src="images/Logo_NCHSM.png" alt="Logo" onerror="this.style.display='none'">
-                <h2>Super Admin</h2>
-            </div>
-            <ul class="nav" id="mainNav">
-                <li><a href="#" data-tab="dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
-                <li><a href="#" data-tab="users"><i class="fas fa-users"></i> Manage Users</a></li>
-                <li><a href="#" data-tab="pending"><i class="fas fa-clock"></i> Pending Approvals</a></li>
-                <li><a href="#" data-tab="enroll"><i class="fas fa-user-plus"></i> Enroll Accounts</a></li>
-                <li><a href="#" data-tab="courses"><i class="fas fa-book"></i> Courses</a></li>
-                <li><a href="#" data-tab="unit-management"><i class="fas fa-plus-circle"></i> Unit Registration</a></li>
-                <li><a href="#" data-tab="sessions"><i class="fas fa-calendar-alt"></i> Manage Sessions</a></li>
-                <li><a href="#" data-tab="attendance"><i class="fas fa-clipboard-check"></i> Attendance</a></li>
-                <li><a href="#" data-tab="cats"><i class="fas fa-file-alt"></i> CATS/Exams</a></li>
-                <li><a href="#" data-tab="resources"><i class="fas fa-file-upload"></i> Resources</a></li>
-                <li><a href="#" data-tab="messages"><i class="fas fa-inbox"></i> Inbox</a></li>
-                <li><a href="#" data-tab="calendar"><i class="fas fa-calendar"></i> System Calendar</a></li>
-                <li><a href="#" data-tab="welcome-editor"><i class="fas fa-edit"></i> Welcome Message</a></li>
-                <li><a href="#" data-tab="audit"><i class="fas fa-search"></i> Audit Logs</a></li>
-                <li><a href="#" data-tab="security"><i class="fas fa-cog"></i> Security Settings</a></li>
-                <li><a href="#" data-tab="backup"><i class="fas fa-database"></i> Backup & Restore</a></li>
-            </ul>
-            <div class="logout">
-                <a href="#" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</a>
-            </div>
-        </aside>
-
-        <main class="main">
-            <header>
-                <h1>Welcome, Super Admin!</h1>
-                <p class="subtitle">Full system oversight and user management</p>
-            </header>
-
-            <!-- Dashboard Section -->
-            <section id="dashboard" class="tab-content active">
-                <div id="student-welcome-message"></div>
-                <div class="cards">
-                    <div class="card" onclick="showTab('users')"><h3>Total Users</h3><p class="data" id="totalUsers">0</p></div>
-                    <div class="card" onclick="showTab('pending')"><h3>Pending Approvals</h3><p class="data" id="pendingApprovals">0</p></div>
-                    <div class="card" onclick="showTab('enroll')"><h3>Total Students</h3><p class="data" id="totalStudents">0</p></div>
-                    <div class="card" onclick="showTab('attendance')"><h3>Today's Check-ins</h3><p class="data" id="totalDailyCheckIns">0</p></div>
-                    <div class="card" onclick="showTab('attendance')"><h3>Check-in Records</h3><p class="data" id="overallCheckInCount">0</p></div>
-                </div>
-            </section>
-
-            <!-- Users Section -->
-            <section id="users" class="tab-content">
-                <h2>System Users</h2>
-                <div class="toolbar">
-                    <input type="text" id="user-search" placeholder="Search by Name or Email...">
-                    <button onclick="exportTableToCSV('users-table', 'System_Users.csv')" class="btn-action">Export CSV</button>
-                </div>
-                <table class="data-table">
-                    <thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Role</th><th>Program</th><th>Status</th><th>Actions</th></tr></thead>
-                    <tbody id="users-table"><tr><td colspan="7">Loading...</td></tr></tbody>
-                </table>
-            </section>
-
-            <!-- Pending Approvals Section -->
-            <section id="pending" class="tab-content">
-                <h2>Pending Approvals</h2>
-                <table class="data-table">
-                    <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Program</th><th>Student ID</th><th>Registered</th><th>Actions</th></tr></thead>
-                    <tbody id="pending-table"><tr><td colspan="7">Loading...</td></tr></tbody>
-                </table>
-            </section>
-
-            <!-- Enroll Section -->
-            <section id="enroll" class="tab-content">
-                <h2>Enroll Accounts</h2>
-                <form id="add-account-form" class="inline-form">
-                    <input type="text" id="account-name" placeholder="Full Name" required>
-                    <input type="email" id="account-email" placeholder="Email" required>
-                    <input type="password" id="account-password" placeholder="Password" required>
-                    <select id="account-role" required><option value="student">Student</option><option value="admin">Admin</option><option value="lecturer">Lecturer</option></select>
-                    <input type="text" id="account-phone" placeholder="Phone">
-                    <select id="account-program" required><option value="KRCHN">KRCHN</option><option value="TVET">TVET</option></select>
-                    <select id="account-intake" required><option value="2024">2024</option><option value="2025">2025</option><option value="2026">2026</option></select>
-                    <select id="account-block-term" required><option value="">-- Select Block/Term --</option></select>
-                    <button type="submit">Enroll Account</button>
-                </form>
-                
-                <h3>Mass Promotion</h3>
-                <form id="mass-promotion-form" class="inline-form">
-                    <select id="promote_intake" required><option value="2024">2024</option><option value="2025">2025</option></select>
-                    <select id="promote_from_block" required><option value="">From Block</option></select>
-                    <select id="promote_to_block" required><option value="">To Block</option></select>
-                    <button type="submit" class="btn-danger">Execute Mass Promotion</button>
-                </form>
-                
-                <h3>Enrolled Students</h3>
-                <input type="text" id="student-search" placeholder="Search Students...">
-                <table class="data-table">
-                    <thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Program</th><th>Intake</th><th>Block/Term</th><th>Phone</th><th>Status</th><th>Actions</th></tr></thead>
-                    <tbody id="students-table"><tr><td colspan="9">Loading...</td></tr></tbody>
-                </table>
-            </section>
-
-            <!-- Courses Section -->
-            <section id="courses" class="tab-content">
-                <h2>Courses</h2>
-                <form id="add-course-form" class="inline-form">
-                    <input type="text" id="course-name" placeholder="Course Name" required>
-                    <input type="text" id="course-unit-code" placeholder="Unit Code" required>
-                    <input type="text" id="course-description" placeholder="Description">
-                    <select id="course-program" required><option value="KRCHN">KRCHN</option><option value="TVET">TVET</option></select>
-                    <select id="course-intake"><option value="2024">2024</option><option value="2025">2025</option></select>
-                    <select id="course-block"><option value="">Block/Term</option></select>
-                    <button type="submit">Add Course</button>
-                </form>
-                <table class="data-table">
-                    <thead><tr><th>Course Name</th><th>Unit Code</th><th>Program</th><th>Intake</th><th>Block</th><th>Actions</th></tr></thead>
-                    <tbody id="courses-table"><tr><td colspan="6">Loading...</td></tr></tbody>
-                </table>
-            </section>
-
-            <!-- Unit Management Section -->
-            <section id="unit-management" class="tab-content">
-                <h2><i class="fas fa-plus-circle"></i> Unit Registration Management</h2>
-                
-                <div class="unit-form-row">
-                    <input type="text" id="new_unit_code" placeholder="Unit Code">
-                    <input type="text" id="new_unit_name" placeholder="Unit Name">
-                    <select id="new_unit_program"><option value="KRCHN">KRCHN</option><option value="TVET">TVET</option></select>
-                    <select id="new_unit_block"><option value="Introductory">Introductory</option><option value="Block A">Block A</option><option value="Block B">Block B</option><option value="Block C">Block C</option><option value="Block D">Block D</option></select>
-                    <input type="number" id="new_unit_year" placeholder="Year" value="2025">
-                    <input type="number" id="new_unit_credits" placeholder="Credits" value="3">
-                    <button onclick="addNewUnitRecord()" class="btn-primary">Add Unit</button>
-                </div>
-                
-                <div class="filter-bar">
-                    <input type="text" id="unit_search" placeholder="Search...">
-                    <select id="unit_filter_program"><option value="">All Programs</option><option value="KRCHN">KRCHN</option><option value="TVET">TVET</option></select>
-                    <button onclick="loadAllUnits()" class="btn-action">Refresh</button>
-                </div>
-                
-                <div class="block-buttons">
-                    <button class="block-btn active" data-block="all" onclick="filterUnitsByBlock('all')">All</button>
-                    <button class="block-btn" data-block="Introductory" onclick="filterUnitsByBlock('Introductory')">Introductory</button>
-                    <button class="block-btn" data-block="Block A" onclick="filterUnitsByBlock('Block A')">Block A</button>
-                    <button class="block-btn" data-block="Block B" onclick="filterUnitsByBlock('Block B')">Block B</button>
-                    <button class="block-btn" data-block="Block C" onclick="filterUnitsByBlock('Block C')">Block C</button>
-                    <button class="block-btn" data-block="Block D" onclick="filterUnitsByBlock('Block D')">Block D</button>
-                </div>
-                
-                <div id="units-list-container">Loading units...</div>
-                
-                <div class="cards" style="margin-top: 20px;">
-                    <div class="card"><h3>Pending</h3><p class="data" id="pendingRegistrations">0</p></div>
-                    <div class="card"><h3>Approved</h3><p class="data" id="approvedRegistrations">0</p></div>
-                    <div class="card"><h3>Total</h3><p class="data" id="totalRegistrations">0</p></div>
-                </div>
-                
-                <button onclick="loadUnitPendingRegistrations()" class="btn-action">View Pending Approvals</button>
-                <div id="pending-registrations-list" style="display:none; margin-top:15px;"></div>
-                
-                <div style="margin-top: 30px;">
-                    <h3>Approved Registrations</h3>
-                    <input type="text" id="approved-search" placeholder="Search...">
-                    <table class="data-table">
-                        <thead><tr><th><input type="checkbox" id="selectAllApproved"></th><th>Student</th><th>Unit Code</th><th>Unit Name</th><th>Block</th><th>Approval Date</th><th>Actions</th></tr></thead>
-                        <tbody id="approved-registrations-body"><tr><td colspan="7">Loading...</td></tr></tbody>
-                    </table>
-                    <button onclick="bulkDeapproveSelected()" class="btn-danger">De-approve Selected</button>
-                </div>
-            </section>
-
-            <!-- Sessions Section -->
-            <section id="sessions" class="tab-content">
-                <h2>Manage Sessions</h2>
-                <form id="add-session-form" class="inline-form">
-                    <select id="new_session_type"><option value="classroom">Classroom</option><option value="clinical">Clinical</option><option value="event">Event</option></select>
-                    <input type="text" id="new_session_title" placeholder="Session Title" required>
-                    <input type="date" id="new_session_date" required>
-                    <input type="time" id="new_session_start_time">
-                    <select id="new_session_program"><option value="KRCHN">KRCHN</option><option value="TVET">TVET</option></select>
-                    <select id="new_session_intake_year"><option value="2024">2024</option><option value="2025">2025</option></select>
-                    <select id="new_session_block_term"><option value="">Block/Term</option></select>
-                    <button type="submit">Schedule Session</button>
-                </form>
-                <table class="data-table">
-                    <thead><tr><th>Type</th><th>Title</th><th>Date/Time</th><th>Program</th><th>Block</th><th>Actions</th></tr></thead>
-                    <tbody id="scheduledSessionsTableBody"><tr><td colspan="6">Loading...</td></tr></tbody>
-                </table>
-            </section>
-
-            <!-- Attendance Section -->
-            <section id="attendance" class="tab-content">
-                <h2>Attendance Management</h2>
-                <button onclick="adminCheckIn()" class="btn-primary">Admin Check-in</button>
-                <form id="manual-attendance-form" class="inline-form">
-                    <select id="att_student_id" required><option value="">Select Student</option></select>
-                    <select id="att_session_type" required><option value="classroom">Classroom</option><option value="clinical">Clinical</option></select>
-                    <input type="date" id="att_date">
-                    <input type="time" id="att_time">
-                    <select id="att_course_id"><option value="">Select Course</option></select>
-                    <input type="text" id="att_department" placeholder="Department/Location">
-                    <button type="submit">Record Attendance</button>
-                </form>
-                <h3>Today's Check-ins</h3>
-                <table class="data-table"><tbody id="attendance-table"><tr><td>Loading...</td></tr></tbody></table>
-                <h3>Past Records</h3>
-                <table class="data-table"><tbody id="past-attendance-table"><tr><td>Loading...</td></tr></tbody></table>
-            </section>
-
-            <!-- Exams Section -->
-            <section id="cats" class="tab-content">
-                <h2>CATS/Exams Management</h2>
-                <form id="add-exam-form" class="inline-form">
-                    <input type="text" id="exam_title" placeholder="Exam Title" required>
-                    <select id="exam_type" required><option value="CAT_1">CAT 1</option><option value="CAT_2">CAT 2</option><option value="EXAM">Final Exam</option></select>
-                    <input type="date" id="exam_date" required>
-                    <select id="exam_program" required><option value="KRCHN">KRCHN</option><option value="TVET">TVET</option></select>
-                    <select id="exam_course_id"><option value="">Select Course</option></select>
-                    <select id="exam_intake"><option value="2024">2024</option><option value="2025">2025</option></select>
-                    <select id="exam_block_term"><option value="">Block/Term</option></select>
-                    <input type="number" id="exam_duration_minutes" placeholder="Duration (mins)" value="60">
-                    <button type="submit">Add Exam</button>
-                </form>
-                <table class="data-table">
-                    <thead><tr><th>Type</th><th>Program</th><th>Course</th><th>Title</th><th>Date</th><th>Duration</th><th>Status</th><th>Actions</th></tr></thead>
-                    <tbody id="exams-table"><tr><td colspan="8">Loading...</td></tr></tbody>
-                </table>
-            </section>
-
-            <!-- Resources Section -->
-            <section id="resources" class="tab-content">
-                <h2>Resources Management</h2>
-                <form id="upload-resource-form" class="inline-form">
-                    <input type="text" id="resource-title" placeholder="Resource Title" required>
-                    <select id="resource_program" required><option value="KRCHN">KRCHN</option><option value="TVET">TVET</option></select>
-                    <select id="resource_intake"><option value="2024">2024</option><option value="2025">2025</option></select>
-                    <select id="resource_block"><option value="">Block/Term</option></select>
-                    <input type="file" id="resource-file" required>
-                    <button type="submit">Upload Resource</button>
-                </form>
-                <table class="data-table">
-                    <thead><tr><th>Program</th><th>Title</th><th>Intake</th><th>Block</th><th>Uploaded By</th><th>Date</th><th>Actions</th></tr></thead>
-                    <tbody id="resources-list"><tr><td colspan="7">Loading...</td></tr></tbody>
-                </table>
-            </section>
-
-            <!-- Messages Section -->
-            <section id="messages" class="tab-content">
-                <h2>Send Message</h2>
-                <form id="send-message-form" class="inline-form">
-                    <select id="msg_program"><option value="ALL">All Programs</option><option value="KRCHN">KRCHN</option><option value="TVET">TVET</option></select>
-                    <input type="text" id="msg_subject" placeholder="Subject">
-                    <textarea id="msg_body" placeholder="Message content" rows="3" style="width:100%"></textarea>
-                    <button type="submit">Send Message</button>
-                </form>
-                <h3>Sent Messages</h3>
-                <table class="data-table"><tbody id="adminMessagesTableBody"><tr><td>Loading...</td></tr></tbody></table>
-            </section>
-
-            <!-- Calendar Section -->
-            <section id="calendar" class="tab-content">
-                <h2>System Calendar</h2>
-                <div id="fullCalendarDisplay"></div>
-            </section>
-
-            <!-- Welcome Editor Section -->
-            <section id="welcome-editor" class="tab-content">
-                <h2>Welcome Message Editor</h2>
-                <form id="edit-welcome-form">
-                    <textarea id="welcome-message-editor" rows="10" style="width:100%"></textarea>
-                    <button type="submit">Save Welcome Message</button>
-                </form>
-                <h3>Live Preview</h3>
-                <div id="live-preview" style="background:#f8f9fa; padding:20px; border-radius:12px;"></div>
-            </section>
-
-            <!-- Audit Logs Section -->
-            <section id="audit" class="tab-content">
-                <h2>Audit Logs</h2>
-                <table class="data-table">
-                    <thead><tr><th>Timestamp</th><th>User</th><th>Action</th><th>Details</th><th>Status</th></tr></thead>
-                    <tbody id="audit-table"><tr><td colspan="5">Loading...</td></tr></tbody>
-                </table>
-            </section>
-
-            <!-- Security Section -->
-            <section id="security" class="tab-content">
-                <h2>Security Settings</h2>
-                <h3>System Status</h3>
-                <select id="global_status" onchange="updateSystemStatus(this.value)">
-                    <option value="ACTIVE">ACTIVE</option>
-                    <option value="MAINTENANCE">MAINTENANCE</option>
-                    <option value="OFFLINE">OFFLINE</option>
-                </select>
-                <textarea id="maintenance_message" placeholder="Maintenance message..."></textarea>
-                <button onclick="saveSystemMessage()">Save Message</button>
-                
-                <h3>Reset User Password</h3>
-                <form id="global-password-reset-form" class="inline-form">
-                    <input type="email" id="reset_user_email" placeholder="User Email" required>
-                    <input type="password" id="new_password" placeholder="New Password" required>
-                    <button type="submit">Reset Password</button>
-                </form>
-            </section>
-
-            <!-- Backup Section -->
-            <section id="backup" class="tab-content">
-                <h2>Backup & Restore</h2>
-                <button onclick="triggerBackup()" class="btn-primary">Create Backup Now</button>
-                <table class="data-table">
-                    <thead><tr><th>Backup Name</th><th>Date</th><th>Size</th><th>Actions</th></tr></thead>
-                    <tbody id="backup-history-table"><tr><td colspan="4">Loading...</td></tr></tbody>
-                </table>
-            </section>
-        </main>
-    </div>
-
-    <!-- MODALS -->
-    
-    <!-- Edit User Modal -->
-    <div id="userEditModal" class="modal" style="display:none;">
-        <div class="modal-content" style="max-width:600px; width:90%;">
-            <div class="modal-header"><h3>Edit User Profile</h3><span class="close" onclick="closeModal('userEditModal')">&times;</span></div>
-            <form id="edit-user-form">
-                <input type="hidden" id="edit_user_id">
-                <div class="form-group"><label>User ID:</label><span id="edit_user_id_display"></span></div>
-                <div class="form-group"><label>Full Name</label><input type="text" id="edit_user_name" class="form-input" required></div>
-                <div class="form-group"><label>Email</label><input type="email" id="edit_user_email" class="form-input" required></div>
-                <div class="form-group"><label>Role</label><select id="edit_user_role" class="form-input"><option value="student">Student</option><option value="lecturer">Lecturer</option><option value="admin">Admin</option><option value="superadmin">Super Admin</option></select></div>
-                <div class="form-group"><label>Program</label><select id="edit_user_program" class="form-input"></select></div>
-                <div class="form-group"><label>Intake Year</label><select id="edit_user_intake" class="form-input"><option value="2024">2024</option><option value="2025">2025</option><option value="2026">2026</option></select></div>
-                <div class="form-group"><label>Block/Term</label><select id="edit_user_block" class="form-input"></select></div>
-                <div class="form-group"><label>Account Status</label><select id="edit_user_block_status" class="form-input"><option value="false">Active</option><option value="true">Blocked</option></select></div>
-                <div class="form-group"><label>New Password (optional)</label><input type="password" id="edit_user_new_password" class="form-input"></div>
-                <div class="form-group"><label>Confirm Password</label><input type="password" id="edit_user_confirm_password" class="form-input"></div>
-                <div class="modal-actions"><button type="button" onclick="closeModal('userEditModal')" class="btn-secondary">Cancel</button><button type="submit" class="btn-primary">Save Changes</button></div>
-            </form>
+        <ul class="nav" id="mainNav">
+            <li><a href="#" data-tab="dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+            <li><a href="#" data-tab="users"><i class="fas fa-users"></i> Manage Users</a></li>
+            <li><a href="#" data-tab="pending"><i class="fas fa-clock"></i> Pending Approvals</a></li>
+            <li><a href="#" data-tab="enroll"><i class="fas fa-user-plus"></i> Enroll Accounts</a></li>
+            <li><a href="#" data-tab="courses"><i class="fas fa-book"></i> Courses</a></li>
+            <li><a href="#" data-tab="unit-management"><i class="fas fa-plus-circle"></i> Unit Registration</a></li>
+            <li><a href="#" data-tab="sessions"><i class="fas fa-calendar-alt"></i> Manage Sessions</a></li>
+            <li><a href="#" data-tab="attendance"><i class="fas fa-clipboard-check"></i> Attendance</a></li>
+            <li><a href="#" data-tab="cats"><i class="fas fa-file-alt"></i> CATS/Exams</a></li>
+            <li><a href="#" data-tab="resources"><i class="fas fa-file-upload"></i> Resources</a></li>
+            <li><a href="#" data-tab="messages"><i class="fas fa-inbox"></i> Inbox</a></li>
+            <li><a href="#" data-tab="calendar"><i class="fas fa-calendar"></i> System Calendar</a></li>
+            <li><a href="#" data-tab="welcome-editor"><i class="fas fa-edit"></i> Welcome Message</a></li>
+            <li><a href="#" data-tab="system-health"><i class="fas fa-heartbeat"></i> System Health</a></li>
+            <li><a href="#" data-tab="audit"><i class="fas fa-search"></i> Audit Logs</a></li>
+            <li><a href="#" data-tab="security"><i class="fas fa-cog"></i> Security</a></li>
+            <li><a href="#" data-tab="backup"><i class="fas fa-database"></i> Backup</a></li>
+        </ul>
+        <div class="logout">
+            <a href="#" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</a>
         </div>
-    </div>
+    </aside>
 
-    <!-- Edit Course Modal -->
-    <div id="courseEditModal" class="modal" style="display:none;">
-        <div class="modal-content"><div class="modal-header"><h3>Edit Course</h3><span class="close" onclick="closeModal('courseEditModal')">&times;</span></div>
-        <form id="edit-course-form"><input type="hidden" id="edit_course_id"><input type="text" id="edit_course_name" placeholder="Course Name"><input type="text" id="edit_course_unit_code" placeholder="Unit Code"><select id="edit_course_program"><option value="KRCHN">KRCHN</option><option value="TVET">TVET</option></select><select id="edit_course_intake"><option value="2024">2024</option><option value="2025">2025</option></select><select id="edit_course_block"></select><button type="submit">Update Course</button></form></div>
-    </div>
+    <main class="main">
+        <header>
+            <h1>⚡ Super Admin Control Center</h1>
+            <p>Full system oversight | Program synchronization | TVET + KRCHN</p>
+        </header>
 
-    <!-- Edit Exam Modal -->
-    <div id="examEditModal" class="modal" style="display:none;">
-        <div class="modal-content"><div class="modal-header"><h3>Edit Exam</h3><span class="close" onclick="closeModal('examEditModal')">&times;</span></div>
-        <form id="edit-exam-form"><input type="hidden" id="edit_exam_id"><input type="text" id="edit_exam_title" placeholder="Exam Title"><input type="date" id="edit_exam_date"><select id="edit_exam_status"><option value="Upcoming">Upcoming</option><option value="InProgress">In Progress</option><option value="Completed">Completed</option></select><button type="submit">Save Changes</button></form></div>
-    </div>
+        <!-- DASHBOARD -->
+        <section id="dashboard" class="tab-content active">
+            <div id="student-welcome-message" style="background:#eef2ff; padding:14px; border-radius:20px; margin-bottom:25px;"></div>
+            <div class="cards">
+                <div class="card" onclick="showTab('users')"><h3>Total Users</h3><p class="data" id="totalUsers">0</p></div>
+                <div class="card" onclick="showTab('pending')"><h3>Pending Approvals</h3><p class="data" id="pendingApprovals">0</p></div>
+                <div class="card" onclick="showTab('enroll')"><h3>Total Students</h3><p class="data" id="totalStudents">0</p></div>
+                <div class="card" onclick="showTab('attendance')"><h3>Today's Check-ins</h3><p class="data" id="totalDailyCheckIns">0</p></div>
+                <div class="card" onclick="showTab('attendance')"><h3>All Check-ins</h3><p class="data" id="overallCheckInCount">0</p></div>
+            </div>
+        </section>
 
-    <!-- Edit Unit Modal -->
-    <div id="editUnitModal" class="modal" style="display:none;">
-        <div class="modal-content"><div class="modal-header"><h3>Edit Unit</h3><span class="close" onclick="closeModal('editUnitModal')">&times;</span></div>
-        <form id="edit-unit-form"><input type="hidden" id="edit_unit_id"><input type="text" id="edit_unit_code" placeholder="Unit Code"><input type="text" id="edit_unit_name" placeholder="Unit Name"><select id="edit_unit_program"><option value="KRCHN">KRCHN</option><option value="TVET">TVET</option></select><select id="edit_unit_block"></select><button type="submit">Save Changes</button></form></div>
-    </div>
+        <!-- USERS -->
+        <section id="users" class="tab-content"><h2>👥 System Users</h2><div class="toolbar"><input type="text" id="user-search" placeholder="Search..."><button onclick="exportTableToCSV('users-table','users.csv')" class="btn-action">Export CSV</button></div><table class="data-table"><thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Role</th><th>Program</th><th>Status</th><th>Actions</th></tr></thead><tbody id="users-table"><tr><td colspan="7">Loading...</td></tr></tbody></table></section>
 
-    <!-- Map Modal -->
-    <div id="mapModal" class="modal" style="display:none;">
-        <div class="modal-content"><div class="modal-header"><h3>Location Map</h3><span class="close" onclick="closeModal('mapModal')">&times;</span></div>
-        <div id="mapbox-map" style="height:400px;"></div><p id="map-details"></p></div>
-    </div>
+        <!-- PENDING -->
+        <section id="pending" class="tab-content"><h2>⏳ Pending Approvals</h2><table class="data-table"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Program</th><th>Student ID</th><th>Registered</th><th>Actions</th></tr></thead><tbody id="pending-table"><tr><td colspan="7">Loading...</td></tr></tbody></table></section>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
-    <script type="module" src="script.js"></script>
-    
-    <script>
-        // Mobile navigation toggle
-        document.getElementById('mobileNavToggle')?.addEventListener('click', function() {
-            document.getElementById('sidebar').classList.toggle('active');
-            this.classList.toggle('active');
-        });
-        
-        function closeModal(modalId) {
-            const modal = document.getElementById(modalId);
-            if (modal) modal.style.display = 'none';
-        }
-        
-        function showTab(tabId) {
-            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
-            document.getElementById(tabId)?.classList.add('active');
-            document.querySelectorAll('.nav a').forEach(link => link.classList.remove('active'));
-            document.querySelector(`.nav a[data-tab="${tabId}"]`)?.classList.add('active');
-        }
-        
-        // Make functions global
-        window.closeModal = closeModal;
-        window.showTab = showTab;
-    </script>
+        <!-- ENROLL -->
+        <section id="enroll" class="tab-content"><h2>➕ Enroll New Account</h2><form id="add-account-form" class="inline-form"><input type="text" id="account-name" placeholder="Full Name" required><input type="email" id="account-email" placeholder="Email" required><input type="password" id="account-password" placeholder="Password" required><select id="account-role"><option value="student">Student</option><option value="lecturer">Lecturer</option><option value="admin">Admin</option></select><input type="text" id="account-phone" placeholder="Phone"><select id="account-program"><option value="KRCHN">KRCHN</option><option value="TVET">TVET</option></select><select id="account-intake"><option value="2024">2024</option><option value="2025">2025</option><option value="2026">2026</option></select><select id="account-block-term"><option value="">Block/Term</option></select><button type="submit">Enroll</button></form><h3>🚀 Mass Promotion</h3><form id="mass-promotion-form" class="inline-form"><select id="promote_intake"><option value="2024">2024</option><option value="2025">2025</option></select><select id="promote_from_block"><option>From Block</option></select><select id="promote_to_block"><option>To Block</option></select><button type="submit" class="btn-danger">Promote</button></form><h3>📋 Enrolled Students</h3><input type="text" id="student-search" placeholder="Search..."><table class="data-table"><thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Program</th><th>Intake</th><th>Block/Term</th><th>Phone</th><th>Status</th><th>Actions</th></tr></thead><tbody id="students-table"><tr><td colspan="9">Loading...</td></tr></tbody></table></section>
+
+        <!-- COURSES -->
+        <section id="courses" class="tab-content"><h2>📚 Course Catalog</h2><form id="add-course-form" class="inline-form"><input type="text" id="course-name" placeholder="Course Name"><input type="text" id="course-unit-code" placeholder="Unit Code"><input type="text" id="course-description" placeholder="Description"><select id="course-program"><option value="KRCHN">KRCHN</option><option value="TVET">TVET</option></select><select id="course-intake"><option value="2024">2024</option><option value="2025">2025</option></select><select id="course-block"><option>Block/Term</option></select><button type="submit">Add Course</button></form><table class="data-table"><thead><tr><th>Course Name</th><th>Unit Code</th><th>Program</th><th>Intake</th><th>Block</th><th>Actions</th></tr></thead><tbody id="courses-table"><tr><td colspan="6">Loading...</td></tr></tbody></table></section>
+
+        <!-- UNIT MANAGEMENT (FULL) -->
+        <section id="unit-management" class="tab-content"><h2><i class="fas fa-layer-group"></i> Unit Registration</h2><div class="unit-form-row" style="display:flex; gap:12px; flex-wrap:wrap; background:#f8fafc; padding:16px; border-radius:20px;"><input type="text" id="new_unit_code" placeholder="Unit Code"><input type="text" id="new_unit_name" placeholder="Unit Name"><select id="new_unit_program"><option value="KRCHN">KRCHN</option><option value="TVET">TVET</option></select><select id="new_unit_block"><option>Introductory</option><option>Block A</option><option>Block B</option></select><input type="number" id="new_unit_year" placeholder="Year" value="2025"><button onclick="addNewUnitRecord()" class="btn-primary">Add Unit</button></div><div class="filter-bar" style="display:flex; gap:12px; margin:15px 0;"><input type="text" id="unit_search" placeholder="Search unit"><select id="unit_filter_program"><option value="">All Programs</option><option value="KRCHN">KRCHN</option><option value="TVET">TVET</option></select><button onclick="loadAllUnits()" class="btn-action">Refresh</button></div><div class="block-buttons" id="blockFilterButtons"><button class="block-btn active" data-block="all" onclick="filterUnitsByBlock('all')">All</button><button class="block-btn" data-block="Introductory" onclick="filterUnitsByBlock('Introductory')">Introductory</button><button class="block-btn" data-block="Block A" onclick="filterUnitsByBlock('Block A')">Block A</button><button class="block-btn" data-block="Block B" onclick="filterUnitsByBlock('Block B')">Block B</button></div><div id="units-list-container">Loading units...</div><div class="cards" style="margin-top:25px;"><div class="card"><h3>Pending Registrations</h3><p class="data" id="pendingRegistrations">0</p></div><div class="card"><h3>Approved</h3><p class="data" id="approvedRegistrations">0</p></div><div class="card"><h3>Total</h3><p class="data" id="totalRegistrations">0</p></div></div><button onclick="loadUnitPendingRegistrations()" class="btn-action">📋 View Pending Approvals</button><div id="pending-registrations-list" style="margin-top:20px; display:none;"></div><div style="margin-top:30px;"><h3>✅ Approved Registrations</h3><input type="text" id="approved-search" placeholder="Search..."><table class="data-table"><thead><tr><th><input type="checkbox" id="selectAllApproved"></th><th>Student</th><th>Unit Code</th><th>Unit Name</th><th>Block</th><th>Approval Date</th><th>Actions</th></tr></thead><tbody id="approved-registrations-body"><tr><td colspan="7">Loading...</td></tr></tbody></table><button onclick="bulkDeapproveSelected()" class="btn-danger">De-approve Selected</button></div></section>
+
+        <!-- SESSIONS -->
+        <section id="sessions" class="tab-content"><h2>📅 Scheduled Sessions</h2><form id="add-session-form" class="inline-form"><select id="new_session_type"><option value="classroom">Classroom</option><option value="clinical">Clinical</option></select><input type="text" id="new_session_title" placeholder="Title"><input type="date" id="new_session_date"><input type="time" id="new_session_start_time"><select id="new_session_program"><option value="KRCHN">KRCHN</option><option value="TVET">TVET</option></select><select id="new_session_intake_year"><option>2024</option><option>2025</option></select><select id="new_session_block_term"><option>Block/Term</option></select><button type="submit">Schedule</button></form><table class="data-table"><thead><tr><th>Type</th><th>Title</th><th>Date/Time</th><th>Program</th><th>Block</th><th>Actions</th></tr></thead><tbody id="scheduledSessionsTableBody"><tr><td colspan="6">Loading...</td></tr></tbody></table></section>
+
+        <!-- ATTENDANCE -->
+        <section id="attendance" class="tab-content"><h2>📍 Attendance Hub</h2><button onclick="adminCheckIn()" class="btn-primary">Admin Self Check-in</button><form id="manual-attendance-form" class="inline-form"><select id="att_student_id"><option>Select Student</option></select><select id="att_session_type"><option value="classroom">Classroom</option><option value="clinical">Clinical</option></select><input type="date" id="att_date"><select id="att_course_id"><option>Course</option></select><input type="text" id="att_department" placeholder="Dept/Location"><button type="submit">Manual Entry</button></form><h3>Today's Check-ins</h3><table class="data-table"><tbody id="attendance-table"><tr><td>Loading...</td></tr></tbody></table><h3>Past History</h3><table class="data-table"><tbody id="past-attendance-table"><tr><td>Loading...</td></tr></tbody></table></section>
+
+        <!-- CATS/EXAMS -->
+        <section id="cats" class="tab-content"><h2>📝 Exams & CATs</h2><form id="add-exam-form" class="inline-form"><input type="text" id="exam_title" placeholder="Exam Title"><select id="exam_type"><option value="CAT_1">CAT 1</option><option value="CAT_2">CAT 2</option><option value="EXAM">Final Exam</option></select><input type="date" id="exam_date"><select id="exam_program"><option value="KRCHN">KRCHN</option><option value="TVET">TVET</option></select><select id="exam_course_id"><option>Course</option></select><select id="exam_intake"><option>2024</option><option>2025</option></select><select id="exam_block_term"><option>Block/Term</option></select><input type="number" id="exam_duration_minutes" placeholder="Duration mins"><button type="submit">Add Exam</button></form><table class="data-table"><thead><tr><th>Type</th><th>Program</th><th>Course</th><th>Title</th><th>Date</th><th>Duration</th><th>Status</th><th>Actions</th></tr></thead><tbody id="exams-table"><tr><td colspan="8">Loading...</td></tr></tbody></table></section>
+
+        <!-- RESOURCES -->
+        <section id="resources" class="tab-content"><h2>📁 Resources</h2><form id="upload-resource-form" class="inline-form"><input type="text" id="resource-title" placeholder="Title"><select id="resource_program"><option value="KRCHN">KRCHN</option><option value="TVET">TVET</option></select><select id="resource_intake"><option>2024</option><option>2025</option></select><select id="resource_block"><option>Block/Term</option></select><input type="file" id="resource-file"><button type="submit">Upload</button></form><table class="data-table"><thead><tr><th>Program</th><th>Title</th><th>Intake</th><th>Block</th><th>Uploaded By</th><th>Date</th><th>Actions</th></tr></thead><tbody id="resources-list"><tr><td colspan="7">Loading...</td></tr></tbody></table></section>
+
+        <!-- MESSAGES -->
+        <section id="messages" class="tab-content"><h2>💬 Broadcast Message</h2><form id="send-message-form" class="inline-form"><select id="msg_program"><option value="ALL">All Programs</option><option value="KRCHN">KRCHN</option><option value="TVET">TVET</option></select><input type="text" id="msg_subject" placeholder="Subject"><textarea id="msg_body" rows="2" placeholder="Message"></textarea><button type="submit">Send</button></form><h3>Sent Messages</h3><table class="data-table"><tbody id="adminMessagesTableBody"><tr><td>Loading...</td></tr></tbody></table></section>
+
+        <!-- CALENDAR -->
+        <section id="calendar" class="tab-content"><h2>📆 Unified Calendar</h2><div id="fullCalendarDisplay"></div></section>
+
+        <!-- WELCOME EDITOR -->
+        <section id="welcome-editor" class="tab-content"><h2>✏️ Welcome Message Editor</h2><form id="edit-welcome-form"><textarea id="welcome-message-editor" rows="6" style="width:100%"></textarea><button type="submit">Save Welcome Message</button></form><div id="live-preview" style="background:#f1f5f9; border-radius:20px; padding:18px; margin-top:20px;"></div></section>
+
+        <!-- SYSTEM HEALTH -->
+        <section id="system-health" class="tab-content"><h2>🩺 System Health</h2><div class="health-cards"><div class="health-card"><h4>Server Load</h4><div class="progress-bar"><div id="server-load-bar" class="progress-fill" style="width:45%"></div></div><span id="server-load-text">45%</span></div><div class="health-card"><h4>DB Performance</h4><div class="progress-bar"><div id="db-performance-bar" class="progress-fill" style="width:78%"></div></div><span id="db-query-time">78%</span></div></div></section>
+
+        <!-- AUDIT -->
+        <section id="audit" class="tab-content"><h2>📜 Audit Logs</h2><table class="data-table"><thead><tr><th>Timestamp</th><th>User</th><th>Action</th><th>Details</th><th>Status</th></tr></thead><tbody id="audit-table"><tr><td colspan="5">Loading...</td></tr></tbody></table></section>
+
+        <!-- SECURITY -->
+        <section id="security" class="tab-content"><h2>🔐 Security & Maintenance</h2><label>System Status</label><select id="global_status" onchange="updateSystemStatus(this.value)"><option value="ACTIVE">ACTIVE</option><option value="MAINTENANCE">MAINTENANCE</option></select><textarea id="maintenance_message" placeholder="Message" rows="2"></textarea><button onclick="saveSystemMessage()">Save</button><hr><h3>Password Reset</h3><form id="global-password-reset-form" class="inline-form"><input type="email" id="reset_user_email" placeholder="User Email"><input type="password" id="new_password" placeholder="New Password"><button type="submit">Reset Password</button></form></section>
+
+        <!-- BACKUP -->
+        <section id="backup" class="tab-content"><h2>💾 Backup & Restore</h2><button onclick="triggerBackup()" class="btn-primary">Create Backup Now</button><table class="data-table"><thead><tr><th>Backup Name</th><th>Date</th><th>Size</th><th>Actions</th></tr></thead><tbody id="backup-history-table"><tr><td colspan="4">Loading...</td></tr></tbody></table></section>
+    </main>
+</div>
+
+<!-- ************************** ALL CRITICAL MODALS ************************** -->
+<!-- EDIT USER MODAL (Fixes the original error) -->
+<div id="userEditModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header"><h3>✏️ Edit User Profile</h3><span class="close" onclick="closeModal('userEditModal')">&times;</span></div>
+        <form id="edit-user-form">
+            <input type="hidden" id="edit_user_id">
+            <div class="form-group"><label>User ID</label><span id="edit_user_id_display" style="background:#f1f5f9; padding:6px 12px; border-radius:12px; display:inline-block;"></span></div>
+            <div class="form-group"><label>Full Name</label><input type="text" id="edit_user_name" class="form-input" required></div>
+            <div class="form-group"><label>Email</label><input type="email" id="edit_user_email" class="form-input" required></div>
+            <div class="form-group"><label>Role</label><select id="edit_user_role" class="form-input"><option value="student">Student</option><option value="lecturer">Lecturer</option><option value="admin">Admin</option><option value="superadmin">Super Admin</option></select></div>
+            <div class="form-group"><label>Program</label><select id="edit_user_program" class="form-input"></select></div>
+            <div class="form-group"><label>Intake Year</label><select id="edit_user_intake" class="form-input"><option value="2024">2024</option><option value="2025">2025</option><option value="2026">2026</option></select></div>
+            <div class="form-group"><label>Block / Term</label><select id="edit_user_block" class="form-input"></select></div>
+            <div class="form-group"><label>Account Status</label><select id="edit_user_block_status" class="form-input"><option value="false">Active</option><option value="true">Blocked</option></select></div>
+            <div class="form-group"><label>New Password (optional)</label><input type="password" id="edit_user_new_password" class="form-input"></div>
+            <div class="form-group"><label>Confirm Password</label><input type="password" id="edit_user_confirm_password" class="form-input"></div>
+            <div class="modal-actions"><button type="button" class="btn-secondary" onclick="closeModal('userEditModal')">Cancel</button><button type="submit" class="btn-primary">Save Changes</button></div>
+        </form>
+    </div>
+</div>
+
+<!-- COURSE EDIT MODAL -->
+<div id="courseEditModal" class="modal"><div class="modal-content"><div class="modal-header"><h3>Edit Course</h3><span class="close" onclick="closeModal('courseEditModal')">&times;</span></div><form id="edit-course-form"><input type="hidden" id="edit_course_id"><input type="text" id="edit_course_name" placeholder="Course Name"><input type="text" id="edit_course_unit_code" placeholder="Unit Code"><select id="edit_course_program"><option value="KRCHN">KRCHN</option><option value="TVET">TVET</option></select><select id="edit_course_intake"><option>2024</option><option>2025</option></select><select id="edit_course_block"></select><button type="submit">Update</button></form></div></div>
+
+<!-- EXAM EDIT MODAL -->
+<div id="examEditModal" class="modal"><div class="modal-content"><div class="modal-header"><h3>Edit Exam</h3><span class="close" onclick="closeModal('examEditModal')">&times;</span></div><form id="edit-exam-form"><input type="hidden" id="edit_exam_id"><input type="text" id="edit_exam_title"><input type="date" id="edit_exam_date"><select id="edit_exam_status"><option>Upcoming</option><option>InProgress</option></select><button type="submit">Save</button></form></div></div>
+
+<!-- EDIT UNIT MODAL -->
+<div id="editUnitModal" class="modal"><div class="modal-content"><div class="modal-header"><h3>Edit Unit</h3><span class="close" onclick="closeModal('editUnitModal')">&times;</span></div><form id="edit-unit-form"><input type="hidden" id="edit_unit_id"><input type="text" id="edit_unit_code"><input type="text" id="edit_unit_name"><select id="edit_unit_program"><option value="KRCHN">KRCHN</option><option value="TVET">TVET</option></select><select id="edit_unit_block"></select><button type="submit">Save Changes</button></form></div></div>
+
+<!-- MAP MODAL -->
+<div id="mapModal" class="modal"><div class="modal-content"><div class="modal-header"><h3>📍 Location Map</h3><span class="close" onclick="closeModal('mapModal')">&times;</span></div><div id="mapbox-map" style="height: 350px;"></div><p id="map-details"></p></div></div>
+
+<!-- ========== EXTERNAL SCRIPTS ========== -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+
+<!-- YOUR FULL JAVASCRIPT (script.js) - this must be the same file you shared -->
+<script type="module" src="script.js"></script>
+
+<!-- Mobile toggle helper -->
+<script>
+    document.getElementById('mobileNavToggle')?.addEventListener('click', () => {
+        document.getElementById('sidebar').classList.toggle('active');
+    });
+    window.closeModal = function(modalId) {
+        const m = document.getElementById(modalId);
+        if(m) m.style.display = 'none';
+    };
+    window.showTab = function(tabId) {
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+        const active = document.getElementById(tabId);
+        if(active) active.classList.add('active');
+        document.querySelectorAll('.nav a').forEach(link => link.classList.remove('active'));
+        const navLink = document.querySelector(`.nav a[data-tab="${tabId}"]`);
+        if(navLink) navLink.classList.add('active');
+        if(window.loadSectionData) loadSectionData(tabId);
+    };
+    // Additional dummy functions to avoid reference errors before main script loads
+    window.logout = () => { window.location.href = "login.html"; };
+</script>
 </body>
 </html>
