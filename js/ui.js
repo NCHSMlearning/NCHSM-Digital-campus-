@@ -1,4 +1,4 @@
-// js/ui.js - COMPLETE FIXED VERSION WITH UNIT REGISTRATION
+// js/ui.js - COMPLETE FIXED VERSION WITH EXAM CARD
 class UIModule {
     constructor() {
         console.log('🚀 Initializing UIModule...');
@@ -16,7 +16,7 @@ class UIModule {
         // Store tab state
         this.storageKey = 'nchsm_last_tab';
         
-        // Define valid tabs - ADDED unit-registration AND learning-hub
+        // Define valid tabs - ADDED exam-card
         this.validTabs = [
             'dashboard', 
             'profile', 
@@ -29,11 +29,11 @@ class UIModule {
             'support-tickets', 
             'nurseiq', 
             'unit-registration',     
-            'learning-hub'             
-            'exam-card'    
+            'learning-hub',            // ← Added comma here
+            'exam-card'                // ← Added exam-card
         ];
         
-        // Define clean URL paths - ADDED unit-registration AND learning-hub
+        // Define clean URL paths
         this.tabPaths = {
             'dashboard': '/',
             'profile': '/profile', 
@@ -46,8 +46,8 @@ class UIModule {
             'support-tickets': '/support-tickets',
             'nurseiq': '/nurseiq',
             'unit-registration': '/unit-registration',   
-            'learning-hub': '/learning-hub'              
-            'exam-card': '/exam-card'
+            'learning-hub': '/learning-hub',              // ← Added comma here
+            'exam-card': '/exam-card'                    // ← Added exam-card
         };
         
         // Reverse lookup
@@ -69,7 +69,8 @@ class UIModule {
             'support-tickets': 'Support Tickets',
             'nurseiq': 'NurseIQ',
             'unit-registration': 'Unit Registration',
-            'learning-hub': 'My Learning Hub'    // ← NEW
+            'learning-hub': 'My Learning Hub',
+            'exam-card': 'Exam Card'                      // ← Added exam-card display name
         };
         
         // Footer buttons
@@ -786,7 +787,7 @@ class UIModule {
                     if (typeof loadCourses === 'function') loadCourses();
                     break;
                     
-                case 'learning-hub':  // ← NEW unified learning hub
+                case 'learning-hub':
                     console.log('📦 Loading Unified Learning Hub (Courses + Registration)');
                     if (typeof loadCourses === 'function') loadCourses();
                     if (typeof loadUnitRegistration === 'function') loadUnitRegistration();
@@ -821,13 +822,27 @@ class UIModule {
                     if (typeof loadSupportTickets === 'function') loadSupportTickets();
                     break;
                     
-                case 'unit-registration':  // ← Keep for backward compatibility
+                case 'unit-registration':
                     console.log('📦 Loading Unit Registration module');
                     if (typeof loadUnitRegistration === 'function') {
                         loadUnitRegistration();
                     } else if (window.unitRegistration && typeof window.unitRegistration.loadRegistered === 'function') {
                         window.unitRegistration.loadRegistered();
                         window.unitRegistration.loadUnits();
+                    }
+                    break;
+                    
+                // ADD EXAM CARD CASE HERE
+                case 'exam-card':
+                    console.log('📇 Loading Exam Card module...');
+                    if (typeof initExamCard === 'function') {
+                        initExamCard();
+                    } else {
+                        console.warn('⚠️ initExamCard not found');
+                        const container = document.getElementById('exam-card-content');
+                        if (container) {
+                            container.innerHTML = '<div class="empty-state"><i class="fas fa-spinner fa-spin"></i><p>Loading exam card module...</p></div>';
+                        }
                     }
                     break;
                     
@@ -869,6 +884,11 @@ class UIModule {
             window.dashboardModule.refreshDashboard();
         } else if (typeof loadDashboard === 'function') {
             loadDashboard();
+        }
+        
+        // Also refresh exam card data if visible
+        if (this.currentTab === 'exam-card' && typeof initExamCard === 'function') {
+            initExamCard();
         }
     }
     
