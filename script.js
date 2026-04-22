@@ -4634,7 +4634,452 @@ window.rejectStudentAllUnits = rejectStudentAllUnits;
 window.bulkApproveSelectedUnits = bulkApproveSelectedUnits;
 window.bulkRejectSelectedUnits = bulkRejectSelectedUnits;
 
+// ============ FEE ACCOUNTS MANAGEMENT ============
 
+// Database tables needed (create these in Supabase):
+// - student_accounts (id, student_id, balance, last_payment_date)
+// - fee_payments (id, student_id, amount, method, reference, date, period, notes, receipt_no)
+// - fee_structure (id, program, block, amount)
+// - unit_fees (id, unit_id, fee_amount)
+
+// Load all student accounts with balances
+async function loadStudentAccounts() {
+    const { data: students, error } = await supabase
+        .from('users')
+        .select('id, name, email, program, intake_year, block_term')
+        .eq('role', 'student')
+        .eq('status', 'approved');
+    
+    if (error) {
+        console.error('Error loading students:', error);
+        return;
+    }
+    
+    const accountsHTML = [];
+    let totalOutstanding = 0;
+    let totalCollected = 0;
+    let overdueCount = 0;
+    
+    for (const student of students) {
+        // Get total fees due based on registered units
+        const { data: registrations } = await supabase
+            .from('unit_registrations')
+            .select('unit_id')
+            .eq('student_id', student.id)
+            .eq('status', 'approved');
+        
+        let totalDue = 0;
+        if (registrations) {
+            for (const reg of registrations) {
+                const { data: unit } = await supabase
+                    .from('units')
+                    .select('fee_amount')
+                    .eq('id', reg.unit_id)
+                    .single();
+                if (unit) totalDue += unit.fee_amount || 0;
+            }
+        }
+        
+        // Get total paid
+        const { data: payments } = await supabase
+            .from('fee_payments')
+            .select('amount')
+            .eq('student_id', student.id);
+        
+        const totalPaid = payments ? payments.reduce((sum, p) => sum + p.amount, 0) : 0;
+        const balance = totalDue - totalPaid;
+        
+        if (balance > 0) totalOutstanding += balance;
+        totalCollected += totalPaid;
+        
+        // Check overdue (balance > 0 and last payment > 30 days)
+        const { data: lastPayment } = await supabase
+            .from('fee_payments')
+            .select('date')
+            .eq('student_id', student.id)
+            .order('date', { ascending: false })
+            .limit(1);
+        
+        let isOverdue = false;
+        if (balance > 0) {
+            if (lastPayment && lastPayment.length > 0) {
+                const lastDate = new Date(lastPayment[0].date);
+                const daysSince = (new Date() - lastDate) / (1000 * 3600 * 24);
+                if (daysSince > 30) isOverdue = true;
+            } else {
+                isOverdue = true; // No payments ever
+            }
+        }
+        
+        if (isOverdue) overdueCount++;
+        
+        const statusClass = balance <= 0 ? 'badge-success' : (isOverdue ? 'badge-danger' : 'badge-warning');
+        const statusText = balance <= 0 ? 'Paid' : (isOverdue ? 'Overdue' : 'Outstanding');
+        
+        accountsHTML.push(`
+            <tr>
+                <td>${student.name}</td>
+                <td>${student.id}</td>
+                <td>${student.program}</td>
+                <td>${student.intake_year}</td>
+                <td>KES ${totalDue.toLocaleString()}</td>
+                <td>KES ${totalPaid.toLocaleString()}</td>
+                <td class="${balance < 0 ? 'text-success' : 'text-danger'}">KES ${balance.toLocaleString()}</td>
+                <td><span class="badge ${statusClass}">${statusText}</span></td>
+                <td>
+                    <button onclick="viewPaymentHistory('${student.id}', '${student.name}')" class="btn-sm btn-edit">
+                        <i class="fas fa-history"></i> History
+                    </button>
+                    <button onclick="recordPaymentForStudent('${student.id}')" class="btn-sm btn-success">
+                        <i class="fas fa-plus"></i> Payment
+                    </button>
+                </td>
+            </tr>
+        `);
+    }
+    
+    document.getElementById('student-accounts-body').innerHTML = accountsHTML.join('');
+    document.getElementById('totalOutstandingBalance').innerText = `KES ${totalOutstanding.toLocaleString()}`;
+    document.getElementById('totalCollected').innerText = `KES ${totalCollected.toLocaleString()}`;
+    document.getElementById('overdueAccounts').innerText = overdueCount;
+    
+    // Update today's collections
+    const today = new Date().toISOString().split('T')[0];
+    const { data: todayPayments } = await supabase
+        .from('fee_payments')
+        .select('amount')
+        .eq('date', today);
+    
+    const todayTotal = todayPayments ? todayPayments.reduce((sum, p) => sum + p.amount, 0) : 0;
+    document.getElementById('todayCollections').innerText = `KES ${todayTotal.toLocaleString()}`;
+}
+
+// Record a fee payment
+async function recordPayment() {
+    const studentId = document.getElementById('payment_student_id').value;
+    const amount = parseFloat(document.getElementById('payment_amount').value);
+    const method = document.getElementById('payment_method').value;
+    const reference = document.getElementById('payment_reference').value;
+    const date = document.getElementById('payment_date').value;
+    const period = document.getElementById('payment_period').value;
+    const notes = document.getElementById('payment_notes').value;
+    
+    if (!studentId || !amount || !date) {
+        alert('Please fill in student, amount, and date');
+        return;
+    }
+    
+    // Generate receipt number
+    const receiptNo = `RCPT-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    
+    const { data, error } = await supabase
+        .from('fee_payments')
+        .insert([{
+            student_id: studentId,
+            amount: amount,
+            payment_method: method,
+            reference: reference,
+            date: date,
+            period: period,
+            notes: notes,
+            receipt_no: receiptNo,
+            recorded_by: getCurrentUserId()
+        }]);
+    
+    if (error) {
+        alert('Error recording payment: ' + error.message);
+    } else {
+        alert(`Payment recorded successfully!\nReceipt No: ${receiptNo}`);
+        clearPaymentForm();
+        loadStudentAccounts();
+        generateReceipt(receiptNo, studentId, amount, date);
+    }
+}
+
+// View payment history for a student
+async function viewPaymentHistory(studentId, studentName) {
+    document.getElementById('paymentHistoryTitle').innerHTML = `Payment History - ${studentName}`;
+    document.getElementById('paymentHistoryModal').style.display = 'flex';
+    
+    const { data: payments, error } = await supabase
+        .from('fee_payments')
+        .select('*')
+        .eq('student_id', studentId)
+        .order('date', { ascending: false });
+    
+    if (error) {
+        document.getElementById('paymentHistoryBody').innerHTML = '<p>Error loading payment history</p>';
+        return;
+    }
+    
+    const { data: registrations } = await supabase
+        .from('unit_registrations')
+        .select('unit_id, status')
+        .eq('student_id', studentId);
+    
+    let html = `
+        <h4>Payment Summary</h4>
+        <div class="cards">
+            <div class="card"><h3>Total Paid</h3><p class="data">KES ${payments.reduce((s, p) => s + p.amount, 0).toLocaleString()}</p></div>
+            <div class="card"><h3>Registered Units</h3><p class="data">${registrations ? registrations.length : 0}</p></div>
+        </div>
+        <h4>Payment Transactions</h4>
+        <table class="data-table">
+            <thead><tr><th>Date</th><th>Amount</th><th>Method</th><th>Reference</th><th>Period</th><th>Receipt No</th></tr></thead>
+            <tbody>
+    `;
+    
+    for (const payment of payments) {
+        html += `
+            <tr>
+                <td>${payment.date}</td>
+                <td>KES ${payment.amount.toLocaleString()}</td>
+                <td>${payment.payment_method}</td>
+                <td>${payment.reference || '-'}</td>
+                <td>${payment.period || '-'}</td>
+                <td>${payment.receipt_no}</td>
+            </tr>
+        `;
+    }
+    
+    html += `</tbody></table>`;
+    document.getElementById('paymentHistoryBody').innerHTML = html;
+}
+
+// Check if student can register for a unit (fee clearance)
+async function checkFeeClearance(studentId, unitId) {
+    // Get unit fee
+    const { data: unit } = await supabase
+        .from('units')
+        .select('fee_amount')
+        .eq('id', unitId)
+        .single();
+    
+    if (!unit) return { allowed: false, message: 'Unit not found' };
+    
+    // Get student's current balance
+    const { data: payments } = await supabase
+        .from('fee_payments')
+        .select('amount')
+        .eq('student_id', studentId);
+    
+    const totalPaid = payments ? payments.reduce((s, p) => s + p.amount, 0) : 0;
+    
+    const { data: registrations } = await supabase
+        .from('unit_registrations')
+        .select('unit_id')
+        .eq('student_id', studentId)
+        .eq('status', 'approved');
+    
+    let totalDue = 0;
+    if (registrations) {
+        for (const reg of registrations) {
+            const { data: regUnit } = await supabase
+                .from('units')
+                .select('fee_amount')
+                .eq('id', reg.unit_id)
+                .single();
+            if (regUnit) totalDue += regUnit.fee_amount || 0;
+        }
+    }
+    totalDue += unit.fee_amount;
+    
+    const balance = totalDue - totalPaid;
+    
+    if (balance > 0) {
+        return { 
+            allowed: false, 
+            message: `Fee clearance required. Outstanding balance: KES ${balance.toLocaleString()}. Please pay KES ${unit.fee_amount.toLocaleString()} to register for this unit.`,
+            balance: balance
+        };
+    }
+    
+    return { allowed: true, message: 'Fee clearance OK' };
+}
+
+// Update registration approval with fee check
+async function approveUnitRegistrationWithFeeCheck(registrationId, studentId, unitId) {
+    const feeCheck = await checkFeeClearance(studentId, unitId);
+    
+    if (!feeCheck.allowed) {
+        alert(feeCheck.message);
+        return false;
+    }
+    
+    const { error } = await supabase
+        .from('unit_registrations')
+        .update({ 
+            status: 'approved', 
+            approved_at: new Date().toISOString(),
+            approved_by: getCurrentUserId()
+        })
+        .eq('id', registrationId);
+    
+    if (error) {
+        alert('Error approving registration: ' + error.message);
+        return false;
+    }
+    
+    alert('Registration approved! Student fee status verified.');
+    loadUnitPendingRegistrations();
+    loadStudentAccounts();
+    return true;
+}
+
+// Generate receipt
+async function generateReceipt(receiptNo, studentId, amount, date) {
+    const { data: student } = await supabase
+        .from('users')
+        .select('name, email')
+        .eq('id', studentId)
+        .single();
+    
+    const receiptHTML = `
+        <div style="border: 1px solid #ddd; padding: 20px; max-width: 400px;">
+            <h3>NCHSM Fee Receipt</h3>
+            <p><strong>Receipt No:</strong> ${receiptNo}</p>
+            <p><strong>Student:</strong> ${student.name}</p>
+            <p><strong>Amount:</strong> KES ${amount.toLocaleString()}</p>
+            <p><strong>Date:</strong> ${date}</p>
+            <hr>
+            <p>Thank you for your payment!</p>
+        </div>
+    `;
+    
+    // Open in new window for printing
+    const win = window.open();
+    win.document.write(receiptHTML);
+    win.document.close();
+}
+
+// Helper functions
+function clearPaymentForm() {
+    document.getElementById('payment_amount').value = '';
+    document.getElementById('payment_reference').value = '';
+    document.getElementById('payment_notes').value = '';
+    document.getElementById('payment_date').value = new Date().toISOString().split('T')[0];
+}
+
+function recordPaymentForStudent(studentId) {
+    document.getElementById('payment_student_id').value = studentId;
+    document.getElementById('payment_date').value = new Date().toISOString().split('T')[0];
+    document.getElementById('payment_amount').focus();
+}
+
+function showOutstandingPayments() {
+    document.getElementById('account_balance_filter').value = 'negative';
+    filterByBalanceStatus();
+}
+
+function showTodayPayments() {
+    alert(`Today's total collections: ${document.getElementById('todayCollections').innerText}`);
+}
+
+function showOverdueAccounts() {
+    document.getElementById('account_balance_filter').value = 'overdue';
+    filterByBalanceStatus();
+}
+
+function filterByBalanceStatus() {
+    const filter = document.getElementById('account_balance_filter').value;
+    const rows = document.querySelectorAll('#student-accounts-body tr');
+    
+    rows.forEach(row => {
+        const balanceCell = row.cells[6];
+        const statusCell = row.cells[7];
+        if (!balanceCell) return;
+        
+        const balanceText = balanceCell.innerText.replace('KES', '').replace(',', '').trim();
+        const balance = parseFloat(balanceText);
+        const isOverdue = statusCell.innerText.includes('Overdue');
+        
+        let show = true;
+        if (filter === 'positive') show = balance < 0;
+        else if (filter === 'zero') show = balance === 0;
+        else if (filter === 'negative') show = balance > 0;
+        else if (filter === 'overdue') show = isOverdue;
+        
+        row.style.display = show ? '' : 'none';
+    });
+}
+
+function searchStudentAccount() {
+    const search = document.getElementById('account_search').value.toLowerCase();
+    const rows = document.querySelectorAll('#student-accounts-body tr');
+    
+    rows.forEach(row => {
+        const name = row.cells[0]?.innerText.toLowerCase() || '';
+        const id = row.cells[1]?.innerText.toLowerCase() || '';
+        const matches = name.includes(search) || id.includes(search);
+        row.style.display = matches ? '' : 'none';
+    });
+}
+
+function exportAccountsToCSV() {
+    const rows = document.querySelectorAll('#student-accounts-body tr');
+    const csv = [];
+    
+    csv.push(['Name', 'ID', 'Program', 'Intake', 'Total Due', 'Total Paid', 'Balance', 'Status'].join(','));
+    
+    rows.forEach(row => {
+        if (row.style.display !== 'none') {
+            const cols = [];
+            for (let i = 0; i < 8; i++) {
+                cols.push('"' + (row.cells[i]?.innerText.replace(/"/g, '""') || '') + '"');
+            }
+            csv.push(cols.join(','));
+        }
+    });
+    
+    const blob = new Blob([csv.join('\n')], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'Student_Accounts_Export.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+async function updateFeeStructure() {
+    const program = document.getElementById('fee_program').value;
+    const block = document.getElementById('fee_block').value;
+    const amount = parseFloat(document.getElementById('fee_amount').value);
+    
+    if (!program || !block || !amount) {
+        alert('Please fill all fields');
+        return;
+    }
+    
+    const { error } = await supabase
+        .from('fee_structure')
+        .upsert([{ program, block, amount }], { onConflict: 'program,block' });
+    
+    if (error) {
+        alert('Error updating fee structure: ' + error.message);
+    } else {
+        alert('Fee structure updated successfully!');
+        loadFeeStructure();
+    }
+}
+
+async function loadFeeStructure() {
+    const { data, error } = await supabase
+        .from('fee_structure')
+        .select('*')
+        .order('program');
+    
+    if (error) {
+        document.getElementById('currentFeeStructure').innerHTML = '<p>Error loading fee structure</p>';
+        return;
+    }
+    
+    let html = '<h4>Current Fee Structure</h4><table class="data-table"><thead><tr><th>Program</th><th>Block</th><th>Amount (KES)</th></tr></thead><tbody>';
+    for (const fee of data) {
+        html += `<tr><td>${fee.program}</td><td>${fee.block}</td><td>${fee.amount.toLocaleString()}</td></tr>`;
+    }
+    html += '</tbody></table>';
+    document.getElementById('currentFeeStructure').innerHTML = html;
+}
 // =====================================================
 // LOGOUT FUNCTION - ADD THIS HERE
 // =====================================================
