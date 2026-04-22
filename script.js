@@ -4867,8 +4867,105 @@ window.enable2FAForAll = enable2FAForAll;
 window.terminateAllSessions = terminateAllSessions;
 window.filterErrors = filterErrors;
 window.updateVisualization = updateVisualization;
+// =====================================================
+// INITIALIZE MODALS - ADD THIS FUNCTION
+// =====================================================
+function initializeModals() {
+    console.log('🔧 Initializing modals...');
+    
+    // Close modals when clicking X
+    document.querySelectorAll('.modal .close').forEach(closeBtn => {
+        closeBtn.addEventListener('click', function() {
+            this.closest('.modal').style.display = 'none';
+        });
+    });
+    
+    // Close modals when clicking outside
+    document.querySelectorAll('.modal').forEach(modal => {
+        modal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                this.style.display = 'none';
+            }
+        });
+    });
 
-// Initialize the application
+    // Edit user form handler
+    const editUserForm = document.getElementById('edit-user-form');
+    if (editUserForm) {
+        editUserForm.removeEventListener('submit', handleEditUser);
+        editUserForm.addEventListener('submit', handleEditUser);
+        console.log('✅ Edit user form handler attached');
+    } else {
+        console.warn('⚠️ edit-user-form not found');
+    }
+
+    // Edit course form handler
+    const editCourseForm = document.getElementById('edit-course-form');
+    if (editCourseForm) {
+        editCourseForm.removeEventListener('submit', handleEditCourse);
+        editCourseForm.addEventListener('submit', handleEditCourse);
+        console.log('✅ Edit course form handler attached');
+    }
+}
+
+// =====================================================
+// INIT SESSION FUNCTION
+// =====================================================
+async function initSession() {
+    const { data: { session }, error: sessionError } = await sb.auth.getSession();
+    
+    if (sessionError || !session) {
+        console.warn("Session check failed, redirecting to login.");
+        window.location.href = "login.html";
+        return;
+    }
+
+    const user = session.user;
+    const { data: profile, error: profileError } = await sb.from('profiles').select('*').eq('id', user.id).single();
+    
+    if (profile && !profileError) {
+        currentUserProfile = profile;
+        currentUserId = user.id;
+        
+        if (currentUserProfile.role !== 'superadmin') {
+            console.warn(`User ${user.email} is not a Super Admin. Redirecting.`);
+            window.location.href = "admin.html"; 
+            return;
+        }
+        
+        document.querySelector('header h1').textContent = `Welcome, ${profile.full_name || 'Super Admin'}!`;
+    } else {
+        console.error("Profile not found or fetch error:", profileError?.message);
+        window.location.href = "login.html";
+        return;
+    }
+    
+    setupEventListeners();
+    initializeModals();
+    loadSectionData('dashboard');
+}
+
+// =====================================================
+// LOGOUT FUNCTION
+// =====================================================
+async function logout() {
+    try {
+        if (currentUserProfile) {
+            await logAudit('LOGOUT', `User ${currentUserProfile.full_name} logged out.`);
+        }
+        await sb.auth.signOut();
+        localStorage.clear();
+        sessionStorage.clear();
+        window.location.href = "login.html";
+    } catch (error) {
+        console.error('Logout error:', error);
+        window.location.href = "login.html";
+    }
+}
+
+// =====================================================
+// INITIALIZE THE APPLICATION - ONLY ONE EVENT LISTENER
+// =====================================================
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🚀 Initializing SuperAdmin Dashboard...');
     
