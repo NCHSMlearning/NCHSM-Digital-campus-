@@ -5514,7 +5514,6 @@ function setupEventListeners() {
         // Trigger initial load
         newUnitProgram.dispatchEvent(new Event('change'));
     }
-}
 
 // Global function references for HTML onclick handlers
 window.showTab = showTab;
