@@ -431,6 +431,7 @@
                 <li><a href="#" data-tab="enroll"><i class="fas fa-user-plus"></i> Enroll Accounts</a></li>
                 <li><a href="#" data-tab="courses"><i class="fas fa-book"></i> Courses</a></li>
                 <li><a href="#" data-tab="unit-management"><i class="fas fa-plus-circle"></i> Unit Registration</a></li>
+                <li><a href="#" data-tab="fee-accounts"><i class="fas fa-credit-card"></i> Fee Accounts</a></li>
                 <li><a href="#" data-tab="sessions"><i class="fas fa-calendar-alt"></i> Manage Sessions</a></li>
                 <li><a href="#" data-tab="attendance"><i class="fas fa-clipboard-check"></i> Attendance</a></li>
                 <li><a href="#" data-tab="cats"><i class="fas fa-file-alt"></i> CATS/Exams</a></li>
@@ -672,7 +673,140 @@
                     </div>
                 </div>
             </section>
-
+<!-- FEE ACCOUNTS & PAYMENT MANAGEMENT SECTION -->
+<section id="fee-accounts" class="tab-content">
+    <h2><i class="fas fa-credit-card"></i> Student Fee Accounts</h2>
+    <p>Manage student account balances, record fee payments, and link with unit registration.</p>
+    
+    <!-- Account Summary Cards -->
+    <div class="cards">
+        <div class="card" onclick="showOutstandingPayments()">
+            <h3>Outstanding Balance</h3>
+            <p class="data" id="totalOutstandingBalance">KES 0</p>
+            <p class="minor-data">Across all students</p>
+        </div>
+        <div class="card" onclick="showTodayPayments()">
+            <h3>Today's Collections</h3>
+            <p class="data" id="todayCollections">KES 0</p>
+            <p class="minor-data">Fee payments received</p>
+        </div>
+        <div class="card" onclick="showOverdueAccounts()">
+            <h3>Overdue Accounts</h3>
+            <p class="data" id="overdueAccounts">0</p>
+            <p class="minor-data">Students with balance > 30 days</p>
+        </div>
+        <div class="card">
+            <h3>Total Collected</h3>
+            <p class="data" id="totalCollected">KES 0</p>
+            <p class="minor-data">This academic year</p>
+        </div>
+    </div>
+    
+    <!-- Record New Payment -->
+    <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin-bottom: 25px;">
+        <h3><i class="fas fa-receipt"></i> Record Fee Payment</h3>
+        <div class="unit-form-row">
+            <select id="payment_student_id" required style="min-width: 200px;">
+                <option value="">-- Select Student --</option>
+            </select>
+            <input type="number" id="payment_amount" placeholder="Amount (KES)" step="0.01" required>
+            <select id="payment_method">
+                <option value="Cash">Cash</option>
+                <option value="M-Pesa">M-Pesa</option>
+                <option value="Bank Transfer">Bank Transfer</option>
+                <option value="Cheque">Cheque</option>
+                <option value="Card">Card</option>
+            </select>
+            <input type="text" id="payment_reference" placeholder="Transaction Ref (optional)">
+            <input type="date" id="payment_date" required>
+            <select id="payment_period">
+                <option value="Term 1">Term 1</option>
+                <option value="Term 2">Term 2</option>
+                <option value="Term 3">Term 3</option>
+                <option value="Full Year">Full Year</option>
+            </select>
+            <textarea id="payment_notes" placeholder="Notes (optional)" rows="2"></textarea>
+        </div>
+        <button onclick="recordPayment()" class="btn-action">
+            <i class="fas fa-save"></i> Record Payment
+        </button>
+    </div>
+    
+    <!-- Search Student Account -->
+    <div class="filter-bar">
+        <input type="text" id="account_search" placeholder="Search by student name or ID..." onkeyup="searchStudentAccount()">
+        <select id="account_balance_filter" onchange="filterByBalanceStatus()">
+            <option value="all">All Students</option>
+            <option value="positive">Positive Balance (Credit)</option>
+            <option value="zero">Zero Balance</option>
+            <option value="negative">Outstanding Balance</option>
+            <option value="overdue">Overdue (>30 days)</option>
+        </select>
+        <button onclick="exportAccountsToCSV()" class="btn-action export-btn">
+            <i class="fas fa-download"></i> Export Accounts
+        </button>
+    </div>
+    
+    <!-- Student Accounts Table -->
+    <div class="table-responsive">
+        <table class="data-table" id="student-accounts-table">
+            <thead>
+                <tr>
+                    <th>Student Name</th>
+                    <th>Student ID</th>
+                    <th>Program</th>
+                    <th>Intake</th>
+                    <th>Total Fees Due</th>
+                    <th>Total Paid</th>
+                    <th>Current Balance</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="student-accounts-body">
+                <tr><td colspan="9">Loading student accounts...</td></tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- Payment History Modal -->
+    <div id="paymentHistoryModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3 id="paymentHistoryTitle">Payment History</h3>
+                <span class="close" onclick="closeModal('paymentHistoryModal')">&times;</span>
+            </div>
+            <div class="modal-body" id="paymentHistoryBody">
+                <div class="loading-spinner"></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Fee Structure Configuration -->
+    <div style="margin-top: 30px;">
+        <h3><i class="fas fa-cog"></i> Fee Structure Configuration</h3>
+        <div class="inline-form">
+            <select id="fee_program">
+                <option value="KRCHN">KRCHN</option>
+                <option value="TVET">TVET</option>
+                <option value="DPOTT">DPOTT</option>
+                <option value="DHRIT">DHRIT</option>
+            </select>
+            <select id="fee_block">
+                <option value="Introductory">Introductory Block</option>
+                <option value="Block A">Block A</option>
+                <option value="Block B">Block B</option>
+                <option value="Block C">Block C</option>
+                <option value="Block D">Block D</option>
+                <option value="Block E">Block E</option>
+                <option value="Final">Final Block</option>
+            </select>
+            <input type="number" id="fee_amount" placeholder="Fee Amount (KES)" step="0.01">
+            <button onclick="updateFeeStructure()" class="btn-action">Update Fee Structure</button>
+        </div>
+        <div id="currentFeeStructure"></div>
+    </div>
+</section>
             <!-- System Health Section -->
             <section id="system-health" class="tab-content">
                 <h2><i class="fas fa-heartbeat"></i> System Health Monitor</h2>
