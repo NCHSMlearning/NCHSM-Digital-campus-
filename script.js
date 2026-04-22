@@ -1421,31 +1421,54 @@ async function openEditUserModal(userId) {
         
         if (error || !user) throw new Error('User fetch failed.');
 
-        $('edit_user_id').value = user.user_id;
-        $('edit_user_id_display').textContent = user.user_id.substring(0, 8) + '...';
-        $('edit_user_name').value = user.full_name || '';
-        $('edit_user_email').value = user.email || '';
-        $('edit_user_role').value = user.role || 'student';
-        $('edit_user_program').value = user.program || 'KRCHN';
-        $('edit_user_intake').value = user.intake_year || '2024';
-        $('edit_user_block_status').value = user.block_program_year ? 'true' : 'false';
+        // Get modal element first
+        const modal = document.getElementById('userEditModal');
+        if (!modal) {
+            console.error('userEditModal not found in HTML');
+            showFeedback('Edit user modal not found. Please check the HTML.', 'error');
+            return;
+        }
+
+        // Safely set values with null checks
+        const editUserId = document.getElementById('edit_user_id');
+        const editUserIdDisplay = document.getElementById('edit_user_id_display');
+        const editUserName = document.getElementById('edit_user_name');
+        const editUserEmail = document.getElementById('edit_user_email');
+        const editUserRole = document.getElementById('edit_user_role');
+        const editUserProgram = document.getElementById('edit_user_program');
+        const editUserIntake = document.getElementById('edit_user_intake');
+        const editUserBlockStatus = document.getElementById('edit_user_block_status');
+        const editUserBlock = document.getElementById('edit_user_block');
+
+        if (editUserId) editUserId.value = user.user_id;
+        if (editUserIdDisplay) editUserIdDisplay.textContent = user.user_id.substring(0, 8) + '...';
+        if (editUserName) editUserName.value = user.full_name || '';
+        if (editUserEmail) editUserEmail.value = user.email || '';
+        if (editUserRole) editUserRole.value = user.role || 'student';
+        if (editUserProgram) editUserProgram.value = user.program || 'KRCHN';
+        if (editUserIntake) editUserIntake.value = user.intake_year || '2024';
+        if (editUserBlockStatus) editUserBlockStatus.value = user.block_program_year ? 'true' : 'false';
         
         // Update program dropdown first
-        updateProgramDropdown($('edit_user_program'));
-        
-        // Then set the value
-        setTimeout(() => {
-            $('edit_user_program').value = user.program || 'KRCHN';
-            updateBlockTermOptions('edit_user_program', 'edit_user_block');
+        if (editUserProgram) {
+            updateProgramDropdown(editUserProgram);
             
-            // Set block value after options are populated
+            // Then set the value
             setTimeout(() => {
-                $('edit_user_block').value = user.block || '';
-            }, 100);
-        }, 50);
+                editUserProgram.value = user.program || 'KRCHN';
+                if (editUserBlock) {
+                    updateBlockTermOptions('edit_user_program', 'edit_user_block');
+                    setTimeout(() => {
+                        editUserBlock.value = user.block || '';
+                    }, 100);
+                }
+            }, 50);
+        }
         
-        $('userEditModal').style.display = 'flex';
+        modal.style.display = 'flex';
+        
     } catch (e) {
+        console.error('Error in openEditUserModal:', e);
         showFeedback(`Failed to load user: ${e.message}`, 'error');
     }
 }
