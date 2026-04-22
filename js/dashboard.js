@@ -1015,7 +1015,35 @@ class DashboardModule {
             this.showErrorState('resources');
         }
     }
-    
+    async function loadExamCardDashboardData() {
+    try {
+        const { data: registrations, error } = await window.supabase
+            .from('student_unit_registrations')
+            .select('id')
+            .eq('student_id', window.currentUserId)
+            .eq('status', 'approved');
+        
+        const approvedCount = registrations?.length || 0;
+        const isEligible = approvedCount > 0;
+        
+        const examStatusEl = document.getElementById('dashboard-exam-status');
+        const approvedUnitsEl = document.getElementById('dashboard-approved-units');
+        
+        if (examStatusEl) {
+            examStatusEl.textContent = isEligible ? 'ELIGIBLE ✅' : 'NOT ELIGIBLE ❌';
+            examStatusEl.style.color = isEligible ? '#059669' : '#dc2626';
+        }
+        
+        if (approvedUnitsEl) {
+            approvedUnitsEl.textContent = approvedCount;
+        }
+        
+    } catch (error) {
+        console.error('Error loading exam card dashboard data:', error);
+    }
+}
+
+// Call this in your dashboard load function
     // Enhanced NurseIQ Metrics with multiple sources
     async loadNurseIQMetrics() {
         console.log('🧠 Loading NurseIQ metrics...');
