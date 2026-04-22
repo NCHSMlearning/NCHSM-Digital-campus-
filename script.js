@@ -4610,6 +4610,30 @@ window.approveStudentAllUnits = approveStudentAllUnits;
 window.rejectStudentAllUnits = rejectStudentAllUnits;
 window.bulkApproveSelectedUnits = bulkApproveSelectedUnits;
 window.bulkRejectSelectedUnits = bulkRejectSelectedUnits;
+
+
+// =====================================================
+// LOGOUT FUNCTION - ADD THIS HERE
+// =====================================================
+async function logout() {
+    try {
+        console.log('🚪 Logging out...');
+        
+        if (currentUserProfile) {
+            await logAudit('LOGOUT', `User ${currentUserProfile.full_name} logged out.`);
+        }
+        
+        await sb.auth.signOut();
+        localStorage.clear();
+        sessionStorage.clear();
+        window.location.href = "login.html";
+        
+    } catch (error) {
+        console.error('Logout error:', error);
+        window.location.href = "login.html";
+    }
+}
+
 /*******************************************************
  * 20. INITIALIZATION & EVENT LISTENERS
  *******************************************************/
