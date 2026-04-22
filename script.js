@@ -506,10 +506,10 @@ async function loadSectionData(tabId) {
         case 'calendar': 
             renderFullCalendar(); 
             break;
-            case 'unit-management': 
+           case 'unit-management': 
     loadAllUnits(); 
     loadUnitBlocks();
-    loadRegistrationStats();
+    loadUnitRegistrationStats();
     loadApprovedRegistrations();
     break;
         case 'resources': 
@@ -3952,8 +3952,10 @@ function filterErrors(severity) {
 function updateVisualization() {
     showFeedback('Updating visualization with new parameters...', 'info');
 }
+// Add this at the end of your script.js, before the closing of the file
+
 /*******************************************************
- * 21. UNIT REGISTRATION MANAGEMENT - ENHANCED WITH MULTIPLE APPROVAL
+ * UNIT REGISTRATION MANAGEMENT - COMPLETE MODULE
  *******************************************************/
 
 // Global variables for unit management
@@ -3961,8 +3963,13 @@ let allUnits = [];
 let currentBlockFilter = 'all';
 let pendingRegistrationsData = [];
 let selectedRegistrationIds = new Set();
+let approvedRegistrationsData = [];
+let selectedApprovedIds = new Set();
 
-// Load all units from catalog
+// =====================================================
+// UNIT CATALOG MANAGEMENT
+// =====================================================
+
 async function loadAllUnits() {
     const container = document.getElementById('units-list-container');
     if (!container) return;
@@ -3985,11 +3992,9 @@ async function loadAllUnits() {
     } catch (error) {
         console.error('Error loading units:', error);
         container.innerHTML = '<p style="color: red;">Error loading units. Please refresh.</p>';
-        await logAudit('UNIT_LOAD', `Failed to load units: ${error.message}`, null, 'FAILURE');
     }
 }
 
-// Render units based on filters
 function renderUnitsCatalog() {
     const container = document.getElementById('units-list-container');
     if (!container) return;
@@ -4027,7 +4032,7 @@ function renderUnitsCatalog() {
         const programName = getProgramDisplayName(unit.program);
         
         html += `
-            <div class="unit-card" data-unit-id="${unit.id}">
+            <div class="unit-card">
                 <div class="unit-header">
                     <div>
                         <span class="unit-code">${escapeHtml(unit.unit_code)}</span>
@@ -4054,7 +4059,6 @@ function renderUnitsCatalog() {
     container.innerHTML = html;
 }
 
-// Add new unit
 async function addNewUnitRecord() {
     const unitCode = document.getElementById('new_unit_code')?.value;
     const unitName = document.getElementById('new_unit_name')?.value;
@@ -4093,9 +4097,7 @@ async function addNewUnitRecord() {
         if (error) throw error;
         
         showFeedback(`Unit "${unitCode}" added successfully!`, 'success');
-        await logAudit('UNIT_ADD', `Added unit: ${unitCode} - ${unitName}`, data?.[0]?.id, 'SUCCESS');
         
-        // Clear form
         document.getElementById('new_unit_code').value = '';
         document.getElementById('new_unit_name').value = '';
         document.getElementById('new_unit_prerequisites').value = '';
@@ -4105,11 +4107,9 @@ async function addNewUnitRecord() {
     } catch (error) {
         console.error('Error adding unit:', error);
         showFeedback(`Error adding unit: ${error.message}`, 'error');
-        await logAudit('UNIT_ADD', `Failed to add unit: ${error.message}`, null, 'FAILURE');
     }
 }
 
-// Edit unit
 async function editUnitRecord(unitId) {
     const unit = allUnits.find(u => u.id === unitId);
     if (!unit) return;
@@ -4126,46 +4126,10 @@ async function editUnitRecord(unitId) {
     document.getElementById('edit_unit_prerequisites').value = unit.prerequisites || '';
     
     document.getElementById('editUnitModal').style.display = 'flex';
-    
-    document.getElementById('edit-unit-form').onsubmit = async (e) => {
-        e.preventDefault();
-        
-        const updatedUnit = {
-            unit_code: document.getElementById('edit_unit_code').value,
-            unit_name: document.getElementById('edit_unit_name').value,
-            program: document.getElementById('edit_unit_program').value,
-            block: document.getElementById('edit_unit_block').value,
-            year: parseInt(document.getElementById('edit_unit_year').value),
-            credits: parseInt(document.getElementById('edit_unit_credits').value),
-            hours: parseInt(document.getElementById('edit_unit_hours').value),
-            unit_type: document.getElementById('edit_unit_type').value,
-            prerequisites: document.getElementById('edit_unit_prerequisites').value || null
-        };
-        
-        try {
-            const { error } = await sb
-                .from('units_catalog')
-                .update(updatedUnit)
-                .eq('id', unitId);
-            
-            if (error) throw error;
-            
-            showFeedback('Unit updated successfully!', 'success');
-            await logAudit('UNIT_EDIT', `Edited unit: ${updatedUnit.unit_code}`, unitId, 'SUCCESS');
-            closeModal('editUnitModal');
-            loadAllUnits();
-            
-        } catch (error) {
-            console.error('Error updating unit:', error);
-            showFeedback(`Error updating unit: ${error.message}`, 'error');
-            await logAudit('UNIT_EDIT', `Failed to edit unit: ${error.message}`, unitId, 'FAILURE');
-        }
-    };
 }
 
-// Delete unit
 async function deleteUnitRecord(unitId, unitCode) {
-    if (!confirm(`Are you sure you want to delete unit "${unitCode}"? This may affect student registrations.`)) return;
+    if (!confirm(`Are you sure you want to delete unit "${unitCode}"?`)) return;
     
     try {
         const { error } = await sb
@@ -4176,22 +4140,18 @@ async function deleteUnitRecord(unitId, unitCode) {
         if (error) throw error;
         
         showFeedback(`Unit "${unitCode}" deleted successfully!`, 'success');
-        await logAudit('UNIT_DELETE', `Deleted unit: ${unitCode}`, unitId, 'SUCCESS');
         loadAllUnits();
         
     } catch (error) {
         console.error('Error deleting unit:', error);
         showFeedback(`Error deleting unit: ${error.message}`, 'error');
-        await logAudit('UNIT_DELETE', `Failed to delete unit: ${error.message}`, unitId, 'FAILURE');
     }
 }
 
-// Filter units by search
 function filterUnitsCatalog() {
     renderUnitsCatalog();
 }
 
-// Filter units by block
 function filterUnitsByBlock(block) {
     currentBlockFilter = block;
     
@@ -4205,7 +4165,10 @@ function filterUnitsByBlock(block) {
     renderUnitsCatalog();
 }
 
-// Load registration statistics
+// =====================================================
+// REGISTRATION STATISTICS
+// =====================================================
+
 async function loadUnitRegistrationStats() {
     try {
         const { data, error } = await sb
@@ -4229,16 +4192,16 @@ async function loadUnitRegistrationStats() {
     }
 }
 
-// Load pending registrations for approval
+// =====================================================
+// PENDING REGISTRATIONS
+// =====================================================
+
 async function loadUnitPendingRegistrations() {
     const container = document.getElementById('pending-registrations-list');
-    const btn = event?.target;
-    
     if (!container) return;
     
     if (container.style.display === 'none' || container.style.display === '') {
         container.style.display = 'block';
-        if (btn) btn.innerHTML = '<i class="fas fa-times"></i> Hide Pending Approvals';
         
         try {
             const { data: registrations, error } = await sb
@@ -4260,138 +4223,53 @@ async function loadUnitPendingRegistrations() {
             const studentIds = [...new Set(pendingRegistrationsData.map(r => r.student_id))];
             let studentNames = {};
             
-            try {
-                const { data: profiles } = await sb
-                    .from('consolidated_user_profiles_table')
-                    .select('user_id, full_name, program, intake_year')
-                    .in('user_id', studentIds);
-                
-                if (profiles) {
-                    profiles.forEach(p => {
-                        studentNames[p.user_id] = {
-                            name: p.full_name,
-                            program: p.program,
-                            intake: p.intake_year
-                        };
-                    });
-                }
-            } catch (profileError) {
-                console.warn('Could not fetch student names:', profileError);
-                studentIds.forEach(id => {
-                    studentNames[id] = { name: `Student ${id.substring(0, 8)}`, program: 'Unknown', intake: 'N/A' };
+            const { data: profiles } = await sb
+                .from('consolidated_user_profiles_table')
+                .select('user_id, full_name')
+                .in('user_id', studentIds);
+            
+            if (profiles) {
+                profiles.forEach(p => {
+                    studentNames[p.user_id] = p.full_name;
                 });
             }
-            
-            // Group registrations by student
-            const groupedByStudent = {};
-            pendingRegistrationsData.forEach(reg => {
-                if (!groupedByStudent[reg.student_id]) {
-                    groupedByStudent[reg.student_id] = [];
-                }
-                groupedByStudent[reg.student_id].push(reg);
-            });
             
             let html = `
                 <div style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
                     <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                        <button onclick="selectAllPendingUnits()" class="btn-action" style="background: #4C1D95;">
-                            <i class="fas fa-check-double"></i> Select All Units
-                        </button>
-                        <button onclick="clearAllUnitSelections()" class="btn-secondary">
-                            <i class="fas fa-times"></i> Clear Selection
-                        </button>
-                        <button onclick="bulkApproveSelectedUnits()" class="btn-success" style="background: #059669;">
-                            <i class="fas fa-check-circle"></i> Approve Selected (<span id="selectedUnitsCount">0</span>)
-                        </button>
-                        <button onclick="bulkRejectSelectedUnits()" class="btn-danger">
-                            <i class="fas fa-times-circle"></i> Reject Selected
-                        </button>
-                        <span style="margin-left: auto; font-size: 14px; color: #6b7280;">
-                            <i class="fas fa-users"></i> ${Object.keys(groupedByStudent).length} students | 
-                            <i class="fas fa-file-alt"></i> ${pendingRegistrationsData.length} units pending
-                        </span>
+                        <button onclick="selectAllPendingUnits()" class="btn-action">Select All Units</button>
+                        <button onclick="clearAllUnitSelections()" class="btn-secondary">Clear Selection</button>
+                        <button onclick="bulkApproveSelectedUnits()" class="btn-success">Approve Selected (<span id="selectedUnitsCount">0</span>)</button>
+                        <button onclick="bulkRejectSelectedUnits()" class="btn-danger">Reject Selected</button>
                     </div>
                 </div>
-                <div class="students-pending-list" style="max-height: 600px; overflow-y: auto;">
+                <div class="students-pending-list">
             `;
             
-            for (const [studentId, studentRegs] of Object.entries(groupedByStudent)) {
-                const studentInfo = studentNames[studentId] || { name: 'Unknown', program: 'N/A', intake: 'N/A' };
+            for (const reg of pendingRegistrationsData) {
+                const studentName = studentNames[reg.student_id] || 'Unknown';
+                const submittedDate = reg.submitted_date ? new Date(reg.submitted_date).toLocaleString() : 'Unknown';
                 
                 html += `
-                    <div class="student-group-card" style="background: white; border: 1px solid #e5e7eb; border-radius: 12px; margin-bottom: 20px; overflow: hidden;">
-                        <div class="student-group-header" style="background: #f9fafb; padding: 15px 20px; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                    <div class="student-group-card" style="background: white; border: 1px solid #e5e7eb; border-radius: 12px; margin-bottom: 15px; padding: 15px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                             <div>
-                                <input type="checkbox" id="student_${studentId}" class="student-select-checkbox" data-student-id="${studentId}" onchange="toggleStudentUnitsSelection('${studentId}')" style="margin-right: 12px; transform: scale(1.2);">
-                                <label for="student_${studentId}" style="font-weight: bold; font-size: 16px;">
-                                    <i class="fas fa-user-graduate"></i> ${escapeHtml(studentInfo.name)}
-                                </label>
-                                <div style="margin-top: 5px; font-size: 13px; color: #6b7280;">
-                                    <span class="badge" style="background: #e0e7ff; color: #3730a3; padding: 2px 8px; border-radius: 12px;">
-                                        <i class="fas fa-code-branch"></i> ${escapeHtml(studentInfo.program)}
-                                    </span>
-                                    <span class="badge" style="background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 12px; margin-left: 8px;">
-                                        <i class="fas fa-calendar"></i> Intake: ${escapeHtml(studentInfo.intake)}
-                                    </span>
-                                    <span class="badge" style="background: #dbeafe; color: #1e40af; padding: 2px 8px; border-radius: 12px; margin-left: 8px;">
-                                        <i class="fas fa-file-alt"></i> ${studentRegs.length} unit(s) pending
-                                    </span>
-                                </div>
+                                <strong>${escapeHtml(studentName)}</strong><br>
+                                <small>ID: ${reg.student_id?.substring(0, 8)}</small>
                             </div>
-                            <div class="student-actions">
-                                <button onclick="approveStudentAllUnits('${studentId}')" class="btn-success btn-sm" style="background: #059669; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer;">
-                                    <i class="fas fa-check-circle"></i> Approve All (${studentRegs.length})
-                                </button>
-                                <button onclick="rejectStudentAllUnits('${studentId}')" class="btn-danger btn-sm" style="background: #dc2626; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; margin-left: 8px;">
-                                    <i class="fas fa-times-circle"></i> Reject All
-                                </button>
+                            <div>
+                                <button onclick="approveStudentAllUnits('${reg.student_id}')" class="btn-success btn-sm">Approve All</button>
+                                <button onclick="rejectStudentAllUnits('${reg.student_id}')" class="btn-danger btn-sm">Reject All</button>
                             </div>
                         </div>
-                        <div class="student-units-list">
-                            <table style="width: 100%; border-collapse: collapse;">
-                                <thead style="background: #f3f4f6;">
-                                    <tr>
-                                        <th style="width: 40px; padding: 10px;"><input type="checkbox" class="unit-select-checkbox" data-student-id="${studentId}" onchange="toggleStudentUnitSelection('${studentId}')"></th>
-                                        <th style="padding: 10px; text-align: left;">Unit Code</th>
-                                        <th style="padding: 10px; text-align: left;">Unit Name</th>
-                                        <th style="padding: 10px; text-align: left;">Block</th>
-                                        <th style="padding: 10px; text-align: left;">Reg Type</th>
-                                        <th style="padding: 10px; text-align: left;">Submitted</th>
-                                        <th style="padding: 10px; text-align: center;">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                `;
-                
-                for (const reg of studentRegs) {
-                    const checkboxId = `unit_${reg.id}`;
-                    const submittedDate = reg.submitted_date ? new Date(reg.submitted_date).toLocaleString() : 'Unknown';
-                    
-                    html += `
-                        <tr style="border-bottom: 1px solid #f3f4f6;">
-                            <td style="padding: 10px; text-align: center;">
-                                <input type="checkbox" id="${checkboxId}" class="unit-checkbox-item" data-reg-id="${reg.id}" data-student-id="${studentId}" onchange="updateSelectedUnitsCount()">
-                            </td>
-                            <td style="padding: 10px;"><code style="background: #f3f4f6; padding: 3px 6px; border-radius: 4px;">${escapeHtml(reg.unit_code)}</code></td>
-                            <td style="padding: 10px;">${escapeHtml(reg.unit_name)}</td>
-                            <td style="padding: 10px;"><span class="badge" style="background: #e0e7ff;">${escapeHtml(reg.block)}</span></td>
-                            <td style="padding: 10px;">${escapeHtml(reg.reg_type || 'Normal')}</td>
-                            <td style="padding: 10px; font-size: 12px;">${submittedDate}</td>
-                            <td style="padding: 10px; text-align: center;">
-                                <button onclick="approveSingleUnitRecord('${reg.id}')" class="btn-success btn-sm" style="background: #10b981; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;">
-                                    <i class="fas fa-check"></i> Approve
-                                </button>
-                                <button onclick="rejectSingleUnitRecord('${reg.id}')" class="btn-danger btn-sm" style="background: #ef4444; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; margin-left: 5px;">
-                                    <i class="fas fa-times"></i> Reject
-                                </button>
-                            </td>
-                        </tr>
-                    `;
-                }
-                
-                html += `
-                                </tbody>
-                            </table>
+                        <div class="unit-item" style="border-top: 1px solid #e5e7eb; padding-top: 10px;">
+                            <input type="checkbox" class="unit-checkbox-item" data-reg-id="${reg.id}" data-student-id="${reg.student_id}" onchange="updateSelectedUnitsCount()">
+                            <strong>${escapeHtml(reg.unit_code)}</strong> - ${escapeHtml(reg.unit_name)}<br>
+                            <small>Block: ${escapeHtml(reg.block)} | Submitted: ${submittedDate}</small>
+                            <div style="margin-top: 8px;">
+                                <button onclick="approveSingleUnitRecord('${reg.id}')" class="btn-success btn-sm">Approve</button>
+                                <button onclick="rejectSingleUnitRecord('${reg.id}')" class="btn-danger btn-sm">Reject</button>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -4402,311 +4280,285 @@ async function loadUnitPendingRegistrations() {
             
         } catch (error) {
             console.error('Error loading pending registrations:', error);
-            container.innerHTML = `<p style="color: red;">Error loading pending registrations: ${error.message}</p>`;
+            container.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
         }
     } else {
         container.style.display = 'none';
-        if (btn) btn.innerHTML = '<i class="fas fa-clock"></i> View Pending Approvals';
-        selectedRegistrationIds.clear();
     }
 }
 
-// Select all pending units
 function selectAllPendingUnits() {
     const allCheckboxes = document.querySelectorAll('.unit-checkbox-item');
-    allCheckboxes.forEach(cb => {
-        cb.checked = true;
-        const regId = cb.getAttribute('data-reg-id');
-        if (regId) selectedRegistrationIds.add(regId);
-    });
-    
-    document.querySelectorAll('.student-select-checkbox').forEach(cb => {
-        cb.checked = true;
-    });
-    
-    document.querySelectorAll('.unit-select-checkbox').forEach(cb => {
-        cb.checked = true;
-    });
-    
+    allCheckboxes.forEach(cb => cb.checked = true);
     updateSelectedUnitsCount();
 }
 
-// Clear all unit selections
 function clearAllUnitSelections() {
     const allCheckboxes = document.querySelectorAll('.unit-checkbox-item');
-    allCheckboxes.forEach(cb => {
-        cb.checked = false;
-    });
-    
-    document.querySelectorAll('.student-select-checkbox').forEach(cb => {
-        cb.checked = false;
-    });
-    
-    document.querySelectorAll('.unit-select-checkbox').forEach(cb => {
-        cb.checked = false;
-    });
-    
-    selectedRegistrationIds.clear();
+    allCheckboxes.forEach(cb => cb.checked = false);
     updateSelectedUnitsCount();
 }
 
-// Toggle selection for a student's all units
-function toggleStudentUnitsSelection(studentId) {
-    const studentCheckbox = document.getElementById(`student_${studentId}`);
-    const isChecked = studentCheckbox?.checked || false;
-    
-    const unitCheckboxes = document.querySelectorAll(`.unit-checkbox-item[data-student-id="${studentId}"]`);
-    unitCheckboxes.forEach(cb => {
-        cb.checked = isChecked;
-        const regId = cb.getAttribute('data-reg-id');
-        if (isChecked) {
-            selectedRegistrationIds.add(regId);
-        } else {
-            selectedRegistrationIds.delete(regId);
-        }
-    });
-    
-    const headerCheckbox = document.querySelector(`.unit-select-checkbox[data-student-id="${studentId}"]`);
-    if (headerCheckbox) headerCheckbox.checked = isChecked;
-    
-    updateSelectedUnitsCount();
-}
-
-// Toggle selection for units within a student
-function toggleStudentUnitSelection(studentId) {
-    const headerCheckbox = document.querySelector(`.unit-select-checkbox[data-student-id="${studentId}"]`);
-    const unitCheckboxes = document.querySelectorAll(`.unit-checkbox-item[data-student-id="${studentId}"]`);
-    const allChecked = Array.from(unitCheckboxes).every(cb => cb.checked);
-    
-    if (headerCheckbox) headerCheckbox.checked = allChecked;
-    
-    const studentCheckbox = document.getElementById(`student_${studentId}`);
-    if (studentCheckbox) studentCheckbox.checked = allChecked;
-    
-    unitCheckboxes.forEach(cb => {
-        const regId = cb.getAttribute('data-reg-id');
-        if (cb.checked) {
-            selectedRegistrationIds.add(regId);
-        } else {
-            selectedRegistrationIds.delete(regId);
-        }
-    });
-    
-    updateSelectedUnitsCount();
-}
-
-// Update selected count display
 function updateSelectedUnitsCount() {
     const count = document.querySelectorAll('.unit-checkbox-item:checked').length;
     const countElement = document.getElementById('selectedUnitsCount');
     if (countElement) countElement.textContent = count;
 }
 
-// Approve a single unit
 async function approveSingleUnitRecord(regId) {
-    if (!confirm('Approve this unit registration?')) return;
-    
+    if (!confirm('Approve this unit?')) return;
     try {
-        const { error } = await sb
-            .from('student_unit_registrations')
-            .update({ 
-                status: 'approved', 
-                approval_date: new Date().toISOString().split('T')[0]
-            })
-            .eq('id', regId);
-        
-        if (error) throw error;
-        
-        showFeedback('Unit approved successfully!', 'success');
-        await logAudit('UNIT_REG_APPROVE', `Approved registration ID: ${regId}`, regId, 'SUCCESS');
-        
+        await sb.from('student_unit_registrations').update({ status: 'approved', approval_date: new Date().toISOString().split('T')[0] }).eq('id', regId);
+        showFeedback('Unit approved!', 'success');
         await loadUnitPendingRegistrations();
         await loadUnitRegistrationStats();
-        
+        await loadApprovedRegistrations();
     } catch (error) {
-        console.error('Error approving registration:', error);
-        showFeedback(`Error approving registration: ${error.message}`, 'error');
+        showFeedback(`Error: ${error.message}`, 'error');
     }
 }
 
-// Reject a single unit
 async function rejectSingleUnitRecord(regId) {
-    const reason = prompt('Enter rejection reason (optional):');
-    if (!confirm('Reject this unit registration?')) return;
-    
+    if (!confirm('Reject this unit?')) return;
     try {
-        const { error } = await sb
-            .from('student_unit_registrations')
-            .update({ 
-                status: 'rejected', 
-                rejection_reason: reason || null
-            })
-            .eq('id', regId);
-        
-        if (error) throw error;
-        
-        showFeedback('Unit rejected!', 'success');
-        await logAudit('UNIT_REG_REJECT', `Rejected registration ID: ${regId}. Reason: ${reason || 'No reason provided'}`, regId, 'SUCCESS');
-        
+        await sb.from('student_unit_registrations').delete().eq('id', regId);
+        showFeedback('Unit rejected and removed!', 'success');
         await loadUnitPendingRegistrations();
         await loadUnitRegistrationStats();
-        
     } catch (error) {
-        console.error('Error rejecting registration:', error);
-        showFeedback(`Error rejecting registration: ${error.message}`, 'error');
+        showFeedback(`Error: ${error.message}`, 'error');
     }
 }
 
-// Approve all units for a student
 async function approveStudentAllUnits(studentId) {
     const studentUnits = pendingRegistrationsData.filter(r => r.student_id === studentId);
     if (studentUnits.length === 0) return;
-    
-    if (!confirm(`Approve ${studentUnits.length} unit(s) for this student?`)) return;
+    if (!confirm(`Approve ${studentUnits.length} unit(s)?`)) return;
     
     try {
         const ids = studentUnits.map(r => r.id);
-        const { error } = await sb
-            .from('student_unit_registrations')
-            .update({ 
-                status: 'approved', 
-                approval_date: new Date().toISOString().split('T')[0]
-            })
-            .in('id', ids);
-        
-        if (error) throw error;
-        
-        showFeedback(`Approved ${studentUnits.length} unit(s) for student!`, 'success');
-        await logAudit('UNIT_REG_BULK_APPROVE', `Approved ${studentUnits.length} units for student ${studentId}`, studentId, 'SUCCESS');
-        
+        await sb.from('student_unit_registrations').update({ status: 'approved', approval_date: new Date().toISOString().split('T')[0] }).in('id', ids);
+        showFeedback(`Approved ${studentUnits.length} unit(s)!`, 'success');
         await loadUnitPendingRegistrations();
         await loadUnitRegistrationStats();
-        
+        await loadApprovedRegistrations();
     } catch (error) {
-        console.error('Error approving student units:', error);
         showFeedback(`Error: ${error.message}`, 'error');
     }
 }
 
-// Reject all units for a student
 async function rejectStudentAllUnits(studentId) {
     const studentUnits = pendingRegistrationsData.filter(r => r.student_id === studentId);
     if (studentUnits.length === 0) return;
-    
-    const reason = prompt('Enter rejection reason for all these units (optional):');
-    if (!confirm(`Reject ${studentUnits.length} unit(s) for this student?`)) return;
+    if (!confirm(`Reject ${studentUnits.length} unit(s)?`)) return;
     
     try {
         const ids = studentUnits.map(r => r.id);
-        const { error } = await sb
-            .from('student_unit_registrations')
-            .update({ 
-                status: 'rejected', 
-                rejection_reason: reason || null
-            })
-            .in('id', ids);
-        
-        if (error) throw error;
-        
-        showFeedback(`Rejected ${studentUnits.length} unit(s) for student!`, 'success');
-        await logAudit('UNIT_REG_BULK_REJECT', `Rejected ${studentUnits.length} units for student ${studentId}. Reason: ${reason || 'No reason'}`, studentId, 'SUCCESS');
-        
+        await sb.from('student_unit_registrations').delete().in('id', ids);
+        showFeedback(`Rejected ${studentUnits.length} unit(s)!`, 'success');
         await loadUnitPendingRegistrations();
         await loadUnitRegistrationStats();
-        
     } catch (error) {
-        console.error('Error rejecting student units:', error);
         showFeedback(`Error: ${error.message}`, 'error');
     }
 }
 
-// Bulk approve selected units
 async function bulkApproveSelectedUnits() {
     const selectedIds = [];
     document.querySelectorAll('.unit-checkbox-item:checked').forEach(cb => {
         const regId = cb.getAttribute('data-reg-id');
         if (regId) selectedIds.push(regId);
     });
-    
-    if (selectedIds.length === 0) {
-        showFeedback('No units selected for approval.', 'warning');
-        return;
-    }
-    
-    if (!confirm(`Approve ${selectedIds.length} selected unit(s)?`)) return;
+    if (selectedIds.length === 0) { showFeedback('No units selected', 'warning'); return; }
+    if (!confirm(`Approve ${selectedIds.length} unit(s)?`)) return;
     
     try {
-        const { error } = await sb
-            .from('student_unit_registrations')
-            .update({ 
-                status: 'approved', 
-                approval_date: new Date().toISOString().split('T')[0]
-            })
-            .in('id', selectedIds);
-        
-        if (error) throw error;
-        
-        showFeedback(`Approved ${selectedIds.length} unit(s) successfully!`, 'success');
-        await logAudit('UNIT_REG_BULK_APPROVE', `Bulk approved ${selectedIds.length} units`, null, 'SUCCESS');
-        
-        selectedRegistrationIds.clear();
+        await sb.from('student_unit_registrations').update({ status: 'approved', approval_date: new Date().toISOString().split('T')[0] }).in('id', selectedIds);
+        showFeedback(`Approved ${selectedIds.length} unit(s)!`, 'success');
         await loadUnitPendingRegistrations();
         await loadUnitRegistrationStats();
-        
+        await loadApprovedRegistrations();
     } catch (error) {
-        console.error('Error in bulk approve:', error);
         showFeedback(`Error: ${error.message}`, 'error');
     }
 }
 
-// Bulk reject selected units
 async function bulkRejectSelectedUnits() {
     const selectedIds = [];
     document.querySelectorAll('.unit-checkbox-item:checked').forEach(cb => {
         const regId = cb.getAttribute('data-reg-id');
         if (regId) selectedIds.push(regId);
     });
-    
-    if (selectedIds.length === 0) {
-        showFeedback('No units selected for rejection.', 'warning');
-        return;
-    }
-    
-    const reason = prompt('Enter rejection reason for all selected units (optional):');
-    if (!confirm(`Reject ${selectedIds.length} selected unit(s)?`)) return;
+    if (selectedIds.length === 0) { showFeedback('No units selected', 'warning'); return; }
+    if (!confirm(`Reject ${selectedIds.length} unit(s)?`)) return;
     
     try {
-        const { error } = await sb
-            .from('student_unit_registrations')
-            .update({ 
-                status: 'rejected', 
-                rejection_reason: reason || null
-            })
-            .in('id', selectedIds);
-        
-        if (error) throw error;
-        
-        showFeedback(`Rejected ${selectedIds.length} unit(s) successfully!`, 'success');
-        await logAudit('UNIT_REG_BULK_REJECT', `Bulk rejected ${selectedIds.length} units. Reason: ${reason || 'No reason'}`, null, 'SUCCESS');
-        
-        selectedRegistrationIds.clear();
+        await sb.from('student_unit_registrations').delete().in('id', selectedIds);
+        showFeedback(`Rejected ${selectedIds.length} unit(s)!`, 'success');
         await loadUnitPendingRegistrations();
         await loadUnitRegistrationStats();
-        
     } catch (error) {
-        console.error('Error in bulk reject:', error);
         showFeedback(`Error: ${error.message}`, 'error');
     }
 }
 
-// Get all available blocks for filter
+// =====================================================
+// APPROVED REGISTRATIONS
+// =====================================================
+
+async function loadApprovedRegistrations() {
+    const tbody = document.getElementById('approved-registrations-body');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '<tr><td colspan="10">Loading approved registrations...<\/td><\/tr>';
+    
+    try {
+        const { data: registrations, error } = await sb
+            .from('student_unit_registrations')
+            .select('*')
+            .eq('status', 'approved')
+            .order('approval_date', { ascending: false });
+        
+        if (error) throw error;
+        
+        approvedRegistrationsData = registrations || [];
+        
+        if (approvedRegistrationsData.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="10">No approved registrations.<\/td><\/tr>';
+            return;
+        }
+        
+        // Get student names
+        const studentIds = [...new Set(approvedRegistrationsData.map(r => r.student_id))];
+        let studentNames = {};
+        
+        const { data: students } = await sb
+            .from('consolidated_user_profiles_table')
+            .select('user_id, full_name')
+            .in('user_id', studentIds);
+        
+        if (students) {
+            students.forEach(s => { studentNames[s.user_id] = s.full_name; });
+        }
+        
+        let html = '';
+        for (const reg of approvedRegistrationsData) {
+            const studentName = studentNames[reg.student_id] || 'Unknown';
+            const approvalDate = reg.approval_date ? new Date(reg.approval_date).toLocaleDateString() : 'N/A';
+            
+            html += `
+                <tr>
+                    <td><input type="checkbox" class="approved-checkbox" data-reg-id="${reg.id}" onchange="updateApprovedSelectedCount()"><\/td>
+                    <td>${escapeHtml(studentName)}<\/td>
+                    <td>${reg.student_id?.substring(0, 8)}...<\/td>
+                    <td><strong>${escapeHtml(reg.unit_code)}<\/strong><\/td>
+                    <td>${escapeHtml(reg.unit_name)}<\/td>
+                    <td>${escapeHtml(reg.block)}<\/td>
+                    <td>${escapeHtml(reg.reg_type || 'Normal')}<\/td>
+                    <td>${approvalDate}<\/td>
+                    <td>System<\/td>
+                    <td>
+                        <button onclick="deapproveSingleRegistration('${reg.id}', '${escapeHtml(reg.unit_code)}', '${escapeHtml(studentName)}')" class="btn-danger btn-sm">De-approve<\/button>
+                    <\/td>
+                 \x3c/tr>
+            `;
+        }
+        
+        tbody.innerHTML = html;
+        
+    } catch (error) {
+        console.error('Error loading approved registrations:', error);
+        tbody.innerHTML = `<tr><td colspan="10">Error: ${error.message}<\/td><\/tr>`;
+    }
+}
+
+function updateApprovedSelectedCount() {
+    const count = document.querySelectorAll('.approved-checkbox:checked').length;
+    const countElement = document.getElementById('approvedSelectedCount');
+    if (countElement) countElement.textContent = count;
+}
+
+function toggleSelectAllApproved() {
+    const isChecked = document.getElementById('selectAllApproved')?.checked || false;
+    document.querySelectorAll('.approved-checkbox').forEach(cb => cb.checked = isChecked);
+    updateApprovedSelectedCount();
+}
+
+function filterApprovedRegistrations() {
+    const searchTerm = document.getElementById('approved-search')?.value.toLowerCase() || '';
+    document.querySelectorAll('#approved-registrations-body tr').forEach(row => {
+        row.style.display = row.textContent.toLowerCase().includes(searchTerm) ? '' : 'none';
+    });
+}
+
+function exportApprovedRegistrations() {
+    const headers = ['Student Name', 'Student ID', 'Unit Code', 'Unit Name', 'Block', 'Reg Type', 'Approval Date', 'Approved By'];
+    const rows = [];
+    document.querySelectorAll('#approved-registrations-body tr').forEach(row => {
+        const cells = row.querySelectorAll('td');
+        if (cells.length >= 9) {
+            rows.push([
+                cells[1]?.textContent.trim() || '',
+                cells[2]?.textContent.trim() || '',
+                cells[3]?.textContent.trim() || '',
+                cells[4]?.textContent.trim() || '',
+                cells[5]?.textContent.trim() || '',
+                cells[6]?.textContent.trim() || '',
+                cells[7]?.textContent.trim() || '',
+                cells[8]?.textContent.trim() || ''
+            ]);
+        }
+    });
+    const csvContent = [headers, ...rows].map(row => row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'approved_registrations.csv';
+    link.click();
+    URL.revokeObjectURL(link.href);
+    showFeedback('Exported!', 'success');
+}
+
+async function deapproveSingleRegistration(regId, unitCode, studentName) {
+    if (!confirm(`De-approve ${unitCode} for ${studentName}?`)) return;
+    try {
+        await sb.from('student_unit_registrations').update({ status: 'pending', approved_by: null, approval_date: null }).eq('id', regId);
+        showFeedback(`Unit ${unitCode} moved to pending!`, 'success');
+        await loadApprovedRegistrations();
+        await loadUnitRegistrationStats();
+        await loadUnitPendingRegistrations();
+    } catch (error) {
+        showFeedback(`Error: ${error.message}`, 'error');
+    }
+}
+
+async function bulkDeapproveSelected() {
+    const selectedIds = [];
+    document.querySelectorAll('.approved-checkbox:checked').forEach(cb => {
+        const regId = cb.getAttribute('data-reg-id');
+        if (regId) selectedIds.push(regId);
+    });
+    if (selectedIds.length === 0) { showFeedback('No registrations selected', 'warning'); return; }
+    if (!confirm(`De-approve ${selectedIds.length} registration(s)?`)) return;
+    
+    try {
+        await sb.from('student_unit_registrations').update({ status: 'pending', approved_by: null, approval_date: null }).in('id', selectedIds);
+        showFeedback(`${selectedIds.length} registration(s) de-approved!`, 'success');
+        await loadApprovedRegistrations();
+        await loadUnitRegistrationStats();
+        await loadUnitPendingRegistrations();
+    } catch (error) {
+        showFeedback(`Error: ${error.message}`, 'error');
+    }
+}
+
+// =====================================================
+// BLOCKS
+// =====================================================
+
 async function loadUnitBlocks() {
     try {
-        const { data, error } = await sb
-            .from('units_catalog')
-            .select('block')
-            .eq('status', 'active');
-        
+        const { data, error } = await sb.from('units_catalog').select('block').eq('status', 'active');
         if (!error && data) {
             const blocks = [...new Set(data.map(b => b.block))];
             const blockSelect = document.getElementById('unit_filter_block');
@@ -4722,7 +4574,6 @@ async function loadUnitBlocks() {
     }
 }
 
-// Update block filter when changed
 function filterUnitsByBlockSelect() {
     const blockSelect = document.getElementById('unit_filter_block');
     if (blockSelect) {
@@ -4731,7 +4582,10 @@ function filterUnitsByBlockSelect() {
     }
 }
 
-// Global function references for Unit Registration
+// =====================================================
+// GLOBAL EXPORTS
+// =====================================================
+
 window.loadAllUnits = loadAllUnits;
 window.addNewUnitRecord = addNewUnitRecord;
 window.editUnitRecord = editUnitRecord;
@@ -4740,10 +4594,15 @@ window.filterUnitsCatalog = filterUnitsCatalog;
 window.filterUnitsByBlock = filterUnitsByBlock;
 window.filterUnitsByBlockSelect = filterUnitsByBlockSelect;
 window.loadUnitPendingRegistrations = loadUnitPendingRegistrations;
+window.loadApprovedRegistrations = loadApprovedRegistrations;
+window.filterApprovedRegistrations = filterApprovedRegistrations;
+window.exportApprovedRegistrations = exportApprovedRegistrations;
+window.deapproveSingleRegistration = deapproveSingleRegistration;
+window.bulkDeapproveSelected = bulkDeapproveSelected;
+window.toggleSelectAllApproved = toggleSelectAllApproved;
+window.updateApprovedSelectedCount = updateApprovedSelectedCount;
 window.selectAllPendingUnits = selectAllPendingUnits;
 window.clearAllUnitSelections = clearAllUnitSelections;
-window.toggleStudentUnitsSelection = toggleStudentUnitsSelection;
-window.toggleStudentUnitSelection = toggleStudentUnitSelection;
 window.updateSelectedUnitsCount = updateSelectedUnitsCount;
 window.approveSingleUnitRecord = approveSingleUnitRecord;
 window.rejectSingleUnitRecord = rejectSingleUnitRecord;
@@ -4807,334 +4666,53 @@ function setupEventListeners() {
 
     // ANNOUNCEMENTS
     $('save-announcement')?.addEventListener('click', saveOfficialAnnouncement);
-    /*******************************************************
- * APPROVED REGISTRATIONS MANAGEMENT - VIEW & DE-APPROVE
- *******************************************************/
-
-let approvedRegistrationsData = [];
-let selectedApprovedIds = new Set();
-
-// Load approved registrations
-async function loadApprovedRegistrations() {
-    const tbody = document.getElementById('approved-registrations-body');
-    if (!tbody) return;
     
-    tbody.innerHTML = '<tr><td colspan="10">Loading approved registrations...</td></tr>';
-    
-    try {
-        // Get all approved registrations
-        const { data: registrations, error } = await sb
-            .from('student_unit_registrations')
-            .select('*')
-            .eq('status', 'approved')
-            .order('approval_date', { ascending: false });
-        
-        if (error) throw error;
-        
-        approvedRegistrationsData = registrations || [];
-        
-        if (approvedRegistrationsData.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="10">No approved registrations found.</td></tr>';
-            return;
-        }
-        
-        // Get student names and approved by names
-        const studentIds = [...new Set(approvedRegistrationsData.map(r => r.student_id))];
-        const approverIds = [...new Set(approvedRegistrationsData.map(r => r.approved_by).filter(Boolean))];
-        
-        let studentNames = {};
-        let approverNames = {};
-        let studentIds_map = {};
-        
-        // Fetch student names
-        const { data: students } = await sb
-            .from('consolidated_user_profiles_table')
-            .select('user_id, full_name, student_id')
-            .in('user_id', studentIds);
-        
-        if (students) {
-            students.forEach(s => {
-                studentNames[s.user_id] = {
-                    name: s.full_name,
-                    student_id: s.student_id || s.user_id.substring(0, 8)
-                };
-            });
-        }
-        
-        // Fetch approver names
-        if (approverIds.length > 0) {
-            const { data: approvers } = await sb
-                .from('consolidated_user_profiles_table')
-                .select('user_id, full_name')
-                .in('user_id', approverIds);
-            
-            if (approvers) {
-                approvers.forEach(a => {
-                    approverNames[a.user_id] = a.full_name;
-                });
-            }
-        }
-        
-        // Build table
-        let html = '';
-        for (const reg of approvedRegistrationsData) {
-            const studentInfo = studentNames[reg.student_id] || { name: 'Unknown', student_id: 'N/A' };
-            const approverName = reg.approved_by ? (approverNames[reg.approved_by] || 'System') : 'System';
-            const approvalDate = reg.approval_date ? new Date(reg.approval_date).toLocaleDateString() : 'N/A';
-            
-            html += `
-                <tr>
-                    <td style="text-align: center;">
-                        <input type="checkbox" class="approved-checkbox" data-reg-id="${reg.id}" onchange="updateApprovedSelectedCount()">
-                    </td>
-                    <td><strong>${escapeHtml(studentInfo.name)}</strong></td>
-                    <td><code>${escapeHtml(studentInfo.student_id)}</code></td>
-                    <td><code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px;">${escapeHtml(reg.unit_code)}</code></td>
-                    <td>${escapeHtml(reg.unit_name)}</td>
-                    <td><span class="badge" style="background: #e0e7ff;">${escapeHtml(reg.block)}</span></td>
-                    <td>${escapeHtml(reg.reg_type || 'Normal')}</td>
-                    <td>${approvalDate}</td>
-                    <td>${escapeHtml(approverName)}</td>
-                    <td>
-                        <button onclick="deapproveSingleRegistration('${reg.id}', '${escapeHtml(reg.unit_code)}', '${escapeHtml(studentInfo.name)}')" 
-                                class="btn-danger btn-sm" style="background: #dc2626; padding: 4px 10px;">
-                            <i class="fas fa-undo-alt"></i> De-approve
-                        </button>
-                    </td>
-                </tr>
-            `;
-        }
-        
-        tbody.innerHTML = html;
-        
-        // Show/hide bulk deapprove button
-        const bulkBtn = document.getElementById('bulkDeapproveBtn');
-        if (bulkBtn && approvedRegistrationsData.length > 0) {
-            bulkBtn.style.display = 'inline-flex';
-        }
-        
-    } catch (error) {
-        console.error('Error loading approved registrations:', error);
-        tbody.innerHTML = `<tr><td colspan="10">Error loading approved registrations: ${error.message}</td></tr>`;
-    }
-}
-
-// Update approved selected count
-function updateApprovedSelectedCount() {
-    const checkboxes = document.querySelectorAll('.approved-checkbox:checked');
-    const count = checkboxes.length;
-    const countElement = document.getElementById('approvedSelectedCount');
-    if (countElement) countElement.textContent = count;
-    
-    selectedApprovedIds.clear();
-    checkboxes.forEach(cb => {
-        const regId = cb.getAttribute('data-reg-id');
-        if (regId) selectedApprovedIds.add(regId);
-    });
-}
-
-// Toggle select all approved registrations
-function toggleSelectAllApproved() {
-    const isChecked = document.getElementById('selectAllApproved').checked;
-    const allCheckboxes = document.querySelectorAll('.approved-checkbox');
-    
-    allCheckboxes.forEach(cb => {
-        cb.checked = isChecked;
-        const regId = cb.getAttribute('data-reg-id');
-        if (isChecked) {
-            selectedApprovedIds.add(regId);
-        } else {
-            selectedApprovedIds.delete(regId);
-        }
-    });
-    
-    updateApprovedSelectedCount();
-}
-
-// Filter approved registrations by search
-function filterApprovedRegistrations() {
-    const searchTerm = document.getElementById('approved-search')?.value.toLowerCase() || '';
-    const rows = document.querySelectorAll('#approved-registrations-body tr');
-    
-    rows.forEach(row => {
-        const text = row.textContent.toLowerCase();
-        if (text.includes(searchTerm)) {
-            row.style.display = '';
-        } else {
-            row.style.display = 'none';
-        }
-    });
-}
-
-// Export approved registrations to CSV
-function exportApprovedRegistrations() {
-    const headers = ['Student Name', 'Student ID', 'Unit Code', 'Unit Name', 'Block', 'Registration Type', 'Approval Date', 'Approved By'];
-    const rows = [];
-    
-    document.querySelectorAll('#approved-registrations-body tr').forEach(row => {
-        const cells = row.querySelectorAll('td');
-        if (cells.length >= 9 && cells[0].querySelector('input') === null) {
-            rows.push([
-                cells[1]?.textContent.trim() || '',
-                cells[2]?.textContent.trim() || '',
-                cells[3]?.textContent.trim() || '',
-                cells[4]?.textContent.trim() || '',
-                cells[5]?.textContent.trim() || '',
-                cells[6]?.textContent.trim() || '',
-                cells[7]?.textContent.trim() || '',
-                cells[8]?.textContent.trim() || ''
-            ]);
-        }
-    });
-    
-    const csvContent = [headers, ...rows].map(row => row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(',')).join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.href = url;
-    link.setAttribute('download', 'approved_registrations.csv');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    
-    showFeedback('Approved registrations exported successfully!', 'success');
-}
-
-// De-approve a single registration
-async function deapproveSingleRegistration(regId, unitCode, studentName) {
-    if (!confirm(`De-approve ${unitCode} for ${studentName}? This will revert the status to pending.`)) return;
-    
-    try {
-        const { error } = await sb
-            .from('student_unit_registrations')
-            .update({ 
-                status: 'pending',
-                approved_by: null,
-                approval_date: null,
-                updated_at: new Date().toISOString()
-            })
-            .eq('id', regId);
-        
-        if (error) throw error;
-        
-        showFeedback(`Unit ${unitCode} de-approved and moved back to pending!`, 'success');
-        await logAudit('UNIT_REG_DEAPPROVE', `De-approved unit ${unitCode} for student ${studentName}`, regId, 'SUCCESS');
-        
-        // Refresh both tables
-        await loadApprovedRegistrations();
-        await loadUnitRegistrationStats();
-        await loadUnitPendingRegistrations();
-        
-    } catch (error) {
-        console.error('Error de-approving registration:', error);
-        showFeedback(`Error: ${error.message}`, 'error');
-    }
-}
-
-// Bulk de-approve selected registrations
-async function bulkDeapproveSelected() {
-    const selectedIds = Array.from(selectedApprovedIds);
-    
-    if (selectedIds.length === 0) {
-        showFeedback('No registrations selected for de-approval.', 'warning');
-        return;
-    }
-    
-    if (!confirm(`De-approve ${selectedIds.length} selected registration(s)? They will move back to pending status.`)) return;
-    
-    try {
-        const { error } = await sb
-            .from('student_unit_registrations')
-            .update({ 
-                status: 'pending',
-                approved_by: null,
-                approval_date: null,
-                updated_at: new Date().toISOString()
-            })
-            .in('id', selectedIds);
-        
-        if (error) throw error;
-        
-        showFeedback(`${selectedIds.length} registration(s) de-approved and moved to pending!`, 'success');
-        await logAudit('UNIT_REG_BULK_DEAPPROVE', `Bulk de-approved ${selectedIds.length} registrations`, null, 'SUCCESS');
-        
-        selectedApprovedIds.clear();
-        await loadApprovedRegistrations();
-        await loadUnitRegistrationStats();
-        await loadUnitPendingRegistrations();
-        
-    } catch (error) {
-        console.error('Error in bulk de-approve:', error);
-        showFeedback(`Error: ${error.message}`, 'error');
-    }
-}
-
-// Update loadSectionData to include approved registrations
-// Add this to your existing loadSectionData function for case 'unit-management':
-
-// In your loadSectionData function, update the 'unit-management' case:
-// case 'unit-management': 
-//     loadAllUnits(); 
-//     loadUnitBlocks();
-//     loadUnitRegistrationStats();
-//     loadApprovedRegistrations();  // ADD THIS LINE
-//     break;
-
-// Global function references
-window.loadApprovedRegistrations = loadApprovedRegistrations;
-window.filterApprovedRegistrations = filterApprovedRegistrations;
-window.exportApprovedRegistrations = exportApprovedRegistrations;
-window.deapproveSingleRegistration = deapproveSingleRegistration;
-window.bulkDeapproveSelected = bulkDeapproveSelected;
-window.toggleSelectAllApproved = toggleSelectAllApproved;
-window.updateApprovedSelectedCount = updateApprovedSelectedCount;
     // =====================================================
     // UNIT REGISTRATION MANAGEMENT (NEW SECTION)
     // =====================================================
     
     // Add New Unit Form
-    const addUnitBtn = document.getElementById('add-unit-btn');
-    if (addUnitBtn) {
-        addUnitBtn.addEventListener('click', addNewUnit);
-    }
-    
-    // Alternative: If using form submission instead of button click
     const addUnitForm = document.getElementById('add-unit-form');
     if (addUnitForm) {
         addUnitForm.addEventListener('submit', (e) => {
             e.preventDefault();
-            addNewUnit();
+            addNewUnitRecord();
         });
+    }
+    
+    // Add Unit Button (alternative)
+    const addUnitBtn = document.getElementById('add-unit-btn');
+    if (addUnitBtn) {
+        addUnitBtn.addEventListener('click', addNewUnitRecord);
     }
     
     // Unit filter inputs
     const unitSearch = document.getElementById('unit_search');
     if (unitSearch) {
-        unitSearch.addEventListener('keyup', filterUnits);
+        unitSearch.addEventListener('keyup', filterUnitsCatalog);
     }
     
     const unitFilterProgram = document.getElementById('unit_filter_program');
     if (unitFilterProgram) {
-        unitFilterProgram.addEventListener('change', filterUnits);
+        unitFilterProgram.addEventListener('change', filterUnitsCatalog);
     }
     
     const unitFilterYear = document.getElementById('unit_filter_year');
     if (unitFilterYear) {
-        unitFilterYear.addEventListener('change', filterUnits);
+        unitFilterYear.addEventListener('change', filterUnitsCatalog);
     }
     
     const unitFilterBlock = document.getElementById('unit_filter_block');
     if (unitFilterBlock) {
-        unitFilterBlock.addEventListener('change', filterByBlockSelect);
+        unitFilterBlock.addEventListener('change', filterUnitsByBlockSelect);
     }
     
-    // Block filter buttons (if using button-based filtering)
+    // Block filter buttons
     const blockBtns = document.querySelectorAll('.block-btn');
     blockBtns.forEach(btn => {
         btn.addEventListener('click', function() {
             const block = this.getAttribute('data-block');
-            filterByBlock(block);
+            filterUnitsByBlock(block);
         });
     });
     
@@ -5147,7 +4725,31 @@ window.updateApprovedSelectedCount = updateApprovedSelectedCount;
     // View pending registrations button
     const viewPendingBtn = document.getElementById('view-pending-registrations');
     if (viewPendingBtn) {
-        viewPendingBtn.addEventListener('click', loadPendingRegistrations);
+        viewPendingBtn.addEventListener('click', loadUnitPendingRegistrations);
+    }
+    
+    // Refresh approved registrations button
+    const refreshApprovedBtn = document.getElementById('refresh-approved-btn');
+    if (refreshApprovedBtn) {
+        refreshApprovedBtn.addEventListener('click', loadApprovedRegistrations);
+    }
+    
+    // Search approved registrations
+    const approvedSearch = document.getElementById('approved-search');
+    if (approvedSearch) {
+        approvedSearch.addEventListener('keyup', filterApprovedRegistrations);
+    }
+    
+    // Select all approved checkbox
+    const selectAllApproved = document.getElementById('selectAllApproved');
+    if (selectAllApproved) {
+        selectAllApproved.addEventListener('change', toggleSelectAllApproved);
+    }
+    
+    // Bulk deapprove button
+    const bulkDeapproveBtn = document.getElementById('bulkDeapproveBtn');
+    if (bulkDeapproveBtn) {
+        bulkDeapproveBtn.addEventListener('click', bulkDeapproveSelected);
     }
     
     // Program dropdown for new unit form - update block options based on program
@@ -5158,7 +4760,6 @@ window.updateApprovedSelectedCount = updateApprovedSelectedCount;
             const program = this.value;
             const isTVET = program !== 'KRCHN';
             
-            // Update block options based on program type
             newUnitBlock.innerHTML = '';
             
             if (isTVET) {
@@ -5184,72 +4785,6 @@ window.updateApprovedSelectedCount = updateApprovedSelectedCount;
         // Trigger initial load
         newUnitProgram.dispatchEvent(new Event('change'));
     }
-}
-
-function initializeModals() {
-    // Close modals when clicking X
-    document.querySelectorAll('.modal .close').forEach(closeBtn => {
-        closeBtn.addEventListener('click', function() {
-            this.closest('.modal').style.display = 'none';
-        });
-    });
-    
-    // Close modals when clicking outside
-    document.querySelectorAll('.modal').forEach(modal => {
-        modal.addEventListener('click', function(e) {
-            if (e.target === this) {
-                this.style.display = 'none';
-            }
-        });
-    });
-
-    // Specific modal handlers
-    $('edit-user-form')?.addEventListener('submit', handleEditUser);
-    $('edit-course-form')?.addEventListener('submit', handleEditCourse);
-}
-
-async function initSession() {
-    const { data: { session }, error: sessionError } = await sb.auth.getSession();
-    
-    if (sessionError || !session) {
-        console.warn("Session check failed, redirecting to login.");
-        window.location.href = "login.html";
-        return;
-    }
-
-    const user = session.user;
-    const { data: profile, error: profileError } = await sb.from('profiles').select('*').eq('id', user.id).single();
-    
-    if (profile && !profileError) {
-        currentUserProfile = profile;
-        currentUserId = user.id;
-        
-        if (currentUserProfile.role !== 'superadmin') {
-            console.warn(`User ${user.email} is not a Super Admin. Redirecting.`);
-            window.location.href = "admin.html"; 
-            return;
-        }
-        
-        document.querySelector('header h1').textContent = `Welcome, ${profile.full_name || 'Super Admin'}!`;
-    } else {
-        console.error("Profile not found or fetch error:", profileError?.message);
-        window.location.href = "login.html";
-        return;
-    }
-    
-    // Setup all event listeners
-    setupEventListeners();
-    initializeModals();
-    
-    // Load initial data
-    loadSectionData('dashboard');
-}
-
-async function logout() {
-    await logAudit('LOGOUT', `User ${currentUserProfile.full_name} logged out.`);
-    await sb.auth.signOut();
-    localStorage.removeItem("loggedInUser");
-    window.location.href = "login.html";
 }
 
 // Global function references for HTML onclick handlers
