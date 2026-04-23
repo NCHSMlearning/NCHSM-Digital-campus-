@@ -15,7 +15,6 @@
             
             // User data
             this.programCode = null;
-            this.programType = null;
             this.intakeYear = null;
             this.userBlock = null;
             this.userTerm = null;
@@ -37,8 +36,13 @@
         cacheElements() {
             this.activeCoursesGrid = document.getElementById('active-courses-grid');
             this.activeCountEl = document.getElementById('active-count');
+            this.completedCountEl = document.getElementById('completed-courses-count');
+            this.completedTable = document.getElementById('completed-courses-table');
             this.programIndicator = document.getElementById('courses-program-indicator');
             this.refreshBtn = document.getElementById('refresh-courses-btn');
+            this.viewAllBtn = document.getElementById('view-all-courses');
+            this.viewActiveBtn = document.getElementById('view-active-only');
+            this.viewCompletedBtn = document.getElementById('view-completed-only');
         }
         
         setupLoginListeners() {
@@ -156,6 +160,16 @@
                     this.loadCourses();
                 });
             }
+            
+            if (this.viewAllBtn) {
+                this.viewAllBtn.addEventListener('click', () => this.showAllCourses());
+            }
+            if (this.viewActiveBtn) {
+                this.viewActiveBtn.addEventListener('click', () => this.showActiveCourses());
+            }
+            if (this.viewCompletedBtn) {
+                this.viewCompletedBtn.addEventListener('click', () => this.showCompletedCourses());
+            }
         }
         
         async loadCourses() {
@@ -180,19 +194,12 @@
                     throw new Error('Database connection or student ID not available');
                 }
                 
-                // STEP 1: Get approved unit registrations
+                // Get ALL approved units (no block filter first)
                 let query = supabase
                     .from('student_unit_registrations')
                     .select('*')
                     .eq('student_id', studentId)
                     .eq('status', 'approved');
-                
-                // Filter by current block/term
-                if (this.isTVETStudent && this.userTerm) {
-                    query = query.eq('block', this.userTerm);
-                } else if (!this.isTVETStudent && this.userBlock) {
-                    query = query.eq('block', this.userBlock);
-                }
                 
                 const { data: registrations, error: regError } = await query
                     .order('unit_code', { ascending: true });
@@ -243,7 +250,7 @@
                     <div class="course-card">
                         <div class="course-header">
                             <span class="course-code">${this.escapeHtml(unit.unit_code)}</span>
-                            <span class="status-badge approved">✓ Approved</span>
+                            <span class="status-badge approved">Approved</span>
                         </div>
                         
                         <h4 class="course-title">${this.escapeHtml(unit.unit_name)}</h4>
@@ -258,7 +265,7 @@
                         <div class="course-meta">
                             <span class="course-term-block">
                                 <i class="fas ${this.isTVETStudent ? 'fa-calendar-alt' : 'fa-th-large'}"></i>
-                                ${blockTermLabel}: ${blockTermValue}
+                                ${blockTermLabel}: ${unit.block || blockTermValue}
                             </span>
                             <span class="course-reg-type">
                                 <i class="fas fa-tag"></i>
@@ -269,10 +276,6 @@
                                 Approved: ${unit.approval_date || 'N/A'}
                             </span>
                         </div>
-                        
-                        <div class="course-description">
-                            ${this.escapeHtml(unit.description || 'No description available')}
-                        </div>
                     </div>
                 `;
             }
@@ -280,9 +283,62 @@
             this.activeCoursesGrid.innerHTML = html;
         }
         
+        showAllCourses() {
+            this.displayActiveCourses();
+            this.updateFilterButtons('all');
+        }
+        
+        showActiveCourses() {
+            this.displayActiveCourses();
+            this.updateFilterButtons('active');
+        }
+        
+        showCompletedCourses() {
+            // For now, just show message since no completed courses
+            if (this.activeCoursesGrid) {
+                this.activeCoursesGrid.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-check-circle"></i>
+                        <h4>No Completed Courses Yet</h4>
+                        <p>Complete your active courses to see them here.</p>
+                    </div>
+                `;
+            }
+            this.updateFilterButtons('completed');
+        }
+        
+        updateFilterButtons(activeFilter) {
+            if (this.viewAllBtn) {
+                this.viewAllBtn.classList.toggle('active', activeFilter === 'all');
+            }
+            if (this.viewActiveBtn) {
+                this.viewActiveBtn.classList.toggle('active', activeFilter === 'active');
+            }
+            if (this.viewCompletedBtn) {
+                this.viewCompletedBtn.classList.toggle('active', activeFilter === 'completed');
+            }
+        }
+        
         updateCounts() {
             if (this.activeCountEl) {
                 this.activeCountEl.textContent = `${this.approvedUnits.length} course${this.approvedUnits.length !== 1 ? 's' : ''}`;
+            }
+            
+            if (this.completedCountEl) {
+                this.completedCountEl.textContent = '0';
+            }
+            
+            // Update completed courses table
+            if (this.completedTable) {
+                this.completedTable.innerHTML = `
+                    <tr class="empty-row">
+                        <td colspan="6" style="text-align: center; padding: 40px;">
+                            <i class="fas fa-check-circle" style="font-size: 48px; color: #10b981; margin-bottom: 15px; display: block;"></i>
+                            <h4>No Completed Courses Yet</h4>
+                            <p>Complete your active courses to see them here.</p>
+                        </td>
+                    </tr>
+                `;
             }
         }
         
@@ -319,10 +375,10 @@
         showError(message) {
             if (this.activeCoursesGrid) {
                 this.activeCoursesGrid.innerHTML = `
-                    <div class="error-state">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <p>${message}</p>
-                        <button onclick="window.coursesModule.loadCourses()" class="btn-primary">Try Again</button>
+                    <div class="error-state" style="text-align: center; padding: 40px;">
+                        <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #dc2626; margin-bottom: 15px; display: block;"></i>
+                        <p style="color: #dc2626;">${message}</p>
+                        <button onclick="window.coursesModule.loadCourses()" class="btn-primary" style="margin-top: 15px;">Try Again</button>
                     </div>
                 `;
             }
@@ -331,8 +387,8 @@
         showWaitingForLogin() {
             if (this.activeCoursesGrid && !this.loaded) {
                 this.activeCoursesGrid.innerHTML = `
-                    <div class="waiting-state">
-                        <i class="fas fa-spinner fa-spin"></i>
+                    <div class="waiting-state" style="text-align: center; padding: 40px;">
+                        <i class="fas fa-spinner fa-spin" style="font-size: 48px; color: #4C1D95; margin-bottom: 15px; display: block;"></i>
                         <p>Please log in to view your courses</p>
                     </div>
                 `;
@@ -395,5 +451,5 @@
     window.loadCourses = () => window.coursesModule?.refresh();
     window.getCoursesProgramInfo = () => window.coursesModule?.getStudentProgramInfo() || {};
     
-    console.log('✅ Courses module ready - shows approved units only!');
+    console.log('✅ Courses module ready - shows approved units from registrations!');
 })();
