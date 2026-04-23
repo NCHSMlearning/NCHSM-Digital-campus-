@@ -406,7 +406,7 @@ function initializeAllProgramDropdowns() {
         'resource_program',     // Resources
         'msg_program',          // Messages
         'clinical_program',     // Clinical Management
-        'promote_intake'        // Mass Promotion
+        'promote_program'       // Mass Promotion - CHANGED from 'promote_intake'
     ];
     
     // Initialize each dropdown
@@ -427,13 +427,20 @@ function initializeAllProgramDropdowns() {
         }
     });
     
-    // Special case for mass promotion
-    const promoteProgram = $('promote_intake');
-    if (promoteProgram) {
-        promoteProgram.addEventListener('change', function() {
-            updateBlockTermOptions('promote_intake', 'promote_from_block');
-            updateBlockTermOptions('promote_intake', 'promote_to_block');
+    // Special case for mass promotion - Handle FROM and TO blocks separately
+    const promoteProgramSelect = document.getElementById('promote_program');
+    if (promoteProgramSelect) {
+        promoteProgramSelect.addEventListener('change', function() {
+            console.log('📋 Mass Promotion: Program changed to', this.value);
+            updateBlockTermOptions('promote_program', 'promote_from_block');
+            updateBlockTermOptions('promote_program', 'promote_to_block');
         });
+        
+        // Initialize block options if program is already selected
+        if (promoteProgramSelect.value) {
+            updateBlockTermOptions('promote_program', 'promote_from_block');
+            updateBlockTermOptions('promote_program', 'promote_to_block');
+        }
     }
     
     console.log('✅ All program dropdowns initialized');
