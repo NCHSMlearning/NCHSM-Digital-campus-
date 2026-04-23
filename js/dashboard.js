@@ -752,84 +752,112 @@ class DashboardModule {
         }
     }
     
-    // Load exam metrics from database (fallback)
-    async loadExamMetricsFromDB() {
-        if (!this.userProfile || !this.sb) {
-            console.warn('⚠️ Cannot load exams: No user profile or Supabase');
-            this.showErrorState('exams');
-            return;
-        }
-        
-        try {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            
-            const { data: exams, error } = await this.sb
-                .from('exams_with_courses')
-                .select('exam_name, exam_date, due_date, status, exam_type')
-                .eq('intake_year', this.userProfile.intake_year)
-                .or(`program_type.eq.${this.userProfile.program},program_type.is.null,program_type.eq.General`)
-                .or(`block_term.eq.${this.userProfile.block},block_term.is.null,block_term.eq.General`)
-                .order('exam_date', { ascending: true })
-                .limit(5);
-            
-            if (error) throw error;
-            
-            let upcomingText = 'None';
-            let upcomingCount = 0;
-            
-            if (exams && exams.length > 0) {
-                upcomingCount = exams.length;
-                
-                // Find upcoming exams
-                const upcomingExams = exams.filter(exam => {
-                    const examDate = new Date(exam.exam_date || exam.due_date);
-                    return examDate >= today;
-                });
-                
-                if (upcomingExams.length > 0) {
-                    upcomingExams.sort((a, b) => {
-                        const dateA = new Date(a.exam_date || a.due_date);
-                        const dateB = new Date(b.exam_date || b.due_date);
-                        return dateA - dateB;
-                    });
-                    
-                    const nextExam = upcomingExams[0];
-                    const examDate = new Date(nextExam.exam_date || nextExam.due_date);
-                    const diffDays = Math.ceil((examDate - today) / (1000 * 60 * 60 * 24));
-                    
-                    if (diffDays <= 0) upcomingText = 'Today';
-                    else if (diffDays === 1) upcomingText = 'Tomorrow';
-                    else if (diffDays <= 7) upcomingText = `${diffDays}d`;
-                    else if (diffDays <= 30) upcomingText = `${Math.floor(diffDays / 7)}w`;
-                    else upcomingText = examDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                    
-                    if (upcomingCount > 1) {
-                        upcomingText += ` (+${upcomingCount - 1})`;
-                    }
-                }
-            }
-            
-            const metrics = {
-                upcomingExam: upcomingText,
-                upcomingCount: upcomingCount,
-                gradedExams: 0,
-                averageScore: 0,
-                bestScore: 0,
-                passRate: 0,
-                lastUpdated: new Date().toISOString()
-            };
-            
-            this.updateExamsUI(metrics);
-            
-            console.log(`✅ Exams (DB): ${upcomingText} (${upcomingCount} active)`);
-            
-        } catch (error) {
-            console.error('❌ Error loading exams from DB:', error);
-            this.showErrorState('exams');
-        }
+   // Load exam metrics from database (fallback) - CORRECTED for your actual table structure
+async loadExamMetricsFromDB() {
+    if (!this.userProfile || !this.sb) {
+        console.warn('⚠️ Cannot load exams: No user profile or Supabase');
+        this.showErrorState('exams');
+        return;
     }
     
+    try {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        // Query the 'exams' table with correct column names from your table
+        const { data: exams, error } = await this.sb
+            .from('exams')
+            .select('id, exam_name, exam_type, exam_date, status, block_term, target_program, duration_minutes')
+            .eq('intake_year', this.userProfile.intake_year)
+            .or(`target_program.eq.${this.userProfile.program},target_program.is.null,target_program.eq.General`)
+            .or(`block_term.eq.${this.userProfile.block},block_term.is.null,block_term.eq.General`)
+            .order('exam_date', { ascending: true })
+            .limit(5);
+        
+        if (error) throw error;
+        
+        let upcomingText = 'None';
+        let upcomingCount = 0;
+        let upcomingExamName = '';
+        
+        if (exams && exams.length > 0) {
+            // Filter exams that are upcoming (not completed)
+            const upcomingExams = exams.filter(exam => {
+                // Skip if status is Completed
+                if (exam.status === 'Completed') return false;
+                
+                const examDate = new Date(exam.exam_date);
+                return examDate >= today;
+            });
+            
+            upcomingCount = upcomingExams.length;
+            
+            if (upcomingExams.length > 0) {
+                // Sort by date
+                upcomingExams.sort((a, b) => {
+                    const dateA = new Date(a.exam_date);
+                    const dateB = new Date(b.exam_date);
+                    return dateA - dateB;
+                });
+                
+                const nextExam = upcomingExams[0];
+                upcomingExamName = nextExam.exam_name || 'Exam';
+                const examDate = new Date(nextExam.exam_date);
+                const diffDays = Math.ceil((examDate - today) / (1000 * 60 * 60 * 24));
+                
+                if (diffDays <= 0) upcomingText = 'Today';
+                else if (diffDays === 1) upcomingText = 'Tomorrow';
+                else if (diffDays <= 7) upcomingText = `${diffDays}d`;
+                else if (diffDays <= 30) upcomingText = `${Math.floor(diffDays / 7)}w`;
+                else upcomingText = examDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                
+                // Add exam name for display
+                let displayName = upcomingExamName;
+                if (displayName.length > 20) {
+                    displayName = displayName.substring(0, 17) + '...';
+                }
+                
+                if (upcomingCount === 1) {
+                    upcomingText = displayName;
+                } else if (upcomingCount > 1) {
+                    upcomingText = `${displayName} (+${upcomingCount - 1})`;
+                }
+            }
+        }
+        
+        const metrics = {
+            upcomingExam: upcomingText,
+            upcomingExamName: upcomingExamName,
+            upcomingCount: upcomingCount,
+            gradedExams: 0,
+            averageScore: 0,
+            bestScore: 0,
+            passRate: 0,
+            lastUpdated: new Date().toISOString()
+        };
+        
+        this.updateExamsUI(metrics);
+        
+        console.log(`✅ Exams (DB): ${upcomingText} (${upcomingCount} active)`);
+        
+    } catch (error) {
+        console.error('❌ Error loading exams from DB:', error);
+        this.showErrorState('exams');
+        
+        // Set default values on error
+        const metrics = {
+            upcomingExam: 'Error loading',
+            upcomingExamName: '',
+            upcomingCount: 0,
+            gradedExams: 0,
+            averageScore: 0,
+            bestScore: 0,
+            passRate: 0,
+            lastUpdated: new Date().toISOString()
+        };
+        this.updateExamsUI(metrics);
+    }
+}
     // Animate grid cards appearance
     animateGridCards() {
         const cards = document.querySelectorAll('.stat-card');
