@@ -3648,9 +3648,9 @@ p {
     background: #fef3c7;
     color: #92400e;
 }
- /* Exam Card Styles */
+/* Exam Card Styles - UPDATED for better table formatting */
 .exam-card-container {
-    max-width: 900px;
+    max-width: 1100px;
     margin: 0 auto;
 }
 
@@ -3679,6 +3679,15 @@ p {
     margin: 5px 0;
     font-size: 14px;
     opacity: 0.9;
+}
+
+.semester-badge {
+    display: inline-block;
+    background: rgba(255,255,255,0.2);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    margin-top: 8px;
 }
 
 .eligibility-badge {
@@ -3755,30 +3764,118 @@ p {
     font-size: 14px;
 }
 
+.unit-count-info {
+    font-size: 12px;
+    color: #6b7280;
+    margin-bottom: 15px;
+    padding: 10px;
+    background: #fef3c7;
+    border-radius: 6px;
+    border-left: 3px solid #f59e0b;
+}
+
+/* IMPROVED TABLE STYLES */
 .registered-units-table {
     width: 100%;
     border-collapse: collapse;
     margin-top: 15px;
     margin-bottom: 20px;
+    font-size: 12px;
 }
 
 .registered-units-table th,
 .registered-units-table td {
     padding: 10px 8px;
     text-align: left;
-    border-bottom: 1px solid #e5e7eb;
-    font-size: 13px;
+    border: 1px solid #e5e7eb;
+    vertical-align: top;
 }
 
 .registered-units-table th {
     background: #f9fafb;
     font-weight: 600;
     color: #374151;
+    font-size: 12px;
+}
+
+.registered-units-table td.text-center {
+    text-align: center;
+    vertical-align: middle;
+}
+
+/* Unit Code column */
+.registered-units-table td:first-child,
+.registered-units-table th:first-child {
+    text-align: center;
+    width: 5%;
+}
+
+/* Unit Code column */
+.registered-units-table td:nth-child(2),
+.registered-units-table th:nth-child(2) {
+    width: 18%;
+    white-space: nowrap;
+}
+
+/* Unit Name column - allows wrapping */
+.registered-units-table td:nth-child(3),
+.registered-units-table th:nth-child(3) {
+    width: 32%;
+    word-wrap: break-word;
+    white-space: normal;
+}
+
+/* Credits column */
+.registered-units-table td:nth-child(4),
+.registered-units-table th:nth-child(4) {
+    text-align: center;
+    width: 8%;
+}
+
+/* Signature column */
+.registered-units-table td:nth-child(5),
+.registered-units-table th:nth-child(5) {
+    width: 20%;
+}
+
+/* Date column */
+.registered-units-table td:nth-child(6),
+.registered-units-table th:nth-child(6) {
+    width: 10%;
+}
+
+/* Status column */
+.registered-units-table td:nth-child(7),
+.registered-units-table th:nth-child(7) {
+    text-align: center;
+    width: 7%;
+}
+
+.signature-cell, .date-cell {
+    vertical-align: middle;
+}
+
+.signature-line-blank, .date-line-blank {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.signature-placeholder, .date-placeholder {
+    font-family: 'Courier New', monospace;
+    letter-spacing: 1px;
+    color: #4b5563;
+    display: inline-block;
+    border-bottom: 1px solid #9ca3af;
+    min-width: 100px;
+    font-size: 11px;
+    text-align: center;
 }
 
 .status-approved {
     color: #059669;
-    font-weight: 500;
+    font-weight: bold;
+    font-size: 14px;
 }
 
 .unit-summary {
@@ -3831,6 +3928,16 @@ p {
     color: #6b7280;
 }
 
+.no-units-warning .btn-primary {
+    background: #4C1D95;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-top: 15px;
+}
+
 .exam-card-footer {
     margin-top: 25px;
     padding-top: 20px;
@@ -3842,7 +3949,7 @@ p {
     justify-content: space-between;
     margin-bottom: 25px;
     flex-wrap: wrap;
-    gap: 15px;
+    gap: 20px;
 }
 
 .signature-line {
@@ -3852,7 +3959,7 @@ p {
 
 .signature-line span {
     display: inline-block;
-    width: 160px;
+    width: 180px;
     border-top: 1px solid #000;
     margin-bottom: 8px;
 }
@@ -3860,6 +3967,42 @@ p {
 .signature-line p {
     margin: 5px 0;
     font-size: 11px;
+    color: #6b7280;
+}
+
+.signature-line small {
+    font-size: 9px;
+    color: #9ca3af;
+}
+
+.declaration-section {
+    margin: 20px 0;
+    padding: 15px;
+    background: #fef3c7;
+    border-radius: 8px;
+    border-left: 3px solid #f59e0b;
+}
+
+.declaration-box h5 {
+    margin: 0 0 10px 0;
+    color: #92400e;
+}
+
+.student-signature-line {
+    margin-top: 15px;
+    text-align: right;
+}
+
+.student-signature-line span {
+    display: inline-block;
+    width: 200px;
+    border-top: 1px solid #000;
+    margin-top: 10px;
+}
+
+.student-signature-line p {
+    margin: 5px 0 0 0;
+    font-size: 10px;
     color: #6b7280;
 }
 
@@ -3880,6 +4023,7 @@ p {
     background: #f8f9fa;
     padding: 15px;
     border-radius: 10px;
+    margin-top: 20px;
 }
 
 .exam-rules h5 {
@@ -3920,6 +4064,77 @@ p {
     background: #9ca3af;
     cursor: not-allowed;
     transform: none;
+}
+
+/* Logo styles */
+.logo-wrapper {
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+.exam-card-logo {
+    max-width: 80px;
+    height: auto;
+}
+
+/* Print-specific styles */
+@media print {
+    .print-btn {
+        display: none;
+    }
+    
+    .exam-card-template {
+        box-shadow: none;
+        border: 1px solid #ddd;
+    }
+    
+    .registered-units-table {
+        font-size: 10px;
+    }
+    
+    .registered-units-table th,
+    .registered-units-table td {
+        padding: 6px 4px;
+    }
+    
+    .signature-placeholder, .date-placeholder {
+        min-width: 70px;
+        font-size: 9px;
+    }
+    
+    .unit-name-cell {
+        max-width: 180px;
+    }
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+    .exam-card-body {
+        padding: 15px;
+    }
+    
+    .exam-info-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+    
+    .registered-units-table {
+        font-size: 10px;
+    }
+    
+    .registered-units-table th,
+    .registered-units-table td {
+        padding: 6px 4px;
+    }
+    
+    .signature-line span {
+        width: 120px;
+    }
+    
+    .signature-section {
+        flex-direction: column;
+        align-items: center;
+    }
 }
 
 /* Dashboard Exam Card */
