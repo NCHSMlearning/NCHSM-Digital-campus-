@@ -1,11 +1,9 @@
 // js/exam-card.js - Exam Card Module
-// Displays ONLY approved registered units for the CURRENT semester/block
+// Displays ONLY approved registered units where course status is ACTIVE
 
 let examCardModule = {
     currentStudentId: null,
     supabase: null,
-    currentBlock: null,
-    currentIntakeYear: null,
     
     async init() {
         console.log('📇 Initializing Exam Card module...');
@@ -18,30 +16,8 @@ let examCardModule = {
             return;
         }
         
-        // Get current student's block and intake year
-        await this.getCurrentStudentInfo();
-        
         await this.loadExamCard();
         await this.updateDashboardExamCard();
-    },
-    
-    async getCurrentStudentInfo() {
-        try {
-            const { data: student, error } = await this.supabase
-                .from('consolidated_user_profiles_table')
-                .select('block, intake_year, program, full_name, student_id')
-                .eq('user_id', this.currentStudentId)
-                .single();
-            
-            if (!error && student) {
-                this.currentBlock = student.block;
-                this.currentIntakeYear = student.intake_year;
-                this.studentInfo = student;
-                console.log(`📇 Current semester: Block ${this.currentBlock}, Intake: ${this.currentIntakeYear}`);
-            }
-        } catch (error) {
-            console.error('Error getting student info:', error);
-        }
     },
     
     async loadExamCard() {
@@ -58,31 +34,69 @@ let examCardModule = {
                 .eq('user_id', this.currentStudentId)
                 .single();
             
-            if (studentError) throw studentError;
+            if (studentError) {
+                console.error('Student fetch error:', studentError);
+                throw studentError;
+            }
             
-            // IMPORTANT: Get ONLY APPROVED units for CURRENT BLOCK/TERM
-            // Filter by: status = 'approved' AND block = current student block
-            let query = this.supabase
+            console.log('📇 Student found:', student.full_name);
+            
+            // STEP 1: Get ALL approved registrations first
+            const { data: registrations, error: regError } = await this.supabase
                 .from('student_unit_registrations')
                 .select('*')
                 .eq('student_id', this.currentStudentId)
-                .eq('status', 'approved');
-            
-            // If student has a current block, filter by it
-            if (student.block && student.block !== 'Unknown') {
-                query = query.eq('block', student.block);
-                console.log(`📇 Filtering units for current block: ${student.block}`);
-            }
-            
-            const { data: registrations, error: regError } = await query
+                .eq('status', 'approved')
                 .order('unit_code', { ascending: true });
             
-            if (regError) throw regError;
+            if (regError) {
+                console.error('Registrations fetch error:', regError);
+                throw regError;
+            }
             
-            const approvedUnits = registrations || [];
+            console.log(`📇 Found ${registrations?.length || 0} approved registrations`);
+            
+            // STEP 2: Filter to only include units where course is ACTIVE
+            let approvedUnits = [];
+            
+            if (registrations && registrations.length > 0) {
+                // Get all course codes from registrations
+                const unitCodes = registrations.map(r => r.unit_code);
+                
+                if (unitCodes.length > 0) {
+                    // Query courses table to check which units are ACTIVE
+                    const { data: activeCourses, error: courseError } = await this.supabase
+                        .from('courses')
+                        .select('unit_code, status')
+                        .in('unit_code', unitCodes)
+                        .eq('status', 'Active');
+                    
+                    if (courseError) {
+                        console.error('Course fetch error:', courseError);
+                        // If course query fails, still show registrations (fallback)
+                        approvedUnits = registrations;
+                    } else {
+                        // Create set of active unit codes
+                        const activeUnitCodes = new Set(activeCourses.map(c => c.unit_code));
+                        console.log(`📇 Active courses found: ${activeUnitCodes.size}`);
+                        
+                        // Filter registrations to only active units
+                        approvedUnits = registrations.filter(reg => activeUnitCodes.has(reg.unit_code));
+                        
+                        console.log(`📇 After filtering: ${approvedUnits.length} approved AND active units`);
+                        
+                        // Log which units were filtered out
+                        const filteredOut = registrations.filter(reg => !activeUnitCodes.has(reg.unit_code));
+                        if (filteredOut.length > 0) {
+                            console.log('⚠️ Filtered out (inactive courses):', filteredOut.map(u => u.unit_code).join(', '));
+                        }
+                    }
+                } else {
+                    approvedUnits = registrations;
+                }
+            }
+            
             const hasApprovedUnits = approvedUnits.length > 0;
-            
-            // Determine exam eligibility (has approved units for current semester)
             const isEligible = hasApprovedUnits;
             
             // Generate exam card HTML
@@ -92,45 +106,53 @@ let examCardModule = {
             // Add print functionality
             const printBtn = document.getElementById('print-exam-card');
             if (printBtn) {
-                printBtn.addEventListener('click', () => this.printExamCard());
+                const newPrintBtn = printBtn.cloneNode(true);
+                printBtn.parentNode.replaceChild(newPrintBtn, printBtn);
+                newPrintBtn.addEventListener('click', () => this.printExamCard());
             }
             
-            console.log(`📇 Exam card loaded: ${approvedUnits.length} approved units for ${student.block}`);
+            console.log(`📇 Exam card loaded: ${approvedUnits.length} approved & active units`);
             
         } catch (error) {
             console.error('Error loading exam card:', error);
-            container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><h3>Error Loading Exam Card</h3><p>' + error.message + '</p></div>';
+            container.innerHTML = `<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><h3>Error Loading Exam Card</h3><p>${error.message}</p><button onclick="location.reload()" class="btn-primary">Retry</button></div>`;
         }
     },
     
     async updateDashboardExamCard() {
         try {
-            // Get student info first
-            const { data: student } = await this.supabase
-                .from('consolidated_user_profiles_table')
-                .select('block')
-                .eq('user_id', this.currentStudentId)
-                .single();
-            
-            // Build query for current semester only
-            let query = this.supabase
+            // Get approved registrations
+            const { data: registrations, error: regError } = await this.supabase
                 .from('student_unit_registrations')
-                .select('id')
+                .select('unit_code')
                 .eq('student_id', this.currentStudentId)
                 .eq('status', 'approved');
             
-            if (student && student.block && student.block !== 'Unknown') {
-                query = query.eq('block', student.block);
+            if (regError) throw regError;
+            
+            let approvedCount = 0;
+            
+            if (registrations && registrations.length > 0) {
+                // Check which units have active course status
+                const unitCodes = registrations.map(r => r.unit_code);
+                
+                const { data: activeCourses, error: courseError } = await this.supabase
+                    .from('courses')
+                    .select('unit_code')
+                    .in('unit_code', unitCodes)
+                    .eq('status', 'Active');
+                
+                if (!courseError && activeCourses) {
+                    approvedCount = activeCourses.length;
+                } else {
+                    approvedCount = registrations.length;
+                }
             }
             
-            const { data: registrations, error } = await query;
-            
-            const approvedCount = registrations?.length || 0;
             const isEligible = approvedCount > 0;
             
             const examStatusEl = document.getElementById('dashboard-exam-status');
             const approvedUnitsEl = document.getElementById('dashboard-approved-units');
-            const currentSemesterEl = document.getElementById('dashboard-current-semester');
             
             if (examStatusEl) {
                 examStatusEl.textContent = isEligible ? 'ELIGIBLE ✅' : 'NOT ELIGIBLE ❌';
@@ -141,9 +163,7 @@ let examCardModule = {
                 approvedUnitsEl.textContent = approvedCount;
             }
             
-            if (currentSemesterEl && student) {
-                currentSemesterEl.textContent = student.block || 'Not Assigned';
-            }
+            console.log(`📇 Dashboard updated: ${approvedCount} approved & active units`);
             
         } catch (error) {
             console.error('Error updating dashboard exam card:', error);
@@ -158,31 +178,21 @@ let examCardModule = {
         });
         
         const examPeriod = this.getExamPeriod();
-        const currentSemester = student.block || 'Current Semester';
         const eligibilityStatus = isEligible ? 'ELIGIBLE' : 'NOT ELIGIBLE';
         const eligibilityClass = isEligible ? 'eligible' : 'not-eligible';
         
         let eligibilityMessage = '';
         if (!isEligible) {
-            if (approvedUnits.length === 0) {
-                eligibilityMessage = `❌ No approved unit registrations found for ${currentSemester}. Please register units through the Learning Hub and wait for admin approval.`;
-            } else {
-                eligibilityMessage = `⚠️ Please ensure all requirements are met before exams.`;
-            }
+            eligibilityMessage = `❌ No approved unit registrations found with active course status. Please register units through the Learning Hub and wait for admin approval.`;
         } else {
-            eligibilityMessage = `✅ You are cleared to sit for ${currentSemester} examinations. You have ${approvedUnits.length} approved unit(s) for this semester.`;
+            eligibilityMessage = `✅ You are cleared to sit for examinations. You have ${approvedUnits.length} approved unit(s) with active course status.`;
         }
-        
-        // Count units by type for current semester only
-        const coreUnits = approvedUnits.filter(u => u.unit_type === 'Core' || u.reg_type === 'Core');
-        const electiveUnits = approvedUnits.filter(u => u.unit_type === 'Elective' || u.reg_type === 'Elective');
         
         return `
             <div class="exam-card-template" id="exam-card-print">
                 <div class="exam-card-header">
                     <h2>NAKURU COLLEGE OF HEALTH SCIENCES AND MANAGEMENT</h2>
                     <p>EXAMINATION CARD - ${examPeriod}</p>
-                    <div class="semester-badge">${currentSemester}</div>
                     <div class="eligibility-badge ${eligibilityClass}">${eligibilityStatus}</div>
                 </div>
                 
@@ -206,11 +216,11 @@ let examCardModule = {
                         </div>
                         <div class="exam-info-item">
                             <label>Current Block/Term:</label>
-                            <div class="value"><strong>${currentSemester}</strong></div>
+                            <div class="value">${student.block || 'Not Assigned'}</div>
                         </div>
                         <div class="exam-info-item">
-                            <label>Approved Units:</label>
-                            <div class="value">${approvedUnits.length} unit(s) for this semester</div>
+                            <label>Approved & Active Units:</label>
+                            <div class="value">${approvedUnits.length} unit(s)</div>
                         </div>
                         <div class="exam-info-item">
                             <label>Card Issued:</label>
@@ -224,8 +234,8 @@ let examCardModule = {
                     </div>
                     
                     ${approvedUnits.length > 0 ? `
-                        <h4>📋 Approved Units for ${currentSemester} Examination</h4>
-                        <p class="unit-count-info">You have been approved to sit for the following ${approvedUnits.length} unit(s) in ${currentSemester}:</p>
+                        <h4>📋 Approved Units for Examination (Active Courses Only)</h4>
+                        <p class="unit-count-info">You have been approved to sit for the following ${approvedUnits.length} unit(s) with active course status:</p>
                         <div class="table-responsive">
                             <table class="registered-units-table">
                                 <thead>
@@ -244,9 +254,9 @@ let examCardModule = {
                                             <td>${index + 1}</td>
                                             <td><strong>${this.escapeHtml(unit.unit_code)}</strong></td>
                                             <td>${this.escapeHtml(unit.unit_name)}</td>
-                                            <td>${this.escapeHtml(unit.block || currentSemester)}</td>
+                                            <td>${this.escapeHtml(unit.block || 'N/A')}</td>
                                             <td>${unit.reg_type || 'Normal'}</td>
-                                            <td><span class="status-approved">✓ Approved for ${currentSemester}</span></td>
+                                            <td><span class="status-approved">✓ Approved & Active</span></td>
                                         </tr>
                                     `).join('')}
                                 </tbody>
@@ -255,32 +265,19 @@ let examCardModule = {
                         
                         <div class="unit-summary">
                             <div class="summary-badge">
-                                <span class="summary-label">Total Units (${currentSemester}):</span>
+                                <span class="summary-label">Total Eligible Units:</span>
                                 <span class="summary-value">${approvedUnits.length}</span>
                             </div>
-                            ${coreUnits.length > 0 ? `
-                                <div class="summary-badge">
-                                    <span class="summary-label">Core Units:</span>
-                                    <span class="summary-value">${coreUnits.length}</span>
-                                </div>
-                            ` : ''}
-                            ${electiveUnits.length > 0 ? `
-                                <div class="summary-badge">
-                                    <span class="summary-label">Elective Units:</span>
-                                    <span class="summary-value">${electiveUnits.length}</span>
-                                </div>
-                            ` : ''}
                         </div>
                     ` : `
                         <div class="no-units-warning">
                             <i class="fas fa-exclamation-circle"></i>
-                            <h4>No Approved Units for ${currentSemester}</h4>
-                            <p>You don't have any approved unit registrations for the current semester (${currentSemester}). Please:</p>
+                            <h4>No Eligible Units</h4>
+                            <p>You don't have any approved units with active course status. This could be because:</p>
                             <ol>
-                                <li>Go to <strong>My Learning Hub</strong> tab</li>
-                                <li>Select units for ${currentSemester}</li>
-                                <li>Submit your registration for admin approval</li>
-                                <li>Wait for approval confirmation</li>
+                                <li>Your registered units are pending approval</li>
+                                <li>The courses are not currently active</li>
+                                <li>You haven't registered for any units</li>
                             </ol>
                             <button onclick="window.ui.showTab('learning-hub')" class="btn-primary">
                                 <i class="fas fa-book"></i> Go to Learning Hub
@@ -305,7 +302,7 @@ let examCardModule = {
                         <div class="exam-rules">
                             <h5>📌 Examination Rules:</h5>
                             <ul>
-                                <li>This card is valid ONLY for ${currentSemester} examinations</li>
+                                <li>This card is valid ONLY for units with active course status</li>
                                 <li>This card must be presented at each examination venue</li>
                                 <li>Students without valid exam card will not be allowed to sit for exams</li>
                                 <li>Keep this card safe throughout the examination period</li>
@@ -319,7 +316,7 @@ let examCardModule = {
             </div>
             <div style="text-align: center; margin-top: 20px;">
                 <button id="print-exam-card" class="print-btn" ${!isEligible ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>
-                    <i class="fas fa-print"></i> ${isEligible ? `Print Exam Card (${currentSemester})` : 'Exam Card Unavailable - No Approved Units for Current Semester'}
+                    <i class="fas fa-print"></i> ${isEligible ? 'Print Exam Card' : 'Exam Card Unavailable - No Eligible Units'}
                 </button>
             </div>
         `;
@@ -344,14 +341,13 @@ let examCardModule = {
             <!DOCTYPE html>
             <html>
             <head>
-                <title>NCHSM Exam Card - ${this.currentBlock || 'Current Semester'}</title>
+                <title>NCHSM Exam Card</title>
                 <style>
                     * { margin: 0; padding: 0; box-sizing: border-box; }
                     body { font-family: 'Inter', Arial, sans-serif; padding: 20px; background: white; }
                     .exam-card-template { max-width: 900px; margin: 0 auto; border: 2px solid #4C1D95; border-radius: 12px; overflow: hidden; }
                     .exam-card-header { background: linear-gradient(135deg, #4C1D95, #7c3aed); color: white; padding: 25px; text-align: center; }
                     .exam-card-header h2 { font-size: 20px; margin-bottom: 5px; }
-                    .semester-badge { display: inline-block; background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 20px; font-size: 12px; margin-top: 8px; }
                     .eligibility-badge { display: inline-block; padding: 6px 20px; border-radius: 30px; margin-top: 12px; font-weight: bold; }
                     .eligibility-badge.eligible { background: #059669; }
                     .eligibility-badge.not-eligible { background: #dc2626; }
