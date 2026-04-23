@@ -198,224 +198,230 @@
             }
         }
         
-        displayExamCard() {
-            if (!this.examCardContent) return;
+      
+          displayExamCard() {
+    if (!this.examCardContent) return;
+    
+    const student = this.userProfile;
+    const approvedUnits = this.approvedUnits;
+    const isEligible = approvedUnits.length > 0;
+    const currentDate = new Date().toLocaleDateString('en-KE', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    });
+    
+    const examPeriod = this.getExamPeriod();
+    const currentSemester = this.userBlock || 'Current Semester';
+    const eligibilityStatus = isEligible ? 'ELIGIBLE' : 'NOT ELIGIBLE';
+    const eligibilityClass = isEligible ? 'eligible' : 'not-eligible';
+    
+    let eligibilityMessage = '';
+    if (!isEligible) {
+        eligibilityMessage = `No approved unit registrations found for ${currentSemester}. Please register units through the Learning Hub and wait for admin approval.`;
+    } else {
+        eligibilityMessage = `You are cleared to sit for ${currentSemester} examinations. You have ${approvedUnits.length} approved unit(s) for this semester.`;
+    }
+    
+    // Logo URL
+    const logoUrl = 'https://nakurucollegeofhealth.ac.ke/wp-content/uploads/elementor/thumbs/Logo_NCHSM-removebg-preview-rbgbmxl6t3pmf4d2oozt1o24i7v01gn3sjnh2ny6lk.png';
+    
+    let html = `
+        <div class="exam-card-template" id="exam-card-print">
+            <div class="exam-card-header">
+                <div class="logo-wrapper">
+                    <img src="${logoUrl}" alt="NCHSM Logo" class="exam-card-logo" onerror="this.style.display='none'">
+                </div>
+                <h2>NAKURU COLLEGE OF HEALTH SCIENCES AND MANAGEMENT</h2>
+                <p>EXAMINATION CARD - ${examPeriod}</p>
+                <div class="semester-badge">${currentSemester}</div>
+                <div class="eligibility-badge ${eligibilityClass}">${eligibilityStatus}</div>
+            </div>
             
-            const student = this.userProfile;
-            const approvedUnits = this.approvedUnits;
-            const isEligible = approvedUnits.length > 0;
-            const currentDate = new Date().toLocaleDateString('en-KE', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-            });
-            
-            const examPeriod = this.getExamPeriod();
-            const currentSemester = this.userBlock || 'Current Semester';
-            const eligibilityStatus = isEligible ? 'ELIGIBLE' : 'NOT ELIGIBLE';
-            const eligibilityClass = isEligible ? 'eligible' : 'not-eligible';
-            
-            let eligibilityMessage = '';
-            if (!isEligible) {
-                eligibilityMessage = `❌ No approved unit registrations found for ${currentSemester}. Please register units through the Learning Hub and wait for admin approval.`;
-            } else {
-                eligibilityMessage = `✅ You are cleared to sit for ${currentSemester} examinations. You have ${approvedUnits.length} approved unit(s) for this semester.`;
-            }
-            
-            // Logo URL - Replace with your actual logo URL
-            const logoUrl = 'https://nakurucollegeofhealth.ac.ke/wp-content/uploads/elementor/thumbs/Logo_NCHSM-removebg-preview-rbgbmxl6t3pmf4d2oozt1o24i7v01gn3sjnh2ny6lk.png';
-            
-            let html = `
-                <div class="exam-card-template" id="exam-card-print">
-                    <div class="exam-card-header">
-                        <div class="logo-wrapper">
-                            <img src="${logoUrl}" alt="NCHSM Logo" class="exam-card-logo" onerror="this.style.display='none'">
-                        </div>
-                        <h2>NAKURU COLLEGE OF HEALTH SCIENCES AND MANAGEMENT</h2>
-                        <p>EXAMINATION CARD - ${examPeriod}</p>
-                        <div class="semester-badge">${currentSemester}</div>
-                        <div class="eligibility-badge ${eligibilityClass}">${eligibilityStatus}</div>
+            <div class="exam-card-body">
+                <div class="exam-info-grid">
+                    <div class="exam-info-item">
+                        <label>Student Name:</label>
+                        <div class="value">${this.escapeHtml(student.full_name || 'N/A')}</div>
                     </div>
-                    
-                    <div class="exam-card-body">
-                        <div class="exam-info-grid">
-                            <div class="exam-info-item">
-                                <label>Student Name:</label>
-                                <div class="value">${this.escapeHtml(student.full_name || 'N/A')}</div>
-                            </div>
-                            <div class="exam-info-item">
-                                <label>Student ID:</label>
-                                <div class="value">${student.student_id || student.user_id?.substring(0, 8) || 'N/A'}</div>
-                            </div>
-                            <div class="exam-info-item">
-                                <label>Program:</label>
-                                <div class="value">${this.escapeHtml(student.program || 'N/A')}</div>
-                            </div>
-                            <div class="exam-info-item">
-                                <label>Intake Year:</label>
-                                <div class="value">${student.intake_year || 'N/A'}</div>
-                            </div>
-                            <div class="exam-info-item">
-                                <label>Current Block/Term:</label>
-                                <div class="value"><strong>${currentSemester}</strong></div>
-                            </div>
-                            <div class="exam-info-item">
-                                <label>Approved Units:</label>
-                                <div class="value">${approvedUnits.length} unit(s)</div>
-                            </div>
-                            <div class="exam-info-item">
-                                <label>Card Issued:</label>
-                                <div class="value">${currentDate}</div>
-                            </div>
-                        </div>
-                        
-                        <div class="status-message ${eligibilityClass}">
-                            <i class="fas ${isEligible ? 'fa-check-circle' : 'fa-exclamation-triangle'}"></i>
-                            <p>${eligibilityMessage}</p>
-                        </div>
-            `;
+                    <div class="exam-info-item">
+                        <label>Student ID:</label>
+                        <div class="value">${student.student_id || student.user_id?.substring(0, 8) || 'N/A'}</div>
+                    </div>
+                    <div class="exam-info-item">
+                        <label>Program:</label>
+                        <div class="value">${this.escapeHtml(student.program || 'N/A')}</div>
+                    </div>
+                    <div class="exam-info-item">
+                        <label>Intake Year:</label>
+                        <div class="value">${student.intake_year || 'N/A'}</div>
+                    </div>
+                    <div class="exam-info-item">
+                        <label>Current Block/Term:</label>
+                        <div class="value"><strong>${currentSemester}</strong></div>
+                    </div>
+                    <div class="exam-info-item">
+                        <label>Approved Units:</label>
+                        <div class="value">${approvedUnits.length} unit(s)</div>
+                    </div>
+                    <div class="exam-info-item">
+                        <label>Card Issued:</label>
+                        <div class="value">${currentDate}</div>
+                    </div>
+                </div>
+                
+                <div class="status-message ${eligibilityClass}">
+                    <i class="fas ${isEligible ? 'fa-check-circle' : 'fa-exclamation-triangle'}"></i>
+                    <p>${eligibilityMessage}</p>
+                </div>
+    `;
+    
+    if (approvedUnits.length > 0) {
+        html += `
+                <h4>📋 Approved Units for ${currentSemester} Examination</h4>
+                <p class="unit-count-info"><strong>Instructions:</strong> Present this exam card to each lecturer BEFORE the exam. The lecturer will sign and date in the space provided.</p>
+                <div class="table-responsive">
+                    <table class="registered-units-table">
+                        <thead>
+                            <tr>
+                                <th width="5%">#</th>
+                                <th width="20%">Unit Code</th>
+                                <th width="35%">Unit Name</th>
+                                <th width="8%">Credits</th>
+                                <th width="17%">Lecturer's Signature</th>
+                                <th width="10%">Date</th>
+                                <th width="5%">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+        `;
+        
+        approvedUnits.forEach((unit, index) => {
+            let unitName = this.escapeHtml(unit.unit_name || '');
+            let unitCode = this.escapeHtml(unit.unit_code || '');
+            let credits = unit.credits || 3;
             
-            if (approvedUnits.length > 0) {
-                html += `
-                        <h4>📋 Approved Units for ${currentSemester} Examination</h4>
-                        <p class="unit-count-info"><strong>Instructions:</strong> Present this exam card to each lecturer BEFORE the exam. The lecturer will sign and date in the space provided.</p>
-                        <div class="table-responsive">
-                            <table class="registered-units-table">
-                                <thead>
-                                    <tr>
-                                        <th width="5%">#</th>
-                                        <th width="20%">Unit Code</th>
-                                        <th width="30%">Unit Name</th>
-                                        <th width="5%">Credits</th>
-                                        <th width="20%">Lecturer's Signature</th>
-                                        <th width="10%">Date</th>
-                                        <th width="10%">Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                `;
-                
-                approvedUnits.forEach((unit, index) => {
-                    // Clean unit name - remove any HTML tags
-                    let unitName = this.escapeHtml(unit.unit_name || '');
-                    const unitCode = this.escapeHtml(unit.unit_code || '');
-                    const credits = unit.credits || 3;
-                    
-                    html += `
-                        <tr>
-                            <td>${index + 1}</td>
-                            <td><strong>${unitCode}</strong>${unitName ? '<br><small>' + unitName + '</small>' : ''}</td>
-                            <td>${credits}学分
-                            <td>
-                                <div class="signature-line-blank">
-                                    <span class="signature-placeholder">_________________________</span>
-                                </div>
-                            </td>
-                            <td>
-                                <div class="date-line-blank">
-                                    <span class="date-placeholder">___________</span>
-                                </div>
-                            </td>
-                            <td><span class="status-approved">✓ Approved</span></td>
-                        </tr>
-                    `;
-                });
-                
-                html += `
-                                </tbody>
-                            </table>
-                        </div>
-                        
-                        <div class="unit-summary">
-                            <div class="summary-badge">
-                                <span class="summary-label">Total Units:</span>
-                                <span class="summary-value">${approvedUnits.length}</span>
-                            </div>
-                            <div class="summary-badge">
-                                <span class="summary-label">Total Credits:</span>
-                                <span class="summary-value">${approvedUnits.reduce((sum, u) => sum + (u.credits || 3), 0)}</span>
-                            </div>
-                        </div>
-                `;
-            } else {
-                html += `
-                        <div class="no-units-warning">
-                            <i class="fas fa-exclamation-circle"></i>
-                            <h4>No Approved Units for ${currentSemester}</h4>
-                            <p>You don't have any approved unit registrations. Please:</p>
-                            <ol>
-                                <li>Go to <strong>My Learning Hub</strong> tab</li>
-                                <li>Select units for ${currentSemester}</li>
-                                <li>Submit your registration for admin approval</li>
-                                <li>Wait for approval confirmation</li>
-                            </ol>
-                            <button onclick="window.ui.showTab('learning-hub')" class="btn-primary">
-                                <i class="fas fa-book"></i> Go to Learning Hub
-                            </button>
-                        </div>
-                `;
+            // Wrap long unit names properly
+            if (unitName.length > 60) {
+                unitName = unitName.substring(0, 57) + '...';
             }
             
             html += `
-    <div class="exam-card-footer">
-        <div class="signature-section">
-            <div class="signature-line">
-                <span>_________________________</span>
-                <p>Finance Officer</p>
-                <small>(Fee Clearance)</small>
-            </div>
-            <div class="signature-line">
-                <span>_________________________</span>
-                <p>HOD - Nursing</p>
-                <small>(Head of Department)</small>
-            </div>
-            <div class="stamp">
-                <div class="stamp-text">OFFICIAL STAMP</div>
-            </div>
-        </div>
+                <tr>
+                    <td class="text-center">${index + 1}</td>
+                    <td class="unit-code-cell"><strong>${unitCode}</strong></td>
+                    <td class="unit-name-cell">${unitName}</td>
+                    <td class="text-center">${credits}学分
+                    <td class="signature-cell">
+                        <div class="signature-line-blank">
+                            <span class="signature-placeholder">_________________</span>
+                        </div>
+                    </td>
+                    <td class="date-cell">
+                        <div class="date-line-blank">
+                            <span class="date-placeholder">_________</span>
+                        </div>
+                    </td>
+                    <td class="text-center status-approved">✓</td>
+                </tr>
+            `;
+        });
         
-        <div class="declaration-section">
-            <div class="declaration-box">
-                <h5>📜 Candidate's Declaration</h5>
-                <p>I hereby confirm that I have obtained the necessary signatures from the respective lecturers for the above units and will abide by all examination rules and regulations.</p>
-                <div class="student-signature-line">
-                    <span>_________________________</span>
-                    <p>Student's Signature & Date</p>
+        html += `
+                        </tbody>
+                    </table>
                 </div>
-            </div>
-        </div>
-        
-        <div class="exam-rules">
-            <h5>📌 Examination Rules & Instructions:</h5>
-            <ul>
-                <li><strong>Unit Clearance:</strong> Present this card to each unit lecturer BEFORE the exam for signature</li>
-                <li><strong>Fee Clearance:</strong> Must be verified by Finance Officer before exams</li>
-                <li><strong>Department Clearance:</strong> HOD Nursing must sign off</li>
-                <li>This card must be presented at each examination venue</li>
-                <li>Students without a fully signed exam card will not be allowed to sit for exams</li>
-                <li>No electronic devices allowed in examination halls</li>
-                <li>Arrive at least 30 minutes before scheduled exam time</li>
-                <li>Carry your student ID card alongside this exam card</li>
-            </ul>
-        </div>
-    </div>
-</div>
+                
+                <div class="unit-summary">
+                    <div class="summary-badge">
+                        <span class="summary-label">Total Units:</span>
+                        <span class="summary-value">${approvedUnits.length}</span>
+                    </div>
+                    <div class="summary-badge">
+                        <span class="summary-label">Total Credits:</span>
+                        <span class="summary-value">${approvedUnits.reduce((sum, u) => sum + (u.credits || 3), 0)}</span>
+                    </div>
                 </div>
-                <div style="text-align: center; margin-top: 20px;">
-                    <button id="print-exam-card" class="print-btn" ${!isEligible ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>
-                        <i class="fas fa-print"></i> ${isEligible ? `Print Exam Card (${currentSemester})` : 'Exam Card Unavailable - No Approved Units'}
+        `;
+    } else {
+        html += `
+                <div class="no-units-warning">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <h4>No Approved Units for ${currentSemester}</h4>
+                    <p>You don't have any approved unit registrations. Please:</p>
+                    <ol>
+                        <li>Go to <strong>My Learning Hub</strong> tab</li>
+                        <li>Select units for ${currentSemester}</li>
+                        <li>Submit your registration for admin approval</li>
+                        <li>Wait for approval confirmation</li>
+                    </ol>
+                    <button onclick="window.ui.showTab('learning-hub')" class="btn-primary">
+                        <i class="fas fa-book"></i> Go to Learning Hub
                     </button>
                 </div>
-            `;
-            
-            this.examCardContent.innerHTML = html;
-            
-            // Add print functionality
-            const printBtn = document.getElementById('print-exam-card');
-            if (printBtn && isEligible) {
-                printBtn.addEventListener('click', () => this.printExamCard());
-            }
-        }
+        `;
+    }
+    
+    html += `
+                <div class="exam-card-footer">
+                    <div class="signature-section">
+                        <div class="signature-line">
+                            <span>_________________________</span>
+                            <p>Finance Officer</p>
+                            <small>(Fee Clearance)</small>
+                        </div>
+                        <div class="signature-line">
+                            <span>_________________________</span>
+                            <p>HOD - Nursing</p>
+                            <small>(Head of Department)</small>
+                        </div>
+                        <div class="stamp">
+                            <div class="stamp-text">OFFICIAL STAMP</div>
+                        </div>
+                    </div>
+                    
+                    <div class="declaration-section">
+                        <div class="declaration-box">
+                            <h5>Candidate's Declaration</h5>
+                            <p>I hereby confirm that I have obtained the necessary signatures from the respective lecturers for the above units and will abide by all examination rules and regulations.</p>
+                            <div class="student-signature-line">
+                                <span>_________________________</span>
+                                <p>Student's Signature & Date</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="exam-rules">
+                        <h5>Examination Rules & Instructions:</h5>
+                        <ul>
+                            <li><strong>Unit Clearance:</strong> Present this card to each unit lecturer BEFORE the exam for signature</li>
+                            <li><strong>Fee Clearance:</strong> Must be verified by Finance Officer before exams</li>
+                            <li><strong>Department Clearance:</strong> HOD Nursing must sign off</li>
+                            <li>This card must be presented at each examination venue</li>
+                            <li>Students without a fully signed exam card will not be allowed to sit for exams</li>
+                            <li>No electronic devices allowed in examination halls</li>
+                            <li>Arrive at least 30 minutes before scheduled exam time</li>
+                            <li>Carry your student ID card alongside this exam card</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div style="text-align: center; margin-top: 20px;">
+            <button id="print-exam-card" class="print-btn" ${!isEligible ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>
+                <i class="fas fa-print"></i> ${isEligible ? `Print Exam Card (${currentSemester})` : 'Exam Card Unavailable - No Approved Units'}
+            </button>
+        </div>
+    `;
+    
+    this.examCardContent.innerHTML = html;
+    
+    // Add print functionality
+    const printBtn = document.getElementById('print-exam-card');
+    if (printBtn && isEligible) {
+        printBtn.addEventListener('click', () => this.printExamCard());
+    }
+}
         
         getExamPeriod() {
             const now = new Date();
