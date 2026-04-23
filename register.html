@@ -399,7 +399,7 @@
                 <input type="email" id="email" name="email" placeholder="Enter your email address" required>
             </div>
 
-            <!-- STUDENT FIELDS - UPDATED WITH INTAKE YEAR & BLOCK -->
+            <!-- STUDENT FIELDS - NO BLOCK SELECTION (Admin sets block) -->
             <div id="student-fields" class="role-fields">
                 <div class="form-group">
                     <label for="student_id_number"><i data-feather="id"></i> Admission / Student ID</label>
@@ -459,7 +459,7 @@
                     </select>
                 </div>
                 
-                <!-- NEW: Intake Year -->
+                <!-- Intake Year (Student selects when they joined) -->
                 <div class="form-group">
                     <label for="intake_year"><i data-feather="calendar"></i> Intake Year</label>
                     <select id="intake_year" name="intake_year" required>
@@ -473,14 +473,7 @@
                     <div class="help-text">Your year of admission to the college</div>
                 </div>
                 
-                <!-- NEW: Starting Block/Term -->
-                <div class="form-group">
-                    <label for="initial_block"><i data-feather="layers"></i> Starting Block/Term</label>
-                    <select id="initial_block" name="initial_block" required>
-                        <option value="Introductory">Introductory Block</option>
-                    </select>
-                    <div class="help-text">Your current academic block/term</div>
-                </div>
+                <!-- NOTE: BLOCK IS NOT HERE - Admin will set it after approval -->
             </div>
 
             <!-- LECTURER FIELDS -->
@@ -550,63 +543,6 @@
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // Dynamic block options based on program selection
-    function updateBlockOptions() {
-        const programType = document.getElementById('program_type').value;
-        const blockSelect = document.getElementById('initial_block');
-        
-        if (!blockSelect) return;
-        
-        // Clear existing options
-        blockSelect.innerHTML = '';
-        
-        // Check if it's KRCHN or TVET
-        const isKRCHN = programType === 'KRCHN';
-        const isTVET = !isKRCHN && programType !== '';
-        
-        if (isKRCHN) {
-            // KRCHN Blocks
-            const blocks = [
-                'Introductory',
-                'Block A',
-                'Block B',
-                'Block C',
-                'Block D',
-                'Block E',
-                'Final'
-            ];
-            blocks.forEach(block => {
-                const option = document.createElement('option');
-                option.value = block;
-                option.textContent = block;
-                blockSelect.appendChild(option);
-            });
-        } else if (isTVET) {
-            // TVET Terms
-            const terms = [
-                'Introductory',
-                'Term 1',
-                'Term 2',
-                'Term 3',
-                'Term 4',
-                'Term 5',
-                'Term 6'
-            ];
-            terms.forEach(term => {
-                const option = document.createElement('option');
-                option.value = term;
-                option.textContent = term;
-                blockSelect.appendChild(option);
-            });
-        } else {
-            // Default
-            const option = document.createElement('option');
-            option.value = 'Introductory';
-            option.textContent = 'Introductory Block';
-            blockSelect.appendChild(option);
-        }
-    }
-
     // Send registration email
     async function sendRegistrationEmail(email, userName) {
         console.log('📧 Sending welcome email to:', email);
@@ -651,12 +587,6 @@
     const registerBtn = document.getElementById('register-btn');
     const buttonText = document.getElementById('button-text');
     const redirectCountdown = document.getElementById('redirect-countdown');
-
-    // Add event listener for program type change
-    document.getElementById('program_type')?.addEventListener('change', updateBlockOptions);
-    
-    // Call initially to set default options
-    updateBlockOptions();
 
     // Toggle role-specific fields
     const manageRequiredFields = (role) => {
@@ -736,7 +666,6 @@
         const student_id_number = document.getElementById('student_id_number').value.trim();
         const program_type = document.getElementById('program_type').value;
         const intake_year = document.getElementById('intake_year')?.value;
-        const initial_block = document.getElementById('initial_block')?.value;
         
         // Get lecturer-specific fields
         const staff_id = document.getElementById('staff_id').value.trim();
@@ -746,6 +675,9 @@
         const today = new Date();
         const admissionDate = today.toISOString().split('T')[0];
         const admissionYear = today.getFullYear().toString();
+        
+        // DEFAULT BLOCK - All students start at Introductory (Admin can change later)
+        const defaultBlock = 'Introductory';
 
         try {
             // Prepare user metadata based on role
@@ -762,7 +694,7 @@
                     admission_number: student_id_number,
                     course: program_type,
                     intake_year: intake_year,
-                    current_block: initial_block,
+                    current_block: defaultBlock,  // Default block, admin can change
                     admission_date: admissionDate,
                     admission_year: admissionYear
                 };
@@ -805,7 +737,7 @@
                     student_id: student_id_number,
                     program: program_type,
                     intake_year: intake_year,
-                    block: initial_block,
+                    block: defaultBlock,  // Default block, admin can change via promotion
                     admission_date: admissionDate,
                     admission_year: admissionYear
                 };
@@ -828,7 +760,7 @@
 
             // Success message
             const roleText = role === 'student' ? 'student' : 'lecturer';
-            message.textContent = `✅ Registration successful! Your ${roleText} account has been created. Await admin approval before logging in.`;
+            message.textContent = `✅ Registration successful! Your ${roleText} account has been created. Please wait for admin approval before logging in.`;
             message.classList.add('success');
             
             // Start redirect countdown
