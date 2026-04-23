@@ -1243,7 +1243,25 @@ class UIModule {
             this.currentTab = lastTab;
         }
     }
-    
+    // Add to database.js - Update last login timestamp
+async function updateLastLogin(userId) {
+    try {
+        const { error } = await this.supabase
+            .from('consolidated_user_profiles_table')
+            .update({ 
+                last_login: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            })
+            .eq('user_id', userId);
+        
+        if (error) throw error;
+        console.log('✅ Last login updated for user:', userId);
+        return true;
+    } catch (error) {
+        console.error('Failed to update last login:', error);
+        return false;
+    }
+}
     async logout() {
         try {
             const confirmLogout = confirm('Are you sure you want to logout?\n\nYou will need to sign in again to access the portal.');
