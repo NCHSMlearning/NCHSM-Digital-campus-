@@ -308,41 +308,67 @@ function updateBlockTermOptions(programSelectId, blockTermSelectId) {
     const programSelect = $(programSelectId);
     const blockTermSelect = $(blockTermSelectId);
     
-    if (!programSelect || !blockTermSelect) return;
+    if (!programSelect || !blockTermSelect) {
+        console.warn(`updateBlockTermOptions: Elements not found - ${programSelectId}, ${blockTermSelectId}`);
+        return;
+    }
     
     const programCode = programSelect.value;
     const programType = getProgramType(programCode);
     const currentValue = blockTermSelect.value;
     
+    // Clear existing options
     blockTermSelect.innerHTML = '<option value="">-- Select Block/Term --</option>';
     
-    if (!programCode) return;
+    if (!programCode) {
+        console.log('No program code selected');
+        return;
+    }
     
     let options = [];
     
     if (programType === 'KRCHN') {
-        // KRCHN uses Blocks
+        // KRCHN uses Blocks with FULL names
         options = [
-            { value: 'A', text: 'Block A' },
-            { value: 'B', text: 'Block B' },
-            { value: 'C', text: 'Block C' },
-            { value: 'D', text: 'Block D' }
+            { value: 'Introductory', text: 'Introductory Block' },
+            { value: 'Block A', text: 'Block A' },
+            { value: 'Block B', text: 'Block B' },
+            { value: 'Block C', text: 'Block C' },
+            { value: 'Block D', text: 'Block D' },
+            { value: 'Block E', text: 'Block E' },
+            { value: 'Final', text: 'Final Block' }
         ];
+        console.log('KRCHN blocks loaded:', options.length);
     } else if (programType === 'TVET') {
         // TVET uses Terms
         options = [
+            { value: 'Introductory', text: 'Introductory Term' },
             { value: 'Term1', text: 'Term 1' },
             { value: 'Term2', text: 'Term 2' },
             { value: 'Term3', text: 'Term 3' },
             { value: 'Term4', text: 'Term 4' },
             { value: 'Term5', text: 'Term 5' },
-            { value: 'Term6', text: 'Term 6' }
+            { value: 'Term6', text: 'Term 6' },
+            { value: 'Final', text: 'Final Term' }
         ];
+        console.log('TVET terms loaded:', options.length);
+    } else {
+        // Other programs - generic blocks
+        options = [
+            { value: 'Introductory', text: 'Introductory' },
+            { value: 'Block A', text: 'Block A' },
+            { value: 'Block B', text: 'Block B' },
+            { value: 'Block C', text: 'Block C' },
+            { value: 'Block D', text: 'Block D' },
+            { value: 'Final', text: 'Final' }
+        ];
+        console.log('Generic options loaded:', options.length);
     }
     
-    // Add General option
+    // Add General option (always available)
     options.push({ value: 'General', text: 'General' });
     
+    // Populate dropdown
     options.forEach(opt => {
         const option = document.createElement('option');
         option.value = opt.value;
@@ -350,10 +376,19 @@ function updateBlockTermOptions(programSelectId, blockTermSelectId) {
         blockTermSelect.appendChild(option);
     });
     
-    // Restore previous value if it exists
+    // Restore previous value if it exists and is valid
     if (currentValue) {
-        blockTermSelect.value = currentValue;
+        // Check if the value exists in the new options
+        const valueExists = Array.from(blockTermSelect.options).some(opt => opt.value === currentValue);
+        if (valueExists) {
+            blockTermSelect.value = currentValue;
+            console.log(`Restored previous block/term value: ${currentValue}`);
+        } else {
+            console.log(`Previous value "${currentValue}" not found in new options, keeping default`);
+        }
     }
+    
+    console.log(`✅ Updated ${blockTermSelectId} with ${blockTermSelect.options.length} options for program: ${programCode} (${programType})`);
 }
 
 function initializeAllProgramDropdowns() {
@@ -1449,24 +1484,34 @@ async function openEditUserModal(userId) {
         if (editUserName) editUserName.value = user.full_name || '';
         if (editUserEmail) editUserEmail.value = user.email || '';
         if (editUserRole) editUserRole.value = user.role || 'student';
-        if (editUserProgram) editUserProgram.value = user.program || 'KRCHN';
         if (editUserIntake) editUserIntake.value = user.intake_year || '2024';
         if (editUserBlockStatus) editUserBlockStatus.value = user.block_program_year ? 'true' : 'false';
         
-        // Update program dropdown first
+        // CRITICAL FIX: Update program dropdown AND block options in correct order
         if (editUserProgram) {
+            // Step 1: Update the program dropdown with all options
             updateProgramDropdown(editUserProgram);
             
-            // Then set the value
+            // Step 2: Set the program value (this triggers the change event)
+            editUserProgram.value = user.program || 'KRCHN';
+            
+            // Step 3: Manually trigger the change event to update block options
+            const changeEvent = new Event('change', { bubbles: true });
+            editUserProgram.dispatchEvent(changeEvent);
+            
+            // Step 4: After block options are populated, set the block value
             setTimeout(() => {
-                editUserProgram.value = user.program || 'KRCHN';
                 if (editUserBlock) {
+                    // Update block options explicitly
                     updateBlockTermOptions('edit_user_program', 'edit_user_block');
+                    
+                    // Set the block value
                     setTimeout(() => {
                         editUserBlock.value = user.block || '';
-                    }, 100);
+                        console.log('Block/Term set to:', user.block);
+                    }, 50);
                 }
-            }, 50);
+            }, 100);
         }
         
         modal.style.display = 'flex';
