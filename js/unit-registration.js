@@ -1,4 +1,4 @@
-// js/unit-registration.js - Works like courses.js
+// js/unit-registration.js - Works like courses.js (NO EMOJIS)
 (function() {
     'use strict';
     
@@ -339,6 +339,22 @@
                 const isRegistered = registeredCodes.has(unit.unit_code);
                 const isPending = this.registeredUnits.some(u => u.unit_code === unit.unit_code && u.status === 'pending');
                 
+                let statusText = '';
+                let statusClass = '';
+                
+                if (isRegistered) {
+                    if (isPending) {
+                        statusText = 'Pending';
+                        statusClass = 'status-pending';
+                    } else {
+                        statusText = 'Registered';
+                        statusClass = 'status-approved';
+                    }
+                } else {
+                    statusText = 'Available';
+                    statusClass = 'status-available';
+                }
+                
                 html += `<tr>
                     <td>${!isRegistered ? `<input type="checkbox" class="unit-checkbox" data-code="${unit.unit_code}">` : '—'}</td>
                     <td><strong>${this.escapeHtml(unit.unit_code)}</strong></td>
@@ -347,8 +363,8 @@
                     <td><span class="status-badge status-registered">${this.escapeHtml(unit.unit_type || 'Core')}</span></td>
                     <td>${unit.credits || 3}</td>
                     <td>${this.escapeHtml(unit.prerequisites || 'None')}</td>
-                    <td><span class="status-badge ${isRegistered ? (isPending ? 'status-pending' : 'status-approved') : 'status-pending'}">${isRegistered ? (isPending ? 'Pending' : 'Registered') : 'Available'}</span></td>
-                </td>`;
+                    <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                </tr>`;
             }
             
             this.availableBody.innerHTML = html;
@@ -367,7 +383,7 @@
             let html = '';
             for (const unit of this.registeredUnits) {
                 const statusClass = unit.status === 'approved' ? 'status-approved' : 'status-pending';
-                const statusText = unit.status === 'approved' ? '✅ Approved' : '⏳ Pending';
+                const statusText = unit.status === 'approved' ? 'Approved' : 'Pending';
                 
                 html += `<tr>
                     <td><strong>${this.escapeHtml(unit.unit_code)}</strong></td>
@@ -486,6 +502,11 @@
                 // Refresh data
                 await this.loadUnits();
                 
+                // Dispatch event to update exam card
+                document.dispatchEvent(new CustomEvent('unitRegistrationReady', {
+                    detail: { approvedCount: this.registeredUnits.filter(u => u.status === 'approved').length }
+                }));
+                
             } catch (error) {
                 Swal.close();
                 console.error('Error submitting registration:', error);
@@ -523,6 +544,11 @@
                 Swal.close();
                 Swal.fire('Success', 'Unit dropped successfully!', 'success');
                 await this.loadUnits();
+                
+                // Dispatch event to update exam card
+                document.dispatchEvent(new CustomEvent('unitRegistrationReady', {
+                    detail: { approvedCount: this.registeredUnits.filter(u => u.status === 'approved').length }
+                }));
                 
             } catch (error) {
                 Swal.close();
@@ -595,7 +621,6 @@
         showWaitingForLogin() {
             const container = document.querySelector('#unit-registration');
             if (container && !this.loaded) {
-                // Don't override the whole container, just show message
                 console.log('Waiting for login to load unit registration');
             }
         }
