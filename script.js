@@ -328,17 +328,18 @@ function updateBlockTermOptions(programSelectId, blockTermSelectId) {
     let options = [];
     
     if (programType === 'KRCHN') {
-        // KRCHN uses Blocks with FULL names
-        options = [
-            { value: 'Introductory', text: 'Introductory Block' },
-            { value: 'Block A', text: 'Block A' },
-            { value: 'Block B', text: 'Block B' },
-            { value: 'Block C', text: 'Block C' },
-            { value: 'Block D', text: 'Block D' },
-            { value: 'Block E', text: 'Block E' },
-            { value: 'Final', text: 'Final Block' }
-        ];
-        console.log('KRCHN blocks loaded:', options.length);
+    // KRCHN uses Blocks with NUMBERS
+    options = [
+        { value: 'Introductory', text: 'Introductory Block' },
+        { value: 'Block 1', text: 'Block 1' },
+        { value: 'Block 2', text: 'Block 2' },
+        { value: 'Block 3', text: 'Block 3' },
+        { value: 'Block 4', text: 'Block 4' },
+        { value: 'Block 5', text: 'Block 5' },
+        { value: 'Block 6', text: 'Block 6' },
+        { value: 'Final', text: 'Final Block' }
+    ];
+    console.log('KRCHN blocks loaded:', options.length);
     } else if (programType === 'TVET') {
         // TVET uses Terms
         options = [
