@@ -1087,13 +1087,49 @@
                 </form>
                 
                 <hr>
-                <h3>Mass Student Block/Term Promotion</h3>
-                <form id="mass-promotion-form" class="inline-form">
-                    <select id="promote_intake" required><option value="">-- Select Intake Year --</option><option value="2024">March 2024</option><option value="2025">March 2025</option></select>
-                    <select id="promote_from_block" required><option value="">-- Promote Students FROM --</option></select>
-                    <select id="promote_to_block" required><option value="">-- Promote Students TO --</option></select>
-                    <button type="submit" class="btn-danger">Execute Mass Promotion</button>
-                </form>
+               <hr>
+<h3>Mass Student Block/Term Promotion</h3>
+<form id="mass-promotion-form" class="inline-form">
+    <!-- ADD INTAKE YEAR SELECTOR FIRST -->
+    <select id="promote_intake" required>
+        <option value="">-- Select Intake Year --</option>
+        <option value="2024">2024 Intake</option>
+        <option value="2025">2025 Intake</option>
+        <option value="2026">2026 Intake</option>
+        <option value="2027">2027 Intake</option>
+        <option value="2028">2028 Intake</option>
+    </select>
+    
+    <select id="promote_program" required>
+        <option value="">-- Select Program --</option>
+        <option value="KRCHN">KRCHN Nursing</option>
+        <option value="TVET">TVET Programs</option>
+    </select>
+    
+    <select id="promote_from_block" required>
+        <option value="">-- Promote Students FROM --</option>
+        <option value="Introductory">Introductory Block</option>
+        <option value="Block A">Block A</option>
+        <option value="Block B">Block B</option>
+        <option value="Block C">Block C</option>
+        <option value="Block D">Block D</option>
+        <option value="Block E">Block E</option>
+        <option value="Final">Final Block</option>
+    </select>
+    
+    <select id="promote_to_block" required>
+        <option value="">-- Promote Students TO --</option>
+        <option value="Introductory">Introductory Block</option>
+        <option value="Block A">Block A</option>
+        <option value="Block B">Block B</option>
+        <option value="Block C">Block C</option>
+        <option value="Block D">Block D</option>
+        <option value="Block E">Block E</option>
+        <option value="Final">Final Block</option>
+    </select>
+    
+    <button type="submit" class="btn-danger">Execute Mass Promotion</button>
+</form>
                 
                 <hr>
                 <h3>Enrolled Students</h3>
