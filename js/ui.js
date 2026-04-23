@@ -210,7 +210,11 @@ class UIModule {
         console.log('✅ UIModule fully initialized');
     }
     
-    // NEW: Load last login from database
+    // =====================================================
+    // LAST LOGIN METHODS - CORRECTLY PLACED INSIDE CLASS
+    // =====================================================
+    
+    // Load last login from database
     async loadLastLogin() {
         try {
             const userId = window.currentUserId;
@@ -248,7 +252,7 @@ class UIModule {
         }
     }
     
-    // NEW: Format last login date
+    // Format last login date
     formatLastLogin(date) {
         const now = new Date();
         const diffMs = now - date;
@@ -277,7 +281,7 @@ class UIModule {
         }
     }
     
-    // NEW: Update last login timestamp in database
+    // Update last login timestamp in database
     async updateLastLogin(userId) {
         try {
             if (!this.supabase) return false;
