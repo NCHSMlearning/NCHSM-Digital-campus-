@@ -1,4 +1,4 @@
-// profile.js - Complete Profile Management Module with DOB, Gender, and Save Picture Button
+// profile.js - Complete Profile Management Module with DOB, Gender, Admission Date, and Block Progress
 class ProfileModule {
     constructor() {
         this.userId = null;
@@ -30,11 +30,22 @@ class ProfileModule {
         this.profileStudentId = document.getElementById('profile-student-id');
         this.profileEmail = document.getElementById('profile-email');
         this.profilePhone = document.getElementById('profile-phone');
-        this.profileDob = document.getElementById('profile-dob');        // NEW
-        this.profileGender = document.getElementById('profile-gender');  // NEW
+        this.profileDob = document.getElementById('profile-dob');        // DOB
+        this.profileGender = document.getElementById('profile-gender');  // Gender
         this.profileProgram = document.getElementById('profile-program');
         this.profileBlock = document.getElementById('profile-block');
         this.profileIntakeYear = document.getElementById('profile-intake-year');
+        
+        // NEW: Admission Date fields
+        this.profileAdmissionDate = document.getElementById('profile-admission-date');
+        this.profileAdmissionYear = document.getElementById('profile-admission-year');
+        
+        // NEW: Block Progress elements
+        this.blockProgressFill = document.getElementById('block-progress-fill');
+        this.blockProgressText = document.getElementById('block-progress-text');
+        this.currentBlockStatus = document.getElementById('current-block-status');
+        this.completedBlocksContainer = document.getElementById('completed-blocks');
+        this.blockTimeline = document.getElementById('block-timeline');
         
         // Action buttons
         this.editProfileButton = document.getElementById('edit-profile-button');
@@ -173,7 +184,7 @@ class ProfileModule {
                     .from('consolidated_user_profiles_table')
                     .select('*')
                     .eq('user_id', this.userId)
-                    .maybeSingle();  // Use maybeSingle to avoid 406 error
+                    .maybeSingle();
                 
                 if (error) {
                     console.warn('Error loading profile:', error);
@@ -191,6 +202,9 @@ class ProfileModule {
             
             // Load profile photo
             await this.loadProfilePhoto();
+            
+            // NEW: Update block progress display
+            this.updateBlockProgress();
             
             // Set initial state
             this.updateUIState('view');
@@ -210,7 +224,7 @@ class ProfileModule {
         if (this.profileEmail) this.profileEmail.value = this.userProfile.email || '';
         if (this.profilePhone) this.profilePhone.value = this.userProfile.phone || this.userProfile.phone_number || '';
         
-        // NEW: Date of Birth
+        // Date of Birth
         if (this.profileDob && this.userProfile.date_of_birth) {
             const dob = new Date(this.userProfile.date_of_birth);
             if (!isNaN(dob)) {
@@ -220,7 +234,7 @@ class ProfileModule {
             this.profileDob.value = '';
         }
         
-        // NEW: Gender
+        // Gender
         if (this.profileGender && this.userProfile.gender) {
             this.profileGender.value = this.userProfile.gender;
         } else if (this.profileGender) {
@@ -230,6 +244,120 @@ class ProfileModule {
         if (this.profileProgram) this.profileProgram.value = this.userProfile.program || this.userProfile.department || '';
         if (this.profileBlock) this.profileBlock.value = this.userProfile.block || this.userProfile.current_block || '';
         if (this.profileIntakeYear) this.profileIntakeYear.value = this.userProfile.intake_year || this.userProfile.year_of_intake || '';
+        
+        // NEW: Admission Date
+        if (this.profileAdmissionDate && this.userProfile.admission_date) {
+            const admissionDate = new Date(this.userProfile.admission_date);
+            if (!isNaN(admissionDate)) {
+                this.profileAdmissionDate.value = admissionDate.toISOString().split('T')[0];
+            }
+        } else if (this.profileAdmissionDate) {
+            this.profileAdmissionDate.value = '';
+        }
+        
+        // NEW: Admission Year
+        if (this.profileAdmissionYear) {
+            if (this.userProfile.admission_year) {
+                this.profileAdmissionYear.value = this.userProfile.admission_year;
+            } else if (this.userProfile.admission_date) {
+                const year = new Date(this.userProfile.admission_date).getFullYear();
+                this.profileAdmissionYear.value = year;
+            } else {
+                this.profileAdmissionYear.value = '';
+            }
+        }
+    }
+    
+    // NEW: Update Block Progress Display
+    updateBlockProgress() {
+        if (!this.userProfile) return;
+        
+        const currentBlock = this.userProfile.block || this.userProfile.current_block || 'Introductory';
+        const blockOrder = {
+            'Introductory': 1,
+            'Block 1': 2,
+            'Block 2': 3,
+            'Block 3': 4,
+            'Block 4': 5,
+            'Block 5': 6,
+            'Final': 7
+        };
+        
+        const totalBlocks = 7;
+        const currentBlockNumber = blockOrder[currentBlock] || 1;
+        const completedBlocks = currentBlockNumber - 1;
+        const progressPercent = (completedBlocks / totalBlocks) * 100;
+        
+        // Update progress bar
+        if (this.blockProgressFill) {
+            this.blockProgressFill.style.width = `${progressPercent}%`;
+        }
+        
+        if (this.blockProgressText) {
+            this.blockProgressText.textContent = `${Math.round(progressPercent)}% Complete`;
+        }
+        
+        if (this.currentBlockStatus) {
+            this.currentBlockStatus.textContent = `Current: ${currentBlock}`;
+        }
+        
+        // Update block timeline
+        this.updateBlockTimeline(currentBlock);
+        
+        // Update completed blocks badges
+        this.updateCompletedBlocks(completedBlocks);
+    }
+    
+    // NEW: Update Block Timeline Visualization
+    updateBlockTimeline(currentBlock) {
+        if (!this.blockTimeline) return;
+        
+        const blocks = ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'];
+        const currentIndex = blocks.indexOf(currentBlock);
+        
+        const blockSteps = this.blockTimeline.querySelectorAll('.block-step');
+        const connectors = this.blockTimeline.querySelectorAll('.block-connector');
+        
+        blockSteps.forEach((step, index) => {
+            const blockName = step.querySelector('.block-name')?.textContent;
+            step.classList.remove('completed', 'current', 'upcoming');
+            
+            if (index < currentIndex) {
+                step.classList.add('completed');
+            } else if (index === currentIndex) {
+                step.classList.add('current');
+            } else {
+                step.classList.add('upcoming');
+            }
+        });
+        
+        connectors.forEach((connector, index) => {
+            if (index < currentIndex) {
+                connector.classList.add('completed');
+            } else {
+                connector.classList.remove('completed');
+            }
+        });
+    }
+    
+    // NEW: Update Completed Blocks Badges
+    updateCompletedBlocks(completedCount) {
+        if (!this.completedBlocksContainer) return;
+        
+        const blocks = ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5'];
+        const completedBlocksList = blocks.slice(0, completedCount);
+        
+        if (completedBlocksList.length === 0) {
+            this.completedBlocksContainer.innerHTML = '<span class="completed-badge">None yet</span>';
+            return;
+        }
+        
+        let html = '';
+        completedBlocksList.forEach(block => {
+            html += `<span class="completed-badge">✓ ${block}</span>`;
+        });
+        
+        this.completedBlocksContainer.innerHTML = html;
     }
     
     async loadProfilePhoto() {
@@ -376,7 +504,9 @@ class ProfileModule {
             this.profileEmail,
             this.profileProgram,
             this.profileBlock,
-            this.profileIntakeYear
+            this.profileIntakeYear,
+            this.profileAdmissionDate,
+            this.profileAdmissionYear
         ];
         
         readonlyFields.forEach(field => {
@@ -806,4 +936,4 @@ window.loadProfile = () => {
     }
 };
 
-console.log('Profile module loaded with DOB, Gender, and Save Picture button');
+console.log('Profile module loaded with DOB, Gender, Admission Date, and Block Progress');
