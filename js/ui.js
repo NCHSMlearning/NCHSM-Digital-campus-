@@ -629,7 +629,6 @@ window.logout = () => window.ui?.logout?.();
 window.forceShowTab = (tabId) => window.ui?.forceShowTab?.(tabId);
 window.refreshDashboard = () => window.ui?.refreshDashboard?.();
 window.debugUI = () => window.ui?.debugAll?.();
-
 // Event listeners
 document.addEventListener('DOMContentLoaded', () => { if (!window.ui) window.ui = new UIModule(); });
 document.addEventListener('appReady', (e) => { if (window.ui && e.detail?.userProfile) window.ui.updateAllUserInfo(e.detail.userProfile); });
