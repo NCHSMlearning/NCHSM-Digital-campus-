@@ -1044,16 +1044,13 @@ async function handleMassPromotion(e) {
     const originalText = submitButton.textContent;
     setButtonLoading(submitButton, true, originalText);
 
-    const promote_intake = $('promote_intake').value;
-    const promote_from_block = $('promote_from_block').value;
-    const promote_to_block = $('promote_to_block').value;
-    
-    // Get program type for confirmation message
-    const programSelect = $('account-program');
-    const programType = programSelect ? getProgramType(programSelect.value) : 'KRCHN';
+    const promote_intake = document.getElementById('promote_intake')?.value;
+    const promote_program = document.getElementById('promote_program')?.value;
+    const promote_from_block = document.getElementById('promote_from_block')?.value;
+    const promote_to_block = document.getElementById('promote_to_block')?.value;
 
-    if (!promote_intake || !promote_from_block || !promote_to_block) {
-        showFeedback('Please select the Intake Year, FROM Block/Term, and TO Block/Term.', 'error');
+    if (!promote_intake || !promote_program || !promote_from_block || !promote_to_block) {
+        showFeedback('Please select Intake Year, Program, FROM Block/Term, and TO Block/Term.', 'error');
         setButtonLoading(submitButton, false, originalText);
         return;
     }
@@ -1064,35 +1061,67 @@ async function handleMassPromotion(e) {
         return;
     }
     
-    if (!confirm(`CRITICAL ACTION: Promote ALL ${programType} students from Intake ${promote_intake} Block/Term ${promote_from_block} to ${promote_to_block}? This is IRREVERSIBLE.`)) {
+    // Get program display name for confirmation
+    const programName = promote_program === 'KRCHN' ? 'KRCHN' : 'TVET';
+    
+    if (!confirm(`⚠️ CRITICAL ACTION: Promote ALL ${programName} students from Intake ${promote_intake}\nFROM: ${promote_from_block}\nTO: ${promote_to_block}\n\nThis action is IRREVERSIBLE. Continue?`)) {
         setButtonLoading(submitButton, false, originalText);
         return;
     }
 
     try {
+        // Update students matching the criteria
         const { data, error } = await sb
             .from(USER_PROFILE_TABLE)
-            .update({ block: promote_to_block })
+            .update({ 
+                block: promote_to_block,
+                updated_at: new Date().toISOString()
+            })
             .eq('role', 'student')
+            .eq('status', 'approved')
             .eq('intake_year', promote_intake)
+            .eq('program', promote_program)
             .eq('block', promote_from_block)
-            .select('user_id');
+            .select('user_id, full_name');
 
         if (error) throw error;
         
         const count = data?.length || 0;
         
         if (count > 0) {
-             await logAudit('PROMOTION_MASS', `Promoted ${count} ${programType} students: ${promote_intake} ${promote_from_block} -> ${promote_to_block}.`, null, 'SUCCESS');
-             showFeedback(`✅ Successfully promoted ${count} ${programType} students!`, 'success');
+            // Log the promotion
+            await logAudit('PROMOTION_MASS', 
+                `Promoted ${count} ${programName} students: Intake ${promote_intake} ${promote_from_block} → ${promote_to_block}`, 
+                null, 
+                'SUCCESS'
+            );
+            
+            // Show list of promoted students
+            const studentNames = data.map(s => s.full_name).join(', ');
+            showFeedback(`✅ Successfully promoted ${count} ${programName} students!\n\nPromoted:\n${studentNames.substring(0, 200)}${studentNames.length > 200 ? '...' : ''}`, 'success');
         } else {
-             await logAudit('PROMOTION_MASS', `Attempted promotion: No ${programType} students found for criteria ${promote_intake} ${promote_from_block}.`, null, 'WARNING');
-             showFeedback(`⚠️ No ${programType} students were found matching the promotion criteria. Check your selections.`, 'warning');
+            await logAudit('PROMOTION_MASS', 
+                `No ${programName} students found for criteria: Intake ${promote_intake}, Block ${promote_from_block}`, 
+                null, 
+                'WARNING'
+            );
+            showFeedback(`⚠️ No ${programName} students were found matching the promotion criteria.\n\nIntake: ${promote_intake}\nFrom Block: ${promote_from_block}\n\nPlease check your selections.`, 'warning');
         }
 
-        loadStudents();
+        // Refresh student list
+        if (typeof loadStudents === 'function') {
+            loadStudents();
+        }
+        if (typeof loadAllUsers === 'function') {
+            loadAllUsers();
+        }
+
     } catch (err) {
-        await logAudit('PROMOTION_MASS', `Failed mass promotion for ${promote_intake} ${promote_from_block}. Reason: ${err.message}`, null, 'FAILURE');
+        await logAudit('PROMOTION_MASS', 
+            `Failed mass promotion: ${err.message}`, 
+            null, 
+            'FAILURE'
+        );
         showFeedback(`❌ Mass promotion failed: ${err.message}`, 'error');
     } finally {
         setButtonLoading(submitButton, false, originalText);
