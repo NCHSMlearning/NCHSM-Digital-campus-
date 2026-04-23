@@ -3471,7 +3471,7 @@ p {
     accent-color: #4C1D95;
 }
 
-/* Filter Section */
+/* Filter Section */                                                   
 .filter-group {
     display: flex;
     gap: 15px;
@@ -3648,7 +3648,7 @@ p {
     background: #fef3c7;
     color: #92400e;
 }
-/* Exam Card Styles */
+ /* Exam Card Styles */
 .exam-card-container {
     max-width: 900px;
     margin: 0 auto;
