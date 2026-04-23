@@ -1,6 +1,6 @@
 // js/ui.js - COMPLETE WORKING VERSION - NO ERRORS
 class UIModule {
-    constructor() {
+    constructor() { 
         console.log('🚀 Initializing UIModule...');
         
         this.sidebar = document.getElementById('sidebar');
