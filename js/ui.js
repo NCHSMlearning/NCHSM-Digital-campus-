@@ -1,4 +1,4 @@
-// js/ui.js - COMPLETE FIXED VERSION WITH EXAM CARD
+// js/ui.js - COMPLETE FIXED VERSION WITH EXAM CARD AND LAST LOGIN
 class UIModule {
     constructor() {
         console.log('🚀 Initializing UIModule...');
@@ -29,8 +29,8 @@ class UIModule {
             'support-tickets', 
             'nurseiq', 
             'unit-registration',     
-            'learning-hub',            // ← Added comma here
-            'exam-card'                // ← Added exam-card
+            'learning-hub',
+            'exam-card'
         ];
         
         // Define clean URL paths
@@ -46,8 +46,8 @@ class UIModule {
             'support-tickets': '/support-tickets',
             'nurseiq': '/nurseiq',
             'unit-registration': '/unit-registration',   
-            'learning-hub': '/learning-hub',              // ← Added comma here
-            'exam-card': '/exam-card'                    // ← Added exam-card
+            'learning-hub': '/learning-hub',
+            'exam-card': '/exam-card'
         };
         
         // Reverse lookup
@@ -70,7 +70,7 @@ class UIModule {
             'nurseiq': 'NurseIQ',
             'unit-registration': 'Unit Registration',
             'learning-hub': 'My Learning Hub',
-            'exam-card': 'Exam Card'                      // ← Added exam-card display name
+            'exam-card': 'Exam Card'
         };
         
         // Footer buttons
@@ -83,6 +83,7 @@ class UIModule {
         this.headerUserName = document.getElementById('header-user-name');
         this.headerProfilePhoto = document.getElementById('header-profile-photo');
         this.headerTime = document.getElementById('header-time');
+        this.headerLastLogin = document.getElementById('header-last-login'); // NEW
         
         // Modal elements
         this.transcriptModal = document.getElementById('transcript-modal');
@@ -203,7 +204,101 @@ class UIModule {
         await this.delay(800);
         await this.hideLoadingScreen();
         
+        // Load last login after user data is loaded
+        await this.loadLastLogin();
+        
         console.log('✅ UIModule fully initialized');
+    }
+    
+    // NEW: Load last login from database
+    async loadLastLogin() {
+        try {
+            const userId = window.currentUserId;
+            if (!userId || !this.supabase) {
+                console.log('No user ID or Supabase for last login');
+                return;
+            }
+            
+            const { data, error } = await this.supabase
+                .from('consolidated_user_profiles_table')
+                .select('last_login')
+                .eq('user_id', userId)
+                .single();
+            
+            if (error) throw error;
+            
+            if (data && data.last_login) {
+                const lastLoginDate = new Date(data.last_login);
+                const formattedDate = this.formatLastLogin(lastLoginDate);
+                
+                if (this.headerLastLogin) {
+                    this.headerLastLogin.textContent = formattedDate;
+                    this.headerLastLogin.title = `Last login: ${lastLoginDate.toLocaleString()}`;
+                }
+            } else {
+                if (this.headerLastLogin) {
+                    this.headerLastLogin.textContent = 'First time login';
+                }
+            }
+        } catch (error) {
+            console.error('Failed to load last login:', error);
+            if (this.headerLastLogin) {
+                this.headerLastLogin.textContent = 'Not available';
+            }
+        }
+    }
+    
+    // NEW: Format last login date
+    formatLastLogin(date) {
+        const now = new Date();
+        const diffMs = now - date;
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMs / 3600000);
+        const diffDays = Math.floor(diffMs / 86400000);
+        
+        if (diffMins < 1) {
+            return 'Just now';
+        } else if (diffMins < 60) {
+            return `${diffMins} min${diffMins !== 1 ? 's' : ''} ago`;
+        } else if (diffHours < 24) {
+            return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
+        } else if (diffDays < 7) {
+            return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
+        } else {
+            const options = { 
+                month: 'short', 
+                day: 'numeric', 
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
+            };
+            return date.toLocaleDateString('en-US', options).toUpperCase();
+        }
+    }
+    
+    // NEW: Update last login timestamp in database
+    async updateLastLogin(userId) {
+        try {
+            if (!this.supabase) return false;
+            
+            const { error } = await this.supabase
+                .from('consolidated_user_profiles_table')
+                .update({ 
+                    last_login: new Date().toISOString()
+                })
+                .eq('user_id', userId);
+            
+            if (error) throw error;
+            console.log('✅ Last login updated for user:', userId);
+            
+            // Update display
+            await this.loadLastLogin();
+            return true;
+        } catch (error) {
+            console.error('Failed to update last login:', error);
+            return false;
+        }
     }
     
     delay(ms) {
@@ -832,26 +927,22 @@ class UIModule {
                     }
                     break;
                     
-                // ADD EXAM CARD CASE HERE
-             case 'exam-card':
-    console.log('📇 Loading Exam Card module...');
-    if (typeof initExamCard === 'function') {
-        initExamCard();
-    } else if (window.examCardModule && typeof window.examCardModule.refresh === 'function') {
-        window.examCardModule.refresh();
-    } else {
-        console.warn('⚠️ examCardModule not found, checking if script loaded...');
-        // Try to initialize if module exists but not called
-        if (window.examCardModule) {
-            window.examCardModule.init();
-        } else {
-            const container = document.getElementById('exam-card-content');
-            if (container) {
-                container.innerHTML = '<div class="empty-state"><i class="fas fa-spinner fa-spin"></i><p>Loading exam card module...</p><button onclick="location.reload()" class="btn-primary">Retry</button></div>';
-            }
-        }
-    }
-    break;
+                case 'exam-card':
+                    console.log('📇 Loading Exam Card module...');
+                    if (typeof initExamCard === 'function') {
+                        initExamCard();
+                    } else if (window.examCardModule && typeof window.examCardModule.refresh === 'function') {
+                        window.examCardModule.refresh();
+                    } else if (window.examCardModule) {
+                        window.examCardModule.init();
+                    } else {
+                        console.warn('⚠️ examCardModule not found');
+                        const container = document.getElementById('exam-card-content');
+                        if (container) {
+                            container.innerHTML = '<div class="empty-state"><i class="fas fa-spinner fa-spin"></i><p>Loading exam card module...</p></div>';
+                        }
+                    }
+                    break;
                     
                 default:
                     console.log(`No specific loader for tab: ${tabId}`);
@@ -897,6 +988,9 @@ class UIModule {
         if (this.currentTab === 'exam-card' && typeof initExamCard === 'function') {
             initExamCard();
         }
+        
+        // Refresh last login
+        this.loadLastLogin();
     }
     
     showToast(message, type = 'info', duration = 3000) {
@@ -989,6 +1083,8 @@ class UIModule {
                     const dbUserData = await this.loadUserFromDatabase(userId);
                     if (dbUserData) {
                         this.updateAllUserInfo(dbUserData);
+                        // Update last login timestamp in database
+                        await this.updateLastLogin(userId);
                     } else if (userProfile) {
                         this.updateAllUserInfo(userProfile);
                     } else {
@@ -1024,6 +1120,10 @@ class UIModule {
         
         if (this.headerProfilePhoto) {
             this.headerProfilePhoto.src = 'https://ui-avatars.com/api/?name=Student&background=667eea&color=fff&size=100';
+        }
+        
+        if (this.headerLastLogin) {
+            this.headerLastLogin.textContent = 'Not available';
         }
         
         const welcomeHeader = document.getElementById('welcome-header');
@@ -1243,25 +1343,7 @@ class UIModule {
             this.currentTab = lastTab;
         }
     }
-    // Add to database.js - Update last login timestamp
-async function updateLastLogin(userId) {
-    try {
-        const { error } = await this.supabase
-            .from('consolidated_user_profiles_table')
-            .update({ 
-                last_login: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-            })
-            .eq('user_id', userId);
-        
-        if (error) throw error;
-        console.log('✅ Last login updated for user:', userId);
-        return true;
-    } catch (error) {
-        console.error('Failed to update last login:', error);
-        return false;
-    }
-}
+    
     async logout() {
         try {
             const confirmLogout = confirm('Are you sure you want to logout?\n\nYou will need to sign in again to access the portal.');
