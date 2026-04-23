@@ -5270,134 +5270,7 @@ function setupEventListeners() {
     $('save-announcement')?.addEventListener('click', saveOfficialAnnouncement);
     
     // =====================================================
-    // FEE ACCOUNTS TAB - EVENT LISTENERS
-    // =====================================================
-    
-    // Record Payment Button
-    const recordPaymentBtn = document.querySelector('#fee-accounts button[onclick="recordPayment()"]');
-    if (recordPaymentBtn) {
-        // Remove inline onclick and add event listener
-        recordPaymentBtn.removeAttribute('onclick');
-        recordPaymentBtn.addEventListener('click', recordPayment);
-    }
-    
-    // Alternative: Find by text or ID
-    const recordPaymentBtnById = document.getElementById('record-payment-btn');
-    if (recordPaymentBtnById) {
-        recordPaymentBtnById.addEventListener('click', recordPayment);
-    }
-    
-    // Account balance filter dropdown
-    const balanceFilter = document.getElementById('account_balance_filter');
-    if (balanceFilter) {
-        balanceFilter.addEventListener('change', filterByBalanceStatus);
-    }
-    
-    // Account search input
-    const accountSearch = document.getElementById('account_search');
-    if (accountSearch) {
-        accountSearch.addEventListener('keyup', searchStudentAccount);
-    }
-    
-    // Export accounts button
-    const exportBtn = document.querySelector('#fee-accounts button[onclick="exportAccountsToCSV()"]');
-    if (exportBtn) {
-        exportBtn.removeAttribute('onclick');
-        exportBtn.addEventListener('click', exportAccountsToCSV);
-    }
-    
-    // Update fee structure button
-    const updateFeeBtn = document.querySelector('#fee-accounts button[onclick="updateFeeStructure()"]');
-    if (updateFeeBtn) {
-        updateFeeBtn.removeAttribute('onclick');
-        updateFeeBtn.addEventListener('click', updateFeeStructure);
-    }
-    
-    // Fee program dropdown - update block options
-    const feeProgram = document.getElementById('fee_program');
-    const feeBlock = document.getElementById('fee_block');
-    if (feeProgram && feeBlock) {
-        feeProgram.addEventListener('change', function() {
-            const program = this.value;
-            const isTVET = program !== 'KRCHN';
-            
-            feeBlock.innerHTML = '';
-            
-            if (isTVET) {
-                // TVET uses Terms
-                const terms = ['Introductory', 'Term1', 'Term2', 'Term3', 'Term4', 'Term5', 'Term6', 'Block A', 'Block B', 'Block C', 'Final'];
-                terms.forEach(term => {
-                    const option = document.createElement('option');
-                    option.value = term;
-                    option.textContent = term;
-                    feeBlock.appendChild(option);
-                });
-            } else {
-                // KRCHN uses Blocks
-                const blocks = ['Introductory', 'Block A', 'Block B', 'Block C', 'Block D', 'Block E', 'Final'];
-                blocks.forEach(block => {
-                    const option = document.createElement('option');
-                    option.value = block;
-                    option.textContent = block;
-                    feeBlock.appendChild(option);
-                });
-            }
-        });
-        // Trigger initial load
-        feeProgram.dispatchEvent(new Event('change'));
-    }
-    
-    // Payment method select - optional formatting
-    const paymentMethod = document.getElementById('payment_method');
-    if (paymentMethod) {
-        paymentMethod.addEventListener('change', function() {
-            const refInput = document.getElementById('payment_reference');
-            if (this.value === 'M-Pesa' && refInput) {
-                refInput.placeholder = 'M-Pesa Transaction Code (e.g., QWERTY123)';
-            } else if (this.value === 'Bank Transfer' && refInput) {
-                refInput.placeholder = 'Bank Reference / Transaction ID';
-            } else if (refInput) {
-                refInput.placeholder = 'Transaction Ref (optional)';
-            }
-        });
-    }
-    
-    // Set default payment date to today
-    const paymentDate = document.getElementById('payment_date');
-    if (paymentDate && !paymentDate.value) {
-        paymentDate.value = new Date().toISOString().split('T')[0];
-    }
-    
-    // Close payment history modal when clicking X or outside
-    const paymentHistoryModal = document.getElementById('paymentHistoryModal');
-    if (paymentHistoryModal) {
-        const closeSpan = paymentHistoryModal.querySelector('.close');
-        if (closeSpan) {
-            closeSpan.addEventListener('click', () => {
-                paymentHistoryModal.style.display = 'none';
-            });
-        }
-        
-        paymentHistoryModal.addEventListener('click', (e) => {
-            if (e.target === paymentHistoryModal) {
-                paymentHistoryModal.style.display = 'none';
-            }
-        });
-    }
-    
-    // Fee Accounts tab - load data when tab is clicked
-    const feeAccountsLink = document.querySelector('.nav a[data-tab="fee-accounts"]');
-    if (feeAccountsLink) {
-        feeAccountsLink.addEventListener('click', function() {
-            setTimeout(() => {
-                loadStudentAccounts();
-                loadFeeStructure();
-            }, 100);
-        });
-    }
-}
-    // =====================================================
-    // UNIT REGISTRATION MANAGEMENT (NEW SECTION)
+    // UNIT REGISTRATION MANAGEMENT
     // =====================================================
     
     // Add New Unit Form
@@ -5514,6 +5387,124 @@ function setupEventListeners() {
         // Trigger initial load
         newUnitProgram.dispatchEvent(new Event('change'));
     }
+    
+    // =====================================================
+    // FEE ACCOUNTS TAB - EVENT LISTENERS
+    // =====================================================
+    
+    // Record Payment Button
+    const recordPaymentBtn = document.querySelector('#fee-accounts button[onclick="recordPayment()"]');
+    if (recordPaymentBtn) {
+        recordPaymentBtn.removeAttribute('onclick');
+        recordPaymentBtn.addEventListener('click', recordPayment);
+    }
+    
+    // Account balance filter dropdown
+    const balanceFilter = document.getElementById('account_balance_filter');
+    if (balanceFilter) {
+        balanceFilter.addEventListener('change', filterByBalanceStatus);
+    }
+    
+    // Account search input
+    const accountSearch = document.getElementById('account_search');
+    if (accountSearch) {
+        accountSearch.addEventListener('keyup', searchStudentAccount);
+    }
+    
+    // Export accounts button
+    const exportBtn = document.querySelector('#fee-accounts button[onclick="exportAccountsToCSV()"]');
+    if (exportBtn) {
+        exportBtn.removeAttribute('onclick');
+        exportBtn.addEventListener('click', exportAccountsToCSV);
+    }
+    
+    // Update fee structure button
+    const updateFeeBtn = document.querySelector('#fee-accounts button[onclick="updateFeeStructure()"]');
+    if (updateFeeBtn) {
+        updateFeeBtn.removeAttribute('onclick');
+        updateFeeBtn.addEventListener('click', updateFeeStructure);
+    }
+    
+    // Fee program dropdown - update block options
+    const feeProgram = document.getElementById('fee_program');
+    const feeBlock = document.getElementById('fee_block');
+    if (feeProgram && feeBlock) {
+        feeProgram.addEventListener('change', function() {
+            const program = this.value;
+            const isTVET = program !== 'KRCHN';
+            
+            feeBlock.innerHTML = '';
+            
+            if (isTVET) {
+                const terms = ['Introductory', 'Term1', 'Term2', 'Term3', 'Term4', 'Term5', 'Term6', 'Block A', 'Block B', 'Block C', 'Final'];
+                terms.forEach(term => {
+                    const option = document.createElement('option');
+                    option.value = term;
+                    option.textContent = term;
+                    feeBlock.appendChild(option);
+                });
+            } else {
+                const blocks = ['Introductory', 'Block A', 'Block B', 'Block C', 'Block D', 'Block E', 'Final'];
+                blocks.forEach(block => {
+                    const option = document.createElement('option');
+                    option.value = block;
+                    option.textContent = block;
+                    feeBlock.appendChild(option);
+                });
+            }
+        });
+        feeProgram.dispatchEvent(new Event('change'));
+    }
+    
+    // Payment method select - optional formatting
+    const paymentMethod = document.getElementById('payment_method');
+    if (paymentMethod) {
+        paymentMethod.addEventListener('change', function() {
+            const refInput = document.getElementById('payment_reference');
+            if (this.value === 'M-Pesa' && refInput) {
+                refInput.placeholder = 'M-Pesa Transaction Code (e.g., QWERTY123)';
+            } else if (this.value === 'Bank Transfer' && refInput) {
+                refInput.placeholder = 'Bank Reference / Transaction ID';
+            } else if (refInput) {
+                refInput.placeholder = 'Transaction Ref (optional)';
+            }
+        });
+    }
+    
+    // Set default payment date to today
+    const paymentDate = document.getElementById('payment_date');
+    if (paymentDate && !paymentDate.value) {
+        paymentDate.value = new Date().toISOString().split('T')[0];
+    }
+    
+    // Close payment history modal when clicking X or outside
+    const paymentHistoryModal = document.getElementById('paymentHistoryModal');
+    if (paymentHistoryModal) {
+        const closeSpan = paymentHistoryModal.querySelector('.close');
+        if (closeSpan) {
+            closeSpan.addEventListener('click', () => {
+                paymentHistoryModal.style.display = 'none';
+            });
+        }
+        
+        paymentHistoryModal.addEventListener('click', (e) => {
+            if (e.target === paymentHistoryModal) {
+                paymentHistoryModal.style.display = 'none';
+            }
+        });
+    }
+    
+    // Fee Accounts tab - load data when tab is clicked
+    const feeAccountsLink = document.querySelector('.nav a[data-tab="fee-accounts"]');
+    if (feeAccountsLink) {
+        feeAccountsLink.addEventListener('click', function() {
+            setTimeout(() => {
+                loadStudentAccounts();
+                loadFeeStructure();
+            }, 100);
+        });
+    }
+}
 
 // Global function references for HTML onclick handlers
 window.showTab = showTab;
