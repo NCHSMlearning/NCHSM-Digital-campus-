@@ -3981,9 +3981,40 @@ p {
     color: #1f2937;
 }
 
-/* Mobile responsive */
+/* Mobile responsive - SHOW on mobile (not hide) */
 @media (max-width: 768px) {
     .last-login-info {
+        display: flex !important;  /* Show on mobile */
+        padding: 4px 10px;
+        margin-right: 8px;
+        gap: 6px;
+    }
+    
+    .last-login-info i {
+        font-size: 12px;
+    }
+    
+    .last-login-label {
+        font-size: 8px;
+    }
+    
+    .last-login-time {
+        font-size: 9px;
+    }
+}
+
+/* For very small screens (below 480px) - hide text, keep icon only */
+@media (max-width: 480px) {
+    .last-login-details {
         display: none;
+    }
+    
+    .last-login-info {
+        padding: 5px 8px;
+    }
+    
+    .last-login-info i {
+        font-size: 12px;
+        margin: 0;
     }
 }
