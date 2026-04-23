@@ -3945,3 +3945,45 @@ p {
         border: 1px solid #ddd;
     }
 }
+/* Last Login Info Styles */
+.last-login-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(76, 29, 149, 0.08);
+    padding: 6px 15px;
+    border-radius: 30px;
+    margin-right: 15px;
+}
+
+.last-login-info i {
+    font-size: 16px;
+    color: #4C1D95;
+}
+
+.last-login-details {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.3;
+}
+
+.last-login-label {
+    font-size: 10px;
+    color: #6b7280;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.last-login-time {
+    font-size: 12px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+    .last-login-info {
+        display: none;
+    }
+}
