@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NCHSM Digital Portal | Registration</title>
 
-    <!-- ✅ Favicon -->
+    <!-- Favicon -->
     <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" sizes="32x32"> 
     <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
     <link rel="preload" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
@@ -70,7 +70,7 @@
             padding: 40px;
             border-radius: 20px;
             box-shadow: 0 20px 60px var(--shadow-dark);
-            max-width: 500px;
+            max-width: 550px;
             width: 100%;
             text-align: center;
             animation: fadeIn 0.4s ease-in;
@@ -319,6 +319,13 @@
             font-weight: 500;
         }
 
+        /* Help Text */
+        .help-text {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
         /* Responsive Design */
         @media (max-width: 768px) {
             .container {
@@ -392,64 +399,91 @@
                 <input type="email" id="email" name="email" placeholder="Enter your email address" required>
             </div>
 
+            <!-- STUDENT FIELDS - UPDATED WITH INTAKE YEAR & BLOCK -->
             <div id="student-fields" class="role-fields">
                 <div class="form-group">
                     <label for="student_id_number"><i data-feather="id"></i> Admission / Student ID</label>
-                    <input type="text" id="student_id_number" name="student_id_number" placeholder="e.g. NCHSM2025/001">
+                    <input type="text" id="student_id_number" name="student_id_number" placeholder="e.g. KRCHN/001/2026">
+                    <div class="help-text">Your unique student identification number</div>
                 </div>
-                <!-- IN register.html - Replace the program dropdown with this: -->
-<div class="form-group">
-    <label for="program_type"><i data-feather="book"></i> Program</label>
-    <select id="program_type" name="program_type" required>
-        <option value="">-- Select Your Program --</option>
-        
-        <!-- KRCHN PROGRAMS -->
-        <optgroup label="KRCHN Programs">
-            <option value="KRCHN">KRCHN Nursing</option>
-        </optgroup>
-        
-        <!-- TVET - DIPLOMA PROGRAMS (6-24 months) -->
-        <optgroup label="TVET Diploma Programs">
-            <option value="DPOTT">Diploma in Perioperative Theatre Technology</option>
-            <option value="DCH">Diploma in Community Health</option>
-            <option value="DHRIT">Diploma in Health Records and IT</option>
-            <option value="DSL">Diploma in Science Lab</option>
-            <option value="DSW">Diploma in Social Work and Community Development</option>
-            <option value="DCJS">Diploma in Criminal Justice</option>
-            <option value="DHSS">Diploma in Health Support Services</option>
-            <option value="DICT">Diploma in Information & Communication Technology</option>
-            <option value="DME">Diploma in Medical Engineering</option>
-        </optgroup>
-        
-        <!-- TVET - CERTIFICATE PROGRAMS (3-12 months) -->
-        <optgroup label="TVET Certificate Programs">
-            <option value="CPOTT">Certificate in Perioperative Theatre Technology</option>
-            <option value="CCH">Certificate in Community Health</option>
-            <option value="CHRIT">Certificate in Health Records and IT</option>
-            <option value="CPC">Certificate in Patient Care</option>
-            <option value="CSL">Certificate in Science Lab</option>
-            <option value="CSW">Certificate in Social Work and Community Development</option>
-            <option value="CCJS">Certificate in Criminal Justice</option>
-            <option value="CAG">Certificate in Agriculture</option>
-            <option value="CHSS">Certificate in Health Support Services</option>
-            <option value="CICT">Certificate in Information & Communication Technology</option>
-        </optgroup>
-        
-        <!-- TVET - ARTISAN PROGRAMS (2-12 months) -->
-        <optgroup label="TVET Artisan Programs">
-            <option value="ACH">Artisan in Community Health</option>
-            <option value="AAG">Artisan in Agriculture</option>
-            <option value="ASW">Artisan in Social Work and Community Development</option>
-        </optgroup>
-        
-        <!-- OTHER TVET -->
-        <optgroup label="Other TVET Programs">
-            <option value="CCA">Certificate in Computer Applications (CCA)</option>
-            <option value="PTE">TVET/CDACC (PTE)</option>
-        </optgroup>
-    </select>
-</div>
+                
+                <div class="form-group">
+                    <label for="program_type"><i data-feather="book"></i> Program</label>
+                    <select id="program_type" name="program_type" required>
+                        <option value="">-- Select Your Program --</option>
+                        
+                        <!-- KRCHN PROGRAMS -->
+                        <optgroup label="KRCHN Programs">
+                            <option value="KRCHN">KRCHN Nursing</option>
+                        </optgroup>
+                        
+                        <!-- TVET - DIPLOMA PROGRAMS -->
+                        <optgroup label="TVET Diploma Programs (6-24 months)">
+                            <option value="DPOTT">Diploma in Perioperative Theatre Technology</option>
+                            <option value="DCH">Diploma in Community Health</option>
+                            <option value="DHRIT">Diploma in Health Records and IT</option>
+                            <option value="DSL">Diploma in Science Lab</option>
+                            <option value="DSW">Diploma in Social Work and Community Development</option>
+                            <option value="DCJS">Diploma in Criminal Justice</option>
+                            <option value="DHSS">Diploma in Health Support Services</option>
+                            <option value="DICT">Diploma in Information & Communication Technology</option>
+                            <option value="DME">Diploma in Medical Engineering</option>
+                        </optgroup>
+                        
+                        <!-- TVET - CERTIFICATE PROGRAMS -->
+                        <optgroup label="TVET Certificate Programs (3-12 months)">
+                            <option value="CPOTT">Certificate in Perioperative Theatre Technology</option>
+                            <option value="CCH">Certificate in Community Health</option>
+                            <option value="CHRIT">Certificate in Health Records and IT</option>
+                            <option value="CPC">Certificate in Patient Care</option>
+                            <option value="CSL">Certificate in Science Lab</option>
+                            <option value="CSW">Certificate in Social Work and Community Development</option>
+                            <option value="CCJS">Certificate in Criminal Justice</option>
+                            <option value="CAG">Certificate in Agriculture</option>
+                            <option value="CHSS">Certificate in Health Support Services</option>
+                            <option value="CICT">Certificate in Information & Communication Technology</option>
+                        </optgroup>
+                        
+                        <!-- TVET - ARTISAN PROGRAMS -->
+                        <optgroup label="TVET Artisan Programs (2-12 months)">
+                            <option value="ACH">Artisan in Community Health</option>
+                            <option value="AAG">Artisan in Agriculture</option>
+                            <option value="ASW">Artisan in Social Work and Community Development</option>
+                        </optgroup>
+                        
+                        <!-- OTHER TVET -->
+                        <optgroup label="Other TVET Programs">
+                            <option value="CCA">Certificate in Computer Applications (CCA)</option>
+                            <option value="PTE">TVET/CDACC (PTE)</option>
+                        </optgroup>
+                    </select>
+                </div>
+                
+                <!-- NEW: Intake Year -->
+                <div class="form-group">
+                    <label for="intake_year"><i data-feather="calendar"></i> Intake Year</label>
+                    <select id="intake_year" name="intake_year" required>
+                        <option value="">-- Select Intake Year --</option>
+                        <option value="2024">March 2024</option>
+                        <option value="2025">March 2025</option>
+                        <option value="2026">March 2026</option>
+                        <option value="2027">March 2027</option>
+                        <option value="2028">March 2028</option>
+                    </select>
+                    <div class="help-text">Your year of admission to the college</div>
+                </div>
+                
+                <!-- NEW: Starting Block/Term -->
+                <div class="form-group">
+                    <label for="initial_block"><i data-feather="layers"></i> Starting Block/Term</label>
+                    <select id="initial_block" name="initial_block" required>
+                        <option value="Introductory">Introductory Block</option>
+                    </select>
+                    <div class="help-text">Your current academic block/term</div>
+                </div>
+            </div>
 
+            <!-- LECTURER FIELDS -->
             <div id="lecturer-fields" class="role-fields">
                 <div class="form-group">
                     <label for="staff_id"><i data-feather="id"></i> Staff ID</label>
@@ -463,6 +497,8 @@
                         <option value="TVET">TVET</option>
                         <option value="Community Health">Community Health</option>
                         <option value="Health Records">Health Records</option>
+                        <option value="ICT">ICT</option>
+                        <option value="Administration">Administration</option>
                     </select>
                 </div>
             </div>
@@ -475,6 +511,7 @@
             <div class="form-group">
                 <label for="password"><i data-feather="lock"></i> Password</label>
                 <input type="password" id="password" name="password" placeholder="Create a strong password" required>
+                <div class="help-text">Minimum 6 characters</div>
             </div>
 
             <div class="form-group">
@@ -513,7 +550,64 @@
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // SIMPLIFIED Registration Email Function - CLEAN VERSION
+    // Dynamic block options based on program selection
+    function updateBlockOptions() {
+        const programType = document.getElementById('program_type').value;
+        const blockSelect = document.getElementById('initial_block');
+        
+        if (!blockSelect) return;
+        
+        // Clear existing options
+        blockSelect.innerHTML = '';
+        
+        // Check if it's KRCHN or TVET
+        const isKRCHN = programType === 'KRCHN';
+        const isTVET = !isKRCHN && programType !== '';
+        
+        if (isKRCHN) {
+            // KRCHN Blocks
+            const blocks = [
+                'Introductory',
+                'Block A',
+                'Block B',
+                'Block C',
+                'Block D',
+                'Block E',
+                'Final'
+            ];
+            blocks.forEach(block => {
+                const option = document.createElement('option');
+                option.value = block;
+                option.textContent = block;
+                blockSelect.appendChild(option);
+            });
+        } else if (isTVET) {
+            // TVET Terms
+            const terms = [
+                'Introductory',
+                'Term 1',
+                'Term 2',
+                'Term 3',
+                'Term 4',
+                'Term 5',
+                'Term 6'
+            ];
+            terms.forEach(term => {
+                const option = document.createElement('option');
+                option.value = term;
+                option.textContent = term;
+                blockSelect.appendChild(option);
+            });
+        } else {
+            // Default
+            const option = document.createElement('option');
+            option.value = 'Introductory';
+            option.textContent = 'Introductory Block';
+            blockSelect.appendChild(option);
+        }
+    }
+
+    // Send registration email
     async function sendRegistrationEmail(email, userName) {
         console.log('📧 Sending welcome email to:', email);
         
@@ -546,6 +640,7 @@
         return new Promise(resolve => setTimeout(() => resolve(true), 2000));
     }
 
+    // Get DOM elements
     const roleSelect = document.getElementById('role');
     const studentFieldsDiv = document.getElementById('student-fields');
     const lecturerFieldsDiv = document.getElementById('lecturer-fields');
@@ -556,6 +651,12 @@
     const registerBtn = document.getElementById('register-btn');
     const buttonText = document.getElementById('button-text');
     const redirectCountdown = document.getElementById('redirect-countdown');
+
+    // Add event listener for program type change
+    document.getElementById('program_type')?.addEventListener('change', updateBlockOptions);
+    
+    // Call initially to set default options
+    updateBlockOptions();
 
     // Toggle role-specific fields
     const manageRequiredFields = (role) => {
@@ -599,6 +700,7 @@
         }, 1000);
     }
 
+    // Form submission
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
         message.textContent = '';
@@ -613,6 +715,7 @@
         const password = document.getElementById('password').value.trim();
         const confirmPassword = document.getElementById('confirm_password').value.trim();
 
+        // Password validation
         if (password !== confirmPassword) {
             message.textContent = '❌ Passwords do not match.';
             message.classList.add('error');
@@ -621,28 +724,61 @@
             return;
         }
 
+        if (password.length < 6) {
+            message.textContent = '❌ Password must be at least 6 characters.';
+            message.classList.add('error');
+            registerBtn.disabled = false;
+            buttonText.textContent = 'Create Account';
+            return;
+        }
+
+        // Get student-specific fields
         const student_id_number = document.getElementById('student_id_number').value.trim();
         const program_type = document.getElementById('program_type').value;
+        const intake_year = document.getElementById('intake_year')?.value;
+        const initial_block = document.getElementById('initial_block')?.value;
+        
+        // Get lecturer-specific fields
         const staff_id = document.getElementById('staff_id').value.trim();
         const department = document.getElementById('department').value;
 
-        const customData = {
-            full_name,
-            role,
-            phone,
-            admission_number: student_id_number,
-            course: program_type,
-            staff_id,
-            department,
-            status: 'pending' // Default status
-        };
-        
+        // Auto-set admission date to today
+        const today = new Date();
+        const admissionDate = today.toISOString().split('T')[0];
+        const admissionYear = today.getFullYear().toString();
+
         try {
-            // 1. Create user in Supabase
+            // Prepare user metadata based on role
+            let userMetadata = {
+                full_name,
+                role,
+                phone,
+                status: 'pending'
+            };
+
+            if (role === 'student') {
+                userMetadata = {
+                    ...userMetadata,
+                    admission_number: student_id_number,
+                    course: program_type,
+                    intake_year: intake_year,
+                    current_block: initial_block,
+                    admission_date: admissionDate,
+                    admission_year: admissionYear
+                };
+            } else if (role === 'lecturer') {
+                userMetadata = {
+                    ...userMetadata,
+                    staff_id: staff_id,
+                    department: department
+                };
+            }
+
+            // 1. Create user in Supabase Auth
             const { data: authData, error: authError } = await sb.auth.signUp({
                 email,
                 password,
-                options: { data: customData }
+                options: { data: userMetadata }
             });
 
             if (authError) {
@@ -653,28 +789,46 @@
             await sendRegistrationEmail(email, full_name);
             
             // 3. Store user profile in database
-            const { error: profileError } = await sb
-                .from('consolidated_user_profiles_table')
-                .insert({
-                    email: email,
-                    full_name: full_name,
-                    role: role,
-                    phone: phone,
-                    admission_number: student_id_number,
-                    course: program_type,
-                    staff_id: staff_id,
-                    department: department,
-                    status: 'pending',
-                    user_id: authData.user.id,
-                    created_at: new Date().toISOString()
-                });
+            let profileData = {
+                email: email,
+                full_name: full_name,
+                role: role,
+                phone: phone,
+                status: 'pending',
+                user_id: authData.user.id,
+                created_at: new Date().toISOString()
+            };
 
-            if (profileError) {
-                console.error('Profile error:', profileError);
-                // Continue anyway - email was sent
+            if (role === 'student') {
+                profileData = {
+                    ...profileData,
+                    student_id: student_id_number,
+                    program: program_type,
+                    intake_year: intake_year,
+                    block: initial_block,
+                    admission_date: admissionDate,
+                    admission_year: admissionYear
+                };
+            } else if (role === 'lecturer') {
+                profileData = {
+                    ...profileData,
+                    staff_id: staff_id,
+                    department: department
+                };
             }
 
-            message.textContent = '✅ Registration successful! Welcome email sent. Await admin approval before logging in.';
+            const { error: profileError } = await sb
+                .from('consolidated_user_profiles_table')
+                .insert(profileData);
+
+            if (profileError) {
+                console.error('Profile insert error:', profileError);
+                // Continue anyway - auth user was created
+            }
+
+            // Success message
+            const roleText = role === 'student' ? 'student' : 'lecturer';
+            message.textContent = `✅ Registration successful! Your ${roleText} account has been created. Await admin approval before logging in.`;
             message.classList.add('success');
             
             // Start redirect countdown
@@ -686,12 +840,12 @@
             
         } catch (error) {
             console.error('Registration error:', error);
-            message.textContent = `❌ ${error.message}`;
+            message.textContent = `❌ Registration failed: ${error.message}`;
             message.classList.add('error');
             registerBtn.disabled = false;
             buttonText.textContent = 'Create Account';
         }
     });
-</script>
+    </script>
 </body>
 </html>
