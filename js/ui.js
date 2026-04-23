@@ -833,18 +833,25 @@ class UIModule {
                     break;
                     
                 // ADD EXAM CARD CASE HERE
-                case 'exam-card':
-                    console.log('📇 Loading Exam Card module...');
-                    if (typeof initExamCard === 'function') {
-                        initExamCard();
-                    } else {
-                        console.warn('⚠️ initExamCard not found');
-                        const container = document.getElementById('exam-card-content');
-                        if (container) {
-                            container.innerHTML = '<div class="empty-state"><i class="fas fa-spinner fa-spin"></i><p>Loading exam card module...</p></div>';
-                        }
-                    }
-                    break;
+             case 'exam-card':
+    console.log('📇 Loading Exam Card module...');
+    if (typeof initExamCard === 'function') {
+        initExamCard();
+    } else if (window.examCardModule && typeof window.examCardModule.refresh === 'function') {
+        window.examCardModule.refresh();
+    } else {
+        console.warn('⚠️ examCardModule not found, checking if script loaded...');
+        // Try to initialize if module exists but not called
+        if (window.examCardModule) {
+            window.examCardModule.init();
+        } else {
+            const container = document.getElementById('exam-card-content');
+            if (container) {
+                container.innerHTML = '<div class="empty-state"><i class="fas fa-spinner fa-spin"></i><p>Loading exam card module...</p><button onclick="location.reload()" class="btn-primary">Retry</button></div>';
+            }
+        }
+    }
+    break;
                     
                 default:
                     console.log(`No specific loader for tab: ${tabId}`);
