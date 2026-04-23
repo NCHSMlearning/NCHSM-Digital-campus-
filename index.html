@@ -85,62 +85,70 @@
 <!-- ==================== MAIN APP CONTENT ==================== -->
 <div id="app-content" style="display: none;">
     
-    <!-- ==================== HEADER ==================== -->
-    <header class="main-header">
-        <div class="header-left">
-            <div class="logo-container">
-                <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" 
-                     alt="NCHSM Logo" 
-                     class="header-logo">
-                <div class="header-titles">
-                    <h1 class="main-title">NCHSM</h1>
-                    <h2 class="subtitle">Digital Student Portal</h2>
-                </div>
+   <!-- ==================== HEADER ==================== -->
+<header class="main-header">
+    <div class="header-left">
+        <div class="logo-container">
+            <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" 
+                 alt="NCHSM Logo" 
+                 class="header-logo">
+            <div class="header-titles">
+                <h1 class="main-title">NCHSM</h1>
+                <h2 class="subtitle">Digital Student Portal</h2>
+            </div>
+        </div>
+    </div>
+    
+    <div class="header-right">
+        <button class="mobile-menu-toggle icon-btn" id="mobile-menu-toggle">
+            <i class="fas fa-bars"></i>
+        </button>
+        
+        <!-- NEW: Last Login Display -->
+        <div class="last-login-info">
+            <i class="fas fa-history"></i>
+            <div class="last-login-details">
+                <span class="last-login-label">Last Login</span>
+                <span class="last-login-time" id="header-last-login">Loading...</span>
             </div>
         </div>
         
-        <div class="header-right">
-            <button class="mobile-menu-toggle icon-btn" id="mobile-menu-toggle">
-                <i class="fas fa-bars"></i>
-            </button>
-            
-            <div class="user-profile-dropdown">
-                <div class="profile-trigger">
-                    <img id="header-profile-photo" 
-                         src="https://ui-avatars.com/api/?name=Student&background=667eea&color=fff&size=100" 
-                         alt="Profile" 
-                         class="profile-avatar round">
-                    <div class="profile-info">
-                        <span class="profile-name" id="header-user-name">Student</span>
-                        <span class="profile-role">Student</span>
-                    </div>
-                    <i class="fas fa-chevron-down dropdown-icon"></i>
+        <div class="user-profile-dropdown">
+            <div class="profile-trigger">
+                <img id="header-profile-photo" 
+                     src="https://ui-avatars.com/api/?name=Student&background=667eea&color=fff&size=100" 
+                     alt="Profile" 
+                     class="profile-avatar round">
+                <div class="profile-info">
+                    <span class="profile-name" id="header-user-name">Student</span>
+                    <span class="profile-role">Student</span>
                 </div>
-                
-                <div class="dropdown-menu" style="display: none;">
-                    <a href="#" data-tab="profile">
-                        <i class="fas fa-user"></i> My Profile
-                    </a>
-                    <div class="dropdown-divider"></div>
-                    <a href="#" id="header-logout">
-                        <i class="fas fa-sign-out-alt"></i> Logout
-                    </a>
-                </div>
+                <i class="fas fa-chevron-down dropdown-icon"></i>
             </div>
             
-            <div class="current-time">
-                <i class="fas fa-clock"></i>
-                <span id="header-time">Loading...</span>
-            </div>
-            
-            <div class="header-actions">
-                <button class="icon-btn" id="header-refresh" title="Refresh Dashboard">
-                    <i class="fas fa-redo"></i>
-                </button>
+            <div class="dropdown-menu" style="display: none;">
+                <a href="#" data-tab="profile">
+                    <i class="fas fa-user"></i> My Profile
+                </a>
+                <div class="dropdown-divider"></div>
+                <a href="#" id="header-logout">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
             </div>
         </div>
-    </header>
-    
+        
+        <div class="current-time">
+            <i class="fas fa-clock"></i>
+            <span id="header-time">Loading...</span>
+        </div>
+        
+        <div class="header-actions">
+            <button class="icon-btn" id="header-refresh" title="Refresh Dashboard">
+                <i class="fas fa-redo"></i>
+            </button>
+        </div>
+    </div>
+</header>
     <!-- ==================== MOBILE OVERLAY ==================== -->
     <div class="overlay" id="overlay" role="presentation" aria-hidden="true"></div>
 
