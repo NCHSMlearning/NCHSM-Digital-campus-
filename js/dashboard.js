@@ -1,4 +1,4 @@
-// dashboard.js - COMPLETE UPDATED VERSION with Immediate Updates
+// dashboard.js - COMPLETE UPDATED VERSION with Exam Card Integration
 class DashboardModule {
     constructor(supabaseClient) {
         console.log('🚀 Initializing DashboardModule...');
@@ -55,6 +55,11 @@ class DashboardModule {
             activeCourses: document.getElementById('dashboard-active-courses'),
             newResources: document.getElementById('dashboard-new-resources'),
             
+            // NEW: Exam Card elements
+            dashboardExamStatus: document.getElementById('dashboard-exam-status'),
+            dashboardApprovedUnits: document.getElementById('dashboard-approved-units'),
+            dashboardCurrentSemester: document.getElementById('dashboard-current-semester'),
+            
             // NurseIQ
             nurseiqProgress: document.getElementById('dashboard-nurseiq-progress'),
             nurseiqAccuracy: document.getElementById('dashboard-nurseiq-accuracy'),
@@ -65,6 +70,7 @@ class DashboardModule {
             examsCard: document.querySelector('.stat-card[data-tab="cats"]'),
             coursesCard: document.querySelector('.stat-card[data-tab="courses"]'),
             resourcesCard: document.querySelector('.stat-card[data-tab="resources"]'),
+            examCardCard: document.querySelector('.stat-card[data-tab="exam-card"]'),
             nurseiqCard: document.querySelector('.stat-card.nurseiq-card'),
             
             // Grid container
@@ -73,7 +79,7 @@ class DashboardModule {
             // Time (in footer)
             currentDateTime: document.getElementById('currentDateTime'),
             
-            // HEADER elements - EXACT selectors from your HTML
+            // HEADER elements
             headerTime: document.getElementById('header-time'),
             headerUserName: document.getElementById('header-user-name'),
             headerProfilePhoto: document.getElementById('header-profile-photo'),
@@ -107,13 +113,13 @@ class DashboardModule {
             this.loadAttendanceMetrics();
         });
         
-        // 🔥 NEW: Listen for courses module ready event
+        // Listen for courses module ready event
         document.addEventListener('coursesModuleReady', (e) => {
             console.log('📚 Dashboard: coursesModuleReady event received with data:', e.detail);
             this.handleCoursesReady(e.detail);
         });
         
-        // 🔥 NEW: Listen for exams module ready event
+        // Listen for exams module ready event
         document.addEventListener('examsModuleReady', (e) => {
             console.log('📝 Dashboard: examsModuleReady event received with data:', e.detail);
             this.handleExamsReady(e.detail);
@@ -163,7 +169,7 @@ class DashboardModule {
         console.log('✅ Event listeners setup complete');
     }
     
-    // 🔥 NEW: Handle courses when they're ready
+    // Handle courses when they're ready
     handleCoursesReady(detail = null) {
         console.log('📚 Handling courses ready...');
         
@@ -197,7 +203,7 @@ class DashboardModule {
         console.log(`✅ Courses updated: ${activeCount} active`);
     }
     
-    // 🔥 NEW: Handle exams when they're ready
+    // Handle exams when they're ready
     handleExamsReady(detail = null) {
         console.log('📝 Handling exams ready...');
         
@@ -238,6 +244,68 @@ class DashboardModule {
         console.log('✅ Exams metrics updated');
     }
     
+    // NEW: Load Exam Card Dashboard Data (as a class method)
+    async loadExamCardDashboardData() {
+        console.log('📇 Loading exam card dashboard data...');
+        
+        try {
+            if (!this.userId || !this.sb) {
+                console.warn('Cannot load exam card data: No user ID or Supabase');
+                return;
+            }
+            
+            // Get student's current block
+            const { data: student, error: studentError } = await this.sb
+                .from('consolidated_user_profiles_table')
+                .select('block')
+                .eq('user_id', this.userId)
+                .single();
+            
+            if (studentError) {
+                console.warn('Could not get student block:', studentError);
+            }
+            
+            // Query for approved units in current block
+            let query = this.sb
+                .from('student_unit_registrations')
+                .select('id')
+                .eq('student_id', this.userId)
+                .eq('status', 'approved');
+            
+            // Filter by current block if available
+            if (student && student.block && student.block !== 'Unknown') {
+                query = query.eq('block', student.block);
+            }
+            
+            const { data: registrations, error } = await query;
+            
+            if (error) throw error;
+            
+            const approvedCount = registrations?.length || 0;
+            const isEligible = approvedCount > 0;
+            const currentSemester = student?.block || 'Current Semester';
+            
+            // Update dashboard elements
+            if (this.elements.dashboardExamStatus) {
+                this.elements.dashboardExamStatus.textContent = isEligible ? 'ELIGIBLE ✅' : 'NOT ELIGIBLE ❌';
+                this.elements.dashboardExamStatus.style.color = isEligible ? '#059669' : '#dc2626';
+            }
+            
+            if (this.elements.dashboardApprovedUnits) {
+                this.elements.dashboardApprovedUnits.textContent = approvedCount;
+            }
+            
+            if (this.elements.dashboardCurrentSemester) {
+                this.elements.dashboardCurrentSemester.textContent = currentSemester;
+            }
+            
+            console.log(`📇 Exam card data loaded: ${approvedCount} approved units for ${currentSemester}`);
+            
+        } catch (error) {
+            console.error('Error loading exam card dashboard data:', error);
+        }
+    }
+    
     addCardClickHandlers() {
         // Add click handlers to all stat cards
         const cards = document.querySelectorAll('.stat-card');
@@ -262,6 +330,9 @@ class DashboardModule {
                 } else if (card.classList.contains('nurseiq-card')) {
                     console.log('🧠 NurseIQ card clicked');
                     this.switchToTab('nurseiq');
+                } else if (card.classList.contains('examcard-card')) {
+                    console.log('📇 Exam card clicked');
+                    this.switchToTab('exam-card');
                 }
             });
             
@@ -276,6 +347,10 @@ class DashboardModule {
                     } else if (card.classList.contains('nurseiq-card')) {
                         console.log('🧠 NurseIQ card activated');
                         this.switchToTab('nurseiq');
+                        e.preventDefault();
+                    } else if (card.classList.contains('examcard-card')) {
+                        console.log('📇 Exam card activated');
+                        this.switchToTab('exam-card');
                         e.preventDefault();
                     }
                 }
@@ -328,6 +403,8 @@ class DashboardModule {
         let card;
         if (tabName === 'nurseiq') {
             card = document.querySelector('.stat-card.nurseiq-card');
+        } else if (tabName === 'exam-card') {
+            card = document.querySelector('.stat-card.examcard-card');
         } else {
             card = document.querySelector(`.stat-card[data-tab="${tabName}"]`);
         }
@@ -353,21 +430,21 @@ class DashboardModule {
             return false;
         }
         
-        // 🔥 UPDATED: Update ALL user info immediately
+        // Update ALL user info immediately
         console.log('🔄 Updating all user info...');
         this.updateAllUserInfo();
         
         // Show loading states
         this.showLoadingStates();
         
-        // 🔥 NEW: Start auto-refresh for real-time updates
+        // Start auto-refresh for real-time updates
         this.startAutoRefresh();
         
-        // 🔥 NEW: Load dashboard with SMART timing
+        // Load dashboard with SMART timing
         console.log('📊 Loading ALL dashboard data with smart timing...');
         await this.initializeDashboardWithSmartTiming();
         
-        // 🔥 NEW: Schedule delayed updates for modules that take time
+        // Schedule delayed updates for modules that take time
         this.scheduleDelayedUpdates();
         
         // Re-add click handlers after content loads
@@ -378,7 +455,7 @@ class DashboardModule {
         return true;
     }
     
-    // 🔥 NEW: Initialize dashboard with smart timing
+    // Initialize dashboard with smart timing
     async initializeDashboardWithSmartTiming() {
         console.log('🔄 Initializing dashboard with smart timing...');
         
@@ -389,7 +466,8 @@ class DashboardModule {
             this.loadStudentMessage(),
             this.loadLatestOfficialAnnouncement(),
             this.loadAttendanceMetrics(),
-            this.loadResourceMetrics(true)
+            this.loadResourceMetrics(true),
+            this.loadExamCardDashboardData()  // NEW: Load exam card data
         ]);
         
         // PHASE 2: Try to load courses (might be ready)
@@ -412,7 +490,7 @@ class DashboardModule {
         console.log('✅ Dashboard initialization complete');
     }
     
-    // 🔥 NEW: Try to load courses with multiple attempts
+    // Try to load courses with multiple attempts
     async tryLoadCourses() {
         console.log('🔄 Trying to load courses...');
         
@@ -438,7 +516,7 @@ class DashboardModule {
         await this.loadCourseMetricsFromDB();
     }
     
-    // 🔥 NEW: Try to load exams with multiple attempts
+    // Try to load exams with multiple attempts
     async tryLoadExams() {
         console.log('🔄 Trying to load exams...');
         
@@ -473,7 +551,7 @@ class DashboardModule {
         await this.loadExamMetricsFromDB();
     }
     
-    // 🔥 NEW: Schedule delayed updates for modules that take longer
+    // Schedule delayed updates for modules that take longer
     scheduleDelayedUpdates() {
         console.log('⏰ Scheduling delayed updates...');
         
@@ -505,10 +583,17 @@ class DashboardModule {
             }
         }, 3000);
         
+        // Update exam card data after 3 seconds
+        setTimeout(() => {
+            console.log('📇 3s delayed update: Refreshing exam card data...');
+            this.loadExamCardDashboardData();
+        }, 3000);
+        
         // Final update after 5 seconds
         setTimeout(() => {
             console.log('🔄 5s final update: Refreshing all metrics...');
             this.updateAllCardsAppearance();
+            this.loadExamCardDashboardData();
             
             // Force check one more time
             if (window.coursesModule) {
@@ -537,7 +622,7 @@ class DashboardModule {
         const studentName = this.userProfile.full_name || 'Student';
         console.log('📝 Setting name to:', studentName);
         
-        // Update header user name (EXACT selector from your HTML)
+        // Update header user name
         if (this.elements.headerUserName) {
             this.elements.headerUserName.textContent = studentName;
             console.log('✅ Updated header-user-name');
@@ -575,7 +660,7 @@ class DashboardModule {
         
         console.log('✅ Using photo URL:', finalPhotoUrl);
         
-        // Update specific profile photo elements (avoid dropdown)
+        // Update specific profile photo elements
         if (this.elements.headerProfilePhoto) {
             this.elements.headerProfilePhoto.src = finalPhotoUrl;
             this.elements.headerProfilePhoto.onerror = () => {
@@ -592,7 +677,7 @@ class DashboardModule {
         localStorage.setItem('userProfilePhoto', finalPhotoUrl);
     }
     
-    // 🔥 NEW: Get cached exam metrics
+    // Get cached exam metrics
     getCachedExamMetrics() {
         try {
             const cached = localStorage.getItem('exams_dashboard_metrics');
@@ -897,80 +982,72 @@ class DashboardModule {
         return tvetPrograms.some(tvet => program.toUpperCase().includes(tvet));
     }
     
-   updateExamsUI(metrics) {
-    if (!metrics) return;
-    
-    const upcomingText = metrics.upcomingExam || 'No upcoming exams';
-    const upcomingName = metrics.upcomingExamName || 'None';
-    const upcomingCount = metrics.upcomingCount || 0;
-    
-    if (this.elements.upcomingExam) {
-        // OPTION 1: Show exam name with smart formatting
-        let displayText = upcomingText;
+    updateExamsUI(metrics) {
+        if (!metrics) return;
         
-        // If it's just a count like "Today (+7)", extract the exam name
-        if (displayText.includes('+') && upcomingName && upcomingName !== 'None') {
-            // Show the actual exam name instead of count
-            if (upcomingCount === 1) {
-                displayText = upcomingName;
-            } else {
-                displayText = `${upcomingName} (+${upcomingCount - 1})`;
-            }
-        }
+        const upcomingText = metrics.upcomingExam || 'No upcoming exams';
+        const upcomingName = metrics.upcomingExamName || 'None';
+        const upcomingCount = metrics.upcomingCount || 0;
         
-        // Truncate long exam names for better display
-        const maxLength = 25;
-        if (displayText.length > maxLength) {
-            displayText = displayText.substring(0, maxLength - 3) + '...';
-        }
-        
-        this.elements.upcomingExam.textContent = displayText;
-        this.elements.upcomingExam.title = upcomingText; // Full text on hover
-        
-        // Add tooltip with more info
-        let tooltipText = '';
-        if (upcomingCount === 0) {
-            tooltipText = 'No upcoming exams';
-        } else if (upcomingCount === 1) {
-            tooltipText = `${upcomingName}`;
-            if (upcomingText.includes('Today')) tooltipText += ' (Today)';
-            if (upcomingText.includes('Tomorrow')) tooltipText += ' (Tomorrow)';
-        } else {
-            tooltipText = `${upcomingCount} upcoming exams - Next: ${upcomingName}`;
-        }
-        this.elements.upcomingExam.title = tooltipText;
-        
-        // Apply color classes based on urgency
-        if (upcomingText.includes('Today') || displayText.includes('Today')) {
-            this.elements.upcomingExam.classList.add('dashboard-stat-low');
-            this.elements.upcomingExam.classList.remove('dashboard-stat-medium', 'dashboard-stat-high');
+        if (this.elements.upcomingExam) {
+            let displayText = upcomingText;
             
-            // Add urgent indicator
-            if (!this.elements.upcomingExam.querySelector('.urgent-dot')) {
-                const dot = document.createElement('span');
-                dot.className = 'urgent-dot';
-                dot.style.display = 'inline-block';
-                dot.style.width = '8px';
-                dot.style.height = '8px';
-                dot.style.background = '#ef4444';
-                dot.style.borderRadius = '50%';
-                dot.style.marginLeft = '5px';
-                dot.style.animation = 'pulse 1.5s infinite';
-                this.elements.upcomingExam.appendChild(dot);
+            if (displayText.includes('+') && upcomingName && upcomingName !== 'None') {
+                if (upcomingCount === 1) {
+                    displayText = upcomingName;
+                } else {
+                    displayText = `${upcomingName} (+${upcomingCount - 1})`;
+                }
             }
-        } else if (upcomingText.includes('Tomorrow') || upcomingText.includes('1d') || upcomingText.includes('2d')) {
-            this.elements.upcomingExam.classList.add('dashboard-stat-medium');
-            this.elements.upcomingExam.classList.remove('dashboard-stat-low', 'dashboard-stat-high');
-        } else {
-            this.elements.upcomingExam.classList.remove('dashboard-stat-low', 'dashboard-stat-medium', 'dashboard-stat-high');
+            
+            const maxLength = 25;
+            if (displayText.length > maxLength) {
+                displayText = displayText.substring(0, maxLength - 3) + '...';
+            }
+            
+            this.elements.upcomingExam.textContent = displayText;
+            this.elements.upcomingExam.title = upcomingText;
+            
+            let tooltipText = '';
+            if (upcomingCount === 0) {
+                tooltipText = 'No upcoming exams';
+            } else if (upcomingCount === 1) {
+                tooltipText = `${upcomingName}`;
+                if (upcomingText.includes('Today')) tooltipText += ' (Today)';
+                if (upcomingText.includes('Tomorrow')) tooltipText += ' (Tomorrow)';
+            } else {
+                tooltipText = `${upcomingCount} upcoming exams - Next: ${upcomingName}`;
+            }
+            this.elements.upcomingExam.title = tooltipText;
+            
+            if (upcomingText.includes('Today') || displayText.includes('Today')) {
+                this.elements.upcomingExam.classList.add('dashboard-stat-low');
+                this.elements.upcomingExam.classList.remove('dashboard-stat-medium', 'dashboard-stat-high');
+                
+                if (!this.elements.upcomingExam.querySelector('.urgent-dot')) {
+                    const dot = document.createElement('span');
+                    dot.className = 'urgent-dot';
+                    dot.style.display = 'inline-block';
+                    dot.style.width = '8px';
+                    dot.style.height = '8px';
+                    dot.style.background = '#ef4444';
+                    dot.style.borderRadius = '50%';
+                    dot.style.marginLeft = '5px';
+                    dot.style.animation = 'pulse 1.5s infinite';
+                    this.elements.upcomingExam.appendChild(dot);
+                }
+            } else if (upcomingText.includes('Tomorrow') || upcomingText.includes('1d') || upcomingText.includes('2d')) {
+                this.elements.upcomingExam.classList.add('dashboard-stat-medium');
+                this.elements.upcomingExam.classList.remove('dashboard-stat-low', 'dashboard-stat-high');
+            } else {
+                this.elements.upcomingExam.classList.remove('dashboard-stat-low', 'dashboard-stat-medium', 'dashboard-stat-high');
+            }
         }
+        
+        this.updateCardAppearance('exams', upcomingCount > 0 ? 1 : 0);
+        
+        console.log(`✅ Exams UI Updated: ${displayText || upcomingText} (${upcomingCount} active)`);
     }
-    
-    // Update card appearance
-    this.updateCardAppearance('exams', upcomingCount > 0 ? 1 : 0);
-    
-    console.log(`✅ Exams UI Updated: ${displayText || upcomingText} (${upcomingCount} active)`);
-}
     
     // Load resource metrics
     async loadResourceMetrics(allResources = true) {
@@ -1015,35 +1092,7 @@ class DashboardModule {
             this.showErrorState('resources');
         }
     }
-    async function loadExamCardDashboardData() {
-    try {
-        const { data: registrations, error } = await window.supabase
-            .from('student_unit_registrations')
-            .select('id')
-            .eq('student_id', window.currentUserId)
-            .eq('status', 'approved');
-        
-        const approvedCount = registrations?.length || 0;
-        const isEligible = approvedCount > 0;
-        
-        const examStatusEl = document.getElementById('dashboard-exam-status');
-        const approvedUnitsEl = document.getElementById('dashboard-approved-units');
-        
-        if (examStatusEl) {
-            examStatusEl.textContent = isEligible ? 'ELIGIBLE ✅' : 'NOT ELIGIBLE ❌';
-            examStatusEl.style.color = isEligible ? '#059669' : '#dc2626';
-        }
-        
-        if (approvedUnitsEl) {
-            approvedUnitsEl.textContent = approvedCount;
-        }
-        
-    } catch (error) {
-        console.error('Error loading exam card dashboard data:', error);
-    }
-}
-
-// Call this in your dashboard load function
+    
     // Enhanced NurseIQ Metrics with multiple sources
     async loadNurseIQMetrics() {
         console.log('🧠 Loading NurseIQ metrics...');
@@ -1209,7 +1258,10 @@ class DashboardModule {
             newResources: '...',
             nurseiqProgress: '...%',
             nurseiqAccuracy: '...%',
-            nurseiqQuestions: '...'
+            nurseiqQuestions: '...',
+            dashboardExamStatus: '...',
+            dashboardApprovedUnits: '...',
+            dashboardCurrentSemester: '...'
         };
         
         for (const [key, value] of Object.entries(loadingTexts)) {
@@ -1317,7 +1369,7 @@ class DashboardModule {
         }
     }
     
-    // 🔥 NEW: Start auto-refresh for real-time updates
+    // Start auto-refresh for real-time updates
     startAutoRefresh() {
         console.log('⏰ Starting auto-refresh (every 2 minutes)...');
         
@@ -1350,7 +1402,8 @@ class DashboardModule {
         await Promise.allSettled([
             this.loadAttendanceMetrics(),
             this.loadResourceMetrics(true),
-            this.loadNurseIQMetrics()
+            this.loadNurseIQMetrics(),
+            this.loadExamCardDashboardData()  // NEW: Refresh exam card data
         ]);
         
         // Also try to update courses and exams if modules are ready
@@ -1463,11 +1516,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// 🔥 CRITICAL FIX: Force dashboard to show on first load
+// Force dashboard to show on first load
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🎯 DOM loaded - checking dashboard visibility...');
     
-    // Wait for everything to initialize
     setTimeout(() => {
         const dashboardTab = document.getElementById('dashboard');
         const isDashboardVisible = dashboardTab && 
@@ -1476,15 +1528,10 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (!isDashboardVisible && window.ui) {
             console.log('🚨 Dashboard not visible - forcing it to show...');
-            
-            // 1. Use UI module if available
             window.ui.showTab('dashboard');
-            
-            // 2. Emergency CSS fix
             dashboardTab.style.display = 'block';
             dashboardTab.classList.add('active');
             
-            // 3. Hide all other tabs
             document.querySelectorAll('.tab-content:not(#dashboard)').forEach(tab => {
                 tab.style.display = 'none';
                 tab.classList.remove('active');
@@ -1493,7 +1540,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 1500);
 });
 
-// 🔥 ALSO: Listen for appReady event and force dashboard
+// Listen for appReady event and force dashboard
 document.addEventListener('appReady', function(e) {
     console.log('🎉 App ready - ensuring dashboard shows...');
     
@@ -1501,7 +1548,6 @@ document.addEventListener('appReady', function(e) {
         if (window.ui) {
             window.ui.showTab('dashboard');
         } else {
-            // Fallback
             const dashboard = document.getElementById('dashboard');
             if (dashboard) {
                 dashboard.style.display = 'block';
@@ -1511,7 +1557,7 @@ document.addEventListener('appReady', function(e) {
     }, 500);
 });
 
-// 🔥 EMERGENCY: If still not showing after 3 seconds
+// Emergency: If still not showing after 3 seconds
 setTimeout(() => {
     const dashboard = document.getElementById('dashboard');
     if (dashboard && getComputedStyle(dashboard).display === 'none') {
@@ -1521,7 +1567,6 @@ setTimeout(() => {
         dashboard.style.opacity = '1';
         dashboard.classList.add('active');
         
-        // Hide all other tabs
         document.querySelectorAll('.tab-content:not(#dashboard)').forEach(tab => {
             tab.style.display = 'none';
         });
