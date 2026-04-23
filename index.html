@@ -2241,10 +2241,10 @@
             // Load user profile
             try {
                 const { data: consolidatedProfile, error: consolidatedError } = await window.db.supabase
-                    .from('consolidated_user_profiles_table')
-                    .select('*')
-                    .eq('id', userSession.user.id)
-                    .single();
+    .from('consolidated_user_profiles_table')
+    .select('*')
+    .eq('user_id', userSession.user.id) 
+    .single();
                 
                 if (!consolidatedError && consolidatedProfile) {
                     window.db.currentUserProfile = consolidatedProfile;
