@@ -1,4 +1,4 @@
-// dashboard.js - COMPLETE UPDATED VERSION with Exam Card Integration
+// dashboard.js - COMPLETE FIXED VERSION with Exam Card Integration
 class DashboardModule {
     constructor(supabaseClient) {
         console.log('🚀 Initializing DashboardModule...');
@@ -244,7 +244,7 @@ class DashboardModule {
         console.log('✅ Exams metrics updated');
     }
     
-    // NEW: Load Exam Card Dashboard Data (as a class method)
+    // Load Exam Card Dashboard Data
     async loadExamCardDashboardData() {
         console.log('📇 Loading exam card dashboard data...');
         
@@ -265,7 +265,7 @@ class DashboardModule {
                 console.warn('Could not get student block:', studentError);
             }
             
-            // Query for approved units in current block
+            // Query for approved units
             let query = this.sb
                 .from('student_unit_registrations')
                 .select('id')
@@ -467,7 +467,7 @@ class DashboardModule {
             this.loadLatestOfficialAnnouncement(),
             this.loadAttendanceMetrics(),
             this.loadResourceMetrics(true),
-            this.loadExamCardDashboardData()  // NEW: Load exam card data
+            this.loadExamCardDashboardData()
         ]);
         
         // PHASE 2: Try to load courses (might be ready)
@@ -752,112 +752,102 @@ class DashboardModule {
         }
     }
     
-   // Load exam metrics from database (fallback) - CORRECTED for your actual table structure
-async loadExamMetricsFromDB() {
-    if (!this.userProfile || !this.sb) {
-        console.warn('⚠️ Cannot load exams: No user profile or Supabase');
-        this.showErrorState('exams');
-        return;
-    }
-    
-    try {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        
-        // Query the 'exams' table with correct column names from your table
-        const { data: exams, error } = await this.sb
-            .from('exams')
-            .select('id, exam_name, exam_type, exam_date, status, block_term, target_program, duration_minutes')
-            .eq('intake_year', this.userProfile.intake_year)
-            .or(`target_program.eq.${this.userProfile.program},target_program.is.null,target_program.eq.General`)
-            .or(`block_term.eq.${this.userProfile.block},block_term.is.null,block_term.eq.General`)
-            .order('exam_date', { ascending: true })
-            .limit(5);
-        
-        if (error) throw error;
-        
-        let upcomingText = 'None';
-        let upcomingCount = 0;
-        let upcomingExamName = '';
-        
-        if (exams && exams.length > 0) {
-            // Filter exams that are upcoming (not completed)
-            const upcomingExams = exams.filter(exam => {
-                // Skip if status is Completed
-                if (exam.status === 'Completed') return false;
-                
-                const examDate = new Date(exam.exam_date);
-                return examDate >= today;
-            });
-            
-            upcomingCount = upcomingExams.length;
-            
-            if (upcomingExams.length > 0) {
-                // Sort by date
-                upcomingExams.sort((a, b) => {
-                    const dateA = new Date(a.exam_date);
-                    const dateB = new Date(b.exam_date);
-                    return dateA - dateB;
-                });
-                
-                const nextExam = upcomingExams[0];
-                upcomingExamName = nextExam.exam_name || 'Exam';
-                const examDate = new Date(nextExam.exam_date);
-                const diffDays = Math.ceil((examDate - today) / (1000 * 60 * 60 * 24));
-                
-                if (diffDays <= 0) upcomingText = 'Today';
-                else if (diffDays === 1) upcomingText = 'Tomorrow';
-                else if (diffDays <= 7) upcomingText = `${diffDays}d`;
-                else if (diffDays <= 30) upcomingText = `${Math.floor(diffDays / 7)}w`;
-                else upcomingText = examDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                
-                // Add exam name for display
-                let displayName = upcomingExamName;
-                if (displayName.length > 20) {
-                    displayName = displayName.substring(0, 17) + '...';
-                }
-                
-                if (upcomingCount === 1) {
-                    upcomingText = displayName;
-                } else if (upcomingCount > 1) {
-                    upcomingText = `${displayName} (+${upcomingCount - 1})`;
-                }
-            }
+    // Load exam metrics from database (fallback)
+    async loadExamMetricsFromDB() {
+        if (!this.userProfile || !this.sb) {
+            console.warn('⚠️ Cannot load exams: No user profile or Supabase');
+            this.showErrorState('exams');
+            return;
         }
         
-        const metrics = {
-            upcomingExam: upcomingText,
-            upcomingExamName: upcomingExamName,
-            upcomingCount: upcomingCount,
-            gradedExams: 0,
-            averageScore: 0,
-            bestScore: 0,
-            passRate: 0,
-            lastUpdated: new Date().toISOString()
-        };
-        
-        this.updateExamsUI(metrics);
-        
-        console.log(`✅ Exams (DB): ${upcomingText} (${upcomingCount} active)`);
-        
-    } catch (error) {
-        console.error('❌ Error loading exams from DB:', error);
-        this.showErrorState('exams');
-        
-        // Set default values on error
-        const metrics = {
-            upcomingExam: 'Error loading',
-            upcomingExamName: '',
-            upcomingCount: 0,
-            gradedExams: 0,
-            averageScore: 0,
-            bestScore: 0,
-            passRate: 0,
-            lastUpdated: new Date().toISOString()
-        };
-        this.updateExamsUI(metrics);
+        try {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            // Query the 'exams' table directly
+            const { data: exams, error } = await this.sb
+                .from('exams')
+                .select('exam_name, exam_date, status, exam_type, block_term')
+                .eq('intake_year', this.userProfile.intake_year)
+                .or(`target_program.eq.${this.userProfile.program},target_program.is.null,target_program.eq.General`)
+                .or(`block_term.eq.${this.userProfile.block},block_term.is.null,block_term.eq.General`)
+                .order('exam_date', { ascending: true })
+                .limit(5);
+            
+            if (error) throw error;
+            
+            let upcomingText = 'None';
+            let upcomingCount = 0;
+            let upcomingExamName = '';
+            
+            if (exams && exams.length > 0) {
+                // Filter exams that are upcoming (not completed)
+                const upcomingExams = exams.filter(exam => {
+                    if (exam.status === 'Completed') return false;
+                    const examDate = new Date(exam.exam_date);
+                    return examDate >= today;
+                });
+                
+                upcomingCount = upcomingExams.length;
+                
+                if (upcomingExams.length > 0) {
+                    upcomingExams.sort((a, b) => {
+                        const dateA = new Date(a.exam_date);
+                        const dateB = new Date(b.exam_date);
+                        return dateA - dateB;
+                    });
+                    
+                    const nextExam = upcomingExams[0];
+                    upcomingExamName = nextExam.exam_name || 'Exam';
+                    const examDate = new Date(nextExam.exam_date);
+                    const diffDays = Math.ceil((examDate - today) / (1000 * 60 * 60 * 24));
+                    
+                    if (diffDays <= 0) upcomingText = 'Today';
+                    else if (diffDays === 1) upcomingText = 'Tomorrow';
+                    else if (diffDays <= 7) upcomingText = `${diffDays}d`;
+                    else if (diffDays <= 30) upcomingText = `${Math.floor(diffDays / 7)}w`;
+                    else upcomingText = examDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    
+                    if (upcomingCount > 1) {
+                        upcomingText += ` (+${upcomingCount - 1})`;
+                    }
+                }
+            }
+            
+            const metrics = {
+                upcomingExam: upcomingText,
+                upcomingExamName: upcomingExamName,
+                upcomingCount: upcomingCount,
+                gradedExams: 0,
+                averageScore: 0,
+                bestScore: 0,
+                passRate: 0,
+                lastUpdated: new Date().toISOString()
+            };
+            
+            this.updateExamsUI(metrics);
+            
+            console.log(`✅ Exams (DB): ${upcomingText} (${upcomingCount} active)`);
+            
+        } catch (error) {
+            console.error('❌ Error loading exams from DB:', error);
+            this.showErrorState('exams');
+            
+            // Set default values on error
+            const metrics = {
+                upcomingExam: 'Error loading',
+                upcomingExamName: '',
+                upcomingCount: 0,
+                gradedExams: 0,
+                averageScore: 0,
+                bestScore: 0,
+                passRate: 0,
+                lastUpdated: new Date().toISOString()
+            };
+            this.updateExamsUI(metrics);
+        }
     }
-}
+    
     // Animate grid cards appearance
     animateGridCards() {
         const cards = document.querySelectorAll('.stat-card');
@@ -1010,24 +1000,28 @@ async loadExamMetricsFromDB() {
         return tvetPrograms.some(tvet => program.toUpperCase().includes(tvet));
     }
     
+    // FIXED: updateExamsUI with proper variable declaration
     updateExamsUI(metrics) {
         if (!metrics) return;
         
         const upcomingText = metrics.upcomingExam || 'No upcoming exams';
-        const upcomingName = metrics.upcomingExamName || 'None';
+        const upcomingName = metrics.upcomingExamName || '';
         const upcomingCount = metrics.upcomingCount || 0;
         
         if (this.elements.upcomingExam) {
+            // Define displayText here - FIXED
             let displayText = upcomingText;
             
-            if (displayText.includes('+') && upcomingName && upcomingName !== 'None') {
+            // If we have an exam name and it's not already showing
+            if (upcomingName && upcomingName !== 'None' && upcomingName !== '' && !displayText.includes(upcomingName)) {
                 if (upcomingCount === 1) {
                     displayText = upcomingName;
-                } else {
+                } else if (upcomingCount > 1) {
                     displayText = `${upcomingName} (+${upcomingCount - 1})`;
                 }
             }
             
+            // Truncate long exam names for better display
             const maxLength = 25;
             if (displayText.length > maxLength) {
                 displayText = displayText.substring(0, maxLength - 3) + '...';
@@ -1048,6 +1042,7 @@ async loadExamMetricsFromDB() {
             }
             this.elements.upcomingExam.title = tooltipText;
             
+            // Apply color classes based on urgency
             if (upcomingText.includes('Today') || displayText.includes('Today')) {
                 this.elements.upcomingExam.classList.add('dashboard-stat-low');
                 this.elements.upcomingExam.classList.remove('dashboard-stat-medium', 'dashboard-stat-high');
@@ -1074,7 +1069,7 @@ async loadExamMetricsFromDB() {
         
         this.updateCardAppearance('exams', upcomingCount > 0 ? 1 : 0);
         
-        console.log(`✅ Exams UI Updated: ${displayText || upcomingText} (${upcomingCount} active)`);
+        console.log(`✅ Exams UI Updated: ${upcomingText} (${upcomingCount} active)`);
     }
     
     // Load resource metrics
@@ -1409,7 +1404,7 @@ async loadExamMetricsFromDB() {
         // Refresh dashboard every 2 minutes (120000 ms)
         this.autoRefreshInterval = setInterval(() => {
             console.log('🔄 Auto-refreshing dashboard...');
-            this.refreshDashboard(false); // Silent refresh
+            this.refreshDashboard(false);
         }, 120000);
         
         // Also refresh when tab becomes visible
@@ -1431,7 +1426,7 @@ async loadExamMetricsFromDB() {
             this.loadAttendanceMetrics(),
             this.loadResourceMetrics(true),
             this.loadNurseIQMetrics(),
-            this.loadExamCardDashboardData()  // NEW: Refresh exam card data
+            this.loadExamCardDashboardData()
         ]);
         
         // Also try to update courses and exams if modules are ready
