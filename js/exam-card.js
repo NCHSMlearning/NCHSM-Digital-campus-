@@ -311,7 +311,7 @@
                     <td class="text-center">${index + 1}</td>
                     <td class="unit-code-cell"><strong>${unitCode}</strong></td>
                     <td class="unit-name-cell">${unitName}</td>
-                    <td class="text-center">${credits}学分
+                   <td class="text-center">${credits}</td>
                     <td class="signature-cell">
                         <div class="signature-line-blank">
                             <span class="signature-placeholder">_________________</span>
