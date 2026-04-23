@@ -1089,8 +1089,10 @@
                 <hr>
                <hr>
 <hr>
+<hr>
 <h3>Mass Student Block/Term Promotion</h3>
 <form id="mass-promotion-form" class="inline-form">
+    <!-- Intake Year -->
     <select id="promote_intake" required>
         <option value="">-- Select Intake Year --</option>
         <option value="2024">2024 Intake</option>
@@ -1100,34 +1102,52 @@
         <option value="2028">2028 Intake</option>
     </select>
     
+    <!-- Program - ALL PROGRAMS -->
     <select id="promote_program" required>
         <option value="">-- Select Program --</option>
-        <option value="KRCHN">KRCHN Nursing</option>
-        <option value="TVET">TVET Programs</option>
+        <option value="KRCHN">🎓 KRCHN Nursing</option>
+        <optgroup label="🎯 TVET Diploma Programs (6-24 months)">
+            <option value="DPOTT">Diploma in Perioperative Theatre Technology</option>
+            <option value="DCH">Diploma in Community Health</option>
+            <option value="DHRIT">Diploma in Health Records and IT</option>
+            <option value="DSL">Diploma in Science Lab</option>
+            <option value="DSW">Diploma in Social Work & Community Development</option>
+            <option value="DCJS">Diploma in Criminal Justice</option>
+            <option value="DHSS">Diploma in Health Support Services</option>
+            <option value="DICT">Diploma in ICT</option>
+            <option value="DME">Diploma in Medical Engineering</option>
+        </optgroup>
+        <optgroup label="📜 TVET Certificate Programs (3-12 months)">
+            <option value="CPOTT">Certificate in Perioperative Theatre Technology</option>
+            <option value="CCH">Certificate in Community Health</option>
+            <option value="CHRIT">Certificate in Health Records and IT</option>
+            <option value="CPC">Certificate in Patient Care</option>
+            <option value="CSL">Certificate in Science Lab</option>
+            <option value="CSW">Certificate in Social Work & Community Development</option>
+            <option value="CCJS">Certificate in Criminal Justice</option>
+            <option value="CAG">Certificate in Agriculture</option>
+            <option value="CHSS">Certificate in Health Support Services</option>
+            <option value="CICT">Certificate in ICT</option>
+        </optgroup>
+        <optgroup label="🔧 TVET Artisan Programs (2-12 months)">
+            <option value="ACH">Artisan in Community Health</option>
+            <option value="AAG">Artisan in Agriculture</option>
+            <option value="ASW">Artisan in Social Work & Community Development</option>
+        </optgroup>
+        <optgroup label="📊 Other TVET Programs">
+            <option value="CCA">Certificate in Computer Applications</option>
+            <option value="PTE">TVET/CDACC (PTE)</option>
+        </optgroup>
     </select>
     
+    <!-- FROM Block -->
     <select id="promote_from_block" required>
         <option value="">-- Promote Students FROM --</option>
-        <option value="Introductory">Introductory Block</option>
-        <option value="Block 1">Block 1</option>
-        <option value="Block 2">Block 2</option>
-        <option value="Block 3">Block 3</option>
-        <option value="Block 4">Block 4</option>
-        <option value="Block 5">Block 5</option>
-        <option value="Block 6">Block 6</option>
-        <option value="Final">Final Block</option>
     </select>
     
+    <!-- TO Block -->
     <select id="promote_to_block" required>
         <option value="">-- Promote Students TO --</option>
-        <option value="Introductory">Introductory Block</option>
-        <option value="Block 1">Block 1</option>
-        <option value="Block 2">Block 2</option>
-        <option value="Block 3">Block 3</option>
-        <option value="Block 4">Block 4</option>
-        <option value="Block 5">Block 5</option>
-        <option value="Block 6">Block 6</option>
-        <option value="Final">Final Block</option>
     </select>
     
     <button type="submit" class="btn-danger">Execute Mass Promotion</button>
