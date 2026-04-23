@@ -1,4 +1,4 @@
-// dashboard.js - COMPLETE FIXED VERSION with Exam Card Integration
+// dashboard.js - COMPLETE FIXED VERSION with Exam Card Integration (No Emojis)
 class DashboardModule {
     constructor(supabaseClient) {
         console.log('🚀 Initializing DashboardModule...');
@@ -55,7 +55,7 @@ class DashboardModule {
             activeCourses: document.getElementById('dashboard-active-courses'),
             newResources: document.getElementById('dashboard-new-resources'),
             
-            // NEW: Exam Card elements
+            // Exam Card elements
             dashboardExamStatus: document.getElementById('dashboard-exam-status'),
             dashboardApprovedUnits: document.getElementById('dashboard-approved-units'),
             dashboardCurrentSemester: document.getElementById('dashboard-current-semester'),
@@ -244,7 +244,7 @@ class DashboardModule {
         console.log('✅ Exams metrics updated');
     }
     
-    // Load Exam Card Dashboard Data
+    // Load Exam Card Dashboard Data - NO EMOJIS
     async loadExamCardDashboardData() {
         console.log('📇 Loading exam card dashboard data...');
         
@@ -285,9 +285,9 @@ class DashboardModule {
             const isEligible = approvedCount > 0;
             const currentSemester = student?.block || 'Current Semester';
             
-            // Update dashboard elements
+            // Update dashboard elements - NO EMOJIS
             if (this.elements.dashboardExamStatus) {
-                this.elements.dashboardExamStatus.textContent = isEligible ? 'ELIGIBLE ✅' : 'NOT ELIGIBLE ❌';
+                this.elements.dashboardExamStatus.textContent = isEligible ? 'ELIGIBLE' : 'NOT ELIGIBLE';
                 this.elements.dashboardExamStatus.style.color = isEligible ? '#059669' : '#dc2626';
             }
             
@@ -1000,7 +1000,7 @@ class DashboardModule {
         return tvetPrograms.some(tvet => program.toUpperCase().includes(tvet));
     }
     
-    // FIXED: updateExamsUI with proper variable declaration
+    // updateExamsUI - NO EMOJIS
     updateExamsUI(metrics) {
         if (!metrics) return;
         
@@ -1009,10 +1009,8 @@ class DashboardModule {
         const upcomingCount = metrics.upcomingCount || 0;
         
         if (this.elements.upcomingExam) {
-            // Define displayText here - FIXED
             let displayText = upcomingText;
             
-            // If we have an exam name and it's not already showing
             if (upcomingName && upcomingName !== 'None' && upcomingName !== '' && !displayText.includes(upcomingName)) {
                 if (upcomingCount === 1) {
                     displayText = upcomingName;
@@ -1021,7 +1019,6 @@ class DashboardModule {
                 }
             }
             
-            // Truncate long exam names for better display
             const maxLength = 25;
             if (displayText.length > maxLength) {
                 displayText = displayText.substring(0, maxLength - 3) + '...';
@@ -1042,23 +1039,9 @@ class DashboardModule {
             }
             this.elements.upcomingExam.title = tooltipText;
             
-            // Apply color classes based on urgency
             if (upcomingText.includes('Today') || displayText.includes('Today')) {
                 this.elements.upcomingExam.classList.add('dashboard-stat-low');
                 this.elements.upcomingExam.classList.remove('dashboard-stat-medium', 'dashboard-stat-high');
-                
-                if (!this.elements.upcomingExam.querySelector('.urgent-dot')) {
-                    const dot = document.createElement('span');
-                    dot.className = 'urgent-dot';
-                    dot.style.display = 'inline-block';
-                    dot.style.width = '8px';
-                    dot.style.height = '8px';
-                    dot.style.background = '#ef4444';
-                    dot.style.borderRadius = '50%';
-                    dot.style.marginLeft = '5px';
-                    dot.style.animation = 'pulse 1.5s infinite';
-                    this.elements.upcomingExam.appendChild(dot);
-                }
             } else if (upcomingText.includes('Tomorrow') || upcomingText.includes('1d') || upcomingText.includes('2d')) {
                 this.elements.upcomingExam.classList.add('dashboard-stat-medium');
                 this.elements.upcomingExam.classList.remove('dashboard-stat-low', 'dashboard-stat-high');
