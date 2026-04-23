@@ -451,7 +451,7 @@
 </div>
             </section>
 
-           <!-- ==================== PROFILE TAB ==================== -->
+          <!-- ==================== PROFILE TAB ==================== -->
 <section id="profile" class="tab-content" aria-labelledby="profile-tab" hidden>
     <header class="profile-header">
         <h2>My Profile & Account</h2>
@@ -527,14 +527,14 @@
                     <div id="phone-help" class="help-text">Include country code if international</div>
                 </div>
                 
-                <!-- NEW: Date of Birth Field -->
+                <!-- Date of Birth Field -->
                 <div class="form-field">
                     <label for="profile-dob">Date of Birth</label>
                     <input type="date" id="profile-dob" name="dob" readonly>
                     <div id="dob-help" class="help-text">Your date of birth (DD/MM/YYYY)</div>
                 </div>
                 
-                <!-- NEW: Gender Field -->
+                <!-- Gender Field -->
                 <div class="form-field">
                     <label for="profile-gender">Gender</label>
                     <select id="profile-gender" name="gender" disabled>
@@ -552,14 +552,99 @@
                     <input type="text" id="profile-program" name="program" readonly>
                 </div>
                 
+                <!-- NEW: Admission Date Field -->
                 <div class="form-field">
-                    <label for="profile-block">Block</label>
-                    <input type="text" id="profile-block" name="block" readonly>
+                    <label for="profile-admission-date">Admission Date</label>
+                    <input type="date" id="profile-admission-date" name="admission-date" readonly>
+                    <div id="admission-help" class="help-text">Date you joined the college</div>
                 </div>
                 
+                <!-- NEW: Admission Year Field -->
+                <div class="form-field">
+                    <label for="profile-admission-year">Admission Year</label>
+                    <input type="text" id="profile-admission-year" name="admission-year" readonly>
+                    <div id="admission-year-help" class="help-text">Year of admission</div>
+                </div>
+                
+                <!-- Current Block Field -->
+                <div class="form-field">
+                    <label for="profile-block">Current Block</label>
+                    <input type="text" id="profile-block" name="block" readonly>
+                    <div id="block-help" class="help-text">Your current academic block</div>
+                </div>
+                
+                <!-- Intake Year Field -->
                 <div class="form-field">
                     <label for="profile-intake-year">Intake Year</label>
                     <input type="text" id="profile-intake-year" name="intake-year" readonly>
+                </div>
+            </div>
+        </div>
+
+        <!-- NEW: Block Progress Section -->
+        <div class="profile-section">
+            <h3 class="section-title">Academic Progress</h3>
+            <div class="profile-details grid-layout">
+                <div class="form-field full-width">
+                    <label>Block Progression</label>
+                    <div class="block-progress-container">
+                        <div class="block-timeline" id="block-timeline">
+                            <div class="block-step" data-block="Introductory">
+                                <div class="block-marker"></div>
+                                <span class="block-name">Introductory</span>
+                            </div>
+                            <div class="block-connector"></div>
+                            <div class="block-step" data-block="Block 1">
+                                <div class="block-marker"></div>
+                                <span class="block-name">Block 1</span>
+                            </div>
+                            <div class="block-connector"></div>
+                            <div class="block-step" data-block="Block 2">
+                                <div class="block-marker"></div>
+                                <span class="block-name">Block 2</span>
+                            </div>
+                            <div class="block-connector"></div>
+                            <div class="block-step" data-block="Block 3">
+                                <div class="block-marker"></div>
+                                <span class="block-name">Block 3</span>
+                            </div>
+                            <div class="block-connector"></div>
+                            <div class="block-step" data-block="Block 4">
+                                <div class="block-marker"></div>
+                                <span class="block-name">Block 4</span>
+                            </div>
+                            <div class="block-connector"></div>
+                            <div class="block-step" data-block="Block 5">
+                                <div class="block-marker"></div>
+                                <span class="block-name">Block 5</span>
+                            </div>
+                            <div class="block-connector"></div>
+                            <div class="block-step" data-block="Final">
+                                <div class="block-marker"></div>
+                                <span class="block-name">Final</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-field full-width">
+                    <label>Block Progress Percentage</label>
+                    <div class="progress-container">
+                        <div class="progress-bar-block">
+                            <div class="progress-fill-block" id="block-progress-fill" style="width: 0%"></div>
+                        </div>
+                        <div class="progress-stats">
+                            <span id="block-progress-text">0% Complete</span>
+                            <span id="current-block-status">Current: Introductory</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-field full-width">
+                    <label>Completed Blocks</label>
+                    <div class="completed-blocks" id="completed-blocks">
+                        <span class="completed-badge">None yet</span>
+                    </div>
                 </div>
             </div>
         </div>
