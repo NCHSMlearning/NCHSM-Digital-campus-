@@ -268,48 +268,82 @@ class Database {
         }
     }
     
-    async loadUserProfile() {
-        try {
-            console.log('👤 Loading user profile...');
-            
-            const { data: profile, error } = await this.supabase
+  // Load user profile - CORRECTED VERSION
+async loadUserProfile() {
+    try {
+        console.log('👤 Loading user profile...');
+        
+        // First try consolidated_user_profiles_table with correct column name 'user_id'
+        const { data: consolidatedProfile, error: consolidatedError } = await this.supabase
+            .from('consolidated_user_profiles_table')
+            .select('*')
+            .eq('user_id', this.currentUserId)
+            .single();
+        
+        if (!consolidatedError && consolidatedProfile) {
+            this.currentUserProfile = consolidatedProfile;
+            console.log('✅ User loaded from consolidated_user_profiles_table');
+            return consolidatedProfile;
+        }
+        
+        // Fallback to profiles table with correct column name 'id'
+        const { data: regularProfile, error: regularError } = await this.supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', this.currentUserId)
+            .single();
+        
+        if (!regularError && regularProfile) {
+            this.currentUserProfile = regularProfile;
+            console.log('✅ User loaded from profiles table');
+            return regularProfile;
+        }
+        
+        // Last fallback - try by email
+        const { data: userData } = await this.supabase.auth.getUser();
+        if (userData?.user?.email) {
+            const { data: emailProfile, error: emailError } = await this.supabase
                 .from('consolidated_user_profiles_table')
                 .select('*')
-                .eq('user_id', this.currentUserId)
-                .single();
+                .eq('email', userData.user.email)
+                .maybeSingle();
             
-            if (error) throw error;
-            
-            this.currentUserProfile = profile;
-            console.log('✅ User profile loaded:', profile.full_name);
-            
-            // Make user data globally accessible
-            window.currentUserId = this.currentUserId;
-            window.currentUser = profile;
-            window.userProfile = profile;
-            window.db = this;
-            
-            console.log('🌐 Global user data set:', {
-                id: window.currentUserId,
-                name: profile.full_name,
-                studentId: profile.student_id || profile.reg_no,
-                email: profile.email
-            });
-            
-            return profile;
-            
-        } catch (error) {
-            console.error('Failed to load profile:', error);
-            this.currentUserProfile = {};
-            
-            // Still set global variables
-            window.currentUserId = this.currentUserId;
-            window.currentUser = {};
-            window.userProfile = {};
-            
-            return {};
+            if (!emailError && emailProfile) {
+                this.currentUserProfile = emailProfile;
+                console.log('✅ User loaded by email from consolidated table');
+                return emailProfile;
+            }
         }
+        
+        // Create fallback profile
+        console.warn('⚠️ No profile found, using auth data as fallback');
+        const fallbackProfile = {
+            user_id: this.currentUserId,
+            id: this.currentUserId,
+            email: userData?.user?.email || 'unknown',
+            full_name: userData?.user?.email?.split('@')[0] || 'Student',
+            student_id: this.currentUserId.substring(0, 8),
+            program: 'KRCHN',
+            block: 'A',
+            intake_year: new Date().getFullYear(),
+            role: 'student',
+            status: 'approved'
+        };
+        
+        this.currentUserProfile = fallbackProfile;
+        return fallbackProfile;
+        
+    } catch (error) {
+        console.error('Failed to load profile:', error);
+        this.currentUserProfile = {
+            user_id: this.currentUserId,
+            id: this.currentUserId,
+            full_name: 'Student',
+            role: 'student'
+        };
+        return this.currentUserProfile;
     }
+}
     
     // Load profile data (called when profile tab is activated)
     async loadProfileData() {
