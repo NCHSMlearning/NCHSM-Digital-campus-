@@ -1,4 +1,4 @@
-// courses.js - Shows APPROVED units from student_unit_registrations
+// courses.js - Shows APPROVED units from student_unit_registrations with working stats
 (function() {
     'use strict';
     
@@ -35,8 +35,9 @@
         
         cacheElements() {
             this.activeCoursesGrid = document.getElementById('active-courses-grid');
-            this.activeCountEl = document.getElementById('active-count');
+            this.activeCountEl = document.getElementById('active-courses-count');
             this.completedCountEl = document.getElementById('completed-courses-count');
+            this.totalCreditsEl = document.getElementById('total-credits');
             this.completedTable = document.getElementById('completed-courses-table');
             this.programIndicator = document.getElementById('courses-program-indicator');
             this.refreshBtn = document.getElementById('refresh-courses-btn');
@@ -194,7 +195,7 @@
                     throw new Error('Database connection or student ID not available');
                 }
                 
-                // Get ALL approved units (no block filter first)
+                // Get ALL approved units (no block filter)
                 let query = supabase
                     .from('student_unit_registrations')
                     .select('*')
@@ -212,16 +213,51 @@
                 
                 // Display the approved units
                 this.displayActiveCourses();
-                this.updateCounts();
-                this.updateProgramIndicator();
+                
+                // Update all stats
+                this.updateStats();
                 
                 this.loaded = true;
                 this.dispatchModuleReadyEvent();
+                
+                // Also trigger dashboard update
+                document.dispatchEvent(new CustomEvent('studentStatsUpdated', {
+                    detail: { approvedUnits: this.approvedUnits.length }
+                }));
                 
             } catch (error) {
                 console.error('❌ Error loading courses:', error);
                 this.showError(error.message);
             }
+        }
+        
+        // NEW: Update statistics (Active Courses, Completed, Credits Earned)
+        updateStats() {
+            console.log('📊 Updating course module statistics...');
+            
+            // Calculate total credits
+            let totalCredits = 0;
+            for (const unit of this.approvedUnits) {
+                // If credits field exists, use it; otherwise default to 3
+                totalCredits += unit.credits || 3;
+            }
+            
+            // Update Active Courses count
+            if (this.activeCountEl) {
+                this.activeCountEl.textContent = this.approvedUnits.length;
+            }
+            
+            // Update Completed Courses count (0 for now - will implement later)
+            if (this.completedCountEl) {
+                this.completedCountEl.textContent = '0';
+            }
+            
+            // Update Total Credits Earned
+            if (this.totalCreditsEl) {
+                this.totalCreditsEl.textContent = totalCredits;
+            }
+            
+            console.log(`📊 Stats updated: ${this.approvedUnits.length} active courses, ${totalCredits} credits`);
         }
         
         displayActiveCourses() {
@@ -275,6 +311,10 @@
                                 <i class="fas fa-check-circle"></i>
                                 Approved: ${unit.approval_date || 'N/A'}
                             </span>
+                            <span class="course-credits">
+                                <i class="fas fa-star"></i>
+                                ${unit.credits || 3} Credits
+                            </span>
                         </div>
                     </div>
                 `;
@@ -316,29 +356,6 @@
             }
             if (this.viewCompletedBtn) {
                 this.viewCompletedBtn.classList.toggle('active', activeFilter === 'completed');
-            }
-        }
-        
-        updateCounts() {
-            if (this.activeCountEl) {
-                this.activeCountEl.textContent = `${this.approvedUnits.length} course${this.approvedUnits.length !== 1 ? 's' : ''}`;
-            }
-            
-            if (this.completedCountEl) {
-                this.completedCountEl.textContent = '0';
-            }
-            
-            // Update completed courses table
-            if (this.completedTable) {
-                this.completedTable.innerHTML = `
-                    <tr class="empty-row">
-                        <td colspan="6" style="text-align: center; padding: 40px;">
-                            <i class="fas fa-check-circle" style="font-size: 48px; color: #10b981; margin-bottom: 15px; display: block;"></i>
-                            <h4>No Completed Courses Yet</h4>
-                            <p>Complete your active courses to see them here.</p>
-                        </td>
-                    </tr>
-                `;
             }
         }
         
@@ -400,6 +417,7 @@
                 detail: {
                     courses: this.approvedUnits,
                     activeCount: this.approvedUnits.length,
+                    totalCredits: this.approvedUnits.reduce((sum, u) => sum + (u.credits || 3), 0),
                     isTVETStudent: this.isTVETStudent,
                     programCode: this.programCode,
                     intakeYear: this.intakeYear,
@@ -451,5 +469,5 @@
     window.loadCourses = () => window.coursesModule?.refresh();
     window.getCoursesProgramInfo = () => window.coursesModule?.getStudentProgramInfo() || {};
     
-    console.log('✅ Courses module ready - shows approved units from registrations!');
+    console.log('✅ Courses module ready - shows approved units with working stats!');
 })();
