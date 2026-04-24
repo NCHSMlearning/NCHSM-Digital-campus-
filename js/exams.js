@@ -1,8 +1,8 @@
-// exams.js - COMPLETE FIX with Date Comparison & Release Support
+// exams.js - COMPLETE with Consolidated Table Rows
 (function() {
     'use strict';
     
-    console.log('✅ exams.js - Nakuru College of Health Science and Management (FULL RELEASE SUPPORT)');
+    console.log('✅ exams.js - Nakuru College of Health Science and Management (CONSOLIDATED VIEW)');
     
     class ExamsModule {
         constructor() {
@@ -64,11 +64,9 @@
             }
             // Trimester 3: November (10) to February (1)
             else {
-                // For November (10) and December (11)
                 if (month === 10 || month === 11) {
                     return `November ${year} - February ${year + 1} (Trimester 3)`;
                 }
-                // For January (0) and February (1)
                 return `November ${year - 1} - February ${year} (Trimester 3)`;
             }
         }
@@ -294,7 +292,7 @@
         }
         
         async loadExams() {
-            console.log('📥 Loading exams with date comparison and release support...');
+            console.log('📥 Loading exams with consolidated view...');
             this.showLoading();
             
             try {
@@ -316,23 +314,19 @@
                     userId: this.userId
                 });
                 
-                // Use 'exams' table directly
                 let query = supabase
                     .from('exams')
                     .select('*')
                     .order('exam_date', { ascending: true });
                 
-                // Filter by intake year
                 query = query.eq('intake_year', this.intakeYear);
                 
-                // Filter by program type
                 if (this.isTVETStudent) {
                     query = query.eq('program_type', 'TVET');
                 } else {
                     query = query.eq('program_type', 'KRCHN');
                 }
                 
-                // Filter by block/term
                 if (this.isTVETStudent && this.userTerm) {
                     query = query.eq('block_term', this.userTerm);
                 } else if (!this.isTVETStudent && this.userBlock) {
@@ -344,7 +338,6 @@
                 
                 console.log(`📊 Found ${exams?.length || 0} exams`);
                 
-                // Get grades for this student
                 let grades = [];
                 if (this.userId) {
                     const { data: gradesData, error: gradesError } = await supabase
@@ -359,7 +352,6 @@
                     }
                 }
                 
-                // Get released results
                 this.releasedResults.clear();
                 const { data: released } = await supabase
                     .from('released_exam_results')
@@ -370,14 +362,10 @@
                     console.log(`✅ Loaded ${this.releasedResults.size} released results`);
                 }
                 
-                // Process exams with date comparison
                 this.processExamsData(exams || [], grades);
-                
-                // Apply filter and display
                 this.applyDataFilter();
                 
                 console.log('✅ Exams loaded successfully');
-                
                 this.dispatchDashboardEvent();
                 
             } catch (error) {
@@ -387,7 +375,6 @@
         }
         
         processExamsData(exams, grades) {
-            // Create grade map for quick lookup
             const gradeMap = new Map();
             grades.forEach(grade => {
                 gradeMap.set(String(grade.exam_id), grade);
@@ -401,26 +388,19 @@
                 const gradeId = grade?.id;
                 const isReleased = gradeId ? this.releasedResults.has(gradeId) : false;
                 
-                // SAFELY get grade values with fallbacks
                 const cat1Score = grade?.cat_1_score ?? grade?.cat_score ?? null;
                 const cat2Score = grade?.cat_2_score ?? null;
                 const finalScore = grade?.exam_score ?? null;
                 const totalPercentage = grade?.total_score ? parseFloat(grade.total_score) : null;
-                const actualMarks = grade?.marks ?? null;
                 
-                // Determine if exam is CAT or Final based on exam_type
                 const examType = (exam.exam_type || '').toUpperCase();
                 const isCatExam = examType.includes('CAT');
                 const isFinalExam = examType === 'EXAM' || examType === 'FINAL';
                 
-                // Check if exam date has passed
                 const examDate = exam.exam_date ? new Date(exam.exam_date) : null;
                 const isDatePassed = examDate ? examDate < today : false;
-                
-                // Determine if exam has a grade (taken)
                 const hasGrade = grade && totalPercentage !== null;
                 
-                // COMPLETED LOGIC:
                 let isCompleted = false;
                 let gradeText = 'Not Started';
                 let gradeClass = 'pending';
@@ -428,13 +408,11 @@
                 let displayPercentage = null;
                 let completionReason = '';
                 
-                // Case 1: Has released grade
                 if (hasGrade && isReleased) {
                     isCompleted = true;
                     displayPercentage = totalPercentage;
                     completionReason = 'graded';
                     
-                    // Grading scale
                     if (totalPercentage >= 85) {
                         gradeText = 'Distinction';
                         gradeClass = 'distinction';
@@ -452,9 +430,7 @@
                         gradeClass = 'fail';
                         gradePoint = 0.0;
                     }
-                }
-                // Case 2: Has grade but NOT released yet
-                else if (hasGrade && !isReleased) {
+                } else if (hasGrade && !isReleased) {
                     if (isDatePassed) {
                         isCompleted = true;
                         gradeText = 'Pending Release';
@@ -466,27 +442,21 @@
                         gradeText = 'Pending Release';
                         gradeClass = 'pending';
                     }
-                }
-                // Case 3: No grade but date has passed
-                else if (!hasGrade && isDatePassed) {
+                } else if (!hasGrade && isDatePassed) {
                     isCompleted = true;
                     gradeText = 'Missed / Expired';
                     gradeClass = 'missed';
                     completionReason = 'missed';
-                }
-                // Case 4: No grade, date not passed → Current exam
-                else {
+                } else {
                     isCompleted = false;
                     gradeText = 'Not Started';
                     gradeClass = 'pending';
                 }
                 
-                // Check if exam has a valid link
                 const examLink = exam.exam_link || exam.online_link;
                 const hasValidLink = examLink && examLink.trim() !== '' && examLink.startsWith('http');
                 const canTakeExam = !isCompleted && hasValidLink && gradeText !== 'Pending Release';
                 
-                // Format display values
                 let cat1Display = '--';
                 let cat2Display = '--';
                 let finalDisplay = '--';
@@ -520,7 +490,6 @@
                     isDatePassed,
                     completionReason,
                     totalPercentage: displayPercentage,
-                    actualMarks,
                     gradeText,
                     gradeClass,
                     gradePoint,
@@ -544,10 +513,7 @@
             
             const currentCount = this.allExams.filter(e => !e.isCompleted).length;
             const completedCount = this.allExams.filter(e => e.isCompleted).length;
-            const releasedCount = this.allExams.filter(e => e.isReleased).length;
-            const missedCount = this.allExams.filter(e => e.completionReason === 'missed').length;
-            
-            console.log(`✅ Processed ${this.allExams.length} exams: ${currentCount} current, ${completedCount} completed (${releasedCount} released, ${missedCount} missed)`);
+            console.log(`✅ Processed ${this.allExams.length} exams: ${currentCount} current, ${completedCount} completed`);
         }
         
         displayTables() {
@@ -555,7 +521,6 @@
             this.displayCompletedTable();
             this.updateCounts();
             this.updateEmptyStates();
-            this.adjustTableColumns();
         }
         
         displayCurrentTable() {
@@ -582,12 +547,34 @@
                 
                 let statusHtml = `<span class="status-badge ${exam.gradeClass}">${exam.gradeText}</span>`;
                 
+                // Consolidated Assessment Cell - ALL info in ONE cell
+                let assessmentCell = `
+                    <div class="assessment-info-box">
+                        <div class="assessment-name">
+                            <strong>${this.escapeHtml(exam.exam_name)}</strong>
+                            <span class="badge ${isCatExam ? 'badge-cat' : 'badge-final'}">${isCatExam ? 'CAT' : 'Exam'}</span>
+                        </div>
+                        <div class="assessment-details">
+                            <span class="detail-item">
+                                <i class="fas fa-book"></i> ${this.escapeHtml(exam.course || 'General')}
+                            </span>
+                            <span class="detail-item">
+                                <i class="fas fa-layer-group"></i> ${exam.block_term || 'General'}
+                            </span>
+                            <span class="program-badge ${exam.programBadgeClass}">
+                                <i class="fas ${exam.programIcon}"></i> ${this.escapeHtml(exam.programDisplay)}
+                            </span>
+                        </div>
+                    </div>
+                `;
+                
+                // Score columns based on exam type
                 let scoreColumns;
                 if (isCatExam) {
                     scoreColumns = `
                         <td class="text-center"><strong>${exam.cat1Display}</strong></td>
-                        <td class="text-center cat2-column" style="display:none">--</td>
-                        <td class="text-center final-column" style="display:none">--</td>
+                        <td class="text-center" style="display:none">--</td>
+                        <td class="text-center" style="display:none">--</td>
                     `;
                 } else {
                     scoreColumns = `
@@ -598,35 +585,30 @@
                 }
                 
                 return `
-                <tr class="${isCatExam ? 'cat-exam' : 'final-exam'}">
-                    <td>
-                        <strong>${this.escapeHtml(exam.exam_name)}</strong>
-                        <div class="program-indicator ${exam.programBadgeClass}">
-                            <i class="fas ${exam.programIcon}"></i> ${this.escapeHtml(exam.programDisplay)}
-                        </div>
-                    </td>
-                    <td><span class="badge ${isCatExam ? 'badge-cat' : 'badge-final'}">${isCatExam ? 'CAT' : 'Exam'}</span></td>
-                    <td>${this.escapeHtml(exam.course || 'General')}</td>
-                    <td class="text-center">${exam.block_term || 'General'}</td>
-                    <td class="text-center">${exam.formattedExamDate}</td>
-                    <td class="text-center">${statusHtml}</td>
-                    ${scoreColumns}
-                    <td class="text-center">${exam.totalPercentage !== null ? exam.totalPercentage.toFixed(1) + '%' : '--'}</td>
-                    <td class="text-center">
-                        ${exam.canTakeExam ? 
-                            `<a href="${exam.examLink}" 
-                                target="_blank" 
-                                class="exam-link-btn ${buttonClass}"
-                                data-exam-id="${exam.id}"
-                                data-exam-name="${this.escapeHtml(exam.exam_name)}">
-                                <i class="fas fa-external-link-alt"></i> ${buttonText}
-                            </a>` :
-                            `<span class="exam-link-btn ${buttonClass}" title="Exam not available">
-                                <i class="fas fa-lock"></i> ${buttonText}
-                            </span>`
-                        }
-                    </td>
-                </tr>`;
+                    <tr class="assessment-row ${isCatExam ? 'cat-exam' : 'final-exam'}">
+                        <td class="assessment-cell">${assessmentCell}</td>
+                        <td class="text-center date-cell">${exam.formattedExamDate}</td>
+                        <td class="text-center status-cell">${statusHtml}</td>
+                        ${scoreColumns}
+                        <td class="text-center total-cell">
+                            ${exam.totalPercentage !== null ? `<span class="total-score">${exam.totalPercentage.toFixed(1)}%</span>` : '--'}
+                        </td>
+                        <td class="text-center action-cell">
+                            ${exam.canTakeExam ? 
+                                `<a href="${exam.examLink}" 
+                                    target="_blank" 
+                                    class="exam-link-btn ${buttonClass}"
+                                    data-exam-id="${exam.id}"
+                                    data-exam-name="${this.escapeHtml(exam.exam_name)}">
+                                    <i class="fas fa-external-link-alt"></i> ${buttonText}
+                                </a>` :
+                                `<span class="exam-link-btn disabled" title="Exam not available">
+                                    <i class="fas fa-lock"></i> ${buttonText}
+                                </span>`
+                            }
+                        </td>
+                    </tr>
+                `;
             }).join('');
             
             this.currentTable.innerHTML = html;
@@ -647,12 +629,33 @@
                 const displayGrade = exam.gradeText;
                 const displayClass = exam.gradeClass;
                 
+                // Consolidated Assessment Cell - ALL info in ONE cell
+                let assessmentCell = `
+                    <div class="assessment-info-box">
+                        <div class="assessment-name">
+                            <strong>${this.escapeHtml(exam.exam_name)}</strong>
+                            <span class="badge ${isCatExam ? 'badge-cat' : 'badge-final'}">${isCatExam ? 'CAT' : 'Exam'}</span>
+                        </div>
+                        <div class="assessment-details">
+                            <span class="detail-item">
+                                <i class="fas fa-book"></i> ${this.escapeHtml(exam.course || 'General')}
+                            </span>
+                            <span class="detail-item">
+                                <i class="fas fa-layer-group"></i> ${exam.block_term || 'General'}
+                            </span>
+                            <span class="program-badge ${exam.programBadgeClass}">
+                                <i class="fas ${exam.programIcon}"></i> ${this.escapeHtml(exam.programDisplay)}
+                            </span>
+                        </div>
+                    </div>
+                `;
+                
                 let scoreColumns;
                 if (isCatExam) {
                     scoreColumns = `
                         <td class="text-center"><strong>${exam.cat1Display}</strong></td>
-                        <td class="text-center cat2-column" style="display:none">--</td>
-                        <td class="text-center final-column" style="display:none">--</td>
+                        <td class="text-center" style="display:none">--</td>
+                        <td class="text-center" style="display:none">--</td>
                     `;
                 } else {
                     scoreColumns = `
@@ -663,75 +666,20 @@
                 }
                 
                 return `
-                <tr class="${isCatExam ? 'cat-exam' : 'final-exam'}">
-                    <td>
-                        <strong>${this.escapeHtml(exam.exam_name)}</strong>
-                        <div class="program-indicator ${exam.programBadgeClass}">
-                            <i class="fas ${exam.programIcon}"></i> ${this.escapeHtml(exam.programDisplay)}
-                        </div>
-                    </td>
-                    <td><span class="badge ${isCatExam ? 'badge-cat' : 'badge-final'}">${isCatExam ? 'CAT' : 'Exam'}</span></td>
-                    <td>${this.escapeHtml(exam.course || 'General')}</td>
-                    <td class="text-center">${exam.block_term || 'General'}</td>
-                    <td class="text-center">${exam.formattedGradedDate !== '--' ? exam.formattedGradedDate : exam.formattedExamDate}</td>
-                    <td class="text-center"><span class="status-badge ${displayClass}">${displayGrade}</span></td>
-                    ${scoreColumns}
-                    <td class="text-center"><strong>${displayPercentage}</strong></td>
-                    <td class="text-center">
-                        <span class="grade-badge ${displayClass}">${displayGrade}</span>
-                    </td>
-                </tr>`;
+                    <tr class="assessment-row ${isCatExam ? 'cat-exam' : 'final-exam'}">
+                        <td class="assessment-cell">${assessmentCell}</td>
+                        <td class="text-center date-cell">${exam.formattedGradedDate !== '--' ? exam.formattedGradedDate : exam.formattedExamDate}</td>
+                        <td class="text-center status-cell"><span class="status-badge ${displayClass}">${displayGrade}</span></td>
+                        ${scoreColumns}
+                        <td class="text-center total-cell"><strong>${displayPercentage}</strong></td>
+                        <td class="text-center grade-cell">
+                            <span class="grade-badge ${displayClass}">${displayGrade}</span>
+                        </td>
+                    </tr>
+                `;
             }).join('');
             
             this.completedTable.innerHTML = html;
-        }
-        
-        adjustTableColumns() {
-            const allDisplayedExams = [...this.currentExams, ...this.completedExams];
-            const hasCatExams = allDisplayedExams.some(e => e.isCatExam);
-            const hasFinalExams = allDisplayedExams.some(e => !e.isCatExam);
-            
-            const cat2Columns = document.querySelectorAll('.cat2-column');
-            const finalColumns = document.querySelectorAll('.final-column');
-            
-            if (hasCatExams && !hasFinalExams) {
-                cat2Columns.forEach(col => col.style.display = 'none');
-                finalColumns.forEach(col => col.style.display = 'none');
-                
-                const currentHeaders = document.querySelectorAll('.current-section thead th');
-                const completedHeaders = document.querySelectorAll('.completed-section thead th');
-                
-                if (currentHeaders.length >= 8) {
-                    currentHeaders[6].textContent = 'CAT Score';
-                    if (currentHeaders[7]) currentHeaders[7].style.display = 'none';
-                    if (currentHeaders[8]) currentHeaders[8].style.display = 'none';
-                }
-                if (completedHeaders.length >= 8) {
-                    completedHeaders[6].textContent = 'CAT Score';
-                    if (completedHeaders[7]) completedHeaders[7].style.display = 'none';
-                    if (completedHeaders[8]) completedHeaders[8].style.display = 'none';
-                }
-            } else if (hasFinalExams && !hasCatExams) {
-                cat2Columns.forEach(col => col.style.display = '');
-                finalColumns.forEach(col => col.style.display = '');
-                
-                const currentHeaders = document.querySelectorAll('.current-section thead th');
-                const completedHeaders = document.querySelectorAll('.completed-section thead th');
-                
-                if (currentHeaders.length >= 8) {
-                    currentHeaders[6].textContent = 'CAT 1';
-                    if (currentHeaders[7]) currentHeaders[7].style.display = '';
-                    if (currentHeaders[8]) currentHeaders[8].style.display = '';
-                }
-                if (completedHeaders.length >= 8) {
-                    completedHeaders[6].textContent = 'CAT 1';
-                    if (completedHeaders[7]) completedHeaders[7].style.display = '';
-                    if (completedHeaders[8]) completedHeaders[8].style.display = '';
-                }
-            } else {
-                cat2Columns.forEach(col => col.style.display = '');
-                finalColumns.forEach(col => col.style.display = '');
-            }
         }
         
         updateCounts() {
@@ -784,13 +732,13 @@
         }
         
         showLoading() {
-            const loadingHTML = `<tr class="loading"><td colspan="11"><div class="loading-content"><div class="loading-spinner"></div><p>Loading assessments...</p></div></td></tr>`;
+            const loadingHTML = `<tr class="loading"><td colspan="8"><div class="loading-content"><div class="loading-spinner"></div><p>Loading assessments...</p></div></td></tr>`;
             if (this.currentTable) this.currentTable.innerHTML = loadingHTML;
             if (this.completedTable) this.completedTable.innerHTML = loadingHTML;
         }
         
         showError(message) {
-            const errorHTML = `<tr class="error"><td colspan="11"><div class="error-content"><i class="fas fa-exclamation-circle"></i><p>${message}</p><button onclick="window.examsModule?.refresh()" class="btn btn-sm">Retry</button></div></td></tr>`;
+            const errorHTML = `<tr class="error"><td colspan="8"><div class="error-content"><i class="fas fa-exclamation-circle"></i><p>${message}</p><button onclick="window.examsModule?.refresh()" class="btn btn-sm">Retry</button></div></td></tr>`;
             if (this.currentTable) this.currentTable.innerHTML = errorHTML;
             if (this.completedTable) this.completedTable.innerHTML = errorHTML;
         }
@@ -836,5 +784,5 @@
     window.loadExams = () => window.examsModule?.refresh();
     window.refreshAssessments = () => window.examsModule?.refresh();
     
-    console.log('✅ Exams module ready with DATE COMPARISON and RELEASE RESULTS support!');
+    console.log('✅ Exams module ready with CONSOLIDATED TABLE VIEW!');
 })();
