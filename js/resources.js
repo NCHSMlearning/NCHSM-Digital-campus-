@@ -1006,4 +1006,341 @@ function handlePDFKeyboard(e) {
         case '=':
             if (e.ctrlKey) {
                 e.preventDefault();
-                zoomPDF
+                zoomPDF(1.2);
+            }
+            break;
+        case '-':
+            if (e.ctrlKey) {
+                e.preventDefault();
+                zoomPDF(0.8);
+            }
+            break;
+        case '0':
+            if (e.ctrlKey) {
+                e.preventDefault();
+                pdfScale = 1.0;
+                updateZoomDisplay();
+                renderPDFPage(currentPDFPage);
+            }
+            break;
+    }
+}
+
+function cleanupPDF() {
+    if (currentPDFDoc) {
+        currentPDFDoc.destroy();
+        currentPDFDoc = null;
+    }
+    currentPDFPage = 1;
+    totalPDFPages = 0;
+    pdfScale = 1.5;
+    pageRendering = false;
+    pageNumPending = null;
+    document.removeEventListener('keydown', handlePDFKeyboard);
+}
+
+// Image viewer
+function openReadOnlyImage(resource) {
+    const modal = document.createElement('div');
+    modal.className = 'image-modal-premium';
+    modal.innerHTML = `
+        <div class="image-modal-container">
+            <div class="image-modal-header">
+                <h3>${escapeHtml(resource.title)}</h3>
+                <button class="image-modal-close" onclick="this.closest('.image-modal-premium').remove()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="image-modal-body">
+                <img src="${resource.file_url}" alt="${escapeHtml(resource.title)}">
+            </div>
+            <div class="image-modal-footer">
+                <div class="protected-notice">
+                    <i class="fas fa-lock"></i> Protected Image - No Download
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    
+    // Add styles if not exist
+    if (!document.getElementById('image-modal-styles')) {
+        const style = document.createElement('style');
+        style.id = 'image-modal-styles';
+        style.textContent = `
+            .image-modal-premium {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0,0,0,0.95);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                z-index: 10000;
+            }
+            .image-modal-container {
+                max-width: 90vw;
+                max-height: 90vh;
+                background: #1a1a2e;
+                border-radius: 20px;
+                overflow: hidden;
+            }
+            .image-modal-header {
+                padding: 15px 20px;
+                background: linear-gradient(135deg, #16213e 0%, #1a1a2e 100%);
+                color: white;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            .image-modal-header h3 {
+                margin: 0;
+                font-size: 1rem;
+            }
+            .image-modal-close {
+                background: rgba(255,255,255,0.1);
+                border: none;
+                color: white;
+                width: 32px;
+                height: 32px;
+                border-radius: 8px;
+                cursor: pointer;
+            }
+            .image-modal-body {
+                padding: 20px;
+                display: flex;
+                justify-content: center;
+                background: #2d2d3a;
+            }
+            .image-modal-body img {
+                max-width: calc(90vw - 40px);
+                max-height: calc(70vh - 40px);
+                object-fit: contain;
+                border-radius: 12px;
+            }
+            .image-modal-footer {
+                padding: 12px 20px;
+                background: linear-gradient(135deg, #16213e 0%, #1a1a2e 100%);
+                text-align: center;
+                color: #a78bfa;
+                font-size: 12px;
+            }
+        `;
+        document.head.appendChild(style);
+    }
+}
+
+// Video viewer
+function openReadOnlyVideo(resource) {
+    const modal = document.createElement('div');
+    modal.className = 'video-modal-premium';
+    modal.innerHTML = `
+        <div class="video-modal-container">
+            <div class="video-modal-header">
+                <h3>${escapeHtml(resource.title)}</h3>
+                <button class="video-modal-close" onclick="this.closest('.video-modal-premium').remove()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="video-modal-body">
+                <video controls controlslist="nodownload noplaybackrate" disablepictureinpicture>
+                    <source src="${resource.file_url}" type="video/mp4">
+                    Your browser does not support video playback.
+                </video>
+            </div>
+            <div class="video-modal-footer">
+                <div class="protected-notice">
+                    <i class="fas fa-lock"></i> Protected Video - No Download
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    
+    if (!document.getElementById('video-modal-styles')) {
+        const style = document.createElement('style');
+        style.id = 'video-modal-styles';
+        style.textContent = `
+            .video-modal-premium {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0,0,0,0.95);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                z-index: 10000;
+            }
+            .video-modal-container {
+                max-width: 90vw;
+                max-height: 90vh;
+                background: #1a1a2e;
+                border-radius: 20px;
+                overflow: hidden;
+            }
+            .video-modal-header {
+                padding: 15px 20px;
+                background: linear-gradient(135deg, #16213e 0%, #1a1a2e 100%);
+                color: white;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            .video-modal-header h3 {
+                margin: 0;
+                font-size: 1rem;
+            }
+            .video-modal-close {
+                background: rgba(255,255,255,0.1);
+                border: none;
+                color: white;
+                width: 32px;
+                height: 32px;
+                border-radius: 8px;
+                cursor: pointer;
+            }
+            .video-modal-body {
+                padding: 20px;
+                background: #2d2d3a;
+            }
+            .video-modal-body video {
+                max-width: calc(90vw - 40px);
+                max-height: calc(70vh - 40px);
+                border-radius: 12px;
+            }
+            .video-modal-footer {
+                padding: 12px 20px;
+                background: linear-gradient(135deg, #16213e 0%, #1a1a2e 100%);
+                text-align: center;
+                color: #a78bfa;
+                font-size: 12px;
+            }
+            video::-internal-media-controls-download-button {
+                display: none;
+            }
+            video::-webkit-media-controls-enclosure {
+                overflow: hidden;
+            }
+        `;
+        document.head.appendChild(style);
+    }
+}
+
+function openReadOnlyDocument(resource) {
+    window.open(resource.file_url + '#toolbar=0', '_blank');
+}
+
+// Filter resources
+function filterResources() {
+    filterResourcesByBlock();
+}
+
+// Utility functions
+function getFileType(filePath) {
+    if (!filePath) return 'unknown';
+    const ext = filePath.split('.').pop().toLowerCase();
+    if (ext === 'pdf') return 'pdf';
+    if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(ext)) return 'image';
+    if (['mp4', 'avi', 'mov', 'wmv', 'webm'].includes(ext)) return 'video';
+    return 'file';
+}
+
+function getFileIcon(filePath) {
+    const type = getFileType(filePath);
+    switch(type) {
+        case 'pdf': return 'fas fa-file-pdf';
+        case 'image': return 'fas fa-file-image';
+        case 'video': return 'fas fa-file-video';
+        default: return 'fas fa-file-alt';
+    }
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
+function showLoading(element, message) {
+    if (element) {
+        element.innerHTML = `
+            <div class="loading-state-premium">
+                <div class="loading-spinner premium"></div>
+                <p>${message}</p>
+            </div>
+        `;
+    }
+}
+
+function showError(element, message) {
+    if (element) {
+        element.innerHTML = `
+            <div class="error-state-premium">
+                <i class="fas fa-exclamation-triangle"></i>
+                <h3>Error</h3>
+                <p>${message}</p>
+                <button onclick="loadAllResourcesForBlocks()" class="premium-btn">Retry</button>
+            </div>
+        `;
+    }
+}
+
+function showToast(message, type = 'info') {
+    const toast = document.getElementById('toast');
+    if (toast) {
+        toast.textContent = message;
+        toast.style.display = 'block';
+        toast.style.backgroundColor = type === 'error' ? '#dc2626' : '#10b981';
+        setTimeout(() => {
+            toast.style.display = 'none';
+        }, 3000);
+    } else {
+        console.log(message);
+    }
+}
+
+// Initialize module
+function initializeResourcesModule() {
+    console.log('📁 Initializing Premium Resources Module...');
+    createBlockFilterUI();
+    
+    const resourceSearch = document.getElementById('resource-search');
+    const resourceFilter = document.getElementById('resource-filter');
+    const courseFilter = document.getElementById('course-filter');
+    
+    if (resourceSearch) resourceSearch.addEventListener('input', filterResources);
+    if (resourceFilter) resourceFilter.addEventListener('change', filterResources);
+    if (courseFilter) courseFilter.addEventListener('change', filterResources);
+    
+    const resourcesTab = document.querySelector('.nav a[data-tab="resources"]');
+    if (resourcesTab) {
+        resourcesTab.addEventListener('click', () => {
+            if (getCurrentUserId()) {
+                loadAllResourcesForBlocks();
+            }
+        });
+    }
+    
+    const currentTab = localStorage.getItem('nchsm_last_tab');
+    if (currentTab === 'resources' && getCurrentUserId()) {
+        loadAllResourcesForBlocks();
+    }
+}
+
+// Global exports
+window.loadAllResources = loadAllResourcesForBlocks;
+window.openResource = openResource;
+window.filterResources = filterResources;
+window.initializeResourcesModule = initializeResourcesModule;
+
+// Auto-initialize
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeResourcesModule);
+} else {
+    initializeResourcesModule();
+}
