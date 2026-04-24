@@ -1,5 +1,3 @@
-// js/exam-card.js - Print-Friendly Exam Card with Blank Signature Lines for Lecturers
-
 (function() {
     'use strict';
     
