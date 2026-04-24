@@ -1,24 +1,30 @@
-// resources.js - Enhanced Resources System with Block Filter & Bottom Controls PDF Viewer
+// resources.js - Premium READ-ONLY High-Quality Resource Viewer (No Download)
 
-// *************************************************************************
-// *** ENHANCED RESOURCES SYSTEM - WITH BLOCK FILTER ***
-// *************************************************************************
-
-// PDF.js configuration
 let pdfjsLib = null;
 let pdfjsLoaded = false;
 let currentPDFDoc = null;
 let currentPDFPage = 1;
 let totalPDFPages = 0;
-let pdfScale = 1.0;
+let pdfScale = 1.5;
 let isRendering = false;
 let pageRendering = false;
 let pageNumPending = null;
+let currentResource = null;
 
 // Global variables
 let currentResources = [];
 let filteredResources = [];
 let currentBlockFilter = 'all';
+
+// High-quality rendering settings
+const RENDER_SETTINGS = {
+    defaultScale: 1.8,
+    minScale: 0.8,
+    maxScale: 4.0,
+    quality: 'high',
+    enableAnnotations: true,
+    enhanceText: true
+};
 
 // Helper functions
 function getSupabaseClient() {
@@ -41,7 +47,7 @@ function getCurrentUserId() {
     return window.db?.currentUserId || window.currentUserId;
 }
 
-// Initialize PDF.js
+// Initialize PDF.js with high-quality settings
 async function initializePDFJS() {
     if (pdfjsLoaded) return true;
     
@@ -49,10 +55,15 @@ async function initializePDFJS() {
         if (typeof window.pdfjsLib !== 'undefined') {
             console.log('✅ PDF.js already loaded');
             pdfjsLib = window.pdfjsLib;
+            
             if (pdfjsLib.GlobalWorkerOptions) {
                 pdfjsLib.GlobalWorkerOptions.workerSrc = 
                     'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
             }
+            
+            pdfjsLib.disableTextLayer = false;
+            pdfjsLib.disableRange = true;
+            
             pdfjsLoaded = true;
             resolve(true);
             return;
@@ -76,18 +87,16 @@ async function initializePDFJS() {
 
 // ==================== BLOCK FILTER FUNCTIONS ====================
 
-// Block filter configuration
 const BLOCK_MAPPING = {
-    'introductory': ['Introductory', 'Intro', 'Foundation', 'Block 0', 'Intro Block'],
-    'block1': ['Block 1', 'Block1', 'B1', 'First Block'],
-    'block2': ['Block 2', 'Block2', 'B2', 'Second Block'],
-    'block3': ['Block 3', 'Block3', 'B3', 'Third Block'],
-    'block4': ['Block 4', 'Block4', 'B4', 'Fourth Block'],
-    'block5': ['Block 5', 'Block5', 'B5', 'Fifth Block'],
-    'final': ['Final', 'Final Block', 'Block 6', 'Graduation Block']
+    'introductory': ['Introductory', 'Intro', 'Foundation', 'Block 0'],
+    'block1': ['Block 1', 'Block1', 'B1'],
+    'block2': ['Block 2', 'Block2', 'B2'],
+    'block3': ['Block 3', 'Block3', 'B3'],
+    'block4': ['Block 4', 'Block4', 'B4'],
+    'block5': ['Block 5', 'Block5', 'B5'],
+    'final': ['Final', 'Final Block', 'Block 6']
 };
 
-// Get all available blocks for filter dropdown
 function getAllBlocks() {
     return [
         { value: 'all', label: '📚 All Blocks', icon: 'fa-layer-group' },
@@ -101,44 +110,37 @@ function getAllBlocks() {
     ];
 }
 
-// Create block filter UI
 function createBlockFilterUI() {
     const resourcesHeader = document.querySelector('#resources .resources-header');
     if (!resourcesHeader) return;
-    
-    // Check if block filter already exists
     if (document.getElementById('block-resource-filter')) return;
     
     const blockFilterHTML = `
-        <div class="block-filter-card" style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-radius: 16px; padding: 20px; margin-bottom: 25px; border: 1px solid #bae6fd;">
-            <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <i class="fas fa-layer-group" style="font-size: 24px; color: #4C1D95;"></i>
-                    <span style="font-weight: 600; color: #1e1b4b;">Filter by Block:</span>
+        <div class="block-filter-card premium-card">
+            <div class="filter-header">
+                <div class="filter-title">
+                    <i class="fas fa-layer-group"></i>
+                    <span>Filter by Block</span>
                 </div>
-                <div style="flex: 1; min-width: 200px;">
-                    <select id="block-resource-filter" class="modern-select" style="background: white; border-radius: 12px; padding: 12px 16px; font-weight: 500; width: 100%;">
-                        ${getAllBlocks().map(block => `
-                            <option value="${block.value}" data-icon="${block.icon}">
-                                ${block.label}
-                            </option>
-                        `).join('')}
-                    </select>
-                </div>
-                <div class="current-block-indicator" style="background: #4C1D95; color: white; padding: 8px 16px; border-radius: 20px; font-size: 13px; display: flex; align-items: center; gap: 8px;">
+                <div class="current-block-indicator">
                     <i class="fas fa-user-graduate"></i>
                     <span>Your Block: <strong id="current-user-block">Loading...</strong></span>
                 </div>
             </div>
-            <div style="margin-top: 12px; font-size: 13px; color: #475569; display: flex; gap: 20px; flex-wrap: wrap;">
-                <span><i class="fas fa-info-circle"></i> Select any block to view its materials</span>
-                <span><i class="fas fa-download"></i> Previously hidden materials are now accessible</span>
-                <span><i class="fas fa-chart-line"></i> Study ahead or review past blocks</span>
+            <div class="filter-controls">
+                <select id="block-resource-filter" class="premium-select">
+                    ${getAllBlocks().map(block => `
+                        <option value="${block.value}">${block.label}</option>
+                    `).join('')}
+                </select>
+            </div>
+            <div class="filter-info">
+                <i class="fas fa-info-circle"></i>
+                <span>Select any block to view its materials (Read Only)</span>
             </div>
         </div>
     `;
     
-    // Insert after the header h2
     const h2 = resourcesHeader.querySelector('h2');
     if (h2 && h2.nextSibling) {
         h2.insertAdjacentHTML('afterend', blockFilterHTML);
@@ -146,28 +148,19 @@ function createBlockFilterUI() {
         resourcesHeader.insertAdjacentHTML('beforeend', blockFilterHTML);
     }
     
-    // Set up event listener for block filter
     const blockFilter = document.getElementById('block-resource-filter');
     if (blockFilter) {
         blockFilter.addEventListener('change', (e) => {
             currentBlockFilter = e.target.value;
             filterResourcesByBlock();
-            
-            // Show feedback
-            const selectedLabel = blockFilter.options[blockFilter.selectedIndex]?.text || 'selected block';
-            showToast(`Showing resources for ${selectedLabel}`, 'info');
         });
     }
     
-    // Set user's current block
     const userProfile = getUserProfile();
     const userBlock = userProfile?.block || 'Introductory';
     const blockDisplay = document.getElementById('current-user-block');
-    if (blockDisplay) {
-        blockDisplay.textContent = userBlock;
-    }
+    if (blockDisplay) blockDisplay.textContent = userBlock;
     
-    // Find matching filter value for user's block
     let userBlockValue = 'all';
     for (const [value, keywords] of Object.entries(BLOCK_MAPPING)) {
         if (keywords.some(k => userBlock.toLowerCase().includes(k.toLowerCase()))) {
@@ -176,64 +169,15 @@ function createBlockFilterUI() {
         }
     }
     
-    // Set default to user's block (not 'all')
     if (userBlockValue !== 'all' && blockFilter) {
         blockFilter.value = userBlockValue;
         currentBlockFilter = userBlockValue;
     }
 }
 
-// Filter resources by selected block
-async function filterResourcesByBlock() {
-    if (!currentResources.length) {
-        await loadAllResourcesForBlocks();
-        return;
-    }
-    
-    let filtered = [...currentResources];
-    
-    // Apply block filter
-    if (currentBlockFilter !== 'all') {
-        const targetKeywords = BLOCK_MAPPING[currentBlockFilter] || [];
-        
-        filtered = filtered.filter(resource => {
-            const resourceBlock = (resource.block || resource.course_block || resource.block_name || '').toString().toLowerCase();
-            return targetKeywords.some(keyword => 
-                resourceBlock.includes(keyword.toLowerCase())
-            );
-        });
-    }
-    
-    // Apply search filter
-    const searchTerm = document.getElementById('resource-search')?.value.toLowerCase() || '';
-    if (searchTerm) {
-        filtered = filtered.filter(r => 
-            (r.title || '').toLowerCase().includes(searchTerm) ||
-            (r.description || '').toLowerCase().includes(searchTerm) ||
-            (r.program_type || '').toLowerCase().includes(searchTerm)
-        );
-    }
-    
-    // Apply type filter
-    const typeFilter = document.getElementById('resource-filter')?.value || 'all';
-    if (typeFilter !== 'all') {
-        filtered = filtered.filter(r => getFileType(r.file_path) === typeFilter);
-    }
-    
-    // Apply course filter
-    const courseFilter = document.getElementById('course-filter')?.value || 'all';
-    if (courseFilter !== 'all') {
-        filtered = filtered.filter(r => r.program_type === courseFilter);
-    }
-    
-    filteredResources = filtered;
-    renderResourcesGrid();
-    updateResourceStats();
-}
-
-// Load all resources across all blocks (removes block restriction)
+// Load all resources from all blocks
 async function loadAllResourcesForBlocks() {
-    console.log('📁 Loading resources from all blocks...');
+    console.log('📁 Loading read-only resources...');
     
     const userProfile = getUserProfile();
     const supabaseClient = getSupabaseClient();
@@ -247,7 +191,7 @@ async function loadAllResourcesForBlocks() {
     const resourcesGrid = document.getElementById('resources-grid');
     if (!resourcesGrid) return;
     
-    showLoading(resourcesGrid, 'Loading resources from all blocks...');
+    showLoading(resourcesGrid, 'Loading resources...');
     currentResources = [];
 
     try {
@@ -255,12 +199,10 @@ async function loadAllResourcesForBlocks() {
         const intakeYear = userProfile?.intake_year;
 
         if (!program || !intakeYear) {
-            resourcesGrid.innerHTML = '<div class="error-state">Missing enrollment details</div>';
+            resourcesGrid.innerHTML = '<div class="error-state premium">Missing enrollment details</div>';
             return;
         }
 
-        // IMPORTANT: Remove the block filter from the query
-        // This loads resources from ALL blocks (Introductory through Final)
         const { data: resources, error } = await supabaseClient
             .from('resources')
             .select('id, title, file_path, file_url, program_type, block, intake, uploaded_by_name, created_at, description, file_type')
@@ -271,43 +213,66 @@ async function loadAllResourcesForBlocks() {
         if (error) throw error;
 
         currentResources = resources || [];
-        
-        // Populate course filter
         populateCourseFilter();
-        
-        // Apply current block filter
         await filterResourcesByBlock();
 
     } catch (err) {
         console.error("Error loading resources:", err);
-        showError(resourcesGrid, `Error loading resources: ${err.message}`);
+        showError(resourcesGrid, `Error: ${err.message}`);
     }
 }
 
-// Update resource statistics
-function updateResourceStats() {
-    const totalCount = document.getElementById('total-resources-count');
-    const filteredCount = document.getElementById('filtered-resources-count');
-    const lastUpdated = document.getElementById('resources-last-updated');
+async function filterResourcesByBlock() {
+    if (!currentResources.length) {
+        await loadAllResourcesForBlocks();
+        return;
+    }
     
-    if (totalCount) totalCount.textContent = currentResources.length;
-    if (filteredCount) filteredCount.textContent = filteredResources.length;
-    if (lastUpdated) lastUpdated.textContent = new Date().toLocaleString();
+    let filtered = [...currentResources];
+    
+    if (currentBlockFilter !== 'all') {
+        const targetKeywords = BLOCK_MAPPING[currentBlockFilter] || [];
+        filtered = filtered.filter(resource => {
+            const resourceBlock = (resource.block || '').toString().toLowerCase();
+            return targetKeywords.some(keyword => 
+                resourceBlock.includes(keyword.toLowerCase())
+            );
+        });
+    }
+    
+    const searchTerm = document.getElementById('resource-search')?.value.toLowerCase() || '';
+    if (searchTerm) {
+        filtered = filtered.filter(r => 
+            (r.title || '').toLowerCase().includes(searchTerm) ||
+            (r.description || '').toLowerCase().includes(searchTerm)
+        );
+    }
+    
+    const typeFilter = document.getElementById('resource-filter')?.value || 'all';
+    if (typeFilter !== 'all') {
+        filtered = filtered.filter(r => getFileType(r.file_path) === typeFilter);
+    }
+    
+    const courseFilter = document.getElementById('course-filter')?.value || 'all';
+    if (courseFilter !== 'all') {
+        filtered = filtered.filter(r => r.program_type === courseFilter);
+    }
+    
+    filteredResources = filtered;
+    renderResourcesGrid();
 }
 
-// Render resources grid (modified to show block badge)
 function renderResourcesGrid() {
     const resourcesGrid = document.getElementById('resources-grid');
     if (!resourcesGrid) return;
 
     if (filteredResources.length === 0) {
         resourcesGrid.innerHTML = `
-            <div class="empty-state" style="text-align: center; padding: 60px 20px;">
-                <i class="fas fa-folder-open" style="font-size: 64px; color: #cbd5e1; margin-bottom: 20px;"></i>
-                <h3 style="color: #4b5563;">No Resources Found</h3>
-                <p style="color: #6b7280; margin-bottom: 20px;">No resources match your current filters.</p>
-                <button onclick="document.getElementById('block-resource-filter').value='all'; currentBlockFilter='all'; filterResourcesByBlock();" 
-                        class="btn-primary" style="padding: 10px 20px; background: #4C1D95; color: white; border: none; border-radius: 8px; cursor: pointer;">
+            <div class="empty-state premium">
+                <i class="fas fa-folder-open"></i>
+                <h3>No Resources Found</h3>
+                <p>No resources match your current filters.</p>
+                <button onclick="document.getElementById('block-resource-filter').value='all'; currentBlockFilter='all'; filterResourcesByBlock();" class="premium-btn">
                     <i class="fas fa-eye"></i> View All Blocks
                 </button>
             </div>
@@ -315,110 +280,68 @@ function renderResourcesGrid() {
         return;
     }
 
-    resourcesGrid.innerHTML = filteredResources.map(resource => {
-        const blockName = resource.block || 'General';
-        const blockBadgeClass = getBlockBadgeClass(blockName);
-        
-        return `
-        <div class="resource-card" data-type="${getFileType(resource.file_path)}" data-course="${resource.program_type}" data-block="${blockName}">
-            <div class="card-header">
-                <div class="file-icon ${getFileType(resource.file_path)}">
+    resourcesGrid.innerHTML = filteredResources.map(resource => `
+        <div class="resource-card premium-card" data-id="${resource.id}">
+            <div class="resource-preview">
+                <div class="preview-icon ${getFileType(resource.file_path)}">
                     <i class="${getFileIcon(resource.file_path)}"></i>
                 </div>
-                <div class="card-title">
-                    <h3>${escapeHtml(resource.title)}</h3>
-                    <div class="title-badges">
-                        <span class="file-type">${getFileType(resource.file_path).toUpperCase()}</span>
-                        <span class="block-badge ${blockBadgeClass}">
-                            <i class="fas ${getBlockIcon(blockName)}"></i> ${escapeHtml(blockName)}
-                        </span>
-                    </div>
+            </div>
+            <div class="resource-details">
+                <h3 class="resource-title">${escapeHtml(resource.title)}</h3>
+                <p class="resource-description">${escapeHtml(resource.description || 'No description available')}</p>
+                <div class="resource-meta">
+                    <span class="meta-tag">
+                        <i class="fas fa-calendar"></i> ${new Date(resource.created_at).toLocaleDateString()}
+                    </span>
+                    <span class="meta-tag block-tag ${getBlockTagClass(resource.block)}">
+                        <i class="fas ${getBlockIcon(resource.block)}"></i> ${escapeHtml(resource.block || 'General')}
+                    </span>
+                    <span class="meta-tag read-only-badge">
+                        <i class="fas fa-eye"></i> Read Only
+                    </span>
                 </div>
             </div>
-            
-            <div class="card-body">
-                <p class="card-description">${escapeHtml(resource.description || 'No description available')}</p>
-                
-                <div class="card-meta">
-                    <div class="meta-item">
-                        <i class="fas fa-calendar"></i>
-                        <span>${new Date(resource.created_at).toLocaleDateString()}</span>
-                    </div>
-                    <div class="meta-item">
-                        <i class="fas fa-user"></i>
-                        <span>${escapeHtml(resource.uploaded_by_name || 'Admin')}</span>
-                    </div>
-                    <div class="meta-item">
-                        <i class="fas fa-book"></i>
-                        <span>${escapeHtml(resource.program_type)}</span>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="card-footer">
-                <button class="card-btn primary" onclick="openResource(${resource.id})">
-                    <i class="fas fa-eye"></i> View Resource
-                </button>
-                <button class="card-btn secondary" onclick="downloadResource('${resource.file_url}', '${escapeHtml(resource.title)}')">
-                    <i class="fas fa-download"></i> Download
+            <div class="resource-actions">
+                <button class="action-btn view-btn" onclick="openResource(${resource.id})">
+                    <i class="fas fa-eye"></i> Read Now
                 </button>
             </div>
         </div>
-    `}).join('');
+    `).join('');
 }
 
-// Helper functions for block badges
-function getBlockBadgeClass(blockName) {
-    const blockLower = blockName.toLowerCase();
-    if (blockLower.includes('introductory')) return 'badge-intro';
-    if (blockLower.includes('block 1')) return 'badge-block1';
-    if (blockLower.includes('block 2')) return 'badge-block2';
-    if (blockLower.includes('block 3')) return 'badge-block3';
-    if (blockLower.includes('block 4')) return 'badge-block4';
-    if (blockLower.includes('block 5')) return 'badge-block5';
-    if (blockLower.includes('final')) return 'badge-final';
-    return 'badge-general';
+function getBlockTagClass(block) {
+    if (!block) return 'tag-general';
+    const b = block.toLowerCase();
+    if (b.includes('intro')) return 'tag-intro';
+    if (b.includes('block 1')) return 'tag-block1';
+    if (b.includes('block 2')) return 'tag-block2';
+    if (b.includes('block 3')) return 'tag-block3';
+    if (b.includes('block 4')) return 'tag-block4';
+    if (b.includes('block 5')) return 'tag-block5';
+    if (b.includes('final')) return 'tag-final';
+    return 'tag-general';
 }
 
-function getBlockIcon(blockName) {
-    const blockLower = blockName.toLowerCase();
-    if (blockLower.includes('introductory')) return 'fa-flag-checkered';
-    if (blockLower.includes('block 1')) return 'fa-book';
-    if (blockLower.includes('block 2')) return 'fa-book-open';
-    if (blockLower.includes('block 3')) return 'fa-chalkboard-user';
-    if (blockLower.includes('block 4')) return 'fa-stethoscope';
-    if (blockLower.includes('block 5')) return 'fa-user-nurse';
-    if (blockLower.includes('final')) return 'fa-graduation-cap';
+function getBlockIcon(block) {
+    if (!block) return 'fa-layer-group';
+    const b = block.toLowerCase();
+    if (b.includes('intro')) return 'fa-flag-checkered';
+    if (b.includes('block 1')) return 'fa-book';
+    if (b.includes('block 2')) return 'fa-book-open';
+    if (b.includes('block 3')) return 'fa-chalkboard-user';
+    if (b.includes('block 4')) return 'fa-stethoscope';
+    if (b.includes('block 5')) return 'fa-user-nurse';
+    if (b.includes('final')) return 'fa-graduation-cap';
     return 'fa-layer-group';
 }
 
-// Download resource function
-async function downloadResource(fileUrl, fileName) {
-    try {
-        const response = await fetch(fileUrl);
-        const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = fileName || 'download';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        showToast('Download started', 'success');
-    } catch (error) {
-        console.error('Download error:', error);
-        showToast('Failed to download file', 'error');
-    }
-}
-
-// Populate course filter
 function populateCourseFilter() {
     const courseFilter = document.getElementById('course-filter');
     if (!courseFilter) return;
 
     const courses = [...new Set(currentResources.map(r => r.program_type).filter(Boolean))];
-    
     courseFilter.innerHTML = '<option value="all">All Courses</option>';
     courses.forEach(course => {
         const option = document.createElement('option');
@@ -428,111 +351,371 @@ function populateCourseFilter() {
     });
 }
 
-// Open resource
+// ==================== READ-ONLY HIGH-QUALITY VIEWER ====================
+
 async function openResource(resourceId) {
-    console.log(`📄 Opening resource ${resourceId}...`);
-    
     const resource = currentResources.find(r => r.id == resourceId);
     if (!resource) {
-        console.error('Resource not found:', resourceId);
         showToast('Resource not found', 'error');
         return;
     }
 
+    currentResource = resource;
     const fileType = getFileType(resource.file_path);
     
     if (fileType === 'pdf') {
-        await openPDF(resource);
+        await openReadOnlyPDF(resource);
+    } else if (fileType === 'image') {
+        openReadOnlyImage(resource);
+    } else if (fileType === 'video') {
+        openReadOnlyVideo(resource);
     } else {
-        openOtherResource(resource);
+        openReadOnlyDocument(resource);
     }
 }
 
-// Open PDF with proper viewer
-async function openPDF(resource) {
+// ==================== READ-ONLY PDF VIEWER ====================
+
+async function openReadOnlyPDF(resource) {
     try {
         await initializePDFJS();
-        createPDFViewerModal(resource);
-        await loadPDFDocument(resource.file_url);
+        createReadOnlyPDFViewer(resource);
+        await loadHighQualityPDF(resource.file_url);
     } catch (error) {
         console.error('PDF error:', error);
         showToast('Failed to load PDF: ' + error.message, 'error');
     }
 }
 
-// Create PDF viewer modal with bottom controls (keep your existing implementation)
-function createPDFViewerModal(resource) {
-    // ... (keep your existing implementation)
+function createReadOnlyPDFViewer(resource) {
+    const existingModal = document.getElementById('readonly-pdf-modal');
+    if (existingModal) existingModal.remove();
+    
+    const modal = document.createElement('div');
+    modal.id = 'readonly-pdf-modal';
+    modal.className = 'readonly-pdf-modal';
+    modal.innerHTML = `
+        <div class="readonly-pdf-container">
+            <div class="readonly-pdf-header">
+                <div class="pdf-title-section">
+                    <i class="fas fa-file-pdf"></i>
+                    <div>
+                        <h3>${escapeHtml(resource.title)}</h3>
+                        <span class="readonly-status">Read Only Mode</span>
+                    </div>
+                </div>
+                <div class="pdf-header-actions">
+                    <button class="pdf-header-btn" id="fullscreen-btn" title="Fullscreen">
+                        <i class="fas fa-expand"></i>
+                    </button>
+                    <button class="pdf-header-btn" id="close-readonly-pdf" title="Close">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="readonly-pdf-body">
+                <div id="pdf-loading" class="pdf-loading-overlay">
+                    <div class="loading-spinner premium"></div>
+                    <p>Loading high-quality document...</p>
+                </div>
+                
+                <div id="pdf-error" class="pdf-error-overlay" style="display: none;">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <h3>Failed to Load Document</h3>
+                    <p id="pdf-error-message"></p>
+                    <button id="retry-pdf-btn" class="premium-btn">Retry</button>
+                </div>
+                
+                <div id="pdf-viewer-area" class="pdf-viewer-area" style="display: none;">
+                    <div class="pdf-canvas-wrapper" id="pdf-canvas-wrapper">
+                        <canvas id="readonly-pdf-canvas" class="readonly-pdf-canvas"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="readonly-pdf-footer">
+                <div class="pdf-nav-controls">
+                    <button id="pdf-first-page" class="pdf-nav-btn" title="First Page">
+                        <i class="fas fa-fast-backward"></i>
+                    </button>
+                    <button id="pdf-prev-page" class="pdf-nav-btn" title="Previous Page">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    
+                    <div class="pdf-page-indicator">
+                        <input type="number" id="pdf-page-number" min="1" value="1">
+                        <span>/</span>
+                        <span id="pdf-total-pages">1</span>
+                    </div>
+                    
+                    <button id="pdf-next-page" class="pdf-nav-btn" title="Next Page">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                    <button id="pdf-last-page" class="pdf-nav-btn" title="Last Page">
+                        <i class="fas fa-fast-forward"></i>
+                    </button>
+                </div>
+                
+                <div class="pdf-zoom-controls">
+                    <button id="pdf-zoom-out" class="pdf-zoom-btn" title="Zoom Out">
+                        <i class="fas fa-search-minus"></i>
+                    </button>
+                    <span id="pdf-zoom-percent" class="pdf-zoom-percent">150%</span>
+                    <button id="pdf-zoom-in" class="pdf-zoom-btn" title="Zoom In">
+                        <i class="fas fa-search-plus"></i>
+                    </button>
+                    <button id="pdf-fit-width" class="pdf-zoom-btn" title="Fit to Width">
+                        <i class="fas fa-expand-arrows-alt"></i>
+                    </button>
+                    <button id="pdf-actual-size" class="pdf-zoom-btn" title="Actual Size">
+                        <i class="fas fa-percent"></i>
+                    </button>
+                </div>
+                
+                <div class="readonly-warning">
+                    <i class="fas fa-lock"></i>
+                    <span>Protected Document - No Download Available</span>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    addReadOnlyPDFStyles();
+    setupReadOnlyPDFEvents();
+    modal.style.display = 'flex';
 }
 
-// Add CSS for block badges
-function addBlockBadgeStyles() {
-    const styleId = 'block-badge-styles';
+function addReadOnlyPDFStyles() {
+    const styleId = 'readonly-pdf-styles';
     if (document.getElementById(styleId)) return;
     
     const styles = `
-        .title-badges {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-top: 5px;
-        }
-        
-        .block-badge {
-            font-size: 11px;
-            padding: 3px 10px;
-            border-radius: 20px;
-            font-weight: 500;
-            display: inline-flex;
+        .readonly-pdf-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.95);
+            display: none;
+            justify-content: center;
             align-items: center;
-            gap: 5px;
+            z-index: 10000;
+            backdrop-filter: blur(8px);
         }
         
-        .badge-intro { background: #dbeafe; color: #1e40af; }
-        .badge-block1 { background: #dcfce7; color: #166534; }
-        .badge-block2 { background: #fef3c7; color: #92400e; }
-        .badge-block3 { background: #fce7f3; color: #9d174d; }
-        .badge-block4 { background: #e0e7ff; color: #3730a3; }
-        .badge-block5 { background: #cffafe; color: #0e7490; }
-        .badge-final { background: #fef08a; color: #854d0e; }
-        .badge-general { background: #f3f4f6; color: #374151; }
-        
-        .card-footer {
+        .readonly-pdf-container {
+            width: 95%;
+            height: 95%;
+            background: #1a1a2e;
+            border-radius: 20px;
             display: flex;
-            gap: 10px;
-            margin-top: 15px;
-            padding-top: 15px;
-            border-top: 1px solid #e5e7eb;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
         }
         
-        .card-btn {
-            padding: 8px 16px;
+        .readonly-pdf-header {
+            padding: 16px 24px;
+            background: linear-gradient(135deg, #16213e 0%, #1a1a2e 100%);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .pdf-title-section {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: white;
+        }
+        
+        .pdf-title-section i {
+            font-size: 24px;
+            color: #ef4444;
+        }
+        
+        .pdf-title-section h3 {
+            margin: 0;
+            font-size: 1rem;
+            font-weight: 500;
+        }
+        
+        .readonly-status {
+            font-size: 11px;
+            background: #4C1D95;
+            padding: 4px 10px;
+            border-radius: 20px;
+            margin-left: 10px;
+        }
+        
+        .readonly-pdf-body {
+            flex: 1;
+            overflow: auto;
+            background: #2d2d3a;
+            position: relative;
+        }
+        
+        .pdf-viewer-area {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 20px;
+        }
+        
+        .pdf-canvas-wrapper {
+            display: flex;
+            justify-content: center;
+            background: #2d2d3a;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+        
+        .readonly-pdf-canvas {
+            display: block;
+            margin: 0 auto;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            background: white;
+            border-radius: 4px;
+        }
+        
+        .readonly-pdf-footer {
+            background: linear-gradient(135deg, #16213e 0%, #1a1a2e 100%);
+            border-top: 1px solid rgba(255,255,255,0.1);
+            padding: 12px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .pdf-nav-controls, .pdf-zoom-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .pdf-nav-btn, .pdf-zoom-btn {
+            background: rgba(255,255,255,0.1);
+            border: none;
+            color: white;
+            width: 40px;
+            height: 40px;
             border-radius: 8px;
             cursor: pointer;
-            font-size: 13px;
-            font-weight: 500;
             transition: all 0.2s;
+            font-size: 16px;
         }
         
-        .card-btn.primary {
+        .pdf-nav-btn:hover, .pdf-zoom-btn:hover {
             background: #4C1D95;
+            transform: translateY(-2px);
+        }
+        
+        .pdf-page-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255,255,255,0.1);
+            padding: 6px 12px;
+            border-radius: 8px;
             color: white;
+        }
+        
+        #pdf-page-number {
+            width: 50px;
+            padding: 6px;
+            border-radius: 6px;
             border: none;
-            flex: 1;
+            text-align: center;
+            font-size: 14px;
+            font-weight: 600;
+            background: white;
         }
         
-        .card-btn.primary:hover {
-            background: #3c1680;
+        .pdf-zoom-percent {
+            color: white;
+            font-weight: 600;
+            min-width: 60px;
+            text-align: center;
         }
         
-        .card-btn.secondary {
-            background: #f3f4f6;
-            color: #4b5563;
-            border: 1px solid #e5e7eb;
+        .readonly-warning {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(76, 29, 149, 0.3);
+            padding: 8px 16px;
+            border-radius: 40px;
+            color: #a78bfa;
+            font-size: 12px;
         }
         
-        .card-btn.secondary:hover {
-            background: #e5e7eb;
+        .readonly-warning i {
+            font-size: 14px;
+        }
+        
+        .pdf-loading-overlay, .pdf-error-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: #2d2d3a;
+            z-index: 10;
+        }
+        
+        .loading-spinner.premium {
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(255,255,255,0.2);
+            border-top-color: #4C1D95;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .read-only-badge {
+            background: #4C1D95 !important;
+            color: white !important;
+        }
+        
+        @media (max-width: 768px) {
+            .readonly-pdf-container {
+                width: 98%;
+                height: 96%;
+            }
+            
+            .pdf-nav-btn, .pdf-zoom-btn {
+                width: 36px;
+                height: 36px;
+            }
+            
+            .readonly-pdf-footer {
+                padding: 10px 16px;
+            }
+            
+            .readonly-warning {
+                font-size: 10px;
+            }
+        }
+        
+        @media (max-width: 640px) {
+            .readonly-pdf-footer {
+                flex-direction: column;
+            }
         }
     `;
     
@@ -542,60 +725,522 @@ function addBlockBadgeStyles() {
     document.head.appendChild(style);
 }
 
-// Filter resources (search and type)
+function setupReadOnlyPDFEvents() {
+    const modal = document.getElementById('readonly-pdf-modal');
+    const closeBtn = document.getElementById('close-readonly-pdf');
+    const fullscreenBtn = document.getElementById('fullscreen-btn');
+    
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+            modal.style.display = 'none';
+            cleanupPDF();
+        });
+    }
+    
+    if (fullscreenBtn) {
+        fullscreenBtn.addEventListener('click', toggleFullscreen);
+    }
+    
+    if (modal) {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.style.display = 'none';
+                cleanupPDF();
+            }
+        });
+    }
+    
+    // Navigation
+    document.getElementById('pdf-first-page')?.addEventListener('click', () => goToPDFPage(1));
+    document.getElementById('pdf-prev-page')?.addEventListener('click', () => goToPDFPage(currentPDFPage - 1));
+    document.getElementById('pdf-next-page')?.addEventListener('click', () => goToPDFPage(currentPDFPage + 1));
+    document.getElementById('pdf-last-page')?.addEventListener('click', () => goToPDFPage(totalPDFPages));
+    
+    // Zoom
+    document.getElementById('pdf-zoom-in')?.addEventListener('click', () => zoomPDF(1.2));
+    document.getElementById('pdf-zoom-out')?.addEventListener('click', () => zoomPDF(0.8));
+    document.getElementById('pdf-fit-width')?.addEventListener('click', fitToWidth);
+    document.getElementById('pdf-actual-size')?.addEventListener('click', () => {
+        pdfScale = 1.0;
+        updateZoomDisplay();
+        renderPDFPage(currentPDFPage);
+    });
+    
+    // Page input
+    const pageInput = document.getElementById('pdf-page-number');
+    pageInput?.addEventListener('change', () => {
+        const page = parseInt(pageInput.value);
+        if (page >= 1 && page <= totalPDFPages) {
+            goToPDFPage(page);
+        }
+    });
+    
+    // Keyboard
+    document.addEventListener('keydown', handlePDFKeyboard);
+}
+
+async function loadHighQualityPDF(pdfUrl) {
+    try {
+        showPDFLoading();
+        
+        const loadingTask = pdfjsLib.getDocument({
+            url: pdfUrl,
+            cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/',
+            cMapPacked: true,
+            enableXfa: true,
+            verbosity: 0
+        });
+        
+        currentPDFDoc = await loadingTask.promise;
+        totalPDFPages = currentPDFDoc.numPages;
+        
+        document.getElementById('pdf-total-pages').textContent = totalPDFPages;
+        document.getElementById('pdf-page-number').max = totalPDFPages;
+        
+        hidePDFLoading();
+        showPDFViewer();
+        
+        pdfScale = 1.5;
+        await renderPDFPage(1);
+        
+    } catch (error) {
+        console.error('PDF loading error:', error);
+        showPDFError('Failed to load document: ' + error.message);
+    }
+}
+
+async function renderPDFPage(pageNum) {
+    if (!currentPDFDoc || pageNum < 1 || pageNum > totalPDFPages) return;
+    
+    if (pageRendering) {
+        pageNumPending = pageNum;
+        return;
+    }
+    
+    pageRendering = true;
+    
+    try {
+        const page = await currentPDFDoc.getPage(pageNum);
+        const canvas = document.getElementById('readonly-pdf-canvas');
+        if (!canvas) {
+            pageRendering = false;
+            return;
+        }
+        
+        const ctx = canvas.getContext('2d', { alpha: false });
+        
+        const wrapper = document.getElementById('pdf-canvas-wrapper');
+        const containerWidth = wrapper ? wrapper.clientWidth - 40 : 800;
+        
+        const viewport = page.getViewport({ scale: 1 });
+        const scale = pdfScale;
+        const scaledViewport = page.getViewport({ scale: scale });
+        
+        const pixelRatio = window.devicePixelRatio || 1;
+        canvas.width = scaledViewport.width * pixelRatio;
+        canvas.height = scaledViewport.height * pixelRatio;
+        canvas.style.width = scaledViewport.width + 'px';
+        canvas.style.height = scaledViewport.height + 'px';
+        
+        ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+        
+        const renderContext = {
+            canvasContext: ctx,
+            viewport: scaledViewport,
+            enableWebGL: true,
+            renderInteractiveForms: true,
+            background: 'white'
+        };
+        
+        await page.render(renderContext).promise;
+        
+        currentPDFPage = pageNum;
+        document.getElementById('pdf-page-number').value = pageNum;
+        updateZoomDisplay();
+        updatePDFNavButtons();
+        
+    } catch (error) {
+        console.error('Render error:', error);
+        showPDFError('Failed to render page');
+    }
+    
+    pageRendering = false;
+    
+    if (pageNumPending !== null) {
+        renderPDFPage(pageNumPending);
+        pageNumPending = null;
+    }
+}
+
+function goToPDFPage(pageNum) {
+    if (pageNum < 1) pageNum = 1;
+    if (pageNum > totalPDFPages) pageNum = totalPDFPages;
+    renderPDFPage(pageNum);
+}
+
+function zoomPDF(factor) {
+    pdfScale *= factor;
+    pdfScale = Math.max(0.5, Math.min(pdfScale, 4.0));
+    updateZoomDisplay();
+    renderPDFPage(currentPDFPage);
+}
+
+function fitToWidth() {
+    const canvas = document.getElementById('readonly-pdf-canvas');
+    const wrapper = document.getElementById('pdf-canvas-wrapper');
+    if (!canvas || !wrapper || !currentPDFDoc) return;
+    
+    const containerWidth = wrapper.clientWidth - 40;
+    currentPDFDoc.getPage(currentPDFPage).then(page => {
+        const originalViewport = page.getViewport({ scale: 1 });
+        pdfScale = containerWidth / originalViewport.width;
+        pdfScale = Math.max(0.8, Math.min(pdfScale, 3.0));
+        updateZoomDisplay();
+        renderPDFPage(currentPDFPage);
+    });
+}
+
+function updateZoomDisplay() {
+    const percent = Math.round(pdfScale * 100);
+    const zoomDisplay = document.getElementById('pdf-zoom-percent');
+    if (zoomDisplay) zoomDisplay.textContent = percent + '%';
+}
+
+function updatePDFNavButtons() {
+    const firstBtn = document.getElementById('pdf-first-page');
+    const prevBtn = document.getElementById('pdf-prev-page');
+    const nextBtn = document.getElementById('pdf-next-page');
+    const lastBtn = document.getElementById('pdf-last-page');
+    
+    if (firstBtn) firstBtn.disabled = currentPDFPage <= 1;
+    if (prevBtn) prevBtn.disabled = currentPDFPage <= 1;
+    if (nextBtn) nextBtn.disabled = currentPDFPage >= totalPDFPages;
+    if (lastBtn) lastBtn.disabled = currentPDFPage >= totalPDFPages;
+}
+
+function showPDFLoading() {
+    const loading = document.getElementById('pdf-loading');
+    const error = document.getElementById('pdf-error');
+    const viewer = document.getElementById('pdf-viewer-area');
+    if (loading) loading.style.display = 'flex';
+    if (error) error.style.display = 'none';
+    if (viewer) viewer.style.display = 'none';
+}
+
+function hidePDFLoading() {
+    const loading = document.getElementById('pdf-loading');
+    if (loading) loading.style.display = 'none';
+}
+
+function showPDFViewer() {
+    const viewer = document.getElementById('pdf-viewer-area');
+    if (viewer) viewer.style.display = 'flex';
+}
+
+function showPDFError(message) {
+    const loading = document.getElementById('pdf-loading');
+    const error = document.getElementById('pdf-error');
+    const viewer = document.getElementById('pdf-viewer-area');
+    const errorMsg = document.getElementById('pdf-error-message');
+    
+    if (loading) loading.style.display = 'none';
+    if (error) error.style.display = 'flex';
+    if (viewer) viewer.style.display = 'none';
+    if (errorMsg) errorMsg.textContent = message;
+    
+    const retryBtn = document.getElementById('retry-pdf-btn');
+    if (retryBtn && currentResource) {
+        retryBtn.onclick = () => loadHighQualityPDF(currentResource.file_url);
+    }
+}
+
+function toggleFullscreen() {
+    const container = document.querySelector('.readonly-pdf-container');
+    if (!container) return;
+    
+    if (!document.fullscreenElement) {
+        container.requestFullscreen();
+        const fullscreenBtn = document.getElementById('fullscreen-btn');
+        if (fullscreenBtn) fullscreenBtn.innerHTML = '<i class="fas fa-compress"></i>';
+    } else {
+        document.exitFullscreen();
+        const fullscreenBtn = document.getElementById('fullscreen-btn');
+        if (fullscreenBtn) fullscreenBtn.innerHTML = '<i class="fas fa-expand"></i>';
+    }
+}
+
+function handlePDFKeyboard(e) {
+    const modal = document.getElementById('readonly-pdf-modal');
+    if (!modal || modal.style.display !== 'flex') return;
+    
+    switch(e.key) {
+        case 'ArrowLeft':
+            e.preventDefault();
+            goToPDFPage(currentPDFPage - 1);
+            break;
+        case 'ArrowRight':
+            e.preventDefault();
+            goToPDFPage(currentPDFPage + 1);
+            break;
+        case 'Escape':
+            e.preventDefault();
+            modal.style.display = 'none';
+            cleanupPDF();
+            break;
+        case '+':
+        case '=':
+            if (e.ctrlKey) {
+                e.preventDefault();
+                zoomPDF(1.2);
+            }
+            break;
+        case '-':
+            if (e.ctrlKey) {
+                e.preventDefault();
+                zoomPDF(0.8);
+            }
+            break;
+    }
+}
+
+function cleanupPDF() {
+    if (currentPDFDoc) {
+        currentPDFDoc.destroy();
+        currentPDFDoc = null;
+    }
+    currentPDFPage = 1;
+    totalPDFPages = 0;
+    pdfScale = 1.5;
+    pageRendering = false;
+    pageNumPending = null;
+    document.removeEventListener('keydown', handlePDFKeyboard);
+}
+
+// ==================== READ-ONLY IMAGE VIEWER ====================
+
+function openReadOnlyImage(resource) {
+    const modal = document.createElement('div');
+    modal.className = 'readonly-image-modal';
+    modal.innerHTML = `
+        <div class="readonly-image-container">
+            <div class="image-header">
+                <div>
+                    <h3>${escapeHtml(resource.title)}</h3>
+                    <span class="readonly-status">Read Only</span>
+                </div>
+                <button class="image-close-btn" onclick="this.closest('.readonly-image-modal').remove()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="image-viewer-area">
+                <img src="${resource.file_url}" alt="${escapeHtml(resource.title)}" class="readonly-image">
+            </div>
+            <div class="image-footer">
+                <div class="readonly-warning">
+                    <i class="fas fa-lock"></i>
+                    <span>Protected Image - No Download Available</span>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    const styleId = 'readonly-image-styles';
+    if (!document.getElementById(styleId)) {
+        const styles = `
+            .readonly-image-modal {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0,0,0,0.95);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                z-index: 10000;
+            }
+            .readonly-image-container {
+                max-width: 90vw;
+                max-height: 90vh;
+                background: #1a1a2e;
+                border-radius: 20px;
+                overflow: hidden;
+            }
+            .image-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 16px 24px;
+                background: linear-gradient(135deg, #16213e 0%, #1a1a2e 100%);
+                color: white;
+            }
+            .image-header h3 {
+                margin: 0;
+                font-size: 1rem;
+            }
+            .image-close-btn {
+                background: rgba(255,255,255,0.1);
+                border: none;
+                color: white;
+                width: 36px;
+                height: 36px;
+                border-radius: 8px;
+                cursor: pointer;
+            }
+            .image-viewer-area {
+                padding: 20px;
+                display: flex;
+                justify-content: center;
+                background: #2d2d3a;
+            }
+            .readonly-image {
+                max-width: calc(90vw - 40px);
+                max-height: calc(70vh - 40px);
+                object-fit: contain;
+                border-radius: 12px;
+            }
+            .image-footer {
+                padding: 12px 24px;
+                background: linear-gradient(135deg, #16213e 0%, #1a1a2e 100%);
+                text-align: center;
+            }
+            @media (max-width: 768px) {
+                .readonly-image {
+                    max-width: calc(95vw - 40px);
+                }
+            }
+        `;
+        const style = document.createElement('style');
+        style.id = styleId;
+        style.textContent = styles;
+        document.head.appendChild(style);
+    }
+}
+
+// ==================== READ-ONLY VIDEO VIEWER ====================
+
+function openReadOnlyVideo(resource) {
+    const modal = document.createElement('div');
+    modal.className = 'readonly-video-modal';
+    modal.innerHTML = `
+        <div class="readonly-video-container">
+            <div class="video-header">
+                <div>
+                    <h3>${escapeHtml(resource.title)}</h3>
+                    <span class="readonly-status">Read Only</span>
+                </div>
+                <button class="video-close-btn" onclick="this.closest('.readonly-video-modal').remove()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="video-viewer-area">
+                <video controls class="readonly-video" disablepictureinpicture controlslist="nodownload noplaybackrate">
+                    <source src="${resource.file_url}" type="video/mp4">
+                    Your browser does not support video playback.
+                </video>
+            </div>
+            <div class="video-footer">
+                <div class="readonly-warning">
+                    <i class="fas fa-lock"></i>
+                    <span>Protected Video - Download Disabled</span>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    const styleId = 'readonly-video-styles';
+    if (!document.getElementById(styleId)) {
+        const styles = `
+            .readonly-video-modal {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0,0,0,0.95);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                z-index: 10000;
+            }
+            .readonly-video-container {
+                max-width: 90vw;
+                max-height: 90vh;
+                background: #1a1a2e;
+                border-radius: 20px;
+                overflow: hidden;
+            }
+            .video-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 16px 24px;
+                background: linear-gradient(135deg, #16213e 0%, #1a1a2e 100%);
+                color: white;
+            }
+            .video-header h3 {
+                margin: 0;
+                font-size: 1rem;
+            }
+            .video-close-btn {
+                background: rgba(255,255,255,0.1);
+                border: none;
+                color: white;
+                width: 36px;
+                height: 36px;
+                border-radius: 8px;
+                cursor: pointer;
+            }
+            .video-viewer-area {
+                padding: 20px;
+                background: #2d2d3a;
+            }
+            .readonly-video {
+                max-width: calc(90vw - 40px);
+                max-height: calc(70vh - 40px);
+                border-radius: 12px;
+            }
+            .video-footer {
+                padding: 12px 24px;
+                background: linear-gradient(135deg, #16213e 0%, #1a1a2e 100%);
+                text-align: center;
+            }
+            video::-internal-media-controls-download-button {
+                display: none;
+            }
+            video::-webkit-media-controls-enclosure {
+                overflow: hidden;
+            }
+            video::-webkit-media-controls-panel {
+                width: calc(100% + 30px);
+            }
+        `;
+        const style = document.createElement('style');
+        style.id = styleId;
+        style.textContent = styles;
+        document.head.appendChild(style);
+    }
+}
+
+function openReadOnlyDocument(resource) {
+    // For unsupported file types, open in new tab but prevent download
+    window.open(resource.file_url + '#toolbar=0&navpanes=0', '_blank');
+}
+
 function filterResources() {
     filterResourcesByBlock();
-}
-
-// Show loading
-function showLoading(element, message) {
-    if (element) {
-        element.innerHTML = `
-            <div class="loading-state" style="text-align: center; padding: 60px 20px;">
-                <div class="loading-spinner" style="width: 40px; height: 40px; border: 3px solid #e2e8f0; border-top-color: #4C1D95; border-radius: 50%; margin: 0 auto 15px; animation: spin 1s linear infinite;"></div>
-                <p>${message}</p>
-            </div>
-        `;
-    }
-}
-
-function showError(element, message) {
-    if (element) {
-        element.innerHTML = `
-            <div class="error-state" style="text-align: center; padding: 60px 20px;">
-                <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #ef4444; margin-bottom: 15px;"></i>
-                <h3 style="color: #dc2626;">Error</h3>
-                <p>${message}</p>
-                <button onclick="location.reload()" style="margin-top: 15px; padding: 8px 16px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer;">Retry</button>
-            </div>
-        `;
-    }
-}
-
-function showToast(message, type = 'info') {
-    if (window.ui && window.ui.showToast) {
-        window.ui.showToast(message, type);
-    } else {
-        const toast = document.getElementById('toast');
-        if (toast) {
-            toast.textContent = message;
-            toast.style.display = 'block';
-            toast.style.backgroundColor = type === 'error' ? '#ef4444' : '#10b981';
-            setTimeout(() => {
-                toast.style.display = 'none';
-            }, 3000);
-        } else {
-            alert(message);
-        }
-    }
 }
 
 function getFileType(filePath) {
     if (!filePath) return 'unknown';
     const ext = filePath.split('.').pop().toLowerCase();
     if (ext === 'pdf') return 'pdf';
-    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) return 'image';
-    if (['mp4', 'webm', 'avi'].includes(ext)) return 'video';
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].includes(ext)) return 'image';
+    if (['mp4', 'webm', 'avi', 'mov'].includes(ext)) return 'video';
     return 'file';
 }
 
@@ -605,7 +1250,7 @@ function getFileIcon(filePath) {
         'pdf': 'fas fa-file-pdf',
         'image': 'fas fa-file-image',
         'video': 'fas fa-file-video',
-        'file': 'fas fa-file'
+        'file': 'fas fa-file-alt'
     };
     return icons[type] || icons.file;
 }
@@ -617,14 +1262,49 @@ function escapeHtml(str) {
     return div.innerHTML;
 }
 
-// Initialize resources module
+function showLoading(element, message) {
+    if (element) {
+        element.innerHTML = `
+            <div class="loading-premium">
+                <div class="loading-spinner premium"></div>
+                <p>${message}</p>
+            </div>
+        `;
+    }
+}
+
+function showError(element, message) {
+    if (element) {
+        element.innerHTML = `
+            <div class="error-premium">
+                <i class="fas fa-exclamation-circle"></i>
+                <h3>Error</h3>
+                <p>${message}</p>
+                <button onclick="loadAllResourcesForBlocks()" class="premium-btn">Retry</button>
+            </div>
+        `;
+    }
+}
+
+function showToast(message, type = 'info') {
+    const toast = document.getElementById('toast');
+    if (toast) {
+        toast.textContent = message;
+        toast.style.display = 'block';
+        toast.style.backgroundColor = type === 'error' ? '#dc2626' : '#10b981';
+        setTimeout(() => {
+            toast.style.display = 'none';
+        }, 3000);
+    } else {
+        console.log(message);
+    }
+}
+
+// Initialize module
 function initializeResourcesModule() {
-    console.log('📁 Initializing Resources Module with Block Filter...');
-    
-    addBlockBadgeStyles();
+    console.log('📁 Initializing Read-Only Resources Module...');
     createBlockFilterUI();
     
-    // Set up event listeners for filters
     const resourceSearch = document.getElementById('resource-search');
     const resourceFilter = document.getElementById('resource-filter');
     const courseFilter = document.getElementById('course-filter');
@@ -633,7 +1313,6 @@ function initializeResourcesModule() {
     if (resourceFilter) resourceFilter.addEventListener('change', filterResources);
     if (courseFilter) courseFilter.addEventListener('change', filterResources);
     
-    // Load resources when tab is shown
     const resourcesTab = document.querySelector('.nav a[data-tab="resources"]');
     if (resourcesTab) {
         resourcesTab.addEventListener('click', () => {
@@ -643,20 +1322,16 @@ function initializeResourcesModule() {
         });
     }
     
-    // Also load if already on resources page
     const currentTab = localStorage.getItem('nchsm_last_tab');
     if (currentTab === 'resources' && getCurrentUserId()) {
         loadAllResourcesForBlocks();
     }
-    
-    console.log('✅ Resources Module initialized with Block Filter');
 }
 
 // Global exports
 window.loadResources = loadAllResourcesForBlocks;
 window.openResource = openResource;
 window.filterResources = filterResources;
-window.downloadResource = downloadResource;
 window.initializeResourcesModule = initializeResourcesModule;
 
 // Auto-initialize
