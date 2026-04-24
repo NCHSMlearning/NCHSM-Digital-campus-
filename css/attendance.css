@@ -525,3 +525,138 @@
         align-items: stretch;
     }
 }
+/* =====================================================
+   ATTENDANCE STATS CARDS - EXAMS STYLE GRADIENTS
+   ===================================================== */
+
+/* Target the stats container in Attendance header */
+.attendance-header .header-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-top: 20px;
+}
+
+/* Base stat card styling */
+.attendance-header .header-stats > div,
+.attendance-header .stat-card {
+    border-radius: 16px;
+    padding: 20px;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    color: white;
+}
+
+/* Card 1 - Present Today (Blue/Cyan gradient - attendance theme) */
+.attendance-header .header-stats > div:first-child,
+.attendance-header .stat-card:first-child {
+    background: linear-gradient(135deg, #00b4db 0%, #0083b0 100%);
+    color: white;
+}
+
+/* Card 2 - Current Time (Orange/Gold gradient - time theme) */
+.attendance-header .header-stats > div:nth-child(2),
+.attendance-header .stat-card:nth-child(2) {
+    background: linear-gradient(135deg, #f2994a 0%, #f2c94c 100%);
+    color: white;
+}
+
+/* Card 3 - Attendance Rate (if exists - Purple) */
+.attendance-header .header-stats > div:nth-child(3),
+.attendance-header .stat-card:nth-child(3) {
+    background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+    color: white;
+}
+
+/* Card 4 - Late Days (if exists - Red) */
+.attendance-header .header-stats > div:nth-child(4),
+.attendance-header .stat-card:nth-child(4) {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: white;
+}
+
+/* Ensure all text inside cards is white */
+.attendance-header .header-stats > div *,
+.attendance-header .stat-card * {
+    color: white;
+}
+
+/* Style the numbers/values (stat value) */
+.attendance-header .header-stats > div div:first-child,
+.attendance-header .stat-card .stat-value,
+.attendance-header .header-stats > div > div:first-of-type {
+    font-size: 32px;
+    font-weight: 800;
+    line-height: 1.2;
+    display: block;
+}
+
+/* Style the labels */
+.attendance-header .header-stats > div div:last-child,
+.attendance-header .stat-card .stat-label,
+.attendance-header .header-stats > div > div:last-of-type {
+    font-size: 13px;
+    opacity: 0.9;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    margin-top: 5px;
+    display: block;
+}
+
+/* Icon styling */
+.attendance-header .header-stats > div i,
+.attendance-header .stat-card .stat-icon {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 14px;
+    padding: 10px;
+    margin-right: 12px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Hover effect */
+.attendance-header .header-stats > div:hover,
+.attendance-header .stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
+}
+
+/* Subtle pattern overlay */
+.attendance-header .header-stats > div::before,
+.attendance-header .stat-card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%);
+    transform: rotate(45deg);
+    pointer-events: none;
+}
+
+/* Pulse animation on click */
+.attendance-header .header-stats > div:active,
+.attendance-header .stat-card:active {
+    animation: cardPulse 0.5s ease-in-out;
+}
+
+@keyframes cardPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(0.98); }
+    100% { transform: scale(1); }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .attendance-header .header-stats > div,
+    .attendance-header .stat-card {
+        padding: 15px;
+    }
+    
+    .attendance-header .header-stats > div div:first-child,
+    .attendance-header .stat-card .stat-value {
+        font-size: 24px;
+    }
+}
