@@ -1,8 +1,8 @@
-// exams.js - COMPLETE with Consolidated Table Rows
+// exams.js - COMPLETE with Date Comparison & Release Support
 (function() {
     'use strict';
     
-    console.log('✅ exams.js - Nakuru College of Health Science and Management (CONSOLIDATED VIEW)');
+    console.log('✅ exams.js - Nakuru College of Health Science and Management (FULL RELEASE SUPPORT)');
     
     class ExamsModule {
         constructor() {
@@ -444,7 +444,7 @@
                     }
                 } else if (!hasGrade && isDatePassed) {
                     isCompleted = true;
-                    gradeText = 'Missed / Expired';
+                    gradeText = 'Missed';
                     gradeClass = 'missed';
                     completionReason = 'missed';
                 } else {
@@ -453,10 +453,34 @@
                     gradeClass = 'pending';
                 }
                 
+                // Check if exam has a valid link
                 const examLink = exam.exam_link || exam.online_link;
-                const hasValidLink = examLink && examLink.trim() !== '' && examLink.startsWith('http');
-                const canTakeExam = !isCompleted && hasValidLink && gradeText !== 'Pending Release';
+                const hasValidLink = examLink && examLink.trim() !== '' && (examLink.startsWith('http') || examLink.includes('docs.google.com'));
                 
+                // Determine action button state
+                let actionState = 'not_available';
+                let actionMessage = 'Not Available';
+                
+                if (exam.isCompleted) {
+                    actionMessage = 'Completed';
+                    actionState = 'completed';
+                } else if (gradeText === 'Pending Release') {
+                    actionMessage = 'Pending Release';
+                    actionState = 'pending_release';
+                } else if (gradeText === 'Missed') {
+                    actionMessage = 'Missed';
+                    actionState = 'missed';
+                } else if (!hasValidLink) {
+                    actionMessage = 'No Link Available';
+                    actionState = 'no_link';
+                } else if (hasValidLink && !exam.isCompleted && gradeText !== 'Pending Release' && gradeText !== 'Missed') {
+                    actionMessage = 'Start Exam';
+                    actionState = 'start';
+                }
+                
+                const canTakeExam = (actionState === 'start');
+                
+                // Format display values
                 let cat1Display = '--';
                 let cat2Display = '--';
                 let finalDisplay = '--';
@@ -495,6 +519,8 @@
                     gradePoint,
                     hasValidLink,
                     canTakeExam,
+                    actionState,
+                    actionMessage,
                     examLink: examLink,
                     cat1Score: cat1Score,
                     cat2Score: cat2Score,
@@ -533,34 +559,40 @@
             
             const html = this.currentExams.map(exam => {
                 const isCatExam = exam.isCatExam;
-                let buttonText = 'Start Exam';
-                let buttonClass = 'btn-primary';
                 
-                if (!exam.hasValidLink) {
-                    buttonText = 'No Link Available';
-                    buttonClass = 'btn-disabled';
-                }
-                if (!exam.canTakeExam) {
-                    buttonText = exam.gradeText === 'Pending Release' ? 'Pending Release' : 'Not Available';
-                    buttonClass = 'btn-disabled';
+                // Action button based on state
+                let actionHtml = '';
+                if (exam.canTakeExam && exam.actionState === 'start') {
+                    actionHtml = `<a href="${exam.examLink}" 
+                                    target="_blank" 
+                                    class="exam-link-btn btn-primary"
+                                    data-exam-id="${exam.id}"
+                                    data-exam-name="${this.escapeHtml(exam.exam_name)}">
+                                    <i class="fas fa-external-link-alt"></i> Start Exam
+                                </a>`;
+                } else {
+                    let icon = '<i class="fas fa-lock"></i>';
+                    if (exam.actionState === 'pending_release') icon = '<i class="fas fa-clock"></i>';
+                    if (exam.actionState === 'completed') icon = '<i class="fas fa-check-circle"></i>';
+                    if (exam.actionState === 'missed') icon = '<i class="fas fa-calendar-times"></i>';
+                    
+                    actionHtml = `<span class="exam-link-btn btn-disabled" title="${exam.actionMessage}">
+                                    ${icon} ${exam.actionMessage}
+                                </span>`;
                 }
                 
                 let statusHtml = `<span class="status-badge ${exam.gradeClass}">${exam.gradeText}</span>`;
                 
-                // Consolidated Assessment Cell - ALL info in ONE cell
+                // Consolidated Assessment Cell
                 let assessmentCell = `
                     <div class="assessment-info-box">
                         <div class="assessment-name">
                             <strong>${this.escapeHtml(exam.exam_name)}</strong>
-                            <span class="badge ${isCatExam ? 'badge-cat' : 'badge-final'}">${isCatExam ? 'CAT' : 'Exam'}</span>
+                            <span class="${isCatExam ? 'badge-cat' : 'badge-final'}">${isCatExam ? 'CAT' : 'Exam'}</span>
                         </div>
                         <div class="assessment-details">
-                            <span class="detail-item">
-                                <i class="fas fa-book"></i> ${this.escapeHtml(exam.course || 'General')}
-                            </span>
-                            <span class="detail-item">
-                                <i class="fas fa-layer-group"></i> ${exam.block_term || 'General'}
-                            </span>
+                            <span class="detail-item"><i class="fas fa-book"></i> ${this.escapeHtml(exam.course || 'General')}</span>
+                            <span class="detail-item"><i class="fas fa-layer-group"></i> ${exam.block_term || 'General'}</span>
                             <span class="program-badge ${exam.programBadgeClass}">
                                 <i class="fas ${exam.programIcon}"></i> ${this.escapeHtml(exam.programDisplay)}
                             </span>
@@ -568,7 +600,7 @@
                     </div>
                 `;
                 
-                // Score columns based on exam type
+                // Score columns
                 let scoreColumns;
                 if (isCatExam) {
                     scoreColumns = `
@@ -593,20 +625,7 @@
                         <td class="text-center total-cell">
                             ${exam.totalPercentage !== null ? `<span class="total-score">${exam.totalPercentage.toFixed(1)}%</span>` : '--'}
                         </td>
-                        <td class="text-center action-cell">
-                            ${exam.canTakeExam ? 
-                                `<a href="${exam.examLink}" 
-                                    target="_blank" 
-                                    class="exam-link-btn ${buttonClass}"
-                                    data-exam-id="${exam.id}"
-                                    data-exam-name="${this.escapeHtml(exam.exam_name)}">
-                                    <i class="fas fa-external-link-alt"></i> ${buttonText}
-                                </a>` :
-                                `<span class="exam-link-btn disabled" title="Exam not available">
-                                    <i class="fas fa-lock"></i> ${buttonText}
-                                </span>`
-                            }
-                        </td>
+                        <td class="text-center action-cell">${actionHtml}</td>
                     </tr>
                 `;
             }).join('');
@@ -629,20 +648,16 @@
                 const displayGrade = exam.gradeText;
                 const displayClass = exam.gradeClass;
                 
-                // Consolidated Assessment Cell - ALL info in ONE cell
+                // Consolidated Assessment Cell
                 let assessmentCell = `
                     <div class="assessment-info-box">
                         <div class="assessment-name">
                             <strong>${this.escapeHtml(exam.exam_name)}</strong>
-                            <span class="badge ${isCatExam ? 'badge-cat' : 'badge-final'}">${isCatExam ? 'CAT' : 'Exam'}</span>
+                            <span class="${isCatExam ? 'badge-cat' : 'badge-final'}">${isCatExam ? 'CAT' : 'Exam'}</span>
                         </div>
                         <div class="assessment-details">
-                            <span class="detail-item">
-                                <i class="fas fa-book"></i> ${this.escapeHtml(exam.course || 'General')}
-                            </span>
-                            <span class="detail-item">
-                                <i class="fas fa-layer-group"></i> ${exam.block_term || 'General'}
-                            </span>
+                            <span class="detail-item"><i class="fas fa-book"></i> ${this.escapeHtml(exam.course || 'General')}</span>
+                            <span class="detail-item"><i class="fas fa-layer-group"></i> ${exam.block_term || 'General'}</span>
                             <span class="program-badge ${exam.programBadgeClass}">
                                 <i class="fas ${exam.programIcon}"></i> ${this.escapeHtml(exam.programDisplay)}
                             </span>
@@ -650,6 +665,7 @@
                     </div>
                 `;
                 
+                // Score columns
                 let scoreColumns;
                 if (isCatExam) {
                     scoreColumns = `
@@ -665,6 +681,9 @@
                     `;
                 }
                 
+                // Grade badge for completed
+                let gradeBadge = `<span class="grade-badge ${displayClass}">${displayGrade}</span>`;
+                
                 return `
                     <tr class="assessment-row ${isCatExam ? 'cat-exam' : 'final-exam'}">
                         <td class="assessment-cell">${assessmentCell}</td>
@@ -672,9 +691,7 @@
                         <td class="text-center status-cell"><span class="status-badge ${displayClass}">${displayGrade}</span></td>
                         ${scoreColumns}
                         <td class="text-center total-cell"><strong>${displayPercentage}</strong></td>
-                        <td class="text-center grade-cell">
-                            <span class="grade-badge ${displayClass}">${displayGrade}</span>
-                        </td>
+                        <td class="text-center grade-cell">${gradeBadge}</td>
                     </tr>
                 `;
             }).join('');
@@ -784,5 +801,5 @@
     window.loadExams = () => window.examsModule?.refresh();
     window.refreshAssessments = () => window.examsModule?.refresh();
     
-    console.log('✅ Exams module ready with CONSOLIDATED TABLE VIEW!');
+    console.log('✅ Exams module ready with consolidated view and action buttons!');
 })();
