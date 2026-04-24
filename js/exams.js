@@ -49,6 +49,30 @@
             this.setupAutoRefresh();
         }
         
+        getExamPeriod() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = now.getMonth();
+            
+            // Trimester 1: March (2) to June (5)
+            if (month >= 2 && month <= 5) {
+                return `March - June ${year} (Trimester 1)`;
+            }
+            // Trimester 2: July (6) to October (9)
+            else if (month >= 6 && month <= 9) {
+                return `July - October ${year} (Trimester 2)`;
+            }
+            // Trimester 3: November (10) to February (1)
+            else {
+                // For November (10) and December (11)
+                if (month === 10 || month === 11) {
+                    return `November ${year} - February ${year + 1} (Trimester 3)`;
+                }
+                // For January (0) and February (1)
+                return `November ${year - 1} - February ${year} (Trimester 3)`;
+            }
+        }
+        
         cacheElements() {
             this.currentTable = document.getElementById('current-assessments-table');
             this.completedTable = document.getElementById('completed-assessments-table');
@@ -296,7 +320,7 @@
                 let query = supabase
                     .from('exams')
                     .select('*')
-                    .order('id', { ascending: true });
+                    .order('exam_date', { ascending: true });
                 
                 // Filter by intake year
                 query = query.eq('intake_year', this.intakeYear);
@@ -389,18 +413,14 @@
                 const isCatExam = examType.includes('CAT');
                 const isFinalExam = examType === 'EXAM' || examType === 'FINAL';
                 
-                // 🔥 KEY FIX: Check if exam date has passed
+                // Check if exam date has passed
                 const examDate = exam.exam_date ? new Date(exam.exam_date) : null;
                 const isDatePassed = examDate ? examDate < today : false;
                 
                 // Determine if exam has a grade (taken)
                 const hasGrade = grade && totalPercentage !== null;
                 
-                // 🔥 COMPLETED LOGIC:
-                // 1. Has released grade → Completed
-                // 2. Has grade but not released → Still Current (pending release)
-                // 3. Date passed (even without grade) → Completed (show as "Missed/Expired")
-                // 4. Has grade but not released and date passed → Completed (pending release)
+                // COMPLETED LOGIC:
                 let isCompleted = false;
                 let gradeText = 'Not Started';
                 let gradeClass = 'pending';
@@ -435,13 +455,12 @@
                 }
                 // Case 2: Has grade but NOT released yet
                 else if (hasGrade && !isReleased) {
-                    // If date passed, show as completed but pending release
                     if (isDatePassed) {
                         isCompleted = true;
                         gradeText = 'Pending Release';
                         gradeClass = 'pending';
                         completionReason = 'date_passed';
-                        displayPercentage = totalPercentage; // Store for later release
+                        displayPercentage = totalPercentage;
                     } else {
                         isCompleted = false;
                         gradeText = 'Pending Release';
@@ -462,7 +481,7 @@
                     gradeClass = 'pending';
                 }
                 
-                // Check if exam has a valid link (only show for not completed or pending release)
+                // Check if exam has a valid link
                 const examLink = exam.exam_link || exam.online_link;
                 const hasValidLink = examLink && examLink.trim() !== '' && examLink.startsWith('http');
                 const canTakeExam = !isCompleted && hasValidLink && gradeText !== 'Pending Release';
@@ -472,22 +491,18 @@
                 let cat2Display = '--';
                 let finalDisplay = '--';
                 
-                // For CAT exams: show CAT score
                 if (isCatExam && cat1Score !== null) {
                     cat1Display = `${cat1Score}%`;
                 }
                 if (isCatExam && cat2Score !== null) {
                     cat2Display = `${cat2Score}%`;
                 }
-                
-                // For Final exams: show all scores
                 if (isFinalExam) {
                     if (cat1Score !== null) cat1Display = `${cat1Score}%`;
                     if (cat2Score !== null) cat2Display = `${cat2Score}%`;
                     if (finalScore !== null) finalDisplay = `${finalScore}%`;
                 }
                 
-                // If released, show the actual percentage
                 if (isReleased && displayPercentage !== null) {
                     cat1Display = displayPercentage.toFixed(1) + '%';
                 }
@@ -512,18 +527,15 @@
                     hasValidLink,
                     canTakeExam,
                     examLink: examLink,
-                    // Score values
                     cat1Score: cat1Score,
                     cat2Score: cat2Score,
                     finalScore: finalScore,
                     cat1Display: cat1Display,
                     cat2Display: cat2Display,
                     finalDisplay: finalDisplay,
-                    // Dates
                     examDate: exam.exam_date,
                     formattedExamDate: exam.exam_date ? new Date(exam.exam_date).toLocaleDateString() : 'TBA',
                     formattedGradedDate: grade?.graded_at ? new Date(grade.graded_at).toLocaleDateString() : '--',
-                    // Program badges
                     programBadgeClass: exam.program_type === 'TVET' ? 'badge-tvet' : 'badge-krchn',
                     programIcon: exam.program_type === 'TVET' ? 'fa-tools' : 'fa-graduation-cap',
                     programDisplay: exam.program_type === 'TVET' ? 'TVET Program' : 'KRCHN Program'
@@ -568,10 +580,8 @@
                     buttonClass = 'btn-disabled';
                 }
                 
-                // Status message
                 let statusHtml = `<span class="status-badge ${exam.gradeClass}">${exam.gradeText}</span>`;
                 
-                // Score columns based on exam type
                 let scoreColumns;
                 if (isCatExam) {
                     scoreColumns = `
@@ -616,7 +626,7 @@
                             </span>`
                         }
                     </td>
-                </td>`;
+                </tr>`;
             }).join('');
             
             this.currentTable.innerHTML = html;
@@ -633,13 +643,10 @@
             const html = this.completedExams.map(exam => {
                 const isCatExam = exam.isCatExam;
                 const percentage = exam.totalPercentage !== null ? exam.totalPercentage.toFixed(1) : '0';
-                
-                // For missed exams without grade
                 const displayPercentage = exam.totalPercentage !== null ? `${percentage}%` : '--';
                 const displayGrade = exam.gradeText;
                 const displayClass = exam.gradeClass;
                 
-                // Score columns based on exam type
                 let scoreColumns;
                 if (isCatExam) {
                     scoreColumns = `
