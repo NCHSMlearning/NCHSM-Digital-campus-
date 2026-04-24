@@ -149,3 +149,39 @@
 .exams-header .stat-card {
     background: transparent;
 }
+/* =====================================================
+   FIX: EXAMS HEADER PURPLE BACKGROUND
+   ===================================================== */
+
+/* Ensure the purple background shows */
+.exams-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    border-radius: 16px !important;
+    padding: 25px !important;
+    margin-bottom: 25px !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1) !important;
+    border: none !important;
+}
+
+/* Make sure the text is white */
+.exams-header .header-content h2 {
+    color: white !important;
+}
+
+.exams-header .header-content h2 i {
+    color: white !important;
+}
+
+.exams-header .subtitle {
+    color: rgba(255, 255, 255, 0.9) !important;
+}
+
+/* Stats cards inside exams header */
+.exams-header .header-stats {
+    margin-top: 25px;
+}
+
+/* If there's a conflicting style, override it */
+.exams-header {
+    background-image: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+}
