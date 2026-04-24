@@ -459,7 +459,7 @@
 </div>
             </section>
 
-          <!-- ==================== PROFILE TAB ==================== -->
+        <!-- ==================== PROFILE TAB ==================== -->
 <section id="profile" class="tab-content" aria-labelledby="profile-tab" hidden>
     <header class="profile-header">
         <h2>My Profile & Account</h2>
@@ -467,6 +467,7 @@
     </header>
 
     <form id="profile-form" class="profile-form" novalidate>
+        <!-- PROFILE PHOTO SECTION -->
         <div class="profile-section">
             <h3 class="section-title">Profile Photo</h3>
             <div class="profile-media">
@@ -508,6 +509,7 @@
             </div>
         </div>
 
+        <!-- PERSONAL INFORMATION SECTION -->
         <div class="profile-section">
             <h3 class="section-title">Personal Information</h3>
             <div class="profile-details grid-layout">
@@ -560,14 +562,14 @@
                     <input type="text" id="profile-program" name="program" readonly>
                 </div>
                 
-                <!-- NEW: Admission Date Field -->
+                <!-- Admission Date Field -->
                 <div class="form-field">
                     <label for="profile-admission-date">Admission Date</label>
                     <input type="date" id="profile-admission-date" name="admission-date" readonly>
                     <div id="admission-help" class="help-text">Date you joined the college</div>
                 </div>
                 
-                <!-- NEW: Admission Year Field -->
+                <!-- Admission Year Field -->
                 <div class="form-field">
                     <label for="profile-admission-year">Admission Year</label>
                     <input type="text" id="profile-admission-year" name="admission-year" readonly>
@@ -589,7 +591,7 @@
             </div>
         </div>
 
-        <!-- NEW: Block Progress Section -->
+        <!-- ACADEMIC PROGRESS SECTION -->
         <div class="profile-section">
             <h3 class="section-title">Academic Progress</h3>
             <div class="profile-details grid-layout">
@@ -657,6 +659,56 @@
             </div>
         </div>
 
+        <!-- ==================== NEW: RESET PASSWORD SECTION ==================== -->
+        <div class="profile-section">
+            <h3 class="section-title">🔐 Security Settings</h3>
+            <div class="profile-details grid-layout">
+                <div class="form-field full-width">
+                    <label>Change Password</label>
+                    <div class="password-reset-container">
+                        <div class="password-field-group">
+                            <input type="password" id="current-password" placeholder="Current Password" class="form-input">
+                            <i class="fas fa-eye toggle-password" data-target="current-password"></i>
+                        </div>
+                        <div class="password-field-group">
+                            <input type="password" id="new-password" placeholder="New Password" class="form-input">
+                            <i class="fas fa-eye toggle-password" data-target="new-password"></i>
+                        </div>
+                        <div class="password-field-group">
+                            <input type="password" id="confirm-password" placeholder="Confirm New Password" class="form-input">
+                            <i class="fas fa-eye toggle-password" data-target="confirm-password"></i>
+                        </div>
+                        
+                        <!-- Password Strength Indicator -->
+                        <div class="password-strength" id="password-strength">
+                            <div class="strength-bar" id="strength-bar"></div>
+                            <div class="strength-text">
+                                Password strength: <span id="strength-text">Not set</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Password Requirements -->
+                        <div class="password-requirements" id="password-requirements">
+                            <p><i class="fas fa-shield-alt"></i> Password must contain:</p>
+                            <ul>
+                                <li id="req-length">✓ At least 8 characters</li>
+                                <li id="req-uppercase">✓ At least one uppercase letter</li>
+                                <li id="req-lowercase">✓ At least one lowercase letter</li>
+                                <li id="req-number">✓ At least one number</li>
+                                <li id="req-special">✓ At least one special character (!@#$%^&*)</li>
+                            </ul>
+                        </div>
+                        
+                        <button type="button" id="change-password-btn" class="button button-primary">
+                            <i class="fas fa-key"></i> Change Password
+                        </button>
+                        <div id="password-feedback" class="password-feedback"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FORM ACTIONS -->
         <div class="form-actions">
             <button type="button" id="edit-profile-button" class="button button-primary">
                 <span class="button-icon">✏️</span> Edit Profile
@@ -1312,21 +1364,18 @@
                     
                     <div class="assessments-table-container">
                         <table class="assessments-table">
-                            <thead>
-                                <tr>
-                                    <th>Assessment</th>
-                                    <th>Type</th>
-                                    <th>Unit</th>
-                                    <th class="text-center">Block</th>
-                                    <th>Due Date</th>
-                                    <th>Status</th>
-                                    <th class="text-center">CAT 1</th>
-                                    <th class="text-center">CAT 2</th>
-                                    <th class="text-center">Final</th>
-                                    <th class="text-center">Total</th>
-                                    <th class="text-center">Action</th>
-                                </tr>
-                            </thead>
+                           <thead>
+    <tr>
+        <th>Assessment</th>
+        <th class="text-center">Due Date</th>
+        <th class="text-center">Status</th>
+        <th class="text-center">CAT 1</th>
+        <th class="text-center">CAT 2</th>
+        <th class="text-center">Final</th>
+        <th class="text-center">Total</th>
+        <th class="text-center">Action</th>
+    </tr>
+</thead>
                             <tbody id="current-assessments-table">
                                 <tr class="loading">
                                     <td colspan="11">
@@ -1360,21 +1409,18 @@
                     
                     <div class="assessments-table-container">
                         <table class="assessments-table">
-                            <thead>
-                                <tr>
-                                    <th>Assessment</th>
-                                    <th>Type</th>
-                                    <th>Unit</th>
-                                    <th class="text-center">Block</th>
-                                    <th>Date Graded</th>
-                                    <th>Status</th>
-                                    <th class="text-center">CAT 1</th>
-                                    <th class="text-center">CAT 2</th>
-                                    <th class="text-center">Final Exam</th>
-                                    <th class="text-center">Total (%)</th>
-                                    <th class="text-center">Grade</th>
-                                </tr>
-                            </thead>
+                           <thead>
+    <tr>
+        <th>Assessment</th>
+        <th class="text-center">Date Graded</th>
+        <th class="text-center">Status</th>
+        <th class="text-center">CAT 1</th>
+        <th class="text-center">CAT 2</th>
+        <th class="text-center">Final</th>
+        <th class="text-center">Total</th>
+        <th class="text-center">Grade</th>
+    </tr>
+</thead>
                             <tbody id="completed-assessments-table">
                                 <tr class="loading">
                                     <td colspan="11">
