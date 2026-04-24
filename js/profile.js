@@ -1,4 +1,4 @@
-// profile.js - Complete Profile Management Module with DOB, Gender, Admission Date, and Block Progress
+// profile.js - Complete Profile Management Module with DOB, Gender, Admission Date, Block Progress, and Password Reset
 class ProfileModule {
     constructor() {
         this.userId = null;
@@ -36,16 +36,26 @@ class ProfileModule {
         this.profileBlock = document.getElementById('profile-block');
         this.profileIntakeYear = document.getElementById('profile-intake-year');
         
-        // NEW: Admission Date fields
+        // Admission Date fields
         this.profileAdmissionDate = document.getElementById('profile-admission-date');
         this.profileAdmissionYear = document.getElementById('profile-admission-year');
         
-        // NEW: Block Progress elements
+        // Block Progress elements
         this.blockProgressFill = document.getElementById('block-progress-fill');
         this.blockProgressText = document.getElementById('block-progress-text');
         this.currentBlockStatus = document.getElementById('current-block-status');
         this.completedBlocksContainer = document.getElementById('completed-blocks');
         this.blockTimeline = document.getElementById('block-timeline');
+        
+        // ==================== PASSWORD RESET ELEMENTS ====================
+        this.currentPassword = document.getElementById('current-password');
+        this.newPassword = document.getElementById('new-password');
+        this.confirmPassword = document.getElementById('confirm-password');
+        this.changePasswordBtn = document.getElementById('change-password-btn');
+        this.passwordStrengthBar = document.getElementById('strength-bar');
+        this.passwordStrengthText = document.getElementById('strength-text');
+        this.passwordRequirements = document.getElementById('password-requirements');
+        this.passwordFeedback = document.getElementById('password-feedback');
         
         // Action buttons
         this.editProfileButton = document.getElementById('edit-profile-button');
@@ -53,6 +63,7 @@ class ProfileModule {
         this.cancelEditButton = document.getElementById('cancel-edit-button');
         
         this.setupEventListeners();
+        this.setupPasswordResetListeners();
     }
     
     setupEventListeners() {
@@ -132,6 +143,310 @@ class ProfileModule {
         }
     }
     
+    // ==================== PASSWORD RESET LISTENERS ====================
+    setupPasswordResetListeners() {
+        if (!this.newPassword) return;
+        
+        // Password strength checker
+        this.newPassword.addEventListener('input', () => {
+            this.checkPasswordStrength(this.newPassword.value);
+            this.validatePasswordRequirements(this.newPassword.value);
+        });
+        
+        // Confirm password check
+        if (this.confirmPassword) {
+            this.confirmPassword.addEventListener('input', () => {
+                this.validateConfirmPassword();
+            });
+        }
+        
+        // Toggle password visibility
+        document.querySelectorAll('.toggle-password').forEach(icon => {
+            icon.addEventListener('click', () => {
+                const targetId = icon.getAttribute('data-target');
+                const input = document.getElementById(targetId);
+                if (input) {
+                    const type = input.getAttribute('type') === 'password' ? 'text' : 'password';
+                    input.setAttribute('type', type);
+                    icon.classList.toggle('fa-eye');
+                    icon.classList.toggle('fa-eye-slash');
+                }
+            });
+        });
+        
+        // Show password requirements when typing
+        this.newPassword.addEventListener('focus', () => {
+            if (this.passwordRequirements) {
+                this.passwordRequirements.classList.add('show');
+            }
+        });
+        
+        this.newPassword.addEventListener('blur', () => {
+            setTimeout(() => {
+                if (this.passwordRequirements && !this.passwordRequirements.querySelector('.valid')) {
+                    this.passwordRequirements.classList.remove('show');
+                }
+            }, 2000);
+        });
+        
+        // Change password button click
+        if (this.changePasswordBtn) {
+            this.changePasswordBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.changeUserPassword();
+            });
+        }
+    }
+    
+    // ==================== PASSWORD STRENGTH FUNCTIONS ====================
+    checkPasswordStrength(password) {
+        if (!this.passwordStrengthBar || !this.passwordStrengthText) return;
+        
+        let strength = 0;
+        
+        // Length check
+        if (password.length >= 8) strength++;
+        if (password.length >= 12) strength++;
+        
+        // Complexity checks
+        if (/[A-Z]/.test(password)) strength++;
+        if (/[a-z]/.test(password)) strength++;
+        if (/[0-9]/.test(password)) strength++;
+        if (/[!@#$%^&*]/.test(password)) strength++;
+        
+        let strengthClass = '';
+        let strengthLabel = '';
+        
+        if (strength <= 2) {
+            strengthClass = 'weak';
+            strengthLabel = 'Weak';
+        } else if (strength <= 4) {
+            strengthClass = 'medium';
+            strengthLabel = 'Medium';
+        } else if (strength <= 6) {
+            strengthClass = 'strong';
+            strengthLabel = 'Strong';
+        } else {
+            strengthClass = 'very-strong';
+            strengthLabel = 'Very Strong';
+        }
+        
+        this.passwordStrengthBar.className = 'strength-bar ' + strengthClass;
+        this.passwordStrengthText.textContent = strengthLabel;
+        this.passwordStrengthText.style.color = this.getStrengthColor(strengthClass);
+    }
+    
+    getStrengthColor(strength) {
+        switch(strength) {
+            case 'weak': return '#dc2626';
+            case 'medium': return '#f59e0b';
+            case 'strong': return '#10b981';
+            case 'very-strong': return '#059669';
+            default: return '#6b7280';
+        }
+    }
+    
+    validatePasswordRequirements(password) {
+        const requirements = {
+            length: password.length >= 8,
+            uppercase: /[A-Z]/.test(password),
+            lowercase: /[a-z]/.test(password),
+            number: /[0-9]/.test(password),
+            special: /[!@#$%^&*]/.test(password)
+        };
+        
+        // Update each requirement
+        const reqLength = document.getElementById('req-length');
+        const reqUppercase = document.getElementById('req-uppercase');
+        const reqLowercase = document.getElementById('req-lowercase');
+        const reqNumber = document.getElementById('req-number');
+        const reqSpecial = document.getElementById('req-special');
+        
+        if (reqLength) this.updateRequirement(reqLength, requirements.length);
+        if (reqUppercase) this.updateRequirement(reqUppercase, requirements.uppercase);
+        if (reqLowercase) this.updateRequirement(reqLowercase, requirements.lowercase);
+        if (reqNumber) this.updateRequirement(reqNumber, requirements.number);
+        if (reqSpecial) this.updateRequirement(reqSpecial, requirements.special);
+        
+        return Object.values(requirements).every(v => v === true);
+    }
+    
+    updateRequirement(element, isValid) {
+        if (isValid) {
+            element.classList.add('valid');
+        } else {
+            element.classList.remove('valid');
+        }
+    }
+    
+    validateConfirmPassword() {
+        const newPassword = this.newPassword?.value || '';
+        const confirmPassword = this.confirmPassword?.value || '';
+        
+        if (confirmPassword && newPassword !== confirmPassword) {
+            this.showPasswordFeedback('❌ Passwords do not match!', 'error');
+            return false;
+        } else if (confirmPassword && newPassword === confirmPassword) {
+            this.showPasswordFeedback('✅ Passwords match!', 'success');
+            setTimeout(() => this.clearPasswordFeedback(), 2000);
+            return true;
+        }
+        
+        this.clearPasswordFeedback();
+        return false;
+    }
+    
+    showPasswordFeedback(message, type) {
+        if (!this.passwordFeedback) return;
+        
+        this.passwordFeedback.textContent = message;
+        this.passwordFeedback.classList.add('show', type);
+        this.passwordFeedback.classList.remove(type === 'success' ? 'error' : 'success');
+    }
+    
+    clearPasswordFeedback() {
+        if (this.passwordFeedback) {
+            this.passwordFeedback.classList.remove('show');
+        }
+    }
+    
+    async changeUserPassword() {
+        const currentPassword = this.currentPassword?.value;
+        const newPassword = this.newPassword?.value;
+        const confirmPassword = this.confirmPassword?.value;
+        
+        // Validation
+        if (!currentPassword) {
+            this.showPasswordFeedback('❌ Please enter your current password', 'error');
+            return;
+        }
+        
+        if (!newPassword) {
+            this.showPasswordFeedback('❌ Please enter a new password', 'error');
+            return;
+        }
+        
+        if (newPassword !== confirmPassword) {
+            this.showPasswordFeedback('❌ New passwords do not match!', 'error');
+            return;
+        }
+        
+        // Validate password strength
+        if (!this.validatePasswordRequirements(newPassword)) {
+            this.showPasswordFeedback('❌ Password does not meet requirements!', 'error');
+            if (this.passwordRequirements) this.passwordRequirements.classList.add('show');
+            return;
+        }
+        
+        // Show loading state
+        if (this.changePasswordBtn) {
+            this.changePasswordBtn.disabled = true;
+            this.changePasswordBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Changing Password...';
+        }
+        
+        try {
+            const supabase = this.getSupabaseClient();
+            if (!supabase) {
+                throw new Error('Database connection not available');
+            }
+            
+            const email = this.userProfile?.email;
+            if (!email) {
+                throw new Error('User email not found');
+            }
+            
+            // Verify current password
+            const { error: signInError } = await supabase.auth.signInWithPassword({
+                email: email,
+                password: currentPassword
+            });
+            
+            if (signInError) {
+                this.showPasswordFeedback('❌ Current password is incorrect!', 'error');
+                return;
+            }
+            
+            // Update password
+            const { error: updateError } = await supabase.auth.updateUser({
+                password: newPassword
+            });
+            
+            if (updateError) throw updateError;
+            
+            // Success
+            this.showPasswordFeedback('✅ Password changed successfully! Please use your new password next login.', 'success');
+            
+            // Clear form
+            if (this.currentPassword) this.currentPassword.value = '';
+            if (this.newPassword) this.newPassword.value = '';
+            if (this.confirmPassword) this.confirmPassword.value = '';
+            
+            // Reset strength indicator
+            if (this.passwordStrengthBar) {
+                this.passwordStrengthBar.className = 'strength-bar';
+            }
+            if (this.passwordStrengthText) this.passwordStrengthText.textContent = 'Not set';
+            
+            // Hide password requirements
+            if (this.passwordRequirements) {
+                this.passwordRequirements.classList.remove('show');
+            }
+            
+            // Log audit
+            await this.logAudit('PASSWORD_CHANGE', 'User changed their password', null, 'SUCCESS');
+            
+            // Optionally sign out and require re-login
+            setTimeout(() => {
+                if (confirm('Password changed successfully! Would you like to login again with your new password?')) {
+                    supabase.auth.signOut();
+                    window.location.href = 'login.html';
+                }
+            }, 2000);
+            
+        } catch (error) {
+            console.error('Password change error:', error);
+            this.showPasswordFeedback(`❌ Failed to change password: ${error.message}`, 'error');
+            await this.logAudit('PASSWORD_CHANGE', `Failed to change password: ${error.message}`, null, 'FAILURE');
+            
+        } finally {
+            if (this.changePasswordBtn) {
+                this.changePasswordBtn.disabled = false;
+                this.changePasswordBtn.innerHTML = '<i class="fas fa-key"></i> Change Password';
+            }
+        }
+    }
+    
+    async logAudit(action_type, details, target_id = null, status = 'SUCCESS') {
+        try {
+            const supabase = this.getSupabaseClient();
+            if (!supabase) return;
+            
+            const logData = {
+                user_id: this.userId,
+                user_role: 'student',
+                action_type: action_type,
+                details: details,
+                target_id: target_id,
+                status: status,
+                ip_address: await this.getIPAddress()
+            };
+            
+            await supabase.from('audit_logs').insert([logData]);
+        } catch (error) {
+            console.error('Audit logging failed:', error);
+        }
+    }
+    
+    async getIPAddress() {
+        try {
+            const response = await fetch('https://api.ipify.org?format=json');
+            const data = await response.json();
+            return data.ip;
+        } catch (error) {
+            return null;
+        }
+    }
+    
     async initialize() {
         // Get user data from database.js
         this.userId = this.getCurrentUserId();
@@ -203,7 +518,7 @@ class ProfileModule {
             // Load profile photo
             await this.loadProfilePhoto();
             
-            // NEW: Update block progress display
+            // Update block progress display
             this.updateBlockProgress();
             
             // Set initial state
@@ -245,7 +560,7 @@ class ProfileModule {
         if (this.profileBlock) this.profileBlock.value = this.userProfile.block || this.userProfile.current_block || '';
         if (this.profileIntakeYear) this.profileIntakeYear.value = this.userProfile.intake_year || this.userProfile.year_of_intake || '';
         
-        // NEW: Admission Date
+        // Admission Date
         if (this.profileAdmissionDate && this.userProfile.admission_date) {
             const admissionDate = new Date(this.userProfile.admission_date);
             if (!isNaN(admissionDate)) {
@@ -255,7 +570,7 @@ class ProfileModule {
             this.profileAdmissionDate.value = '';
         }
         
-        // NEW: Admission Year
+        // Admission Year
         if (this.profileAdmissionYear) {
             if (this.userProfile.admission_year) {
                 this.profileAdmissionYear.value = this.userProfile.admission_year;
@@ -268,7 +583,7 @@ class ProfileModule {
         }
     }
     
-    // NEW: Update Block Progress Display
+    // Block Progress Display
     updateBlockProgress() {
         if (!this.userProfile) return;
         
@@ -308,7 +623,6 @@ class ProfileModule {
         this.updateCompletedBlocks(completedBlocks);
     }
     
-    // NEW: Update Block Timeline Visualization
     updateBlockTimeline(currentBlock) {
         if (!this.blockTimeline) return;
         
@@ -319,7 +633,6 @@ class ProfileModule {
         const connectors = this.blockTimeline.querySelectorAll('.block-connector');
         
         blockSteps.forEach((step, index) => {
-            const blockName = step.querySelector('.block-name')?.textContent;
             step.classList.remove('completed', 'current', 'upcoming');
             
             if (index < currentIndex) {
@@ -340,7 +653,6 @@ class ProfileModule {
         });
     }
     
-    // NEW: Update Completed Blocks Badges
     updateCompletedBlocks(completedCount) {
         if (!this.completedBlocksContainer) return;
         
@@ -368,7 +680,6 @@ class ProfileModule {
         
         if (photoUrl) {
             try {
-                // Check if it's a full URL or just a path
                 if (photoUrl.startsWith('http')) {
                     finalPhotoSrc = photoUrl;
                 } else {
@@ -376,7 +687,6 @@ class ProfileModule {
                     finalPhotoSrc = `${supabaseUrl}/storage/v1/object/public/passports/${photoUrl}?t=${new Date().getTime()}`;
                 }
                 
-                // Test if image loads
                 await new Promise((resolve, reject) => {
                     const img = new Image();
                     img.onload = resolve;
@@ -465,7 +775,6 @@ class ProfileModule {
         
         this.showStatus('Edit mode enabled. Make your changes and click Save.', 'info');
         
-        // Focus on first editable field
         setTimeout(() => {
             if (this.profileName) {
                 this.profileName.focus();
@@ -586,7 +895,6 @@ class ProfileModule {
             throw new Error('No database connection');
         }
         
-        // Use upsert to handle both insert and update
         const { error } = await supabase
             .from('consolidated_user_profiles_table')
             .upsert({
@@ -636,12 +944,10 @@ class ProfileModule {
         
         this.pendingPhotoFile = null;
         
-        // Reset file input
         if (this.passportFileInput) {
             this.passportFileInput.value = '';
         }
         
-        // Hide photo buttons
         if (this.savePhotoButton) this.savePhotoButton.style.display = 'none';
         if (this.cancelPhotoButton) this.cancelPhotoButton.style.display = 'none';
         if (this.photoStatus) this.photoStatus.style.display = 'none';
@@ -657,7 +963,6 @@ class ProfileModule {
         console.error('Save error:', error);
         this.showStatus(`Error: ${error.message}`, 'error');
         
-        // Re-enable save button
         if (this.saveProfileButton) {
             this.saveProfileButton.disabled = false;
             this.saveProfileButton.innerHTML = '<span class="button-icon">💾</span> Save Changes';
@@ -667,16 +972,13 @@ class ProfileModule {
     validateForm() {
         let isValid = true;
         
-        // Clear previous errors
         this.clearAllErrors();
         
-        // Validate name
         if (this.profileName && !this.profileName.value.trim()) {
             this.showFieldError(this.profileName, 'Name is required');
             isValid = false;
         }
         
-        // Validate phone if provided
         if (this.profilePhone && this.profilePhone.value.trim()) {
             const phoneRegex = /^[\d\s\-\+\(\)]{10,20}$/;
             if (!phoneRegex.test(this.profilePhone.value.trim())) {
@@ -685,7 +987,6 @@ class ProfileModule {
             }
         }
         
-        // Validate date of birth
         if (this.profileDob && this.profileDob.value) {
             const dobDate = new Date(this.profileDob.value);
             const today = new Date();
@@ -730,7 +1031,6 @@ class ProfileModule {
             return;
         }
         
-        // Store pending photo
         this.pendingPhotoFile = file;
         
         if (this.photoObjectURL) {
@@ -743,7 +1043,6 @@ class ProfileModule {
             this.passportPreview.src = this.photoObjectURL;
         }
         
-        // Show save/cancel photo buttons
         if (this.savePhotoButton) this.savePhotoButton.style.display = 'inline-flex';
         if (this.cancelPhotoButton) this.cancelPhotoButton.style.display = 'inline-flex';
         
@@ -791,7 +1090,6 @@ class ProfileModule {
             const fileExt = file.name.split('.').pop();
             const filePath = `${this.userId}.${fileExt}`;
             
-            // Upload file to storage
             const { error: uploadError } = await supabase.storage
                 .from('passports')
                 .upload(filePath, file, { 
@@ -802,14 +1100,12 @@ class ProfileModule {
             
             if (uploadError) throw uploadError;
             
-            // Get public URL
             const { data: urlData } = supabase.storage
                 .from('passports')
                 .getPublicUrl(filePath);
             
             const publicUrl = urlData.publicUrl;
             
-            // Update profile with photo URL
             const { error: updateError } = await supabase
                 .from('consolidated_user_profiles_table')
                 .upsert({ 
@@ -822,14 +1118,11 @@ class ProfileModule {
             
             this.showPhotoStatus('Photo uploaded successfully!', 'success');
             
-            // Clear pending
             this.pendingPhotoFile = null;
             
-            // Hide photo buttons
             if (this.savePhotoButton) this.savePhotoButton.style.display = 'none';
             if (this.cancelPhotoButton) this.cancelPhotoButton.style.display = 'none';
             
-            // Reload profile to show updated photo
             await this.loadProfile();
             
             setTimeout(() => {
@@ -936,4 +1229,4 @@ window.loadProfile = () => {
     }
 };
 
-console.log('Profile module loaded with DOB, Gender, Admission Date, and Block Progress');
+console.log('Profile module loaded with DOB, Gender, Admission Date, Block Progress, and Password Reset');
