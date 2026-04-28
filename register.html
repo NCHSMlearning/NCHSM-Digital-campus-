@@ -2,37 +2,20 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>NCHSM Digital Portal | Registration</title>
 
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" sizes="32x32"> 
+    
+    <!-- Feather Icons & Fonts -->
     <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
-    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"></noscript>
-
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
     <style>
-        /* --- NCHSM Branding Colors & Modern Palette --- */
-        :root {
-            --nchsm-blue-dark: #073450;
-            --nchsm-blue-light: #0A3D62;
-            --nchsm-green: #38A169;
-            --nchsm-green-hover: #2F855A;
-            --nchsm-gold: #D4AF37;
-            --background: #FFFFFF;
-            --page-bg: #F8FAFC;
-            --gradient-primary: linear-gradient(135deg, #0A3D62 0%, #073450 100%);
-            --gradient-accent: linear-gradient(135deg, #38A169 0%, #2F855A 100%);
-            --shadow-light: rgba(10, 61, 98, 0.08);
-            --shadow-dark: rgba(10, 61, 98, 0.15);
-            --input-border: #E2E8F0;
-            --text-muted: #64748B;
-            --text-dark: #1E293B;
-            --error: #EF4444;
-            --success: #10B981;
-            --focus-ring: 0 0 0 4px rgba(56, 161, 105, 0.15);
-        }
-
         * {
             margin: 0;
             padding: 0;
@@ -41,514 +24,408 @@
 
         body {
             font-family: 'Poppins', sans-serif;
-            background: var(--page-bg);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 20px;
             position: relative;
-            overflow-x: hidden;
+            padding: 20px;
         }
 
-        /* Background Pattern */
+        /* FULL SCREEN BACKGROUND IMAGE - Using the exact image URL provided, with overlay */
         body::before {
-            content: '';
+            content: "";
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: 
-                radial-gradient(circle at 20% 80%, rgba(56, 161, 105, 0.05) 0%, transparent 50%),
-                radial-gradient(circle at 80% 20%, rgba(10, 61, 98, 0.05) 0%, transparent 50%);
-            z-index: -1;
+            background: linear-gradient(135deg, rgba(2, 48, 32, 0.88), rgba(1, 33, 22, 0.85)), 
+                        url('https://nakurucollegeofhealth.ac.ke/wp-content/uploads/2026/02/IMG_20251219_080858_996-rotated.jpg') center center / cover no-repeat fixed;
+            background-size: cover;
+            z-index: -2;
         }
-
-        .container {
-            background: var(--background);
-            padding: 40px;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px var(--shadow-dark);
-            max-width: 550px;
-            width: 100%;
-            text-align: center;
-            animation: fadeIn 0.4s ease-in;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-
-        @keyframes fadeIn { 
-            from { opacity:0; transform:translateY(15px); } 
-            to { opacity:1; transform:translateY(0); } 
-        }
-
-        .logo {
-            width: 80px;
-            height: 80px;
-            margin: 0 auto 20px;
-            background: rgba(10, 61, 98, 0.1);
-            border-radius: 16px;
-            padding: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .logo img {
+        
+        /* Additional subtle overlay for text readability */
+        body::after {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
             width: 100%;
             height: 100%;
+            background: radial-gradient(circle at 20% 30%, rgba(0,0,0,0.1), rgba(0,0,0,0.3));
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        /* Modern Glassmorphic Form Container */
+        .register-container {
+            background: rgba(255, 255, 255, 0.97);
+            backdrop-filter: blur(0px);
+            border-radius: 32px;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255,255,255,0.2);
+            width: 100%;
+            max-width: 580px;
+            padding: 2rem 2rem 2.2rem;
+            transition: all 0.3s ease;
+            animation: fadeSlideUp 0.5s ease-out;
+        }
+
+        @keyframes fadeSlideUp {
+            0% { opacity: 0; transform: translateY(30px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Logo & Branding */
+        .logo-area {
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+        .logo-circle {
+            background: white;
+            width: 85px;
+            height: 85px;
+            border-radius: 28px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 15px 25px -8px rgba(0,0,0,0.2);
+            padding: 12px;
+            margin-bottom: 8px;
+        }
+        .logo-circle img {
+            width: 100%;
+            height: auto;
             object-fit: contain;
         }
-
         .college-title {
-            color: var(--nchsm-blue-dark);
-            font-size: 1.5rem;
-            font-weight: 700;
-            margin-bottom: 8px;
+            font-size: 1.3rem;
+            font-weight: 800;
+            color: #073450;
             line-height: 1.3;
+            letter-spacing: -0.3px;
         }
-
         .tagline {
-            color: var(--nchsm-green);
-            font-size: 0.9rem;
+            font-size: 0.7rem;
             font-weight: 600;
-            margin-bottom: 30px;
+            color: #38A169;
             text-transform: uppercase;
-            letter-spacing: 0.8px;
+            letter-spacing: 1.5px;
+            margin-top: 4px;
         }
-
-        .portal-label {
-            display: inline-block;
-            background: var(--nchsm-blue-light);
+        .portal-badge {
+            background: #0A3D62;
             color: white;
-            padding: 6px 18px;
-            border-radius: 20px;
-            font-size: 0.85rem;
+            display: inline-block;
+            margin: 0.8rem auto 1.2rem;
+            padding: 0.25rem 1.2rem;
+            border-radius: 40px;
+            font-size: 0.75rem;
             font-weight: 500;
-            margin-bottom: 25px;
             letter-spacing: 0.5px;
         }
 
-        h2 {
-            font-weight: 700;
-            color: var(--nchsm-blue-dark);
-            margin-bottom: 8px;
-            text-align: left;
-        }
-
-        .subtitle {
-            color: var(--text-muted);
-            margin-bottom: 30px;
-            text-align: left;
-            font-size: 0.95rem;
-        }
-
-        form {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            text-align: left;
-        }
-
+        /* Form styles */
         .form-group {
+            margin-bottom: 1.2rem;
             display: flex;
             flex-direction: column;
         }
-
         label {
             font-weight: 600;
-            font-size: 0.9rem;
-            color: var(--text-dark);
-            margin-bottom: 8px;
+            font-size: 0.8rem;
+            margin-bottom: 0.4rem;
+            color: #1e293b;
             display: flex;
             align-items: center;
+            gap: 6px;
         }
-
         label i {
-            margin-right: 8px;
-            color: var(--nchsm-green);
+            color: #38A169;
+            width: 16px;
+            height: 16px;
         }
-
         input, select {
-            padding: 14px 16px;
-            border: 2px solid var(--input-border);
-            border-radius: 10px;
-            font-size: 1rem;
-            width: 100%;
-            transition: all 0.3s ease;
-            background-color: var(--background);
+            padding: 12px 14px;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 16px;
+            font-size: 0.9rem;
+            background: white;
+            transition: 0.2s;
             font-weight: 500;
-            color: var(--text-dark);
+            font-family: 'Poppins', sans-serif;
         }
-
         input:focus, select:focus {
             outline: none;
-            border-color: var(--nchsm-green);
-            box-shadow: var(--focus-ring);
+            border-color: #38A169;
+            box-shadow: 0 0 0 3px rgba(56,161,105,0.2);
             transform: translateY(-1px);
         }
-
-        input::placeholder {
-            color: #94A3B8;
-            font-weight: 400;
-        }
-
         .role-fields {
-            background: rgba(10, 61, 98, 0.03);
-            border-radius: 12px;
-            padding: 20px;
-            margin-top: 10px;
-            border: 1px solid rgba(10, 61, 98, 0.1);
-            transition: all 0.3s ease;
+            background: #F8FAFE;
+            padding: 1rem 1.2rem;
+            border-radius: 20px;
+            margin-bottom: 0.8rem;
+            border: 1px solid #eef2f6;
+            transition: all 0.2s;
         }
-
         .role-fields.active {
             background: rgba(56, 161, 105, 0.05);
-            border-color: rgba(56, 161, 105, 0.2);
+            border-color: rgba(56, 161, 105, 0.3);
         }
-
         button {
-            background: var(--gradient-accent);
-            color: #fff;
+            background: linear-gradient(105deg, #0A3D62 0%, #073450 100%);
             border: none;
-            padding: 16px;
-            border-radius: 12px;
+            padding: 14px;
+            border-radius: 40px;
+            font-weight: 700;
+            font-size: 1rem;
+            color: white;
             cursor: pointer;
-            font-size: 1.1rem;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            box-shadow: 0 8px 25px rgba(56, 161, 105, 0.3);
-            position: relative;
-            overflow: hidden;
-            margin-top: 10px;
-        }
-
-        button::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
+            transition: 0.2s;
             width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-            transition: left 0.5s;
+            margin-top: 0.6rem;
+            box-shadow: 0 8px 18px rgba(7,52,80,0.25);
+            font-family: 'Poppins', sans-serif;
         }
-
         button:hover {
             transform: translateY(-2px);
-            box-shadow: 0 12px 35px rgba(56, 161, 105, 0.4);
+            background: linear-gradient(105deg, #0F4B6E, #092c42);
+            box-shadow: 0 12px 22px rgba(7,52,80,0.35);
         }
-
-        button:hover::before {
-            left: 100%;
-        }
-
-        button:active {
-            transform: translateY(0);
-        }
-
+        button:active { transform: translateY(0); }
         button:disabled {
-            background: #CBD5E1;
+            opacity: 0.7;
             cursor: not-allowed;
-            box-shadow: none;
             transform: none;
         }
-
         .message {
-            text-align: center;
-            margin-top: 20px;
-            font-weight: 600;
+            margin-top: 1rem;
             padding: 12px;
-            border-radius: 8px;
-            font-size: 0.95rem;
-        }
-
-        .error {
-            color: var(--error);
-            background: rgba(239, 68, 68, 0.05);
-            border: 1px solid rgba(239, 68, 68, 0.2);
-        }
-
-        .success {
-            color: var(--success);
-            background: rgba(16, 185, 129, 0.05);
-            border: 1px solid rgba(16, 185, 129, 0.2);
-        }
-
-        .login-link {
-            margin-top: 30px;
-            color: var(--text-muted);
-            font-size: 0.95rem;
+            border-radius: 30px;
             text-align: center;
-        }
-
-        .login-link a {
-            color: var(--nchsm-blue-light);
-            text-decoration: none;
+            font-size: 0.8rem;
             font-weight: 600;
-            transition: color 0.2s;
         }
-
-        .login-link a:hover {
-            color: var(--nchsm-green);
-            text-decoration: underline;
+        .error { background: #FEF2F2; color: #DC2626; border-left: 4px solid #DC2626; }
+        .success { background: #ECFDF5; color: #059669; border-left: 4px solid #059669; }
+        .help-text { font-size: 0.65rem; color: #5b6e8c; margin-top: 5px; }
+        .redirect-countdown { text-align: center; font-size: 0.75rem; margin-top: 14px; color: #2c7a4b; font-weight: 600; background: #e6f7ef; padding: 6px; border-radius: 30px; }
+        .login-link { margin-top: 28px; text-align: center; font-size: 0.85rem; color: #475569; border-top: 1px solid #e2e8f0; padding-top: 20px; }
+        .login-link a { color: #0A3D62; text-decoration: none; font-weight: 700; transition: 0.2s; }
+        .login-link a:hover { color: #38A169; text-decoration: underline; }
+        
+        /* Custom select optgroup styling */
+        optgroup { font-weight: 600; color: #0A3D62; background: #fff; }
+        option { font-weight: 400; }
+        
+        @media (max-width: 550px) {
+            .register-container { padding: 1.5rem; }
+            .college-title { font-size: 1rem; }
+            .role-fields { padding: 0.8rem; }
         }
-
-        /* Loading Animation */
+        
+        /* Loading animation inside button */
         .btn-loading {
             display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 2px solid transparent;
-            border-top: 2px solid #ffffff;
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top: 2px solid white;
             border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-right: 10px;
+            animation: spin 0.8s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
         }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        /* Auto Redirect Countdown */
-        .redirect-countdown {
-            font-size: 0.85rem;
-            color: var(--text-muted);
-            margin-top: 10px;
-            font-weight: 500;
-        }
-
-        /* Help Text */
-        .help-text {
-            font-size: 0.7rem;
-            color: var(--text-muted);
-            margin-top: 4px;
-        }
-
-        /* Responsive Design */
-        @media (max-width: 768px) {
-            .container {
-                padding: 30px 25px;
-                max-width: 100%;
-            }
-            
-            .college-title {
-                font-size: 1.3rem;
-            }
-            
-            .role-fields {
-                padding: 15px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .container {
-                padding: 25px 20px;
-            }
-            
-            .college-title {
-                font-size: 1.2rem;
-            }
-            
-            h2 {
-                font-size: 1.4rem;
-            }
-            
-            input, select {
-                padding: 12px 14px;
-            }
-            
-            button {
-                padding: 14px;
-            }
-        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
-
 <body>
-    <div class="container">
-        <div class="logo">
+
+<div class="register-container">
+    <div class="logo-area">
+        <div class="logo-circle">
             <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo">
         </div>
         <div class="college-title">NAKURU COLLEGE OF HEALTH SCIENCES AND MANAGEMENT</div>
         <div class="tagline">Centre of Nursing & Health Sciences Excellence</div>
-        
-        <span class="portal-label">Account Registration</span>
-
-        <h2>Create Your Account</h2>
-        <p class="subtitle">Join the NCHSM digital learning platform</p>
-
-        <form id="register-form">
-            <div class="form-group">
-                <label for="role"><i data-feather="user"></i> Register As</label>
-                <select id="role" name="role" required>
-                    <option value="">-- Select Your Role --</option>
-                    <option value="student">Student</option>
-                    <option value="lecturer">Lecturer</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label for="full_name"><i data-feather="user"></i> Full Name</label>
-                <input type="text" id="full_name" name="full_name" placeholder="Enter your full name" required>
-            </div>
-
-            <div class="form-group">
-                <label for="email"><i data-feather="mail"></i> Email Address</label>
-                <input type="email" id="email" name="email" placeholder="Enter your email address" required>
-            </div>
-
-            <!-- STUDENT FIELDS - NO BLOCK SELECTION (Admin sets block) -->
-            <div id="student-fields" class="role-fields">
-                <div class="form-group">
-                    <label for="student_id_number"><i data-feather="id"></i> Admission / Student ID</label>
-                    <input type="text" id="student_id_number" name="student_id_number" placeholder="e.g. KRCHN/001/2026">
-                    <div class="help-text">Your unique student identification number</div>
-                </div>
-                
-                <div class="form-group">
-                    <label for="program_type"><i data-feather="book"></i> Program</label>
-                    <select id="program_type" name="program_type" required>
-                        <option value="">-- Select Your Program --</option>
-                        
-                        <!-- KRCHN PROGRAMS -->
-                        <optgroup label="KRCHN Programs">
-                            <option value="KRCHN">KRCHN Nursing</option>
-                        </optgroup>
-                        
-                        <!-- TVET - DIPLOMA PROGRAMS -->
-                        <optgroup label="TVET Diploma Programs (6-24 months)">
-                            <option value="DPOTT">Diploma in Perioperative Theatre Technology</option>
-                            <option value="DCH">Diploma in Community Health</option>
-                            <option value="DHRIT">Diploma in Health Records and IT</option>
-                            <option value="DSL">Diploma in Science Lab</option>
-                            <option value="DSW">Diploma in Social Work and Community Development</option>
-                            <option value="DCJS">Diploma in Criminal Justice</option>
-                            <option value="DHSS">Diploma in Health Support Services</option>
-                            <option value="DICT">Diploma in Information & Communication Technology</option>
-                            <option value="DME">Diploma in Medical Engineering</option>
-                        </optgroup>
-                        
-                        <!-- TVET - CERTIFICATE PROGRAMS -->
-                        <optgroup label="TVET Certificate Programs (3-12 months)">
-                            <option value="CPOTT">Certificate in Perioperative Theatre Technology</option>
-                            <option value="CCH">Certificate in Community Health</option>
-                            <option value="CHRIT">Certificate in Health Records and IT</option>
-                            <option value="CPC">Certificate in Patient Care</option>
-                            <option value="CSL">Certificate in Science Lab</option>
-                            <option value="CSW">Certificate in Social Work and Community Development</option>
-                            <option value="CCJS">Certificate in Criminal Justice</option>
-                            <option value="CAG">Certificate in Agriculture</option>
-                            <option value="CHSS">Certificate in Health Support Services</option>
-                            <option value="CICT">Certificate in Information & Communication Technology</option>
-                        </optgroup>
-                        
-                        <!-- TVET - ARTISAN PROGRAMS -->
-                        <optgroup label="TVET Artisan Programs (2-12 months)">
-                            <option value="ACH">Artisan in Community Health</option>
-                            <option value="AAG">Artisan in Agriculture</option>
-                            <option value="ASW">Artisan in Social Work and Community Development</option>
-                        </optgroup>
-                        
-                        <!-- OTHER TVET -->
-                        <optgroup label="Other TVET Programs">
-                            <option value="CCA">Certificate in Computer Applications (CCA)</option>
-                            <option value="PTE">TVET/CDACC (PTE)</option>
-                        </optgroup>
-                    </select>
-                </div>
-                
-                <!-- Intake Year (Student selects when they joined) -->
-                <div class="form-group">
-                    <label for="intake_year"><i data-feather="calendar"></i> Intake Year</label>
-                    <select id="intake_year" name="intake_year" required>
-                        <option value="">-- Select Intake Year --</option>
-                        <option value="2024">March 2024</option>
-                        <option value="2025">March 2025</option>
-                        <option value="2026">March 2026</option>
-                        <option value="2027">March 2027</option>
-                        <option value="2028">March 2028</option>
-                    </select>
-                    <div class="help-text">Your year of admission to the college</div>
-                </div>
-                
-                <!-- NOTE: BLOCK IS NOT HERE - Admin will set it after approval -->
-            </div>
-
-            <!-- LECTURER FIELDS -->
-            <div id="lecturer-fields" class="role-fields">
-                <div class="form-group">
-                    <label for="staff_id"><i data-feather="id"></i> Staff ID</label>
-                    <input type="text" id="staff_id" name="staff_id" placeholder="e.g. NCHSM-LECT-001">
-                </div>
-                <div class="form-group">
-                    <label for="department"><i data-feather="briefcase"></i> Department</label>
-                    <select id="department" name="department">
-                        <option value="">-- Select Department --</option>
-                        <option value="Nursing">Nursing</option>
-                        <option value="TVET">TVET</option>
-                        <option value="Community Health">Community Health</option>
-                        <option value="Health Records">Health Records</option>
-                        <option value="ICT">ICT</option>
-                        <option value="Administration">Administration</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label for="phone"><i data-feather="phone"></i> Phone Number</label>
-                <input type="tel" id="phone" name="phone" placeholder="07XXXXXXXX" required>
-            </div>
-
-            <div class="form-group">
-                <label for="password"><i data-feather="lock"></i> Password</label>
-                <input type="password" id="password" name="password" placeholder="Create a strong password" required>
-                <div class="help-text">Minimum 6 characters</div>
-            </div>
-
-            <div class="form-group">
-                <label for="confirm_password"><i data-feather="lock"></i> Confirm Password</label>
-                <input type="password" id="confirm_password" name="confirm_password" placeholder="Confirm your password" required>
-            </div>
-
-            <button type="submit" id="register-btn">
-                <span id="button-text">Create Account</span>
-            </button>
-            <p id="message" class="message"></p>
-            <div id="redirect-countdown" class="redirect-countdown" style="display: none;"></div>
-        </form>
-
-        <div class="login-link">
-            Already have an account? <a href="login.html">Login here</a>
-        </div>
+        <div><span class="portal-badge">✦ Account Registration ✦</span></div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script>
-    // Initialize Feather Icons
-    document.addEventListener('DOMContentLoaded', () => {
-        if (typeof feather !== 'undefined') {
-            feather.replace(); 
-        }
-    });
+    <h2 style="font-size: 1.5rem; font-weight: 700; color: #073450; margin-bottom: 5px;">Create Your Account</h2>
+    <p style="color: #64748B; font-size: 0.85rem; margin-bottom: 1.5rem;">Join the NCHSM digital learning platform</p>
 
-    // Remove .html from URL
+    <form id="register-form">
+        <!-- Role Selection -->
+        <div class="form-group">
+            <label><i data-feather="user"></i> Register As</label>
+            <select id="role" name="role" required>
+                <option value="">-- Select Your Role --</option>
+                <option value="student">Student</option>
+                <option value="lecturer">Lecturer</option>
+            </select>
+        </div>
+
+        <!-- Full Name -->
+        <div class="form-group">
+            <label><i data-feather="user"></i> Full Name</label>
+            <input type="text" id="full_name" name="full_name" placeholder="Enter your full name" required>
+        </div>
+
+        <!-- Email -->
+        <div class="form-group">
+            <label><i data-feather="mail"></i> Email Address</label>
+            <input type="email" id="email" name="email" placeholder="Enter your email address" required>
+        </div>
+
+        <!-- STUDENT FIELDS (exactly as original, with full program list) -->
+        <div id="student-fields" class="role-fields">
+            <div class="form-group">
+                <label><i data-feather="id"></i> Admission / Student ID</label>
+                <input type="text" id="student_id_number" name="student_id_number" placeholder="e.g. KRCHN/001/2026">
+                <div class="help-text">Your unique student identification number</div>
+            </div>
+            
+            <div class="form-group">
+                <label><i data-feather="book"></i> Program</label>
+                <select id="program_type" name="program_type">
+                    <option value="">-- Select Your Program --</option>
+                    
+                    <!-- KRCHN PROGRAMS -->
+                    <optgroup label="KRCHN Programs">
+                        <option value="KRCHN">KRCHN Nursing</option>
+                    </optgroup>
+                    
+                    <!-- TVET - DIPLOMA PROGRAMS -->
+                    <optgroup label="TVET Diploma Programs (6-24 months)">
+                        <option value="DPOTT">Diploma in Perioperative Theatre Technology</option>
+                        <option value="DCH">Diploma in Community Health</option>
+                        <option value="DHRIT">Diploma in Health Records and IT</option>
+                        <option value="DSL">Diploma in Science Lab</option>
+                        <option value="DSW">Diploma in Social Work and Community Development</option>
+                        <option value="DCJS">Diploma in Criminal Justice</option>
+                        <option value="DHSS">Diploma in Health Support Services</option>
+                        <option value="DICT">Diploma in Information & Communication Technology</option>
+                        <option value="DME">Diploma in Medical Engineering</option>
+                    </optgroup>
+                    
+                    <!-- TVET - CERTIFICATE PROGRAMS -->
+                    <optgroup label="TVET Certificate Programs (3-12 months)">
+                        <option value="CPOTT">Certificate in Perioperative Theatre Technology</option>
+                        <option value="CCH">Certificate in Community Health</option>
+                        <option value="CHRIT">Certificate in Health Records and IT</option>
+                        <option value="CPC">Certificate in Patient Care</option>
+                        <option value="CSL">Certificate in Science Lab</option>
+                        <option value="CSW">Certificate in Social Work and Community Development</option>
+                        <option value="CCJS">Certificate in Criminal Justice</option>
+                        <option value="CAG">Certificate in Agriculture</option>
+                        <option value="CHSS">Certificate in Health Support Services</option>
+                        <option value="CICT">Certificate in Information & Communication Technology</option>
+                    </optgroup>
+                    
+                    <!-- TVET - ARTISAN PROGRAMS -->
+                    <optgroup label="TVET Artisan Programs (2-12 months)">
+                        <option value="ACH">Artisan in Community Health</option>
+                        <option value="AAG">Artisan in Agriculture</option>
+                        <option value="ASW">Artisan in Social Work and Community Development</option>
+                    </optgroup>
+                    
+                    <!-- OTHER TVET -->
+                    <optgroup label="Other TVET Programs">
+                        <option value="CCA">Certificate in Computer Applications (CCA)</option>
+                        <option value="PTE">TVET/CDACC (PTE)</option>
+                    </optgroup>
+                </select>
+            </div>
+            
+            <!-- Intake Year -->
+            <div class="form-group">
+                <label><i data-feather="calendar"></i> Intake Year</label>
+                <select id="intake_year" name="intake_year">
+                    <option value="">-- Select Intake Year --</option>
+                    <option value="2024">March 2024</option>
+                    <option value="2025">March 2025</option>
+                    <option value="2026" selected>March 2026</option>
+                    <option value="2027">March 2027</option>
+                    <option value="2028">March 2028</option>
+                </select>
+                <div class="help-text">Your year of admission to the college</div>
+            </div>
+            <div class="help-text">📌 Block will be set by Admin after approval (e.g., Introductory, Main, Final)</div>
+        </div>
+
+        <!-- LECTURER FIELDS -->
+        <div id="lecturer-fields" class="role-fields">
+            <div class="form-group">
+                <label><i data-feather="id"></i> Staff ID</label>
+                <input type="text" id="staff_id" name="staff_id" placeholder="e.g. NCHSM-LECT-001">
+            </div>
+            <div class="form-group">
+                <label><i data-feather="briefcase"></i> Department</label>
+                <select id="department" name="department">
+                    <option value="">-- Select Department --</option>
+                    <option value="Nursing">Nursing</option>
+                    <option value="TVET">TVET</option>
+                    <option value="Community Health">Community Health</option>
+                    <option value="Health Records">Health Records</option>
+                    <option value="ICT">ICT</option>
+                    <option value="Administration">Administration</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Phone -->
+        <div class="form-group">
+            <label><i data-feather="phone"></i> Phone Number</label>
+            <input type="tel" id="phone" name="phone" placeholder="07XXXXXXXX" required>
+        </div>
+
+        <!-- Password & Confirm -->
+        <div class="form-group">
+            <label><i data-feather="lock"></i> Password</label>
+            <input type="password" id="password" name="password" placeholder="Create a strong password" required>
+            <div class="help-text">Minimum 6 characters</div>
+        </div>
+
+        <div class="form-group">
+            <label><i data-feather="lock"></i> Confirm Password</label>
+            <input type="password" id="confirm_password" name="confirm_password" placeholder="Confirm your password" required>
+        </div>
+
+        <button type="submit" id="register-btn">
+            <span id="button-text">Create Account</span>
+        </button>
+        <div id="message" class="message"></div>
+        <div id="redirect-countdown" class="redirect-countdown" style="display: none;"></div>
+    </form>
+
+    <div class="login-link">
+        Already have an account? <a href="login.html">Login here</a>
+    </div>
+</div>
+
+<script>
+    // Feather Icons
+    document.addEventListener('DOMContentLoaded', () => {
+        if (typeof feather !== 'undefined') feather.replace();
+    });
+    
+    // URL cleanup
     if (window.location.pathname.endsWith('.html')) {
         const cleanPath = window.location.pathname.replace(/\.html$/, '');
         window.history.replaceState({}, '', cleanPath);
     }
 
+    // Supabase Configuration (same as original)
     const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // Send registration email
+    // Email notification (image beacon)
     async function sendRegistrationEmail(email, userName) {
         console.log('📧 Sending welcome email to:', email);
-        
         const scriptUrl = 'https://script.google.com/macros/s/AKfycbwo0Z-oQ_p5-dIe4XYiaRTv6ZdxlmfxP5LIpQT4T1cGihvlimVJg3AvdUNrDeZ0cEkJ3g/exec';
-        
         const params = new URLSearchParams({
             to: email,
             otp: 'WELCOME',
@@ -556,147 +433,137 @@
             emailType: 'welcome',
             subject: 'Welcome to NCHSM Digital Portal'
         });
-        
-        console.log('📡 Sending welcome email...');
-        
         const img = new Image();
         img.src = scriptUrl + '?' + params.toString();
         img.style.display = 'none';
-        
-        img.onload = function() {
-            console.log('✅ Welcome email sent!');
-        };
-        
-        img.onerror = function() {
-            console.log('✅ Email request completed');
-        };
-        
         document.body.appendChild(img);
-        
-        return new Promise(resolve => setTimeout(() => resolve(true), 2000));
+        return new Promise(resolve => setTimeout(() => resolve(true), 1000));
     }
 
-    // Get DOM elements
+    // DOM Elements
     const roleSelect = document.getElementById('role');
     const studentFieldsDiv = document.getElementById('student-fields');
     const lecturerFieldsDiv = document.getElementById('lecturer-fields');
     const studentInputs = studentFieldsDiv.querySelectorAll('input, select');
     const lecturerInputs = lecturerFieldsDiv.querySelectorAll('input, select');
     const form = document.getElementById('register-form');
-    const message = document.getElementById('message');
+    const messageDiv = document.getElementById('message');
     const registerBtn = document.getElementById('register-btn');
-    const buttonText = document.getElementById('button-text');
+    const buttonTextSpan = document.getElementById('button-text');
     const redirectCountdown = document.getElementById('redirect-countdown');
 
-    // Toggle role-specific fields
-    const manageRequiredFields = (role) => {
+    // Toggle role fields & required attributes
+    function manageRequiredFields(role) {
         const isStudent = role === 'student';
         const isLecturer = role === 'lecturer';
-
+        
         studentFieldsDiv.style.display = isStudent ? 'block' : 'none';
         lecturerFieldsDiv.style.display = isLecturer ? 'block' : 'none';
-
-        // Add/remove active class for styling
-        studentFieldsDiv.classList.toggle('active', isStudent);
-        lecturerFieldsDiv.classList.toggle('active', isLecturer);
-
+        
+        // Add active class for styling
+        if (isStudent) studentFieldsDiv.classList.add('active');
+        else studentFieldsDiv.classList.remove('active');
+        if (isLecturer) lecturerFieldsDiv.classList.add('active');
+        else lecturerFieldsDiv.classList.remove('active');
+        
+        // Set required attributes
         studentInputs.forEach(input => {
-            isStudent ? input.setAttribute('required', '') : input.removeAttribute('required');
+            if (isStudent) input.setAttribute('required', '');
+            else input.removeAttribute('required');
         });
-
         lecturerInputs.forEach(input => {
-            isLecturer ? input.setAttribute('required', '') : input.removeAttribute('required');
+            if (isLecturer) input.setAttribute('required', '');
+            else input.removeAttribute('required');
         });
-    };
-
-    roleSelect.addEventListener('change', () => {
-        manageRequiredFields(roleSelect.value);
-    });
+    }
+    
+    roleSelect.addEventListener('change', () => manageRequiredFields(roleSelect.value));
     manageRequiredFields(roleSelect.value);
 
-    // Function to redirect to login page with countdown
-    function redirectToLogin() {
+    // Redirect countdown helper
+    function startRedirectCountdown() {
         let countdown = 5;
         redirectCountdown.style.display = 'block';
-        
-        const countdownInterval = setInterval(() => {
-            redirectCountdown.textContent = `Redirecting to login page in ${countdown} seconds...`;
+        const interval = setInterval(() => {
+            redirectCountdown.textContent = `✅ Account pending approval. Redirecting to login page in ${countdown} seconds...`;
             countdown--;
-            
             if (countdown < 0) {
-                clearInterval(countdownInterval);
+                clearInterval(interval);
                 window.location.href = 'login.html';
             }
         }, 1000);
     }
 
-    // Form submission
+    // Form Submission
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        message.textContent = '';
-        message.className = 'message';
+        messageDiv.textContent = '';
+        messageDiv.className = 'message';
         registerBtn.disabled = true;
-        buttonText.innerHTML = '<div class="btn-loading"></div> Creating Account...';
-
+        buttonTextSpan.innerHTML = '<div class="btn-loading"></div> Creating Account...';
+        
         const role = roleSelect.value;
         const full_name = document.getElementById('full_name').value.trim();
         const email = document.getElementById('email').value.trim();
         const phone = document.getElementById('phone').value.trim();
-        const password = document.getElementById('password').value.trim();
-        const confirmPassword = document.getElementById('confirm_password').value.trim();
-
-        // Password validation
+        const password = document.getElementById('password').value;
+        const confirmPassword = document.getElementById('confirm_password').value;
+        
+        // Validations
         if (password !== confirmPassword) {
-            message.textContent = '❌ Passwords do not match.';
-            message.classList.add('error');
+            messageDiv.textContent = '❌ Passwords do not match.';
+            messageDiv.classList.add('error');
             registerBtn.disabled = false;
-            buttonText.textContent = 'Create Account';
+            buttonTextSpan.textContent = 'Create Account';
             return;
         }
-
         if (password.length < 6) {
-            message.textContent = '❌ Password must be at least 6 characters.';
-            message.classList.add('error');
+            messageDiv.textContent = '❌ Password must be at least 6 characters.';
+            messageDiv.classList.add('error');
             registerBtn.disabled = false;
-            buttonText.textContent = 'Create Account';
+            buttonTextSpan.textContent = 'Create Account';
             return;
         }
-
-        // Get student-specific fields
+        if (!role) {
+            messageDiv.textContent = '❌ Please select a role (Student/Lecturer).';
+            messageDiv.classList.add('error');
+            registerBtn.disabled = false;
+            buttonTextSpan.textContent = 'Create Account';
+            return;
+        }
+        
+        // Student specific values
         const student_id_number = document.getElementById('student_id_number').value.trim();
         const program_type = document.getElementById('program_type').value;
-        const intake_year = document.getElementById('intake_year')?.value;
+        const intake_year = document.getElementById('intake_year')?.value || '';
         
-        // Get lecturer-specific fields
+        // Lecturer specific values
         const staff_id = document.getElementById('staff_id').value.trim();
         const department = document.getElementById('department').value;
-
-        // Auto-set admission date to today
+        
         const today = new Date();
         const admissionDate = today.toISOString().split('T')[0];
-        const admissionYear = today.getFullYear().toString();
-        
-        // DEFAULT BLOCK - All students start at Introductory (Admin can change later)
         const defaultBlock = 'Introductory';
-
+        
         try {
-            // Prepare user metadata based on role
+            // Build metadata for Supabase Auth
             let userMetadata = {
                 full_name,
                 role,
                 phone,
                 status: 'pending'
             };
-
+            
             if (role === 'student') {
+                if (!program_type) throw new Error('Please select your program');
                 userMetadata = {
                     ...userMetadata,
                     admission_number: student_id_number,
                     course: program_type,
                     intake_year: intake_year,
-                    current_block: defaultBlock,  // Default block, admin can change
+                    current_block: defaultBlock,
                     admission_date: admissionDate,
-                    admission_year: admissionYear
+                    admission_year: today.getFullYear().toString()
                 };
             } else if (role === 'lecturer') {
                 userMetadata = {
@@ -705,22 +572,20 @@
                     department: department
                 };
             }
-
+            
             // 1. Create user in Supabase Auth
             const { data: authData, error: authError } = await sb.auth.signUp({
                 email,
                 password,
                 options: { data: userMetadata }
             });
-
-            if (authError) {
-                throw new Error(authError.message);
-            }
-
-            // 2. Send welcome email
+            
+            if (authError) throw new Error(authError.message);
+            
+            // 2. Send welcome email (non-blocking)
             await sendRegistrationEmail(email, full_name);
             
-            // 3. Store user profile in database
+            // 3. Insert into consolidated_user_profiles_table
             let profileData = {
                 email: email,
                 full_name: full_name,
@@ -730,16 +595,16 @@
                 user_id: authData.user.id,
                 created_at: new Date().toISOString()
             };
-
+            
             if (role === 'student') {
                 profileData = {
                     ...profileData,
                     student_id: student_id_number,
                     program: program_type,
                     intake_year: intake_year,
-                    block: defaultBlock,  // Default block, admin can change via promotion
+                    block: defaultBlock,
                     admission_date: admissionDate,
-                    admission_year: admissionYear
+                    admission_year: today.getFullYear().toString()
                 };
             } else if (role === 'lecturer') {
                 profileData = {
@@ -748,36 +613,32 @@
                     department: department
                 };
             }
-
+            
             const { error: profileError } = await sb
                 .from('consolidated_user_profiles_table')
                 .insert(profileData);
-
-            if (profileError) {
-                console.error('Profile insert error:', profileError);
-                // Continue anyway - auth user was created
-            }
-
+            
+            if (profileError) console.error('Profile insert warning:', profileError);
+            
             // Success message
-            const roleText = role === 'student' ? 'student' : 'lecturer';
-            message.textContent = `✅ Registration successful! Your ${roleText} account has been created. Please wait for admin approval before logging in.`;
-            message.classList.add('success');
+            messageDiv.textContent = `✅ Registration successful! Your ${role} account has been created. Please wait for admin approval before logging in.`;
+            messageDiv.classList.add('success');
             
-            // Start redirect countdown
-            redirectToLogin();
+            // Start countdown to login page
+            startRedirectCountdown();
             
-            // Reset form after successful registration
+            // Reset form fields
             form.reset();
             manageRequiredFields('');
             
         } catch (error) {
             console.error('Registration error:', error);
-            message.textContent = `❌ Registration failed: ${error.message}`;
-            message.classList.add('error');
+            messageDiv.textContent = `❌ Registration failed: ${error.message}`;
+            messageDiv.classList.add('error');
             registerBtn.disabled = false;
-            buttonText.textContent = 'Create Account';
+            buttonTextSpan.textContent = 'Create Account';
         }
     });
-    </script>
+</script>
 </body>
 </html>
