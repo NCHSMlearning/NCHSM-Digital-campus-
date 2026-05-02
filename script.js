@@ -5297,18 +5297,23 @@ async function logout() {
     }
 }
 // ============================================
-// ADMIN SUPPORT TICKETS - FIXED VERSION
+// ADMIN SUPPORT TICKETS - USING window.sb
 // ============================================
 
-// Get Supabase client - MATCHES student-tickets.js pattern
+// Get Supabase client - use window.sb
 function getSupabaseClient() {
-    // Use the SAME pattern as student-tickets.js
-    const client = window.db?.supabase;
-    if (!client || typeof client.from !== 'function') {
-        console.error('❌ No valid Supabase client available');
-        return null;
+    if (window.sb && typeof window.sb.from === 'function') {
+        console.log('✅ Using window.sb client');
+        return window.sb;
     }
-    return client;
+    
+    if (window.supabase && typeof window.supabase.from === 'function') {
+        console.log('✅ Using window.supabase client');
+        return window.supabase;
+    }
+    
+    console.error('❌ No valid Supabase client available');
+    return null;
 }
 
 // Load tickets
@@ -5349,7 +5354,7 @@ async function loadAdminTickets() {
         // Get unique student IDs
         const studentIds = [...new Set(tickets.map(t => t.student_id).filter(id => id))];
         
-        // Fetch student profiles from consolidated_user_profiles_table
+        // Fetch student profiles
         let studentMap = {};
         if (studentIds.length > 0) {
             const { data: students, error: studentError } = await supabase
@@ -5373,7 +5378,7 @@ async function loadAdminTickets() {
         
         updateTicketCounts(openCount, progressCount, closedCount, urgentCount);
         
-        // Store tickets globally for filtering
+        // Store globally
         window.adminAllTickets = tickets;
         window.adminStudentMap = studentMap;
         
@@ -5381,7 +5386,7 @@ async function loadAdminTickets() {
         renderAdminTicketsTable(tickets, studentMap);
         
     } catch (err) {
-        console.error('❌ Error loading tickets:', err);
+        console.error('❌ Error:', err);
         tbody.innerHTML = `<tr><td colspan="10" style="padding: 40px; text-align: center; color: red;">Error: ${err.message}</td></tr>`;
     }
 }
@@ -5404,29 +5409,24 @@ function renderAdminTicketsTable(tickets, studentMap) {
     const tbody = document.getElementById('admin-tickets-body');
     if (!tbody) return;
     
-    if (!tickets || tickets.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="10" style="padding: 40px; text-align: center;">No tickets found</td></tr>';
-        return;
-    }
-    
     tbody.innerHTML = tickets.map(ticket => {
         const student = studentMap[ticket.student_id] || { 
-            full_name: 'Unknown User', 
-            email: 'unknown@example.com',
-            program: 'N/A', 
-            intake_year: 'N/A' 
+            full_name: 'Unknown', 
+            email: '-',
+            program: '-', 
+            intake_year: '-'
         };
         
         const createdDate = new Date(ticket.created_at).toLocaleDateString();
         const updatedDate = new Date(ticket.updated_at).toLocaleDateString();
         
-        // Status badge class
+        // Status badge
         let statusClass = 'badge-info';
         if (ticket.status === 'open') statusClass = 'badge-info';
         if (ticket.status === 'in_progress') statusClass = 'badge-warning';
         if (ticket.status === 'closed' || ticket.status === 'resolved') statusClass = 'badge-success';
         
-        // Priority badge class
+        // Priority badge
         let priorityClass = 'badge-secondary';
         if (ticket.priority === 'urgent') priorityClass = 'badge-danger';
         if (ticket.priority === 'high') priorityClass = 'badge-warning';
@@ -5448,7 +5448,7 @@ function renderAdminTicketsTable(tickets, studentMap) {
                 <td style="padding: 12px;">${createdDate}</td>
                 <td style="padding: 12px;">${updatedDate}</td>
                 <td style="padding: 12px;">
-                    <button onclick="viewAdminTicket('${ticket.id}')" class="btn-view" style="background: #4C1D95; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">
+                    <button onclick="viewAdminTicket('${ticket.id}')" style="background: #4C1D95; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">
                         <i class="fas fa-eye"></i> View
                     </button>
                 </td>
@@ -5493,6 +5493,9 @@ async function viewAdminTicket(ticketId) {
         .eq('ticket_id', ticketId)
         .order('created_at', { ascending: true });
     
+    // Get current admin ID from the global variable
+    const adminId = window.currentUserProfile?.user_id || window.currentUserId;
+    
     // Build modal HTML
     const modalHtml = `
         <div id="ticketViewModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 10000; display: flex; align-items: center; justify-content: center;">
@@ -5536,8 +5539,10 @@ async function viewAdminTicket(ticketId) {
                             <option value="closed">Closed</option>
                             <option value="resolved">Resolved</option>
                         </select>
-                        <input type="checkbox" id="replyInternal" style="margin-left: 10px;">
-                        <label for="replyInternal">Internal note (staff only)</label>
+                        <label style="display: flex; align-items: center; gap: 5px;">
+                            <input type="checkbox" id="replyInternal">
+                            Internal note (staff only)
+                        </label>
                         <button onclick="sendAdminReply('${ticketId}')" style="background: #4C1D95; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer;">
                             <i class="fas fa-paper-plane"></i> Send Reply
                         </button>
@@ -5572,10 +5577,13 @@ async function sendAdminReply(ticketId) {
     }
     
     const supabase = getSupabaseClient();
-    const adminId = currentUserId; // Use the global currentUserId from initSession
+    
+    // Get admin ID from the global variable set in initSession
+    const adminId = window.currentUserProfile?.user_id || window.currentUserId;
     
     if (!adminId) {
         alert('Not authenticated. Please refresh the page.');
+        console.error('No admin ID found. window.currentUserProfile:', window.currentUserProfile);
         return;
     }
     
@@ -5594,7 +5602,7 @@ async function sendAdminReply(ticketId) {
         if (replyError) throw replyError;
         
         // Update status if changed
-        if (newStatus && newStatus !== 'none') {
+        if (newStatus && newStatus !== ticket.status) {
             await supabase
                 .from('support_tickets')
                 .update({ 
@@ -5628,9 +5636,10 @@ function filterAdminTickets() {
     rows.forEach(row => {
         let show = true;
         const text = row.innerText.toLowerCase();
-        const status = row.cells[6]?.innerText.toLowerCase() || '';
-        const priority = row.cells[5]?.innerText.toLowerCase() || '';
-        const category = row.cells[4]?.innerText.toLowerCase() || '';
+        const cells = row.querySelectorAll('td');
+        const status = cells[6]?.innerText.toLowerCase() || '';
+        const priority = cells[5]?.innerText.toLowerCase() || '';
+        const category = cells[4]?.innerText.toLowerCase() || '';
         
         if (searchTerm && !text.includes(searchTerm)) show = false;
         if (statusFilter !== 'all' && !status.includes(statusFilter)) show = false;
@@ -5657,7 +5666,7 @@ function exportAdminTicketsToCSV() {
         if (row.style.display !== 'none') {
             const cells = row.querySelectorAll('td');
             if (cells.length >= 9) {
-                csv += `"${cells[0].innerText}","${cells[1].innerText.split('\n')[0]}","${cells[2].innerText.split('\n')[0]}","${cells[3].innerText}","${cells[4].innerText}","${cells[5].innerText}","${cells[6].innerText}","${cells[7].innerText}","${cells[8].innerText}"\n`;
+                csv += `"${cells[0]?.innerText || ''}","${cells[1]?.innerText.split('\n')[0] || ''}","${cells[2]?.innerText.split('\n')[0] || ''}","${cells[3]?.innerText || ''}","${cells[4]?.innerText || ''}","${cells[5]?.innerText || ''}","${cells[6]?.innerText || ''}","${cells[7]?.innerText || ''}","${cells[8]?.innerText || ''}"\n`;
             }
         }
     });
@@ -5669,10 +5678,23 @@ function exportAdminTicketsToCSV() {
     a.download = `tickets_${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    alert('Export complete!');
+    showFeedback('Export complete!', 'success');
 }
 
-// Make functions global
+// Initialize when page loads
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        if (document.getElementById('support-tickets')) {
+            setTimeout(() => loadAdminTickets(), 500);
+        }
+    });
+} else {
+    if (document.getElementById('support-tickets')) {
+        setTimeout(() => loadAdminTickets(), 500);
+    }
+}
+
+// Export to window
 window.loadAdminTickets = loadAdminTickets;
 window.filterAdminTickets = filterAdminTickets;
 window.filterAdminTicketsDebounced = filterAdminTicketsDebounced;
