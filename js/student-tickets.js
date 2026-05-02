@@ -1,6 +1,7 @@
 // student-tickets.js - Student Support Ticket System
 // *************************************************************************
-// *** STUDENT SUPPORT TICKET SYSTEM ***
+// *** STUDENT SUPPORT TICKET SYSTEM - CORRECTED VERSION ***
+// *** FIX: Uses profile.id (UUID) instead of auth user ID for foreign key ***
 // *************************************************************************
 
 class StudentTicketSystem {
@@ -208,7 +209,7 @@ class StudentTicketSystem {
         
         // Close modal on escape key
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && this.elements.ticketModal.style.display !== 'none') {
+            if (e.key === 'Escape' && this.elements.ticketModal && this.elements.ticketModal.style.display !== 'none') {
                 this.closeTicketModal();
             }
         });
@@ -221,6 +222,14 @@ class StudentTicketSystem {
                 }
             });
         }
+        
+        // Diagnostic shortcut (Ctrl+Shift+D)
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.shiftKey && e.key === 'D') {
+                this.checkDatabaseStructure();
+                this.showToast('Diagnostics logged to console (F12)', 'info');
+            }
+        });
     }
     
     setupFileUpload() {
@@ -300,7 +309,9 @@ class StudentTicketSystem {
     
     clearFiles() {
         this.filesToUpload = [];
-        this.elements.attachmentsInput.value = '';
+        if (this.elements.attachmentsInput) {
+            this.elements.attachmentsInput.value = '';
+        }
         this.renderFilePreview();
     }
     
@@ -354,31 +365,116 @@ class StudentTicketSystem {
         return window.db?.currentUserProfile || 
                window.currentUserProfile || 
                window.userProfile || 
-               {};
+               null;
     }
     
-    // Helper function for safe user ID access
+    // Helper function for safe user ID access (DEPRECATED - use getUserProfile().id instead)
     getCurrentUserId() {
+        console.warn('⚠️ getCurrentUserId() is deprecated. Use getUserProfile().id instead');
         return window.db?.currentUserId || window.currentUserId;
     }
     
-    // Load tickets from database
+    // Diagnostic method to check database structure and user profile
+    async checkDatabaseStructure() {
+        console.log('🔍 Running database structure check...');
+        console.log('═══════════════════════════════════════════════════════════');
+        
+        const supabaseClient = this.getSupabaseClient();
+        if (!supabaseClient) {
+            console.error('❌ No Supabase client');
+            return;
+        }
+        
+        // 1. Check user profile
+        const userProfile = this.getUserProfile();
+        const authId = this.getCurrentUserId();
+        
+        console.log('📊 USER INFO:');
+        console.log('  - Profile object:', userProfile);
+        console.log('  - Profile ID (UUID):', userProfile?.id);
+        console.log('  - Auth ID (from auth.users):', authId);
+        console.log('  - Are they the same?', userProfile?.id === authId ? '✅ YES' : '❌ NO - This is the problem!');
+        
+        // 2. Check if profile exists in profiles table
+        if (userProfile?.id) {
+            const { data: profileCheck, error: profileError } = await supabaseClient
+                .from('profiles')
+                .select('id, email, role')
+                .eq('id', userProfile.id)
+                .single();
+            
+            if (profileError) {
+                console.error('❌ Profile NOT found in profiles table:', profileError);
+            } else {
+                console.log('✅ Profile found in profiles table:', profileCheck);
+            }
+        }
+        
+        // 3. Check support_tickets table structure
+        const { data: columnCheck, error: columnError } = await supabaseClient
+            .from('support_tickets')
+            .select('student_id')
+            .limit(1);
+        
+        if (columnError) {
+            console.error('❌ Cannot access support_tickets:', columnError);
+        } else {
+            console.log('✅ support_tickets table is accessible');
+            console.log('  - Sample student_id values:', columnCheck);
+        }
+        
+        // 4. Try to find what student_id values exist
+        const { data: existingTickets, error: ticketError } = await supabaseClient
+            .from('support_tickets')
+            .select('student_id, ticket_number')
+            .limit(5);
+        
+        if (!ticketError && existingTickets && existingTickets.length > 0) {
+            console.log('📋 Existing tickets use student_ids:', 
+                existingTickets.map(t => t.student_id));
+            
+            // Check if any existing ticket is linked to current user's profile
+            const userHasTickets = existingTickets.some(t => t.student_id === userProfile?.id);
+            console.log('  - Current user has existing tickets?', userHasTickets ? '✅ YES' : '❌ NO');
+        }
+        
+        console.log('═══════════════════════════════════════════════════════════');
+        
+        return {
+            profileId: userProfile?.id,
+            authId: authId,
+            profileExists: !!userProfile?.id,
+            idsMatch: userProfile?.id === authId
+        };
+    }
+    
+    // Load tickets from database - FIXED to use profile ID
     async loadTickets() {
         console.log('📋 Loading student tickets...');
         
-        const userId = this.getCurrentUserId();
+        // ✅ FIXED: Use profile ID instead of auth ID
+        const userProfile = this.getUserProfile();
+        const userId = userProfile?.id;
         const supabaseClient = this.getSupabaseClient();
+        
+        if (!userId) {
+            console.error('❌ No profile ID found. Cannot load tickets.');
+            this.showToast('User profile not loaded. Please refresh the page.', 'error');
+            return;
+        }
         
         if (!supabaseClient) {
             this.showToast('Database connection error', 'error');
             return;
         }
         
+        console.log('✅ Loading tickets for profile ID:', userId);
+        
         // Show loading state
         this.showLoading(true);
         
         try {
-            // Load tickets for current user
+            // Load tickets for current user using profile ID
             const { data: tickets, error } = await supabaseClient
                 .from('support_tickets')
                 .select(`
@@ -403,7 +499,7 @@ class StudentTicketSystem {
             
         } catch (error) {
             console.error("Failed to load tickets:", error);
-            this.showToast('Error loading tickets', 'error');
+            this.showToast('Error loading tickets: ' + error.message, 'error');
         } finally {
             this.showLoading(false);
         }
@@ -657,8 +753,12 @@ class StudentTicketSystem {
         const isOpen = status === 'open';
         const isClosed = status === 'closed' || status === 'resolved';
         
-        this.elements.closeTicketBtn.style.display = isOpen ? 'inline-block' : 'none';
-        this.elements.reopenTicketBtn.style.display = isClosed ? 'inline-block' : 'none';
+        if (this.elements.closeTicketBtn) {
+            this.elements.closeTicketBtn.style.display = isOpen ? 'inline-block' : 'none';
+        }
+        if (this.elements.reopenTicketBtn) {
+            this.elements.reopenTicketBtn.style.display = isClosed ? 'inline-block' : 'none';
+        }
     }
     
     async loadTicketConversations(ticketId) {
@@ -687,12 +787,14 @@ class StudentTicketSystem {
             
         } catch (error) {
             console.error('Error loading conversations:', error);
-            this.elements.conversationsList.innerHTML = `
-                <div class="conversation-error">
-                    <i class="fas fa-exclamation-circle"></i>
-                    <p>Error loading conversations</p>
-                </div>
-            `;
+            if (this.elements.conversationsList) {
+                this.elements.conversationsList.innerHTML = `
+                    <div class="conversation-error">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <p>Error loading conversations</p>
+                    </div>
+                `;
+            }
         }
     }
     
@@ -749,7 +851,8 @@ class StudentTicketSystem {
     
     createConversationItem(conversation) {
         const author = conversation.author || {};
-        const isCurrentUser = author.id === this.getCurrentUserId();
+        const profileId = this.getUserProfile()?.id;
+        const isCurrentUser = author.id === profileId;
         const isStaff = author.role !== 'student';
         const isInternal = conversation.is_internal;
         
@@ -803,8 +906,16 @@ class StudentTicketSystem {
             return;
         }
         
-        const userId = this.getCurrentUserId();
+        // ✅ FIXED: Use profile ID instead of auth ID
+        const userProfile = this.getUserProfile();
+        const userId = userProfile?.id;
         const supabaseClient = this.getSupabaseClient();
+        
+        if (!userId) {
+            this.showToast('User profile not loaded', 'error');
+            return;
+        }
+        
         if (!supabaseClient) return;
         
         // Show sending state
@@ -870,7 +981,7 @@ class StudentTicketSystem {
             
         } catch (error) {
             console.error('Error sending message:', error);
-            this.showToast('Failed to send message', 'error');
+            this.showToast('Failed to send message: ' + error.message, 'error');
         } finally {
             // Restore button state
             this.elements.sendMessageBtn.innerHTML = originalText;
@@ -878,17 +989,44 @@ class StudentTicketSystem {
         }
     }
     
+    // ✅ FIXED: handleCreateTicket - Uses profile ID (UUID) instead of auth ID
     async handleCreateTicket(e) {
         e.preventDefault();
         
         const userProfile = this.getUserProfile();
-        const userId = this.getCurrentUserId();
         const supabaseClient = this.getSupabaseClient();
         
-        if (!userProfile || !supabaseClient) {
-            this.showToast('System error: User profile or database not available', 'error');
+        // ✅ CRITICAL FIX: Use profile.id (UUID), NOT auth user ID
+        const userId = userProfile?.id;
+        
+        // 🚨 Safety check
+        if (!userId) {
+            console.error('❌ Missing profile UUID. userProfile:', userProfile);
+            console.error('❌ Auth ID (wrong one):', this.getCurrentUserId());
+            this.showToast('User profile not loaded properly. Please refresh the page.', 'error');
             return;
         }
+        
+        if (!supabaseClient) {
+            this.showToast('Database connection error', 'error');
+            return;
+        }
+        
+        // Optional: Verify this UUID exists in profiles table
+        const { data: profileExists, error: profileError } = await supabaseClient
+            .from('profiles')
+            .select('id')
+            .eq('id', userId)
+            .single();
+        
+        if (profileError || !profileExists) {
+            console.error('❌ Profile UUID not found in database:', userId);
+            console.error('Profile error:', profileError);
+            this.showToast('User profile not found in database. Please contact support.', 'error');
+            return;
+        }
+        
+        console.log('✅ Creating ticket with valid profile UUID:', userId);
         
         // Get form values
         const category = this.elements.categorySelect?.value;
@@ -914,9 +1052,9 @@ class StudentTicketSystem {
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...';
         
         try {
-            // Prepare ticket data
+            // Prepare ticket data with correct student_id (profile UUID)
             const ticketData = {
-                student_id: userId,
+                student_id: userId,  // ✅ NOW USING CORRECT PROFILE UUID
                 category: category,
                 priority: priority || 'medium',
                 subject: subject,
@@ -927,8 +1065,6 @@ class StudentTicketSystem {
             
             // Handle attachments if any
             if (this.filesToUpload.length > 0) {
-                // In a real app, you would upload files to storage first
-                // For now, we'll store file metadata as JSON
                 ticketData.attachments = this.filesToUpload.map(file => ({
                     name: file.name,
                     size: file.size,
@@ -936,6 +1072,8 @@ class StudentTicketSystem {
                     lastModified: file.lastModified
                 }));
             }
+            
+            console.log('📤 Submitting ticket with data:', ticketData);
             
             // Create ticket
             const { data: newTicket, error } = await supabaseClient
@@ -945,6 +1083,8 @@ class StudentTicketSystem {
                 .single();
             
             if (error) throw error;
+            
+            console.log('✅ Ticket created successfully:', newTicket);
             
             // Clear form and files
             this.elements.createTicketForm.reset();
@@ -963,7 +1103,7 @@ class StudentTicketSystem {
             }, 1500);
             
         } catch (error) {
-            console.error('Error creating ticket:', error);
+            console.error('❌ Error creating ticket:', error);
             this.showToast('Failed to create ticket: ' + error.message, 'error');
             
         } finally {
@@ -974,8 +1114,11 @@ class StudentTicketSystem {
     }
     
     async closeTicket(ticketId) {
+        const userProfile = this.getUserProfile();
+        const userId = userProfile?.id;
         const supabaseClient = this.getSupabaseClient();
-        if (!supabaseClient) return;
+        
+        if (!userId || !supabaseClient) return;
         
         try {
             const { error } = await supabaseClient
@@ -986,7 +1129,7 @@ class StudentTicketSystem {
                     updated_at: new Date().toISOString()
                 })
                 .eq('id', ticketId)
-                .eq('student_id', this.getCurrentUserId());
+                .eq('student_id', userId);  // ✅ FIXED: Use profile ID
             
             if (error) throw error;
             
@@ -1006,7 +1149,7 @@ class StudentTicketSystem {
             
         } catch (error) {
             console.error('Error closing ticket:', error);
-            this.showToast('Failed to close ticket', 'error');
+            this.showToast('Failed to close ticket: ' + error.message, 'error');
         }
     }
     
@@ -1022,8 +1165,11 @@ class StudentTicketSystem {
     async reopenCurrentTicket() {
         if (!this.currentTicketId) return;
         
+        const userProfile = this.getUserProfile();
+        const userId = userProfile?.id;
         const supabaseClient = this.getSupabaseClient();
-        if (!supabaseClient) return;
+        
+        if (!userId || !supabaseClient) return;
         
         try {
             const { error } = await supabaseClient
@@ -1034,7 +1180,7 @@ class StudentTicketSystem {
                     updated_at: new Date().toISOString()
                 })
                 .eq('id', this.currentTicketId)
-                .eq('student_id', this.getCurrentUserId());
+                .eq('student_id', userId);  // ✅ FIXED: Use profile ID
             
             if (error) throw error;
             
@@ -1055,18 +1201,18 @@ class StudentTicketSystem {
             
         } catch (error) {
             console.error('Error reopening ticket:', error);
-            this.showToast('Failed to reopen ticket', 'error');
+            this.showToast('Failed to reopen ticket: ' + error.message, 'error');
         }
     }
     
     // Update summary cards
     updateSummary() {
         if (!this.currentTickets.length) {
-            this.elements.openCount.textContent = '0';
-            this.elements.progressCount.textContent = '0';
-            this.elements.resolvedCount.textContent = '0';
-            this.elements.urgentCount.textContent = '0';
-            this.elements.totalCount.textContent = '0 tickets';
+            if (this.elements.openCount) this.elements.openCount.textContent = '0';
+            if (this.elements.progressCount) this.elements.progressCount.textContent = '0';
+            if (this.elements.resolvedCount) this.elements.resolvedCount.textContent = '0';
+            if (this.elements.urgentCount) this.elements.urgentCount.textContent = '0';
+            if (this.elements.totalCount) this.elements.totalCount.textContent = '0 tickets';
             return;
         }
         
@@ -1078,11 +1224,11 @@ class StudentTicketSystem {
             total: this.currentTickets.length
         };
         
-        this.elements.openCount.textContent = counts.open;
-        this.elements.progressCount.textContent = counts.progress;
-        this.elements.resolvedCount.textContent = counts.resolved;
-        this.elements.urgentCount.textContent = counts.urgent;
-        this.elements.totalCount.textContent = `${counts.total} ticket${counts.total !== 1 ? 's' : ''}`;
+        if (this.elements.openCount) this.elements.openCount.textContent = counts.open;
+        if (this.elements.progressCount) this.elements.progressCount.textContent = counts.progress;
+        if (this.elements.resolvedCount) this.elements.resolvedCount.textContent = counts.resolved;
+        if (this.elements.urgentCount) this.elements.urgentCount.textContent = counts.urgent;
+        if (this.elements.totalCount) this.elements.totalCount.textContent = `${counts.total} ticket${counts.total !== 1 ? 's' : ''}`;
         
         // Update badge in sidebar
         const ticketsBadge = document.getElementById('ticketsBadge');
@@ -1139,7 +1285,9 @@ class StudentTicketSystem {
             this.elements.ticketModal.style.display = 'none';
             document.body.style.overflow = 'auto';
             this.currentTicketId = null;
-            this.elements.newMessageInput.value = '';
+            if (this.elements.newMessageInput) {
+                this.elements.newMessageInput.value = '';
+            }
             this.updateCharCounter(this.elements.newMessageInput, this.elements.messageCharCount, 2000);
         }
     }
@@ -1186,6 +1334,10 @@ class StudentTicketSystem {
             window.ui.showToast(text, type);
             return;
         }
+        
+        // Remove existing toasts
+        const existingToasts = document.querySelectorAll('.toast');
+        existingToasts.forEach(toast => toast.remove());
         
         // Simple toast implementation
         const toast = document.createElement('div');
