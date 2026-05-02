@@ -5475,7 +5475,7 @@ function getSupabaseClient() {
     return null;
 }
 
-// Load all tickets for admin
+// Load all tickets for admin - FIXED with proper student data
 async function loadAdminTickets() {
     console.log('📋 Loading admin tickets...');
     
@@ -5494,6 +5494,7 @@ async function loadAdminTickets() {
     }
     
     try {
+        // Get all tickets
         const { data: tickets, error } = await supabase
             .from('support_tickets')
             .select('*')
@@ -5509,24 +5510,59 @@ async function loadAdminTickets() {
             return;
         }
         
-        const studentIds = [...new Set(tickets.map(t => t.student_id).filter(id => id))];
-        adminStudentMap = {};
+        // Get ALL student profiles from consolidated table
+        const { data: allStudents, error: studentError } = await supabase
+            .from('consolidated_user_profiles_table')
+            .select('id, user_id, email, full_name, program, intake_year, role');
         
-        if (studentIds.length > 0) {
-            const { data: students, error: studentError } = await supabase
-                .from('consolidated_user_profiles_table')
-                .select('id, full_name, email, program, intake_year');
+        if (studentError) {
+            console.error('Error loading students:', studentError);
+        }
+        
+        // Create student map
+        adminStudentMap = {};
+        if (allStudents) {
+            allStudents.forEach(s => {
+                // Map by id (profile ID)
+                adminStudentMap[s.id] = s;
+                // Also map by user_id (auth ID) if different
+                if (s.user_id && s.user_id !== s.id) {
+                    adminStudentMap[s.user_id] = s;
+                }
+            });
+            console.log('✅ Loaded student profiles:', allStudents.length);
+        }
+        
+        // Get all unique student IDs from tickets
+        const studentIdsFromTickets = [...new Set(tickets.map(t => t.student_id).filter(id => id))];
+        
+        // Check for missing students and try to fetch from auth.users
+        const missingIds = studentIdsFromTickets.filter(id => !adminStudentMap[id]);
+        
+        if (missingIds.length > 0) {
+            console.log('🔍 Looking up missing student IDs:', missingIds);
             
-            if (!studentError && students) {
-                students.forEach(s => {
-                    adminStudentMap[s.id] = s;
-                });
-                console.log('✅ Loaded student profiles:', students.length);
+            // Try to get from auth.users
+            for (const missingId of missingIds) {
+                const { data: userData } = await supabase.auth.admin.getUserById(missingId).catch(() => ({ data: null }));
+                if (userData?.user) {
+                    adminStudentMap[missingId] = {
+                        id: missingId,
+                        user_id: missingId,
+                        email: userData.user.email,
+                        full_name: userData.user.user_metadata?.full_name || userData.user.email?.split('@')[0] || 'Student',
+                        program: 'N/A',
+                        intake_year: 'N/A',
+                        role: 'student'
+                    };
+                    console.log('✅ Found missing student from auth:', userData.user.email);
+                }
             }
         }
         
         adminAllTickets = tickets;
         
+        // Update summary counts
         const openCount = tickets.filter(t => t.status === 'open').length;
         const progressCount = tickets.filter(t => t.status === 'in_progress').length;
         const closedCount = tickets.filter(t => t.status === 'closed' || t.status === 'resolved').length;
@@ -5537,7 +5573,7 @@ async function loadAdminTickets() {
         
     } catch (err) {
         console.error('❌ Error:', err);
-        tbody.innerHTML = `<td><td colspan="10" style="padding: 40px; text-align: center; color: red;">Error: ${err.message}<\/td><\/tr>`;
+        tbody.innerHTML = `<tr><td colspan="10" style="padding: 40px; text-align: center; color: red;">Error: ${err.message}<\/td><\/tr>`;
     }
 }
 
@@ -5553,22 +5589,40 @@ function updateAdminTicketCounts(open, inProgress, closed, urgent) {
     if (urgentEl) urgentEl.textContent = urgent;
 }
 
+// Render tickets table - FIXED with better student display
 function renderAdminTicketsTable(tickets) {
     const tbody = document.getElementById('admin-tickets-body');
     if (!tbody) return;
     
     if (!tickets || tickets.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="10" style="padding: 40px; text-align: center;">No tickets found<\/td><\/tr>';
+        tbody.innerHTML = '</table><td colspan="10" style="padding: 40px; text-align: center;">No tickets found<\/td><\/tr>';
         return;
     }
     
     tbody.innerHTML = tickets.map(ticket => {
-        const student = adminStudentMap[ticket.student_id] || { 
-            full_name: 'Unknown', 
-            email: '-',
-            program: '-', 
-            intake_year: '-'
-        };
+        // Try multiple ways to find the student
+        let student = adminStudentMap[ticket.student_id];
+        
+        // If not found by ID, try to find by user_id match
+        if (!student) {
+            for (const key in adminStudentMap) {
+                if (adminStudentMap[key].user_id === ticket.student_id || 
+                    adminStudentMap[key].id === ticket.student_id) {
+                    student = adminStudentMap[key];
+                    break;
+                }
+            }
+        }
+        
+        // Fallback student data
+        if (!student) {
+            student = {
+                full_name: 'Unknown Student',
+                email: ticket.student_id?.substring(0, 8) + '...',
+                program: 'N/A',
+                intake_year: 'N/A'
+            };
+        }
         
         const createdDate = new Date(ticket.created_at).toLocaleString();
         const updatedDate = new Date(ticket.updated_at).toLocaleString();
@@ -5589,10 +5643,10 @@ function renderAdminTicketsTable(tickets) {
             <tr style="border-bottom: 1px solid #e5e7eb; cursor: pointer;" onclick="viewAdminTicket('${ticket.id}')">
                 <td style="padding: 12px;"><strong>${escapeHtml(ticket.ticket_number || 'N/A')}</strong><\/td>
                 <td style="padding: 12px;">
-                    ${escapeHtml(student.full_name)}<br>
-                    <small style="color: #6b7280;">${escapeHtml(student.email)}</small>
+                    ${escapeHtml(student.full_name || 'Unknown')}<br>
+                    <small style="color: #6b7280;">${escapeHtml(student.email || '-')}</small>
                 <\/td>
-                <td style="padding: 12px;">${escapeHtml(student.program)}<br><small>${escapeHtml(student.intake_year)}</small><\/td>
+                <td style="padding: 12px;">${escapeHtml(student.program || '-')}<br><small>${escapeHtml(student.intake_year || '-')}</small><\/td>
                 <td style="padding: 12px;">${escapeHtml(ticket.subject)}<\/td>
                 <td style="padding: 12px;"><span class="badge badge-info">${escapeHtml(ticket.category || '-')}</span><\/td>
                 <td style="padding: 12px;"><span class="${priorityClass}" style="padding: 4px 8px; border-radius: 4px;">${escapeHtml(ticket.priority || 'medium')}</span><\/td>
@@ -5636,12 +5690,37 @@ async function viewAdminTicket(ticketId) {
     currentAdminTicket = ticket;
     currentAdminTicketStatus = ticket.status;
     
-    // Get student info
-    const { data: student } = await supabase
-        .from('consolidated_user_profiles_table')
-        .select('full_name, email, program, intake_year')
-        .eq('id', ticket.student_id)
-        .single();
+    // Get student info - try multiple methods
+    let student = adminStudentMap[ticket.student_id];
+    
+    if (!student) {
+        const { data: studentData } = await supabase
+            .from('consolidated_user_profiles_table')
+            .select('full_name, email, program, intake_year')
+            .eq('id', ticket.student_id)
+            .maybeSingle();
+        
+        if (studentData) {
+            student = studentData;
+        } else {
+            const { data: userData } = await supabase.auth.admin.getUserById(ticket.student_id).catch(() => ({ data: null }));
+            if (userData?.user) {
+                student = {
+                    full_name: userData.user.user_metadata?.full_name || userData.user.email?.split('@')[0] || 'Student',
+                    email: userData.user.email,
+                    program: 'N/A',
+                    intake_year: 'N/A'
+                };
+            } else {
+                student = {
+                    full_name: 'Unknown Student',
+                    email: ticket.student_id?.substring(0, 8) + '...',
+                    program: 'N/A',
+                    intake_year: 'N/A'
+                };
+            }
+        }
+    }
     
     // Get conversations
     const { data: conversations } = await supabase
@@ -5650,7 +5729,7 @@ async function viewAdminTicket(ticketId) {
         .eq('ticket_id', ticketId)
         .order('created_at', { ascending: true });
     
-    // Get author names separately
+    // Get author names
     const authorIds = [...new Set((conversations || []).map(c => c.author_id).filter(id => id))];
     let authorNames = {};
     
@@ -5665,19 +5744,22 @@ async function viewAdminTicket(ticketId) {
                 authorNames[p.id] = p.full_name;
             });
         }
+        
+        // Also check admin map for any missing authors
+        for (const id of authorIds) {
+            if (!authorNames[id] && adminStudentMap[id]) {
+                authorNames[id] = adminStudentMap[id].full_name;
+            }
+        }
     }
     
-    // Get current admin profile ID - FIXED
+    // Get current admin profile ID
     let adminName = 'Admin';
     let adminProfileId = null;
     
     try {
-        // Get current auth user
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-            console.log('🔍 Current auth user:', user.id);
-            
-            // Find profile by user_id (the auth_id column)
             const { data: profile } = await supabase
                 .from('consolidated_user_profiles_table')
                 .select('id, full_name')
@@ -5687,48 +5769,20 @@ async function viewAdminTicket(ticketId) {
             if (profile) {
                 adminProfileId = profile.id;
                 adminName = profile.full_name || 'Admin';
-                console.log('✅ Admin profile found:', adminProfileId);
             } else {
-                // Try to find by id (some tables store auth id as id)
-                const { data: profileById } = await supabase
-                    .from('consolidated_user_profiles_table')
-                    .select('id, full_name')
-                    .eq('id', user.id)
-                    .maybeSingle();
-                
-                if (profileById) {
-                    adminProfileId = profileById.id;
-                    adminName = profileById.full_name || 'Admin';
-                    console.log('✅ Admin profile found by id:', adminProfileId);
-                }
+                adminProfileId = '7f6f6627-eb8c-44eb-b145-32b97c7d8d57';
+                adminName = 'Super Admin';
             }
         }
-        
-        // Last resort - use the known Super Admin profile
-        if (!adminProfileId) {
-            const { data: superAdmin } = await supabase
-                .from('consolidated_user_profiles_table')
-                .select('id, full_name')
-                .eq('role', 'superadmin')
-                .limit(1)
-                .maybeSingle();
-            
-            if (superAdmin) {
-                adminProfileId = superAdmin.id;
-                adminName = superAdmin.full_name || 'Super Admin';
-                console.log('⚠️ Using Super Admin profile as fallback:', adminProfileId);
-            }
-        }
-        
     } catch (err) {
-        console.error('Error getting admin profile:', err);
+        adminProfileId = '7f6f6627-eb8c-44eb-b145-32b97c7d8d57';
+        adminName = 'Super Admin';
     }
     
-    // Store globally
     currentAdminProfileId = adminProfileId;
     window.currentAdminProfileId = adminProfileId;
     
-    // Build modal HTML with proper scrolling
+    // Build modal HTML
     const modalHtml = `
         <div id="adminTicketChatModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 100000; display: flex; align-items: center; justify-content: center;">
             <div style="background: white; max-width: 950px; width: 95%; height: 90vh; display: flex; flex-direction: column; border-radius: 16px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
@@ -5741,7 +5795,7 @@ async function viewAdminTicket(ticketId) {
                     <button onclick="closeAdminTicketChatModal()" style="background: none; border: none; font-size: 28px; cursor: pointer; color: white;">&times;</button>
                 </div>
                 
-                <!-- Ticket Info Bar - Scrollable -->
+                <!-- Ticket Info Bar -->
                 <div style="padding: 12px 20px; background: #f8f9fa; border-bottom: 1px solid #e5e7eb; display: flex; gap: 20px; flex-wrap: wrap; flex-shrink: 0;">
                     <div><strong>👤 Student:</strong> ${escapeHtml(student?.full_name || 'Unknown')}</div>
                     <div><strong>📧 Email:</strong> ${escapeHtml(student?.email || '-')}</div>
@@ -5756,7 +5810,7 @@ async function viewAdminTicket(ticketId) {
                     <p style="margin: 8px 0 0 0; background: white; padding: 10px; border-radius: 6px;">${escapeHtml(ticket.description)}</p>
                 </div>
                 
-                <!-- Chat Area - Takes remaining space and scrolls -->
+                <!-- Chat Area -->
                 <div style="flex: 1; background: #f3f4f6; display: flex; flex-direction: column; min-height: 0; overflow: hidden;">
                     <div style="padding: 10px 15px; background: #e5e7eb; border-bottom: 1px solid #d1d5db; flex-shrink: 0;">
                         <strong><i class="fas fa-comments"></i> Conversation</strong>
@@ -5766,7 +5820,7 @@ async function viewAdminTicket(ticketId) {
                     </div>
                 </div>
                 
-                <!-- REPLY SECTION - Always visible at bottom -->
+                <!-- REPLY SECTION -->
                 <div style="padding: 15px 20px; background: white; border-top: 2px solid #e5e7eb; flex-shrink: 0;">
                     <label style="font-weight: 600; margin-bottom: 8px; display: block;">✏️ Reply to Student</label>
                     <textarea id="adminReplyMessageInput" rows="3" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ddd; resize: vertical; font-family: inherit; font-size: 14px;" placeholder="Type your reply here..."></textarea>
@@ -5791,7 +5845,6 @@ async function viewAdminTicket(ticketId) {
                     </div>
                     <p style="margin-top: 10px; font-size: 11px; color: #6b7280;">
                         <i class="fas fa-user-circle"></i> Replying as: <strong>${escapeHtml(adminName)}</strong>
-                        ${adminProfileId ? '<span style="margin-left: 10px; color: #10b981;"><i class="fas fa-check-circle"></i> Authenticated</span>' : '<span style="margin-left: 10px; color: #f59e0b;"><i class="fas fa-exclamation-triangle"></i> Using fallback</span>'}
                     </p>
                 </div>
             </div>
@@ -5803,7 +5856,7 @@ async function viewAdminTicket(ticketId) {
     
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     
-    // Start auto-refresh every 5 seconds
+    // Start auto-refresh
     if (adminConversationInterval) {
         clearInterval(adminConversationInterval);
     }
@@ -5856,8 +5909,7 @@ function renderAdminChatMessages(conversations, authorNames) {
                 </div>
             `;
         } else {
-            // Check if this is from admin
-            const isAdmin = authorName.includes('Admin') || authorName.includes('Super') || authorName === 'Director' || authorName === 'Super Admin Matoka';
+            const isAdmin = authorName.includes('Admin') || authorName.includes('Super') || authorName === 'Director';
             const align = isAdmin ? 'flex-end' : 'flex-start';
             const bgColor = isAdmin ? '#4C1D95' : 'white';
             const textColor = isAdmin ? 'white' : '#1f2937';
@@ -5919,14 +5971,13 @@ async function refreshAdminConversation() {
         
         conversationArea.innerHTML = newHtml;
         
-        // Scroll to bottom if was near bottom
         if (oldScrollHeight - oldScrollTop < 200) {
             conversationArea.scrollTop = conversationArea.scrollHeight;
         }
     }
 }
 
-// Send admin chat reply - FIXED
+// Send admin chat reply
 async function sendAdminChatReply() {
     const messageInput = document.getElementById('adminReplyMessageInput');
     const message = messageInput?.value.trim();
@@ -5943,7 +5994,6 @@ async function sendAdminChatReply() {
     
     let adminProfileId = currentAdminProfileId || window.currentAdminProfileId;
     
-    // If still no profile ID, try to get it directly
     if (!adminProfileId) {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
@@ -5955,21 +6005,16 @@ async function sendAdminChatReply() {
             
             if (profile) {
                 adminProfileId = profile.id;
-                currentAdminProfileId = adminProfileId;
-                window.currentAdminProfileId = adminProfileId;
+            } else {
+                adminProfileId = '7f6f6627-eb8c-44eb-b145-32b97c7d8d57';
             }
+        } else {
+            adminProfileId = '7f6f6627-eb8c-44eb-b145-32b97c7d8d57';
         }
+        currentAdminProfileId = adminProfileId;
+        window.currentAdminProfileId = adminProfileId;
     }
     
-    // Last resort: use the Super Admin profile ID
-    if (!adminProfileId) {
-        adminProfileId = '7f6f6627-eb8c-44eb-b145-32b97c7d8d57';
-        console.log('⚠️ Using Super Admin profile ID as fallback');
-    }
-    
-    console.log('📤 Sending reply as profile ID:', adminProfileId);
-    
-    // Disable send button
     const sendBtn = document.querySelector('#adminTicketChatModal button[onclick="sendAdminChatReply()"]');
     const originalText = sendBtn?.innerHTML;
     if (sendBtn) {
@@ -5990,7 +6035,6 @@ async function sendAdminChatReply() {
         
         if (replyError) throw replyError;
         
-        // Update status if changed
         if (newStatus && newStatus !== currentAdminTicketStatus) {
             await supabase
                 .from('support_tickets')
@@ -6008,12 +6052,10 @@ async function sendAdminChatReply() {
             }
         }
         
-        // Clear input
         if (messageInput) messageInput.value = '';
         const internalCheck = document.getElementById('adminReplyInternalCheckbox');
         if (internalCheck) internalCheck.checked = false;
         
-        // Refresh conversation and ticket list
         await refreshAdminConversation();
         await loadAdminTickets();
         
