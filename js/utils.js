@@ -134,33 +134,41 @@ window.calculateDistance = calculateDistance;
 window.formatDate = formatDate;
 window.cache = cache;
 
-// ========== SPA ROUTER - CLEAN URL NAVIGATION (NO DUPLICATE HASHTAGS) ==========
+// ========== SPA ROUTER - CLEAN URL NAVIGATION (USING / INSTEAD OF #) ==========
 const SPA_ROUTER = {
     // Valid tabs in your app
     validTabs: ['dashboard', 'profile', 'calendar', 'learning-hub', 'attendance', 'cats', 'resources', 'messages', 'support-tickets', 'nurseiq', 'exam-card'],
     
-    // Get current tab from URL hash only (clean method)
+    // Get current tab from URL path (using / instead of #)
     getCurrentTab() {
-        // ONLY check hash - ignore pathname to avoid duplicates
-        let hash = window.location.hash.substring(1);
+        // Get pathname and remove leading slash
+        let path = window.location.pathname.replace(/^\//, '');
         
-        // Remove any query parameters
-        if (hash.includes('?')) {
-            hash = hash.split('?')[0];
+        // Remove /student prefix if present
+        if (path.startsWith('student/')) {
+            path = path.replace('student/', '');
+        } else if (path === 'student') {
+            path = '';
         }
         
-        // Remove any duplicate hashtags (if somehow there are multiple #)
-        if (hash.includes('#')) {
-            hash = hash.split('#')[0];
-        }
+        // Remove any trailing slashes
+        path = path.replace(/\/$/, '');
         
-        // Validate tab from hash
-        if (hash && this.validTabs.includes(hash)) {
-            return hash;
+        // Validate tab from path
+        if (path && this.validTabs.includes(path)) {
+            return path;
         }
         
         // Default to dashboard
         return 'dashboard';
+    },
+    
+    // Build URL for a specific tab
+    buildUrl(tab) {
+        if (tab && tab !== 'dashboard') {
+            return `/student/${tab}`;
+        }
+        return '/student';
     },
     
     // Show the correct tab based on URL
@@ -214,20 +222,12 @@ const SPA_ROUTER = {
         }
     },
     
-    // Update URL when tab changes (clean - no duplicates)
+    // Update URL when tab changes (using / instead of #)
     updateURL(tab) {
-        // Use ONLY hash for navigation - clean and simple
-        let newUrl = '/student';
-        
-        if (tab && tab !== 'dashboard') {
-            newUrl = '/student#' + tab;
-        } else {
-            newUrl = '/student';
-        }
+        const newUrl = this.buildUrl(tab);
         
         // Update URL without triggering reload
-        const currentUrl = window.location.pathname + window.location.hash;
-        if (currentUrl !== newUrl) {
+        if (window.location.pathname !== newUrl) {
             history.pushState({ tab: tab }, '', newUrl);
         }
     },
@@ -250,10 +250,10 @@ const SPA_ROUTER = {
     
     // Initialize router
     init() {
-        console.log('🔄 Initializing SPA Router...');
+        console.log('🔄 Initializing SPA Router (with / navigation)...');
         
-        // Listen for hash changes (browser back/forward)
-        window.addEventListener('hashchange', () => {
+        // Listen for popstate (browser back/forward buttons)
+        window.addEventListener('popstate', () => {
             const tab = this.getCurrentTab();
             if (window.ui && typeof window.ui.showTab === 'function') {
                 if (window.ui.currentTab !== tab) {
@@ -262,12 +262,14 @@ const SPA_ROUTER = {
             }
         });
         
-        // Listen for popstate (back/forward buttons)
-        window.addEventListener('popstate', () => {
-            const tab = this.getCurrentTab();
-            if (window.ui && typeof window.ui.showTab === 'function') {
-                if (window.ui.currentTab !== tab) {
-                    window.ui.showTab(tab);
+        // Intercept navigation links
+        document.addEventListener('click', (e) => {
+            const link = e.target.closest('a[data-tab]');
+            if (link) {
+                e.preventDefault();
+                const tab = link.getAttribute('data-tab');
+                if (tab && this.validTabs.includes(tab)) {
+                    this.navigateTo(tab);
                 }
             }
         });
@@ -282,7 +284,7 @@ const SPA_ROUTER = {
         // Also handle when app is ready
         document.addEventListener('appReady', () => this.showTabFromURL());
         
-        console.log('✅ SPA Router initialized');
+        console.log('✅ SPA Router initialized with clean / URLs');
     }
 };
 
@@ -303,5 +305,7 @@ window.navigateToTab = (tabId) => {
     }
 };
 
-// Log successful load
-console.log('✅ utils.js loaded with SPA Router');
+// Helper to get current tab
+window.getCurrentTab = () => SPA_ROUTER.getCurrentTab();
+
+console.log('✅ utils.js loaded with SPA Router (clean / URLs)');
