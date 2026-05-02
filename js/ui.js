@@ -1,4 +1,4 @@
-// js/ui.js - COMPLETE WORKING VERSION WITH CLEAN URLs
+// js/ui.js - COMPLETE WORKING VERSION WITH CLEAN URLs (NO HASHES)
 class UIModule {
     constructor() {
         console.log('🚀 Initializing UIModule...');
@@ -15,23 +15,6 @@ class UIModule {
         this.storageKey = 'nchsm_last_tab';
         
         this.validTabs = ['dashboard', 'profile', 'calendar', 'courses', 'attendance', 'cats', 'resources', 'messages', 'support-tickets', 'nurseiq', 'unit-registration', 'learning-hub', 'exam-card'];
-        
-        // Tab to hash mapping (clean - just the tab name)
-        this.tabToHash = {
-            'dashboard': 'dashboard',
-            'profile': 'profile',
-            'calendar': 'calendar',
-            'courses': 'courses',
-            'attendance': 'attendance',
-            'cats': 'cats',
-            'resources': 'resources',
-            'messages': 'messages',
-            'support-tickets': 'support-tickets',
-            'nurseiq': 'nurseiq',
-            'unit-registration': 'unit-registration',
-            'learning-hub': 'learning-hub',
-            'exam-card': 'exam-card'
-        };
         
         this.tabNames = {
             'dashboard': 'Dashboard', 'profile': 'Profile', 'calendar': 'Academic Calendar',
@@ -157,7 +140,7 @@ class UIModule {
     }
     
     // ============================================
-    // CLEAN URL NAVIGATION - NO DUPLICATE HASHTAGS
+    // CLEAN URL NAVIGATION - NO HASHES
     // ============================================
     
     setupUrlNavigation() { 
@@ -166,13 +149,20 @@ class UIModule {
     
     setupHistoryNavigation() {
         const handleRoute = () => {
-            // Get hash from URL (without the #)
-            const hash = window.location.hash.substring(1);
+            // Get tab from pathname (no hashes!)
             let tabId = 'dashboard';
+            let path = window.location.pathname;
             
-            // Check if hash is a valid tab
-            if (hash && this.isValidTab(hash)) {
-                tabId = hash;
+            // Remove /student prefix
+            if (path.startsWith('/student/')) {
+                path = path.replace('/student/', '');
+            } else if (path === '/student') {
+                path = '';
+            }
+            path = path.replace(/\/$/, '');
+            
+            if (path && this.validTabs.includes(path)) {
+                tabId = path;
             }
             
             if (this.isValidTab(tabId)) {
@@ -201,22 +191,27 @@ class UIModule {
     navigateToTab(tabId) {
         if (!this.isValidTab(tabId)) tabId = 'dashboard';
         
-        // Clean URL: only #tabname (no duplicate)
-        const newUrl = `#${tabId}`;
+        // Build clean URL without hash
+        let newUrl = '/student';
+        if (tabId !== 'dashboard') {
+            newUrl = `/student/${tabId}`;
+        }
         
-        if (window.location.hash !== newUrl) {
-            window.history.pushState({}, '', newUrl);
+        if (window.location.pathname !== newUrl) {
+            history.pushState({}, '', newUrl);
         }
         this.showTab(tabId, true);
     }
     
     getCurrentPath() {
-        // Get hash from URL
-        const hash = window.location.hash.substring(1);
-        if (hash && this.isValidTab(hash)) {
-            return hash;
+        let path = window.location.pathname;
+        if (path.startsWith('/student/')) {
+            path = path.replace('/student/', '');
+        } else if (path === '/student') {
+            path = '';
         }
-        return 'dashboard';
+        path = path.replace(/\/$/, '');
+        return path && this.validTabs.includes(path) ? path : 'dashboard';
     }
     
     // ============================================
@@ -361,12 +356,6 @@ class UIModule {
         this.closeMenu();
         this.currentTab = tabId;
         this.updatePageTitle(tabId);
-        
-        // Update URL with clean hash - NO DUPLICATE
-        const newUrl = `#${tabId}`;
-        if (window.location.hash !== newUrl) {
-            window.history.replaceState({}, '', newUrl);
-        }
         
         // Update last login when showing dashboard
         if (tabId === 'dashboard') {
@@ -640,81 +629,69 @@ class UIModule {
         }
     }
     
-async logout() {
-    // Use SweetAlert2 for better looking modal
-    if (typeof Swal !== 'undefined') {
-        const result = await Swal.fire({
-            title: 'Ready to Leave?',
-            text: 'Are you sure you want to logout from NCHSM Student Portal?',
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonColor: '#4C1D95',
-            cancelButtonColor: '#6b7280',
-            confirmButtonText: '<i class="fas fa-sign-out-alt"></i> Yes, Logout',
-            cancelButtonText: '<i class="fas fa-times"></i> Cancel',
-            background: 'white',
-            backdrop: true,
-            allowOutsideClick: false,
-            allowEscapeKey: true,
-            customClass: {
-                popup: 'logout-popup',
-                title: 'logout-title',
-                confirmButton: 'logout-confirm-btn',
-                cancelButton: 'logout-cancel-btn'
-            }
-        });
-        
-        if (result.isConfirmed) {
-            this.showToast('Logging out...', 'info', 1500);
-            
-            // Show loading state
-            Swal.fire({
-                title: 'Logging out...',
-                text: 'Please wait while we secure your session',
-                icon: 'info',
-                showConfirmButton: false,
-                allowOutsideClick: false,
-                didOpen: () => {
-                    Swal.showLoading();
-                }
-            });
-            
-            localStorage.removeItem(this.storageKey);
-            localStorage.removeItem('userProfilePhoto');
-            localStorage.removeItem('currentUserProfile');
-            sessionStorage.clear();
-            
-            if (this.supabase?.auth) {
-                await this.supabase.auth.signOut();
-            }
-            
-            await this.delay(1000);
-            
-            // Final goodbye message
-            Swal.fire({
-                title: 'Goodbye!',
-                text: 'You have been successfully logged out.',
-                icon: 'success',
+    async logout() {
+        if (typeof Swal !== 'undefined') {
+            const result = await Swal.fire({
+                title: 'Ready to Leave?',
+                text: 'Are you sure you want to logout from NCHSM Student Portal?',
+                icon: 'question',
+                showCancelButton: true,
                 confirmButtonColor: '#4C1D95',
-                confirmButtonText: '<i class="fas fa-arrow-right"></i> Return to Login',
-                timer: 2000,
-                showConfirmButton: true
-            }).then(() => {
-                window.location.href = 'login.html';
+                cancelButtonColor: '#6b7280',
+                confirmButtonText: '<i class="fas fa-sign-out-alt"></i> Yes, Logout',
+                cancelButtonText: '<i class="fas fa-times"></i> Cancel',
+                background: 'white',
+                backdrop: true,
+                allowOutsideClick: false,
+                allowEscapeKey: true
             });
-        }
-    } else {
-        // Fallback for older browsers
-        if (confirm('Are you sure you want to logout?')) {
-            localStorage.removeItem(this.storageKey);
-            localStorage.removeItem('userProfilePhoto');
-            localStorage.removeItem('currentUserProfile');
-            sessionStorage.clear();
-            if (this.supabase?.auth) await this.supabase.auth.signOut();
-            window.location.href = 'login.html';
+            
+            if (result.isConfirmed) {
+                this.showToast('Logging out...', 'info', 1500);
+                
+                Swal.fire({
+                    title: 'Logging out...',
+                    text: 'Please wait while we secure your session',
+                    icon: 'info',
+                    showConfirmButton: false,
+                    allowOutsideClick: false,
+                    didOpen: () => { Swal.showLoading(); }
+                });
+                
+                localStorage.removeItem(this.storageKey);
+                localStorage.removeItem('userProfilePhoto');
+                localStorage.removeItem('currentUserProfile');
+                sessionStorage.clear();
+                
+                if (this.supabase?.auth) {
+                    await this.supabase.auth.signOut();
+                }
+                
+                await this.delay(1000);
+                
+                Swal.fire({
+                    title: 'Goodbye!',
+                    text: 'You have been successfully logged out.',
+                    icon: 'success',
+                    confirmButtonColor: '#4C1D95',
+                    confirmButtonText: '<i class="fas fa-arrow-right"></i> Return to Login',
+                    timer: 2000,
+                    showConfirmButton: true
+                }).then(() => {
+                    window.location.href = 'login.html';
+                });
+            }
+        } else {
+            if (confirm('Are you sure you want to logout?')) {
+                localStorage.removeItem(this.storageKey);
+                localStorage.removeItem('userProfilePhoto');
+                localStorage.removeItem('currentUserProfile');
+                sessionStorage.clear();
+                if (this.supabase?.auth) await this.supabase.auth.signOut();
+                window.location.href = 'login.html';
+            }
         }
     }
-}
     
     clearCache() {
         if (confirm('Clear all cached data?')) {
@@ -761,6 +738,7 @@ async logout() {
     }
     
     setupTabChangeListener() {}
+    
     setupMobileMenuVisibility() {
         if (!this.mobileMenuToggle) return;
         const updateVisibility = () => {
@@ -774,11 +752,13 @@ async logout() {
     forceShowTab(tabId) { this.showTab(tabId); }
     closeTranscriptModal() { if (this.transcriptModal) this.transcriptModal.style.display = 'none'; }
     closeReader() { if (this.mobileReader) this.mobileReader.style.display = 'none'; }
+    
     debugAll() {
         console.log('🔍 UI DEBUG INFO:');
         console.log('- Current tab:', this.currentTab);
         console.log('- Profile trigger:', !!this.profileTrigger);
         console.log('- Valid tabs:', this.validTabs);
+        console.log('- Current path:', window.location.pathname);
     }
 }
 
@@ -801,14 +781,3 @@ document.addEventListener('appReady', (e) => { if (window.ui && e.detail?.userPr
 document.addEventListener('profilePhotoUpdated', (e) => { if (window.ui && e.detail?.photoUrl) window.ui.updateProfilePhoto(); });
 
 console.log('✅ UI Module loaded successfully');
-
-window.addEventListener('load', () => {
-    setTimeout(() => {
-        if (window.ui) {
-            const hash = window.location.hash.substring(1);
-            if (hash && window.ui.isValidTab(hash)) {
-                window.ui.showTab(hash, true);
-            }
-        }
-    }, 500);
-});
