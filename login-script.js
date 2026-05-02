@@ -398,7 +398,7 @@ window.NCHSMLogin = {
         console.log('🚀 Redirecting to dashboard...');
         
         const redirects = {
-            'student': 'index.html',
+            'student': 'student.html',
             'lecturer': 'lecturer.html',
             'admin': 'admin.html',
             'superadmin': 'superadmin.html',
@@ -407,7 +407,7 @@ window.NCHSMLogin = {
         };
         
         const role = profileData.role?.toLowerCase() || 'student';
-        const redirectUrl = redirects[role] || 'index.html';
+        const redirectUrl = redirects[role] || 'student.html';
         
         console.log(`🎯 Role: ${role}, Redirecting to: ${redirectUrl}`);
         
