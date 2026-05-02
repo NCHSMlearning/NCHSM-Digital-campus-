@@ -5452,7 +5452,8 @@ async function logout() {
     }
 }
 // ============================================
-// ADMIN SUPPORT TICKETS - COMPLETE WORKING VERSION
+// ADMIN SUPPORT TICKETS - TAWK.TO STYLE
+// Complete working version with modern chat UI
 // ============================================
 
 let adminAllTickets = [];
@@ -5475,7 +5476,7 @@ function getSupabaseClient() {
     return null;
 }
 
-// Load all tickets for admin - FIXED with proper student data
+// Load all tickets for admin
 async function loadAdminTickets() {
     console.log('📋 Loading admin tickets...');
     
@@ -5485,16 +5486,15 @@ async function loadAdminTickets() {
         return;
     }
     
-    tbody.innerHTML = '<tr><td colspan="10" style="padding: 40px; text-align: center;"><div class="loading-spinner"></div> Loading tickets...<\/td><\/tr>';
+    tbody.innerHTML = '<tr><td colspan="10" style="padding: 40px; text-align: center;"><div class="loading-spinner"></div> Loading tickets...</td></tr>';
     
     const supabase = getSupabaseClient();
     if (!supabase) {
-        tbody.innerHTML = '<tr><td colspan="10" style="padding: 40px; text-align: center; color: red;">❌ Database connection not found<\/td><\/tr>';
+        tbody.innerHTML = '<tr><td colspan="10" style="padding: 40px; text-align: center; color: red;">❌ Database connection not found</td></tr>';
         return;
     }
     
     try {
-        // Get all tickets
         const { data: tickets, error } = await supabase
             .from('support_tickets')
             .select('*')
@@ -5505,27 +5505,19 @@ async function loadAdminTickets() {
         console.log('✅ Found tickets:', tickets?.length || 0);
         
         if (!tickets || tickets.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="10" style="padding: 40px; text-align: center;">No tickets found<\/td><\/tr>';
+            tbody.innerHTML = '<tr><td colspan="10" style="padding: 40px; text-align: center;">No tickets found</td></tr>';
             updateAdminTicketCounts(0, 0, 0, 0);
             return;
         }
         
-        // Get ALL student profiles from consolidated table
+        // Get ALL student profiles
         const { data: allStudents, error: studentError } = await supabase
             .from('consolidated_user_profiles_table')
             .select('id, user_id, email, full_name, program, intake_year, role');
         
-        if (studentError) {
-            console.error('Error loading students:', studentError);
-        }
-        
-        // Create student map
-        adminStudentMap = {};
-        if (allStudents) {
+        if (!studentError && allStudents) {
             allStudents.forEach(s => {
-                // Map by id (profile ID)
                 adminStudentMap[s.id] = s;
-                // Also map by user_id (auth ID) if different
                 if (s.user_id && s.user_id !== s.id) {
                     adminStudentMap[s.user_id] = s;
                 }
@@ -5533,36 +5525,8 @@ async function loadAdminTickets() {
             console.log('✅ Loaded student profiles:', allStudents.length);
         }
         
-        // Get all unique student IDs from tickets
-        const studentIdsFromTickets = [...new Set(tickets.map(t => t.student_id).filter(id => id))];
-        
-        // Check for missing students and try to fetch from auth.users
-        const missingIds = studentIdsFromTickets.filter(id => !adminStudentMap[id]);
-        
-        if (missingIds.length > 0) {
-            console.log('🔍 Looking up missing student IDs:', missingIds);
-            
-            // Try to get from auth.users
-            for (const missingId of missingIds) {
-                const { data: userData } = await supabase.auth.admin.getUserById(missingId).catch(() => ({ data: null }));
-                if (userData?.user) {
-                    adminStudentMap[missingId] = {
-                        id: missingId,
-                        user_id: missingId,
-                        email: userData.user.email,
-                        full_name: userData.user.user_metadata?.full_name || userData.user.email?.split('@')[0] || 'Student',
-                        program: 'N/A',
-                        intake_year: 'N/A',
-                        role: 'student'
-                    };
-                    console.log('✅ Found missing student from auth:', userData.user.email);
-                }
-            }
-        }
-        
         adminAllTickets = tickets;
         
-        // Update summary counts
         const openCount = tickets.filter(t => t.status === 'open').length;
         const progressCount = tickets.filter(t => t.status === 'in_progress').length;
         const closedCount = tickets.filter(t => t.status === 'closed' || t.status === 'resolved').length;
@@ -5573,7 +5537,7 @@ async function loadAdminTickets() {
         
     } catch (err) {
         console.error('❌ Error:', err);
-        tbody.innerHTML = `<tr><td colspan="10" style="padding: 40px; text-align: center; color: red;">Error: ${err.message}<\/td><\/tr>`;
+        tbody.innerHTML = `<tr><td colspan="10" style="padding: 40px; text-align: center; color: red;">Error: ${err.message}</td></tr>`;
     }
 }
 
@@ -5589,32 +5553,17 @@ function updateAdminTicketCounts(open, inProgress, closed, urgent) {
     if (urgentEl) urgentEl.textContent = urgent;
 }
 
-// Render tickets table - FIXED with better student display
 function renderAdminTicketsTable(tickets) {
     const tbody = document.getElementById('admin-tickets-body');
     if (!tbody) return;
     
     if (!tickets || tickets.length === 0) {
-        tbody.innerHTML = '</table><td colspan="10" style="padding: 40px; text-align: center;">No tickets found<\/td><\/tr>';
+        tbody.innerHTML = '<tr><td colspan="10" style="padding: 40px; text-align: center;">No tickets found</td></tr>';
         return;
     }
     
     tbody.innerHTML = tickets.map(ticket => {
-        // Try multiple ways to find the student
         let student = adminStudentMap[ticket.student_id];
-        
-        // If not found by ID, try to find by user_id match
-        if (!student) {
-            for (const key in adminStudentMap) {
-                if (adminStudentMap[key].user_id === ticket.student_id || 
-                    adminStudentMap[key].id === ticket.student_id) {
-                    student = adminStudentMap[key];
-                    break;
-                }
-            }
-        }
-        
-        // Fallback student data
         if (!student) {
             student = {
                 full_name: 'Unknown Student',
@@ -5641,29 +5590,32 @@ function renderAdminTicketsTable(tickets) {
         
         return `
             <tr style="border-bottom: 1px solid #e5e7eb; cursor: pointer;" onclick="viewAdminTicket('${ticket.id}')">
-                <td style="padding: 12px;"><strong>${escapeHtml(ticket.ticket_number || 'N/A')}</strong><\/td>
+                <td style="padding: 12px;"><strong>${escapeHtml(ticket.ticket_number || 'N/A')}</strong></td>
                 <td style="padding: 12px;">
                     ${escapeHtml(student.full_name || 'Unknown')}<br>
                     <small style="color: #6b7280;">${escapeHtml(student.email || '-')}</small>
-                <\/td>
-                <td style="padding: 12px;">${escapeHtml(student.program || '-')}<br><small>${escapeHtml(student.intake_year || '-')}</small><\/td>
-                <td style="padding: 12px;">${escapeHtml(ticket.subject)}<\/td>
-                <td style="padding: 12px;"><span class="badge badge-info">${escapeHtml(ticket.category || '-')}</span><\/td>
-                <td style="padding: 12px;"><span class="${priorityClass}" style="padding: 4px 8px; border-radius: 4px;">${escapeHtml(ticket.priority || 'medium')}</span><\/td>
-                <td style="padding: 12px;"><span class="${statusClass}" style="padding: 4px 8px; border-radius: 4px;">${escapeHtml(ticket.status || 'open')}</span><\/td>
-                <td style="padding: 12px;">${createdDate}<\/td>
-                <td style="padding: 12px;">${updatedDate}<\/td>
+                </td>
+                <td style="padding: 12px;">${escapeHtml(student.program || '-')}<br><small>${escapeHtml(student.intake_year || '-')}</small></td>
+                <td style="padding: 12px;">${escapeHtml(ticket.subject)}</td>
+                <td style="padding: 12px;"><span class="badge badge-info">${escapeHtml(ticket.category || '-')}</span></td>
+                <td style="padding: 12px;"><span class="${priorityClass}" style="padding: 4px 8px; border-radius: 4px;">${escapeHtml(ticket.priority || 'medium')}</span></td>
+                <td style="padding: 12px;"><span class="${statusClass}" style="padding: 4px 8px; border-radius: 4px;">${escapeHtml(ticket.status || 'open')}</span></td>
+                <td style="padding: 12px;">${createdDate}</td>
+                <td style="padding: 12px;">${updatedDate}</td>
                 <td style="padding: 12px;">
                     <button onclick="event.stopPropagation(); viewAdminTicket('${ticket.id}')" style="background: #4C1D95; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">
                         <i class="fas fa-eye"></i> View
                     </button>
-                <\/td>
-            <\/tr>
+                </td>
+            </tr>
         `;
     }).join('');
 }
 
-// View single ticket with full chat interface
+// ============================================
+// TAWK.TO STYLE CHAT INTERFACE
+// ============================================
+
 async function viewAdminTicket(ticketId) {
     console.log('👁️ Viewing ticket:', ticketId);
     
@@ -5675,7 +5627,6 @@ async function viewAdminTicket(ticketId) {
     
     currentAdminTicketId = ticketId;
     
-    // Get full ticket data
     const { data: ticket, error } = await supabase
         .from('support_tickets')
         .select('*')
@@ -5690,9 +5641,8 @@ async function viewAdminTicket(ticketId) {
     currentAdminTicket = ticket;
     currentAdminTicketStatus = ticket.status;
     
-    // Get student info - try multiple methods
+    // Get student info
     let student = adminStudentMap[ticket.student_id];
-    
     if (!student) {
         const { data: studentData } = await supabase
             .from('consolidated_user_profiles_table')
@@ -5703,22 +5653,12 @@ async function viewAdminTicket(ticketId) {
         if (studentData) {
             student = studentData;
         } else {
-            const { data: userData } = await supabase.auth.admin.getUserById(ticket.student_id).catch(() => ({ data: null }));
-            if (userData?.user) {
-                student = {
-                    full_name: userData.user.user_metadata?.full_name || userData.user.email?.split('@')[0] || 'Student',
-                    email: userData.user.email,
-                    program: 'N/A',
-                    intake_year: 'N/A'
-                };
-            } else {
-                student = {
-                    full_name: 'Unknown Student',
-                    email: ticket.student_id?.substring(0, 8) + '...',
-                    program: 'N/A',
-                    intake_year: 'N/A'
-                };
-            }
+            student = {
+                full_name: 'Student',
+                email: ticket.student_id?.substring(0, 8) + '...',
+                program: 'N/A',
+                intake_year: 'N/A'
+            };
         }
     }
     
@@ -5744,108 +5684,128 @@ async function viewAdminTicket(ticketId) {
                 authorNames[p.id] = p.full_name;
             });
         }
-        
-        // Also check admin map for any missing authors
-        for (const id of authorIds) {
-            if (!authorNames[id] && adminStudentMap[id]) {
-                authorNames[id] = adminStudentMap[id].full_name;
-            }
-        }
     }
     
-    // Get current admin profile ID
+    // Get current admin profile
     let adminName = 'Admin';
     let adminProfileId = null;
     
-    try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-            const { data: profile } = await supabase
-                .from('consolidated_user_profiles_table')
-                .select('id, full_name')
-                .eq('user_id', user.id)
-                .maybeSingle();
-            
-            if (profile) {
-                adminProfileId = profile.id;
-                adminName = profile.full_name || 'Admin';
-            } else {
-                adminProfileId = '7f6f6627-eb8c-44eb-b145-32b97c7d8d57';
-                adminName = 'Super Admin';
-            }
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+        const { data: profile } = await supabase
+            .from('consolidated_user_profiles_table')
+            .select('id, full_name')
+            .eq('user_id', user.id)
+            .maybeSingle();
+        
+        if (profile) {
+            adminProfileId = profile.id;
+            adminName = profile.full_name || 'Admin';
+        } else {
+            adminProfileId = '7f6f6627-eb8c-44eb-b145-32b97c7d8d57';
+            adminName = 'Super Admin';
         }
-    } catch (err) {
-        adminProfileId = '7f6f6627-eb8c-44eb-b145-32b97c7d8d57';
-        adminName = 'Super Admin';
     }
     
     currentAdminProfileId = adminProfileId;
     window.currentAdminProfileId = adminProfileId;
     
-    // Build modal HTML
+    // tawk.to style modal HTML
     const modalHtml = `
-        <div id="adminTicketChatModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 100000; display: flex; align-items: center; justify-content: center;">
-            <div style="background: white; max-width: 950px; width: 95%; height: 90vh; display: flex; flex-direction: column; border-radius: 16px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
-                <!-- Header -->
-                <div style="padding: 15px 20px; background: linear-gradient(135deg, #4C1D95, #6d28d9); color: white; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
-                    <div>
-                        <h3 style="margin: 0;">🎫 ${escapeHtml(ticket.ticket_number)}</h3>
-                        <small>${escapeHtml(ticket.subject)}</small>
+        <div id="adminTicketChatModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 100000; display: flex; align-items: center; justify-content: center; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+            <div style="background: white; width: 1000px; max-width: 95vw; height: 85vh; display: flex; flex-direction: column; border-radius: 12px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);">
+                
+                <!-- Header - tawk.to style -->
+                <div style="background: #292e33; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="width: 40px; height: 40px; background: #4C1D95; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                            <i class="fas fa-ticket-alt" style="color: white; font-size: 18px;"></i>
+                        </div>
+                        <div>
+                            <h3 style="margin: 0; font-size: 16px; font-weight: 600; color: white;">${escapeHtml(ticket.ticket_number)}</h3>
+                            <p style="margin: 2px 0 0; font-size: 12px; color: #9ca3af;">${escapeHtml(ticket.subject)}</p>
+                        </div>
                     </div>
-                    <button onclick="closeAdminTicketChatModal()" style="background: none; border: none; font-size: 28px; cursor: pointer; color: white;">&times;</button>
-                </div>
-                
-                <!-- Ticket Info Bar -->
-                <div style="padding: 12px 20px; background: #f8f9fa; border-bottom: 1px solid #e5e7eb; display: flex; gap: 20px; flex-wrap: wrap; flex-shrink: 0;">
-                    <div><strong>👤 Student:</strong> ${escapeHtml(student?.full_name || 'Unknown')}</div>
-                    <div><strong>📧 Email:</strong> ${escapeHtml(student?.email || '-')}</div>
-                    <div><strong>🎓 Program:</strong> ${escapeHtml(student?.program || '-')} (${escapeHtml(student?.intake_year || '-')})</div>
-                    <div><strong>🏷️ Priority:</strong> <span class="priority-badge ${ticket.priority}">${ticket.priority}</span></div>
-                    <div><strong>📌 Status:</strong> <span id="adminModalTicketStatus" class="status-badge ${ticket.status}">${ticket.status}</span></div>
-                </div>
-                
-                <!-- Description -->
-                <div style="padding: 12px 20px; background: #fef3c7; border-bottom: 1px solid #e5e7eb; flex-shrink: 0;">
-                    <strong>📝 Description:</strong>
-                    <p style="margin: 8px 0 0 0; background: white; padding: 10px; border-radius: 6px;">${escapeHtml(ticket.description)}</p>
-                </div>
-                
-                <!-- Chat Area -->
-                <div style="flex: 1; background: #f3f4f6; display: flex; flex-direction: column; min-height: 0; overflow: hidden;">
-                    <div style="padding: 10px 15px; background: #e5e7eb; border-bottom: 1px solid #d1d5db; flex-shrink: 0;">
-                        <strong><i class="fas fa-comments"></i> Conversation</strong>
-                    </div>
-                    <div id="adminConversationArea" style="flex: 1; overflow-y: auto; padding: 15px;">
-                        ${renderAdminChatMessages(conversations || [], authorNames)}
-                    </div>
-                </div>
-                
-                <!-- REPLY SECTION -->
-                <div style="padding: 15px 20px; background: white; border-top: 2px solid #e5e7eb; flex-shrink: 0;">
-                    <label style="font-weight: 600; margin-bottom: 8px; display: block;">✏️ Reply to Student</label>
-                    <textarea id="adminReplyMessageInput" rows="3" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ddd; resize: vertical; font-family: inherit; font-size: 14px;" placeholder="Type your reply here..."></textarea>
-                    <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 12px;">
-                        <select id="adminReplyStatusSelect" style="padding: 8px 12px; border-radius: 6px; border: 1px solid #ddd; background: white;">
-                            <option value="${ticket.status}">📌 Current: ${ticket.status}</option>
-                            <option value="open">🟢 Open</option>
-                            <option value="in_progress">🟡 In Progress</option>
-                            <option value="closed">🔴 Closed</option>
-                            <option value="resolved">✅ Resolved</option>
-                        </select>
-                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
-                            <input type="checkbox" id="adminReplyInternalCheckbox">
-                            🔒 Internal note (staff only)
-                        </label>
-                        <button onclick="sendAdminChatReply()" style="background: #4C1D95; color: white; border: none; padding: 8px 24px; border-radius: 6px; cursor: pointer; font-weight: 500;">
-                            <i class="fas fa-paper-plane"></i> Send Reply
-                        </button>
-                        <button onclick="refreshAdminConversation()" style="background: #6b7280; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">
-                            <i class="fas fa-sync-alt"></i> Refresh
+                    <div style="display: flex; gap: 8px;">
+                        <span class="priority-badge ${ticket.priority}" style="background: ${ticket.priority === 'urgent' ? '#dc2626' : ticket.priority === 'high' ? '#f59e0b' : '#10b981'}; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px;">${ticket.priority}</span>
+                        <button onclick="closeAdminTicketChatModal()" style="background: rgba(255,255,255,0.1); border: none; width: 32px; height: 32px; border-radius: 8px; cursor: pointer; color: white;">
+                            <i class="fas fa-times"></i>
                         </button>
                     </div>
-                    <p style="margin-top: 10px; font-size: 11px; color: #6b7280;">
+                </div>
+                
+                <!-- Contact Info Bar - tawk.to style -->
+                <div style="background: #f8f9fa; padding: 12px 24px; border-bottom: 1px solid #e5e7eb; display: flex; gap: 24px; flex-wrap: wrap; flex-shrink: 0;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div style="width: 32px; height: 32px; background: #e0e7ff; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                            <i class="fas fa-user" style="color: #4C1D95; font-size: 14px;"></i>
+                        </div>
+                        <div>
+                            <div style="font-size: 13px; font-weight: 600;">${escapeHtml(student.full_name)}</div>
+                            <div style="font-size: 11px; color: #6b7280;">${escapeHtml(student.email)}</div>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-graduation-cap" style="color: #9ca3af; font-size: 14px;"></i>
+                        <span style="font-size: 13px;">${escapeHtml(student.program)} (${escapeHtml(student.intake_year)})</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-tag" style="color: #9ca3af; font-size: 14px;"></i>
+                        <span id="adminModalTicketStatus" class="status-badge ${ticket.status}" style="padding: 2px 8px; border-radius: 12px; font-size: 11px;">${ticket.status}</span>
+                    </div>
+                </div>
+                
+                <!-- Description - tawk.to style note -->
+                <div style="background: #fefce8; padding: 12px 24px; border-bottom: 1px solid #fde68a; flex-shrink: 0;">
+                    <div style="display: flex; gap: 12px;">
+                        <i class="fas fa-file-alt" style="color: #d97706;"></i>
+                        <div style="flex: 1;">
+                            <div style="font-size: 12px; font-weight: 600; color: #92400e; margin-bottom: 4px;">Description</div>
+                            <div style="font-size: 13px; color: #78350f; line-height: 1.4;">${escapeHtml(ticket.description)}</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Chat Messages Area - tawk.to style -->
+                <div style="flex: 1; background: #f5f7fb; display: flex; flex-direction: column; min-height: 0; overflow: hidden;">
+                    <div id="adminConversationArea" style="flex: 1; overflow-y: auto; padding: 20px;">
+                        ${renderTawkChatMessages(conversations || [], authorNames)}
+                    </div>
+                </div>
+                
+                <!-- Reply Area - tawk.to style -->
+                <div style="background: white; border-top: 1px solid #e5e7eb; flex-shrink: 0;">
+                    <div style="padding: 16px 24px;">
+                        <div style="display: flex; gap: 12px;">
+                            <textarea id="adminReplyMessageInput" rows="2" style="flex: 1; padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px; resize: none; font-family: inherit; font-size: 14px; background: #f9fafb;" placeholder="Type your reply..."></textarea>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px;">
+                            <div style="display: flex; gap: 12px;">
+                                <select id="adminReplyStatusSelect" style="padding: 6px 12px; border-radius: 6px; border: 1px solid #e5e7eb; font-size: 13px;">
+                                    <option value="${ticket.status}">📌 Status: ${ticket.status}</option>
+                                    <option value="open">🟢 Open</option>
+                                    <option value="in_progress">🟡 In Progress</option>
+                                    <option value="closed">🔴 Closed</option>
+                                    <option value="resolved">✅ Resolved</option>
+                                </select>
+                                <label style="display: flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer;">
+                                    <input type="checkbox" id="adminReplyInternalCheckbox">
+                                    🔒 Internal note
+                                </label>
+                            </div>
+                            <div style="display: flex; gap: 8px;">
+                                <button onclick="refreshAdminConversation()" style="background: #6b7280; color: white; border: none; padding: 6px 16px; border-radius: 6px; cursor: pointer; font-size: 13px;">
+                                    <i class="fas fa-sync-alt"></i> Refresh
+                                </button>
+                                <button onclick="sendAdminChatReply()" style="background: #4C1D95; color: white; border: none; padding: 6px 20px; border-radius: 6px; cursor: pointer; font-weight: 500; font-size: 13px;">
+                                    <i class="fas fa-paper-plane"></i> Send
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="background: #f9fafb; padding: 8px 24px; border-top: 1px solid #e5e7eb; font-size: 11px; color: #6b7280;">
                         <i class="fas fa-user-circle"></i> Replying as: <strong>${escapeHtml(adminName)}</strong>
-                    </p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -5856,7 +5816,7 @@ async function viewAdminTicket(ticketId) {
     
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     
-    // Start auto-refresh
+    // Auto-refresh every 5 seconds
     if (adminConversationInterval) {
         clearInterval(adminConversationInterval);
     }
@@ -5869,13 +5829,14 @@ async function viewAdminTicket(ticketId) {
     }, 5000);
 }
 
-// Render admin chat messages
-function renderAdminChatMessages(conversations, authorNames) {
+// tawk.to style message renderer
+function renderTawkChatMessages(conversations, authorNames) {
     if (!conversations || conversations.length === 0) {
         return `
-            <div style="text-align: center; padding: 60px 20px; color: #6b7280;">
-                <i class="fas fa-comments" style="font-size: 48px; margin-bottom: 15px; opacity: 0.5;"></i>
-                <p>No messages yet. Send the first reply!</p>
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #9ca3af; text-align: center;">
+                <i class="fas fa-comments" style="font-size: 48px; margin-bottom: 16px; opacity: 0.5;"></i>
+                <p style="margin: 0;">No messages yet</p>
+                <p style="font-size: 12px; margin-top: 8px;">Send the first reply to start the conversation</p>
             </div>
         `;
     }
@@ -5885,44 +5846,71 @@ function renderAdminChatMessages(conversations, authorNames) {
     
     for (const conv of conversations) {
         const messageDate = new Date(conv.created_at);
-        const dateStr = messageDate.toLocaleDateString();
+        const dateStr = messageDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
         const timeStr = messageDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         
         if (lastDate !== dateStr) {
-            html += `<div style="text-align: center; margin: 15px 0;"><span style="background: #e5e7eb; padding: 4px 12px; border-radius: 20px; font-size: 12px;">${dateStr}</span></div>`;
+            html += `
+                <div style="text-align: center; margin: 20px 0;">
+                    <span style="background: #e5e7eb; padding: 4px 12px; border-radius: 20px; font-size: 11px; color: #6b7280;">${dateStr}</span>
+                </div>
+            `;
             lastDate = dateStr;
         }
         
         const authorName = authorNames[conv.author_id] || 'Unknown';
         const isInternal = conv.is_internal;
+        const isStaff = authorName.includes('Admin') || authorName.includes('Super') || authorName === 'Director';
         
         if (isInternal) {
+            // Internal note - system message style
             html += `
-                <div style="display: flex; justify-content: center; margin-bottom: 15px;">
-                    <div style="max-width: 80%; background: #fef3c7; padding: 10px 15px; border-radius: 12px; border-left: 4px solid #f59e0b;">
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                            <strong style="font-size: 11px; color: #92400e;">🔒 INTERNAL NOTE - ${escapeHtml(authorName)}</strong>
-                            <small style="font-size: 10px; color: #92400e;">${timeStr}</small>
+                <div style="display: flex; justify-content: center; margin: 16px 0;">
+                    <div style="background: #fef3c7; padding: 8px 16px; border-radius: 20px; display: inline-flex; align-items: center; gap: 8px; max-width: 80%;">
+                        <i class="fas fa-lock" style="font-size: 11px; color: #d97706;"></i>
+                        <span style="font-size: 12px; color: #92400e;"><strong>${escapeHtml(authorName)}</strong> left an internal note</span>
+                    </div>
+                </div>
+                <div style="display: flex; justify-content: center; margin-top: -12px; margin-bottom: 16px;">
+                    <div style="background: #fffbeb; padding: 12px 18px; border-radius: 12px; max-width: 70%; border-left: 3px solid #f59e0b;">
+                        <div style="font-size: 13px; color: #78350f; line-height: 1.5;">${escapeHtml(conv.message)}</div>
+                        <div style="font-size: 10px; color: #92400e; margin-top: 6px;">${timeStr}</div>
+                    </div>
+                </div>
+            `;
+        } else if (isStaff) {
+            // Staff message - right aligned, purple (like tawk.to agent)
+            html += `
+                <div style="display: flex; justify-content: flex-end; margin-bottom: 16px;">
+                    <div style="max-width: 70%;">
+                        <div style="background: #4C1D95; padding: 10px 14px; border-radius: 12px; border-bottom-right-radius: 4px;">
+                            <div style="font-size: 13px; color: white; line-height: 1.5;">${escapeHtml(conv.message)}</div>
                         </div>
-                        <p style="margin: 5px 0 0 0; font-size: 13px;">${escapeHtml(conv.message)}</p>
+                        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px;">
+                            <span style="font-size: 10px; color: #9ca3af;">${escapeHtml(authorName)}</span>
+                            <span style="font-size: 10px; color: #9ca3af;">${timeStr}</span>
+                        </div>
+                    </div>
+                    <div style="width: 32px; height: 32px; background: #4C1D95; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-left: 8px; flex-shrink: 0;">
+                        <i class="fas fa-user-tie" style="color: white; font-size: 14px;"></i>
                     </div>
                 </div>
             `;
         } else {
-            const isAdmin = authorName.includes('Admin') || authorName.includes('Super') || authorName === 'Director';
-            const align = isAdmin ? 'flex-end' : 'flex-start';
-            const bgColor = isAdmin ? '#4C1D95' : 'white';
-            const textColor = isAdmin ? 'white' : '#1f2937';
-            const bubbleStyle = isAdmin ? 'border-bottom-right-radius: 4px;' : 'border-bottom-left-radius: 4px;';
-            
+            // Student message - left aligned, white with avatar
             html += `
-                <div style="display: flex; justify-content: ${align}; margin-bottom: 15px;">
-                    <div style="max-width: 70%; background: ${bgColor}; padding: 10px 15px; border-radius: 12px; ${bubbleStyle} color: ${textColor}; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                            <strong style="font-size: 12px;">${escapeHtml(authorName)}</strong>
-                            <small style="font-size: 10px; opacity: 0.7;">${timeStr}</small>
+                <div style="display: flex; justify-content: flex-start; margin-bottom: 16px;">
+                    <div style="width: 32px; height: 32px; background: #e0e7ff; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 8px; flex-shrink: 0;">
+                        <i class="fas fa-user-graduate" style="color: #4C1D95; font-size: 14px;"></i>
+                    </div>
+                    <div style="max-width: 70%;">
+                        <div style="background: white; padding: 10px 14px; border-radius: 12px; border-bottom-left-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                            <div style="font-size: 13px; color: #1f2937; line-height: 1.5;">${escapeHtml(conv.message)}</div>
                         </div>
-                        <p style="margin: 5px 0 0 0;">${escapeHtml(conv.message)}</p>
+                        <div style="display: flex; gap: 8px; margin-top: 4px;">
+                            <span style="font-size: 10px; color: #9ca3af;">${escapeHtml(authorName)}</span>
+                            <span style="font-size: 10px; color: #9ca3af;">${timeStr}</span>
+                        </div>
                     </div>
                 </div>
             `;
@@ -5932,7 +5920,7 @@ function renderAdminChatMessages(conversations, authorNames) {
     return html;
 }
 
-// Refresh admin conversation
+// Refresh conversation
 async function refreshAdminConversation() {
     if (!currentAdminTicketId) return;
     
@@ -5965,19 +5953,20 @@ async function refreshAdminConversation() {
             }
         }
         
-        const newHtml = renderAdminChatMessages(conversations, authorNames);
+        const newHtml = renderTawkChatMessages(conversations, authorNames);
         const oldScrollTop = conversationArea.scrollTop;
         const oldScrollHeight = conversationArea.scrollHeight;
         
         conversationArea.innerHTML = newHtml;
         
-        if (oldScrollHeight - oldScrollTop < 200) {
+        // Scroll to bottom if was near bottom
+        if (oldScrollHeight - oldScrollTop < 300) {
             conversationArea.scrollTop = conversationArea.scrollHeight;
         }
     }
 }
 
-// Send admin chat reply
+// Send admin reply
 async function sendAdminChatReply() {
     const messageInput = document.getElementById('adminReplyMessageInput');
     const message = messageInput?.value.trim();
@@ -6008,18 +5997,17 @@ async function sendAdminChatReply() {
             } else {
                 adminProfileId = '7f6f6627-eb8c-44eb-b145-32b97c7d8d57';
             }
-        } else {
-            adminProfileId = '7f6f6627-eb8c-44eb-b145-32b97c7d8d57';
         }
         currentAdminProfileId = adminProfileId;
         window.currentAdminProfileId = adminProfileId;
     }
     
+    // Show sending state
     const sendBtn = document.querySelector('#adminTicketChatModal button[onclick="sendAdminChatReply()"]');
     const originalText = sendBtn?.innerHTML;
     if (sendBtn) {
         sendBtn.disabled = true;
-        sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+        sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
     }
     
     try {
@@ -6052,14 +6040,14 @@ async function sendAdminChatReply() {
             }
         }
         
-        if (messageInput) messageInput.value = '';
+        messageInput.value = '';
         const internalCheck = document.getElementById('adminReplyInternalCheckbox');
         if (internalCheck) internalCheck.checked = false;
         
         await refreshAdminConversation();
         await loadAdminTickets();
         
-        alert(isInternal ? '✅ Internal note added!' : '✅ Reply sent successfully!');
+        alert(isInternal ? '✅ Internal note added!' : '✅ Reply sent!');
         
     } catch (error) {
         console.error('Error:', error);
@@ -6072,7 +6060,7 @@ async function sendAdminChatReply() {
     }
 }
 
-// Close admin chat modal
+// Close modal
 function closeAdminTicketChatModal() {
     if (adminConversationInterval) {
         clearInterval(adminConversationInterval);
@@ -6080,12 +6068,11 @@ function closeAdminTicketChatModal() {
     }
     currentAdminTicketId = null;
     currentAdminTicket = null;
-    currentAdminProfileId = null;
     const modal = document.getElementById('adminTicketChatModal');
     if (modal) modal.remove();
 }
 
-// Filter admin tickets
+// Filter functions
 function filterAdminTickets() {
     const searchTerm = document.getElementById('admin_ticket_search')?.value.toLowerCase() || '';
     const statusFilter = document.getElementById('admin_ticket_status_filter')?.value || 'all';
@@ -6127,7 +6114,7 @@ function filterAdminTicketsDebounced() {
     adminFilterTimeout = setTimeout(() => filterAdminTickets(), 300);
 }
 
-// Export admin tickets to CSV
+// Export to CSV
 function exportAdminTicketsToCSV() {
     const tickets = adminAllTickets;
     let csv = 'Ticket #,Student,Student Email,Program,Subject,Category,Priority,Status,Created,Updated\n';
