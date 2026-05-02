@@ -161,18 +161,19 @@
     left: 0;
 }
 
-/* ===== Profile Media (Photo Section) ===== */
+/* ===== Profile Media (Photo Section) - UPDATED: Smaller & Better Arrangement ===== */
 .profile-media {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
-    text-align: center;
-    gap: var(--profile-spacing-lg);
-    padding: var(--profile-spacing-xl);
+    text-align: left;
+    gap: var(--profile-spacing-xl);
+    padding: var(--profile-spacing-lg);
     background: linear-gradient(135deg, rgba(91, 33, 182, 0.03), rgba(124, 58, 237, 0.03));
     border-radius: var(--profile-radius-xl);
     border: 2px dashed var(--profile-border-light);
     transition: all var(--profile-transition-normal);
+    flex-wrap: wrap;
 }
 
 .profile-media:hover {
@@ -184,8 +185,9 @@
 .passport-photo-container {
     position: relative;
     margin: 0;
-    width: 180px;
-    height: 180px;
+    width: 120px;
+    height: 120px;
+    flex-shrink: 0;
 }
 
 #passport-preview {
@@ -201,24 +203,24 @@
 }
 
 #passport-preview:hover {
-    transform: scale(1.08);
+    transform: scale(1.05);
     border-color: var(--profile-primary-light);
     box-shadow: var(--profile-shadow-xl), 0 0 0 8px rgba(91, 33, 182, 0.15);
 }
 
 .photo-upload-indicator {
     position: absolute;
-    bottom: 10px;
-    right: 10px;
+    bottom: 5px;
+    right: 5px;
     background: var(--profile-primary);
     color: white;
-    width: 36px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.2rem;
+    font-size: 1rem;
     box-shadow: var(--profile-shadow-md);
     opacity: 0;
     transform: scale(0.8);
@@ -230,18 +232,22 @@
     transform: scale(1);
 }
 
+.photo-info {
+    flex: 1;
+    min-width: 200px;
+}
+
 .photo-caption {
     font-size: 0.875rem;
     color: var(--profile-text-light);
-    margin-top: var(--profile-spacing-sm);
+    margin-bottom: var(--profile-spacing-xs);
     line-height: 1.5;
-    max-width: 300px;
 }
 
 .photo-requirements {
     font-size: 0.75rem;
     color: var(--profile-text-lighter);
-    margin-top: var(--profile-spacing-xs);
+    margin-bottom: var(--profile-spacing-sm);
     line-height: 1.4;
 }
 
@@ -249,9 +255,14 @@
     display: flex;
     flex-wrap: wrap;
     gap: var(--profile-spacing-sm);
-    justify-content: center;
-    width: 100%;
-    max-width: 400px;
+    justify-content: flex-start;
+}
+
+/* Small button variant for photo section */
+.button-small {
+    padding: 0.5rem 1.25rem;
+    font-size: 0.875rem;
+    min-width: auto;
 }
 
 /* ===== Form Fields Grid ===== */
@@ -291,7 +302,8 @@
     margin-left: 0.125rem;
 }
 
-.form-field input {
+.form-field input,
+.form-field select {
     padding: 0.875rem 1.125rem;
     border: 2px solid var(--profile-border);
     border-radius: var(--profile-radius-md);
@@ -303,7 +315,23 @@
     font-family: inherit;
 }
 
-.form-field input:focus {
+.form-field select {
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236B7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    background-size: 1.25rem;
+}
+
+.form-field select:disabled {
+    background-color: #f8fafc;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.form-field input:focus,
+.form-field select:focus {
     outline: none;
     border-color: var(--profile-primary);
     box-shadow: 0 0 0 4px rgba(91, 33, 182, 0.1);
@@ -311,7 +339,8 @@
     transform: translateY(-1px);
 }
 
-.form-field input:read-only {
+.form-field input:read-only,
+.form-field select:read-only {
     background: #f8fafc;
     border-color: #e2e8f0;
     color: var(--profile-text-light);
@@ -319,7 +348,8 @@
     font-style: italic;
 }
 
-.form-field input:read-only:focus {
+.form-field input:read-only:focus,
+.form-field select:read-only:focus {
     border-color: #e2e8f0;
     box-shadow: none;
     transform: none;
@@ -400,6 +430,92 @@
 .field-success::before {
     content: '✅';
     font-size: 0.875rem;
+}
+
+/* ===== Password Section Styles ===== */
+.password-reset-container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--profile-spacing-md);
+}
+
+.password-field-group {
+    position: relative;
+}
+
+.password-field-group input {
+    padding: 0.875rem 1.125rem;
+    border: 2px solid var(--profile-border);
+    border-radius: var(--profile-radius-md);
+    font-size: 1rem;
+    width: 100%;
+    transition: all var(--profile-transition-fast);
+}
+
+.password-field-group input:focus {
+    outline: none;
+    border-color: var(--profile-primary);
+    box-shadow: 0 0 0 4px rgba(91, 33, 182, 0.1);
+}
+
+.password-strength {
+    margin-top: var(--profile-spacing-sm);
+}
+
+.strength-bar {
+    height: 4px;
+    background: var(--profile-border);
+    border-radius: var(--profile-radius-full);
+    overflow: hidden;
+    margin-bottom: var(--profile-spacing-xs);
+}
+
+.strength-text {
+    font-size: 0.75rem;
+    color: var(--profile-text-light);
+}
+
+.password-requirements {
+    background: var(--profile-bg);
+    padding: var(--profile-spacing-md);
+    border-radius: var(--profile-radius-md);
+    font-size: 0.75rem;
+}
+
+.password-requirements p {
+    font-weight: 600;
+    margin-bottom: var(--profile-spacing-xs);
+    color: var(--profile-text);
+}
+
+.password-requirements ul {
+    list-style: none;
+    padding-left: 0;
+}
+
+.password-requirements li {
+    color: var(--profile-text-lighter);
+    margin-bottom: 0.25rem;
+    padding-left: 1.25rem;
+    position: relative;
+}
+
+.password-requirements li.valid {
+    color: var(--profile-success);
+}
+
+.password-requirements li.valid::before {
+    content: '✓';
+    position: absolute;
+    left: 0;
+    color: var(--profile-success);
+}
+
+.password-feedback {
+    font-size: 0.875rem;
+    margin-top: var(--profile-spacing-sm);
+    padding: var(--profile-spacing-sm);
+    border-radius: var(--profile-radius-md);
 }
 
 /* ===== Buttons ===== */
@@ -629,6 +745,111 @@
     background: linear-gradient(135deg, var(--profile-info), #2563eb);
 }
 
+/* ===== Block Timeline Styles ===== */
+.block-progress-container {
+    background: var(--profile-bg);
+    padding: var(--profile-spacing-lg);
+    border-radius: var(--profile-radius-lg);
+}
+
+.block-timeline {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.block-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1;
+    min-width: 60px;
+}
+
+.block-marker {
+    width: 12px;
+    height: 12px;
+    background: var(--profile-border);
+    border-radius: 50%;
+    transition: all var(--profile-transition-fast);
+}
+
+.block-step.completed .block-marker {
+    background: var(--profile-success);
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+}
+
+.block-step.active .block-marker {
+    background: var(--profile-primary);
+    width: 14px;
+    height: 14px;
+    box-shadow: 0 0 0 3px rgba(91, 33, 182, 0.2);
+}
+
+.block-name {
+    font-size: 0.7rem;
+    color: var(--profile-text-light);
+    text-align: center;
+}
+
+.block-step.completed .block-name,
+.block-step.active .block-name {
+    color: var(--profile-text);
+    font-weight: 600;
+}
+
+.block-connector {
+    flex: 1;
+    height: 2px;
+    background: var(--profile-border);
+    min-width: 20px;
+}
+
+.progress-container {
+    margin-top: var(--profile-spacing-md);
+}
+
+.progress-bar-block {
+    width: 100%;
+    height: 8px;
+    background: var(--profile-border);
+    border-radius: var(--profile-radius-full);
+    overflow: hidden;
+}
+
+.progress-fill-block {
+    height: 100%;
+    background: var(--profile-primary-gradient);
+    border-radius: var(--profile-radius-full);
+    transition: width 0.3s ease;
+}
+
+.progress-stats {
+    display: flex;
+    justify-content: space-between;
+    margin-top: var(--profile-spacing-sm);
+    font-size: 0.875rem;
+    color: var(--profile-text-light);
+}
+
+.completed-blocks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.completed-badge {
+    background: var(--profile-success);
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--profile-radius-full);
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
 /* ===== Animations ===== */
 @keyframes fadeInUp {
     from {
@@ -753,14 +974,35 @@
         min-width: 0;
     }
     
+    .profile-media {
+        flex-direction: column;
+        text-align: center;
+    }
+    
     .photo-controls {
+        justify-content: center;
+    }
+    
+    .passport-photo-container {
+        width: 100px;
+        height: 100px;
+    }
+    
+    .block-timeline {
         flex-direction: column;
         align-items: stretch;
     }
     
-    .passport-photo-container {
-        width: 150px;
-        height: 150px;
+    .block-connector {
+        width: 2px;
+        height: 20px;
+        margin: 0 auto;
+    }
+    
+    .block-step {
+        flex-direction: row;
+        justify-content: space-between;
+        padding: 0 var(--profile-spacing-md);
     }
 }
 
@@ -778,8 +1020,13 @@
     }
     
     #passport-preview {
-        width: 120px;
-        height: 120px;
+        width: 90px;
+        height: 90px;
+    }
+    
+    .passport-photo-container {
+        width: 90px;
+        height: 90px;
     }
     
     .notification {
@@ -806,6 +1053,7 @@
 /* Focus styles for accessibility */
 .button:focus-visible,
 .form-field input:focus-visible,
+.form-field select:focus-visible,
 #passport-preview:focus-visible {
     outline: 3px solid var(--profile-primary);
     outline-offset: 3px;
@@ -824,24 +1072,27 @@
     .photo-controls,
     #passport-file-input,
     .button,
-    .notification {
+    .notification,
+    .password-reset-container {
         display: none !important;
     }
     
     #passport-preview {
-        width: 100px;
-        height: 100px;
+        width: 80px;
+        height: 80px;
         border: 1px solid #000;
         box-shadow: none !important;
     }
     
-    .form-field input:read-only {
+    .form-field input:read-only,
+    .form-field select:read-only {
         background: transparent;
         border: none;
         padding: 0.25rem 0;
         font-style: normal;
     }
 }
+
 /* ===== Additional CSS fixes ===== */
 #edit-profile-button,
 #save-profile-button,
@@ -883,8 +1134,9 @@ label[for="passport-file-input"] {
     border: 2px solid var(--profile-primary-light);
 }
 
-.profile-form.editing .form-field input:not([readonly]) {
-    background-color: #f8fafc;
+.profile-form.editing .form-field input:not([readonly]),
+.profile-form.editing .form-field select:not([disabled]) {
+    background-color: #ffffff;
 }
 
 /* Button loading state */
