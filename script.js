@@ -747,12 +747,135 @@ function exportTableToCSV(tableId, filename) {
 /*******************************************************
  * 7. DASHBOARD & WELCOME EDITOR
  *******************************************************/
+
+// Additional dashboard metrics functions
+async function loadTicketMetricsForDashboard() {
+    try {
+        // Get all open tickets
+        const { data: openTickets, error: openError } = await sb
+            .from('support_tickets')
+            .select('id, priority')
+            .eq('status', 'open');
+        
+        if (!openError && openTickets) {
+            // Open tickets count
+            const openCount = openTickets.length;
+            const dashboardOpenTickets = document.getElementById('dashboardOpenTickets');
+            if (dashboardOpenTickets) dashboardOpenTickets.textContent = openCount;
+            
+            // Urgent tickets count
+            const urgentCount = openTickets.filter(t => t.priority === 'urgent').length;
+            const dashboardUrgentTickets = document.getElementById('dashboardUrgentTickets');
+            if (dashboardUrgentTickets) dashboardUrgentTickets.textContent = urgentCount;
+        }
+        
+        // Get total units for dashboard
+        const { data: units, error: unitsError } = await sb
+            .from('units_catalog')
+            .select('id', { count: 'exact' });
+        
+        if (!unitsError && units) {
+            const dashboardTotalUnits = document.getElementById('dashboardTotalUnits');
+            if (dashboardTotalUnits) dashboardTotalUnits.textContent = units.length || 0;
+        }
+        
+        // Get pending unit registrations
+        const { data: pendingReg, error: pendingError } = await sb
+            .from('student_unit_registrations')
+            .select('id', { count: 'exact' })
+            .eq('status', 'pending');
+        
+        if (!pendingError) {
+            const dashboardPendingUnitReg = document.getElementById('dashboardPendingUnitReg');
+            if (dashboardPendingUnitReg) dashboardPendingUnitReg.textContent = pendingReg?.length || 0;
+        }
+        
+        // Get upcoming exams (next 7 days)
+        const nextWeek = new Date();
+        nextWeek.setDate(nextWeek.getDate() + 7);
+        const nextWeekStr = nextWeek.toISOString().split('T')[0];
+        
+        const { data: upcomingExams, error: examsError } = await sb
+            .from('exams')
+            .select('id')
+            .eq('status', 'Upcoming')
+            .lte('exam_date', nextWeekStr);
+        
+        if (!examsError) {
+            const dashboardUpcomingExams = document.getElementById('dashboardUpcomingExams');
+            if (dashboardUpcomingExams) dashboardUpcomingExams.textContent = upcomingExams?.length || 0;
+        }
+        
+    } catch (error) {
+        console.error('Error loading ticket metrics:', error);
+    }
+}
+
+async function loadFeeSummaryForDashboard() {
+    try {
+        // Get total fee structure amount
+        const { data: feeStructures, error: feeError } = await sb
+            .from('fee_structure')
+            .select('amount');
+        
+        if (feeError) {
+            console.error('Error loading fee structures:', feeError);
+            const dashboardOutstandingFees = document.getElementById('dashboardOutstandingFees');
+            if (dashboardOutstandingFees) dashboardOutstandingFees.innerHTML = 'KES 0';
+            return;
+        }
+        
+        const totalFees = feeStructures ? feeStructures.reduce((sum, f) => sum + parseFloat(f.amount || 0), 0) : 0;
+        
+        // Get total collected from fee_payments
+        const { data: payments, error: paymentError } = await sb
+            .from('fee_payments')
+            .select('amount');
+        
+        if (paymentError) {
+            console.error('Error loading payments:', paymentError);
+            const dashboardOutstandingFees = document.getElementById('dashboardOutstandingFees');
+            if (dashboardOutstandingFees) dashboardOutstandingFees.innerHTML = `KES ${totalFees.toLocaleString()}`;
+            return;
+        }
+        
+        const totalCollected = payments ? payments.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0) : 0;
+        const outstanding = Math.max(0, totalFees - totalCollected);
+        
+        const dashboardOutstandingFees = document.getElementById('dashboardOutstandingFees');
+        if (dashboardOutstandingFees) dashboardOutstandingFees.innerHTML = `KES ${outstanding.toLocaleString()}`;
+        
+    } catch (error) {
+        console.error('Error loading fee summary:', error);
+        const dashboardOutstandingFees = document.getElementById('dashboardOutstandingFees');
+        if (dashboardOutstandingFees) dashboardOutstandingFees.innerHTML = 'KES 0';
+    }
+}
+
+async function loadPendingMessagesCount() {
+    try {
+        // Get unread messages count (notifications that haven't been read by admin)
+        const { count, error } = await sb
+            .from('notifications')
+            .select('*', { count: 'exact', head: true })
+            .eq('is_read', false);
+        
+        if (!error) {
+            const dashboardPendingMessages = document.getElementById('dashboardPendingMessages');
+            if (dashboardPendingMessages) dashboardPendingMessages.textContent = count || 0;
+        }
+    } catch (error) {
+        console.error('Error loading pending messages:', error);
+    }
+}
+
 async function loadDashboardData() {
     // Total users
     const { count: allUsersCount } = await sb
         .from(USER_PROFILE_TABLE)
         .select('user_id', { count: 'exact' });
-    $('totalUsers').textContent = allUsersCount || 0;
+    const totalUsersEl = document.getElementById('totalUsers');
+    if (totalUsersEl) totalUsersEl.textContent = allUsersCount || 0;
     
     // Total Daily Check-ins
     await loadTotalDailyCheckIns(); 
@@ -763,11 +886,12 @@ async function loadDashboardData() {
       .select('user_id', { count: 'exact', head: true })
       .eq('status', 'pending');
 
+    const pendingApprovalsEl = document.getElementById('pendingApprovals');
     if (error) {
       console.error('Error counting pending approvals:', error.message);
-      $('pendingApprovals').textContent = '0';
+      if (pendingApprovalsEl) pendingApprovalsEl.textContent = '0';
     } else {
-      $('pendingApprovals').textContent = pendingCount || 0;
+      if (pendingApprovalsEl) pendingApprovalsEl.textContent = pendingCount || 0;
     }
 
     // Total students
@@ -775,17 +899,48 @@ async function loadDashboardData() {
         .from(USER_PROFILE_TABLE)
         .select('user_id', { count: 'exact' })
         .eq('role', 'student');
-    $('totalStudents').textContent = studentsCount || 0;
+    const totalStudentsEl = document.getElementById('totalStudents');
+    if (totalStudentsEl) totalStudentsEl.textContent = studentsCount || 0;
 
     // Data Integrity Placeholder
-    $('dataIntegrityScore').textContent = '98.5%';
+    const dataIntegrityEl = document.getElementById('dataIntegrityScore');
+    if (dataIntegrityEl) dataIntegrityEl.textContent = '98.5%';
 
     // Overall check-in count
     const { count: overallCheckIns } = await sb
         .from('geo_attendance_logs')
         .select('*', { count: 'exact', head: true });
-    $('overallCheckInCount').textContent = overallCheckIns || 0;
+    const overallCheckInEl = document.getElementById('overallCheckInCount');
+    if (overallCheckInEl) overallCheckInEl.textContent = overallCheckIns || 0;
 
+    // Total courses count
+    const { count: coursesCount } = await sb
+        .from('courses')
+        .select('*', { count: 'exact', head: true });
+    const totalCoursesEl = document.getElementById('totalCourses');
+    if (totalCoursesEl) totalCoursesEl.textContent = coursesCount || 0;
+
+    // Total resources count (this month)
+    const firstDayOfMonth = new Date();
+    firstDayOfMonth.setDate(1);
+    firstDayOfMonth.setHours(0, 0, 0, 0);
+    const { count: resourcesCount } = await sb
+        .from('resources')
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', firstDayOfMonth.toISOString());
+    const totalResourcesEl = document.getElementById('totalResources');
+    if (totalResourcesEl) totalResourcesEl.textContent = resourcesCount || 0;
+
+    // Load Ticket Metrics for Dashboard
+    await loadTicketMetricsForDashboard();
+    
+    // Load Fee Summary for Dashboard
+    await loadFeeSummaryForDashboard();
+    
+    // Load Pending Messages Count
+    await loadPendingMessagesCount();
+    
+    // Load Welcome Message
     loadStudentWelcomeMessage();
 }
 
@@ -798,7 +953,7 @@ async function loadTotalDailyCheckIns() {
     tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
     const tomorrowISO = tomorrow.toISOString();
 
-    const checkInsElement = $('totalDailyCheckIns');
+    const checkInsElement = document.getElementById('totalDailyCheckIns');
     if (!checkInsElement) return;
 
     const { count, error } = await sb
@@ -817,7 +972,7 @@ async function loadTotalDailyCheckIns() {
 
 async function loadStudentWelcomeMessage() {
     const { data } = await fetchData(SETTINGS_TABLE, '*', { key: MESSAGE_KEY });
-    const messageDiv = $('student-welcome-message') || $('live-preview');
+    const messageDiv = document.getElementById('student-welcome-message') || document.getElementById('live-preview');
     if (!messageDiv) return;
 
     if (data && data.length > 0) {
@@ -829,7 +984,7 @@ async function loadStudentWelcomeMessage() {
 
 async function loadWelcomeMessageForEdit() {
     const { data } = await fetchData(SETTINGS_TABLE, '*', { key: MESSAGE_KEY });
-    const editor = $('welcome-message-editor');
+    const editor = document.getElementById('welcome-message-editor');
 
     if (data && data.length > 0) {
         editor.value = data[0].value;
@@ -845,7 +1000,7 @@ async function handleSaveWelcomeMessage(e) {
     const originalText = submitButton.textContent;
     setButtonLoading(submitButton, true, originalText);
 
-    const value = $('welcome-message-editor').value.trim();
+    const value = document.getElementById('welcome-message-editor').value.trim();
 
     if (!value) {
         showFeedback('Message content cannot be empty.', 'error');
