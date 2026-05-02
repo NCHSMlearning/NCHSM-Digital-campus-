@@ -1,5 +1,5 @@
 // student-tickets.js - Student Support Ticket System
-// *** WORKS WITH YOUR database.js - PERSISTS AFTER REFRESH ***
+// *** COMPLETE WORKING VERSION WITH PROPER LAYOUT ***
 
 class StudentTicketSystem {
     constructor() {
@@ -13,7 +13,6 @@ class StudentTicketSystem {
         this.userProfile = null;
         this.userId = null;
         
-        // DOM Elements cache
         this.elements = {};
         
         this.initialize();
@@ -28,13 +27,9 @@ class StudentTicketSystem {
         this.loadTicketCategories();
         this.setupFileUpload();
         
-        // Wait for database to be ready
         await this.waitForDatabase();
-        
-        // Load user profile
         await this.loadUserProfile();
         
-        // Load tickets if profile exists
         if (this.userId) {
             await this.loadTickets();
         }
@@ -44,7 +39,6 @@ class StudentTicketSystem {
     }
     
     async waitForDatabase() {
-        // Wait for window.db to be available
         let attempts = 0;
         while (!window.db?.supabase && attempts < 50) {
             await new Promise(resolve => setTimeout(resolve, 100));
@@ -312,7 +306,6 @@ class StudentTicketSystem {
     }
     
     getSupabaseClient() {
-        // Use window.db.supabase from your database.js
         const client = window.db?.supabase;
         if (!client || typeof client.from !== 'function') {
             console.error('❌ No valid Supabase client available');
@@ -324,7 +317,6 @@ class StudentTicketSystem {
     async loadUserProfile() {
         console.log('📋 Loading user profile...');
         
-        // Try to get from window.db (database.js)
         if (window.db?.currentUserProfile) {
             this.userProfile = window.db.currentUserProfile;
             this.userId = this.userProfile?.user_id || this.userProfile?.id;
@@ -332,12 +324,10 @@ class StudentTicketSystem {
             return;
         }
         
-        // Try to get from auth directly
         const supabase = this.getSupabaseClient();
         if (supabase) {
             const { data: { user } } = await supabase.auth.getUser();
             if (user) {
-                // Try to get profile from consolidated table
                 const { data: profile } = await supabase
                     .from('consolidated_user_profiles_table')
                     .select('*')
@@ -351,7 +341,6 @@ class StudentTicketSystem {
                     return;
                 }
                 
-                // Fallback to auth user
                 this.userId = user.id;
                 this.userProfile = { id: user.id, user_id: user.id, email: user.email, full_name: user.email?.split('@')[0] };
                 console.log('⚠️ Using auth user as fallback:', this.userId);
@@ -564,21 +553,18 @@ class StudentTicketSystem {
         }
         
         this.currentTicketId = ticketId;
-        
         await this.showChatModal(ticket);
     }
     
     async showChatModal(ticket) {
         const supabaseClient = this.getSupabaseClient();
         
-        // Get conversations
         const { data: conversations } = await supabaseClient
             .from('ticket_conversations')
             .select('*')
             .eq('ticket_id', ticket.id)
             .order('created_at', { ascending: true });
         
-        // Get author names
         const authorIds = [...new Set((conversations || []).map(c => c.author_id).filter(id => id))];
         let authorNames = {};
         
@@ -595,83 +581,105 @@ class StudentTicketSystem {
             }
         }
         
+        const currentUserId = this.getCurrentUserId();
+        
         const modalHtml = `
-            <div id="chatModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 100000; display: flex; align-items: center; justify-content: center;">
-                <div style="background: white; max-width: 800px; width: 95%; max-height: 85vh; display: flex; flex-direction: column; border-radius: 16px; overflow: hidden;">
-                    <div style="padding: 15px 20px; background: linear-gradient(135deg, #4C1D95, #6d28d9); color: white;">
-                        <h3 style="margin: 0;">🎫 ${this.escapeHtml(ticket.ticket_number)}</h3>
-                        <small>${this.escapeHtml(ticket.subject)}</small>
-                        <button onclick="document.getElementById('chatModal').remove()" style="position: absolute; top: 15px; right: 20px; background: none; border: none; color: white; font-size: 24px; cursor: pointer;">&times;</button>
+            <div id="studentChatModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 100000; display: flex; align-items: center; justify-content: center;">
+                <div style="background: white; max-width: 800px; width: 95%; height: 85vh; display: flex; flex-direction: column; border-radius: 16px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+                    <!-- Header -->
+                    <div style="padding: 15px 20px; background: linear-gradient(135deg, #4C1D95, #6d28d9); color: white; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+                        <div>
+                            <h3 style="margin: 0;">🎫 ${this.escapeHtml(ticket.ticket_number)}</h3>
+                            <small>${this.escapeHtml(ticket.subject)}</small>
+                        </div>
+                        <button onclick="document.getElementById('studentChatModal').remove()" style="background: none; border: none; font-size: 28px; cursor: pointer; color: white;">&times;</button>
                     </div>
                     
-                    <div style="padding: 12px 20px; background: #f8f9fa; display: flex; gap: 20px; flex-wrap: wrap;">
+                    <!-- Ticket Info -->
+                    <div style="padding: 12px 20px; background: #f8f9fa; border-bottom: 1px solid #e5e7eb; display: flex; gap: 20px; flex-wrap: wrap; flex-shrink: 0;">
                         <div><strong>Status:</strong> <span class="status-badge ${ticket.status}">${ticket.status}</span></div>
                         <div><strong>Priority:</strong> <span class="priority-badge ${ticket.priority}">${ticket.priority}</span></div>
                         <div><strong>Category:</strong> ${this.getCategoryLabel(ticket.category)}</div>
+                        <div><strong>Created:</strong> ${new Date(ticket.created_at).toLocaleDateString()}</div>
                     </div>
                     
-                    <div style="padding: 12px 20px; background: #fef3c7;">
+                    <!-- Description -->
+                    <div style="padding: 12px 20px; background: #fef3c7; border-bottom: 1px solid #e5e7eb; flex-shrink: 0;">
                         <strong>📝 Description:</strong>
                         <p style="margin: 8px 0 0 0;">${this.escapeHtml(ticket.description)}</p>
                     </div>
                     
-                    <div id="chatMessagesArea" style="flex: 1; overflow-y: auto; padding: 15px; background: #f3f4f6; min-height: 300px;">
-                        ${this.renderChatMessages(conversations || [], authorNames)}
+                    <!-- Chat Area -->
+                    <div style="flex: 1; background: #f3f4f6; display: flex; flex-direction: column; min-height: 0; overflow: hidden;">
+                        <div style="padding: 10px 15px; background: #e5e7eb; border-bottom: 1px solid #d1d5db; flex-shrink: 0;">
+                            <strong><i class="fas fa-comments"></i> Conversation</strong>
+                        </div>
+                        <div id="studentConversationArea" style="flex: 1; overflow-y: auto; padding: 15px;">
+                            ${this.renderStudentChatMessages(conversations || [], authorNames, currentUserId)}
+                        </div>
                     </div>
                     
-                    <div style="padding: 15px 20px; background: white; border-top: 1px solid #e5e7eb;">
-                        <textarea id="chatMessageInput" rows="2" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; resize: none;" placeholder="Type your message here..."></textarea>
+                    <!-- Reply Section -->
+                    <div style="padding: 15px 20px; background: white; border-top: 2px solid #e5e7eb; flex-shrink: 0;">
+                        <label style="font-weight: 600; margin-bottom: 8px; display: block;">✏️ Your Message</label>
+                        <textarea id="studentReplyMessageInput" rows="3" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ddd; resize: vertical; font-family: inherit; font-size: 14px;" placeholder="Type your message here..."></textarea>
                         <div style="display: flex; justify-content: flex-end; margin-top: 10px;">
-                            <button id="sendChatBtn" style="background: #4C1D95; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer;">
-                                <i class="fas fa-paper-plane"></i> Send
+                            <button id="studentSendReplyBtn" style="background: #4C1D95; color: white; border: none; padding: 8px 24px; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                                <i class="fas fa-paper-plane"></i> Send Message
                             </button>
                         </div>
+                        <p style="margin-top: 8px; font-size: 11px; color: #6b7280;">
+                            <i class="fas fa-info-circle"></i> Support team will respond shortly
+                        </p>
                     </div>
                 </div>
             </div>
         `;
         
-        const existingModal = document.getElementById('chatModal');
+        const existingModal = document.getElementById('studentChatModal');
         if (existingModal) existingModal.remove();
         
         document.body.insertAdjacentHTML('beforeend', modalHtml);
         
-        const messageInput = document.getElementById('chatMessageInput');
-        const sendBtn = document.getElementById('sendChatBtn');
+        const messageInput = document.getElementById('studentReplyMessageInput');
+        const sendBtn = document.getElementById('studentSendReplyBtn');
         
         if (sendBtn) {
-            sendBtn.addEventListener('click', () => this.sendChatMessage());
+            sendBtn.addEventListener('click', () => this.sendStudentChatMessage());
         }
         if (messageInput) {
             messageInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
-                    this.sendChatMessage();
+                    this.sendStudentChatMessage();
                 }
             });
         }
         
-        // Auto-refresh every 5 seconds
         if (this.conversationRefreshInterval) {
             clearInterval(this.conversationRefreshInterval);
         }
         this.conversationRefreshInterval = setInterval(async () => {
-            if (document.getElementById('chatModal')) {
-                await this.refreshChatMessages(ticket.id);
+            if (document.getElementById('studentChatModal')) {
+                await this.refreshStudentConversation(ticket.id);
             } else {
                 clearInterval(this.conversationRefreshInterval);
             }
         }, 5000);
     }
     
-    renderChatMessages(conversations, authorNames) {
+    renderStudentChatMessages(conversations, authorNames, currentUserId) {
         if (!conversations || conversations.length === 0) {
-            return '<div style="text-align: center; padding: 40px; color: #6b7280;">No messages yet. Start the conversation!</div>';
+            return `
+                <div style="text-align: center; padding: 60px 20px; color: #6b7280;">
+                    <i class="fas fa-comments" style="font-size: 48px; margin-bottom: 15px; opacity: 0.5;"></i>
+                    <p>No messages yet. Start the conversation!</p>
+                </div>
+            `;
         }
         
         let lastDate = null;
         let html = '';
-        const currentUserId = this.getCurrentUserId();
         
         for (const conv of conversations) {
             const messageDate = new Date(conv.created_at);
@@ -684,31 +692,55 @@ class StudentTicketSystem {
             }
             
             const isCurrentUser = conv.author_id === currentUserId;
-            const authorName = authorNames[conv.author_id] || 'Support';
-            const align = isCurrentUser ? 'flex-end' : 'flex-start';
-            const bgColor = isCurrentUser ? '#4C1D95' : 'white';
-            const textColor = isCurrentUser ? 'white' : '#1f2937';
+            const authorName = authorNames[conv.author_id] || (isCurrentUser ? 'You' : 'Support Team');
+            const isInternal = conv.is_internal;
             
-            html += `
-                <div style="display: flex; justify-content: ${align}; margin-bottom: 15px;">
-                    <div style="max-width: 70%; background: ${bgColor}; padding: 10px 15px; border-radius: 12px; ${isCurrentUser ? 'border-bottom-right-radius: 4px;' : 'border-bottom-left-radius: 4px;'} color: ${textColor}; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                            <strong style="font-size: 12px;">${isCurrentUser ? 'You' : this.escapeHtml(authorName)}</strong>
-                            <small style="font-size: 10px; opacity: 0.7;">${timeStr}</small>
+            if (isInternal && !isCurrentUser) {
+                html += `
+                    <div style="display: flex; justify-content: center; margin-bottom: 15px;">
+                        <div style="max-width: 80%; background: #fef3c7; padding: 10px 15px; border-radius: 12px; border-left: 4px solid #f59e0b;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                                <strong style="font-size: 11px; color: #92400e;">🔒 INTERNAL NOTE</strong>
+                                <small style="font-size: 10px; color: #92400e;">${timeStr}</small>
+                            </div>
+                            <p style="margin: 5px 0 0 0; font-size: 13px;">${this.escapeHtml(conv.message)}</p>
                         </div>
-                        <p style="margin: 5px 0 0 0;">${this.escapeHtml(conv.message)}</p>
                     </div>
-                </div>
-            `;
+                `;
+            } else if (isCurrentUser) {
+                html += `
+                    <div style="display: flex; justify-content: flex-end; margin-bottom: 15px;">
+                        <div style="max-width: 70%; background: #4C1D95; padding: 10px 15px; border-radius: 12px; border-bottom-right-radius: 4px; color: white; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                                <strong style="font-size: 12px;">You</strong>
+                                <small style="font-size: 10px; opacity: 0.7;">${timeStr}</small>
+                            </div>
+                            <p style="margin: 5px 0 0 0;">${this.escapeHtml(conv.message)}</p>
+                        </div>
+                    </div>
+                `;
+            } else {
+                html += `
+                    <div style="display: flex; justify-content: flex-start; margin-bottom: 15px;">
+                        <div style="max-width: 70%; background: white; padding: 10px 15px; border-radius: 12px; border-bottom-left-radius: 4px; color: #1f2937; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                                <strong style="font-size: 12px;">${this.escapeHtml(authorName)}</strong>
+                                <small style="font-size: 10px; opacity: 0.7;">${timeStr}</small>
+                            </div>
+                            <p style="margin: 5px 0 0 0;">${this.escapeHtml(conv.message)}</p>
+                        </div>
+                    </div>
+                `;
+            }
         }
         
         return html;
     }
     
-    async refreshChatMessages(ticketId) {
+    async refreshStudentConversation(ticketId) {
         const supabaseClient = this.getSupabaseClient();
-        const messagesArea = document.getElementById('chatMessagesArea');
-        if (!messagesArea) return;
+        const conversationArea = document.getElementById('studentConversationArea');
+        if (!conversationArea) return;
         
         const { data: conversations } = await supabaseClient
             .from('ticket_conversations')
@@ -727,24 +759,27 @@ class StudentTicketSystem {
                     .in('id', authorIds);
                 
                 if (profiles) {
-                    profiles.forEach(p => { authorNames[p.id] = p.full_name; });
+                    profiles.forEach(p => {
+                        authorNames[p.id] = p.full_name;
+                    });
                 }
             }
             
-            const newHtml = this.renderChatMessages(conversations, authorNames);
-            const oldScrollTop = messagesArea.scrollTop;
-            const oldScrollHeight = messagesArea.scrollHeight;
+            const currentUserId = this.getCurrentUserId();
+            const newHtml = this.renderStudentChatMessages(conversations, authorNames, currentUserId);
+            const oldScrollTop = conversationArea.scrollTop;
+            const oldScrollHeight = conversationArea.scrollHeight;
             
-            messagesArea.innerHTML = newHtml;
+            conversationArea.innerHTML = newHtml;
             
             if (oldScrollHeight - oldScrollTop < 200) {
-                messagesArea.scrollTop = messagesArea.scrollHeight;
+                conversationArea.scrollTop = conversationArea.scrollHeight;
             }
         }
     }
     
-    async sendChatMessage() {
-        const messageInput = document.getElementById('chatMessageInput');
+    async sendStudentChatMessage() {
+        const messageInput = document.getElementById('studentReplyMessageInput');
         const message = messageInput?.value.trim();
         
         if (!message) {
@@ -757,11 +792,11 @@ class StudentTicketSystem {
         
         if (!userId || !supabaseClient) return;
         
-        const sendBtn = document.getElementById('sendChatBtn');
+        const sendBtn = document.getElementById('studentSendReplyBtn');
         const originalText = sendBtn?.innerHTML;
         if (sendBtn) {
             sendBtn.disabled = true;
-            sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
         }
         
         try {
@@ -779,15 +814,13 @@ class StudentTicketSystem {
             
             if (messageInput) messageInput.value = '';
             
-            await this.refreshChatMessages(this.currentTicketId);
+            await this.refreshStudentConversation(this.currentTicketId);
             
-            // Update ticket updated_at
             await supabaseClient
                 .from('support_tickets')
                 .update({ updated_at: new Date().toISOString() })
                 .eq('id', this.currentTicketId);
             
-            // Update local ticket list
             const ticketIndex = this.currentTickets.findIndex(t => t.id === this.currentTicketId);
             if (ticketIndex !== -1) {
                 this.currentTickets[ticketIndex].updated_at = new Date().toISOString();
@@ -795,7 +828,7 @@ class StudentTicketSystem {
                 this.updateSummary();
             }
             
-            this.showToast('Message sent', 'success');
+            this.showToast('Message sent successfully!', 'success');
             
         } catch (error) {
             console.error('Error:', error);
@@ -888,6 +921,85 @@ class StudentTicketSystem {
         }
     }
     
+    async closeTicket(ticketId) {
+        const userId = this.getCurrentUserId();
+        const supabaseClient = this.getSupabaseClient();
+        if (!userId || !supabaseClient) return;
+        
+        try {
+            const { error } = await supabaseClient
+                .from('support_tickets')
+                .update({ status: 'closed', closed_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+                .eq('id', ticketId)
+                .eq('student_id', userId);
+            
+            if (error) throw error;
+            
+            const ticketIndex = this.currentTickets.findIndex(t => t.id === ticketId);
+            if (ticketIndex !== -1) {
+                this.currentTickets[ticketIndex].status = 'closed';
+                this.renderTickets();
+                this.updateSummary();
+            }
+            
+            this.showToast('Ticket closed successfully', 'success');
+            
+        } catch (error) {
+            this.showToast('Failed to close ticket: ' + error.message, 'error');
+        }
+    }
+    
+    async closeCurrentTicket() {
+        if (!this.currentTicketId) return;
+        if (confirm('Are you sure you want to close this ticket?')) {
+            await this.closeTicket(this.currentTicketId);
+            this.closeTicketModal();
+        }
+    }
+    
+    async reopenCurrentTicket() {
+        if (!this.currentTicketId) return;
+        
+        const userId = this.getCurrentUserId();
+        const supabaseClient = this.getSupabaseClient();
+        if (!userId || !supabaseClient) return;
+        
+        try {
+            const { error } = await supabaseClient
+                .from('support_tickets')
+                .update({ status: 'open', closed_at: null, updated_at: new Date().toISOString() })
+                .eq('id', this.currentTicketId)
+                .eq('student_id', userId);
+            
+            if (error) throw error;
+            
+            const ticketIndex = this.currentTickets.findIndex(t => t.id === this.currentTicketId);
+            if (ticketIndex !== -1) {
+                this.currentTickets[ticketIndex].status = 'open';
+                this.renderTickets();
+                this.updateSummary();
+                this.updateActionButtons('open');
+            }
+            
+            this.showToast('Ticket reopened successfully', 'success');
+            
+        } catch (error) {
+            this.showToast('Failed to reopen ticket: ' + error.message, 'error');
+        }
+    }
+    
+    updateActionButtons(status) {
+        const isOpen = status === 'open';
+        const isClosed = status === 'closed' || status === 'resolved';
+        
+        if (this.elements.closeTicketBtn) {
+            this.elements.closeTicketBtn.style.display = isOpen ? 'inline-block' : 'none';
+        }
+        if (this.elements.reopenTicketBtn) {
+            this.elements.reopenTicketBtn.style.display = isClosed ? 'inline-block' : 'none';
+        }
+    }
+    
     updateSummary() {
         if (!this.currentTickets.length) {
             if (this.elements.openCount) this.elements.openCount.textContent = '0';
@@ -943,72 +1055,6 @@ class StudentTicketSystem {
             if (this.elements.newMessageInput) {
                 this.elements.newMessageInput.value = '';
             }
-        }
-    }
-    
-    closeCurrentTicket() {
-        if (!this.currentTicketId) return;
-        if (confirm('Are you sure you want to close this ticket?')) {
-            this.closeTicket(this.currentTicketId);
-            this.closeTicketModal();
-        }
-    }
-    
-    async closeTicket(ticketId) {
-        const userId = this.getCurrentUserId();
-        const supabaseClient = this.getSupabaseClient();
-        if (!userId || !supabaseClient) return;
-        
-        try {
-            const { error } = await supabaseClient
-                .from('support_tickets')
-                .update({ status: 'closed', closed_at: new Date().toISOString(), updated_at: new Date().toISOString() })
-                .eq('id', ticketId)
-                .eq('student_id', userId);
-            
-            if (error) throw error;
-            
-            const ticketIndex = this.currentTickets.findIndex(t => t.id === ticketId);
-            if (ticketIndex !== -1) {
-                this.currentTickets[ticketIndex].status = 'closed';
-                this.renderTickets();
-                this.updateSummary();
-            }
-            
-            this.showToast('Ticket closed successfully', 'success');
-            
-        } catch (error) {
-            this.showToast('Failed to close ticket: ' + error.message, 'error');
-        }
-    }
-    
-    async reopenCurrentTicket() {
-        if (!this.currentTicketId) return;
-        
-        const userId = this.getCurrentUserId();
-        const supabaseClient = this.getSupabaseClient();
-        if (!userId || !supabaseClient) return;
-        
-        try {
-            const { error } = await supabaseClient
-                .from('support_tickets')
-                .update({ status: 'open', closed_at: null, updated_at: new Date().toISOString() })
-                .eq('id', this.currentTicketId)
-                .eq('student_id', userId);
-            
-            if (error) throw error;
-            
-            const ticketIndex = this.currentTickets.findIndex(t => t.id === this.currentTicketId);
-            if (ticketIndex !== -1) {
-                this.currentTickets[ticketIndex].status = 'open';
-                this.renderTickets();
-                this.updateSummary();
-            }
-            
-            this.showToast('Ticket reopened successfully', 'success');
-            
-        } catch (error) {
-            this.showToast('Failed to reopen ticket: ' + error.message, 'error');
         }
     }
     
@@ -1087,12 +1133,10 @@ class StudentTicketSystem {
     }
 }
 
-// Global exports
 window.ticketSystem = new StudentTicketSystem();
 window.loadSupportTickets = () => window.ticketSystem.loadTickets();
 window.viewSupportTicket = (id) => window.ticketSystem.viewTicket(id);
 
-// Wait for database to be ready before initializing
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', async () => {
         await window.ticketSystem.initialize();
