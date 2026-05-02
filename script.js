@@ -5294,38 +5294,92 @@ async function logout() {
     }
 }
 // ============================================
-// ADMIN SUPPORT TICKETS MANAGEMENT
+// ADMIN SUPPORT TICKETS MANAGEMENT - COMPLETE
 // ============================================
 
 let adminAllTickets = [];
-let adminCurrentFilter = {
-    status: 'all',
-    priority: 'all',
-    category: 'all',
-    search: ''
-};
+let adminFilterTimeout;
 
 // Load all tickets for admin
 async function loadAdminTickets() {
     console.log('📋 Loading admin tickets...');
     
-    const { data: tickets, error } = await window.db.supabase
-        .from('support_tickets')
-        .select(`
-            *,
-            student:student_id(id, email, full_name, program, intake)
-        `)
-        .order('created_at', { ascending: false });
-    
-    if (error) {
-        console.error('Error loading tickets:', error);
-        showToast('Failed to load tickets', 'error');
-        return;
+    const tbody = document.getElementById('admin-tickets-body');
+    if (tbody) {
+        tbody.innerHTML = '<tr><td colspan="10" style="padding: 40px; text-align: center;"><div class="loading-spinner"></div> Loading tickets...</td></tr>';
     }
     
-    adminAllTickets = tickets || [];
-    updateAdminTicketSummary();
-    renderAdminTickets();
+    try {
+        // Get all tickets
+        const { data: tickets, error } = await window.db.supabase
+            .from('support_tickets')
+            .select('*')
+            .order('created_at', { ascending: false });
+        
+        if (error) {
+            console.error('❌ Error loading tickets:', error);
+            showToast('Failed to load tickets: ' + error.message, 'error');
+            if (tbody) {
+                tbody.innerHTML = `<tr><td colspan="10" style="padding: 40px; text-align: center; color: red;">Error: ${error.message}</td></tr>`;
+            }
+            return;
+        }
+        
+        console.log('✅ Found tickets:', tickets?.length || 0);
+        
+        if (!tickets || tickets.length === 0) {
+            if (tbody) {
+                tbody.innerHTML = '<tr><td colspan="10" style="padding: 40px; text-align: center;">No tickets found</td></tr>';
+            }
+            adminAllTickets = [];
+            updateAdminTicketSummary();
+            return;
+        }
+        
+        // Get unique student IDs
+        const studentIds = [...new Set(tickets.map(t => t.student_id).filter(id => id))];
+        
+        // Fetch student profiles from consolidated table
+        const { data: students, error: studentError } = await window.db.supabase
+            .from('consolidated_user_profiles_table')
+            .select('id, full_name, email, program, intake')
+            .in('id', studentIds);
+        
+        if (studentError) {
+            console.error('❌ Error loading students:', studentError);
+        }
+        
+        // Create student map
+        const studentMap = {};
+        if (students) {
+            students.forEach(s => {
+                studentMap[s.id] = s;
+            });
+        }
+        
+        // Attach student data to tickets
+        adminAllTickets = tickets.map(ticket => ({
+            ...ticket,
+            student: studentMap[ticket.student_id] || { 
+                full_name: 'Unknown User', 
+                email: 'unknown@example.com',
+                program: 'N/A', 
+                intake: 'N/A' 
+            }
+        }));
+        
+        console.log('✅ Processed tickets:', adminAllTickets.length);
+        
+        updateAdminTicketSummary();
+        renderAdminTickets();
+        
+    } catch (err) {
+        console.error('❌ Unexpected error:', err);
+        showToast('Unexpected error loading tickets', 'error');
+        if (tbody) {
+            tbody.innerHTML = `<tr><td colspan="10" style="padding: 40px; text-align: center; color: red;">Error: ${err.message}</td></tr>`;
+        }
+    }
 }
 
 // Update summary cards
@@ -5344,10 +5398,12 @@ function updateAdminTicketSummary() {
     if (progressEl) progressEl.textContent = inProgress;
     if (closedEl) closedEl.textContent = closed;
     if (urgentEl) urgentEl.textContent = urgent;
+    
+    console.log('Summary - Open:', open, 'In Progress:', inProgress, 'Closed:', closed, 'Urgent:', urgent);
 }
 
-// Filter and render tickets
-function filterAdminTickets() {
+// Filter tickets
+function filterAdminTickets(type = null, value = null) {
     const statusFilter = document.getElementById('admin_ticket_status_filter')?.value || 'all';
     const priorityFilter = document.getElementById('admin_ticket_priority_filter')?.value || 'all';
     const categoryFilter = document.getElementById('admin_ticket_category_filter')?.value || 'all';
@@ -5355,6 +5411,7 @@ function filterAdminTickets() {
     
     let filtered = [...adminAllTickets];
     
+    // Apply status filter
     if (statusFilter !== 'all') {
         if (statusFilter === 'closed') {
             filtered = filtered.filter(t => t.status === 'closed' || t.status === 'resolved');
@@ -5363,14 +5420,17 @@ function filterAdminTickets() {
         }
     }
     
+    // Apply priority filter
     if (priorityFilter !== 'all') {
         filtered = filtered.filter(t => t.priority === priorityFilter);
     }
     
+    // Apply category filter
     if (categoryFilter !== 'all') {
         filtered = filtered.filter(t => t.category === categoryFilter);
     }
     
+    // Apply search filter
     if (searchTerm) {
         filtered = filtered.filter(t => 
             (t.ticket_number || '').toLowerCase().includes(searchTerm) ||
@@ -5382,6 +5442,12 @@ function filterAdminTickets() {
     renderAdminTickets(filtered);
 }
 
+// Debounced search
+function filterAdminTicketsDebounced() {
+    clearTimeout(adminFilterTimeout);
+    adminFilterTimeout = setTimeout(() => filterAdminTickets(), 300);
+}
+
 // Render tickets table
 function renderAdminTickets(tickets = null) {
     const tbody = document.getElementById('admin-tickets-body');
@@ -5389,53 +5455,84 @@ function renderAdminTickets(tickets = null) {
     
     if (!tbody) return;
     
-    if (!ticketsToRender.length) {
-        tbody.innerHTML = '<tr><td colspan="10">No tickets found</td></tr>';
+    if (!ticketsToRender || ticketsToRender.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="10" style="padding: 40px; text-align: center;">No tickets found</td></tr>';
         return;
     }
     
-    tbody.innerHTML = ticketsToRender.map(ticket => `
-        <tr>
-            <td><strong>${escapeHtml(ticket.ticket_number || 'N/A')}</strong></td>
-            <td>${escapeHtml(ticket.student?.full_name || 'Unknown')}<br>
-                <small>${escapeHtml(ticket.student?.program || '')} ${escapeHtml(ticket.student?.intake || '')}</small>
-             </td>
-            <td>${escapeHtml(ticket.student?.program || '-')}</td>
-            <td>${escapeHtml(ticket.subject)}</td>
-            <td><span class="badge badge-info">${escapeHtml(ticket.category)}</span></td>
-            <td><span class="priority-badge ${ticket.priority}">${ticket.priority}</span></td>
-            <td><span class="status-badge ${ticket.status}">${ticket.status.replace('_', ' ')}</span></td>
-            <td>${formatDateShort(ticket.created_at)}</td>
-            <td>${formatDateShort(ticket.updated_at)}</td>
-            <td>
-                <button onclick="viewAdminTicket('${ticket.id}')" class="btn-view">
-                    <i class="fas fa-eye"></i> View
-                </button>
-             </td>
-        </tr>
-    `).join('');
+    tbody.innerHTML = ticketsToRender.map(ticket => {
+        // Status badge class
+        let statusClass = 'badge-info';
+        if (ticket.status === 'open') statusClass = 'badge-info';
+        if (ticket.status === 'in_progress') statusClass = 'badge-warning';
+        if (ticket.status === 'closed' || ticket.status === 'resolved') statusClass = 'badge-success';
+        
+        // Priority badge class
+        let priorityClass = 'badge-secondary';
+        if (ticket.priority === 'urgent') priorityClass = 'badge-danger';
+        if (ticket.priority === 'high') priorityClass = 'badge-warning';
+        if (ticket.priority === 'medium') priorityClass = 'badge-info';
+        if (ticket.priority === 'low') priorityClass = 'badge-success';
+        
+        // Format dates
+        const createdDate = new Date(ticket.created_at).toLocaleDateString();
+        const updatedDate = new Date(ticket.updated_at).toLocaleDateString();
+        
+        return `
+            <tr style="border-bottom: 1px solid #e5e7eb;">
+                <td style="padding: 12px;"><strong>${escapeHtml(ticket.ticket_number || 'N/A')}</strong></td>
+                <td style="padding: 12px;">
+                    ${escapeHtml(ticket.student?.full_name || 'Unknown')}<br>
+                    <small style="color: #6b7280;">${escapeHtml(ticket.student?.email || '')}</small>
+                </td>
+                <td style="padding: 12px;">${escapeHtml(ticket.student?.program || '-')}<br><small>${escapeHtml(ticket.student?.intake || '')}</small></td>
+                <td style="padding: 12px;">${escapeHtml(ticket.subject)}</td>
+                <td style="padding: 12px;"><span class="badge badge-info">${escapeHtml(ticket.category || '-')}</span></td>
+                <td style="padding: 12px;"><span class="${priorityClass}" style="padding: 4px 8px; border-radius: 4px;">${escapeHtml(ticket.priority || 'medium')}</span></td>
+                <td style="padding: 12px;"><span class="${statusClass}" style="padding: 4px 8px; border-radius: 4px;">${escapeHtml(ticket.status || 'open')}</span></td>
+                <td style="padding: 12px;">${createdDate}</td>
+                <td style="padding: 12px;">${updatedDate}</td>
+                <td style="padding: 12px;">
+                    <button onclick="viewAdminTicket('${ticket.id}')" class="btn-view" style="background: #4C1D95; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">
+                        <i class="fas fa-eye"></i> View
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
 }
 
 // View ticket in modal
 async function viewAdminTicket(ticketId) {
     const ticket = adminAllTickets.find(t => t.id === ticketId);
-    if (!ticket) return;
+    if (!ticket) {
+        showToast('Ticket not found', 'error');
+        return;
+    }
     
     const titleEl = document.getElementById('adminTicketTitle');
     const detailsEl = document.getElementById('adminTicketDetails');
     
     if (titleEl) titleEl.textContent = `Ticket: ${ticket.ticket_number} - ${ticket.subject}`;
+    
     if (detailsEl) {
         detailsEl.innerHTML = `
-            <div style="display: grid; gap: 10px;">
-                <p><strong>Student:</strong> ${escapeHtml(ticket.student?.full_name || 'Unknown')}</p>
-                <p><strong>Email:</strong> ${escapeHtml(ticket.student?.email || '-')}</p>
-                <p><strong>Program:</strong> ${escapeHtml(ticket.student?.program || '-')} | Intake: ${escapeHtml(ticket.student?.intake || '-')}</p>
-                <p><strong>Category:</strong> ${escapeHtml(ticket.category)} | Priority: ${escapeHtml(ticket.priority)}</p>
-                <p><strong>Status:</strong> <span class="status-badge ${ticket.status}">${ticket.status}</span></p>
-                <p><strong>Created:</strong> ${new Date(ticket.created_at).toLocaleString()}</p>
-                <p><strong>Description:</strong></p>
-                <p style="background: #f3f4f6; padding: 10px; border-radius: 6px;">${escapeHtml(ticket.description)}</p>
+            <div style="display: grid; gap: 12px;">
+                <div style="display: grid; grid-template-columns: 120px 1fr; gap: 8px;">
+                    <strong>Student:</strong> <span>${escapeHtml(ticket.student?.full_name || 'Unknown')}</span>
+                    <strong>Email:</strong> <span>${escapeHtml(ticket.student?.email || '-')}</span>
+                    <strong>Program:</strong> <span>${escapeHtml(ticket.student?.program || '-')} | Intake: ${escapeHtml(ticket.student?.intake || '-')}</span>
+                    <strong>Category:</strong> <span>${escapeHtml(ticket.category || '-')}</span>
+                    <strong>Priority:</strong> <span class="${ticket.priority === 'urgent' ? 'badge-danger' : 'badge-info'}" style="padding: 2px 8px; border-radius: 4px;">${escapeHtml(ticket.priority || 'medium')}</span>
+                    <strong>Status:</strong> <span class="${ticket.status === 'open' ? 'badge-info' : 'badge-success'}" style="padding: 2px 8px; border-radius: 4px;">${escapeHtml(ticket.status || 'open')}</span>
+                    <strong>Created:</strong> <span>${new Date(ticket.created_at).toLocaleString()}</span>
+                    <strong>Updated:</strong> <span>${new Date(ticket.updated_at).toLocaleString()}</span>
+                </div>
+                <hr>
+                <strong>Description:</strong>
+                <div style="background: #f3f4f6; padding: 12px; border-radius: 6px; margin-top: 5px;">
+                    ${escapeHtml(ticket.description || 'No description provided.')}
+                </div>
             </div>
         `;
     }
@@ -5443,15 +5540,23 @@ async function viewAdminTicket(ticketId) {
     // Load conversations
     await loadAdminConversations(ticketId);
     
-    // Store current ticket ID for replies
+    // Store current ticket ID
     window.currentAdminTicketId = ticketId;
     
     // Set current status in dropdown
     const statusSelect = document.getElementById('adminTicketAction');
     if (statusSelect) {
-        statusSelect.value = ticket.status === 'resolved' ? 'resolved' : ticket.status;
+        statusSelect.value = ticket.status;
     }
     
+    // Clear reply field
+    const replyInput = document.getElementById('adminReplyMessage');
+    if (replyInput) replyInput.value = '';
+    
+    const internalCheck = document.getElementById('adminReplyInternal');
+    if (internalCheck) internalCheck.checked = false;
+    
+    // Show modal
     const modal = document.getElementById('adminTicketModal');
     if (modal) modal.style.display = 'flex';
 }
@@ -5461,35 +5566,47 @@ async function loadAdminConversations(ticketId) {
     const container = document.getElementById('adminConversationsList');
     if (!container) return;
     
-    const { data: conversations, error } = await window.db.supabase
-        .from('ticket_conversations')
-        .select(`
-            *,
-            author:author_id(id, full_name, role)
-        `)
-        .eq('ticket_id', ticketId)
-        .order('created_at', { ascending: true });
+    container.innerHTML = '<div class="loading-spinner"></div> Loading conversations...';
     
-    if (error) {
-        container.innerHTML = '<p>Error loading conversations</p>';
-        return;
-    }
-    
-    if (!conversations || !conversations.length) {
-        container.innerHTML = '<p>No conversations yet.</p>';
-        return;
-    }
-    
-    container.innerHTML = conversations.map(conv => `
-        <div style="background: white; padding: 12px; margin-bottom: 10px; border-radius: 8px; border-left: 4px solid ${conv.is_internal ? '#f59e0b' : '#3b82f6'}">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                <strong>${escapeHtml(conv.author?.full_name || 'Unknown')}</strong>
-                <small>${new Date(conv.created_at).toLocaleString()}</small>
+    try {
+        const { data: conversations, error } = await window.db.supabase
+            .from('ticket_conversations')
+            .select(`
+                *,
+                author:author_id(id, full_name, role)
+            `)
+            .eq('ticket_id', ticketId)
+            .order('created_at', { ascending: true });
+        
+        if (error) {
+            console.error('Error loading conversations:', error);
+            container.innerHTML = '<p style="color: red;">Error loading conversations</p>';
+            return;
+        }
+        
+        if (!conversations || conversations.length === 0) {
+            container.innerHTML = '<p style="color: #6b7280;">No conversations yet. Be the first to reply!</p>';
+            return;
+        }
+        
+        container.innerHTML = conversations.map(conv => `
+            <div style="background: white; padding: 15px; margin-bottom: 12px; border-radius: 8px; border-left: 4px solid ${conv.is_internal ? '#f59e0b' : '#3b82f6'}; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                    <strong style="color: ${conv.is_internal ? '#f59e0b' : '#4C1D95'};">${escapeHtml(conv.author?.full_name || 'Unknown')}</strong>
+                    <small style="color: #6b7280;">${new Date(conv.created_at).toLocaleString()}</small>
+                </div>
+                ${conv.is_internal ? '<small style="color: #f59e0b; display: inline-block; margin-bottom: 8px;">🔒 Internal Note</small><br>' : ''}
+                <p style="margin: 8px 0 0 0; line-height: 1.5;">${escapeHtml(conv.message)}</p>
             </div>
-            ${conv.is_internal ? '<small style="color: #f59e0b;">🔒 Internal Note</small><br>' : ''}
-            <p style="margin: 8px 0 0 0;">${escapeHtml(conv.message)}</p>
-        </div>
-    `).join('');
+        `).join('');
+        
+        // Scroll to bottom
+        container.scrollTop = container.scrollHeight;
+        
+    } catch (err) {
+        console.error('Error:', err);
+        container.innerHTML = '<p style="color: red;">Error loading conversations</p>';
+    }
 }
 
 // Send admin reply
@@ -5510,35 +5627,56 @@ async function sendAdminReply() {
     
     const adminId = window.db?.currentUserId;
     
-    const { error } = await window.db.supabase
-        .from('ticket_conversations')
-        .insert([{
-            ticket_id: ticketId,
-            author_id: adminId,
-            message: message,
-            message_type: isInternal ? 'internal_note' : 'reply',
-            is_internal: isInternal
-        }]);
-    
-    if (error) {
-        showToast('Failed to send reply: ' + error.message, 'error');
+    if (!adminId) {
+        showToast('Admin ID not found. Please log in again.', 'error');
         return;
     }
     
-    // Update ticket updated_at
-    await window.db.supabase
-        .from('support_tickets')
-        .update({ updated_at: new Date().toISOString() })
-        .eq('id', ticketId);
+    // Disable button during send
+    const sendBtn = event?.target;
+    if (sendBtn) {
+        sendBtn.disabled = true;
+        sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+    }
     
-    // Clear and reload
-    const replyInput = document.getElementById('adminReplyMessage');
-    if (replyInput) replyInput.value = '';
-    
-    await loadAdminConversations(ticketId);
-    await loadAdminTickets();
-    
-    showToast('Reply sent successfully', 'success');
+    try {
+        // Insert reply
+        const { error } = await window.db.supabase
+            .from('ticket_conversations')
+            .insert([{
+                ticket_id: ticketId,
+                author_id: adminId,
+                message: message,
+                message_type: isInternal ? 'internal_note' : 'reply',
+                is_internal: isInternal
+            }]);
+        
+        if (error) throw error;
+        
+        // Update ticket updated_at timestamp
+        await window.db.supabase
+            .from('support_tickets')
+            .update({ updated_at: new Date().toISOString() })
+            .eq('id', ticketId);
+        
+        // Clear and reload
+        const replyInput = document.getElementById('adminReplyMessage');
+        if (replyInput) replyInput.value = '';
+        
+        await loadAdminConversations(ticketId);
+        await loadAdminTickets();
+        
+        showToast(isInternal ? 'Internal note added' : 'Reply sent successfully', 'success');
+        
+    } catch (error) {
+        console.error('Error sending reply:', error);
+        showToast('Failed to send: ' + error.message, 'error');
+    } finally {
+        if (sendBtn) {
+            sendBtn.disabled = false;
+            sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Reply';
+        }
+    }
 }
 
 // Update ticket status from admin
@@ -5555,20 +5693,38 @@ async function updateAdminTicketStatus() {
     
     if (newStatus === 'closed' || newStatus === 'resolved') {
         updateData.closed_at = new Date().toISOString();
+    } else {
+        updateData.closed_at = null;
     }
     
-    const { error } = await window.db.supabase
-        .from('support_tickets')
-        .update(updateData)
-        .eq('id', ticketId);
-    
-    if (error) {
+    try {
+        const { error } = await window.db.supabase
+            .from('support_tickets')
+            .update(updateData)
+            .eq('id', ticketId);
+        
+        if (error) throw error;
+        
+        await loadAdminTickets();
+        
+        // Update current ticket in modal if still open
+        if (document.getElementById('adminTicketModal')?.style.display === 'flex') {
+            const ticket = adminAllTickets.find(t => t.id === ticketId);
+            if (ticket) {
+                const statusSpan = document.querySelector('#adminTicketDetails .status-badge, #adminTicketDetails [class*="badge"]');
+                if (statusSpan) {
+                    // Update status display
+                    await loadAdminConversations(ticketId);
+                }
+            }
+        }
+        
+        showToast(`Ticket status updated to ${newStatus}`, 'success');
+        
+    } catch (error) {
+        console.error('Error updating status:', error);
         showToast('Failed to update status: ' + error.message, 'error');
-        return;
     }
-    
-    await loadAdminTickets();
-    showToast(`Ticket status updated to ${newStatus}`, 'success');
 }
 
 // Close admin ticket modal
@@ -5587,42 +5743,55 @@ function closeAdminTicketModal() {
 // Export tickets to CSV
 function exportAdminTicketsToCSV() {
     const tickets = adminAllTickets;
-    if (!tickets.length) {
+    if (!tickets || !tickets.length) {
         showToast('No tickets to export', 'warning');
         return;
     }
     
-    let csv = 'Ticket #,Student,Program,Subject,Category,Priority,Status,Created,Updated\n';
+    let csv = 'Ticket #,Student Name,Student Email,Program,Intake,Subject,Category,Priority,Status,Created Date,Updated Date\n';
+    
     tickets.forEach(t => {
-        csv += `"${t.ticket_number || ''}","${t.student?.full_name || ''}","${t.student?.program || ''}","${(t.subject || '').replace(/"/g, '""')}","${t.category || ''}","${t.priority || ''}","${t.status || ''}","${t.created_at || ''}","${t.updated_at || ''}"\n`;
+        const row = [
+            `"${(t.ticket_number || '').replace(/"/g, '""')}"`,
+            `"${(t.student?.full_name || '').replace(/"/g, '""')}"`,
+            `"${(t.student?.email || '').replace(/"/g, '""')}"`,
+            `"${(t.student?.program || '').replace(/"/g, '""')}"`,
+            `"${(t.student?.intake || '').replace(/"/g, '""')}"`,
+            `"${(t.subject || '').replace(/"/g, '""')}"`,
+            `"${(t.category || '').replace(/"/g, '""')}"`,
+            `"${(t.priority || '').replace(/"/g, '""')}"`,
+            `"${(t.status || '').replace(/"/g, '""')}"`,
+            new Date(t.created_at).toLocaleDateString(),
+            new Date(t.updated_at).toLocaleDateString()
+        ];
+        csv += row.join(',') + '\n';
     });
     
-    const blob = new Blob([csv], { type: 'text/csv' });
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = `tickets_export_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
     URL.revokeObjectURL(url);
     
-    showToast('Export complete', 'success');
+    showToast(`Exported ${tickets.length} tickets`, 'success');
 }
 
-// Format date helper
-function formatDateShort(dateStr) {
-    if (!dateStr) return 'N/A';
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diff = Math.floor((now - date) / (1000 * 60 * 60));
-    if (diff < 1) return 'Just now';
-    if (diff < 24) return `${diff}h ago`;
-    if (diff < 48) return 'Yesterday';
-    return date.toLocaleDateString();
-}
+// Make sure tabChanged loads tickets
+document.addEventListener('tabChanged', function(e) {
+    if (e.detail.tabId === 'support-tickets') {
+        console.log('Support tickets tab opened, loading...');
+        loadAdminTickets();
+    }
+});
 
 // Export functions for global use
 window.loadAdminTickets = loadAdminTickets;
 window.filterAdminTickets = filterAdminTickets;
+window.filterAdminTicketsDebounced = filterAdminTicketsDebounced;
 window.viewAdminTicket = viewAdminTicket;
 window.sendAdminReply = sendAdminReply;
 window.updateAdminTicketStatus = updateAdminTicketStatus;
