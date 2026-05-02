@@ -5293,7 +5293,340 @@ async function logout() {
         window.location.href = "login.html";
     }
 }
+// ============================================
+// ADMIN SUPPORT TICKETS MANAGEMENT
+// ============================================
 
+let adminAllTickets = [];
+let adminCurrentFilter = {
+    status: 'all',
+    priority: 'all',
+    category: 'all',
+    search: ''
+};
+
+// Load all tickets for admin
+async function loadAdminTickets() {
+    console.log('📋 Loading admin tickets...');
+    
+    const { data: tickets, error } = await window.db.supabase
+        .from('support_tickets')
+        .select(`
+            *,
+            student:student_id(id, email, full_name, program, intake)
+        `)
+        .order('created_at', { ascending: false });
+    
+    if (error) {
+        console.error('Error loading tickets:', error);
+        showToast('Failed to load tickets', 'error');
+        return;
+    }
+    
+    adminAllTickets = tickets || [];
+    updateAdminTicketSummary();
+    renderAdminTickets();
+}
+
+// Update summary cards
+function updateAdminTicketSummary() {
+    const open = adminAllTickets.filter(t => t.status === 'open').length;
+    const inProgress = adminAllTickets.filter(t => t.status === 'in_progress').length;
+    const closed = adminAllTickets.filter(t => t.status === 'closed' || t.status === 'resolved').length;
+    const urgent = adminAllTickets.filter(t => t.priority === 'urgent').length;
+    
+    document.getElementById('admin_open_tickets').textContent = open;
+    document.getElementById('admin_progress_tickets').textContent = inProgress;
+    document.getElementById('admin_closed_tickets').textContent = closed;
+    document.getElementById('admin_urgent_tickets').textContent = urgent;
+}
+
+// Filter and render tickets
+function filterAdminTickets() {
+    adminCurrentFilter.status = document.getElementById('admin_ticket_status_filter')?.value || 'all';
+    adminCurrentFilter.priority = document.getElementById('admin_ticket_priority_filter')?.value || 'all';
+    adminCurrentFilter.category = document.getElementById('admin_ticket_category_filter')?.value || 'all';
+    adminCurrentFilter.search = document.getElementById('admin_ticket_search')?.value.toLowerCase() || '';
+    
+    let filtered = [...adminAllTickets];
+    
+    if (adminCurrentFilter.status !== 'all') {
+        if (adminCurrentFilter.status === 'closed') {
+            filtered = filtered.filter(t => t.status === 'closed' || t.status === 'resolved');
+        } else {
+            filtered = filtered.filter(t => t.status === adminCurrentFilter.status);
+        }
+    }
+    
+    if (adminCurrentFilter.priority !== 'all') {
+        filtered = filtered.filter(t => t.priority === adminCurrentFilter.priority);
+    }
+    
+    if (adminCurrentFilter.category !== 'all') {
+        filtered = filtered.filter(t => t.category === adminCurrentFilter.category);
+    }
+    
+    if (adminCurrentFilter.search) {
+        filtered = filtered.filter(t => 
+            (t.ticket_number || '').toLowerCase().includes(adminCurrentFilter.search) ||
+            (t.subject || '').toLowerCase().includes(adminCurrentFilter.search) ||
+            (t.student?.full_name || '').toLowerCase().includes(adminCurrentFilter.search)
+        );
+    }
+    
+    renderAdminTickets(filtered);
+}
+
+// Render tickets table
+function renderAdminTickets(tickets = null) {
+    const tbody = document.getElementById('admin-tickets-body');
+    const ticketsToRender = tickets || adminAllTickets;
+    
+    if (!ticketsToRender.length) {
+        tbody.innerHTML = '<tr><td colspan="10">No tickets found</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = ticketsToRender.map(ticket => `
+        <tr>
+            <td><strong>${ticket.ticket_number || 'N/A'}</strong></td>
+            <td>${escapeHtml(ticket.student?.full_name || 'Unknown')}<br>
+                <small>${escapeHtml(ticket.student?.program || '')} ${ticket.student?.intake || ''}</small>
+            </td>
+            <td>${escapeHtml(ticket.student?.program || '-')}</td>
+            <td>${escapeHtml(ticket.subject)}</td>
+            <td><span class="badge badge-info">${ticket.category}</span></td>
+            <td><span class="priority-badge ${ticket.priority}">${ticket.priority}</span></td>
+            <td><span class="status-badge ${ticket.status}">${ticket.status.replace('_', ' ')}</span></td>
+            <td>${formatDateShort(ticket.created_at)}</td>
+            <td>${formatDateShort(ticket.updated_at)}</td>
+            <td>
+                <button onclick="viewAdminTicket('${ticket.id}')" class="btn-view">
+                    <i class="fas fa-eye"></i> View
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+// View ticket in modal
+async function viewAdminTicket(ticketId) {
+    const ticket = adminAllTickets.find(t => t.id === ticketId);
+    if (!ticket) return;
+    
+    document.getElementById('adminTicketTitle').textContent = `Ticket: ${ticket.ticket_number} - ${ticket.subject}`;
+    document.getElementById('adminTicketDetails').innerHTML = `
+        <div style="display: grid; gap: 10px;">
+            <p><strong>Student:</strong> ${escapeHtml(ticket.student?.full_name || 'Unknown')}</p>
+            <p><strong>Email:</strong> ${escapeHtml(ticket.student?.email || '-')}</p>
+            <p><strong>Program:</strong> ${escapeHtml(ticket.student?.program || '-')} | Intake: ${escapeHtml(ticket.student?.intake || '-')}</p>
+            <p><strong>Category:</strong> ${ticket.category} | Priority: ${ticket.priority}</p>
+            <p><strong>Status:</strong> <span class="status-badge ${ticket.status}">${ticket.status}</span></p>
+            <p><strong>Created:</strong> ${new Date(ticket.created_at).toLocaleString()}</p>
+            <p><strong>Description:</strong></p>
+            <p style="background: #f3f4f6; padding: 10px; border-radius: 6px;">${escapeHtml(ticket.description)}</p>
+        </div>
+    `;
+    
+    // Load conversations
+    await loadAdminConversations(ticketId);
+    
+    // Store current ticket ID for replies
+    window.currentAdminTicketId = ticketId;
+    
+    // Set current status in dropdown
+    const statusSelect = document.getElementById('adminTicketAction');
+    if (statusSelect) {
+        statusSelect.value = ticket.status === 'resolved' ? 'resolved' : ticket.status;
+    }
+    
+    document.getElementById('adminTicketModal').style.display = 'flex';
+}
+
+// Load conversations for admin view
+async function loadAdminConversations(ticketId) {
+    const { data: conversations, error } = await window.db.supabase
+        .from('ticket_conversations')
+        .select(`
+            *,
+            author:author_id(id, full_name, role)
+        `)
+        .eq('ticket_id', ticketId)
+        .order('created_at', { ascending: true });
+    
+    if (error) {
+        document.getElementById('adminConversationsList').innerHTML = '<p>Error loading conversations</p>';
+        return;
+    }
+    
+    if (!conversations.length) {
+        document.getElementById('adminConversationsList').innerHTML = '<p>No conversations yet.</p>';
+        return;
+    }
+    
+    document.getElementById('adminConversationsList').innerHTML = conversations.map(conv => `
+        <div style="background: white; padding: 12px; margin-bottom: 10px; border-radius: 8px; border-left: 4px solid ${conv.is_internal ? '#f59e0b' : '#3b82f6'}">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <strong>${escapeHtml(conv.author?.full_name || 'Unknown')}</strong>
+                <small>${new Date(conv.created_at).toLocaleString()}</small>
+            </div>
+            ${conv.is_internal ? '<small style="color: #f59e0b;">🔒 Internal Note</small><br>' : ''}
+            <p style="margin: 8px 0 0 0;">${escapeHtml(conv.message)}</p>
+        </div>
+    `).join('');
+}
+
+// Send admin reply
+async function sendAdminReply() {
+    const message = document.getElementById('adminReplyMessage')?.value.trim();
+    const isInternal = document.getElementById('adminReplyInternal')?.checked || false;
+    const ticketId = window.currentAdminTicketId;
+    
+    if (!message) {
+        showToast('Please enter a reply message', 'warning');
+        return;
+    }
+    
+    if (!ticketId) {
+        showToast('No ticket selected', 'error');
+        return;
+    }
+    
+    const adminId = window.db?.currentUserId;
+    
+    const { data, error } = await window.db.supabase
+        .from('ticket_conversations')
+        .insert([{
+            ticket_id: ticketId,
+            author_id: adminId,
+            message: message,
+            message_type: isInternal ? 'internal_note' : 'reply',
+            is_internal: isInternal
+        }]);
+    
+    if (error) {
+        showToast('Failed to send reply: ' + error.message, 'error');
+        return;
+    }
+    
+    // Update ticket status if needed
+    await window.db.supabase
+        .from('support_tickets')
+        .update({ updated_at: new Date() })
+        .eq('id', ticketId);
+    
+    // Clear and reload
+    document.getElementById('adminReplyMessage').value = '';
+    await loadAdminConversations(ticketId);
+    await loadAdminTickets();
+    
+    showToast('Reply sent successfully', 'success');
+}
+
+// Update ticket status from admin
+async function updateAdminTicketStatus() {
+    const newStatus = document.getElementById('adminTicketAction')?.value;
+    const ticketId = window.currentAdminTicketId;
+    
+    if (!newStatus || newStatus === 'none' || !ticketId) return;
+    
+    const updateData = { status: newStatus, updated_at: new Date() };
+    if (newStatus === 'closed') {
+        updateData.closed_at = new Date();
+    }
+    
+    const { error } = await window.db.supabase
+        .from('support_tickets')
+        .update(updateData)
+        .eq('id', ticketId);
+    
+    if (error) {
+        showToast('Failed to update status: ' + error.message, 'error');
+        return;
+    }
+    
+    await loadAdminTickets();
+    showToast(`Ticket status updated to ${newStatus}`, 'success');
+}
+
+// Close admin ticket modal
+function closeAdminTicketModal() {
+    document.getElementById('adminTicketModal').style.display = 'none';
+    window.currentAdminTicketId = null;
+    document.getElementById('adminReplyMessage').value = '';
+    document.getElementById('adminReplyInternal').checked = false;
+}
+
+// Export tickets to CSV
+function exportAdminTicketsToCSV() {
+    const tickets = adminAllTickets;
+    if (!tickets.length) {
+        showToast('No tickets to export', 'warning');
+        return;
+    }
+    
+    let csv = 'Ticket #,Student,Program,Subject,Category,Priority,Status,Created,Updated\n';
+    tickets.forEach(t => {
+        csv += `"${t.ticket_number || ''}","${t.student?.full_name || ''}","${t.student?.program || ''}","${t.subject.replace(/"/g, '""')}","${t.category}","${t.priority}","${t.status}","${t.created_at}","${t.updated_at}"\n`;
+    });
+    
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `tickets_export_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    
+    showToast('Export complete', 'success');
+}
+
+// Helper functions
+function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/[&<>]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        return m;
+    });
+}
+
+function formatDateShort(dateStr) {
+    if (!dateStr) return 'N/A';
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diff = Math.floor((now - date) / (1000 * 60 * 60));
+    if (diff < 24) return `${diff}h ago`;
+    if (diff < 48) return 'Yesterday';
+    return date.toLocaleDateString();
+}
+
+function showToast(message, type) {
+    // Use existing toast or create one
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.innerHTML = `<span>${message}</span>`;
+    toast.style.cssText = `position: fixed; bottom: 20px; right: 20px; padding: 12px 20px; background: ${type === 'error' ? '#ef4444' : type === 'success' ? '#10b981' : '#3b82f6'}; color: white; border-radius: 8px; z-index: 9999;`;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+}
+
+// Add to tab navigation
+document.addEventListener('tabChanged', function(e) {
+    if (e.detail.tabId === 'support-tickets') {
+        loadAdminTickets();
+    }
+});
+
+// Export functions for global use
+window.loadAdminTickets = loadAdminTickets;
+window.filterAdminTickets = filterAdminTickets;
+window.viewAdminTicket = viewAdminTicket;
+window.sendAdminReply = sendAdminReply;
+window.updateAdminTicketStatus = updateAdminTicketStatus;
+window.closeAdminTicketModal = closeAdminTicketModal;
+window.exportAdminTicketsToCSV = exportAdminTicketsToCSV;
 /*******************************************************
  * 20. INITIALIZATION & EVENT LISTENERS
  *******************************************************/
