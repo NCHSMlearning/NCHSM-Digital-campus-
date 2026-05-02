@@ -2347,7 +2347,19 @@
         </div>
     </div>
 </div>
-
+<script>
+// Immediately remove any hash from URL on page load
+(function() {
+    if (window.location.hash) {
+        // Get the current path without hash
+        let currentPath = window.location.pathname;
+        // Remove any hash
+        if (window.location.hash) {
+            history.replaceState({}, '', currentPath);
+        }
+    }
+})();
+</script>
 <!-- ==================== SCRIPTS ==================== -->
 <script src="./js/database.js"></script>
 <script src="./js/utils.js"></script>
@@ -2366,14 +2378,6 @@
 <script src="./js/exam-card.js"></script>
 
 <!-- ==================== INITIALIZATION SCRIPT ==================== -->
- <!-- Remove .html extension -->
-    <script>
-    if (window.location.pathname.endsWith('.html')) {
-        const cleanPath = window.location.pathname.replace(/\.html$/, '');
-        window.history.replaceState({}, '', cleanPath);
-    }
-    </script>
-                        
 <script>
     // Global app state
     window.app = {
@@ -2428,7 +2432,7 @@
             
             if (!userSession) {
                 console.log('⚠️ No active session, redirecting to login...');
-                window.location.href = 'login.html';
+                window.location.href = '/login';
                 return;
             }
             
@@ -2438,10 +2442,10 @@
             // Load user profile
             try {
                 const { data: consolidatedProfile, error: consolidatedError } = await window.db.supabase
-    .from('consolidated_user_profiles_table')
-    .select('*')
-    .eq('user_id', userSession.user.id) 
-    .single();
+                    .from('consolidated_user_profiles_table')
+                    .select('*')
+                    .eq('user_id', userSession.user.id) 
+                    .single();
                 
                 if (!consolidatedError && consolidatedProfile) {
                     window.db.currentUserProfile = consolidatedProfile;
@@ -2496,8 +2500,11 @@
             });
             
             // Hide loading screen and show app
-            document.getElementById('loading-screen').style.display = 'none';
-            document.getElementById('app-content').style.display = 'block';
+            const loadingScreen = document.getElementById('loading-screen');
+            if (loadingScreen) loadingScreen.style.display = 'none';
+            
+            const appContent = document.getElementById('app-content');
+            if (appContent) appContent.style.display = 'block';
             
             // Set global variables
             window.supabase = window.db.supabase;
@@ -2526,17 +2533,31 @@
                 initUI();
             }
             
-            // Show appropriate tab
+            // Show appropriate tab - USING CLEAN URL (NO HASH)
             if (window.ui && typeof window.ui.showTab === 'function') {
                 console.log('✅ UI module loaded, checking current tab state...');
-                const hash = window.location.hash.substring(1);
-                const lastTab = localStorage.getItem('nchsm_last_tab');
+                
+                // Get tab from pathname (clean URL)
+                let path = window.location.pathname;
                 let targetTab = 'dashboard';
                 
-                if (hash && window.ui.isValidTab(hash)) {
-                    targetTab = hash;
-                    console.log(`🔗 Using URL hash: ${hash}`);
-                } else if (lastTab && window.ui.isValidTab(lastTab)) {
+                // Remove /student prefix
+                if (path.startsWith('/student/')) {
+                    path = path.replace('/student/', '');
+                } else if (path === '/student') {
+                    path = '';
+                }
+                path = path.replace(/\/$/, '');
+                
+                // Check if path is a valid tab
+                if (path && window.ui.isValidTab(path)) {
+                    targetTab = path;
+                    console.log(`🔗 Using path from URL: ${targetTab}`);
+                }
+                
+                // Also check localStorage for last tab (fallback)
+                const lastTab = localStorage.getItem('nchsm_last_tab');
+                if (lastTab && window.ui.isValidTab(lastTab) && targetTab === 'dashboard') {
                     targetTab = lastTab;
                     console.log(`💾 Using saved tab: ${lastTab}`);
                 }
@@ -2544,8 +2565,10 @@
                 console.log(`🎯 Showing tab: ${targetTab}`);
                 window.ui.showTab(targetTab);
                 
-                if (hash !== targetTab) {
-                    history.replaceState(null, null, `#${targetTab}`);
+                // Update URL without hash
+                const cleanUrl = targetTab === 'dashboard' ? '/student' : `/student/${targetTab}`;
+                if (window.location.pathname !== cleanUrl) {
+                    history.replaceState(null, null, cleanUrl);
                 }
             } else {
                 console.warn('⚠️ UI module not available, using fallback');
@@ -2578,8 +2601,11 @@
             console.error('❌ Initialization failed:', error);
             
             try {
-                document.getElementById('loading-screen').style.display = 'none';
-                document.getElementById('app-content').style.display = 'block';
+                const loadingScreen = document.getElementById('loading-screen');
+                if (loadingScreen) loadingScreen.style.display = 'none';
+                
+                const appContent = document.getElementById('app-content');
+                if (appContent) appContent.style.display = 'block';
                 
                 if (window.ui && typeof window.ui.showTab === 'function') {
                     window.ui.showTab('dashboard');
@@ -2619,8 +2645,11 @@
         } else {
             console.error('❌ initializeApp function NOT FOUND!');
             setTimeout(() => {
-                document.getElementById('loading-screen').style.display = 'none';
-                document.getElementById('app-content').style.display = 'block';
+                const loadingScreen = document.getElementById('loading-screen');
+                if (loadingScreen) loadingScreen.style.display = 'none';
+                
+                const appContent = document.getElementById('app-content');
+                if (appContent) appContent.style.display = 'block';
                 
                 if (window.ui && window.ui.showTab) {
                     window.ui.showTab('dashboard');
@@ -2634,6 +2663,5 @@
         }
     });
 </script>
-
 </body>
 </html>
