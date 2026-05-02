@@ -5612,7 +5612,7 @@ window.testNotificationSystem = function() {
     showAdminToast('🔔 Test completed! You heard the bell and saw the notification.', 'success');
 };
 
-// Check for new messages with sender info
+// Check for new messages with sender info - FIXED
 async function checkForNewMessages() {
     const supabase = getSupabaseClient();
     if (!supabase) return;
@@ -5630,13 +5630,18 @@ async function checkForNewMessages() {
         let newCount = 0;
         
         for (const ticket of tickets) {
-            // Get the latest message in this ticket
-            const { data: latestMessage } = await supabase
+            // Get the latest message in this ticket - FIXED: use proper select
+            const { data: latestMessage, error: msgError } = await supabase
                 .from('ticket_conversations')
-                .select('*, author:author_id(id, full_name)')
+                .select('id, author_id, created_at, message')
                 .eq('ticket_id', ticket.id)
                 .order('created_at', { ascending: false })
                 .limit(1);
+            
+            if (msgError) {
+                console.error('Error fetching message for ticket:', ticket.id, msgError);
+                continue;
+            }
             
             if (latestMessage && latestMessage.length > 0) {
                 const msg = latestMessage[0];
@@ -5713,7 +5718,6 @@ async function checkForNewMessages() {
         console.error('Error checking messages:', err);
     }
 }
-
 // Mark ticket as read when viewed
 function markTicketAsRead(ticketId) {
     if (unreadCounts[ticketId]) {
@@ -6152,6 +6156,7 @@ function renderChatMessages(conversations, authorNames) {
     return html;
 }
 
+// Refresh conversation with new message detection - FIXED
 async function refreshAdminConversation() {
     if (!currentAdminTicketId) return;
     
@@ -6161,32 +6166,68 @@ async function refreshAdminConversation() {
     const conversationArea = document.getElementById('adminConversationArea');
     if (!conversationArea) return;
     
-    const { data: conversations } = await supabase
+    // Get all conversations for this ticket - FIXED: no join with author
+    const { data: conversations, error } = await supabase
         .from('ticket_conversations')
         .select('*')
         .eq('ticket_id', currentAdminTicketId)
         .order('created_at', { ascending: true });
     
+    if (error) {
+        console.error('Error fetching conversations:', error);
+        return;
+    }
+    
     if (conversations) {
+        // Get author names separately
         const authorIds = [...new Set(conversations.map(c => c.author_id).filter(id => id))];
         let authorNames = {};
         
         if (authorIds.length > 0) {
-            const { data: profiles } = await supabase
+            const { data: profiles, error: profileError } = await supabase
                 .from('consolidated_user_profiles_table')
                 .select('id, full_name')
                 .in('id', authorIds);
             
-            if (profiles) {
+            if (!profileError && profiles) {
                 profiles.forEach(p => {
                     authorNames[p.id] = p.full_name;
                 });
             }
         }
         
+        // Check for new messages from student
+        const lastTimestamp = lastMessageTimestamps[currentAdminTicketId];
+        const newMessages = conversations.filter(c => 
+            !lastTimestamp || new Date(c.created_at) > new Date(lastTimestamp)
+        ).filter(c => c.author_id !== currentAdminProfileId);
+        
+        if (newMessages.length > 0 && !document.hidden) {
+            const lastNew = newMessages[newMessages.length - 1];
+            const authorName = authorNames[lastNew.author_id] || 'Student';
+            playBellSound();
+            showAdminToast(`🔔 New message from ${authorName}`, 'info');
+            
+            // Mark as read if currently viewing
+            unreadCounts[currentAdminTicketId] = 0;
+            updateBellBadge(Object.values(unreadCounts).reduce((a, b) => a + b, 0));
+        }
+        
         const newHtml = renderChatMessages(conversations, authorNames);
+        const oldScrollTop = conversationArea.scrollTop;
+        const oldScrollHeight = conversationArea.scrollHeight;
+        
         conversationArea.innerHTML = newHtml;
-        conversationArea.scrollTop = conversationArea.scrollHeight;
+        
+        // Scroll to bottom if was near bottom or new message
+        if (newMessages.length > 0 || oldScrollHeight - oldScrollTop < 300) {
+            conversationArea.scrollTop = conversationArea.scrollHeight;
+        }
+        
+        // Update last message timestamp
+        if (conversations.length > 0) {
+            lastMessageTimestamps[currentAdminTicketId] = conversations[conversations.length - 1].created_at;
+        }
     }
 }
 
