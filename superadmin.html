@@ -543,7 +543,7 @@
         </div>
     </div>
     
-    <!-- Additional Metrics Row - Unit Registration Stats -->
+    <!-- Additional Metrics Row -->
     <div class="cards">
         <div class="card" onclick="showTab('unit-management')">
             <h3><i class="fas fa-book"></i> Total Units</h3>
@@ -563,7 +563,16 @@
         <div class="card" onclick="showTab('messages')">
             <h3><i class="fas fa-envelope"></i> Pending Replies</h3>
             <p class="data" id="dashboardPendingMessages">0</p>
-            <p class="minor-data">Unread student messages</p>
+            <p class="minor-data">Unread messages</p>
+        </div>
+    </div>
+    
+    <!-- Data Integrity Card (moved here) -->
+    <div class="cards">
+        <div class="card" onclick="showTab('system-health')">
+            <h3>Data Integrity Score</h3>
+            <p class="data" id="dataIntegrityScore">--%</p>
+            <p class="minor-data">System health status</p>
         </div>
     </div>
 </section>
