@@ -730,9 +730,32 @@
                 </div>
             </section>
              <!-- SUPPORT TICKETS MANAGEMENT SECTION -->
+<!-- SUPPORT TICKETS MANAGEMENT SECTION - WITH TRUE BELL NOTIFICATIONS -->
 <section id="support-tickets" class="tab-content">
     <h2><i class="fas fa-ticket-alt"></i> Support Tickets Management</h2>
     <p>View and manage all student support tickets across the system.</p>
+    
+    <!-- 🔔 BELL NOTIFICATION BAR -->
+    <div style="background: linear-gradient(135deg, #4C1D95, #6d28d9); border-radius: 12px; padding: 15px 20px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;">
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <div style="position: relative;">
+                <i id="notificationBell" class="fas fa-bell" style="font-size: 32px; color: white; cursor: pointer;"></i>
+                <span id="bellNotificationBadge" style="position: absolute; top: -8px; right: -8px; background: #ef4444; color: white; border-radius: 50%; padding: 2px 6px; font-size: 11px; font-weight: bold; display: none; min-width: 18px; text-align: center;">0</span>
+            </div>
+            <div>
+                <span style="color: white; font-weight: 500;">🔔 Live Notifications</span>
+                <p style="color: #c4b5fd; font-size: 12px; margin: 0;">🔊 Sound + 📱 Popup alerts for new messages</p>
+            </div>
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <button id="testNotificationBtn" onclick="testNotificationSystem()" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 6px 12px; border-radius: 20px; cursor: pointer;">
+                <i class="fas fa-volume-up"></i> Test Sound
+            </button>
+            <button id="enableNotificationsBtn" onclick="requestNotificationPermission()" style="background: white; color: #4C1D95; border: none; padding: 6px 12px; border-radius: 20px; cursor: pointer; font-weight: 500;">
+                <i class="fas fa-bell"></i> Enable Popups
+            </button>
+        </div>
+    </div>
     
     <!-- Summary Cards -->
     <div class="cards">
@@ -777,9 +800,7 @@
         <select id="admin_ticket_category_filter" onchange="filterAdminTickets()">
             <option value="all">All Categories</option>
             <option value="technical">Technical Issues</option>
-            <option value="technical_issues">Technical Issues</option>
             <option value="academic">Academic Matters</option>
-            <option value="academic_inquiry">Academic Inquiry</option>
             <option value="financial">Financial Issues</option>
             <option value="administrative">Administrative</option>
             <option value="resources">Resources Access</option>
@@ -813,18 +834,18 @@
             <tbody id="admin-tickets-body">
                 <tr><td colspan="10" style="padding: 40px; text-align: center;">
                     <div class="loading-spinner"></div> Loading tickets...
-                </td></tr>
+                <\/td><\/tr>
             </tbody>
         </table>
     </div>
 </section>
 
-<!-- TICKET DETAIL MODAL FOR ADMIN -->
-<div id="adminTicketModal" class="modal" style="display: none;">
+<!-- TICKET DETAIL MODAL FOR ADMIN - CHAT STYLE -->
+<div id="adminTicketChatModal" class="modal" style="display: none;">
     <div class="modal-content" style="max-width: 800px; max-height: 90vh; overflow-y: auto;">
         <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #e5e7eb;">
             <h3 id="adminTicketTitle" style="margin: 0;">Ticket Details</h3>
-            <span class="close" onclick="closeAdminTicketModal()" style="cursor: pointer; font-size: 24px;">&times;</span>
+            <span class="close" onclick="closeAdminTicketChatModal()" style="cursor: pointer; font-size: 24px;">&times;</span>
         </div>
         <div class="modal-body" style="padding: 20px;">
             <div id="adminTicketDetails">
@@ -863,7 +884,7 @@
             </div>
         </div>
         <div class="modal-actions" style="padding: 15px; border-top: 1px solid #e5e7eb; display: flex; justify-content: flex-end;">
-            <button onclick="closeAdminTicketModal()" class="btn" style="padding: 8px 16px; background: #6b7280; color: white; border: none; border-radius: 6px; cursor: pointer;">Close</button>
+            <button onclick="closeAdminTicketChatModal()" class="btn" style="padding: 8px 16px; background: #6b7280; color: white; border: none; border-radius: 6px; cursor: pointer;">Close</button>
         </div>
     </div>
 </div>
