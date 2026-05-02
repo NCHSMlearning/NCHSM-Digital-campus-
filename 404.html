@@ -2,20 +2,63 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Redirecting...</title>
+    <title>Redirecting to NCHSM Portal...</title>
+    <meta http-equiv="refresh" content="0; url=/student">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .redirect-container {
+            text-align: center;
+        }
+        .spinner {
+            width: 40px;
+            height: 40px;
+            margin: 20px auto;
+            border: 4px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
     <script>
         // Get the current path
         const path = window.location.pathname;
         const hash = window.location.hash;
         const search = window.location.search;
         
-        // Map paths to hash URLs
-        const pathMap = {
-            '/': '',
+        // Remove the trailing slash if present
+        const cleanPath = path.replace(/\/$/, '');
+        
+        // Map paths to their destination files
+        const routeMap = {
+            '/': '/student',
+            '/index.html': '/student',
+            '/student': '/student.html',
+            '/superadmin': '/superadmin.html',
+            '/login': '/login.html',
+            '/admin': '/admin.html',
+            '/lecturer': '/lecturer.html'
+        };
+        
+        // Map for hash-based routes (for SPA)
+        const hashMap = {
             '/profile': '#profile',
             '/calendar': '#calendar',
             '/courses': '#courses',
+            '/learning-hub': '#learning-hub',
             '/attendance': '#attendance',
+            '/exam-card': '#exam-card',
             '/exams': '#cats',
             '/resources': '#resources',
             '/messages': '#messages',
@@ -23,16 +66,34 @@
             '/nurseiq': '#nurseiq'
         };
         
-        // Redirect to index.html with proper hash
-        if (path in pathMap) {
-            window.location.href = '/index.html' + pathMap[path] + search + hash;
-        } else {
-            // For unknown paths, go to dashboard
-            window.location.href = '/index.html' + search + hash;
+        let destination;
+        
+        // Check if path is in routeMap
+        if (cleanPath in routeMap) {
+            destination = routeMap[cleanPath];
         }
+        // Check if path is a hash-based route
+        else if (cleanPath in hashMap) {
+            destination = '/student.html' + hashMap[cleanPath] + search + hash;
+        }
+        // Default to student dashboard
+        else {
+            destination = '/student.html' + search + hash;
+        }
+        
+        // Redirect
+        window.location.href = destination;
     </script>
 </head>
 <body>
-    <p>Redirecting to the portal...</p>
+    <div class="redirect-container">
+        <div class="spinner"></div>
+        <h2>Welcome to NCHSM Digital Campus</h2>
+        <p>Redirecting you to the portal...</p>
+        <p style="font-size: 12px; opacity: 0.8; margin-top: 20px;">
+            If you are not redirected automatically, 
+            <a href="/student" style="color: white;">click here</a>
+        </p>
+    </div>
 </body>
 </html>
