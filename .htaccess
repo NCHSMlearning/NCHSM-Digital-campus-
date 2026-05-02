@@ -26,6 +26,18 @@ RewriteRule ^home$ /student.html [L,QSA]
 RewriteRule ^student$ /student.html [L,QSA]
 
 # ------------------------------------------------------------------
+# ROUTE: /student/* (all subpaths go to student.html)
+# ------------------------------------------------------------------
+RewriteRule ^student/(.*)$ /student.html [L,QSA]
+
+# ------------------------------------------------------------------
+# REMOVE HASH FROM URL - Redirect any URL with # to clean URL
+# ------------------------------------------------------------------
+RewriteCond %{REQUEST_URI} ^/student
+RewriteCond %{QUERY_STRING} !^$
+RewriteRule ^(.*)$ /student? [R=301,L]
+
+# ------------------------------------------------------------------
 # SPA ROUTING - MOST IMPORTANT PART
 # ------------------------------------------------------------------
 
@@ -94,9 +106,6 @@ RewriteRule ^(.*)$ student.html [L,QSA]
     # Permissions policy
     Header set Permissions-Policy "camera=(), microphone=(), geolocation=()"
     
-    # CORS for API if needed (adjust as necessary)
-    # Header set Access-Control-Allow-Origin "*"
-    
     # Cache static assets
     <FilesMatch "\.(jpg|jpeg|png|gif|ico|css|js|woff|woff2|ttf|svg)$">
         Header set Cache-Control "public, max-age=31536000"
@@ -108,7 +117,6 @@ RewriteRule ^(.*)$ student.html [L,QSA]
 # ------------------------------------------------------------------
 
 <IfModule mod_deflate.c>
-    # Compress HTML, CSS, JavaScript, Text, XML and fonts
     AddOutputFilterByType DEFLATE application/javascript
     AddOutputFilterByType DEFLATE application/rss+xml
     AddOutputFilterByType DEFLATE application/vnd.ms-fontobject
@@ -136,8 +144,7 @@ RewriteRule ^(.*)$ student.html [L,QSA]
 # ERROR PAGES (Optional)
 # ------------------------------------------------------------------
 
-# ErrorDocument 404 /index.html
-# ErrorDocument 500 /index.html
+# ErrorDocument 404 /student
 
 # ------------------------------------------------------------------
 # BLOCK ACCESS TO SENSITIVE FILES
@@ -168,11 +175,3 @@ RewriteRule ^(.*)$ student.html [L,QSA]
 # ------------------------------------------------------------------
 
 Options -Indexes
-
-# ------------------------------------------------------------------
-# CUSTOM 404 FOR API ROUTES (if you have API endpoints)
-# ------------------------------------------------------------------
-
-# If you have API at /api/, you might want to handle it differently
-# RewriteCond %{REQUEST_URI} ^/api/
-# RewriteRule ^api/(.*)$ api/index.php?route=$1 [L,QSA]
