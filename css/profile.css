@@ -185,8 +185,8 @@
 .passport-photo-container {
     position: relative;
     margin: 0;
-    width: 120px;
-    height: 120px;
+    width: 70px;
+    height: 70px;
     flex-shrink: 0;
 }
 
