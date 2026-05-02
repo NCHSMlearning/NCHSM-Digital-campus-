@@ -674,29 +674,29 @@
                     </div>
                 </div>
             </section>
-                  <!-- SUPPORT TICKETS MANAGEMENT SECTION -->
+             <!-- SUPPORT TICKETS MANAGEMENT SECTION -->
 <section id="support-tickets" class="tab-content">
     <h2><i class="fas fa-ticket-alt"></i> Support Tickets Management</h2>
     <p>View and manage all student support tickets across the system.</p>
     
     <!-- Summary Cards -->
     <div class="cards">
-        <div class="card" onclick="filterAdminTickets('open')">
+        <div class="card" onclick="filterAdminTickets('status', 'open')" style="cursor: pointer;">
             <h3>Open Tickets</h3>
             <p class="data" id="admin_open_tickets">0</p>
             <p class="minor-data">Awaiting response</p>
         </div>
-        <div class="card" onclick="filterAdminTickets('in_progress')">
+        <div class="card" onclick="filterAdminTickets('status', 'in_progress')" style="cursor: pointer;">
             <h3>In Progress</h3>
             <p class="data" id="admin_progress_tickets">0</p>
             <p class="minor-data">Being handled</p>
         </div>
-        <div class="card" onclick="filterAdminTickets('closed')">
+        <div class="card" onclick="filterAdminTickets('status', 'closed')" style="cursor: pointer;">
             <h3>Closed/Resolved</h3>
             <p class="data" id="admin_closed_tickets">0</p>
             <p class="minor-data">Completed tickets</p>
         </div>
-        <div class="card" onclick="filterAdminTickets('urgent')">
+        <div class="card" onclick="filterAdminTickets('priority', 'urgent')" style="cursor: pointer;">
             <h3>Urgent Priority</h3>
             <p class="data" id="admin_urgent_tickets">0</p>
             <p class="minor-data">High priority tickets</p>
@@ -705,13 +705,12 @@
     
     <!-- Filters and Search -->
     <div class="filter-bar">
-        <input type="text" id="admin_ticket_search" placeholder="Search by ticket #, subject, or student..." onkeyup="filterAdminTickets()">
+        <input type="text" id="admin_ticket_search" placeholder="Search by ticket #, subject, or student..." onkeyup="filterAdminTicketsDebounced()">
         <select id="admin_ticket_status_filter" onchange="filterAdminTickets()">
             <option value="all">All Status</option>
             <option value="open">Open</option>
             <option value="in_progress">In Progress</option>
-            <option value="closed">Closed</option>
-            <option value="resolved">Resolved</option>
+            <option value="closed">Closed/Resolved</option>
         </select>
         <select id="admin_ticket_priority_filter" onchange="filterAdminTickets()">
             <option value="all">All Priorities</option>
@@ -723,7 +722,9 @@
         <select id="admin_ticket_category_filter" onchange="filterAdminTickets()">
             <option value="all">All Categories</option>
             <option value="technical">Technical Issues</option>
+            <option value="technical_issues">Technical Issues</option>
             <option value="academic">Academic Matters</option>
+            <option value="academic_inquiry">Academic Inquiry</option>
             <option value="financial">Financial Issues</option>
             <option value="administrative">Administrative</option>
             <option value="resources">Resources Access</option>
@@ -739,23 +740,25 @@
     
     <!-- Tickets Table -->
     <div class="table-responsive">
-        <table class="data-table" id="admin-tickets-table">
+        <table class="data-table" id="admin-tickets-table" style="width: 100%; border-collapse: collapse;">
             <thead>
                 <tr>
-                    <th>Ticket #</th>
-                    <th>Student</th>
-                    <th>Program</th>
-                    <th>Subject</th>
-                    <th>Category</th>
-                    <th>Priority</th>
-                    <th>Status</th>
-                    <th>Created</th>
-                    <th>Last Updated</th>
-                    <th>Actions</th>
+                    <th style="padding: 12px; text-align: left;">Ticket #</th>
+                    <th style="padding: 12px; text-align: left;">Student</th>
+                    <th style="padding: 12px; text-align: left;">Program</th>
+                    <th style="padding: 12px; text-align: left;">Subject</th>
+                    <th style="padding: 12px; text-align: left;">Category</th>
+                    <th style="padding: 12px; text-align: left;">Priority</th>
+                    <th style="padding: 12px; text-align: left;">Status</th>
+                    <th style="padding: 12px; text-align: left;">Created</th>
+                    <th style="padding: 12px; text-align: left;">Updated</th>
+                    <th style="padding: 12px; text-align: left;">Actions</th>
                 </tr>
             </thead>
             <tbody id="admin-tickets-body">
-                <tr><td colspan="10">Loading tickets...</td></tr>
+                <tr><td colspan="10" style="padding: 40px; text-align: center;">
+                    <div class="loading-spinner"></div> Loading tickets...
+                </td></tr>
             </tbody>
         </table>
     </div>
@@ -763,50 +766,52 @@
 
 <!-- TICKET DETAIL MODAL FOR ADMIN -->
 <div id="adminTicketModal" class="modal" style="display: none;">
-    <div class="modal-content" style="max-width: 800px;">
-        <div class="modal-header">
-            <h3 id="adminTicketTitle">Ticket Details</h3>
-            <span class="close" onclick="closeAdminTicketModal()">&times;</span>
+    <div class="modal-content" style="max-width: 800px; max-height: 90vh; overflow-y: auto;">
+        <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #e5e7eb;">
+            <h3 id="adminTicketTitle" style="margin: 0;">Ticket Details</h3>
+            <span class="close" onclick="closeAdminTicketModal()" style="cursor: pointer; font-size: 24px;">&times;</span>
         </div>
-        <div class="modal-body">
+        <div class="modal-body" style="padding: 20px;">
             <div id="adminTicketDetails">
                 <div class="loading-spinner"></div>
             </div>
             
-            <hr>
+            <hr style="margin: 20px 0;">
             
-            <h4>Conversation</h4>
+            <h4 style="margin-bottom: 15px;">Conversation History</h4>
             <div id="adminConversationsList" style="max-height: 400px; overflow-y: auto; background: #f9fafb; border-radius: 8px; padding: 15px;">
                 Loading conversations...
             </div>
             
             <div style="margin-top: 20px;">
-                <textarea id="adminReplyMessage" rows="3" placeholder="Type your reply here..." style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd;"></textarea>
-                <div style="margin-top: 10px;">
-                    <input type="checkbox" id="adminReplyInternal"> 
-                    <label for="adminReplyInternal">Internal note (staff only, not visible to student)</label>
-                </div>
-                <div style="margin-top: 10px;">
-                    <select id="adminTicketAction" style="padding: 8px; border-radius: 6px;">
+                <label style="font-weight: 600; margin-bottom: 8px; display: block;">Reply Message</label>
+                <textarea id="adminReplyMessage" rows="4" placeholder="Type your reply here..." style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; resize: vertical;"></textarea>
+                <div style="margin-top: 10px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
+                    <label style="display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" id="adminReplyInternal"> 
+                        <span>Internal note (staff only, not visible to student)</span>
+                    </label>
+                    <select id="adminTicketAction" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
                         <option value="none">-- Change Status --</option>
                         <option value="open">Open</option>
                         <option value="in_progress">In Progress</option>
                         <option value="closed">Closed</option>
                         <option value="resolved">Resolved</option>
                     </select>
-                    <button onclick="updateAdminTicketStatus()" class="btn-action">Update Status</button>
-                    <button onclick="sendAdminReply()" class="btn-action">
+                    <button onclick="updateAdminTicketStatus()" class="btn-action" style="padding: 8px 16px;">
+                        Update Status
+                    </button>
+                    <button onclick="sendAdminReply()" class="btn-action" style="padding: 8px 16px; background: #4C1D95;">
                         <i class="fas fa-paper-plane"></i> Send Reply
                     </button>
                 </div>
             </div>
         </div>
-        <div class="modal-actions">
-            <button onclick="closeAdminTicketModal()" class="btn">Close</button>
+        <div class="modal-actions" style="padding: 15px; border-top: 1px solid #e5e7eb; display: flex; justify-content: flex-end;">
+            <button onclick="closeAdminTicketModal()" class="btn" style="padding: 8px 16px; background: #6b7280; color: white; border: none; border-radius: 6px; cursor: pointer;">Close</button>
         </div>
     </div>
 </div>
-</section>
 <!-- FEE ACCOUNTS & PAYMENT MANAGEMENT SECTION -->
 <section id="fee-accounts" class="tab-content">
     <h2><i class="fas fa-credit-card"></i> Student Fee Accounts</h2>
