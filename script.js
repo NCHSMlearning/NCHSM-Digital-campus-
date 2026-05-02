@@ -5452,8 +5452,8 @@ async function logout() {
     }
 }
 // ============================================
-// ADMIN SUPPORT TICKETS - TAWK.TO STYLE
-// Complete working version with modern chat UI
+// ADMIN SUPPORT TICKETS - WITH REAL-TIME NOTIFICATIONS
+// Complete working version with tawk.to style chat
 // ============================================
 
 let adminAllTickets = [];
@@ -5463,6 +5463,193 @@ let currentAdminTicketId = null;
 let currentAdminTicketStatus = null;
 let currentAdminTicket = null;
 let currentAdminProfileId = null;
+
+// ========== NOTIFICATION VARIABLES ==========
+let lastMessageTimestamps = {};  // Track last message time per ticket
+let unreadCounts = {};           // Track unread counts per ticket
+let notificationSound = null;
+let notificationPermissionGranted = false;
+
+// Initialize notifications
+function initNotifications() {
+    // Request notification permission on user interaction
+    document.addEventListener('click', function requestNotificationPermission() {
+        if (Notification.permission === "default") {
+            Notification.requestPermission().then(perm => {
+                notificationPermissionGranted = perm === "granted";
+            });
+        }
+        document.removeEventListener('click', requestNotificationPermission);
+    });
+    
+    // Initialize sound
+    try {
+        notificationSound = new Audio('https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3');
+        notificationSound.volume = 0.3;
+    } catch(e) { console.log('Audio not supported'); }
+}
+
+// Play notification sound
+function playNotificationSound() {
+    try {
+        if (notificationSound) {
+            notificationSound.currentTime = 0;
+            notificationSound.play().catch(e => console.log('Sound play failed'));
+        }
+    } catch(e) {}
+}
+
+// Show browser notification
+function showNotification(title, body, ticketId) {
+    if (notificationPermissionGranted && document.hidden) {
+        const notification = new Notification(title, {
+            body: body,
+            icon: "https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png",
+            tag: ticketId,
+            requireInteraction: true
+        });
+        
+        notification.onclick = function() {
+            window.focus();
+            if (ticketId) {
+                viewAdminTicket(ticketId);
+            }
+            notification.close();
+        };
+        
+        setTimeout(() => notification.close(), 10000);
+    }
+    
+    // Also show toast for visible page
+    if (!document.hidden) {
+        showAdminToast('🔔 ' + title, 'info');
+    }
+    
+    playNotificationSound();
+}
+
+// Update unread badge in sidebar
+function updateSidebarUnreadBadge() {
+    const totalUnread = Object.values(unreadCounts).reduce((a, b) => a + b, 0);
+    let badge = document.getElementById('ticketsUnreadBadge');
+    
+    if (!badge) {
+        badge = document.createElement('span');
+        badge.id = 'ticketsUnreadBadge';
+        badge.style.cssText = `
+            background: #ef4444;
+            color: white;
+            border-radius: 20px;
+            padding: 2px 8px;
+            font-size: 11px;
+            font-weight: bold;
+            margin-left: 8px;
+            display: inline-block;
+            animation: pulse 1s infinite;
+        `;
+        
+        // Add pulse animation
+        if (!document.querySelector('#pulseAnimation')) {
+            const style = document.createElement('style');
+            style.id = 'pulseAnimation';
+            style.textContent = `
+                @keyframes pulse {
+                    0%, 100% { transform: scale(1); }
+                    50% { transform: scale(1.1); }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+        
+        const ticketsLink = document.querySelector('.nav a[data-tab="support-tickets"]');
+        if (ticketsLink) {
+            ticketsLink.appendChild(badge);
+        }
+    }
+    
+    if (totalUnread > 0) {
+        badge.textContent = totalUnread > 99 ? '99+' : totalUnread;
+        badge.style.display = 'inline-block';
+        // Flash the favicon or title
+        document.title = `(${totalUnread}) NCHSM Admin - New Messages`;
+        setTimeout(() => {
+            if (Object.values(unreadCounts).reduce((a, b) => a + b, 0) === 0) {
+                document.title = 'NCHSM Super Admin Dashboard';
+            }
+        }, 5000);
+    } else {
+        badge.style.display = 'none';
+        document.title = 'NCHSM Super Admin Dashboard';
+    }
+}
+
+// Check for new messages across all tickets
+async function checkForNewMessages() {
+    const supabase = getSupabaseClient();
+    if (!supabase) return;
+    
+    try {
+        // Get all tickets with latest message timestamp
+        const { data: tickets, error } = await supabase
+            .from('support_tickets')
+            .select('id, updated_at')
+            .order('updated_at', { ascending: false });
+        
+        if (error) throw error;
+        
+        let hasNew = false;
+        
+        for (const ticket of tickets) {
+            const lastSeen = lastMessageTimestamps[ticket.id] || new Date(0).toISOString();
+            
+            if (ticket.updated_at > lastSeen && currentAdminTicketId !== ticket.id) {
+                // New message in this ticket
+                const { data: newMessages } = await supabase
+                    .from('ticket_conversations')
+                    .select('count', { count: 'exact', head: true })
+                    .eq('ticket_id', ticket.id)
+                    .gt('created_at', lastSeen);
+                
+                if (newMessages && newMessages.length > 0) {
+                    const count = newMessages[0]?.count || 0;
+                    if (count > 0) {
+                        unreadCounts[ticket.id] = (unreadCounts[ticket.id] || 0) + count;
+                        hasNew = true;
+                        
+                        // Get student name for notification
+                        const student = adminStudentMap[ticket.student_id];
+                        const studentName = student?.full_name || 'A student';
+                        
+                        showNotification(
+                            `New message from ${studentName}`,
+                            `Ticket: ${ticket.ticket_number} - ${ticket.subject.substring(0, 50)}`,
+                            ticket.id
+                        );
+                    }
+                    lastMessageTimestamps[ticket.id] = new Date().toISOString();
+                }
+            }
+        }
+        
+        if (hasNew) {
+            updateSidebarUnreadBadge();
+            // Refresh ticket list to show updated status
+            await loadAdminTickets();
+        }
+        
+    } catch (err) {
+        console.error('Error checking new messages:', err);
+    }
+}
+
+// Mark ticket as read when viewed
+function markTicketAsRead(ticketId) {
+    if (unreadCounts[ticketId]) {
+        delete unreadCounts[ticketId];
+        updateSidebarUnreadBadge();
+    }
+    lastMessageTimestamps[ticketId] = new Date().toISOString();
+}
 
 // Get Supabase client
 function getSupabaseClient() {
@@ -5486,11 +5673,11 @@ async function loadAdminTickets() {
         return;
     }
     
-    tbody.innerHTML = '<tr><td colspan="10" style="padding: 40px; text-align: center;"><div class="loading-spinner"></div> Loading tickets...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="10" style="padding: 40px; text-align: center;"><div class="loading-spinner"></div> Loading tickets...<\/td><\/tr>';
     
     const supabase = getSupabaseClient();
     if (!supabase) {
-        tbody.innerHTML = '<tr><td colspan="10" style="padding: 40px; text-align: center; color: red;">❌ Database connection not found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" style="padding: 40px; text-align: center; color: red;">❌ Database connection not found<\/td><\/tr>';
         return;
     }
     
@@ -5505,7 +5692,7 @@ async function loadAdminTickets() {
         console.log('✅ Found tickets:', tickets?.length || 0);
         
         if (!tickets || tickets.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="10" style="padding: 40px; text-align: center;">No tickets found</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="10" style="padding: 40px; text-align: center;">No tickets found<\/td><\/tr>';
             updateAdminTicketCounts(0, 0, 0, 0);
             return;
         }
@@ -5527,6 +5714,13 @@ async function loadAdminTickets() {
         
         adminAllTickets = tickets;
         
+        // Initialize last message timestamps for each ticket
+        for (const ticket of tickets) {
+            if (!lastMessageTimestamps[ticket.id]) {
+                lastMessageTimestamps[ticket.id] = ticket.updated_at || ticket.created_at;
+            }
+        }
+        
         const openCount = tickets.filter(t => t.status === 'open').length;
         const progressCount = tickets.filter(t => t.status === 'in_progress').length;
         const closedCount = tickets.filter(t => t.status === 'closed' || t.status === 'resolved').length;
@@ -5535,9 +5729,12 @@ async function loadAdminTickets() {
         updateAdminTicketCounts(openCount, progressCount, closedCount, urgentCount);
         renderAdminTicketsTable(tickets);
         
+        // Update sidebar badge
+        updateSidebarUnreadBadge();
+        
     } catch (err) {
         console.error('❌ Error:', err);
-        tbody.innerHTML = `<tr><td colspan="10" style="padding: 40px; text-align: center; color: red;">Error: ${err.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="10" style="padding: 40px; text-align: center; color: red;">Error: ${err.message}<\/td><\/tr>`;
     }
 }
 
@@ -5558,7 +5755,7 @@ function renderAdminTicketsTable(tickets) {
     if (!tbody) return;
     
     if (!tickets || tickets.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="10" style="padding: 40px; text-align: center;">No tickets found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" style="padding: 40px; text-align: center;">No tickets found<\/td><\/tr>';
         return;
     }
     
@@ -5575,6 +5772,7 @@ function renderAdminTicketsTable(tickets) {
         
         const createdDate = new Date(ticket.created_at).toLocaleString();
         const updatedDate = new Date(ticket.updated_at).toLocaleString();
+        const hasUnread = unreadCounts[ticket.id] > 0;
         
         let statusClass = 'badge-info';
         if (ticket.status === 'open') statusClass = 'badge-warning';
@@ -5589,35 +5787,38 @@ function renderAdminTicketsTable(tickets) {
         if (ticket.priority === 'low') priorityClass = 'badge-success';
         
         return `
-            <tr style="border-bottom: 1px solid #e5e7eb; cursor: pointer;" onclick="viewAdminTicket('${ticket.id}')">
-                <td style="padding: 12px;"><strong>${escapeHtml(ticket.ticket_number || 'N/A')}</strong></td>
+            <tr style="border-bottom: 1px solid #e5e7eb; cursor: pointer; ${hasUnread ? 'background: #fef3c7;' : ''}" onclick="viewAdminTicket('${ticket.id}')">
+                <td style="padding: 12px;">
+                    <strong>${escapeHtml(ticket.ticket_number || 'N/A')}</strong>
+                    ${hasUnread ? '<span style="background: #ef4444; color: white; border-radius: 10px; padding: 2px 6px; font-size: 10px; margin-left: 5px;">New</span>' : ''}
+                <\/td>
                 <td style="padding: 12px;">
                     ${escapeHtml(student.full_name || 'Unknown')}<br>
                     <small style="color: #6b7280;">${escapeHtml(student.email || '-')}</small>
-                </td>
-                <td style="padding: 12px;">${escapeHtml(student.program || '-')}<br><small>${escapeHtml(student.intake_year || '-')}</small></td>
-                <td style="padding: 12px;">${escapeHtml(ticket.subject)}</td>
-                <td style="padding: 12px;"><span class="badge badge-info">${escapeHtml(ticket.category || '-')}</span></td>
-                <td style="padding: 12px;"><span class="${priorityClass}" style="padding: 4px 8px; border-radius: 4px;">${escapeHtml(ticket.priority || 'medium')}</span></td>
-                <td style="padding: 12px;"><span class="${statusClass}" style="padding: 4px 8px; border-radius: 4px;">${escapeHtml(ticket.status || 'open')}</span></td>
-                <td style="padding: 12px;">${createdDate}</td>
-                <td style="padding: 12px;">${updatedDate}</td>
+                <\/td>
+                <td style="padding: 12px;">${escapeHtml(student.program || '-')}<br><small>${escapeHtml(student.intake_year || '-')}</small><\/td>
+                <td style="padding: 12px;">${escapeHtml(ticket.subject)}<\/td>
+                <td style="padding: 12px;"><span class="badge badge-info">${escapeHtml(ticket.category || '-')}</span><\/td>
+                <td style="padding: 12px;"><span class="${priorityClass}" style="padding: 4px 8px; border-radius: 4px;">${escapeHtml(ticket.priority || 'medium')}</span><\/td>
+                <td style="padding: 12px;"><span class="${statusClass}" style="padding: 4px 8px; border-radius: 4px;">${escapeHtml(ticket.status || 'open')}</span><\/td>
+                <td style="padding: 12px;">${createdDate}<\/td>
+                <td style="padding: 12px;">${updatedDate}<\/td>
                 <td style="padding: 12px;">
                     <button onclick="event.stopPropagation(); viewAdminTicket('${ticket.id}')" style="background: #4C1D95; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">
                         <i class="fas fa-eye"></i> View
                     </button>
-                </td>
-            </tr>
+                <\/td>
+            <\/tr>
         `;
     }).join('');
 }
 
-// ============================================
-// TAWK.TO STYLE CHAT INTERFACE
-// ============================================
-
+// View single ticket with full chat interface
 async function viewAdminTicket(ticketId) {
     console.log('👁️ Viewing ticket:', ticketId);
+    
+    // Mark as read when viewed
+    markTicketAsRead(ticketId);
     
     const supabase = getSupabaseClient();
     if (!supabase) {
@@ -5715,7 +5916,7 @@ async function viewAdminTicket(ticketId) {
         <div id="adminTicketChatModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 100000; display: flex; align-items: center; justify-content: center; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
             <div style="background: white; width: 1000px; max-width: 95vw; height: 85vh; display: flex; flex-direction: column; border-radius: 12px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);">
                 
-                <!-- Header - tawk.to style -->
+                <!-- Header -->
                 <div style="background: #292e33; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
                     <div style="display: flex; align-items: center; gap: 12px;">
                         <div style="width: 40px; height: 40px; background: #4C1D95; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
@@ -5734,7 +5935,7 @@ async function viewAdminTicket(ticketId) {
                     </div>
                 </div>
                 
-                <!-- Contact Info Bar - tawk.to style -->
+                <!-- Contact Info Bar -->
                 <div style="background: #f8f9fa; padding: 12px 24px; border-bottom: 1px solid #e5e7eb; display: flex; gap: 24px; flex-wrap: wrap; flex-shrink: 0;">
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <div style="width: 32px; height: 32px; background: #e0e7ff; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
@@ -5755,7 +5956,7 @@ async function viewAdminTicket(ticketId) {
                     </div>
                 </div>
                 
-                <!-- Description - tawk.to style note -->
+                <!-- Description -->
                 <div style="background: #fefce8; padding: 12px 24px; border-bottom: 1px solid #fde68a; flex-shrink: 0;">
                     <div style="display: flex; gap: 12px;">
                         <i class="fas fa-file-alt" style="color: #d97706;"></i>
@@ -5766,14 +5967,14 @@ async function viewAdminTicket(ticketId) {
                     </div>
                 </div>
                 
-                <!-- Chat Messages Area - tawk.to style -->
+                <!-- Chat Messages Area -->
                 <div style="flex: 1; background: #f5f7fb; display: flex; flex-direction: column; min-height: 0; overflow: hidden;">
                     <div id="adminConversationArea" style="flex: 1; overflow-y: auto; padding: 20px;">
                         ${renderTawkChatMessages(conversations || [], authorNames)}
                     </div>
                 </div>
                 
-                <!-- Reply Area - tawk.to style -->
+                <!-- Reply Area -->
                 <div style="background: white; border-top: 1px solid #e5e7eb; flex-shrink: 0;">
                     <div style="padding: 16px 24px;">
                         <div style="display: flex; gap: 12px;">
@@ -5863,7 +6064,6 @@ function renderTawkChatMessages(conversations, authorNames) {
         const isStaff = authorName.includes('Admin') || authorName.includes('Super') || authorName === 'Director';
         
         if (isInternal) {
-            // Internal note - system message style
             html += `
                 <div style="display: flex; justify-content: center; margin: 16px 0;">
                     <div style="background: #fef3c7; padding: 8px 16px; border-radius: 20px; display: inline-flex; align-items: center; gap: 8px; max-width: 80%;">
@@ -5879,7 +6079,6 @@ function renderTawkChatMessages(conversations, authorNames) {
                 </div>
             `;
         } else if (isStaff) {
-            // Staff message - right aligned, purple (like tawk.to agent)
             html += `
                 <div style="display: flex; justify-content: flex-end; margin-bottom: 16px;">
                     <div style="max-width: 70%;">
@@ -5897,7 +6096,6 @@ function renderTawkChatMessages(conversations, authorNames) {
                 </div>
             `;
         } else {
-            // Student message - left aligned, white with avatar
             html += `
                 <div style="display: flex; justify-content: flex-start; margin-bottom: 16px;">
                     <div style="width: 32px; height: 32px; background: #e0e7ff; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 8px; flex-shrink: 0;">
@@ -5920,7 +6118,7 @@ function renderTawkChatMessages(conversations, authorNames) {
     return html;
 }
 
-// Refresh conversation
+// Refresh conversation with new message detection
 async function refreshAdminConversation() {
     if (!currentAdminTicketId) return;
     
@@ -5930,6 +6128,9 @@ async function refreshAdminConversation() {
     const conversationArea = document.getElementById('adminConversationArea');
     if (!conversationArea) return;
     
+    // Get the last message timestamp before refresh
+    const lastTimestamp = lastMessageTimestamps[currentAdminTicketId];
+    
     const { data: conversations } = await supabase
         .from('ticket_conversations')
         .select('*')
@@ -5937,6 +6138,18 @@ async function refreshAdminConversation() {
         .order('created_at', { ascending: true });
     
     if (conversations) {
+        // Check for new messages
+        const newMessages = conversations.filter(c => 
+            !lastTimestamp || new Date(c.created_at) > new Date(lastTimestamp)
+        ).filter(c => c.author_id !== currentAdminProfileId); // Don't notify for own messages
+        
+        if (newMessages.length > 0 && !document.hidden) {
+            const lastNew = newMessages[newMessages.length - 1];
+            const authorName = authorNames[lastNew.author_id] || 'Student';
+            playNotificationSound();
+            showAdminToast(`🔔 New message from ${authorName}`, 'info');
+        }
+        
         const authorIds = [...new Set(conversations.map(c => c.author_id).filter(id => id))];
         let authorNames = {};
         
@@ -5959,9 +6172,14 @@ async function refreshAdminConversation() {
         
         conversationArea.innerHTML = newHtml;
         
-        // Scroll to bottom if was near bottom
-        if (oldScrollHeight - oldScrollTop < 300) {
+        // Scroll to bottom if was near bottom or new message
+        if (newMessages.length > 0 || oldScrollHeight - oldScrollTop < 300) {
             conversationArea.scrollTop = conversationArea.scrollHeight;
+        }
+        
+        // Update last message timestamp
+        if (conversations.length > 0) {
+            lastMessageTimestamps[currentAdminTicketId] = conversations[conversations.length - 1].created_at;
         }
     }
 }
@@ -6002,7 +6220,6 @@ async function sendAdminChatReply() {
         window.currentAdminProfileId = adminProfileId;
     }
     
-    // Show sending state
     const sendBtn = document.querySelector('#adminTicketChatModal button[onclick="sendAdminChatReply()"]');
     const originalText = sendBtn?.innerHTML;
     if (sendBtn) {
@@ -6047,7 +6264,7 @@ async function sendAdminChatReply() {
         await refreshAdminConversation();
         await loadAdminTickets();
         
-        alert(isInternal ? '✅ Internal note added!' : '✅ Reply sent!');
+        showAdminToast(isInternal ? '✅ Internal note added!' : '✅ Reply sent!', 'success');
         
     } catch (error) {
         console.error('Error:', error);
@@ -6070,6 +6287,31 @@ function closeAdminTicketChatModal() {
     currentAdminTicket = null;
     const modal = document.getElementById('adminTicketChatModal');
     if (modal) modal.remove();
+}
+
+// Show admin toast notification
+function showAdminToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        padding: 12px 20px;
+        background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#3b82f6'};
+        color: white;
+        border-radius: 8px;
+        z-index: 100001;
+        animation: slideIn 0.3s ease;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        font-size: 14px;
+    `;
+    toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-info-circle'}"></i> ${message}`;
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
 }
 
 // Filter functions
@@ -6131,8 +6373,22 @@ function exportAdminTicketsToCSV() {
     a.download = `tickets_export_${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    alert('Export complete!');
+    showAdminToast('Export complete!', 'success');
 }
+
+// Start global notification checker
+let globalNotificationInterval = null;
+
+function startGlobalNotificationChecker() {
+    if (globalNotificationInterval) clearInterval(globalNotificationInterval);
+    globalNotificationInterval = setInterval(() => {
+        checkForNewMessages();
+    }, 10000); // Check every 10 seconds
+}
+
+// Initialize notifications on page load
+initNotifications();
+startGlobalNotificationChecker();
 
 // Make functions global
 window.loadAdminTickets = loadAdminTickets;
