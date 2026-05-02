@@ -16,9 +16,14 @@ RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^(.*)/$ /$1 [L,R=301]
 
 # ------------------------------------------------------------------
-# SPECIFIC ROUTE: /home -> index.html (dashboard)
+# SPECIFIC ROUTE: /home -> student.html (dashboard)
 # ------------------------------------------------------------------
-RewriteRule ^home$ /index.html [L,QSA]
+RewriteRule ^home$ /student.html [L,QSA]
+
+# ------------------------------------------------------------------
+# ROUTE: /student (clean URL without .html)
+# ------------------------------------------------------------------
+RewriteRule ^student$ /student.html [L,QSA]
 
 # ------------------------------------------------------------------
 # SPA ROUTING - MOST IMPORTANT PART
@@ -29,8 +34,8 @@ RewriteCond %{REQUEST_FILENAME} -f [OR]
 RewriteCond %{REQUEST_FILENAME} -d
 RewriteRule ^ - [L]
 
-# Redirect all other requests to index.html for SPA routing
-RewriteRule ^(.*)$ index.html [L,QSA]
+# Redirect all other requests to student.html for SPA routing
+RewriteRule ^(.*)$ student.html [L,QSA]
 
 # ------------------------------------------------------------------
 # PERFORMANCE & CACHING
