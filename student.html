@@ -1,6 +1,27 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <head>
+    <script>
+    // Convert hash URLs to clean path URLs
+    (function() {
+        const hash = window.location.hash;
+        if (hash && hash.length > 1) {
+            let tab = hash.substring(1);
+            const validTabs = ['dashboard', 'profile', 'calendar', 'cats', 'support-tickets', 'learning-hub', 'attendance', 'resources', 'messages', 'nurseiq', 'exam-card'];
+            let cleanUrl = '/student';
+            if (tab && tab !== 'dashboard' && validTabs.includes(tab)) {
+                cleanUrl = `/student/${tab}`;
+            }
+            if (window.location.pathname !== cleanUrl) {
+                window.location.replace(cleanUrl);
+            }
+        }
+    })();
+    </script>
+    
+    <meta charset="UTF-8">
+    <!-- rest of your head content -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>NCHSM Digital Student Dashboard | Unified Learning Hub</title>
@@ -2347,19 +2368,7 @@
         </div>
     </div>
 </div>
-<script>
-// Immediately remove any hash from URL on page load
-(function() {
-    if (window.location.hash) {
-        // Get the current path without hash
-        let currentPath = window.location.pathname;
-        // Remove any hash
-        if (window.location.hash) {
-            history.replaceState({}, '', currentPath);
-        }
-    }
-})();
-</script>
+
 <!-- ==================== SCRIPTS ==================== -->
 <script src="./js/database.js"></script>
 <script src="./js/utils.js"></script>
