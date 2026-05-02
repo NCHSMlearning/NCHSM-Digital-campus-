@@ -1,7 +1,7 @@
 // student-tickets.js - Student Support Ticket System
 // *************************************************************************
-// *** STUDENT SUPPORT TICKET SYSTEM - CORRECTED VERSION ***
-// *** FIX: Uses profile.id (UUID) instead of auth user ID for foreign key ***
+// *** STUDENT SUPPORT TICKET SYSTEM - CONSOLIDATED USER PROFILE VERSION ***
+// *** Uses consolidated_user_profiles_table for all user data           ***
 // *************************************************************************
 
 class StudentTicketSystem {
@@ -350,6 +350,10 @@ class StudentTicketSystem {
         }
     }
     
+    // ============================================
+    // CONSOLIDATED USER PROFILE HELPERS
+    // ============================================
+    
     // Helper function for safe Supabase client access
     getSupabaseClient() {
         const client = window.db?.supabase;
@@ -360,18 +364,61 @@ class StudentTicketSystem {
         return client;
     }
     
-    // Helper function for safe user profile access
+    // Get the consolidated user profile (single source of truth)
     getUserProfile() {
-        return window.db?.currentUserProfile || 
-               window.currentUserProfile || 
-               window.userProfile || 
-               null;
+        // Try multiple sources for the consolidated user profile
+        const profile = window.db?.currentUserProfile || 
+                        window.currentUserProfile || 
+                        window.userProfile ||
+                        null;
+        
+        // If we have a profile, ensure it has an ID
+        if (profile && !profile.id) {
+            console.error('❌ Profile object missing ID:', profile);
+            return null;
+        }
+        
+        return profile;
     }
     
-    // Helper function for safe user ID access (DEPRECATED - use getUserProfile().id instead)
+    // Get the consolidated user ID (UUID from consolidated_user_profiles_table)
     getCurrentUserId() {
-        console.warn('⚠️ getCurrentUserId() is deprecated. Use getUserProfile().id instead');
-        return window.db?.currentUserId || window.currentUserId;
+        const profile = this.getUserProfile();
+        const userId = profile?.id;
+        
+        if (!userId) {
+            console.error('❌ No user ID found in consolidated profile');
+            return null;
+        }
+        
+        return userId;
+    }
+    
+    // Check if user is properly authenticated with a consolidated profile
+    async ensureUserProfile() {
+        const supabaseClient = this.getSupabaseClient();
+        const userId = this.getCurrentUserId();
+        
+        if (!userId) {
+            this.showToast('Please log in again', 'error');
+            return false;
+        }
+        
+        // Verify profile exists in consolidated table
+        const { data, error } = await supabaseClient
+            .from('consolidated_user_profiles_table')
+            .select('id, email, full_name, role')
+            .eq('id', userId)
+            .single();
+        
+        if (error || !data) {
+            console.error('❌ User profile missing from consolidated table:', userId);
+            this.showToast('User profile not found. Please contact support.', 'error');
+            return false;
+        }
+        
+        console.log('✅ Valid consolidated user profile:', data);
+        return true;
     }
     
     // Diagnostic method to check database structure and user profile
@@ -385,80 +432,60 @@ class StudentTicketSystem {
             return;
         }
         
-        // 1. Check user profile
+        // 1. Check user profile from consolidated source
         const userProfile = this.getUserProfile();
-        const authId = this.getCurrentUserId();
+        const userId = this.getCurrentUserId();
         
-        console.log('📊 USER INFO:');
+        console.log('📊 CONSOLIDATED USER INFO:');
         console.log('  - Profile object:', userProfile);
-        console.log('  - Profile ID (UUID):', userProfile?.id);
-        console.log('  - Auth ID (from auth.users):', authId);
-        console.log('  - Are they the same?', userProfile?.id === authId ? '✅ YES' : '❌ NO - This is the problem!');
+        console.log('  - Profile ID (UUID):', userId);
         
-        // 2. Check if profile exists in profiles table
-        if (userProfile?.id) {
+        // 2. Check if profile exists in consolidated_user_profiles_table
+        if (userId) {
             const { data: profileCheck, error: profileError } = await supabaseClient
-                .from('profiles')
-                .select('id, email, role')
-                .eq('id', userProfile.id)
+                .from('consolidated_user_profiles_table')
+                .select('id, email, full_name, role')
+                .eq('id', userId)
                 .single();
             
             if (profileError) {
-                console.error('❌ Profile NOT found in profiles table:', profileError);
+                console.error('❌ Profile NOT found in consolidated_user_profiles_table:', profileError);
             } else {
-                console.log('✅ Profile found in profiles table:', profileCheck);
+                console.log('✅ Profile found in consolidated_user_profiles_table:', profileCheck);
             }
         }
         
-        // 3. Check support_tickets table structure
-        const { data: columnCheck, error: columnError } = await supabaseClient
-            .from('support_tickets')
-            .select('student_id')
-            .limit(1);
-        
-        if (columnError) {
-            console.error('❌ Cannot access support_tickets:', columnError);
-        } else {
-            console.log('✅ support_tickets table is accessible');
-            console.log('  - Sample student_id values:', columnCheck);
-        }
-        
-        // 4. Try to find what student_id values exist
-        const { data: existingTickets, error: ticketError } = await supabaseClient
+        // 3. Check support_tickets table
+        const { data: tickets, error: ticketError } = await supabaseClient
             .from('support_tickets')
             .select('student_id, ticket_number')
             .limit(5);
         
-        if (!ticketError && existingTickets && existingTickets.length > 0) {
-            console.log('📋 Existing tickets use student_ids:', 
-                existingTickets.map(t => t.student_id));
-            
-            // Check if any existing ticket is linked to current user's profile
-            const userHasTickets = existingTickets.some(t => t.student_id === userProfile?.id);
-            console.log('  - Current user has existing tickets?', userHasTickets ? '✅ YES' : '❌ NO');
+        if (ticketError) {
+            console.error('❌ Cannot access support_tickets:', ticketError);
+        } else {
+            console.log('✅ support_tickets table is accessible');
+            console.log('  - Sample student_id values:', tickets.map(t => t.student_id));
         }
         
         console.log('═══════════════════════════════════════════════════════════');
         
         return {
-            profileId: userProfile?.id,
-            authId: authId,
-            profileExists: !!userProfile?.id,
-            idsMatch: userProfile?.id === authId
+            profileId: userId,
+            profileExists: !!userId
         };
     }
     
-    // Load tickets from database - FIXED to use profile ID
+    // Load tickets from database - USING CONSOLIDATED PROFILE
     async loadTickets() {
         console.log('📋 Loading student tickets...');
         
-        // ✅ FIXED: Use profile ID instead of auth ID
-        const userProfile = this.getUserProfile();
-        const userId = userProfile?.id;
+        // ✅ Use consolidated profile ID
+        const userId = this.getCurrentUserId();
         const supabaseClient = this.getSupabaseClient();
         
         if (!userId) {
-            console.error('❌ No profile ID found. Cannot load tickets.');
+            console.error('❌ No consolidated profile ID found. Cannot load tickets.');
             this.showToast('User profile not loaded. Please refresh the page.', 'error');
             return;
         }
@@ -468,13 +495,13 @@ class StudentTicketSystem {
             return;
         }
         
-        console.log('✅ Loading tickets for profile ID:', userId);
+        console.log('✅ Loading tickets for consolidated profile ID:', userId);
         
         // Show loading state
         this.showLoading(true);
         
         try {
-            // Load tickets for current user using profile ID
+            // Load tickets for current user using consolidated profile ID
             const { data: tickets, error } = await supabaseClient
                 .from('support_tickets')
                 .select(`
@@ -606,7 +633,6 @@ class StudentTicketSystem {
     createTicketRow(ticket) {
         const createdDate = this.formatDate(ticket.created_at);
         const updatedDate = this.formatDate(ticket.updated_at || ticket.created_at);
-        const assignedTo = ticket.assigned_to_user?.full_name || 'Unassigned';
         
         return `
             <tr class="ticket-row" data-id="${ticket.id}">
@@ -668,7 +694,7 @@ class StudentTicketSystem {
             btn.addEventListener('click', async (e) => {
                 e.stopPropagation();
                 const ticketId = btn.getAttribute('data-id');
-                if (confirm('Are you sure you want to close this ticket? This action cannot be undone.')) {
+                if (confirm('Are you sure you want to close this ticket?')) {
                     await this.closeTicket(ticketId);
                 }
             });
@@ -811,7 +837,7 @@ class StudentTicketSystem {
         
         this.elements.attachmentsSection.style.display = 'block';
         
-        // Render attachments (simplified - in real app, you'd need to handle file storage)
+        // Render attachments
         this.elements.detailAttachments.innerHTML = attachments
             .map((attachment, index) => `
                 <div class="attachment-item">
@@ -851,7 +877,7 @@ class StudentTicketSystem {
     
     createConversationItem(conversation) {
         const author = conversation.author || {};
-        const profileId = this.getUserProfile()?.id;
+        const profileId = this.getCurrentUserId();
         const isCurrentUser = author.id === profileId;
         const isStaff = author.role !== 'student';
         const isInternal = conversation.is_internal;
@@ -906,9 +932,8 @@ class StudentTicketSystem {
             return;
         }
         
-        // ✅ FIXED: Use profile ID instead of auth ID
-        const userProfile = this.getUserProfile();
-        const userId = userProfile?.id;
+        // ✅ Use consolidated profile ID
+        const userId = this.getCurrentUserId();
         const supabaseClient = this.getSupabaseClient();
         
         if (!userId) {
@@ -989,21 +1014,18 @@ class StudentTicketSystem {
         }
     }
     
-    // ✅ FIXED: handleCreateTicket - Uses profile ID (UUID) instead of auth ID
+    // ✅ HANDLE CREATE TICKET - USING CONSOLIDATED PROFILE
     async handleCreateTicket(e) {
         e.preventDefault();
         
-        const userProfile = this.getUserProfile();
+        // Use consolidated user profile
+        const userId = this.getCurrentUserId();
         const supabaseClient = this.getSupabaseClient();
         
-        // ✅ CRITICAL FIX: Use profile.id (UUID), NOT auth user ID
-        const userId = userProfile?.id;
-        
-        // 🚨 Safety check
+        // Validate consolidated profile
         if (!userId) {
-            console.error('❌ Missing profile UUID. userProfile:', userProfile);
-            console.error('❌ Auth ID (wrong one):', this.getCurrentUserId());
-            this.showToast('User profile not loaded properly. Please refresh the page.', 'error');
+            console.error('❌ No consolidated user profile ID found');
+            this.showToast('User profile not loaded. Please refresh.', 'error');
             return;
         }
         
@@ -1012,21 +1034,20 @@ class StudentTicketSystem {
             return;
         }
         
-        // Optional: Verify this UUID exists in profiles table
-        const { data: profileExists, error: profileError } = await supabaseClient
-            .from('profiles')
+        // Verify profile exists in consolidated table
+        const { data: profileCheck, error: profileError } = await supabaseClient
+            .from('consolidated_user_profiles_table')
             .select('id')
             .eq('id', userId)
             .single();
         
-        if (profileError || !profileExists) {
-            console.error('❌ Profile UUID not found in database:', userId);
-            console.error('Profile error:', profileError);
-            this.showToast('User profile not found in database. Please contact support.', 'error');
+        if (profileError || !profileCheck) {
+            console.error('❌ Profile not found in consolidated table:', userId);
+            this.showToast('User profile not found. Please log out and log in again.', 'error');
             return;
         }
         
-        console.log('✅ Creating ticket with valid profile UUID:', userId);
+        console.log('✅ Creating ticket for consolidated profile:', userId);
         
         // Get form values
         const category = this.elements.categorySelect?.value;
@@ -1052,9 +1073,9 @@ class StudentTicketSystem {
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...';
         
         try {
-            // Prepare ticket data with correct student_id (profile UUID)
+            // Prepare ticket data with consolidated profile ID
             const ticketData = {
-                student_id: userId,  // ✅ NOW USING CORRECT PROFILE UUID
+                student_id: userId,  // ✅ Uses consolidated profile UUID
                 category: category,
                 priority: priority || 'medium',
                 subject: subject,
@@ -1105,7 +1126,6 @@ class StudentTicketSystem {
         } catch (error) {
             console.error('❌ Error creating ticket:', error);
             this.showToast('Failed to create ticket: ' + error.message, 'error');
-            
         } finally {
             // Re-enable form
             submitBtn.disabled = false;
@@ -1114,8 +1134,7 @@ class StudentTicketSystem {
     }
     
     async closeTicket(ticketId) {
-        const userProfile = this.getUserProfile();
-        const userId = userProfile?.id;
+        const userId = this.getCurrentUserId();
         const supabaseClient = this.getSupabaseClient();
         
         if (!userId || !supabaseClient) return;
@@ -1129,7 +1148,7 @@ class StudentTicketSystem {
                     updated_at: new Date().toISOString()
                 })
                 .eq('id', ticketId)
-                .eq('student_id', userId);  // ✅ FIXED: Use profile ID
+                .eq('student_id', userId);
             
             if (error) throw error;
             
@@ -1156,7 +1175,7 @@ class StudentTicketSystem {
     async closeCurrentTicket() {
         if (!this.currentTicketId) return;
         
-        if (confirm('Are you sure you want to close this ticket? This action cannot be undone.')) {
+        if (confirm('Are you sure you want to close this ticket?')) {
             await this.closeTicket(this.currentTicketId);
             this.closeTicketModal();
         }
@@ -1165,8 +1184,7 @@ class StudentTicketSystem {
     async reopenCurrentTicket() {
         if (!this.currentTicketId) return;
         
-        const userProfile = this.getUserProfile();
-        const userId = userProfile?.id;
+        const userId = this.getCurrentUserId();
         const supabaseClient = this.getSupabaseClient();
         
         if (!userId || !supabaseClient) return;
@@ -1180,7 +1198,7 @@ class StudentTicketSystem {
                     updated_at: new Date().toISOString()
                 })
                 .eq('id', this.currentTicketId)
-                .eq('student_id', userId);  // ✅ FIXED: Use profile ID
+                .eq('student_id', userId);
             
             if (error) throw error;
             
@@ -1257,7 +1275,6 @@ class StudentTicketSystem {
         if (this.elements.newTicketForm) {
             this.elements.newTicketForm.style.display = 'block';
             this.elements.subjectInput?.focus();
-            // Scroll to form
             this.elements.newTicketForm.scrollIntoView({ behavior: 'smooth' });
         }
     }
@@ -1265,7 +1282,6 @@ class StudentTicketSystem {
     hideNewTicketForm() {
         if (this.elements.newTicketForm) {
             this.elements.newTicketForm.style.display = 'none';
-            // Reset form
             this.elements.createTicketForm?.reset();
             this.clearFiles();
             this.updateCharCounter(this.elements.descriptionInput, this.elements.descCharCount, 5000);
@@ -1356,16 +1372,13 @@ class StudentTicketSystem {
         
         document.body.appendChild(toast);
         
-        // Show toast
         setTimeout(() => toast.classList.add('show'), 10);
         
-        // Auto remove after 5 seconds
         setTimeout(() => {
             toast.classList.remove('show');
             setTimeout(() => toast.remove(), 300);
         }, 5000);
         
-        // Close button
         toast.querySelector('.toast-close').addEventListener('click', () => {
             toast.classList.remove('show');
             setTimeout(() => toast.remove(), 300);
