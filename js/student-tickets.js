@@ -1,5 +1,5 @@
 // student-tickets.js - Student Support Ticket System
-// *** COMPLETE WORKING VERSION WITH PROPER LAYOUT ***
+// *** TAWK.TO STYLE CHAT INTERFACE ***
 
 class StudentTicketSystem {
     constructor() {
@@ -553,10 +553,11 @@ class StudentTicketSystem {
         }
         
         this.currentTicketId = ticketId;
-        await this.showChatModal(ticket);
+        await this.showTawkChatModal(ticket);
     }
     
-    async showChatModal(ticket) {
+    // TAWK.TO STYLE CHAT MODAL FOR STUDENTS
+    async showTawkChatModal(ticket) {
         const supabaseClient = this.getSupabaseClient();
         
         const { data: conversations } = await supabaseClient
@@ -582,55 +583,79 @@ class StudentTicketSystem {
         }
         
         const currentUserId = this.getCurrentUserId();
+        const studentName = this.userProfile?.full_name || 'Student';
         
         const modalHtml = `
-            <div id="studentChatModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 100000; display: flex; align-items: center; justify-content: center;">
-                <div style="background: white; max-width: 800px; width: 95%; height: 85vh; display: flex; flex-direction: column; border-radius: 16px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
-                    <!-- Header -->
-                    <div style="padding: 15px 20px; background: linear-gradient(135deg, #4C1D95, #6d28d9); color: white; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
-                        <div>
-                            <h3 style="margin: 0;">🎫 ${this.escapeHtml(ticket.ticket_number)}</h3>
-                            <small>${this.escapeHtml(ticket.subject)}</small>
+            <div id="studentChatModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 100000; display: flex; align-items: center; justify-content: center; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+                <div style="background: white; width: 900px; max-width: 95vw; height: 80vh; display: flex; flex-direction: column; border-radius: 12px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);">
+                    
+                    <!-- Header - tawk.to style -->
+                    <div style="background: #292e33; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div style="width: 40px; height: 40px; background: #4C1D95; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                                <i class="fas fa-headset" style="color: white; font-size: 18px;"></i>
+                            </div>
+                            <div>
+                                <h3 style="margin: 0; font-size: 16px; font-weight: 600; color: white;">Support Ticket</h3>
+                                <p style="margin: 2px 0 0; font-size: 12px; color: #9ca3af;">${this.escapeHtml(ticket.ticket_number)}</p>
+                            </div>
                         </div>
-                        <button onclick="document.getElementById('studentChatModal').remove()" style="background: none; border: none; font-size: 28px; cursor: pointer; color: white;">&times;</button>
+                        <button onclick="document.getElementById('studentChatModal').remove()" style="background: rgba(255,255,255,0.1); border: none; width: 32px; height: 32px; border-radius: 8px; cursor: pointer; color: white;">
+                            <i class="fas fa-times"></i>
+                        </button>
                     </div>
                     
-                    <!-- Ticket Info -->
-                    <div style="padding: 12px 20px; background: #f8f9fa; border-bottom: 1px solid #e5e7eb; display: flex; gap: 20px; flex-wrap: wrap; flex-shrink: 0;">
-                        <div><strong>Status:</strong> <span class="status-badge ${ticket.status}">${ticket.status}</span></div>
-                        <div><strong>Priority:</strong> <span class="priority-badge ${ticket.priority}">${ticket.priority}</span></div>
-                        <div><strong>Category:</strong> ${this.getCategoryLabel(ticket.category)}</div>
-                        <div><strong>Created:</strong> ${new Date(ticket.created_at).toLocaleDateString()}</div>
+                    <!-- Ticket Info Bar -->
+                    <div style="background: #f8f9fa; padding: 12px 24px; border-bottom: 1px solid #e5e7eb; display: flex; gap: 20px; flex-wrap: wrap; flex-shrink: 0;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-tag" style="color: #9ca3af; font-size: 14px;"></i>
+                            <span class="status-badge ${ticket.status}" style="padding: 2px 8px; border-radius: 12px; font-size: 11px;">${ticket.status}</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-flag" style="color: #9ca3af; font-size: 14px;"></i>
+                            <span class="priority-badge ${ticket.priority}" style="padding: 2px 8px; border-radius: 12px; font-size: 11px;">${ticket.priority}</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-folder" style="color: #9ca3af; font-size: 14px;"></i>
+                            <span style="font-size: 13px;">${this.getCategoryLabel(ticket.category)}</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-calendar" style="color: #9ca3af; font-size: 14px;"></i>
+                            <span style="font-size: 13px;">${new Date(ticket.created_at).toLocaleDateString()}</span>
+                        </div>
                     </div>
                     
                     <!-- Description -->
-                    <div style="padding: 12px 20px; background: #fef3c7; border-bottom: 1px solid #e5e7eb; flex-shrink: 0;">
-                        <strong>📝 Description:</strong>
-                        <p style="margin: 8px 0 0 0;">${this.escapeHtml(ticket.description)}</p>
-                    </div>
-                    
-                    <!-- Chat Area -->
-                    <div style="flex: 1; background: #f3f4f6; display: flex; flex-direction: column; min-height: 0; overflow: hidden;">
-                        <div style="padding: 10px 15px; background: #e5e7eb; border-bottom: 1px solid #d1d5db; flex-shrink: 0;">
-                            <strong><i class="fas fa-comments"></i> Conversation</strong>
-                        </div>
-                        <div id="studentConversationArea" style="flex: 1; overflow-y: auto; padding: 15px;">
-                            ${this.renderStudentChatMessages(conversations || [], authorNames, currentUserId)}
+                    <div style="background: #fefce8; padding: 12px 24px; border-bottom: 1px solid #fde68a; flex-shrink: 0;">
+                        <div style="display: flex; gap: 12px;">
+                            <i class="fas fa-file-alt" style="color: #d97706;"></i>
+                            <div style="flex: 1;">
+                                <div style="font-size: 12px; font-weight: 600; color: #92400e; margin-bottom: 4px;">Description</div>
+                                <div style="font-size: 13px; color: #78350f; line-height: 1.4;">${this.escapeHtml(ticket.description)}</div>
+                            </div>
                         </div>
                     </div>
                     
-                    <!-- Reply Section -->
-                    <div style="padding: 15px 20px; background: white; border-top: 2px solid #e5e7eb; flex-shrink: 0;">
-                        <label style="font-weight: 600; margin-bottom: 8px; display: block;">✏️ Your Message</label>
-                        <textarea id="studentReplyMessageInput" rows="3" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ddd; resize: vertical; font-family: inherit; font-size: 14px;" placeholder="Type your message here..."></textarea>
-                        <div style="display: flex; justify-content: flex-end; margin-top: 10px;">
-                            <button id="studentSendReplyBtn" style="background: #4C1D95; color: white; border: none; padding: 8px 24px; border-radius: 6px; cursor: pointer; font-weight: 500;">
-                                <i class="fas fa-paper-plane"></i> Send Message
-                            </button>
+                    <!-- Chat Messages Area -->
+                    <div style="flex: 1; background: #f5f7fb; display: flex; flex-direction: column; min-height: 0; overflow: hidden;">
+                        <div id="studentConversationArea" style="flex: 1; overflow-y: auto; padding: 20px;">
+                            ${this.renderTawkStudentMessages(conversations || [], authorNames, currentUserId)}
                         </div>
-                        <p style="margin-top: 8px; font-size: 11px; color: #6b7280;">
-                            <i class="fas fa-info-circle"></i> Support team will respond shortly
-                        </p>
+                    </div>
+                    
+                    <!-- Reply Area -->
+                    <div style="background: white; border-top: 1px solid #e5e7eb; flex-shrink: 0;">
+                        <div style="padding: 16px 24px;">
+                            <textarea id="studentReplyMessageInput" rows="2" style="width: 100%; padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px; resize: none; font-family: inherit; font-size: 14px; background: #f9fafb;" placeholder="Type your message..."></textarea>
+                            <div style="display: flex; justify-content: flex-end; margin-top: 12px;">
+                                <button id="studentSendReplyBtn" style="background: #4C1D95; color: white; border: none; padding: 8px 24px; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                                    <i class="fas fa-paper-plane"></i> Send Message
+                                </button>
+                            </div>
+                        </div>
+                        <div style="background: #f9fafb; padding: 8px 24px; border-top: 1px solid #e5e7eb; font-size: 11px; color: #6b7280;">
+                            <i class="fas fa-clock"></i> Support team will respond shortly
+                        </div>
                     </div>
                 </div>
             </div>
@@ -668,12 +693,14 @@ class StudentTicketSystem {
         }, 5000);
     }
     
-    renderStudentChatMessages(conversations, authorNames, currentUserId) {
+    // tawk.to style message renderer for students
+    renderTawkStudentMessages(conversations, authorNames, currentUserId) {
         if (!conversations || conversations.length === 0) {
             return `
-                <div style="text-align: center; padding: 60px 20px; color: #6b7280;">
-                    <i class="fas fa-comments" style="font-size: 48px; margin-bottom: 15px; opacity: 0.5;"></i>
-                    <p>No messages yet. Start the conversation!</p>
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #9ca3af; text-align: center;">
+                    <i class="fas fa-comments" style="font-size: 48px; margin-bottom: 16px; opacity: 0.5;"></i>
+                    <p style="margin: 0;">No messages yet</p>
+                    <p style="font-size: 12px; margin-top: 8px;">Send a message to start the conversation</p>
                 </div>
             `;
         }
@@ -683,51 +710,58 @@ class StudentTicketSystem {
         
         for (const conv of conversations) {
             const messageDate = new Date(conv.created_at);
-            const dateStr = messageDate.toLocaleDateString();
+            const dateStr = messageDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
             const timeStr = messageDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             
             if (lastDate !== dateStr) {
-                html += `<div style="text-align: center; margin: 15px 0;"><span style="background: #e5e7eb; padding: 4px 12px; border-radius: 20px; font-size: 12px;">${dateStr}</span></div>`;
+                html += `
+                    <div style="text-align: center; margin: 20px 0;">
+                        <span style="background: #e5e7eb; padding: 4px 12px; border-radius: 20px; font-size: 11px; color: #6b7280;">${dateStr}</span>
+                    </div>
+                `;
                 lastDate = dateStr;
             }
             
             const isCurrentUser = conv.author_id === currentUserId;
             const authorName = authorNames[conv.author_id] || (isCurrentUser ? 'You' : 'Support Team');
+            const isStaff = !isCurrentUser && !conv.is_internal;
             const isInternal = conv.is_internal;
             
-            if (isInternal && !isCurrentUser) {
-                html += `
-                    <div style="display: flex; justify-content: center; margin-bottom: 15px;">
-                        <div style="max-width: 80%; background: #fef3c7; padding: 10px 15px; border-radius: 12px; border-left: 4px solid #f59e0b;">
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                                <strong style="font-size: 11px; color: #92400e;">🔒 INTERNAL NOTE</strong>
-                                <small style="font-size: 10px; color: #92400e;">${timeStr}</small>
-                            </div>
-                            <p style="margin: 5px 0 0 0; font-size: 13px;">${this.escapeHtml(conv.message)}</p>
-                        </div>
-                    </div>
-                `;
+            if (isInternal) {
+                // Internal note - students don't see these
+                continue;
             } else if (isCurrentUser) {
+                // Student message - right aligned (like tawk.to)
                 html += `
-                    <div style="display: flex; justify-content: flex-end; margin-bottom: 15px;">
-                        <div style="max-width: 70%; background: #4C1D95; padding: 10px 15px; border-radius: 12px; border-bottom-right-radius: 4px; color: white; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                                <strong style="font-size: 12px;">You</strong>
-                                <small style="font-size: 10px; opacity: 0.7;">${timeStr}</small>
+                    <div style="display: flex; justify-content: flex-end; margin-bottom: 16px;">
+                        <div style="max-width: 70%;">
+                            <div style="background: #4C1D95; padding: 10px 14px; border-radius: 12px; border-bottom-right-radius: 4px;">
+                                <div style="font-size: 13px; color: white; line-height: 1.5;">${this.escapeHtml(conv.message)}</div>
                             </div>
-                            <p style="margin: 5px 0 0 0;">${this.escapeHtml(conv.message)}</p>
+                            <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px;">
+                                <span style="font-size: 10px; color: #9ca3af;">${timeStr}</span>
+                            </div>
+                        </div>
+                        <div style="width: 32px; height: 32px; background: #e0e7ff; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-left: 8px; flex-shrink: 0;">
+                            <i class="fas fa-user" style="color: #4C1D95; font-size: 14px;"></i>
                         </div>
                     </div>
                 `;
-            } else {
+            } else if (isStaff) {
+                // Staff message - left aligned with avatar
                 html += `
-                    <div style="display: flex; justify-content: flex-start; margin-bottom: 15px;">
-                        <div style="max-width: 70%; background: white; padding: 10px 15px; border-radius: 12px; border-bottom-left-radius: 4px; color: #1f2937; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                                <strong style="font-size: 12px;">${this.escapeHtml(authorName)}</strong>
-                                <small style="font-size: 10px; opacity: 0.7;">${timeStr}</small>
+                    <div style="display: flex; justify-content: flex-start; margin-bottom: 16px;">
+                        <div style="width: 32px; height: 32px; background: #4C1D95; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 8px; flex-shrink: 0;">
+                            <i class="fas fa-user-tie" style="color: white; font-size: 14px;"></i>
+                        </div>
+                        <div style="max-width: 70%;">
+                            <div style="background: white; padding: 10px 14px; border-radius: 12px; border-bottom-left-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                                <div style="font-size: 13px; color: #1f2937; line-height: 1.5;">${this.escapeHtml(conv.message)}</div>
                             </div>
-                            <p style="margin: 5px 0 0 0;">${this.escapeHtml(conv.message)}</p>
+                            <div style="display: flex; gap: 8px; margin-top: 4px;">
+                                <span style="font-size: 10px; color: #9ca3af;">${this.escapeHtml(authorName)}</span>
+                                <span style="font-size: 10px; color: #9ca3af;">${timeStr}</span>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -766,13 +800,13 @@ class StudentTicketSystem {
             }
             
             const currentUserId = this.getCurrentUserId();
-            const newHtml = this.renderStudentChatMessages(conversations, authorNames, currentUserId);
+            const newHtml = this.renderTawkStudentMessages(conversations, authorNames, currentUserId);
             const oldScrollTop = conversationArea.scrollTop;
             const oldScrollHeight = conversationArea.scrollHeight;
             
             conversationArea.innerHTML = newHtml;
             
-            if (oldScrollHeight - oldScrollTop < 200) {
+            if (oldScrollHeight - oldScrollTop < 300) {
                 conversationArea.scrollTop = conversationArea.scrollHeight;
             }
         }
@@ -828,7 +862,7 @@ class StudentTicketSystem {
                 this.updateSummary();
             }
             
-            this.showToast('Message sent successfully!', 'success');
+            this.showToast('Message sent!', 'success');
             
         } catch (error) {
             console.error('Error:', error);
@@ -908,7 +942,7 @@ class StudentTicketSystem {
             this.elements.createTicketForm.reset();
             this.clearFiles();
             this.hideNewTicketForm();
-            this.showToast(`Ticket created successfully! ID: ${newTicket.ticket_number}`, 'success');
+            this.showToast(`Ticket created! ID: ${newTicket.ticket_number}`, 'success');
             
             setTimeout(() => this.loadTickets(), 1500);
             
@@ -942,16 +976,16 @@ class StudentTicketSystem {
                 this.updateSummary();
             }
             
-            this.showToast('Ticket closed successfully', 'success');
+            this.showToast('Ticket closed', 'success');
             
         } catch (error) {
-            this.showToast('Failed to close ticket: ' + error.message, 'error');
+            this.showToast('Failed to close: ' + error.message, 'error');
         }
     }
     
     async closeCurrentTicket() {
         if (!this.currentTicketId) return;
-        if (confirm('Are you sure you want to close this ticket?')) {
+        if (confirm('Close this ticket?')) {
             await this.closeTicket(this.currentTicketId);
             this.closeTicketModal();
         }
@@ -981,10 +1015,10 @@ class StudentTicketSystem {
                 this.updateActionButtons('open');
             }
             
-            this.showToast('Ticket reopened successfully', 'success');
+            this.showToast('Ticket reopened', 'success');
             
         } catch (error) {
-            this.showToast('Failed to reopen ticket: ' + error.message, 'error');
+            this.showToast('Failed to reopen: ' + error.message, 'error');
         }
     }
     
@@ -1133,6 +1167,7 @@ class StudentTicketSystem {
     }
 }
 
+// Initialize
 window.ticketSystem = new StudentTicketSystem();
 window.loadSupportTickets = () => window.ticketSystem.loadTickets();
 window.viewSupportTicket = (id) => window.ticketSystem.viewTicket(id);
