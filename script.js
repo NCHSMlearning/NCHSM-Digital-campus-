@@ -5452,15 +5452,14 @@ async function logout() {
     }
 }
 // ============================================
-// COMPLETE ADMIN SUPPORT TICKETS SYSTEM
-// With Real-time Chat & Notifications
+// ADMIN SUPPORT TICKETS - COMPLETE FIXED VERSION
 // ============================================
 
-let conversationRefreshInterval = null;
-let currentTicketId = null;
-let currentTicketStatus = null;
 let adminAllTickets = [];
 let adminStudentMap = {};
+let conversationRefreshInterval = null;
+let currentAdminTicketId = null;
+let currentAdminTicketStatus = null;
 
 // Get Supabase client
 function getSupabaseClient() {
@@ -5484,11 +5483,11 @@ async function loadAdminTickets() {
         return;
     }
     
-    tbody.innerHTML = '<tr><td colspan="10" style="padding: 40px; text-align: center;"><div class="loading-spinner"></div> Loading tickets...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="10" style="padding: 40px; text-align: center;"><div class="loading-spinner"></div> Loading tickets...<\/td><\/tr>';
     
     const supabase = getSupabaseClient();
     if (!supabase) {
-        tbody.innerHTML = '<tr><td colspan="10" style="padding: 40px; text-align: center; color: red;">❌ Database connection not found. Please refresh.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" style="padding: 40px; text-align: center; color: red;">❌ Database connection not found<\/td><\/tr>';
         return;
     }
     
@@ -5504,8 +5503,8 @@ async function loadAdminTickets() {
         console.log('✅ Found tickets:', tickets?.length || 0);
         
         if (!tickets || tickets.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="10" style="padding: 40px; text-align: center;">No tickets found</td></tr>';
-            updateTicketCounts(0, 0, 0, 0);
+            tbody.innerHTML = '<tr><td colspan="10" style="padding: 40px; text-align: center;">No tickets found<\/td><\/tr>';
+            updateAdminTicketCounts(0, 0, 0, 0);
             return;
         }
         
@@ -5535,19 +5534,19 @@ async function loadAdminTickets() {
         const closedCount = tickets.filter(t => t.status === 'closed' || t.status === 'resolved').length;
         const urgentCount = tickets.filter(t => t.priority === 'urgent').length;
         
-        updateTicketCounts(openCount, progressCount, closedCount, urgentCount);
+        updateAdminTicketCounts(openCount, progressCount, closedCount, urgentCount);
         
         // Render tickets
         renderAdminTicketsTable(tickets);
         
     } catch (err) {
         console.error('❌ Error:', err);
-        tbody.innerHTML = `<tr><td colspan="10" style="padding: 40px; text-align: center; color: red;">Error: ${err.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="10" style="padding: 40px; text-align: center; color: red;">Error: ${err.message}<\/td><\/tr>`;
     }
 }
 
 // Update summary cards
-function updateTicketCounts(open, inProgress, closed, urgent) {
+function updateAdminTicketCounts(open, inProgress, closed, urgent) {
     const openEl = document.getElementById('admin_open_tickets');
     const progressEl = document.getElementById('admin_progress_tickets');
     const closedEl = document.getElementById('admin_closed_tickets');
@@ -5565,7 +5564,7 @@ function renderAdminTicketsTable(tickets) {
     if (!tbody) return;
     
     if (!tickets || tickets.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="10" style="padding: 40px; text-align: center;">No tickets found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" style="padding: 40px; text-align: center;">No tickets found<\/td><\/tr>';
         return;
     }
     
@@ -5580,14 +5579,12 @@ function renderAdminTicketsTable(tickets) {
         const createdDate = new Date(ticket.created_at).toLocaleString();
         const updatedDate = new Date(ticket.updated_at).toLocaleString();
         
-        // Status badge class
         let statusClass = 'badge-info';
         if (ticket.status === 'open') statusClass = 'badge-warning';
         if (ticket.status === 'in_progress') statusClass = 'badge-info';
         if (ticket.status === 'closed') statusClass = 'badge-secondary';
         if (ticket.status === 'resolved') statusClass = 'badge-success';
         
-        // Priority badge class
         let priorityClass = 'badge-secondary';
         if (ticket.priority === 'urgent') priorityClass = 'badge-danger';
         if (ticket.priority === 'high') priorityClass = 'badge-warning';
@@ -5596,29 +5593,29 @@ function renderAdminTicketsTable(tickets) {
         
         return `
             <tr style="border-bottom: 1px solid #e5e7eb; cursor: pointer;" onclick="viewAdminTicket('${ticket.id}')">
-                <td style="padding: 12px;"><strong>${escapeHtml(ticket.ticket_number || 'N/A')}</strong></td>
+                <td style="padding: 12px;"><strong>${escapeHtml(ticket.ticket_number || 'N/A')}</strong><\/td>
                 <td style="padding: 12px;">
                     ${escapeHtml(student.full_name)}<br>
                     <small style="color: #6b7280;">${escapeHtml(student.email)}</small>
-                </td>
-                <td style="padding: 12px;">${escapeHtml(student.program)}<br><small>${escapeHtml(student.intake_year)}</small></td>
-                <td style="padding: 12px;">${escapeHtml(ticket.subject)}</td>
-                <td style="padding: 12px;"><span class="badge badge-info">${escapeHtml(ticket.category || '-')}</span></td>
-                <td style="padding: 12px;"><span class="${priorityClass}" style="padding: 4px 8px; border-radius: 4px;">${escapeHtml(ticket.priority || 'medium')}</span></td>
-                <td style="padding: 12px;"><span class="${statusClass}" style="padding: 4px 8px; border-radius: 4px;">${escapeHtml(ticket.status || 'open')}</span></td>
-                <td style="padding: 12px;">${createdDate}</td>
-                <td style="padding: 12px;">${updatedDate}</td>
+                <\/td>
+                <td style="padding: 12px;">${escapeHtml(student.program)}<br><small>${escapeHtml(student.intake_year)}</small><\/td>
+                <td style="padding: 12px;">${escapeHtml(ticket.subject)}<\/td>
+                <td style="padding: 12px;"><span class="badge badge-info">${escapeHtml(ticket.category || '-')}</span><\/td>
+                <td style="padding: 12px;"><span class="${priorityClass}" style="padding: 4px 8px; border-radius: 4px;">${escapeHtml(ticket.priority || 'medium')}</span><\/td>
+                <td style="padding: 12px;"><span class="${statusClass}" style="padding: 4px 8px; border-radius: 4px;">${escapeHtml(ticket.status || 'open')}</span><\/td>
+                <td style="padding: 12px;">${createdDate}<\/td>
+                <td style="padding: 12px;">${updatedDate}<\/td>
                 <td style="padding: 12px;">
                     <button onclick="event.stopPropagation(); viewAdminTicket('${ticket.id}')" style="background: #4C1D95; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">
                         <i class="fas fa-eye"></i> View
                     </button>
-                </td>
-            </tr>
+                <\/td>
+            <\/tr>
         `;
     }).join('');
 }
 
-// View single ticket with chat
+// View single ticket with chat interface
 async function viewAdminTicket(ticketId) {
     console.log('👁️ Viewing ticket:', ticketId);
     
@@ -5627,6 +5624,8 @@ async function viewAdminTicket(ticketId) {
         alert('Database connection error');
         return;
     }
+    
+    currentAdminTicketId = ticketId;
     
     // Get full ticket data
     const { data: ticket, error } = await supabase
@@ -5640,9 +5639,7 @@ async function viewAdminTicket(ticketId) {
         return;
     }
     
-    // Store current ticket ID and status globally
-    currentTicketId = ticketId;
-    currentTicketStatus = ticket.status;
+    currentAdminTicketStatus = ticket.status;
     
     // Get student info
     const { data: student } = await supabase
@@ -5651,43 +5648,62 @@ async function viewAdminTicket(ticketId) {
         .eq('id', ticket.student_id)
         .single();
     
-    // Get current admin profile info
-    let adminProfileId = null;
-    let adminName = 'Admin';
+    // Get conversations (SIMPLIFIED - no nested joins)
+    const { data: conversations } = await supabase
+        .from('ticket_conversations')
+        .select('*')
+        .eq('ticket_id', ticketId)
+        .order('created_at', { ascending: true });
     
+    // Get author names separately
+    const authorIds = [...new Set((conversations || []).map(c => c.author_id).filter(id => id))];
+    let authorNames = {};
+    
+    if (authorIds.length > 0) {
+        const { data: profiles } = await supabase
+            .from('consolidated_user_profiles_table')
+            .select('id, full_name')
+            .in('id', authorIds);
+        
+        if (profiles) {
+            profiles.forEach(p => {
+                authorNames[p.id] = p.full_name;
+            });
+        }
+    }
+    
+    // Get current admin info
+    let adminName = 'Admin';
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
         const { data: profile } = await supabase
             .from('consolidated_user_profiles_table')
-            .select('id, full_name')
+            .select('full_name')
             .eq('user_id', user.id)
             .single();
-        if (profile) {
-            adminProfileId = profile.id;
-            adminName = profile.full_name || 'Admin';
-        }
+        if (profile) adminName = profile.full_name || 'Admin';
     }
     
-    // Build modal HTML with chat interface
+    // Build modal HTML
     const modalHtml = `
-        <div id="ticketViewModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 10000; display: flex; align-items: center; justify-content: center;">
-            <div style="background: white; max-width: 900px; width: 95%; max-height: 90vh; display: flex; flex-direction: column; border-radius: 12px; overflow: hidden;">
+        <div id="adminTicketChatModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 100000; display: flex; align-items: center; justify-content: center;">
+            <div style="background: white; max-width: 900px; width: 95%; max-height: 90vh; display: flex; flex-direction: column; border-radius: 16px; overflow: hidden;">
                 <!-- Header -->
                 <div style="padding: 15px 20px; background: linear-gradient(135deg, #4C1D95, #6d28d9); color: white; display: flex; justify-content: space-between; align-items: center;">
                     <div>
                         <h3 style="margin: 0;">🎫 ${escapeHtml(ticket.ticket_number)}</h3>
                         <small>${escapeHtml(ticket.subject)}</small>
                     </div>
-                    <button onclick="closeTicketViewModal()" style="background: none; border: none; font-size: 28px; cursor: pointer; color: white;">&times;</button>
+                    <button onclick="closeAdminTicketChatModal()" style="background: none; border: none; font-size: 28px; cursor: pointer; color: white;">&times;</button>
                 </div>
                 
-                <!-- Ticket Info Bar -->
+                <!-- Ticket Info -->
                 <div style="padding: 12px 20px; background: #f8f9fa; border-bottom: 1px solid #e5e7eb; display: flex; gap: 20px; flex-wrap: wrap;">
                     <div><strong>👤 Student:</strong> ${escapeHtml(student?.full_name || 'Unknown')}</div>
                     <div><strong>📧 Email:</strong> ${escapeHtml(student?.email || '-')}</div>
                     <div><strong>🎓 Program:</strong> ${escapeHtml(student?.program || '-')} (${escapeHtml(student?.intake_year || '-')})</div>
-                    <div><strong>🏷️ Priority:</strong> <span class="priority-badge ${ticket.priority}">${ticket.priority}</span></div>
-                    <div><strong>📌 Status:</strong> <span id="modalTicketStatus" class="status-badge ${ticket.status}">${ticket.status}</span></div>
+                    <div><strong>🏷️ Priority:</strong> <span id="modalTicketPriority" class="priority-badge priority-${ticket.priority}">${ticket.priority}</span></div>
+                    <div><strong>📌 Status:</strong> <span id="adminModalTicketStatus" class="status-badge status-${ticket.status}">${ticket.status}</span></div>
                 </div>
                 
                 <!-- Description -->
@@ -5699,21 +5715,18 @@ async function viewAdminTicket(ticketId) {
                 <!-- Chat Area -->
                 <div style="flex: 1; background: #f3f4f6; display: flex; flex-direction: column; min-height: 350px;">
                     <div style="padding: 10px 15px; background: #e5e7eb; border-bottom: 1px solid #d1d5db;">
-                        <strong><i class="fas fa-comments"></i> Conversation History</strong>
-                        <span id="newMessageIndicator" style="display: none; margin-left: 10px; background: #ef4444; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px;">New!</span>
+                        <strong><i class="fas fa-comments"></i> Conversation</strong>
                     </div>
-                    <div id="conversationArea" style="flex: 1; overflow-y: auto; padding: 15px;">
-                        <div style="text-align: center; padding: 40px; color: #6b7280;">
-                            <div class="loading-spinner"></div> Loading conversations...
-                        </div>
+                    <div id="adminConversationArea" style="flex: 1; overflow-y: auto; padding: 15px;">
+                        ${renderAdminChatMessages(conversations || [], authorNames)}
                     </div>
                 </div>
                 
                 <!-- Reply Area -->
                 <div style="padding: 15px 20px; background: white; border-top: 1px solid #e5e7eb;">
-                    <textarea id="replyMessage" rows="2" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; resize: none; font-family: inherit;" placeholder="Type your reply here..."></textarea>
+                    <textarea id="adminReplyMessageInput" rows="2" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; resize: none; font-family: inherit;" placeholder="Type your reply here..."></textarea>
                     <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 10px;">
-                        <select id="replyStatus" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
+                        <select id="adminReplyStatusSelect" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
                             <option value="${ticket.status}">📌 Current: ${ticket.status}</option>
                             <option value="open">🟢 Open</option>
                             <option value="in_progress">🟡 In Progress</option>
@@ -5721,13 +5734,13 @@ async function viewAdminTicket(ticketId) {
                             <option value="resolved">✅ Resolved</option>
                         </select>
                         <label style="display: flex; align-items: center; gap: 5px;">
-                            <input type="checkbox" id="replyInternal">
+                            <input type="checkbox" id="adminReplyInternalCheckbox">
                             🔒 Internal note (staff only)
                         </label>
-                        <button onclick="sendAdminReply()" style="background: #4C1D95; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer;">
+                        <button onclick="sendAdminChatReply()" style="background: #4C1D95; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer;">
                             <i class="fas fa-paper-plane"></i> Send Reply
                         </button>
-                        <button onclick="refreshConversation()" style="background: #6b7280; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer;">
+                        <button onclick="refreshAdminConversation()" style="background: #6b7280; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer;">
                             <i class="fas fa-sync-alt"></i> Refresh
                         </button>
                     </div>
@@ -5739,130 +5752,142 @@ async function viewAdminTicket(ticketId) {
         </div>
     `;
     
-    // Remove existing modal if any
-    const existingModal = document.getElementById('ticketViewModal');
+    const existingModal = document.getElementById('adminTicketChatModal');
     if (existingModal) existingModal.remove();
     
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     
-    // Load conversations
-    await loadConversationMessages(ticketId);
-    
-    // Start auto-refresh every 3 seconds
+    // Start auto-refresh every 5 seconds
     if (conversationRefreshInterval) {
         clearInterval(conversationRefreshInterval);
     }
     conversationRefreshInterval = setInterval(() => {
-        if (document.getElementById('ticketViewModal')) {
-            refreshConversation();
+        if (document.getElementById('adminTicketChatModal')) {
+            refreshAdminConversation();
         } else {
             clearInterval(conversationRefreshInterval);
         }
-    }, 3000);
+    }, 5000);
 }
 
-// Load conversation messages
-async function loadConversationMessages(ticketId) {
-    const supabase = getSupabaseClient();
-    if (!supabase) return;
+// Render admin chat messages
+function renderAdminChatMessages(conversations, authorNames) {
+    if (!conversations || conversations.length === 0) {
+        return `
+            <div style="text-align: center; padding: 40px; color: #6b7280;">
+                <i class="fas fa-comments" style="font-size: 48px; margin-bottom: 10px;"></i>
+                <p>No messages yet. Send the first reply!</p>
+            </div>
+        `;
+    }
     
-    const conversationArea = document.getElementById('conversationArea');
-    if (!conversationArea) return;
+    let lastDate = null;
+    let html = '';
     
-    try {
-        const { data: conversations, error } = await supabase
-            .from('ticket_conversations')
-            .select(`
-                *,
-                author:author_id(id, full_name)
-            `)
-            .eq('ticket_id', ticketId)
-            .order('created_at', { ascending: true });
+    for (const conv of conversations) {
+        const messageDate = new Date(conv.created_at);
+        const dateStr = messageDate.toLocaleDateString();
+        const timeStr = messageDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         
-        if (error) throw error;
-        
-        if (!conversations || conversations.length === 0) {
-            conversationArea.innerHTML = `
-                <div style="text-align: center; padding: 40px; color: #6b7280;">
-                    <i class="fas fa-comments" style="font-size: 48px; margin-bottom: 10px;"></i>
-                    <p>No messages yet. Send the first reply!</p>
-                </div>
-            `;
-            return;
+        if (lastDate !== dateStr) {
+            if (lastDate) {
+                html += '<div style="text-align: center; margin: 15px 0;"><span style="background: #e5e7eb; padding: 4px 12px; border-radius: 20px; font-size: 12px;">' + dateStr + '</span></div>';
+            } else {
+                html += '<div style="text-align: center; margin: 15px 0;"><span style="background: #e5e7eb; padding: 4px 12px; border-radius: 20px; font-size: 12px;">' + dateStr + '</span></div>';
+            }
+            lastDate = dateStr;
         }
         
-        // Build conversation HTML
-        let lastMessageDate = null;
-        let html = '';
+        const authorName = authorNames[conv.author_id] || 'Unknown';
+        const isInternal = conv.is_internal;
         
-        for (const conv of conversations) {
-            const messageDate = new Date(conv.created_at);
-            const dateStr = messageDate.toLocaleDateString();
-            const timeStr = messageDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            
-            // Add date divider if new day
-            if (lastMessageDate !== dateStr) {
-                if (lastMessageDate) {
-                    html += '<div style="text-align: center; margin: 15px 0;"><span style="background: #e5e7eb; padding: 4px 12px; border-radius: 20px; font-size: 12px;">' + dateStr + '</span></div>';
-                }
-                lastMessageDate = dateStr;
-            }
-            
-            const isInternal = conv.is_internal;
-            const authorName = conv.author?.full_name || 'Unknown';
-            const isCurrentUser = authorName === 'Super Admin Matoka' || authorName === 'Admin';
-            
-            let messageClass = 'student-message';
-            let bgColor = '#e0e7ff';
-            let align = 'flex-start';
-            
-            if (isInternal) {
-                messageClass = 'internal-message';
-                bgColor = '#fef3c7';
-                align = 'center';
-            } else if (isCurrentUser) {
-                messageClass = 'admin-message';
-                bgColor = '#4C1D95';
-                align = 'flex-end';
-            }
+        if (isInternal) {
+            html += `
+                <div style="display: flex; justify-content: center; margin-bottom: 15px;">
+                    <div style="max-width: 80%; background: #fef3c7; padding: 10px 15px; border-radius: 12px; border: 1px solid #fde68a;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                            <strong style="font-size: 12px;">🔒 Internal Note - ${escapeHtml(authorName)}</strong>
+                            <small style="font-size: 10px;">${timeStr}</small>
+                        </div>
+                        <p style="margin: 5px 0 0 0;">${escapeHtml(conv.message)}</p>
+                    </div>
+                </div>
+            `;
+        } else {
+            const isStudent = authorName !== 'Admin' && !authorName.includes('Super');
+            const align = isStudent ? 'flex-start' : 'flex-end';
+            const bgColor = isStudent ? '#white' : '#4C1D95';
+            const textColor = isStudent ? '#1f2937' : 'white';
             
             html += `
                 <div style="display: flex; justify-content: ${align}; margin-bottom: 15px;">
-                    <div style="max-width: 70%; background: ${bgColor}; padding: 10px 15px; border-radius: 12px; ${isCurrentUser ? 'color: white;' : 'color: #1f2937;'}">
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 5px; gap: 15px;">
+                    <div style="max-width: 70%; background: ${bgColor}; padding: 10px 15px; border-radius: 12px; ${!isStudent ? 'border-bottom-right-radius: 4px;' : 'border-bottom-left-radius: 4px;'} color: ${textColor}; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
                             <strong style="font-size: 12px;">${escapeHtml(authorName)}</strong>
                             <small style="font-size: 10px; opacity: 0.7;">${timeStr}</small>
                         </div>
-                        <p style="margin: 5px 0 0 0; word-wrap: break-word;">${escapeHtml(conv.message)}</p>
-                        ${isInternal ? '<small style="display: block; margin-top: 5px; font-size: 10px;">🔒 Internal Note</small>' : ''}
+                        <p style="margin: 5px 0 0 0;">${escapeHtml(conv.message)}</p>
                     </div>
                 </div>
             `;
         }
+    }
+    
+    return html;
+}
+
+// Refresh admin conversation
+async function refreshAdminConversation() {
+    if (!currentAdminTicketId) return;
+    
+    const supabase = getSupabaseClient();
+    if (!supabase) return;
+    
+    const conversationArea = document.getElementById('adminConversationArea');
+    if (!conversationArea) return;
+    
+    const { data: conversations } = await supabase
+        .from('ticket_conversations')
+        .select('*')
+        .eq('ticket_id', currentAdminTicketId)
+        .order('created_at', { ascending: true });
+    
+    if (conversations) {
+        const authorIds = [...new Set(conversations.map(c => c.author_id).filter(id => id))];
+        let authorNames = {};
         
-        conversationArea.innerHTML = html;
+        if (authorIds.length > 0) {
+            const { data: profiles } = await supabase
+                .from('consolidated_user_profiles_table')
+                .select('id, full_name')
+                .in('id', authorIds);
+            
+            if (profiles) {
+                profiles.forEach(p => {
+                    authorNames[p.id] = p.full_name;
+                });
+            }
+        }
         
-        // Scroll to bottom
-        conversationArea.scrollTop = conversationArea.scrollHeight;
+        const newHtml = renderAdminChatMessages(conversations, authorNames);
+        const oldScrollTop = conversationArea.scrollTop;
+        const oldScrollHeight = conversationArea.scrollHeight;
         
-    } catch (error) {
-        console.error('Error loading conversations:', error);
-        conversationArea.innerHTML = '<div style="text-align: center; padding: 40px; color: red;">Error loading conversations</div>';
+        conversationArea.innerHTML = newHtml;
+        
+        // Scroll to bottom if was near bottom
+        if (oldScrollHeight - oldScrollTop < 200) {
+            conversationArea.scrollTop = conversationArea.scrollHeight;
+        }
     }
 }
 
-// Refresh conversation (for auto-update)
-async function refreshConversation() {
-    if (currentTicketId) {
-        await loadConversationMessages(currentTicketId);
-    }
-}
-
-// Send admin reply
-async function sendAdminReply() {
-    const message = document.getElementById('replyMessage')?.value.trim();
-    const newStatus = document.getElementById('replyStatus')?.value;
-    const isInternal = document.getElementById('replyInternal')?.checked || false;
+// Send admin chat reply
+async function sendAdminChatReply() {
+    const messageInput = document.getElementById('adminReplyMessageInput');
+    const message = messageInput?.value.trim();
+    const newStatus = document.getElementById('adminReplyStatusSelect')?.value;
+    const isInternal = document.getElementById('adminReplyInternalCheckbox')?.checked || false;
     
     if (!message) {
         alert('Please enter a message');
@@ -5874,7 +5899,6 @@ async function sendAdminReply() {
     
     // Get admin profile ID
     let adminProfileId = null;
-    
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
         const { data: profile } = await supabase
@@ -5882,10 +5906,7 @@ async function sendAdminReply() {
             .select('id')
             .eq('user_id', user.id)
             .single();
-        
-        if (profile) {
-            adminProfileId = profile.id;
-        }
+        if (profile) adminProfileId = profile.id;
     }
     
     if (!adminProfileId) {
@@ -5893,12 +5914,12 @@ async function sendAdminReply() {
         return;
     }
     
-    // Send message
     try {
+        // Send message
         const { error: replyError } = await supabase
             .from('ticket_conversations')
             .insert([{
-                ticket_id: currentTicketId,
+                ticket_id: currentAdminTicketId,
                 author_id: adminProfileId,
                 message: message,
                 message_type: isInternal ? 'internal_note' : 'comment',
@@ -5907,36 +5928,34 @@ async function sendAdminReply() {
         
         if (replyError) throw replyError;
         
-        // Update ticket status if changed
-        if (newStatus && newStatus !== currentTicketStatus) {
-            const { error: updateError } = await supabase
+        // Update status if changed
+        if (newStatus && newStatus !== currentAdminTicketStatus) {
+            await supabase
                 .from('support_tickets')
                 .update({ 
                     status: newStatus, 
                     updated_at: new Date().toISOString() 
                 })
-                .eq('id', currentTicketId);
+                .eq('id', currentAdminTicketId);
             
-            if (!updateError) {
-                currentTicketStatus = newStatus;
-                const statusSpan = document.getElementById('modalTicketStatus');
-                if (statusSpan) {
-                    statusSpan.textContent = newStatus;
-                    statusSpan.className = `status-badge ${newStatus}`;
-                }
+            currentAdminTicketStatus = newStatus;
+            const statusSpan = document.getElementById('adminModalTicketStatus');
+            if (statusSpan) {
+                statusSpan.textContent = newStatus;
+                statusSpan.className = `status-badge status-${newStatus}`;
             }
         }
         
         // Clear input
-        document.getElementById('replyMessage').value = '';
-        document.getElementById('replyInternal').checked = false;
+        if (messageInput) messageInput.value = '';
+        const internalCheck = document.getElementById('adminReplyInternalCheckbox');
+        if (internalCheck) internalCheck.checked = false;
         
-        // Reload conversations
-        await loadConversationMessages(currentTicketId);
+        // Refresh conversation and ticket list
+        await refreshAdminConversation();
         await loadAdminTickets();
         
-        // Show notification
-        showNotification('Reply sent successfully!', 'success');
+        showAdminToast(isInternal ? 'Internal note added!' : 'Reply sent successfully!', 'success');
         
     } catch (error) {
         console.error('Error:', error);
@@ -5944,18 +5963,42 @@ async function sendAdminReply() {
     }
 }
 
-// Close ticket view modal
-function closeTicketViewModal() {
+// Close admin chat modal
+function closeAdminTicketChatModal() {
     if (conversationRefreshInterval) {
         clearInterval(conversationRefreshInterval);
         conversationRefreshInterval = null;
     }
-    currentTicketId = null;
-    const modal = document.getElementById('ticketViewModal');
+    currentAdminTicketId = null;
+    const modal = document.getElementById('adminTicketChatModal');
     if (modal) modal.remove();
 }
 
-// Filter tickets
+// Show admin toast notification
+function showAdminToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        padding: 12px 20px;
+        background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#3b82f6'};
+        color: white;
+        border-radius: 8px;
+        z-index: 100001;
+        animation: slideIn 0.3s ease;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    `;
+    toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-info-circle'}"></i> ${message}`;
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+// Filter admin tickets
 function filterAdminTickets() {
     const searchTerm = document.getElementById('admin_ticket_search')?.value.toLowerCase() || '';
     const statusFilter = document.getElementById('admin_ticket_status_filter')?.value || 'all';
@@ -5992,13 +6035,13 @@ function filterAdminTickets() {
 }
 
 // Debounced search
-let filterTimeout;
+let adminFilterTimeout;
 function filterAdminTicketsDebounced() {
-    clearTimeout(filterTimeout);
-    filterTimeout = setTimeout(() => filterAdminTickets(), 300);
+    clearTimeout(adminFilterTimeout);
+    adminFilterTimeout = setTimeout(() => filterAdminTickets(), 300);
 }
 
-// Export to CSV
+// Export admin tickets to CSV
 function exportAdminTicketsToCSV() {
     const tickets = adminAllTickets;
     let csv = 'Ticket #,Student,Student Email,Program,Subject,Category,Priority,Status,Created,Updated\n';
@@ -6015,69 +6058,17 @@ function exportAdminTicketsToCSV() {
     a.download = `tickets_export_${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    showNotification('Export complete!', 'success');
+    showAdminToast('Export complete!', 'success');
 }
-
-// Show notification
-function showNotification(message, type = 'info') {
-    // Create notification element
-    const notification = document.createElement('div');
-    notification.style.cssText = `
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        padding: 12px 20px;
-        background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#3b82f6'};
-        color: white;
-        border-radius: 8px;
-        z-index: 10001;
-        animation: slideIn 0.3s ease;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    `;
-    notification.innerHTML = `
-        <i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'}"></i>
-        ${message}
-    `;
-    document.body.appendChild(notification);
-    
-    setTimeout(() => {
-        notification.style.opacity = '0';
-        setTimeout(() => notification.remove(), 300);
-    }, 3000);
-}
-
-// Add CSS animation
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes slideIn {
-        from {
-            transform: translateX(100%);
-            opacity: 0;
-        }
-        to {
-            transform: translateX(0);
-            opacity: 1;
-        }
-    }
-    .priority-badge.urgent { background: #fee2e2; color: #dc2626; padding: 4px 8px; border-radius: 4px; }
-    .priority-badge.high { background: #fed7aa; color: #ea580c; padding: 4px 8px; border-radius: 4px; }
-    .priority-badge.medium { background: #dbeafe; color: #2563eb; padding: 4px 8px; border-radius: 4px; }
-    .priority-badge.low { background: #d1fae5; color: #059669; padding: 4px 8px; border-radius: 4px; }
-    .status-badge.open { background: #fed7aa; color: #ea580c; padding: 4px 8px; border-radius: 4px; }
-    .status-badge.in_progress { background: #dbeafe; color: #2563eb; padding: 4px 8px; border-radius: 4px; }
-    .status-badge.closed { background: #e5e7eb; color: #6b7280; padding: 4px 8px; border-radius: 4px; }
-    .status-badge.resolved { background: #d1fae5; color: #059669; padding: 4px 8px; border-radius: 4px; }
-`;
-document.head.appendChild(style);
 
 // Make functions global
 window.loadAdminTickets = loadAdminTickets;
 window.filterAdminTickets = filterAdminTickets;
 window.filterAdminTicketsDebounced = filterAdminTicketsDebounced;
 window.viewAdminTicket = viewAdminTicket;
-window.sendAdminReply = sendAdminReply;
-window.closeTicketViewModal = closeTicketViewModal;
-window.refreshConversation = refreshConversation;
+window.sendAdminChatReply = sendAdminChatReply;
+window.closeAdminTicketChatModal = closeAdminTicketChatModal;
+window.refreshAdminConversation = refreshAdminConversation;
 window.exportAdminTicketsToCSV = exportAdminTicketsToCSV;
 /*******************************************************
  * 20. INITIALIZATION & EVENT LISTENERS
