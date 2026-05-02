@@ -1,5 +1,5 @@
 // student-tickets.js - Student Support Ticket System
-// *** TAWK.TO STYLE CHAT INTERFACE ***
+// *** WITH BELL NOTIFICATIONS AND UNREAD INDICATORS ***
 
 class StudentTicketSystem {
     constructor() {
@@ -12,6 +12,12 @@ class StudentTicketSystem {
         this.conversationRefreshInterval = null;
         this.userProfile = null;
         this.userId = null;
+        
+        // Notification tracking
+        this.lastMessageTimestamps = {};
+        this.unreadReplies = {};
+        this.notificationCheckInterval = null;
+        this.replySound = null;
         
         this.elements = {};
         
@@ -26,16 +32,129 @@ class StudentTicketSystem {
         this.setupEventListeners();
         this.loadTicketCategories();
         this.setupFileUpload();
+        this.initNotificationSound();
         
         await this.waitForDatabase();
         await this.loadUserProfile();
         
         if (this.userId) {
             await this.loadTickets();
+            this.startNotificationChecking();
         }
         
         this.isInitialized = true;
         console.log('✅ Student Ticket System initialized');
+    }
+    
+    initNotificationSound() {
+        try {
+            this.replySound = new Audio('https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3');
+            this.replySound.volume = 0.3;
+        } catch(e) {
+            console.log('Audio not supported');
+        }
+    }
+    
+    playNotificationSound() {
+        try {
+            if (this.replySound) {
+                this.replySound.currentTime = 0;
+                this.replySound.play().catch(() => {});
+            }
+        } catch(e) {}
+    }
+    
+    updateSidebarBadge() {
+        const totalUnread = Object.values(this.unreadReplies).reduce((a, b) => a + b, 0);
+        const badge = document.getElementById('studentTicketBadge');
+        if (badge) {
+            if (totalUnread > 0) {
+                badge.textContent = totalUnread > 99 ? '99+' : totalUnread;
+                badge.style.display = 'inline-block';
+                // Update page title
+                document.title = `(${totalUnread}) NCHSM - New Replies`;
+                setTimeout(() => {
+                    if (Object.values(this.unreadReplies).reduce((a, b) => a + b, 0) === 0) {
+                        document.title = 'NCHSM Student Portal';
+                    }
+                }, 5000);
+            } else {
+                badge.style.display = 'none';
+                document.title = 'NCHSM Student Portal';
+            }
+        }
+    }
+    
+    markTicketAsRead(ticketId) {
+        if (this.unreadReplies[ticketId]) {
+            delete this.unreadReplies[ticketId];
+            this.updateSidebarBadge();
+        }
+    }
+    
+    async checkForNewReplies() {
+        const supabaseClient = this.getSupabaseClient();
+        if (!supabaseClient || !this.userId) return;
+        
+        try {
+            // Get all student tickets
+            const { data: tickets, error } = await supabaseClient
+                .from('support_tickets')
+                .select('id, ticket_number, subject, updated_at')
+                .eq('student_id', this.userId);
+            
+            if (error) throw error;
+            
+            let hasNew = false;
+            
+            for (const ticket of tickets) {
+                // Get latest message in this ticket
+                const { data: latestMessage, error: msgError } = await supabaseClient
+                    .from('ticket_conversations')
+                    .select('id, author_id, created_at, message')
+                    .eq('ticket_id', ticket.id)
+                    .order('created_at', { ascending: false })
+                    .limit(1);
+                
+                if (msgError) continue;
+                
+                if (latestMessage && latestMessage.length > 0) {
+                    const msg = latestMessage[0];
+                    const isFromAdmin = msg.author_id !== this.userId;
+                    const lastSeen = this.lastMessageTimestamps[ticket.id] || ticket.updated_at;
+                    const isNew = new Date(msg.created_at) > new Date(lastSeen);
+                    
+                    // Only notify if message is from admin and new, and not currently viewing
+                    if (isFromAdmin && isNew && this.currentTicketId !== ticket.id) {
+                        this.unreadReplies[ticket.id] = (this.unreadReplies[ticket.id] || 0) + 1;
+                        hasNew = true;
+                        
+                        // Play sound and show toast
+                        this.playNotificationSound();
+                        this.showToast(`🔔 New reply on ticket: ${ticket.ticket_number}`, 'info');
+                        
+                        console.log(`🔔 New reply on ticket ${ticket.ticket_number}`);
+                    }
+                    
+                    this.lastMessageTimestamps[ticket.id] = msg.created_at;
+                }
+            }
+            
+            if (hasNew) {
+                this.updateSidebarBadge();
+                await this.loadTickets(); // Refresh to show "New" badges
+            }
+            
+        } catch (err) {
+            console.error('Error checking replies:', err);
+        }
+    }
+    
+    startNotificationChecking() {
+        if (this.notificationCheckInterval) clearInterval(this.notificationCheckInterval);
+        this.notificationCheckInterval = setInterval(() => {
+            this.checkForNewReplies();
+        }, 10000); // Check every 10 seconds
     }
     
     async waitForDatabase() {
@@ -495,20 +614,25 @@ class StudentTicketSystem {
     createTicketRow(ticket) {
         const createdDate = this.formatDate(ticket.created_at);
         const updatedDate = this.formatDate(ticket.updated_at || ticket.created_at);
+        const hasUnread = this.unreadReplies[ticket.id] > 0;
+        const unreadCount = this.unreadReplies[ticket.id] || 0;
         
         return `
-            <tr class="ticket-row" data-id="${ticket.id}" style="cursor: pointer;">
-                <td><span class="ticket-id">${ticket.ticket_number || 'N/A'}</span></td>
-                <td>
+            <tr class="ticket-row" data-id="${ticket.id}" style="cursor: pointer; ${hasUnread ? 'background: #fef3c7;' : ''}">
+                <td style="padding: 12px;">
+                    <span class="ticket-id">${ticket.ticket_number || 'N/A'}</span>
+                    ${hasUnread ? `<span style="background: #ef4444; color: white; border-radius: 10px; padding: 2px 6px; font-size: 10px; margin-left: 5px;">${unreadCount} new</span>` : ''}
+                </td>
+                <td style="padding: 12px;">
                     <div class="ticket-subject">${this.escapeHtml(ticket.subject)}</div>
                     <div class="ticket-excerpt">${this.escapeHtml(ticket.description?.substring(0, 60) || '')}...</div>
                 </td>
-                <td><span class="category-badge">${this.getCategoryLabel(ticket.category)}</span></td>
-                <td><span class="priority-badge ${ticket.priority}">${ticket.priority}</span></td>
-                <td><span class="status-badge ${ticket.status}">${ticket.status.replace('_', ' ')}</span></td>
-                <td><span class="date-cell">${createdDate}</span></td>
-                <td><span class="date-cell">${updatedDate}</span></td>
-                <td>
+                <td style="padding: 12px;"><span class="category-badge">${this.getCategoryLabel(ticket.category)}</span></td>
+                <td style="padding: 12px;"><span class="priority-badge ${ticket.priority}">${ticket.priority}</span></td>
+                <td style="padding: 12px;"><span class="status-badge ${ticket.status}">${ticket.status.replace('_', ' ')}</span></td>
+                <td style="padding: 12px;"><span class="date-cell">${createdDate}</span></td>
+                <td style="padding: 12px;"><span class="date-cell">${updatedDate}</span></td>
+                <td style="padding: 12px;">
                     <div class="ticket-actions">
                         <button class="btn-view-ticket" data-id="${ticket.id}" title="View ticket">
                             <i class="fas fa-eye"></i> View
@@ -545,6 +669,9 @@ class StudentTicketSystem {
     
     async viewTicket(ticketId) {
         console.log('👁️ Viewing ticket:', ticketId);
+        
+        // Mark as read
+        this.markTicketAsRead(ticketId);
         
         const ticket = this.currentTickets.find(t => t.id === ticketId);
         if (!ticket) {
@@ -583,13 +710,12 @@ class StudentTicketSystem {
         }
         
         const currentUserId = this.getCurrentUserId();
-        const studentName = this.userProfile?.full_name || 'Student';
         
         const modalHtml = `
             <div id="studentChatModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 100000; display: flex; align-items: center; justify-content: center; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
                 <div style="background: white; width: 900px; max-width: 95vw; height: 80vh; display: flex; flex-direction: column; border-radius: 12px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);">
                     
-                    <!-- Header - tawk.to style -->
+                    <!-- Header -->
                     <div style="background: #292e33; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
                         <div style="display: flex; align-items: center; gap: 12px;">
                             <div style="width: 40px; height: 40px; background: #4C1D95; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
@@ -693,7 +819,6 @@ class StudentTicketSystem {
         }, 5000);
     }
     
-    // tawk.to style message renderer for students
     renderTawkStudentMessages(conversations, authorNames, currentUserId) {
         if (!conversations || conversations.length === 0) {
             return `
@@ -724,14 +849,11 @@ class StudentTicketSystem {
             
             const isCurrentUser = conv.author_id === currentUserId;
             const authorName = authorNames[conv.author_id] || (isCurrentUser ? 'You' : 'Support Team');
-            const isStaff = !isCurrentUser && !conv.is_internal;
             const isInternal = conv.is_internal;
             
             if (isInternal) {
-                // Internal note - students don't see these
                 continue;
             } else if (isCurrentUser) {
-                // Student message - right aligned (like tawk.to)
                 html += `
                     <div style="display: flex; justify-content: flex-end; margin-bottom: 16px;">
                         <div style="max-width: 70%;">
@@ -747,8 +869,7 @@ class StudentTicketSystem {
                         </div>
                     </div>
                 `;
-            } else if (isStaff) {
-                // Staff message - left aligned with avatar
+            } else {
                 html += `
                     <div style="display: flex; justify-content: flex-start; margin-bottom: 16px;">
                         <div style="width: 32px; height: 32px; background: #4C1D95; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 8px; flex-shrink: 0;">
