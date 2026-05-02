@@ -541,6 +541,9 @@ async function loadSectionData(tabId) {
             updateBlockTermOptions('exam_program', 'exam_block_term');
             populateExamCourseSelects(); 
             break;
+             case 'support-tickets': 
+            loadAdminTickets(); 
+            break;
         case 'messages': 
             loadAdminMessages(); 
             updateProgramDropdown($('msg_program'));
@@ -5294,12 +5297,18 @@ async function logout() {
     }
 }
 // ============================================
-// ADMIN SUPPORT TICKETS - WORKING WITH window.supabase
+// ADMIN SUPPORT TICKETS - FIXED VERSION
 // ============================================
 
-// Get Supabase client
+// Get Supabase client - MATCHES student-tickets.js pattern
 function getSupabaseClient() {
-    return window.supabase;
+    // Use the SAME pattern as student-tickets.js
+    const client = window.db?.supabase;
+    if (!client || typeof client.from !== 'function') {
+        console.error('❌ No valid Supabase client available');
+        return null;
+    }
+    return client;
 }
 
 // Load tickets
@@ -5316,7 +5325,7 @@ async function loadAdminTickets() {
     
     const supabase = getSupabaseClient();
     if (!supabase) {
-        tbody.innerHTML = '<tr><td colspan="10" style="padding: 40px; text-align: center; color: red;">❌ Database connection not found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" style="padding: 40px; text-align: center; color: red;">❌ Database connection not found. Please refresh.</td></tr>';
         return;
     }
     
@@ -5340,18 +5349,19 @@ async function loadAdminTickets() {
         // Get unique student IDs
         const studentIds = [...new Set(tickets.map(t => t.student_id).filter(id => id))];
         
-        // Fetch student profiles
+        // Fetch student profiles from consolidated_user_profiles_table
         let studentMap = {};
         if (studentIds.length > 0) {
             const { data: students, error: studentError } = await supabase
                 .from('consolidated_user_profiles_table')
-                .select('id, full_name, email, program, intake')
+                .select('id, full_name, email, program, intake_year')
                 .in('id', studentIds);
             
             if (!studentError && students) {
                 students.forEach(s => {
                     studentMap[s.id] = s;
                 });
+                console.log('✅ Loaded student profiles:', students.length);
             }
         }
         
@@ -5363,11 +5373,15 @@ async function loadAdminTickets() {
         
         updateTicketCounts(openCount, progressCount, closedCount, urgentCount);
         
+        // Store tickets globally for filtering
+        window.adminAllTickets = tickets;
+        window.adminStudentMap = studentMap;
+        
         // Render tickets
         renderAdminTicketsTable(tickets, studentMap);
         
     } catch (err) {
-        console.error('❌ Error:', err);
+        console.error('❌ Error loading tickets:', err);
         tbody.innerHTML = `<tr><td colspan="10" style="padding: 40px; text-align: center; color: red;">Error: ${err.message}</td></tr>`;
     }
 }
@@ -5390,40 +5404,51 @@ function renderAdminTicketsTable(tickets, studentMap) {
     const tbody = document.getElementById('admin-tickets-body');
     if (!tbody) return;
     
+    if (!tickets || tickets.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="10" style="padding: 40px; text-align: center;">No tickets found</td></tr>';
+        return;
+    }
+    
     tbody.innerHTML = tickets.map(ticket => {
-        const student = studentMap[ticket.student_id] || { full_name: 'Unknown', program: '-', intake: '-' };
+        const student = studentMap[ticket.student_id] || { 
+            full_name: 'Unknown User', 
+            email: 'unknown@example.com',
+            program: 'N/A', 
+            intake_year: 'N/A' 
+        };
+        
         const createdDate = new Date(ticket.created_at).toLocaleDateString();
         const updatedDate = new Date(ticket.updated_at).toLocaleDateString();
         
-        // Status badge color
-        let statusBadge = '';
-        if (ticket.status === 'open') statusBadge = 'badge-info';
-        if (ticket.status === 'in_progress') statusBadge = 'badge-warning';
-        if (ticket.status === 'closed' || ticket.status === 'resolved') statusBadge = 'badge-success';
+        // Status badge class
+        let statusClass = 'badge-info';
+        if (ticket.status === 'open') statusClass = 'badge-info';
+        if (ticket.status === 'in_progress') statusClass = 'badge-warning';
+        if (ticket.status === 'closed' || ticket.status === 'resolved') statusClass = 'badge-success';
         
-        // Priority badge color
-        let priorityBadge = '';
-        if (ticket.priority === 'urgent') priorityBadge = 'badge-danger';
-        if (ticket.priority === 'high') priorityBadge = 'badge-warning';
-        if (ticket.priority === 'medium') priorityBadge = 'badge-info';
-        if (ticket.priority === 'low') priorityBadge = 'badge-secondary';
+        // Priority badge class
+        let priorityClass = 'badge-secondary';
+        if (ticket.priority === 'urgent') priorityClass = 'badge-danger';
+        if (ticket.priority === 'high') priorityClass = 'badge-warning';
+        if (ticket.priority === 'medium') priorityClass = 'badge-info';
+        if (ticket.priority === 'low') priorityClass = 'badge-success';
         
         return `
             <tr style="border-bottom: 1px solid #e5e7eb;">
                 <td style="padding: 12px;"><strong>${escapeHtml(ticket.ticket_number || 'N/A')}</strong></td>
                 <td style="padding: 12px;">
-                    ${escapeHtml(student.full_name || 'Unknown')}<br>
-                    <small style="color: #6b7280;">${escapeHtml(student.email || '')}</small>
+                    ${escapeHtml(student.full_name)}<br>
+                    <small style="color: #6b7280;">${escapeHtml(student.email)}</small>
                 </td>
-                <td style="padding: 12px;">${escapeHtml(student.program || '-')}<br><small>${escapeHtml(student.intake || '')}</small></td>
+                <td style="padding: 12px;">${escapeHtml(student.program)}<br><small>${escapeHtml(student.intake_year)}</small></td>
                 <td style="padding: 12px;">${escapeHtml(ticket.subject)}</td>
                 <td style="padding: 12px;"><span class="badge badge-info">${escapeHtml(ticket.category || '-')}</span></td>
-                <td style="padding: 12px;"><span class="${priorityBadge}" style="padding: 4px 8px; border-radius: 4px;">${escapeHtml(ticket.priority || 'medium')}</span></td>
-                <td style="padding: 12px;"><span class="${statusBadge}" style="padding: 4px 8px; border-radius: 4px;">${escapeHtml(ticket.status || 'open')}</span></td>
+                <td style="padding: 12px;"><span class="${priorityClass}" style="padding: 4px 8px; border-radius: 4px;">${escapeHtml(ticket.priority || 'medium')}</span></td>
+                <td style="padding: 12px;"><span class="${statusClass}" style="padding: 4px 8px; border-radius: 4px;">${escapeHtml(ticket.status || 'open')}</span></td>
                 <td style="padding: 12px;">${createdDate}</td>
                 <td style="padding: 12px;">${updatedDate}</td>
                 <td style="padding: 12px;">
-                    <button onclick="viewAdminTicket('${ticket.id}')" style="background: #4C1D95; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">
+                    <button onclick="viewAdminTicket('${ticket.id}')" class="btn-view" style="background: #4C1D95; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">
                         <i class="fas fa-eye"></i> View
                     </button>
                 </td>
@@ -5434,10 +5459,15 @@ function renderAdminTicketsTable(tickets, studentMap) {
 
 // View single ticket
 async function viewAdminTicket(ticketId) {
-    console.log('Viewing ticket:', ticketId);
+    console.log('👁️ Viewing ticket:', ticketId);
+    
+    const supabase = getSupabaseClient();
+    if (!supabase) {
+        alert('Database connection error');
+        return;
+    }
     
     // Get full ticket data
-    const supabase = getSupabaseClient();
     const { data: ticket, error } = await supabase
         .from('support_tickets')
         .select('*')
@@ -5445,14 +5475,14 @@ async function viewAdminTicket(ticketId) {
         .single();
     
     if (error || !ticket) {
-        showToast('Ticket not found', 'error');
+        alert('Ticket not found');
         return;
     }
     
     // Get student info
     const { data: student } = await supabase
         .from('consolidated_user_profiles_table')
-        .select('full_name, email, program, intake')
+        .select('full_name, email, program, intake_year')
         .eq('id', ticket.student_id)
         .single();
     
@@ -5465,27 +5495,30 @@ async function viewAdminTicket(ticketId) {
     
     // Build modal HTML
     const modalHtml = `
-        <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 9999; display: flex; align-items: center; justify-content: center;">
+        <div id="ticketViewModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 10000; display: flex; align-items: center; justify-content: center;">
             <div style="background: white; max-width: 700px; width: 90%; max-height: 85vh; overflow-y: auto; border-radius: 12px;">
-                <div style="padding: 15px; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between;">
-                    <h3 style="margin: 0;">Ticket: ${ticket.ticket_number}</h3>
-                    <button onclick="this.closest('[style*=fixed]').remove()" style="background: none; border: none; font-size: 24px; cursor: pointer;">&times;</button>
+                <div style="padding: 15px; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; align-items: center;">
+                    <h3 style="margin: 0;">Ticket: ${escapeHtml(ticket.ticket_number)}</h3>
+                    <button onclick="closeTicketViewModal()" style="background: none; border: none; font-size: 24px; cursor: pointer;">&times;</button>
                 </div>
                 <div style="padding: 20px;">
-                    <p><strong>Student:</strong> ${student?.full_name || 'Unknown'}</p>
-                    <p><strong>Email:</strong> ${student?.email || '-'}</p>
-                    <p><strong>Program:</strong> ${student?.program || '-'} | Intake: ${student?.intake || '-'}</p>
-                    <p><strong>Subject:</strong> ${ticket.subject}</p>
-                    <p><strong>Category:</strong> ${ticket.category} | Priority: ${ticket.priority} | Status: ${ticket.status}</p>
-                    <p><strong>Description:</strong></p>
-                    <div style="background: #f3f4f6; padding: 12px; border-radius: 6px; margin: 10px 0;">${escapeHtml(ticket.description)}</div>
+                    <div style="display: grid; gap: 10px;">
+                        <p><strong>Student:</strong> ${escapeHtml(student?.full_name || 'Unknown')}</p>
+                        <p><strong>Email:</strong> ${escapeHtml(student?.email || '-')}</p>
+                        <p><strong>Program:</strong> ${escapeHtml(student?.program || '-')} | Intake: ${escapeHtml(student?.intake_year || '-')}</p>
+                        <p><strong>Subject:</strong> ${escapeHtml(ticket.subject)}</p>
+                        <p><strong>Category:</strong> ${escapeHtml(ticket.category)} | Priority: ${escapeHtml(ticket.priority)} | Status: ${escapeHtml(ticket.status)}</p>
+                        <p><strong>Description:</strong></p>
+                        <div style="background: #f3f4f6; padding: 12px; border-radius: 6px;">${escapeHtml(ticket.description)}</div>
+                    </div>
                     
                     <hr>
-                    <h4>Conversations</h4>
-                    <div style="max-height: 300px; overflow-y: auto; background: #f9fafb; padding: 12px; border-radius: 8px;">
+                    <h4>💬 Conversation History</h4>
+                    <div id="conversationList" style="max-height: 300px; overflow-y: auto; background: #f9fafb; padding: 12px; border-radius: 8px;">
                         ${conversations && conversations.length ? conversations.map(c => `
                             <div style="background: white; padding: 10px; margin-bottom: 8px; border-radius: 6px; border-left: 3px solid ${c.is_internal ? '#f59e0b' : '#4C1D95'}">
-                                <strong>${c.author?.full_name || 'Unknown'}</strong> <small>${new Date(c.created_at).toLocaleString()}</small>
+                                <strong>${escapeHtml(c.author?.full_name || 'Unknown')}</strong> 
+                                <small>${new Date(c.created_at).toLocaleString()}</small>
                                 ${c.is_internal ? '<small style="color: #f59e0b;"> (Internal)</small>' : ''}
                                 <p style="margin: 8px 0 0 0;">${escapeHtml(c.message)}</p>
                             </div>
@@ -5493,9 +5526,9 @@ async function viewAdminTicket(ticketId) {
                     </div>
                     
                     <hr>
-                    <h4>Reply</h4>
-                    <textarea id="replyMessage" rows="3" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ddd;" placeholder="Type your reply..."></textarea>
-                    <div style="margin-top: 10px; display: flex; gap: 10px;">
+                    <h4>✏️ Reply to Student</h4>
+                    <textarea id="replyMessage" rows="3" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #ddd;" placeholder="Type your reply..."></textarea>
+                    <div style="margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap;">
                         <select id="replyStatus" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
                             <option value="${ticket.status}">Current: ${ticket.status}</option>
                             <option value="open">Open</option>
@@ -5503,8 +5536,10 @@ async function viewAdminTicket(ticketId) {
                             <option value="closed">Closed</option>
                             <option value="resolved">Resolved</option>
                         </select>
-                        <button onclick="sendAdminReply('${ticketId}')" style="background: #4C1D95; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">
-                            Send Reply
+                        <input type="checkbox" id="replyInternal" style="margin-left: 10px;">
+                        <label for="replyInternal">Internal note (staff only)</label>
+                        <button onclick="sendAdminReply('${ticketId}')" style="background: #4C1D95; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer;">
+                            <i class="fas fa-paper-plane"></i> Send Reply
                         </button>
                     </div>
                 </div>
@@ -5512,13 +5547,24 @@ async function viewAdminTicket(ticketId) {
         </div>
     `;
     
+    // Remove existing modal if any
+    const existingModal = document.getElementById('ticketViewModal');
+    if (existingModal) existingModal.remove();
+    
     document.body.insertAdjacentHTML('beforeend', modalHtml);
 }
 
-// Send reply
+// Close ticket view modal
+function closeTicketViewModal() {
+    const modal = document.getElementById('ticketViewModal');
+    if (modal) modal.remove();
+}
+
+// Send admin reply
 async function sendAdminReply(ticketId) {
     const message = document.getElementById('replyMessage')?.value.trim();
     const newStatus = document.getElementById('replyStatus')?.value;
+    const isInternal = document.getElementById('replyInternal')?.checked || false;
     
     if (!message) {
         alert('Please enter a message');
@@ -5526,38 +5572,43 @@ async function sendAdminReply(ticketId) {
     }
     
     const supabase = getSupabaseClient();
-    const adminId = window.currentUserId; // Get current admin ID
+    const adminId = currentUserId; // Use the global currentUserId from initSession
     
     if (!adminId) {
-        alert('Not authenticated');
+        alert('Not authenticated. Please refresh the page.');
         return;
     }
     
     try {
         // Send reply
-        await supabase
+        const { error: replyError } = await supabase
             .from('ticket_conversations')
             .insert([{
                 ticket_id: ticketId,
                 author_id: adminId,
                 message: message,
-                message_type: 'reply',
-                is_internal: false
+                message_type: isInternal ? 'internal_note' : 'reply',
+                is_internal: isInternal
             }]);
         
+        if (replyError) throw replyError;
+        
         // Update status if changed
-        if (newStatus) {
+        if (newStatus && newStatus !== 'none') {
             await supabase
                 .from('support_tickets')
-                .update({ status: newStatus, updated_at: new Date() })
+                .update({ 
+                    status: newStatus, 
+                    updated_at: new Date().toISOString() 
+                })
                 .eq('id', ticketId);
         }
         
         // Close modal and reload
-        document.querySelector('[style*="fixed"]')?.remove();
+        closeTicketViewModal();
         await loadAdminTickets();
         
-        alert('Reply sent successfully!');
+        alert(isInternal ? 'Internal note added!' : 'Reply sent successfully!');
         
     } catch (error) {
         console.error('Error:', error);
@@ -5572,24 +5623,21 @@ function filterAdminTickets() {
     const priorityFilter = document.getElementById('admin_ticket_priority_filter')?.value || 'all';
     const categoryFilter = document.getElementById('admin_ticket_category_filter')?.value || 'all';
     
-    // Re-fetch and filter
-    loadAdminTickets().then(() => {
-        // Apply client-side filters
-        const rows = document.querySelectorAll('#admin-tickets-body tr');
-        rows.forEach(row => {
-            let show = true;
-            const text = row.innerText.toLowerCase();
-            const status = row.cells[6]?.innerText.toLowerCase() || '';
-            const priority = row.cells[5]?.innerText.toLowerCase() || '';
-            const category = row.cells[4]?.innerText.toLowerCase() || '';
-            
-            if (searchTerm && !text.includes(searchTerm)) show = false;
-            if (statusFilter !== 'all' && !status.includes(statusFilter)) show = false;
-            if (priorityFilter !== 'all' && !priority.includes(priorityFilter)) show = false;
-            if (categoryFilter !== 'all' && !category.includes(categoryFilter)) show = false;
-            
-            row.style.display = show ? '' : 'none';
-        });
+    const rows = document.querySelectorAll('#admin-tickets-body tr');
+    
+    rows.forEach(row => {
+        let show = true;
+        const text = row.innerText.toLowerCase();
+        const status = row.cells[6]?.innerText.toLowerCase() || '';
+        const priority = row.cells[5]?.innerText.toLowerCase() || '';
+        const category = row.cells[4]?.innerText.toLowerCase() || '';
+        
+        if (searchTerm && !text.includes(searchTerm)) show = false;
+        if (statusFilter !== 'all' && !status.includes(statusFilter)) show = false;
+        if (priorityFilter !== 'all' && !priority.includes(priorityFilter)) show = false;
+        if (categoryFilter !== 'all' && !category.includes(categoryFilter)) show = false;
+        
+        row.style.display = show ? '' : 'none';
     });
 }
 
@@ -5621,27 +5669,16 @@ function exportAdminTicketsToCSV() {
     a.download = `tickets_${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+    alert('Export complete!');
 }
 
-// Initialize when page loads
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-        if (document.getElementById('support-tickets')) {
-            loadAdminTickets();
-        }
-    });
-} else {
-    if (document.getElementById('support-tickets')) {
-        loadAdminTickets();
-    }
-}
-
-// Export to window
+// Make functions global
 window.loadAdminTickets = loadAdminTickets;
 window.filterAdminTickets = filterAdminTickets;
 window.filterAdminTicketsDebounced = filterAdminTicketsDebounced;
 window.viewAdminTicket = viewAdminTicket;
 window.sendAdminReply = sendAdminReply;
+window.closeTicketViewModal = closeTicketViewModal;
 window.exportAdminTicketsToCSV = exportAdminTicketsToCSV;
 /*******************************************************
  * 20. INITIALIZATION & EVENT LISTENERS
