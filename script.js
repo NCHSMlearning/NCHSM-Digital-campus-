@@ -5452,26 +5452,29 @@ async function logout() {
     }
 }
 // ============================================
-// ADMIN SUPPORT TICKETS - USING window.sb
+// COMPLETE ADMIN SUPPORT TICKETS SYSTEM
+// With Real-time Chat & Notifications
 // ============================================
 
-// Get Supabase client - use window.sb
+let conversationRefreshInterval = null;
+let currentTicketId = null;
+let currentTicketStatus = null;
+let adminAllTickets = [];
+let adminStudentMap = {};
+
+// Get Supabase client
 function getSupabaseClient() {
     if (window.sb && typeof window.sb.from === 'function') {
-        console.log('✅ Using window.sb client');
         return window.sb;
     }
-    
     if (window.supabase && typeof window.supabase.from === 'function') {
-        console.log('✅ Using window.supabase client');
         return window.supabase;
     }
-    
     console.error('❌ No valid Supabase client available');
     return null;
 }
 
-// Load tickets
+// Load all tickets for admin
 async function loadAdminTickets() {
     console.log('📋 Loading admin tickets...');
     
@@ -5510,20 +5513,21 @@ async function loadAdminTickets() {
         const studentIds = [...new Set(tickets.map(t => t.student_id).filter(id => id))];
         
         // Fetch student profiles
-        let studentMap = {};
+        adminStudentMap = {};
         if (studentIds.length > 0) {
             const { data: students, error: studentError } = await supabase
                 .from('consolidated_user_profiles_table')
-                .select('id, full_name, email, program, intake_year')
-                .in('id', studentIds);
+                .select('id, full_name, email, program, intake_year');
             
             if (!studentError && students) {
                 students.forEach(s => {
-                    studentMap[s.id] = s;
+                    adminStudentMap[s.id] = s;
                 });
                 console.log('✅ Loaded student profiles:', students.length);
             }
         }
+        
+        adminAllTickets = tickets;
         
         // Update summary counts
         const openCount = tickets.filter(t => t.status === 'open').length;
@@ -5533,12 +5537,8 @@ async function loadAdminTickets() {
         
         updateTicketCounts(openCount, progressCount, closedCount, urgentCount);
         
-        // Store globally
-        window.adminAllTickets = tickets;
-        window.adminStudentMap = studentMap;
-        
         // Render tickets
-        renderAdminTicketsTable(tickets, studentMap);
+        renderAdminTicketsTable(tickets);
         
     } catch (err) {
         console.error('❌ Error:', err);
@@ -5560,28 +5560,34 @@ function updateTicketCounts(open, inProgress, closed, urgent) {
 }
 
 // Render tickets table
-function renderAdminTicketsTable(tickets, studentMap) {
+function renderAdminTicketsTable(tickets) {
     const tbody = document.getElementById('admin-tickets-body');
     if (!tbody) return;
     
+    if (!tickets || tickets.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="10" style="padding: 40px; text-align: center;">No tickets found</td></tr>';
+        return;
+    }
+    
     tbody.innerHTML = tickets.map(ticket => {
-        const student = studentMap[ticket.student_id] || { 
+        const student = adminStudentMap[ticket.student_id] || { 
             full_name: 'Unknown', 
             email: '-',
             program: '-', 
             intake_year: '-'
         };
         
-        const createdDate = new Date(ticket.created_at).toLocaleDateString();
-        const updatedDate = new Date(ticket.updated_at).toLocaleDateString();
+        const createdDate = new Date(ticket.created_at).toLocaleString();
+        const updatedDate = new Date(ticket.updated_at).toLocaleString();
         
-        // Status badge
+        // Status badge class
         let statusClass = 'badge-info';
-        if (ticket.status === 'open') statusClass = 'badge-info';
-        if (ticket.status === 'in_progress') statusClass = 'badge-warning';
-        if (ticket.status === 'closed' || ticket.status === 'resolved') statusClass = 'badge-success';
+        if (ticket.status === 'open') statusClass = 'badge-warning';
+        if (ticket.status === 'in_progress') statusClass = 'badge-info';
+        if (ticket.status === 'closed') statusClass = 'badge-secondary';
+        if (ticket.status === 'resolved') statusClass = 'badge-success';
         
-        // Priority badge
+        // Priority badge class
         let priorityClass = 'badge-secondary';
         if (ticket.priority === 'urgent') priorityClass = 'badge-danger';
         if (ticket.priority === 'high') priorityClass = 'badge-warning';
@@ -5589,7 +5595,7 @@ function renderAdminTicketsTable(tickets, studentMap) {
         if (ticket.priority === 'low') priorityClass = 'badge-success';
         
         return `
-            <tr style="border-bottom: 1px solid #e5e7eb;">
+            <tr style="border-bottom: 1px solid #e5e7eb; cursor: pointer;" onclick="viewAdminTicket('${ticket.id}')">
                 <td style="padding: 12px;"><strong>${escapeHtml(ticket.ticket_number || 'N/A')}</strong></td>
                 <td style="padding: 12px;">
                     ${escapeHtml(student.full_name)}<br>
@@ -5603,7 +5609,7 @@ function renderAdminTicketsTable(tickets, studentMap) {
                 <td style="padding: 12px;">${createdDate}</td>
                 <td style="padding: 12px;">${updatedDate}</td>
                 <td style="padding: 12px;">
-                    <button onclick="viewAdminTicket('${ticket.id}')" style="background: #4C1D95; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">
+                    <button onclick="event.stopPropagation(); viewAdminTicket('${ticket.id}')" style="background: #4C1D95; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">
                         <i class="fas fa-eye"></i> View
                     </button>
                 </td>
@@ -5612,7 +5618,7 @@ function renderAdminTicketsTable(tickets, studentMap) {
     }).join('');
 }
 
-// View single ticket
+// View single ticket with chat
 async function viewAdminTicket(ticketId) {
     console.log('👁️ Viewing ticket:', ticketId);
     
@@ -5621,15 +5627,6 @@ async function viewAdminTicket(ticketId) {
         alert('Database connection error');
         return;
     }
-    
-    // Debug admin ID
-    let adminDebugId = null;
-    if (window.currentUserProfile) {
-        adminDebugId = window.currentUserProfile.user_id || window.currentUserProfile.id;
-    } else if (window.currentUserId) {
-        adminDebugId = window.currentUserId;
-    }
-    console.log('🔑 Current admin ID for reply:', adminDebugId);
     
     // Get full ticket data
     const { data: ticket, error } = await supabase
@@ -5643,6 +5640,10 @@ async function viewAdminTicket(ticketId) {
         return;
     }
     
+    // Store current ticket ID and status globally
+    currentTicketId = ticketId;
+    currentTicketStatus = ticket.status;
+    
     // Get student info
     const { data: student } = await supabase
         .from('consolidated_user_profiles_table')
@@ -5650,66 +5651,88 @@ async function viewAdminTicket(ticketId) {
         .eq('id', ticket.student_id)
         .single();
     
-    // Get conversations
-    const { data: conversations } = await supabase
-        .from('ticket_conversations')
-        .select('*, author:author_id(full_name, role)')
-        .eq('ticket_id', ticketId)
-        .order('created_at', { ascending: true });
+    // Get current admin profile info
+    let adminProfileId = null;
+    let adminName = 'Admin';
     
-    // Build modal HTML
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+        const { data: profile } = await supabase
+            .from('consolidated_user_profiles_table')
+            .select('id, full_name')
+            .eq('user_id', user.id)
+            .single();
+        if (profile) {
+            adminProfileId = profile.id;
+            adminName = profile.full_name || 'Admin';
+        }
+    }
+    
+    // Build modal HTML with chat interface
     const modalHtml = `
         <div id="ticketViewModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 10000; display: flex; align-items: center; justify-content: center;">
-            <div style="background: white; max-width: 700px; width: 90%; max-height: 85vh; overflow-y: auto; border-radius: 12px;">
-                <div style="padding: 15px; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; align-items: center;">
-                    <h3 style="margin: 0;">Ticket: ${escapeHtml(ticket.ticket_number)}</h3>
-                    <button onclick="closeTicketViewModal()" style="background: none; border: none; font-size: 24px; cursor: pointer;">&times;</button>
+            <div style="background: white; max-width: 900px; width: 95%; max-height: 90vh; display: flex; flex-direction: column; border-radius: 12px; overflow: hidden;">
+                <!-- Header -->
+                <div style="padding: 15px 20px; background: linear-gradient(135deg, #4C1D95, #6d28d9); color: white; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h3 style="margin: 0;">🎫 ${escapeHtml(ticket.ticket_number)}</h3>
+                        <small>${escapeHtml(ticket.subject)}</small>
+                    </div>
+                    <button onclick="closeTicketViewModal()" style="background: none; border: none; font-size: 28px; cursor: pointer; color: white;">&times;</button>
                 </div>
-                <div style="padding: 20px;">
-                    <div style="display: grid; gap: 10px;">
-                        <p><strong>Student:</strong> ${escapeHtml(student?.full_name || 'Unknown')}</p>
-                        <p><strong>Email:</strong> ${escapeHtml(student?.email || '-')}</p>
-                        <p><strong>Program:</strong> ${escapeHtml(student?.program || '-')} | Intake: ${escapeHtml(student?.intake_year || '-')}</p>
-                        <p><strong>Subject:</strong> ${escapeHtml(ticket.subject)}</p>
-                        <p><strong>Category:</strong> ${escapeHtml(ticket.category)} | Priority: ${escapeHtml(ticket.priority)} | Status: ${escapeHtml(ticket.status)}</p>
-                        <p><strong>Description:</strong></p>
-                        <div style="background: #f3f4f6; padding: 12px; border-radius: 6px;">${escapeHtml(ticket.description)}</div>
+                
+                <!-- Ticket Info Bar -->
+                <div style="padding: 12px 20px; background: #f8f9fa; border-bottom: 1px solid #e5e7eb; display: flex; gap: 20px; flex-wrap: wrap;">
+                    <div><strong>👤 Student:</strong> ${escapeHtml(student?.full_name || 'Unknown')}</div>
+                    <div><strong>📧 Email:</strong> ${escapeHtml(student?.email || '-')}</div>
+                    <div><strong>🎓 Program:</strong> ${escapeHtml(student?.program || '-')} (${escapeHtml(student?.intake_year || '-')})</div>
+                    <div><strong>🏷️ Priority:</strong> <span class="priority-badge ${ticket.priority}">${ticket.priority}</span></div>
+                    <div><strong>📌 Status:</strong> <span id="modalTicketStatus" class="status-badge ${ticket.status}">${ticket.status}</span></div>
+                </div>
+                
+                <!-- Description -->
+                <div style="padding: 12px 20px; background: #fef3c7; border-bottom: 1px solid #e5e7eb;">
+                    <strong>📝 Description:</strong>
+                    <p style="margin: 8px 0 0 0; background: white; padding: 10px; border-radius: 6px;">${escapeHtml(ticket.description)}</p>
+                </div>
+                
+                <!-- Chat Area -->
+                <div style="flex: 1; background: #f3f4f6; display: flex; flex-direction: column; min-height: 350px;">
+                    <div style="padding: 10px 15px; background: #e5e7eb; border-bottom: 1px solid #d1d5db;">
+                        <strong><i class="fas fa-comments"></i> Conversation History</strong>
+                        <span id="newMessageIndicator" style="display: none; margin-left: 10px; background: #ef4444; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px;">New!</span>
                     </div>
-                    
-                    <hr>
-                    <h4>💬 Conversation History</h4>
-                    <div id="conversationList" style="max-height: 300px; overflow-y: auto; background: #f9fafb; padding: 12px; border-radius: 8px;">
-                        ${conversations && conversations.length ? conversations.map(c => `
-                            <div style="background: white; padding: 10px; margin-bottom: 8px; border-radius: 6px; border-left: 3px solid ${c.is_internal ? '#f59e0b' : '#4C1D95'}">
-                                <strong>${escapeHtml(c.author?.full_name || 'Unknown')}</strong> 
-                                <small>${new Date(c.created_at).toLocaleString()}</small>
-                                ${c.is_internal ? '<small style="color: #f59e0b;"> (Internal)</small>' : ''}
-                                <p style="margin: 8px 0 0 0;">${escapeHtml(c.message)}</p>
-                            </div>
-                        `).join('') : '<p>No conversations yet.</p>'}
+                    <div id="conversationArea" style="flex: 1; overflow-y: auto; padding: 15px;">
+                        <div style="text-align: center; padding: 40px; color: #6b7280;">
+                            <div class="loading-spinner"></div> Loading conversations...
+                        </div>
                     </div>
-                    
-                    <hr>
-                    <h4>✏️ Reply to Student</h4>
-                    <textarea id="replyMessage" rows="3" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #ddd;" placeholder="Type your reply..."></textarea>
-                    <div style="margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap;">
+                </div>
+                
+                <!-- Reply Area -->
+                <div style="padding: 15px 20px; background: white; border-top: 1px solid #e5e7eb;">
+                    <textarea id="replyMessage" rows="2" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; resize: none; font-family: inherit;" placeholder="Type your reply here..."></textarea>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 10px;">
                         <select id="replyStatus" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
-                            <option value="${ticket.status}">Current: ${ticket.status}</option>
-                            <option value="open">Open</option>
-                            <option value="in_progress">In Progress</option>
-                            <option value="closed">Closed</option>
-                            <option value="resolved">Resolved</option>
+                            <option value="${ticket.status}">📌 Current: ${ticket.status}</option>
+                            <option value="open">🟢 Open</option>
+                            <option value="in_progress">🟡 In Progress</option>
+                            <option value="closed">🔴 Closed</option>
+                            <option value="resolved">✅ Resolved</option>
                         </select>
                         <label style="display: flex; align-items: center; gap: 5px;">
                             <input type="checkbox" id="replyInternal">
-                            Internal note (staff only)
+                            🔒 Internal note (staff only)
                         </label>
-                        <button onclick="sendAdminReply('${ticketId}')" style="background: #4C1D95; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer;">
+                        <button onclick="sendAdminReply()" style="background: #4C1D95; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer;">
                             <i class="fas fa-paper-plane"></i> Send Reply
                         </button>
+                        <button onclick="refreshConversation()" style="background: #6b7280; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer;">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
                     </div>
-                    <p style="margin-top: 10px; font-size: 12px; color: #6b7280;">
-                        <i class="fas fa-info-circle"></i> You are replying as: ${adminDebugId ? adminDebugId.substring(0, 8) + '...' : 'Unknown (check console)'}
+                    <p style="margin-top: 8px; font-size: 11px; color: #6b7280;">
+                        <i class="fas fa-user-circle"></i> Replying as: <strong>${escapeHtml(adminName)}</strong>
                     </p>
                 </div>
             </div>
@@ -5721,16 +5744,122 @@ async function viewAdminTicket(ticketId) {
     if (existingModal) existingModal.remove();
     
     document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    // Load conversations
+    await loadConversationMessages(ticketId);
+    
+    // Start auto-refresh every 3 seconds
+    if (conversationRefreshInterval) {
+        clearInterval(conversationRefreshInterval);
+    }
+    conversationRefreshInterval = setInterval(() => {
+        if (document.getElementById('ticketViewModal')) {
+            refreshConversation();
+        } else {
+            clearInterval(conversationRefreshInterval);
+        }
+    }, 3000);
 }
 
-// Close ticket view modal
-function closeTicketViewModal() {
-    const modal = document.getElementById('ticketViewModal');
-    if (modal) modal.remove();
+// Load conversation messages
+async function loadConversationMessages(ticketId) {
+    const supabase = getSupabaseClient();
+    if (!supabase) return;
+    
+    const conversationArea = document.getElementById('conversationArea');
+    if (!conversationArea) return;
+    
+    try {
+        const { data: conversations, error } = await supabase
+            .from('ticket_conversations')
+            .select(`
+                *,
+                author:author_id(id, full_name)
+            `)
+            .eq('ticket_id', ticketId)
+            .order('created_at', { ascending: true });
+        
+        if (error) throw error;
+        
+        if (!conversations || conversations.length === 0) {
+            conversationArea.innerHTML = `
+                <div style="text-align: center; padding: 40px; color: #6b7280;">
+                    <i class="fas fa-comments" style="font-size: 48px; margin-bottom: 10px;"></i>
+                    <p>No messages yet. Send the first reply!</p>
+                </div>
+            `;
+            return;
+        }
+        
+        // Build conversation HTML
+        let lastMessageDate = null;
+        let html = '';
+        
+        for (const conv of conversations) {
+            const messageDate = new Date(conv.created_at);
+            const dateStr = messageDate.toLocaleDateString();
+            const timeStr = messageDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            
+            // Add date divider if new day
+            if (lastMessageDate !== dateStr) {
+                if (lastMessageDate) {
+                    html += '<div style="text-align: center; margin: 15px 0;"><span style="background: #e5e7eb; padding: 4px 12px; border-radius: 20px; font-size: 12px;">' + dateStr + '</span></div>';
+                }
+                lastMessageDate = dateStr;
+            }
+            
+            const isInternal = conv.is_internal;
+            const authorName = conv.author?.full_name || 'Unknown';
+            const isCurrentUser = authorName === 'Super Admin Matoka' || authorName === 'Admin';
+            
+            let messageClass = 'student-message';
+            let bgColor = '#e0e7ff';
+            let align = 'flex-start';
+            
+            if (isInternal) {
+                messageClass = 'internal-message';
+                bgColor = '#fef3c7';
+                align = 'center';
+            } else if (isCurrentUser) {
+                messageClass = 'admin-message';
+                bgColor = '#4C1D95';
+                align = 'flex-end';
+            }
+            
+            html += `
+                <div style="display: flex; justify-content: ${align}; margin-bottom: 15px;">
+                    <div style="max-width: 70%; background: ${bgColor}; padding: 10px 15px; border-radius: 12px; ${isCurrentUser ? 'color: white;' : 'color: #1f2937;'}">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 5px; gap: 15px;">
+                            <strong style="font-size: 12px;">${escapeHtml(authorName)}</strong>
+                            <small style="font-size: 10px; opacity: 0.7;">${timeStr}</small>
+                        </div>
+                        <p style="margin: 5px 0 0 0; word-wrap: break-word;">${escapeHtml(conv.message)}</p>
+                        ${isInternal ? '<small style="display: block; margin-top: 5px; font-size: 10px;">🔒 Internal Note</small>' : ''}
+                    </div>
+                </div>
+            `;
+        }
+        
+        conversationArea.innerHTML = html;
+        
+        // Scroll to bottom
+        conversationArea.scrollTop = conversationArea.scrollHeight;
+        
+    } catch (error) {
+        console.error('Error loading conversations:', error);
+        conversationArea.innerHTML = '<div style="text-align: center; padding: 40px; color: red;">Error loading conversations</div>';
+    }
+}
+
+// Refresh conversation (for auto-update)
+async function refreshConversation() {
+    if (currentTicketId) {
+        await loadConversationMessages(currentTicketId);
+    }
 }
 
 // Send admin reply
-async function sendAdminReply(ticketId) {
+async function sendAdminReply() {
     const message = document.getElementById('replyMessage')?.value.trim();
     const newStatus = document.getElementById('replyStatus')?.value;
     const isInternal = document.getElementById('replyInternal')?.checked || false;
@@ -5741,72 +5870,89 @@ async function sendAdminReply(ticketId) {
     }
     
     const supabase = getSupabaseClient();
+    if (!supabase) return;
     
-    // Try multiple ways to get admin ID
-    let adminId = null;
+    // Get admin profile ID
+    let adminProfileId = null;
     
-    // Method 1: Check currentUserProfile from your app
-    if (window.currentUserProfile && window.currentUserProfile.user_id) {
-        adminId = window.currentUserProfile.user_id;
-    }
-    // Method 2: Check currentUserId
-    else if (window.currentUserId) {
-        adminId = window.currentUserId;
-    }
-    // Method 3: Check from sb auth
-    else {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-            adminId = user.id;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+        const { data: profile } = await supabase
+            .from('consolidated_user_profiles_table')
+            .select('id')
+            .eq('user_id', user.id)
+            .single();
+        
+        if (profile) {
+            adminProfileId = profile.id;
         }
     }
     
-    if (!adminId) {
-        console.error('No admin ID found. Available sources:', {
-            currentUserProfile: window.currentUserProfile,
-            currentUserId: window.currentUserId
-        });
-        alert('Not authenticated. Please refresh the page and try again.');
+    if (!adminProfileId) {
+        alert('Unable to identify your admin profile. Please log out and log in again.');
         return;
     }
     
-    console.log('✅ Admin ID found:', adminId);
-    
+    // Send message
     try {
-        // Send reply
         const { error: replyError } = await supabase
             .from('ticket_conversations')
             .insert([{
-                ticket_id: ticketId,
-                author_id: adminId,
+                ticket_id: currentTicketId,
+                author_id: adminProfileId,
                 message: message,
-                message_type: isInternal ? 'internal_note' : 'reply',
+                message_type: isInternal ? 'internal_note' : 'comment',
                 is_internal: isInternal
             }]);
         
         if (replyError) throw replyError;
         
-        // Update status if changed
-        if (newStatus && newStatus !== 'none') {
-            await supabase
+        // Update ticket status if changed
+        if (newStatus && newStatus !== currentTicketStatus) {
+            const { error: updateError } = await supabase
                 .from('support_tickets')
                 .update({ 
                     status: newStatus, 
                     updated_at: new Date().toISOString() 
                 })
-                .eq('id', ticketId);
+                .eq('id', currentTicketId);
+            
+            if (!updateError) {
+                currentTicketStatus = newStatus;
+                const statusSpan = document.getElementById('modalTicketStatus');
+                if (statusSpan) {
+                    statusSpan.textContent = newStatus;
+                    statusSpan.className = `status-badge ${newStatus}`;
+                }
+            }
         }
         
-        // Close modal and reload
-        closeTicketViewModal();
+        // Clear input
+        document.getElementById('replyMessage').value = '';
+        document.getElementById('replyInternal').checked = false;
+        
+        // Reload conversations
+        await loadConversationMessages(currentTicketId);
         await loadAdminTickets();
         
-        alert(isInternal ? 'Internal note added!' : 'Reply sent successfully!');
+        // Show notification
+        showNotification('Reply sent successfully!', 'success');
         
     } catch (error) {
         console.error('Error:', error);
         alert('Failed to send: ' + error.message);
     }
+}
+
+// Close ticket view modal
+function closeTicketViewModal() {
+    if (conversationRefreshInterval) {
+        clearInterval(conversationRefreshInterval);
+        conversationRefreshInterval = null;
+    }
+    currentTicketId = null;
+    const modal = document.getElementById('ticketViewModal');
+    if (modal) modal.remove();
 }
 
 // Filter tickets
@@ -5816,23 +5962,33 @@ function filterAdminTickets() {
     const priorityFilter = document.getElementById('admin_ticket_priority_filter')?.value || 'all';
     const categoryFilter = document.getElementById('admin_ticket_category_filter')?.value || 'all';
     
-    const rows = document.querySelectorAll('#admin-tickets-body tr');
+    let filtered = [...adminAllTickets];
     
-    rows.forEach(row => {
-        let show = true;
-        const text = row.innerText.toLowerCase();
-        const cells = row.querySelectorAll('td');
-        const status = cells[6]?.innerText.toLowerCase() || '';
-        const priority = cells[5]?.innerText.toLowerCase() || '';
-        const category = cells[4]?.innerText.toLowerCase() || '';
-        
-        if (searchTerm && !text.includes(searchTerm)) show = false;
-        if (statusFilter !== 'all' && !status.includes(statusFilter)) show = false;
-        if (priorityFilter !== 'all' && !priority.includes(priorityFilter)) show = false;
-        if (categoryFilter !== 'all' && !category.includes(categoryFilter)) show = false;
-        
-        row.style.display = show ? '' : 'none';
-    });
+    if (statusFilter !== 'all') {
+        if (statusFilter === 'closed') {
+            filtered = filtered.filter(t => t.status === 'closed' || t.status === 'resolved');
+        } else {
+            filtered = filtered.filter(t => t.status === statusFilter);
+        }
+    }
+    
+    if (priorityFilter !== 'all') {
+        filtered = filtered.filter(t => t.priority === priorityFilter);
+    }
+    
+    if (categoryFilter !== 'all') {
+        filtered = filtered.filter(t => t.category === categoryFilter);
+    }
+    
+    if (searchTerm) {
+        filtered = filtered.filter(t => 
+            (t.ticket_number || '').toLowerCase().includes(searchTerm) ||
+            (t.subject || '').toLowerCase().includes(searchTerm) ||
+            (adminStudentMap[t.student_id]?.full_name || '').toLowerCase().includes(searchTerm)
+        );
+    }
+    
+    renderAdminTicketsTable(filtered);
 }
 
 // Debounced search
@@ -5844,48 +6000,84 @@ function filterAdminTicketsDebounced() {
 
 // Export to CSV
 function exportAdminTicketsToCSV() {
-    const rows = document.querySelectorAll('#admin-tickets-body tr');
-    let csv = 'Ticket #,Student,Program,Subject,Category,Priority,Status,Created,Updated\n';
+    const tickets = adminAllTickets;
+    let csv = 'Ticket #,Student,Student Email,Program,Subject,Category,Priority,Status,Created,Updated\n';
     
-    rows.forEach(row => {
-        if (row.style.display !== 'none') {
-            const cells = row.querySelectorAll('td');
-            if (cells.length >= 9) {
-                csv += `"${cells[0]?.innerText || ''}","${cells[1]?.innerText.split('\n')[0] || ''}","${cells[2]?.innerText.split('\n')[0] || ''}","${cells[3]?.innerText || ''}","${cells[4]?.innerText || ''}","${cells[5]?.innerText || ''}","${cells[6]?.innerText || ''}","${cells[7]?.innerText || ''}","${cells[8]?.innerText || ''}"\n`;
-            }
-        }
+    tickets.forEach(t => {
+        const student = adminStudentMap[t.student_id] || {};
+        csv += `"${t.ticket_number || ''}","${student.full_name || ''}","${student.email || ''}","${student.program || ''}","${(t.subject || '').replace(/"/g, '""')}","${t.category || ''}","${t.priority || ''}","${t.status || ''}","${t.created_at || ''}","${t.updated_at || ''}"\n`;
     });
     
-    const blob = new Blob([csv], { type: 'text/csv' });
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `tickets_${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `tickets_export_${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    showFeedback('Export complete!', 'success');
+    showNotification('Export complete!', 'success');
 }
 
-// Initialize when page loads
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-        if (document.getElementById('support-tickets')) {
-            setTimeout(() => loadAdminTickets(), 500);
+// Show notification
+function showNotification(message, type = 'info') {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        padding: 12px 20px;
+        background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#3b82f6'};
+        color: white;
+        border-radius: 8px;
+        z-index: 10001;
+        animation: slideIn 0.3s ease;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    `;
+    notification.innerHTML = `
+        <i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'}"></i>
+        ${message}
+    `;
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.style.opacity = '0';
+        setTimeout(() => notification.remove(), 300);
+    }, 3000);
+}
+
+// Add CSS animation
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideIn {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
         }
-    });
-} else {
-    if (document.getElementById('support-tickets')) {
-        setTimeout(() => loadAdminTickets(), 500);
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
     }
-}
+    .priority-badge.urgent { background: #fee2e2; color: #dc2626; padding: 4px 8px; border-radius: 4px; }
+    .priority-badge.high { background: #fed7aa; color: #ea580c; padding: 4px 8px; border-radius: 4px; }
+    .priority-badge.medium { background: #dbeafe; color: #2563eb; padding: 4px 8px; border-radius: 4px; }
+    .priority-badge.low { background: #d1fae5; color: #059669; padding: 4px 8px; border-radius: 4px; }
+    .status-badge.open { background: #fed7aa; color: #ea580c; padding: 4px 8px; border-radius: 4px; }
+    .status-badge.in_progress { background: #dbeafe; color: #2563eb; padding: 4px 8px; border-radius: 4px; }
+    .status-badge.closed { background: #e5e7eb; color: #6b7280; padding: 4px 8px; border-radius: 4px; }
+    .status-badge.resolved { background: #d1fae5; color: #059669; padding: 4px 8px; border-radius: 4px; }
+`;
+document.head.appendChild(style);
 
-// Export to window
+// Make functions global
 window.loadAdminTickets = loadAdminTickets;
 window.filterAdminTickets = filterAdminTickets;
 window.filterAdminTicketsDebounced = filterAdminTicketsDebounced;
 window.viewAdminTicket = viewAdminTicket;
 window.sendAdminReply = sendAdminReply;
 window.closeTicketViewModal = closeTicketViewModal;
+window.refreshConversation = refreshConversation;
 window.exportAdminTicketsToCSV = exportAdminTicketsToCSV;
 /*******************************************************
  * 20. INITIALIZATION & EVENT LISTENERS
