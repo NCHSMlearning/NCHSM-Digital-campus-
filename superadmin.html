@@ -465,65 +465,108 @@
                 <h1>Welcome, Super Admin!</h1>
                 <p class="subtitle">Full system oversight and user management</p>
             </header>
-
-            <!-- Dashboard Section -->
-            <section id="dashboard" class="tab-content active">
-                <div id="student-welcome-message">
-                    <p>Loading NCHSM Welcome Message...</p>
-                </div>
-                <div class="cards">
-                    <div class="card" onclick="showTab('users')">
-                        <h3>Total Users</h3>
-                        <p class="data" id="totalUsers">0</p>
-                    </div>
-                    <div class="card" onclick="showTab('pending')">
-                        <h3>Pending Approvals</h3>
-                        <p class="data" id="pendingApprovals">0</p>
-                    </div>
-                    <div class="card" onclick="showTab('enroll')">
-                        <h3>Total Students</h3>
-                        <p class="data" id="totalStudents">0</p>
-                    </div>
-                    <div class="card" onclick="showTab('system-health')">
-                        <h3>Data Integrity Score</h3>
-                        <p class="data" id="dataIntegrityScore">--%</p>
-                    </div>
-                    
-                    <div class="card checkin-metric" onclick="showTab('attendance')">
-                        <h3 style="color: #4C1D95;">Today's Check-ins</h3>
-                        <p class="data" id="totalDailyCheckIns">0</p>
-                        <p class="minor-data">Total Check-ins Today</p>
-                    </div>
-                    <div class="card checkin-metric" onclick="showTab('attendance')">
-                        <h3 style="color: #4C1D95;">Check-in Records</h3>
-                        <p class="data" id="overallCheckInCount">0</p>
-                        <p class="minor-data">All-time Records</p>
-                    </div>
-                </div>
-                
-                <div class="cards">
-                    <div class="card" onclick="showTab('system-health')">
-                        <h3>System Uptime</h3>
-                        <p class="data">99.8%</p>
-                        <p class="minor-data">Last 30 days</p>
-                    </div>
-                    <div class="card" onclick="showTab('user-analytics')">
-                        <h3>Active Sessions</h3>
-                        <p class="data" id="activeSessions">0</p>
-                        <p class="minor-data">Currently logged in</p>
-                    </div>
-                    <div class="card" onclick="showTab('courses')">
-                        <h3>Total Courses</h3>
-                        <p class="data" id="totalCourses">0</p>
-                        <p class="minor-data">Across all programs</p>
-                    </div>
-                    <div class="card" onclick="showTab('resources')">
-                        <h3>Resources Uploaded</h3>
-                        <p class="data" id="totalResources">0</p>
-                        <p class="minor-data">This month</p>
-                    </div>
-                </div>
-            </section>
+<!-- Dashboard Section -->
+<section id="dashboard" class="tab-content active">
+    <div id="student-welcome-message">
+        <p>Loading NCHSM Welcome Message...</p>
+    </div>
+    
+    <!-- Primary Metrics Row 1 -->
+    <div class="cards">
+        <div class="card" onclick="showTab('users')">
+            <h3>Total Users</h3>
+            <p class="data" id="totalUsers">0</p>
+            <p class="minor-data">All system users</p>
+        </div>
+        <div class="card" onclick="showTab('pending')">
+            <h3>Pending Approvals</h3>
+            <p class="data" id="pendingApprovals">0</p>
+            <p class="minor-data">Waiting for approval</p>
+        </div>
+        <div class="card" onclick="showTab('enroll')">
+            <h3>Total Students</h3>
+            <p class="data" id="totalStudents">0</p>
+            <p class="minor-data">Active students</p>
+        </div>
+        <div class="card" onclick="showTab('support-tickets')">
+            <h3><i class="fas fa-ticket-alt"></i> Support Tickets</h3>
+            <p class="data" id="dashboardOpenTickets">0</p>
+            <p class="minor-data">Open tickets awaiting response</p>
+        </div>
+    </div>
+    
+    <!-- Primary Metrics Row 2 -->
+    <div class="cards">
+        <div class="card" onclick="showTab('attendance')">
+            <h3 style="color: #4C1D95;">Today's Check-ins</h3>
+            <p class="data" id="totalDailyCheckIns">0</p>
+            <p class="minor-data">Total Check-ins Today</p>
+        </div>
+        <div class="card" onclick="showTab('attendance')">
+            <h3 style="color: #4C1D95;">Check-in Records</h3>
+            <p class="data" id="overallCheckInCount">0</p>
+            <p class="minor-data">All-time Records</p>
+        </div>
+        <div class="card" onclick="showTab('support-tickets')">
+            <h3 style="color: #dc2626;"><i class="fas fa-exclamation-triangle"></i> Urgent Tickets</h3>
+            <p class="data" id="dashboardUrgentTickets">0</p>
+            <p class="minor-data">High priority tickets</p>
+        </div>
+        <div class="card" onclick="showTab('fee-accounts')">
+            <h3><i class="fas fa-credit-card"></i> Outstanding Fees</h3>
+            <p class="data" id="dashboardOutstandingFees">KES 0</p>
+            <p class="minor-data">Total unpaid balance</p>
+        </div>
+    </div>
+    
+    <!-- Secondary Metrics -->
+    <div class="cards">
+        <div class="card" onclick="showTab('system-health')">
+            <h3>System Uptime</h3>
+            <p class="data">99.8%</p>
+            <p class="minor-data">Last 30 days</p>
+        </div>
+        <div class="card" onclick="showTab('user-analytics')">
+            <h3>Active Sessions</h3>
+            <p class="data" id="activeSessions">0</p>
+            <p class="minor-data">Currently logged in</p>
+        </div>
+        <div class="card" onclick="showTab('courses')">
+            <h3>Total Courses</h3>
+            <p class="data" id="totalCourses">0</p>
+            <p class="minor-data">Across all programs</p>
+        </div>
+        <div class="card" onclick="showTab('resources')">
+            <h3>Resources Uploaded</h3>
+            <p class="data" id="totalResources">0</p>
+            <p class="minor-data">This month</p>
+        </div>
+    </div>
+    
+    <!-- Additional Metrics Row - Unit Registration Stats -->
+    <div class="cards">
+        <div class="card" onclick="showTab('unit-management')">
+            <h3><i class="fas fa-book"></i> Total Units</h3>
+            <p class="data" id="dashboardTotalUnits">0</p>
+            <p class="minor-data">Available for registration</p>
+        </div>
+        <div class="card" onclick="showTab('unit-management')">
+            <h3><i class="fas fa-clock"></i> Pending Unit Reg</h3>
+            <p class="data" id="dashboardPendingUnitReg">0</p>
+            <p class="minor-data">Awaiting approval</p>
+        </div>
+        <div class="card" onclick="showTab('cats')">
+            <h3><i class="fas fa-file-alt"></i> Upcoming Exams</h3>
+            <p class="data" id="dashboardUpcomingExams">0</p>
+            <p class="minor-data">Next 7 days</p>
+        </div>
+        <div class="card" onclick="showTab('messages')">
+            <h3><i class="fas fa-envelope"></i> Pending Replies</h3>
+            <p class="data" id="dashboardPendingMessages">0</p>
+            <p class="minor-data">Unread student messages</p>
+        </div>
+    </div>
+</section>
 
             <!-- UNIT REGISTRATION MANAGEMENT SECTION -->
             <section id="unit-management" class="tab-content">
