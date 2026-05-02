@@ -140,7 +140,7 @@ class UIModule {
     }
     
     // ============================================
-    // CLEAN URL NAVIGATION - NO HASHES
+    // CLEAN URL NAVIGATION - NO HASHES, PERSISTS ON REFRESH
     // ============================================
     
     setupUrlNavigation() { 
@@ -149,32 +149,40 @@ class UIModule {
     
     setupHistoryNavigation() {
         const handleRoute = () => {
-            // Get tab from pathname (no hashes!)
+            // Get tab from pathname (clean URL - no hashes)
             let tabId = 'dashboard';
             let path = window.location.pathname;
             
             // Remove /student prefix
-            if (path.startsWith('/student/')) {
-                path = path.replace('/student/', '');
-            } else if (path === '/student') {
+            if (path === '/student') {
                 path = '';
+            } else if (path.startsWith('/student/')) {
+                path = path.replace('/student/', '');
             }
             path = path.replace(/\/$/, '');
             
-            if (path && this.validTabs.includes(path)) {
+            // Check if path is a valid tab
+            if (path && this.isValidTab(path)) {
                 tabId = path;
+            } else {
+                // Check localStorage for last tab
+                const lastTab = localStorage.getItem(this.storageKey);
+                if (lastTab && this.isValidTab(lastTab)) {
+                    tabId = lastTab;
+                }
             }
             
+            // Show the tab WITHOUT updating URL (to avoid infinite loop)
             if (this.isValidTab(tabId)) {
-                this.showTab(tabId, true);
+                this.showTab(tabId, false);  // false = not from navigation
             } else {
-                this.showTab('dashboard', true);
+                this.showTab('dashboard', false);
             }
-            localStorage.setItem(this.storageKey, tabId);
         };
         
         window.addEventListener('popstate', handleRoute);
         
+        // Handle clicks on data-tab links
         document.addEventListener('click', (e) => {
             const link = e.target.closest('a[data-tab]');
             if (!link) return;
@@ -192,14 +200,14 @@ class UIModule {
         if (!this.isValidTab(tabId)) tabId = 'dashboard';
         
         // Build clean URL without hash
-        let newUrl = '/student';
-        if (tabId !== 'dashboard') {
-            newUrl = `/student/${tabId}`;
-        }
+        let newUrl = tabId === 'dashboard' ? '/student' : `/student/${tabId}`;
         
+        // Update URL
         if (window.location.pathname !== newUrl) {
             history.pushState({}, '', newUrl);
         }
+        
+        // Show the tab (with fromNavigation = true to update URL)
         this.showTab(tabId, true);
     }
     
@@ -211,7 +219,7 @@ class UIModule {
             path = '';
         }
         path = path.replace(/\/$/, '');
-        return path && this.validTabs.includes(path) ? path : 'dashboard';
+        return path && this.isValidTab(path) ? path : 'dashboard';
     }
     
     // ============================================
@@ -334,8 +342,11 @@ class UIModule {
     
     showTab(tabId, fromNavigation = false) {
         if (!this.isValidTab(tabId)) tabId = 'dashboard';
+        
+        // Don't change tab if already on this tab and not forced
         if (this.currentTab === tabId && !fromNavigation) return;
         
+        // Update the content
         this.tabs.forEach(tab => {
             tab.style.display = 'none';
             tab.classList.remove('active');
@@ -356,6 +367,21 @@ class UIModule {
         this.closeMenu();
         this.currentTab = tabId;
         this.updatePageTitle(tabId);
+        
+        // 🔧 FIX: Only update URL if coming from navigation, not on page load/refresh
+        if (fromNavigation) {
+            let newUrl;
+            if (tabId === 'dashboard') {
+                newUrl = '/student';
+            } else {
+                newUrl = `/student/${tabId}`;
+            }
+            
+            // Only update if URL is different
+            if (window.location.pathname !== newUrl) {
+                history.pushState({}, '', newUrl);
+            }
+        }
         
         // Update last login when showing dashboard
         if (tabId === 'dashboard') {
@@ -678,7 +704,7 @@ class UIModule {
                     timer: 2000,
                     showConfirmButton: true
                 }).then(() => {
-                    window.location.href = 'login.html';
+                    window.location.href = '/login';
                 });
             }
         } else {
@@ -688,7 +714,7 @@ class UIModule {
                 localStorage.removeItem('currentUserProfile');
                 sessionStorage.clear();
                 if (this.supabase?.auth) await this.supabase.auth.signOut();
-                window.location.href = 'login.html';
+                window.location.href = '/login';
             }
         }
     }
