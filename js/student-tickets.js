@@ -1,5 +1,5 @@
 // student-tickets.js - Student Support Ticket System
-// *** CHAT-STYLE INTERFACE WITH PERSISTENT STATE ***
+// *** WORKS WITH YOUR database.js - PERSISTS AFTER REFRESH ***
 
 class StudentTicketSystem {
     constructor() {
@@ -11,6 +11,7 @@ class StudentTicketSystem {
         this.filesToUpload = [];
         this.conversationRefreshInterval = null;
         this.userProfile = null;
+        this.userId = null;
         
         // DOM Elements cache
         this.elements = {};
@@ -18,7 +19,7 @@ class StudentTicketSystem {
         this.initialize();
     }
     
-    initialize() {
+    async initialize() {
         if (this.isInitialized) return;
         
         console.log('🎫 Initializing Student Ticket System...');
@@ -26,68 +27,64 @@ class StudentTicketSystem {
         this.setupEventListeners();
         this.loadTicketCategories();
         this.setupFileUpload();
-        this.loadUserProfile();
-        this.isInitialized = true;
         
+        // Wait for database to be ready
+        await this.waitForDatabase();
+        
+        // Load user profile
+        await this.loadUserProfile();
+        
+        // Load tickets if profile exists
+        if (this.userId) {
+            await this.loadTickets();
+        }
+        
+        this.isInitialized = true;
         console.log('✅ Student Ticket System initialized');
     }
     
-    async loadUserProfile() {
-        // Try multiple sources for user profile
-        if (window.currentUserProfile) {
-            this.userProfile = window.currentUserProfile;
-        } else if (window.db?.currentUserProfile) {
-            this.userProfile = window.db.currentUserProfile;
-        } else if (window.userProfile) {
-            this.userProfile = window.userProfile;
+    async waitForDatabase() {
+        // Wait for window.db to be available
+        let attempts = 0;
+        while (!window.db?.supabase && attempts < 50) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+            attempts++;
         }
         
-        // If found, load tickets
-        if (this.userProfile) {
-            await this.loadTickets();
+        if (!window.db?.supabase) {
+            console.error('❌ Database not available after 5 seconds');
+        } else {
+            console.log('✅ Database connected');
         }
     }
     
     cacheElements() {
         this.elements = {
-            // Main containers
             ticketsContainer: document.getElementById('support-tickets'),
             ticketsTableBody: document.getElementById('tickets-table-body'),
-            
-            // Summary elements
             openCount: document.getElementById('open-tickets-count'),
             progressCount: document.getElementById('progress-tickets-count'),
             resolvedCount: document.getElementById('resolved-tickets-count'),
             urgentCount: document.getElementById('urgent-tickets-count'),
             totalCount: document.getElementById('total-tickets-count'),
             lastUpdated: document.getElementById('last-updated-time'),
-            
-            // Form elements
             newTicketBtn: document.getElementById('new-ticket-btn'),
             newTicketForm: document.getElementById('new-ticket-form'),
             createTicketForm: document.getElementById('create-ticket-form'),
             closeFormBtn: document.getElementById('close-form-btn'),
             cancelTicketBtn: document.getElementById('cancel-ticket-btn'),
             createFirstTicketBtn: document.getElementById('create-first-ticket'),
-            
-            // Form inputs
             categorySelect: document.getElementById('ticket-category'),
             prioritySelect: document.getElementById('ticket-priority'),
             subjectInput: document.getElementById('ticket-subject'),
             descriptionInput: document.getElementById('ticket-description'),
             attachmentsInput: document.getElementById('ticket-attachments'),
             filePreview: document.getElementById('file-preview'),
-            
-            // Character counters
             descCharCount: document.getElementById('desc-char-count'),
-            
-            // Modal elements
             ticketModal: document.getElementById('ticket-detail-modal'),
             closeModalBtn: document.querySelector('.close-modal'),
             closeModalBtnAlt: document.querySelector('.close-modal-btn'),
             modalTicketTitle: document.getElementById('modal-ticket-title'),
-            
-            // Ticket detail elements
             detailTicketNumber: document.getElementById('detail-ticket-number'),
             detailStatus: document.getElementById('detail-status'),
             detailCategory: document.getElementById('detail-category'),
@@ -96,105 +93,71 @@ class StudentTicketSystem {
             detailDescription: document.getElementById('detail-description'),
             detailAttachments: document.getElementById('detail-attachments'),
             attachmentsSection: document.querySelector('.attachments-section'),
-            
-            // Conversations elements
             conversationsList: document.getElementById('conversations-list'),
             conversationCount: document.getElementById('conversation-count'),
             newMessageInput: document.getElementById('new-message'),
             sendMessageBtn: document.getElementById('send-message-btn'),
             cancelMessageBtn: document.getElementById('cancel-message-btn'),
             messageCharCount: document.getElementById('message-char-count'),
-            
-            // Ticket actions
             closeTicketBtn: document.getElementById('close-ticket-btn'),
             reopenTicketBtn: document.getElementById('reopen-ticket-btn'),
-            
-            // Filter and search
             refreshBtn: document.getElementById('refresh-tickets-btn'),
             searchInput: document.getElementById('ticket-search'),
             filterDropdown: document.querySelector('.filter-dropdown .dropdown-menu'),
-            
-            // Loading state
             ticketsLoading: document.getElementById('tickets-loading'),
             emptyRow: document.querySelector('.empty-row')
         };
     }
     
     setupEventListeners() {
-        // Show new ticket form
         if (this.elements.newTicketBtn) {
             this.elements.newTicketBtn.addEventListener('click', () => this.showNewTicketForm());
         }
-        
         if (this.elements.createFirstTicketBtn) {
             this.elements.createFirstTicketBtn.addEventListener('click', () => this.showNewTicketForm());
         }
-        
-        // Close new ticket form
         if (this.elements.closeFormBtn) {
             this.elements.closeFormBtn.addEventListener('click', () => this.hideNewTicketForm());
         }
-        
         if (this.elements.cancelTicketBtn) {
             this.elements.cancelTicketBtn.addEventListener('click', () => this.hideNewTicketForm());
         }
-        
-        // Submit new ticket
         if (this.elements.createTicketForm) {
             this.elements.createTicketForm.addEventListener('submit', (e) => this.handleCreateTicket(e));
         }
-        
-        // Description character counter
         if (this.elements.descriptionInput) {
             this.elements.descriptionInput.addEventListener('input', () => {
                 this.updateCharCounter(this.elements.descriptionInput, this.elements.descCharCount, 5000);
             });
         }
-        
-        // Message character counter
         if (this.elements.newMessageInput) {
             this.elements.newMessageInput.addEventListener('input', () => {
                 this.updateCharCounter(this.elements.newMessageInput, this.elements.messageCharCount, 2000);
             });
         }
-        
-        // Send message
         if (this.elements.sendMessageBtn) {
             this.elements.sendMessageBtn.addEventListener('click', () => this.sendTicketMessage());
         }
-        
-        // Cancel message
         if (this.elements.cancelMessageBtn) {
             this.elements.cancelMessageBtn.addEventListener('click', () => {
-                this.elements.newMessageInput.value = '';
+                if (this.elements.newMessageInput) this.elements.newMessageInput.value = '';
             });
         }
-        
-        // Close ticket
         if (this.elements.closeTicketBtn) {
             this.elements.closeTicketBtn.addEventListener('click', () => this.closeCurrentTicket());
         }
-        
-        // Reopen ticket
         if (this.elements.reopenTicketBtn) {
             this.elements.reopenTicketBtn.addEventListener('click', () => this.reopenCurrentTicket());
         }
-        
-        // Close modal
         if (this.elements.closeModalBtn) {
             this.elements.closeModalBtn.addEventListener('click', () => this.closeTicketModal());
         }
-        
         if (this.elements.closeModalBtnAlt) {
             this.elements.closeModalBtnAlt.addEventListener('click', () => this.closeTicketModal());
         }
-        
-        // Refresh tickets
         if (this.elements.refreshBtn) {
             this.elements.refreshBtn.addEventListener('click', () => this.loadTickets());
         }
-        
-        // Search tickets
         if (this.elements.searchInput) {
             let searchTimeout;
             this.elements.searchInput.addEventListener('input', (e) => {
@@ -204,8 +167,6 @@ class StudentTicketSystem {
                 }, 300);
             });
         }
-        
-        // Filter tickets
         if (this.elements.filterDropdown) {
             this.elements.filterDropdown.querySelectorAll('a').forEach(link => {
                 link.addEventListener('click', (e) => {
@@ -216,21 +177,18 @@ class StudentTicketSystem {
             });
         }
         
-        // Load tickets when tab is shown
         document.addEventListener('tabChanged', (e) => {
             if (e.detail.tabId === 'support-tickets') {
                 this.loadTickets();
             }
         });
         
-        // Close modal on escape key
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && this.elements.ticketModal && this.elements.ticketModal.style.display !== 'none') {
                 this.closeTicketModal();
             }
         });
         
-        // Close modal on overlay click
         if (this.elements.ticketModal) {
             this.elements.ticketModal.addEventListener('click', (e) => {
                 if (e.target === this.elements.ticketModal) {
@@ -253,11 +211,9 @@ class StudentTicketSystem {
                 e.preventDefault();
                 uploadLabel.classList.add('dragover');
             });
-            
             uploadLabel.addEventListener('dragleave', () => {
                 uploadLabel.classList.remove('dragover');
             });
-            
             uploadLabel.addEventListener('drop', (e) => {
                 e.preventDefault();
                 uploadLabel.classList.remove('dragover');
@@ -356,6 +312,7 @@ class StudentTicketSystem {
     }
     
     getSupabaseClient() {
+        // Use window.db.supabase from your database.js
         const client = window.db?.supabase;
         if (!client || typeof client.from !== 'function') {
             console.error('❌ No valid Supabase client available');
@@ -364,13 +321,53 @@ class StudentTicketSystem {
         return client;
     }
     
-    getUserProfile() {
-        return this.userProfile || window.db?.currentUserProfile || window.currentUserProfile || null;
+    async loadUserProfile() {
+        console.log('📋 Loading user profile...');
+        
+        // Try to get from window.db (database.js)
+        if (window.db?.currentUserProfile) {
+            this.userProfile = window.db.currentUserProfile;
+            this.userId = this.userProfile?.user_id || this.userProfile?.id;
+            console.log('✅ Profile from window.db:', this.userId);
+            return;
+        }
+        
+        // Try to get from auth directly
+        const supabase = this.getSupabaseClient();
+        if (supabase) {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                // Try to get profile from consolidated table
+                const { data: profile } = await supabase
+                    .from('consolidated_user_profiles_table')
+                    .select('*')
+                    .eq('user_id', user.id)
+                    .single();
+                
+                if (profile) {
+                    this.userProfile = profile;
+                    this.userId = profile.user_id || profile.id;
+                    console.log('✅ Profile from consolidated table:', this.userId);
+                    return;
+                }
+                
+                // Fallback to auth user
+                this.userId = user.id;
+                this.userProfile = { id: user.id, user_id: user.id, email: user.email, full_name: user.email?.split('@')[0] };
+                console.log('⚠️ Using auth user as fallback:', this.userId);
+                return;
+            }
+        }
+        
+        console.error('❌ Could not load user profile');
     }
     
     getCurrentUserId() {
-        const profile = this.getUserProfile();
-        return profile?.id || null;
+        return this.userId || this.userProfile?.user_id || this.userProfile?.id;
+    }
+    
+    getUserProfile() {
+        return this.userProfile;
     }
     
     async loadTickets() {
@@ -381,6 +378,7 @@ class StudentTicketSystem {
         
         if (!userId) {
             console.error('❌ No user ID found');
+            this.showToast('Please log in again', 'error');
             return;
         }
         
@@ -509,40 +507,19 @@ class StudentTicketSystem {
         const createdDate = this.formatDate(ticket.created_at);
         const updatedDate = this.formatDate(ticket.updated_at || ticket.created_at);
         
-        let statusClass = 'status-open';
-        if (ticket.status === 'open') statusClass = 'status-open';
-        if (ticket.status === 'in_progress') statusClass = 'status-progress';
-        if (ticket.status === 'resolved') statusClass = 'status-resolved';
-        if (ticket.status === 'closed') statusClass = 'status-closed';
-        
-        let priorityClass = 'priority-medium';
-        if (ticket.priority === 'urgent') priorityClass = 'priority-urgent';
-        if (ticket.priority === 'high') priorityClass = 'priority-high';
-        if (ticket.priority === 'medium') priorityClass = 'priority-medium';
-        if (ticket.priority === 'low') priorityClass = 'priority-low';
-        
         return `
             <tr class="ticket-row" data-id="${ticket.id}" style="cursor: pointer;">
-                <td style="padding: 12px;">
-                    <span class="ticket-id">${ticket.ticket_number || 'N/A'}</span>
-                </td>
-                <td style="padding: 12px;">
+                <td><span class="ticket-id">${ticket.ticket_number || 'N/A'}</span></td>
+                <td>
                     <div class="ticket-subject">${this.escapeHtml(ticket.subject)}</div>
                     <div class="ticket-excerpt">${this.escapeHtml(ticket.description?.substring(0, 60) || '')}...</div>
                 </td>
-                <td style="padding: 12px;">
-                    <span class="category-badge">${this.getCategoryLabel(ticket.category)}</span>
-                </td>
-                <td style="padding: 12px;">
-                    <span class="${priorityClass} priority-badge">${ticket.priority}</span>
-                </td>
-                <td style="padding: 12px;">
-                    <span class="${statusClass} status-badge">${ticket.status.replace('_', ' ')}</span>
-                </td>
-                <td style="padding: 12px;">
-                    <span class="date-cell">${createdDate}</span>
-                </td>
-                <td style="padding: 12px;">
+                <td><span class="category-badge">${this.getCategoryLabel(ticket.category)}</span></td>
+                <td><span class="priority-badge ${ticket.priority}">${ticket.priority}</span></td>
+                <td><span class="status-badge ${ticket.status}">${ticket.status.replace('_', ' ')}</span></td>
+                <td><span class="date-cell">${createdDate}</span></td>
+                <td><span class="date-cell">${updatedDate}</span></td>
+                <td>
                     <div class="ticket-actions">
                         <button class="btn-view-ticket" data-id="${ticket.id}" title="View ticket">
                             <i class="fas fa-eye"></i> View
@@ -588,7 +565,6 @@ class StudentTicketSystem {
         
         this.currentTicketId = ticketId;
         
-        // Create beautiful chat modal
         await this.showChatModal(ticket);
     }
     
@@ -598,113 +574,104 @@ class StudentTicketSystem {
         // Get conversations
         const { data: conversations } = await supabaseClient
             .from('ticket_conversations')
-            .select('*, author:author_id(id, full_name, role)')
+            .select('*')
             .eq('ticket_id', ticket.id)
             .order('created_at', { ascending: true });
         
+        // Get author names
+        const authorIds = [...new Set((conversations || []).map(c => c.author_id).filter(id => id))];
+        let authorNames = {};
+        
+        if (authorIds.length > 0) {
+            const { data: profiles } = await supabaseClient
+                .from('consolidated_user_profiles_table')
+                .select('id, full_name')
+                .in('id', authorIds);
+            
+            if (profiles) {
+                profiles.forEach(p => {
+                    authorNames[p.id] = p.full_name;
+                });
+            }
+        }
+        
         const modalHtml = `
-            <div id="chatModal" class="chat-modal" style="display: flex;">
-                <div class="chat-modal-overlay" onclick="document.getElementById('chatModal').remove()"></div>
-                <div class="chat-modal-container">
-                    <div class="chat-header">
-                        <div class="chat-header-info">
-                            <h3>🎫 ${this.escapeHtml(ticket.ticket_number)}</h3>
-                            <p class="chat-subject">${this.escapeHtml(ticket.subject)}</p>
-                        </div>
-                        <div class="chat-header-status">
-                            <span class="status-badge status-${ticket.status}">${ticket.status}</span>
-                            <span class="priority-badge priority-${ticket.priority}">${ticket.priority}</span>
-                        </div>
-                        <button class="chat-close" onclick="document.getElementById('chatModal').remove()">✕</button>
+            <div id="chatModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 100000; display: flex; align-items: center; justify-content: center;">
+                <div style="background: white; max-width: 800px; width: 95%; max-height: 85vh; display: flex; flex-direction: column; border-radius: 16px; overflow: hidden;">
+                    <div style="padding: 15px 20px; background: linear-gradient(135deg, #4C1D95, #6d28d9); color: white;">
+                        <h3 style="margin: 0;">🎫 ${this.escapeHtml(ticket.ticket_number)}</h3>
+                        <small>${this.escapeHtml(ticket.subject)}</small>
+                        <button onclick="document.getElementById('chatModal').remove()" style="position: absolute; top: 15px; right: 20px; background: none; border: none; color: white; font-size: 24px; cursor: pointer;">&times;</button>
                     </div>
                     
-                    <div class="chat-description">
-                        <div class="description-label">📝 Description</div>
-                        <div class="description-text">${this.escapeHtml(ticket.description)}</div>
-                        <div class="description-meta">
-                            <span>📅 Created: ${new Date(ticket.created_at).toLocaleString()}</span>
-                            <span>🏷️ Category: ${this.getCategoryLabel(ticket.category)}</span>
-                        </div>
+                    <div style="padding: 12px 20px; background: #f8f9fa; display: flex; gap: 20px; flex-wrap: wrap;">
+                        <div><strong>Status:</strong> <span class="status-badge ${ticket.status}">${ticket.status}</span></div>
+                        <div><strong>Priority:</strong> <span class="priority-badge ${ticket.priority}">${ticket.priority}</span></div>
+                        <div><strong>Category:</strong> ${this.getCategoryLabel(ticket.category)}</div>
                     </div>
                     
-                    <div class="chat-messages-area" id="chatMessagesArea">
-                        ${this.renderChatMessages(conversations || [])}
+                    <div style="padding: 12px 20px; background: #fef3c7;">
+                        <strong>📝 Description:</strong>
+                        <p style="margin: 8px 0 0 0;">${this.escapeHtml(ticket.description)}</p>
                     </div>
                     
-                    <div class="chat-input-area">
-                        <div class="chat-input-wrapper">
-                            <textarea id="chatMessageInput" class="chat-input" rows="2" placeholder="Type your message here..."></textarea>
-                            <div class="chat-input-actions">
-                                <span class="char-counter">0/2000</span>
-                                <button id="sendChatMessageBtn" class="chat-send-btn">
-                                    <i class="fas fa-paper-plane"></i> Send
-                                </button>
-                            </div>
+                    <div id="chatMessagesArea" style="flex: 1; overflow-y: auto; padding: 15px; background: #f3f4f6; min-height: 300px;">
+                        ${this.renderChatMessages(conversations || [], authorNames)}
+                    </div>
+                    
+                    <div style="padding: 15px 20px; background: white; border-top: 1px solid #e5e7eb;">
+                        <textarea id="chatMessageInput" rows="2" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; resize: none;" placeholder="Type your message here..."></textarea>
+                        <div style="display: flex; justify-content: flex-end; margin-top: 10px;">
+                            <button id="sendChatBtn" style="background: #4C1D95; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer;">
+                                <i class="fas fa-paper-plane"></i> Send
+                            </button>
                         </div>
                     </div>
                 </div>
             </div>
         `;
         
-        // Remove existing modal if any
         const existingModal = document.getElementById('chatModal');
         if (existingModal) existingModal.remove();
         
         document.body.insertAdjacentHTML('beforeend', modalHtml);
         
-        // Add event listeners
         const messageInput = document.getElementById('chatMessageInput');
-        const sendBtn = document.getElementById('sendChatMessageBtn');
-        const charCounter = document.querySelector('.char-counter');
-        
-        if (messageInput) {
-            messageInput.addEventListener('input', () => {
-                const length = messageInput.value.length;
-                charCounter.textContent = `${length}/2000`;
-                if (length > 2000) {
-                    charCounter.style.color = 'red';
-                } else {
-                    charCounter.style.color = '#999';
-                }
-            });
-            
-            messageInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    sendBtn.click();
-                }
-            });
-        }
+        const sendBtn = document.getElementById('sendChatBtn');
         
         if (sendBtn) {
             sendBtn.addEventListener('click', () => this.sendChatMessage());
         }
+        if (messageInput) {
+            messageInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    this.sendChatMessage();
+                }
+            });
+        }
         
-        // Start auto-refresh
+        // Auto-refresh every 5 seconds
         if (this.conversationRefreshInterval) {
             clearInterval(this.conversationRefreshInterval);
         }
-        this.conversationRefreshInterval = setInterval(() => {
+        this.conversationRefreshInterval = setInterval(async () => {
             if (document.getElementById('chatModal')) {
-                this.refreshChatMessages(ticket.id);
+                await this.refreshChatMessages(ticket.id);
             } else {
                 clearInterval(this.conversationRefreshInterval);
             }
-        }, 3000);
+        }, 5000);
     }
     
-    renderChatMessages(conversations) {
+    renderChatMessages(conversations, authorNames) {
         if (!conversations || conversations.length === 0) {
-            return `
-                <div class="chat-empty">
-                    <i class="fas fa-comments"></i>
-                    <p>No messages yet. Start the conversation!</p>
-                </div>
-            `;
+            return '<div style="text-align: center; padding: 40px; color: #6b7280;">No messages yet. Start the conversation!</div>';
         }
         
         let lastDate = null;
         let html = '';
+        const currentUserId = this.getCurrentUserId();
         
         for (const conv of conversations) {
             const messageDate = new Date(conv.created_at);
@@ -712,55 +679,27 @@ class StudentTicketSystem {
             const timeStr = messageDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             
             if (lastDate !== dateStr) {
-                if (lastDate) {
-                    html += `<div class="chat-date-divider"><span>${dateStr}</span></div>`;
-                } else {
-                    html += `<div class="chat-date-divider"><span>${dateStr}</span></div>`;
-                }
+                html += `<div style="text-align: center; margin: 15px 0;"><span style="background: #e5e7eb; padding: 4px 12px; border-radius: 20px; font-size: 12px;">${dateStr}</span></div>`;
                 lastDate = dateStr;
             }
             
-            const isCurrentUser = conv.author_id === this.getCurrentUserId();
-            const authorName = conv.author?.full_name || 'Support Team';
-            const isInternal = conv.is_internal;
+            const isCurrentUser = conv.author_id === currentUserId;
+            const authorName = authorNames[conv.author_id] || 'Support';
+            const align = isCurrentUser ? 'flex-end' : 'flex-start';
+            const bgColor = isCurrentUser ? '#4C1D95' : 'white';
+            const textColor = isCurrentUser ? 'white' : '#1f2937';
             
-            if (isInternal && !isCurrentUser) {
-                html += `
-                    <div class="chat-message internal">
-                        <div class="message-bubble internal-bubble">
-                            <div class="message-header">
-                                <span class="message-author">🔒 Internal Note</span>
-                                <span class="message-time">${timeStr}</span>
-                            </div>
-                            <div class="message-text">${this.escapeHtml(conv.message)}</div>
+            html += `
+                <div style="display: flex; justify-content: ${align}; margin-bottom: 15px;">
+                    <div style="max-width: 70%; background: ${bgColor}; padding: 10px 15px; border-radius: 12px; ${isCurrentUser ? 'border-bottom-right-radius: 4px;' : 'border-bottom-left-radius: 4px;'} color: ${textColor}; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                            <strong style="font-size: 12px;">${isCurrentUser ? 'You' : this.escapeHtml(authorName)}</strong>
+                            <small style="font-size: 10px; opacity: 0.7;">${timeStr}</small>
                         </div>
+                        <p style="margin: 5px 0 0 0;">${this.escapeHtml(conv.message)}</p>
                     </div>
-                `;
-            } else if (isCurrentUser) {
-                html += `
-                    <div class="chat-message outgoing">
-                        <div class="message-bubble outgoing-bubble">
-                            <div class="message-text">${this.escapeHtml(conv.message)}</div>
-                            <div class="message-time">${timeStr}</div>
-                        </div>
-                    </div>
-                `;
-            } else {
-                html += `
-                    <div class="chat-message incoming">
-                        <div class="message-avatar">
-                            <i class="fas fa-user-circle"></i>
-                        </div>
-                        <div class="message-bubble incoming-bubble">
-                            <div class="message-header">
-                                <span class="message-author">${this.escapeHtml(authorName)}</span>
-                                <span class="message-time">${timeStr}</span>
-                            </div>
-                            <div class="message-text">${this.escapeHtml(conv.message)}</div>
-                        </div>
-                    </div>
-                `;
-            }
+                </div>
+            `;
         }
         
         return html;
@@ -769,24 +708,36 @@ class StudentTicketSystem {
     async refreshChatMessages(ticketId) {
         const supabaseClient = this.getSupabaseClient();
         const messagesArea = document.getElementById('chatMessagesArea');
-        
         if (!messagesArea) return;
         
         const { data: conversations } = await supabaseClient
             .from('ticket_conversations')
-            .select('*, author:author_id(id, full_name, role)')
+            .select('*')
             .eq('ticket_id', ticketId)
             .order('created_at', { ascending: true });
         
         if (conversations) {
-            const newHtml = this.renderChatMessages(conversations);
+            const authorIds = [...new Set(conversations.map(c => c.author_id).filter(id => id))];
+            let authorNames = {};
+            
+            if (authorIds.length > 0) {
+                const { data: profiles } = await supabaseClient
+                    .from('consolidated_user_profiles_table')
+                    .select('id, full_name')
+                    .in('id', authorIds);
+                
+                if (profiles) {
+                    profiles.forEach(p => { authorNames[p.id] = p.full_name; });
+                }
+            }
+            
+            const newHtml = this.renderChatMessages(conversations, authorNames);
             const oldScrollTop = messagesArea.scrollTop;
             const oldScrollHeight = messagesArea.scrollHeight;
             
             messagesArea.innerHTML = newHtml;
             
-            // Scroll to bottom if was at bottom
-            if (oldScrollHeight - oldScrollTop < 100) {
+            if (oldScrollHeight - oldScrollTop < 200) {
                 messagesArea.scrollTop = messagesArea.scrollHeight;
             }
         }
@@ -806,10 +757,12 @@ class StudentTicketSystem {
         
         if (!userId || !supabaseClient) return;
         
-        const sendBtn = document.getElementById('sendChatMessageBtn');
-        const originalText = sendBtn.innerHTML;
-        sendBtn.disabled = true;
-        sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+        const sendBtn = document.getElementById('sendChatBtn');
+        const originalText = sendBtn?.innerHTML;
+        if (sendBtn) {
+            sendBtn.disabled = true;
+            sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        }
         
         try {
             const { error } = await supabaseClient
@@ -824,9 +777,7 @@ class StudentTicketSystem {
             
             if (error) throw error;
             
-            messageInput.value = '';
-            const charCounter = document.querySelector('.char-counter');
-            if (charCounter) charCounter.textContent = '0/2000';
+            if (messageInput) messageInput.value = '';
             
             await this.refreshChatMessages(this.currentTicketId);
             
@@ -844,12 +795,16 @@ class StudentTicketSystem {
                 this.updateSummary();
             }
             
+            this.showToast('Message sent', 'success');
+            
         } catch (error) {
-            console.error('Error sending message:', error);
-            this.showToast('Failed to send message: ' + error.message, 'error');
+            console.error('Error:', error);
+            this.showToast('Failed to send: ' + error.message, 'error');
         } finally {
-            sendBtn.disabled = false;
-            sendBtn.innerHTML = originalText;
+            if (sendBtn) {
+                sendBtn.disabled = false;
+                sendBtn.innerHTML = originalText;
+            }
         }
     }
     
@@ -925,7 +880,7 @@ class StudentTicketSystem {
             setTimeout(() => this.loadTickets(), 1500);
             
         } catch (error) {
-            console.error('Error creating ticket:', error);
+            console.error('Error:', error);
             this.showToast('Failed to create ticket: ' + error.message, 'error');
         } finally {
             submitBtn.disabled = false;
@@ -980,6 +935,83 @@ class StudentTicketSystem {
         }
     }
     
+    closeTicketModal() {
+        if (this.elements.ticketModal) {
+            this.elements.ticketModal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+            this.currentTicketId = null;
+            if (this.elements.newMessageInput) {
+                this.elements.newMessageInput.value = '';
+            }
+        }
+    }
+    
+    closeCurrentTicket() {
+        if (!this.currentTicketId) return;
+        if (confirm('Are you sure you want to close this ticket?')) {
+            this.closeTicket(this.currentTicketId);
+            this.closeTicketModal();
+        }
+    }
+    
+    async closeTicket(ticketId) {
+        const userId = this.getCurrentUserId();
+        const supabaseClient = this.getSupabaseClient();
+        if (!userId || !supabaseClient) return;
+        
+        try {
+            const { error } = await supabaseClient
+                .from('support_tickets')
+                .update({ status: 'closed', closed_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+                .eq('id', ticketId)
+                .eq('student_id', userId);
+            
+            if (error) throw error;
+            
+            const ticketIndex = this.currentTickets.findIndex(t => t.id === ticketId);
+            if (ticketIndex !== -1) {
+                this.currentTickets[ticketIndex].status = 'closed';
+                this.renderTickets();
+                this.updateSummary();
+            }
+            
+            this.showToast('Ticket closed successfully', 'success');
+            
+        } catch (error) {
+            this.showToast('Failed to close ticket: ' + error.message, 'error');
+        }
+    }
+    
+    async reopenCurrentTicket() {
+        if (!this.currentTicketId) return;
+        
+        const userId = this.getCurrentUserId();
+        const supabaseClient = this.getSupabaseClient();
+        if (!userId || !supabaseClient) return;
+        
+        try {
+            const { error } = await supabaseClient
+                .from('support_tickets')
+                .update({ status: 'open', closed_at: null, updated_at: new Date().toISOString() })
+                .eq('id', this.currentTicketId)
+                .eq('student_id', userId);
+            
+            if (error) throw error;
+            
+            const ticketIndex = this.currentTickets.findIndex(t => t.id === this.currentTicketId);
+            if (ticketIndex !== -1) {
+                this.currentTickets[ticketIndex].status = 'open';
+                this.renderTickets();
+                this.updateSummary();
+            }
+            
+            this.showToast('Ticket reopened successfully', 'success');
+            
+        } catch (error) {
+            this.showToast('Failed to reopen ticket: ' + error.message, 'error');
+        }
+    }
+    
     searchTickets(searchTerm) {
         this.renderTickets();
     }
@@ -987,6 +1019,15 @@ class StudentTicketSystem {
     filterTickets(filter) {
         this.currentFilter = filter;
         this.renderTickets();
+        
+        const filterBtn = document.querySelector('.filter-dropdown button');
+        if (filterBtn) {
+            const filterText = filter === 'all' ? 'All Tickets' :
+                              filter === 'open' ? 'Open' :
+                              filter === 'progress' ? 'In Progress' :
+                              filter === 'resolved' ? 'Resolved' : 'Urgent';
+            filterBtn.innerHTML = `<i class="fas fa-filter"></i> ${filterText} <i class="fas fa-chevron-down"></i>`;
+        }
     }
     
     showLoading(show) {
@@ -994,14 +1035,10 @@ class StudentTicketSystem {
         
         if (show) {
             this.elements.ticketsLoading.style.display = 'block';
-            if (this.elements.emptyRow) {
-                this.elements.emptyRow.style.display = 'none';
-            }
+            if (this.elements.emptyRow) this.elements.emptyRow.style.display = 'none';
         } else {
             this.elements.ticketsLoading.style.display = 'none';
-            if (this.elements.emptyRow) {
-                this.elements.emptyRow.style.display = '';
-            }
+            if (this.elements.emptyRow) this.elements.emptyRow.style.display = '';
         }
     }
     
@@ -1013,15 +1050,7 @@ class StudentTicketSystem {
         
         const toast = document.createElement('div');
         toast.className = `toast toast-${type}`;
-        toast.innerHTML = `
-            <div class="toast-content">
-                <i class="fas ${type === 'success' ? 'fa-check-circle' : 
-                               type === 'error' ? 'fa-exclamation-circle' : 
-                               type === 'warning' ? 'fa-exclamation-triangle' : 'fa-info-circle'}"></i>
-                <span>${text}</span>
-            </div>
-        `;
-        
+        toast.innerHTML = `<div class="toast-content"><i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'}"></i><span>${text}</span></div>`;
         document.body.appendChild(toast);
         setTimeout(() => toast.classList.add('show'), 10);
         setTimeout(() => {
@@ -1047,7 +1076,6 @@ class StudentTicketSystem {
         if (diffMins < 60) return `${diffMins}m ago`;
         if (diffHours < 24) return `${diffHours}h ago`;
         if (diffDays < 7) return `${diffDays}d ago`;
-        
         return date.toLocaleDateString();
     }
     
@@ -1064,10 +1092,10 @@ window.ticketSystem = new StudentTicketSystem();
 window.loadSupportTickets = () => window.ticketSystem.loadTickets();
 window.viewSupportTicket = (id) => window.ticketSystem.viewTicket(id);
 
-// Auto-initialize
+// Wait for database to be ready before initializing
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-        window.ticketSystem.initialize();
+    document.addEventListener('DOMContentLoaded', async () => {
+        await window.ticketSystem.initialize();
     });
 } else {
     window.ticketSystem.initialize();
