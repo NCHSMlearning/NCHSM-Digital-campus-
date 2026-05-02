@@ -4736,3 +4736,71 @@ p {
         padding: 4px 10px;
     }
 }
+/* Logout Modal Styles */
+.swal2-popup.logout-popup {
+    border-radius: 16px;
+    padding: 20px;
+    font-family: 'Inter', sans-serif;
+}
+
+.logout-title {
+    font-size: 24px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.logout-confirm-btn {
+    background: #4C1D95 !important;
+    border-radius: 8px !important;
+    padding: 10px 20px !important;
+    font-weight: 500 !important;
+    transition: all 0.3s ease !important;
+}
+
+.logout-confirm-btn:hover {
+    background: #3b1680 !important;
+    transform: translateY(-2px);
+}
+
+.logout-cancel-btn {
+    background: #6b7280 !important;
+    border-radius: 8px !important;
+    padding: 10px 20px !important;
+    font-weight: 500 !important;
+    transition: all 0.3s ease !important;
+}
+
+.logout-cancel-btn:hover {
+    background: #4b5563 !important;
+}
+
+/* SweetAlert2 custom animations */
+.swal2-show {
+    animation: fadeInUp 0.3s ease-out !important;
+}
+
+.swal2-hide {
+    animation: fadeOutDown 0.2s ease-in !important;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeOutDown {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+}
