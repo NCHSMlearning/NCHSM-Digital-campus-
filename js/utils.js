@@ -133,14 +133,15 @@ window.getDeviceId = getDeviceId;
 window.calculateDistance = calculateDistance;
 window.formatDate = formatDate;
 window.cache = cache;
-// ========== SPA ROUTER - Handle page refreshes and deep linking ==========
+
+// ========== SPA ROUTER - CLEAN URL NAVIGATION (NO DUPLICATE HASHTAGS) ==========
 const SPA_ROUTER = {
     // Valid tabs in your app
-    validTabs: ['dashboard', 'profile', 'calendar', 'learning-hub', 'attendance', 'cats', 'resources', 'messages', 'support-tickets', 'nurseiq'],
+    validTabs: ['dashboard', 'profile', 'calendar', 'learning-hub', 'attendance', 'cats', 'resources', 'messages', 'support-tickets', 'nurseiq', 'exam-card'],
     
-    // Get current tab from URL hash or path
+    // Get current tab from URL hash only (clean method)
     getCurrentTab() {
-        // First check hash
+        // ONLY check hash - ignore pathname to avoid duplicates
         let hash = window.location.hash.substring(1);
         
         // Remove any query parameters
@@ -148,15 +149,14 @@ const SPA_ROUTER = {
             hash = hash.split('?')[0];
         }
         
+        // Remove any duplicate hashtags (if somehow there are multiple #)
+        if (hash.includes('#')) {
+            hash = hash.split('#')[0];
+        }
+        
         // Validate tab from hash
         if (hash && this.validTabs.includes(hash)) {
             return hash;
-        }
-        
-        // Then check pathname (for /profile style URLs)
-        let path = window.location.pathname.replace(/^\//, '');
-        if (path && this.validTabs.includes(path)) {
-            return path;
         }
         
         // Default to dashboard
@@ -172,7 +172,10 @@ const SPA_ROUTER = {
         const activateTab = () => {
             // Try using UI module first
             if (window.ui && typeof window.ui.showTab === 'function') {
-                window.ui.showTab(targetTab);
+                // Only call showTab if it's different from current
+                if (window.ui.currentTab !== targetTab) {
+                    window.ui.showTab(targetTab);
+                }
             } 
             // Fallback: manually show tab
             else {
@@ -211,17 +214,20 @@ const SPA_ROUTER = {
         }
     },
     
-    // Update URL when tab changes (without page reload)
+    // Update URL when tab changes (clean - no duplicates)
     updateURL(tab) {
-        let newUrl = window.location.pathname.split('#')[0];
+        // Use ONLY hash for navigation - clean and simple
+        let newUrl = '/student';
         
         if (tab && tab !== 'dashboard') {
-            // Use hash-based URLs for better compatibility
-            newUrl = newUrl + '#' + tab;
+            newUrl = '/student#' + tab;
+        } else {
+            newUrl = '/student';
         }
         
         // Update URL without triggering reload
-        if (window.location.pathname + window.location.hash !== newUrl) {
+        const currentUrl = window.location.pathname + window.location.hash;
+        if (currentUrl !== newUrl) {
             history.pushState({ tab: tab }, '', newUrl);
         }
     },
@@ -230,7 +236,15 @@ const SPA_ROUTER = {
     navigateTo(tab) {
         if (tab && this.validTabs.includes(tab)) {
             this.updateURL(tab);
-            this.showTabFromURL();
+            
+            // Show the tab
+            if (window.ui && typeof window.ui.showTab === 'function') {
+                if (window.ui.currentTab !== tab) {
+                    window.ui.showTab(tab);
+                }
+            } else {
+                this.showTabFromURL();
+            }
         }
     },
     
@@ -242,7 +256,9 @@ const SPA_ROUTER = {
         window.addEventListener('hashchange', () => {
             const tab = this.getCurrentTab();
             if (window.ui && typeof window.ui.showTab === 'function') {
-                window.ui.showTab(tab);
+                if (window.ui.currentTab !== tab) {
+                    window.ui.showTab(tab);
+                }
             }
         });
         
@@ -250,27 +266,8 @@ const SPA_ROUTER = {
         window.addEventListener('popstate', () => {
             const tab = this.getCurrentTab();
             if (window.ui && typeof window.ui.showTab === 'function') {
-                window.ui.showTab(tab);
-            }
-        });
-        
-        // Override the global showTab function if it exists
-        if (window.ui && window.ui.showTab) {
-            const originalShowTab = window.ui.showTab;
-            window.ui.showTab = (tab) => {
-                this.updateURL(tab);
-                return originalShowTab.call(window.ui, tab);
-            };
-        }
-        
-        // Watch for tab clicks on navigation
-        document.addEventListener('click', (e) => {
-            const link = e.target.closest('.nav a, [data-tab]');
-            if (link && link.getAttribute('data-tab')) {
-                const tab = link.getAttribute('data-tab');
-                if (tab && this.validTabs.includes(tab)) {
-                    e.preventDefault();
-                    this.navigateTo(tab);
+                if (window.ui.currentTab !== tab) {
+                    window.ui.showTab(tab);
                 }
             }
         });
@@ -298,3 +295,13 @@ if (document.readyState === 'loading') {
 
 // Export router globally
 window.SPA_ROUTER = SPA_ROUTER;
+
+// Helper function for smooth navigation
+window.navigateToTab = (tabId) => {
+    if (SPA_ROUTER.validTabs.includes(tabId)) {
+        SPA_ROUTER.navigateTo(tabId);
+    }
+};
+
+// Log successful load
+console.log('✅ utils.js loaded with SPA Router');
