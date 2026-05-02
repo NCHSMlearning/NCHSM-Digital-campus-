@@ -5452,7 +5452,7 @@ async function logout() {
     }
 }
 // ============================================
-// ADMIN SUPPORT TICKETS - COMPLETE WITH BELL NOTIFICATIONS
+// ADMIN SUPPORT TICKETS - COMPLETE WITH SENDER NOTIFICATIONS
 // ============================================
 
 let adminAllTickets = [];
@@ -5466,12 +5466,12 @@ let currentAdminProfileId = null;
 // Notification variables
 let lastMessageTimestamps = {};
 let unreadCounts = {};
-let notificationSound = null;
 let notificationPermissionGranted = false;
 let notificationCheckInterval = null;
+let lastCheckedTime = new Date().toISOString();
 
 // ============================================
-// BELL NOTIFICATION SYSTEM
+// BELL NOTIFICATION SYSTEM WITH SENDER INFO
 // ============================================
 
 // Request notification permission
@@ -5481,7 +5481,6 @@ window.requestNotificationPermission = function() {
             notificationPermissionGranted = permission === "granted";
             if (notificationPermissionGranted) {
                 showAdminToast('✅ Notifications enabled! You will receive popup alerts.', 'success');
-                // Test notification
                 setTimeout(() => {
                     new Notification("✅ Notifications Active", {
                         body: "You will now receive alerts for new messages",
@@ -5489,7 +5488,7 @@ window.requestNotificationPermission = function() {
                     });
                 }, 500);
             } else {
-                showAdminToast('⚠️ Notification permission denied. You can enable it in browser settings.', 'warning');
+                showAdminToast('⚠️ Notification permission denied.', 'warning');
             }
         });
     } else {
@@ -5497,7 +5496,7 @@ window.requestNotificationPermission = function() {
     }
 };
 
-// Play bell sound using Web Audio API
+// Play bell sound
 function playBellSound() {
     try {
         const audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -5507,7 +5506,6 @@ function playBellSound() {
             audioContext.resume();
         }
         
-        // Main bell tone
         const osc = audioContext.createOscillator();
         const gain = audioContext.createGain();
         osc.connect(gain);
@@ -5518,7 +5516,6 @@ function playBellSound() {
         osc.start();
         osc.stop(now + 0.8);
         
-        // Harmonic for richer sound
         const osc2 = audioContext.createOscillator();
         const gain2 = audioContext.createGain();
         osc2.connect(gain2);
@@ -5531,12 +5528,6 @@ function playBellSound() {
         
     } catch(e) {
         console.log('Web Audio not supported');
-        // Fallback
-        try {
-            const audio = new Audio('https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3');
-            audio.volume = 0.3;
-            audio.play().catch(() => {});
-        } catch(e2) {}
     }
 }
 
@@ -5564,8 +5555,8 @@ function updateBellBadge(count) {
     }
 }
 
-// Show toast notification
-function showNotificationToast(title, message, ticketId) {
+// Show toast notification with sender info
+function showNotificationToast(studentName, ticketNumber, subject, ticketId) {
     const existingToast = document.querySelector('.notification-toast');
     if (existingToast) existingToast.remove();
     
@@ -5577,11 +5568,11 @@ function showNotificationToast(title, message, ticketId) {
     };
     toast.innerHTML = `
         <div style="background: #ef4444; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
-            <i class="fas fa-bell" style="color: white; font-size: 20px;"></i>
+            <i class="fas fa-user" style="color: white; font-size: 20px;"></i>
         </div>
         <div style="flex: 1;">
-            <strong style="display: block;">${title}</strong>
-            <small style="color: #9ca3af;">${message}</small>
+            <strong style="display: block;">📬 New message from ${studentName}</strong>
+            <small style="color: #9ca3af;">Ticket: ${ticketNumber} - ${subject.substring(0, 40)}</small>
         </div>
         <i class="fas fa-times-circle" style="color: #6b7280; cursor: pointer;" onclick="event.stopPropagation(); this.closest('.notification-toast').remove();"></i>
     `;
@@ -5592,11 +5583,11 @@ function showNotificationToast(title, message, ticketId) {
     }, 8000);
 }
 
-// Show browser notification
-function showBrowserNotification(title, body, ticketId) {
+// Show browser notification with sender info
+function showBrowserNotification(studentName, ticketNumber, subject, ticketId) {
     if (notificationPermissionGranted && document.hidden) {
-        const notification = new Notification(title, {
-            body: body,
+        const notification = new Notification(`📬 New message from ${studentName}`, {
+            body: `Ticket: ${ticketNumber}\nSubject: ${subject.substring(0, 60)}`,
             icon: "https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png",
             tag: ticketId,
             requireInteraction: true
@@ -5616,55 +5607,106 @@ function showBrowserNotification(title, body, ticketId) {
 window.testNotificationSystem = function() {
     playBellSound();
     animateBell();
-    showNotificationToast('🔔 Test Notification', 'This is what you will see when new messages arrive!', null);
-    showBrowserNotification('🔔 Test Notification', 'Your notification system is working!', null);
-    showAdminToast('🔔 Test completed! You heard the bell sound.', 'success');
+    showNotificationToast('Test Student', 'TICKET-001', 'This is a test notification', null);
+    showBrowserNotification('Test Student', 'TICKET-001', 'This is a test notification', null);
+    showAdminToast('🔔 Test completed! You heard the bell and saw the notification.', 'success');
 };
 
-// Check for new messages
+// Check for new messages with sender info
 async function checkForNewMessages() {
     const supabase = getSupabaseClient();
     if (!supabase) return;
     
     try {
-        const { data: recentTickets, error } = await supabase
+        // Get all tickets
+        const { data: tickets, error } = await supabase
             .from('support_tickets')
             .select('id, ticket_number, subject, student_id, updated_at')
-            .gte('updated_at', new Date(Date.now() - 30000).toISOString())
             .order('updated_at', { ascending: false });
         
-        if (recentTickets && recentTickets.length > 0 && currentAdminTicketId !== recentTickets[0]?.id) {
-            const studentIds = recentTickets.map(t => t.student_id);
-            const { data: students } = await supabase
-                .from('consolidated_user_profiles_table')
-                .select('id, full_name')
-                .in('id', studentIds);
+        if (error) throw error;
+        
+        let hasNewMessages = false;
+        let newCount = 0;
+        
+        for (const ticket of tickets) {
+            // Get the latest message in this ticket
+            const { data: latestMessage } = await supabase
+                .from('ticket_conversations')
+                .select('*, author:author_id(id, full_name)')
+                .eq('ticket_id', ticket.id)
+                .order('created_at', { ascending: false })
+                .limit(1);
             
-            const studentMap = {};
-            if (students) {
-                students.forEach(s => { studentMap[s.id] = s.full_name; });
-            }
-            
-            for (const ticket of recentTickets) {
-                const studentName = studentMap[ticket.student_id] || 'A student';
-                playBellSound();
-                animateBell();
-                showNotificationToast(
-                    `📬 New message from ${studentName}`,
-                    `Ticket: ${ticket.ticket_number} - ${ticket.subject.substring(0, 50)}`,
-                    ticket.id
-                );
-                showBrowserNotification(
-                    `New message from ${studentName}`,
-                    `Ticket: ${ticket.ticket_number} - ${ticket.subject.substring(0, 50)}`,
-                    ticket.id
-                );
+            if (latestMessage && latestMessage.length > 0) {
+                const msg = latestMessage[0];
+                const isFromStudent = msg.author_id === ticket.student_id;
+                const lastSeen = lastMessageTimestamps[ticket.id] || ticket.updated_at;
+                const isNew = new Date(msg.created_at) > new Date(lastSeen);
                 
-                const currentBadge = parseInt(document.getElementById('bellNotificationBadge')?.textContent || '0');
-                updateBellBadge(currentBadge + 1);
+                // Only notify if message is from student and new, and not currently viewing
+                if (isFromStudent && isNew && currentAdminTicketId !== ticket.id) {
+                    // Get student name
+                    let studentName = 'Student';
+                    if (adminStudentMap[ticket.student_id]) {
+                        studentName = adminStudentMap[ticket.student_id].full_name;
+                    } else {
+                        const { data: student } = await supabase
+                            .from('consolidated_user_profiles_table')
+                            .select('full_name')
+                            .eq('id', ticket.student_id)
+                            .single();
+                        if (student) studentName = student.full_name;
+                    }
+                    
+                    // Increment unread count
+                    unreadCounts[ticket.id] = (unreadCounts[ticket.id] || 0) + 1;
+                    newCount++;
+                    hasNewMessages = true;
+                    
+                    // Show notifications
+                    playBellSound();
+                    animateBell();
+                    showNotificationToast(studentName, ticket.ticket_number, ticket.subject, ticket.id);
+                    showBrowserNotification(studentName, ticket.ticket_number, ticket.subject, ticket.id);
+                    
+                    console.log(`🔔 New message from ${studentName} on ticket ${ticket.ticket_number}`);
+                }
+                
+                // Update last seen timestamp
+                lastMessageTimestamps[ticket.id] = msg.created_at;
+            }
+        }
+        
+        if (hasNewMessages) {
+            // Update badge with total unread count
+            const totalUnread = Object.values(unreadCounts).reduce((a, b) => a + b, 0);
+            updateBellBadge(totalUnread);
+            
+            // Refresh ticket list to show "New" badges
+            await loadAdminTickets();
+            
+            // Also update sidebar badge
+            const sidebarBadge = document.getElementById('ticketsUnreadBadge');
+            if (sidebarBadge) {
+                if (totalUnread > 0) {
+                    sidebarBadge.textContent = totalUnread;
+                    sidebarBadge.style.display = 'inline-block';
+                } else {
+                    sidebarBadge.style.display = 'none';
+                }
             }
             
-            await loadAdminTickets();
+            // Update page title
+            if (totalUnread > 0) {
+                document.title = `(${totalUnread}) NCHSM Admin - New Messages`;
+                setTimeout(() => {
+                    const currentTotal = Object.values(unreadCounts).reduce((a, b) => a + b, 0);
+                    if (currentTotal === 0) {
+                        document.title = 'NCHSM Super Admin Dashboard';
+                    }
+                }, 5000);
+            }
         }
         
     } catch (err) {
@@ -5672,12 +5714,34 @@ async function checkForNewMessages() {
     }
 }
 
+// Mark ticket as read when viewed
+function markTicketAsRead(ticketId) {
+    if (unreadCounts[ticketId]) {
+        delete unreadCounts[ticketId];
+        const totalUnread = Object.values(unreadCounts).reduce((a, b) => a + b, 0);
+        updateBellBadge(totalUnread);
+        
+        // Update sidebar badge
+        const sidebarBadge = document.getElementById('ticketsUnreadBadge');
+        if (sidebarBadge) {
+            if (totalUnread > 0) {
+                sidebarBadge.textContent = totalUnread;
+                sidebarBadge.style.display = 'inline-block';
+            } else {
+                sidebarBadge.style.display = 'none';
+                document.title = 'NCHSM Super Admin Dashboard';
+            }
+        }
+    }
+    lastMessageTimestamps[ticketId] = new Date().toISOString();
+}
+
 // Start periodic checking
 function startNotificationChecking() {
     if (notificationCheckInterval) clearInterval(notificationCheckInterval);
     notificationCheckInterval = setInterval(() => {
         checkForNewMessages();
-    }, 15000);
+    }, 10000); // Check every 10 seconds
 }
 
 // Initialize notification system
@@ -5745,6 +5809,7 @@ async function loadAdminTickets() {
             return;
         }
         
+        // Get student profiles
         const { data: allStudents } = await supabase
             .from('consolidated_user_profiles_table')
             .select('id, user_id, email, full_name, program, intake_year, role');
@@ -5761,6 +5826,7 @@ async function loadAdminTickets() {
         
         adminAllTickets = tickets;
         
+        // Initialize timestamps
         for (const ticket of tickets) {
             if (!lastMessageTimestamps[ticket.id]) {
                 lastMessageTimestamps[ticket.id] = ticket.updated_at || ticket.created_at;
@@ -5777,7 +5843,7 @@ async function loadAdminTickets() {
         
     } catch (err) {
         console.error('❌ Error:', err);
-        tbody.innerHTML = `<td><td colspan="10" style="padding: 40px; text-align: center; color: red;">Error: ${err.message}<\/td><\/tr>`;
+        tbody.innerHTML = `<tr><td colspan="10" style="padding: 40px; text-align: center; color: red;">Error: ${err.message}<\/td><\/tr>`;
     }
 }
 
@@ -5816,6 +5882,7 @@ function renderAdminTicketsTable(tickets) {
         const createdDate = new Date(ticket.created_at).toLocaleString();
         const updatedDate = new Date(ticket.updated_at).toLocaleString();
         const hasUnread = unreadCounts[ticket.id] > 0;
+        const unreadCount = unreadCounts[ticket.id] || 0;
         
         let statusClass = 'badge-info';
         if (ticket.status === 'open') statusClass = 'badge-warning';
@@ -5833,7 +5900,7 @@ function renderAdminTicketsTable(tickets) {
             <tr style="border-bottom: 1px solid #e5e7eb; cursor: pointer; ${hasUnread ? 'background: #fef3c7;' : ''}" onclick="viewAdminTicket('${ticket.id}')">
                 <td style="padding: 12px;">
                     <strong>${escapeHtml(ticket.ticket_number || 'N/A')}</strong>
-                    ${hasUnread ? '<span style="background: #ef4444; color: white; border-radius: 10px; padding: 2px 6px; font-size: 10px; margin-left: 5px;">New</span>' : ''}
+                    ${hasUnread ? `<span style="background: #ef4444; color: white; border-radius: 10px; padding: 2px 6px; font-size: 10px; margin-left: 5px;">${unreadCount} new</span>` : ''}
                 <\/td>
                 <td style="padding: 12px;">
                     ${escapeHtml(student.full_name || 'Unknown')}<br>
@@ -5861,11 +5928,7 @@ async function viewAdminTicket(ticketId) {
     console.log('👁️ Viewing ticket:', ticketId);
     
     // Mark as read
-    if (unreadCounts[ticketId]) {
-        delete unreadCounts[ticketId];
-        updateBellBadge(Object.values(unreadCounts).reduce((a, b) => a + b, 0));
-    }
-    lastMessageTimestamps[ticketId] = new Date().toISOString();
+    markTicketAsRead(ticketId);
     
     const supabase = getSupabaseClient();
     if (!supabase) {
@@ -5971,10 +6034,10 @@ async function viewAdminTicket(ticketId) {
                 </div>
                 
                 <div style="padding: 12px 20px; background: #f8f9fa; border-bottom: 1px solid #ddd; display: flex; gap: 20px; flex-wrap: wrap;">
-                    <div><strong>Student:</strong> ${escapeHtml(student.full_name)}</div>
-                    <div><strong>Email:</strong> ${escapeHtml(student.email)}</div>
-                    <div><strong>Program:</strong> ${escapeHtml(student.program)} (${escapeHtml(student.intake_year)})</div>
-                    <div><strong>Status:</strong> <span id="modalTicketStatus" class="status-badge ${ticket.status}">${ticket.status}</span></div>
+                    <div><strong>👤 Student:</strong> ${escapeHtml(student.full_name)}</div>
+                    <div><strong>📧 Email:</strong> ${escapeHtml(student.email)}</div>
+                    <div><strong>🎓 Program:</strong> ${escapeHtml(student.program)} (${escapeHtml(student.intake_year)})</div>
+                    <div><strong>📌 Status:</strong> <span id="modalTicketStatus" class="status-badge ${ticket.status}">${ticket.status}</span></div>
                 </div>
                 
                 <div style="padding: 12px 20px; background: #fef3c7;">
@@ -5991,12 +6054,14 @@ async function viewAdminTicket(ticketId) {
                     <div style="display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap;">
                         <select id="adminReplyStatusSelect" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
                             <option value="${ticket.status}">Current: ${ticket.status}</option>
-                            <option value="open">Open</option>
-                            <option value="in_progress">In Progress</option>
-                            <option value="closed">Closed</option>
-                            <option value="resolved">Resolved</option>
+                            <option value="open">🟢 Open</option>
+                            <option value="in_progress">🟡 In Progress</option>
+                            <option value="closed">🔴 Closed</option>
+                            <option value="resolved">✅ Resolved</option>
                         </select>
-                        <label><input type="checkbox" id="adminReplyInternalCheckbox"> 🔒 Internal note</label>
+                        <label style="display: flex; align-items: center; gap: 5px;">
+                            <input type="checkbox" id="adminReplyInternalCheckbox"> 🔒 Internal note
+                        </label>
                         <button onclick="sendAdminChatReply()" style="background: #4C1D95; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer;">
                             <i class="fas fa-paper-plane"></i> Send Reply
                         </button>
@@ -6005,7 +6070,7 @@ async function viewAdminTicket(ticketId) {
                         </button>
                     </div>
                     <p style="margin-top: 8px; font-size: 11px; color: #6b7280;">
-                        Replying as: <strong>${escapeHtml(adminName)}</strong>
+                        <i class="fas fa-user-circle"></i> Replying as: <strong>${escapeHtml(adminName)}</strong>
                     </p>
                 </div>
             </div>
@@ -6031,7 +6096,7 @@ async function viewAdminTicket(ticketId) {
 
 function renderChatMessages(conversations, authorNames) {
     if (!conversations || conversations.length === 0) {
-        return '<div style="text-align: center; padding: 40px; color: #6b7280;">No messages yet. Start the conversation!</div>';
+        return '<div style="text-align: center; padding: 40px; color: #6b7280;">💬 No messages yet. Start the conversation!</div>';
     }
     
     let html = '';
@@ -6049,7 +6114,7 @@ function renderChatMessages(conversations, authorNames) {
         
         const authorName = authorNames[conv.author_id] || 'Unknown';
         const isInternal = conv.is_internal;
-        const isAdmin = authorName.includes('Admin') || authorName.includes('Super');
+        const isAdmin = authorName.includes('Admin') || authorName.includes('Super') || authorName === 'Director';
         
         if (isInternal) {
             html += `
@@ -6204,11 +6269,7 @@ async function sendAdminChatReply() {
         await refreshAdminConversation();
         await loadAdminTickets();
         
-        // Play notification for new message
-        playBellSound();
-        animateBell();
-        
-        alert(isInternal ? 'Internal note added!' : 'Reply sent!');
+        showAdminToast(isInternal ? '✅ Internal note added!' : '✅ Reply sent!', 'success');
         
     } catch (error) {
         console.error('Error:', error);
@@ -6245,7 +6306,7 @@ function showAdminToast(message, type = 'info') {
         animation: slideIn 0.3s ease;
         box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     `;
-    toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-info-circle'}"></i> ${message}`;
+    toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'}"></i> ${message}`;
     document.body.appendChild(toast);
     
     setTimeout(() => {
@@ -6317,6 +6378,8 @@ function exportAdminTicketsToCSV() {
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
     initNotificationSystem();
+    // Check for messages immediately
+    setTimeout(() => checkForNewMessages(), 2000);
 });
 
 // Global exports
@@ -6329,6 +6392,8 @@ window.closeAdminTicketChatModal = closeAdminTicketChatModal;
 window.refreshAdminConversation = refreshAdminConversation;
 window.exportAdminTicketsToCSV = exportAdminTicketsToCSV;
 window.checkForNewMessages = checkForNewMessages;
+window.requestNotificationPermission = requestNotificationPermission;
+window.testNotificationSystem = testNotificationSystem;
 /*******************************************************
  * 20. INITIALIZATION & EVENT LISTENERS
  *******************************************************/
