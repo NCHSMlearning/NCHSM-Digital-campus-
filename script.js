@@ -5622,6 +5622,15 @@ async function viewAdminTicket(ticketId) {
         return;
     }
     
+    // Debug admin ID
+    let adminDebugId = null;
+    if (window.currentUserProfile) {
+        adminDebugId = window.currentUserProfile.user_id || window.currentUserProfile.id;
+    } else if (window.currentUserId) {
+        adminDebugId = window.currentUserId;
+    }
+    console.log('🔑 Current admin ID for reply:', adminDebugId);
+    
     // Get full ticket data
     const { data: ticket, error } = await supabase
         .from('support_tickets')
@@ -5647,9 +5656,6 @@ async function viewAdminTicket(ticketId) {
         .select('*, author:author_id(full_name, role)')
         .eq('ticket_id', ticketId)
         .order('created_at', { ascending: true });
-    
-    // Get current admin ID from the global variable
-    const adminId = window.currentUserProfile?.user_id || window.currentUserId;
     
     // Build modal HTML
     const modalHtml = `
@@ -5702,6 +5708,9 @@ async function viewAdminTicket(ticketId) {
                             <i class="fas fa-paper-plane"></i> Send Reply
                         </button>
                     </div>
+                    <p style="margin-top: 10px; font-size: 12px; color: #6b7280;">
+                        <i class="fas fa-info-circle"></i> You are replying as: ${adminDebugId ? adminDebugId.substring(0, 8) + '...' : 'Unknown (check console)'}
+                    </p>
                 </div>
             </div>
         </div>
@@ -5733,14 +5742,35 @@ async function sendAdminReply(ticketId) {
     
     const supabase = getSupabaseClient();
     
-    // Get admin ID from the global variable set in initSession
-    const adminId = window.currentUserProfile?.user_id || window.currentUserId;
+    // Try multiple ways to get admin ID
+    let adminId = null;
+    
+    // Method 1: Check currentUserProfile from your app
+    if (window.currentUserProfile && window.currentUserProfile.user_id) {
+        adminId = window.currentUserProfile.user_id;
+    }
+    // Method 2: Check currentUserId
+    else if (window.currentUserId) {
+        adminId = window.currentUserId;
+    }
+    // Method 3: Check from sb auth
+    else {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+            adminId = user.id;
+        }
+    }
     
     if (!adminId) {
-        alert('Not authenticated. Please refresh the page.');
-        console.error('No admin ID found. window.currentUserProfile:', window.currentUserProfile);
+        console.error('No admin ID found. Available sources:', {
+            currentUserProfile: window.currentUserProfile,
+            currentUserId: window.currentUserId
+        });
+        alert('Not authenticated. Please refresh the page and try again.');
         return;
     }
+    
+    console.log('✅ Admin ID found:', adminId);
     
     try {
         // Send reply
@@ -5757,7 +5787,7 @@ async function sendAdminReply(ticketId) {
         if (replyError) throw replyError;
         
         // Update status if changed
-        if (newStatus && newStatus !== ticket.status) {
+        if (newStatus && newStatus !== 'none') {
             await supabase
                 .from('support_tickets')
                 .update({ 
