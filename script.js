@@ -5335,42 +5335,47 @@ function updateAdminTicketSummary() {
     const closed = adminAllTickets.filter(t => t.status === 'closed' || t.status === 'resolved').length;
     const urgent = adminAllTickets.filter(t => t.priority === 'urgent').length;
     
-    document.getElementById('admin_open_tickets').textContent = open;
-    document.getElementById('admin_progress_tickets').textContent = inProgress;
-    document.getElementById('admin_closed_tickets').textContent = closed;
-    document.getElementById('admin_urgent_tickets').textContent = urgent;
+    const openEl = document.getElementById('admin_open_tickets');
+    const progressEl = document.getElementById('admin_progress_tickets');
+    const closedEl = document.getElementById('admin_closed_tickets');
+    const urgentEl = document.getElementById('admin_urgent_tickets');
+    
+    if (openEl) openEl.textContent = open;
+    if (progressEl) progressEl.textContent = inProgress;
+    if (closedEl) closedEl.textContent = closed;
+    if (urgentEl) urgentEl.textContent = urgent;
 }
 
 // Filter and render tickets
 function filterAdminTickets() {
-    adminCurrentFilter.status = document.getElementById('admin_ticket_status_filter')?.value || 'all';
-    adminCurrentFilter.priority = document.getElementById('admin_ticket_priority_filter')?.value || 'all';
-    adminCurrentFilter.category = document.getElementById('admin_ticket_category_filter')?.value || 'all';
-    adminCurrentFilter.search = document.getElementById('admin_ticket_search')?.value.toLowerCase() || '';
+    const statusFilter = document.getElementById('admin_ticket_status_filter')?.value || 'all';
+    const priorityFilter = document.getElementById('admin_ticket_priority_filter')?.value || 'all';
+    const categoryFilter = document.getElementById('admin_ticket_category_filter')?.value || 'all';
+    const searchTerm = document.getElementById('admin_ticket_search')?.value.toLowerCase() || '';
     
     let filtered = [...adminAllTickets];
     
-    if (adminCurrentFilter.status !== 'all') {
-        if (adminCurrentFilter.status === 'closed') {
+    if (statusFilter !== 'all') {
+        if (statusFilter === 'closed') {
             filtered = filtered.filter(t => t.status === 'closed' || t.status === 'resolved');
         } else {
-            filtered = filtered.filter(t => t.status === adminCurrentFilter.status);
+            filtered = filtered.filter(t => t.status === statusFilter);
         }
     }
     
-    if (adminCurrentFilter.priority !== 'all') {
-        filtered = filtered.filter(t => t.priority === adminCurrentFilter.priority);
+    if (priorityFilter !== 'all') {
+        filtered = filtered.filter(t => t.priority === priorityFilter);
     }
     
-    if (adminCurrentFilter.category !== 'all') {
-        filtered = filtered.filter(t => t.category === adminCurrentFilter.category);
+    if (categoryFilter !== 'all') {
+        filtered = filtered.filter(t => t.category === categoryFilter);
     }
     
-    if (adminCurrentFilter.search) {
+    if (searchTerm) {
         filtered = filtered.filter(t => 
-            (t.ticket_number || '').toLowerCase().includes(adminCurrentFilter.search) ||
-            (t.subject || '').toLowerCase().includes(adminCurrentFilter.search) ||
-            (t.student?.full_name || '').toLowerCase().includes(adminCurrentFilter.search)
+            (t.ticket_number || '').toLowerCase().includes(searchTerm) ||
+            (t.subject || '').toLowerCase().includes(searchTerm) ||
+            (t.student?.full_name || '').toLowerCase().includes(searchTerm)
         );
     }
     
@@ -5382,6 +5387,8 @@ function renderAdminTickets(tickets = null) {
     const tbody = document.getElementById('admin-tickets-body');
     const ticketsToRender = tickets || adminAllTickets;
     
+    if (!tbody) return;
+    
     if (!ticketsToRender.length) {
         tbody.innerHTML = '<tr><td colspan="10">No tickets found</td></tr>';
         return;
@@ -5389,13 +5396,13 @@ function renderAdminTickets(tickets = null) {
     
     tbody.innerHTML = ticketsToRender.map(ticket => `
         <tr>
-            <td><strong>${ticket.ticket_number || 'N/A'}</strong></td>
+            <td><strong>${escapeHtml(ticket.ticket_number || 'N/A')}</strong></td>
             <td>${escapeHtml(ticket.student?.full_name || 'Unknown')}<br>
-                <small>${escapeHtml(ticket.student?.program || '')} ${ticket.student?.intake || ''}</small>
-            </td>
+                <small>${escapeHtml(ticket.student?.program || '')} ${escapeHtml(ticket.student?.intake || '')}</small>
+             </td>
             <td>${escapeHtml(ticket.student?.program || '-')}</td>
             <td>${escapeHtml(ticket.subject)}</td>
-            <td><span class="badge badge-info">${ticket.category}</span></td>
+            <td><span class="badge badge-info">${escapeHtml(ticket.category)}</span></td>
             <td><span class="priority-badge ${ticket.priority}">${ticket.priority}</span></td>
             <td><span class="status-badge ${ticket.status}">${ticket.status.replace('_', ' ')}</span></td>
             <td>${formatDateShort(ticket.created_at)}</td>
@@ -5404,7 +5411,7 @@ function renderAdminTickets(tickets = null) {
                 <button onclick="viewAdminTicket('${ticket.id}')" class="btn-view">
                     <i class="fas fa-eye"></i> View
                 </button>
-            </td>
+             </td>
         </tr>
     `).join('');
 }
@@ -5414,19 +5421,24 @@ async function viewAdminTicket(ticketId) {
     const ticket = adminAllTickets.find(t => t.id === ticketId);
     if (!ticket) return;
     
-    document.getElementById('adminTicketTitle').textContent = `Ticket: ${ticket.ticket_number} - ${ticket.subject}`;
-    document.getElementById('adminTicketDetails').innerHTML = `
-        <div style="display: grid; gap: 10px;">
-            <p><strong>Student:</strong> ${escapeHtml(ticket.student?.full_name || 'Unknown')}</p>
-            <p><strong>Email:</strong> ${escapeHtml(ticket.student?.email || '-')}</p>
-            <p><strong>Program:</strong> ${escapeHtml(ticket.student?.program || '-')} | Intake: ${escapeHtml(ticket.student?.intake || '-')}</p>
-            <p><strong>Category:</strong> ${ticket.category} | Priority: ${ticket.priority}</p>
-            <p><strong>Status:</strong> <span class="status-badge ${ticket.status}">${ticket.status}</span></p>
-            <p><strong>Created:</strong> ${new Date(ticket.created_at).toLocaleString()}</p>
-            <p><strong>Description:</strong></p>
-            <p style="background: #f3f4f6; padding: 10px; border-radius: 6px;">${escapeHtml(ticket.description)}</p>
-        </div>
-    `;
+    const titleEl = document.getElementById('adminTicketTitle');
+    const detailsEl = document.getElementById('adminTicketDetails');
+    
+    if (titleEl) titleEl.textContent = `Ticket: ${ticket.ticket_number} - ${ticket.subject}`;
+    if (detailsEl) {
+        detailsEl.innerHTML = `
+            <div style="display: grid; gap: 10px;">
+                <p><strong>Student:</strong> ${escapeHtml(ticket.student?.full_name || 'Unknown')}</p>
+                <p><strong>Email:</strong> ${escapeHtml(ticket.student?.email || '-')}</p>
+                <p><strong>Program:</strong> ${escapeHtml(ticket.student?.program || '-')} | Intake: ${escapeHtml(ticket.student?.intake || '-')}</p>
+                <p><strong>Category:</strong> ${escapeHtml(ticket.category)} | Priority: ${escapeHtml(ticket.priority)}</p>
+                <p><strong>Status:</strong> <span class="status-badge ${ticket.status}">${ticket.status}</span></p>
+                <p><strong>Created:</strong> ${new Date(ticket.created_at).toLocaleString()}</p>
+                <p><strong>Description:</strong></p>
+                <p style="background: #f3f4f6; padding: 10px; border-radius: 6px;">${escapeHtml(ticket.description)}</p>
+            </div>
+        `;
+    }
     
     // Load conversations
     await loadAdminConversations(ticketId);
@@ -5440,11 +5452,15 @@ async function viewAdminTicket(ticketId) {
         statusSelect.value = ticket.status === 'resolved' ? 'resolved' : ticket.status;
     }
     
-    document.getElementById('adminTicketModal').style.display = 'flex';
+    const modal = document.getElementById('adminTicketModal');
+    if (modal) modal.style.display = 'flex';
 }
 
 // Load conversations for admin view
 async function loadAdminConversations(ticketId) {
+    const container = document.getElementById('adminConversationsList');
+    if (!container) return;
+    
     const { data: conversations, error } = await window.db.supabase
         .from('ticket_conversations')
         .select(`
@@ -5455,16 +5471,16 @@ async function loadAdminConversations(ticketId) {
         .order('created_at', { ascending: true });
     
     if (error) {
-        document.getElementById('adminConversationsList').innerHTML = '<p>Error loading conversations</p>';
+        container.innerHTML = '<p>Error loading conversations</p>';
         return;
     }
     
-    if (!conversations.length) {
-        document.getElementById('adminConversationsList').innerHTML = '<p>No conversations yet.</p>';
+    if (!conversations || !conversations.length) {
+        container.innerHTML = '<p>No conversations yet.</p>';
         return;
     }
     
-    document.getElementById('adminConversationsList').innerHTML = conversations.map(conv => `
+    container.innerHTML = conversations.map(conv => `
         <div style="background: white; padding: 12px; margin-bottom: 10px; border-radius: 8px; border-left: 4px solid ${conv.is_internal ? '#f59e0b' : '#3b82f6'}">
             <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
                 <strong>${escapeHtml(conv.author?.full_name || 'Unknown')}</strong>
@@ -5494,7 +5510,7 @@ async function sendAdminReply() {
     
     const adminId = window.db?.currentUserId;
     
-    const { data, error } = await window.db.supabase
+    const { error } = await window.db.supabase
         .from('ticket_conversations')
         .insert([{
             ticket_id: ticketId,
@@ -5509,14 +5525,16 @@ async function sendAdminReply() {
         return;
     }
     
-    // Update ticket status if needed
+    // Update ticket updated_at
     await window.db.supabase
         .from('support_tickets')
-        .update({ updated_at: new Date() })
+        .update({ updated_at: new Date().toISOString() })
         .eq('id', ticketId);
     
     // Clear and reload
-    document.getElementById('adminReplyMessage').value = '';
+    const replyInput = document.getElementById('adminReplyMessage');
+    if (replyInput) replyInput.value = '';
+    
     await loadAdminConversations(ticketId);
     await loadAdminTickets();
     
@@ -5530,9 +5548,13 @@ async function updateAdminTicketStatus() {
     
     if (!newStatus || newStatus === 'none' || !ticketId) return;
     
-    const updateData = { status: newStatus, updated_at: new Date() };
-    if (newStatus === 'closed') {
-        updateData.closed_at = new Date();
+    const updateData = { 
+        status: newStatus, 
+        updated_at: new Date().toISOString() 
+    };
+    
+    if (newStatus === 'closed' || newStatus === 'resolved') {
+        updateData.closed_at = new Date().toISOString();
     }
     
     const { error } = await window.db.supabase
@@ -5551,10 +5573,15 @@ async function updateAdminTicketStatus() {
 
 // Close admin ticket modal
 function closeAdminTicketModal() {
-    document.getElementById('adminTicketModal').style.display = 'none';
+    const modal = document.getElementById('adminTicketModal');
+    if (modal) modal.style.display = 'none';
     window.currentAdminTicketId = null;
-    document.getElementById('adminReplyMessage').value = '';
-    document.getElementById('adminReplyInternal').checked = false;
+    
+    const replyInput = document.getElementById('adminReplyMessage');
+    const internalCheck = document.getElementById('adminReplyInternal');
+    
+    if (replyInput) replyInput.value = '';
+    if (internalCheck) internalCheck.checked = false;
 }
 
 // Export tickets to CSV
@@ -5567,7 +5594,7 @@ function exportAdminTicketsToCSV() {
     
     let csv = 'Ticket #,Student,Program,Subject,Category,Priority,Status,Created,Updated\n';
     tickets.forEach(t => {
-        csv += `"${t.ticket_number || ''}","${t.student?.full_name || ''}","${t.student?.program || ''}","${t.subject.replace(/"/g, '""')}","${t.category}","${t.priority}","${t.status}","${t.created_at}","${t.updated_at}"\n`;
+        csv += `"${t.ticket_number || ''}","${t.student?.full_name || ''}","${t.student?.program || ''}","${(t.subject || '').replace(/"/g, '""')}","${t.category || ''}","${t.priority || ''}","${t.status || ''}","${t.created_at || ''}","${t.updated_at || ''}"\n`;
     });
     
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -5581,43 +5608,17 @@ function exportAdminTicketsToCSV() {
     showToast('Export complete', 'success');
 }
 
-// Helper functions
-function escapeHtml(str) {
-    if (!str) return '';
-    return str.replace(/[&<>]/g, function(m) {
-        if (m === '&') return '&amp;';
-        if (m === '<') return '&lt;';
-        if (m === '>') return '&gt;';
-        return m;
-    });
-}
-
+// Format date helper
 function formatDateShort(dateStr) {
     if (!dateStr) return 'N/A';
     const date = new Date(dateStr);
     const now = new Date();
     const diff = Math.floor((now - date) / (1000 * 60 * 60));
+    if (diff < 1) return 'Just now';
     if (diff < 24) return `${diff}h ago`;
     if (diff < 48) return 'Yesterday';
     return date.toLocaleDateString();
 }
-
-function showToast(message, type) {
-    // Use existing toast or create one
-    const toast = document.createElement('div');
-    toast.className = `toast toast-${type}`;
-    toast.innerHTML = `<span>${message}</span>`;
-    toast.style.cssText = `position: fixed; bottom: 20px; right: 20px; padding: 12px 20px; background: ${type === 'error' ? '#ef4444' : type === 'success' ? '#10b981' : '#3b82f6'}; color: white; border-radius: 8px; z-index: 9999;`;
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 3000);
-}
-
-// Add to tab navigation
-document.addEventListener('tabChanged', function(e) {
-    if (e.detail.tabId === 'support-tickets') {
-        loadAdminTickets();
-    }
-});
 
 // Export functions for global use
 window.loadAdminTickets = loadAdminTickets;
