@@ -5452,8 +5452,7 @@ async function logout() {
     }
 }
 // ============================================
-// ADMIN SUPPORT TICKETS - WITH REAL-TIME NOTIFICATIONS
-// Complete working version with tawk.to style chat
+// ADMIN SUPPORT TICKETS - COMPLETE WITH BELL NOTIFICATIONS
 // ============================================
 
 let adminAllTickets = [];
@@ -5464,43 +5463,137 @@ let currentAdminTicketStatus = null;
 let currentAdminTicket = null;
 let currentAdminProfileId = null;
 
-// ========== NOTIFICATION VARIABLES ==========
-let lastMessageTimestamps = {};  // Track last message time per ticket
-let unreadCounts = {};           // Track unread counts per ticket
+// Notification variables
+let lastMessageTimestamps = {};
+let unreadCounts = {};
 let notificationSound = null;
 let notificationPermissionGranted = false;
+let notificationCheckInterval = null;
 
-// Initialize notifications
-function initNotifications() {
-    // Request notification permission on user interaction
-    document.addEventListener('click', function requestNotificationPermission() {
-        if (Notification.permission === "default") {
-            Notification.requestPermission().then(perm => {
-                notificationPermissionGranted = perm === "granted";
-            });
-        }
-        document.removeEventListener('click', requestNotificationPermission);
-    });
-    
-    // Initialize sound
+// ============================================
+// BELL NOTIFICATION SYSTEM
+// ============================================
+
+// Request notification permission
+window.requestNotificationPermission = function() {
+    if ("Notification" in window) {
+        Notification.requestPermission().then(permission => {
+            notificationPermissionGranted = permission === "granted";
+            if (notificationPermissionGranted) {
+                showAdminToast('✅ Notifications enabled! You will receive popup alerts.', 'success');
+                // Test notification
+                setTimeout(() => {
+                    new Notification("✅ Notifications Active", {
+                        body: "You will now receive alerts for new messages",
+                        icon: "https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png"
+                    });
+                }, 500);
+            } else {
+                showAdminToast('⚠️ Notification permission denied. You can enable it in browser settings.', 'warning');
+            }
+        });
+    } else {
+        showAdminToast('❌ Your browser does not support notifications', 'error');
+    }
+};
+
+// Play bell sound using Web Audio API
+function playBellSound() {
     try {
-        notificationSound = new Audio('https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3');
-        notificationSound.volume = 0.3;
-    } catch(e) { console.log('Audio not supported'); }
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const now = audioContext.currentTime;
+        
+        if (audioContext.state === 'suspended') {
+            audioContext.resume();
+        }
+        
+        // Main bell tone
+        const osc = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+        osc.connect(gain);
+        gain.connect(audioContext.destination);
+        osc.frequency.value = 880;
+        gain.gain.value = 0.3;
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 1);
+        osc.start();
+        osc.stop(now + 0.8);
+        
+        // Harmonic for richer sound
+        const osc2 = audioContext.createOscillator();
+        const gain2 = audioContext.createGain();
+        osc2.connect(gain2);
+        gain2.connect(audioContext.destination);
+        osc2.frequency.value = 1760;
+        gain2.gain.value = 0.15;
+        gain2.gain.exponentialRampToValueAtTime(0.0001, now + 0.8);
+        osc2.start();
+        osc2.stop(now + 0.8);
+        
+    } catch(e) {
+        console.log('Web Audio not supported');
+        // Fallback
+        try {
+            const audio = new Audio('https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3');
+            audio.volume = 0.3;
+            audio.play().catch(() => {});
+        } catch(e2) {}
+    }
 }
 
-// Play notification sound
-function playNotificationSound() {
-    try {
-        if (notificationSound) {
-            notificationSound.currentTime = 0;
-            notificationSound.play().catch(e => console.log('Sound play failed'));
+// Animate bell icon
+function animateBell() {
+    const bell = document.getElementById('notificationBell');
+    if (bell) {
+        bell.classList.add('bell-ring');
+        setTimeout(() => {
+            bell.classList.remove('bell-ring');
+        }, 500);
+    }
+}
+
+// Update bell badge count
+function updateBellBadge(count) {
+    const badge = document.getElementById('bellNotificationBadge');
+    if (badge) {
+        if (count > 0) {
+            badge.textContent = count > 99 ? '99+' : count;
+            badge.style.display = 'inline-block';
+        } else {
+            badge.style.display = 'none';
         }
-    } catch(e) {}
+    }
+}
+
+// Show toast notification
+function showNotificationToast(title, message, ticketId) {
+    const existingToast = document.querySelector('.notification-toast');
+    if (existingToast) existingToast.remove();
+    
+    const toast = document.createElement('div');
+    toast.className = 'notification-toast';
+    toast.onclick = () => {
+        if (ticketId) viewAdminTicket(ticketId);
+        toast.remove();
+    };
+    toast.innerHTML = `
+        <div style="background: #ef4444; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
+            <i class="fas fa-bell" style="color: white; font-size: 20px;"></i>
+        </div>
+        <div style="flex: 1;">
+            <strong style="display: block;">${title}</strong>
+            <small style="color: #9ca3af;">${message}</small>
+        </div>
+        <i class="fas fa-times-circle" style="color: #6b7280; cursor: pointer;" onclick="event.stopPropagation(); this.closest('.notification-toast').remove();"></i>
+    `;
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        if (toast && toast.remove) toast.remove();
+    }, 8000);
 }
 
 // Show browser notification
-function showNotification(title, body, ticketId) {
+function showBrowserNotification(title, body, ticketId) {
     if (notificationPermissionGranted && document.hidden) {
         const notification = new Notification(title, {
             body: body,
@@ -5511,145 +5604,102 @@ function showNotification(title, body, ticketId) {
         
         notification.onclick = function() {
             window.focus();
-            if (ticketId) {
-                viewAdminTicket(ticketId);
-            }
+            if (ticketId) viewAdminTicket(ticketId);
             notification.close();
         };
         
         setTimeout(() => notification.close(), 10000);
     }
-    
-    // Also show toast for visible page
-    if (!document.hidden) {
-        showAdminToast('🔔 ' + title, 'info');
-    }
-    
-    playNotificationSound();
 }
 
-// Update unread badge in sidebar
-function updateSidebarUnreadBadge() {
-    const totalUnread = Object.values(unreadCounts).reduce((a, b) => a + b, 0);
-    let badge = document.getElementById('ticketsUnreadBadge');
-    
-    if (!badge) {
-        badge = document.createElement('span');
-        badge.id = 'ticketsUnreadBadge';
-        badge.style.cssText = `
-            background: #ef4444;
-            color: white;
-            border-radius: 20px;
-            padding: 2px 8px;
-            font-size: 11px;
-            font-weight: bold;
-            margin-left: 8px;
-            display: inline-block;
-            animation: pulse 1s infinite;
-        `;
-        
-        // Add pulse animation
-        if (!document.querySelector('#pulseAnimation')) {
-            const style = document.createElement('style');
-            style.id = 'pulseAnimation';
-            style.textContent = `
-                @keyframes pulse {
-                    0%, 100% { transform: scale(1); }
-                    50% { transform: scale(1.1); }
-                }
-            `;
-            document.head.appendChild(style);
-        }
-        
-        const ticketsLink = document.querySelector('.nav a[data-tab="support-tickets"]');
-        if (ticketsLink) {
-            ticketsLink.appendChild(badge);
-        }
-    }
-    
-    if (totalUnread > 0) {
-        badge.textContent = totalUnread > 99 ? '99+' : totalUnread;
-        badge.style.display = 'inline-block';
-        // Flash the favicon or title
-        document.title = `(${totalUnread}) NCHSM Admin - New Messages`;
-        setTimeout(() => {
-            if (Object.values(unreadCounts).reduce((a, b) => a + b, 0) === 0) {
-                document.title = 'NCHSM Super Admin Dashboard';
-            }
-        }, 5000);
-    } else {
-        badge.style.display = 'none';
-        document.title = 'NCHSM Super Admin Dashboard';
-    }
-}
+// Test notification system
+window.testNotificationSystem = function() {
+    playBellSound();
+    animateBell();
+    showNotificationToast('🔔 Test Notification', 'This is what you will see when new messages arrive!', null);
+    showBrowserNotification('🔔 Test Notification', 'Your notification system is working!', null);
+    showAdminToast('🔔 Test completed! You heard the bell sound.', 'success');
+};
 
-// Check for new messages across all tickets
+// Check for new messages
 async function checkForNewMessages() {
     const supabase = getSupabaseClient();
     if (!supabase) return;
     
     try {
-        // Get all tickets with latest message timestamp
-        const { data: tickets, error } = await supabase
+        const { data: recentTickets, error } = await supabase
             .from('support_tickets')
-            .select('id, updated_at')
+            .select('id, ticket_number, subject, student_id, updated_at')
+            .gte('updated_at', new Date(Date.now() - 30000).toISOString())
             .order('updated_at', { ascending: false });
         
-        if (error) throw error;
-        
-        let hasNew = false;
-        
-        for (const ticket of tickets) {
-            const lastSeen = lastMessageTimestamps[ticket.id] || new Date(0).toISOString();
+        if (recentTickets && recentTickets.length > 0 && currentAdminTicketId !== recentTickets[0]?.id) {
+            const studentIds = recentTickets.map(t => t.student_id);
+            const { data: students } = await supabase
+                .from('consolidated_user_profiles_table')
+                .select('id, full_name')
+                .in('id', studentIds);
             
-            if (ticket.updated_at > lastSeen && currentAdminTicketId !== ticket.id) {
-                // New message in this ticket
-                const { data: newMessages } = await supabase
-                    .from('ticket_conversations')
-                    .select('count', { count: 'exact', head: true })
-                    .eq('ticket_id', ticket.id)
-                    .gt('created_at', lastSeen);
-                
-                if (newMessages && newMessages.length > 0) {
-                    const count = newMessages[0]?.count || 0;
-                    if (count > 0) {
-                        unreadCounts[ticket.id] = (unreadCounts[ticket.id] || 0) + count;
-                        hasNew = true;
-                        
-                        // Get student name for notification
-                        const student = adminStudentMap[ticket.student_id];
-                        const studentName = student?.full_name || 'A student';
-                        
-                        showNotification(
-                            `New message from ${studentName}`,
-                            `Ticket: ${ticket.ticket_number} - ${ticket.subject.substring(0, 50)}`,
-                            ticket.id
-                        );
-                    }
-                    lastMessageTimestamps[ticket.id] = new Date().toISOString();
-                }
+            const studentMap = {};
+            if (students) {
+                students.forEach(s => { studentMap[s.id] = s.full_name; });
             }
-        }
-        
-        if (hasNew) {
-            updateSidebarUnreadBadge();
-            // Refresh ticket list to show updated status
+            
+            for (const ticket of recentTickets) {
+                const studentName = studentMap[ticket.student_id] || 'A student';
+                playBellSound();
+                animateBell();
+                showNotificationToast(
+                    `📬 New message from ${studentName}`,
+                    `Ticket: ${ticket.ticket_number} - ${ticket.subject.substring(0, 50)}`,
+                    ticket.id
+                );
+                showBrowserNotification(
+                    `New message from ${studentName}`,
+                    `Ticket: ${ticket.ticket_number} - ${ticket.subject.substring(0, 50)}`,
+                    ticket.id
+                );
+                
+                const currentBadge = parseInt(document.getElementById('bellNotificationBadge')?.textContent || '0');
+                updateBellBadge(currentBadge + 1);
+            }
+            
             await loadAdminTickets();
         }
         
     } catch (err) {
-        console.error('Error checking new messages:', err);
+        console.error('Error checking messages:', err);
     }
 }
 
-// Mark ticket as read when viewed
-function markTicketAsRead(ticketId) {
-    if (unreadCounts[ticketId]) {
-        delete unreadCounts[ticketId];
-        updateSidebarUnreadBadge();
-    }
-    lastMessageTimestamps[ticketId] = new Date().toISOString();
+// Start periodic checking
+function startNotificationChecking() {
+    if (notificationCheckInterval) clearInterval(notificationCheckInterval);
+    notificationCheckInterval = setInterval(() => {
+        checkForNewMessages();
+    }, 15000);
 }
+
+// Initialize notification system
+function initNotificationSystem() {
+    startNotificationChecking();
+    
+    if ("Notification" in window && Notification.permission === "granted") {
+        notificationPermissionGranted = true;
+    }
+    
+    const bell = document.getElementById('notificationBell');
+    if (bell) {
+        bell.addEventListener('click', () => {
+            updateBellBadge(0);
+            showAdminToast('🔔 Notifications cleared', 'info');
+        });
+    }
+}
+
+// ============================================
+// CORE TICKET FUNCTIONS
+// ============================================
 
 // Get Supabase client
 function getSupabaseClient() {
@@ -5689,32 +5739,28 @@ async function loadAdminTickets() {
         
         if (error) throw error;
         
-        console.log('✅ Found tickets:', tickets?.length || 0);
-        
         if (!tickets || tickets.length === 0) {
             tbody.innerHTML = '<tr><td colspan="10" style="padding: 40px; text-align: center;">No tickets found<\/td><\/tr>';
             updateAdminTicketCounts(0, 0, 0, 0);
             return;
         }
         
-        // Get ALL student profiles
-        const { data: allStudents, error: studentError } = await supabase
+        const { data: allStudents } = await supabase
             .from('consolidated_user_profiles_table')
             .select('id, user_id, email, full_name, program, intake_year, role');
         
-        if (!studentError && allStudents) {
+        adminStudentMap = {};
+        if (allStudents) {
             allStudents.forEach(s => {
                 adminStudentMap[s.id] = s;
                 if (s.user_id && s.user_id !== s.id) {
                     adminStudentMap[s.user_id] = s;
                 }
             });
-            console.log('✅ Loaded student profiles:', allStudents.length);
         }
         
         adminAllTickets = tickets;
         
-        // Initialize last message timestamps for each ticket
         for (const ticket of tickets) {
             if (!lastMessageTimestamps[ticket.id]) {
                 lastMessageTimestamps[ticket.id] = ticket.updated_at || ticket.created_at;
@@ -5729,12 +5775,9 @@ async function loadAdminTickets() {
         updateAdminTicketCounts(openCount, progressCount, closedCount, urgentCount);
         renderAdminTicketsTable(tickets);
         
-        // Update sidebar badge
-        updateSidebarUnreadBadge();
-        
     } catch (err) {
         console.error('❌ Error:', err);
-        tbody.innerHTML = `<tr><td colspan="10" style="padding: 40px; text-align: center; color: red;">Error: ${err.message}<\/td><\/tr>`;
+        tbody.innerHTML = `<td><td colspan="10" style="padding: 40px; text-align: center; color: red;">Error: ${err.message}<\/td><\/tr>`;
     }
 }
 
@@ -5813,12 +5856,16 @@ function renderAdminTicketsTable(tickets) {
     }).join('');
 }
 
-// View single ticket with full chat interface
+// View single ticket
 async function viewAdminTicket(ticketId) {
     console.log('👁️ Viewing ticket:', ticketId);
     
-    // Mark as read when viewed
-    markTicketAsRead(ticketId);
+    // Mark as read
+    if (unreadCounts[ticketId]) {
+        delete unreadCounts[ticketId];
+        updateBellBadge(Object.values(unreadCounts).reduce((a, b) => a + b, 0));
+    }
+    lastMessageTimestamps[ticketId] = new Date().toISOString();
     
     const supabase = getSupabaseClient();
     if (!supabase) {
@@ -5911,102 +5958,55 @@ async function viewAdminTicket(ticketId) {
     currentAdminProfileId = adminProfileId;
     window.currentAdminProfileId = adminProfileId;
     
-    // tawk.to style modal HTML
+    // Build modal HTML
     const modalHtml = `
-        <div id="adminTicketChatModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 100000; display: flex; align-items: center; justify-content: center; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
-            <div style="background: white; width: 1000px; max-width: 95vw; height: 85vh; display: flex; flex-direction: column; border-radius: 12px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);">
-                
-                <!-- Header -->
-                <div style="background: #292e33; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                        <div style="width: 40px; height: 40px; background: #4C1D95; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
-                            <i class="fas fa-ticket-alt" style="color: white; font-size: 18px;"></i>
-                        </div>
-                        <div>
-                            <h3 style="margin: 0; font-size: 16px; font-weight: 600; color: white;">${escapeHtml(ticket.ticket_number)}</h3>
-                            <p style="margin: 2px 0 0; font-size: 12px; color: #9ca3af;">${escapeHtml(ticket.subject)}</p>
-                        </div>
+        <div id="adminTicketChatModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 100000; display: flex; align-items: center; justify-content: center;">
+            <div style="background: white; width: 900px; max-width: 95vw; max-height: 85vh; display: flex; flex-direction: column; border-radius: 16px; overflow: hidden;">
+                <div style="padding: 15px 20px; background: linear-gradient(135deg, #4C1D95, #6d28d9); color: white; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h3 style="margin: 0;">🎫 ${escapeHtml(ticket.ticket_number)}</h3>
+                        <small>${escapeHtml(ticket.subject)}</small>
                     </div>
-                    <div style="display: flex; gap: 8px;">
-                        <span class="priority-badge ${ticket.priority}" style="background: ${ticket.priority === 'urgent' ? '#dc2626' : ticket.priority === 'high' ? '#f59e0b' : '#10b981'}; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px;">${ticket.priority}</span>
-                        <button onclick="closeAdminTicketChatModal()" style="background: rgba(255,255,255,0.1); border: none; width: 32px; height: 32px; border-radius: 8px; cursor: pointer; color: white;">
-                            <i class="fas fa-times"></i>
+                    <button onclick="closeAdminTicketChatModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: white;">&times;</button>
+                </div>
+                
+                <div style="padding: 12px 20px; background: #f8f9fa; border-bottom: 1px solid #ddd; display: flex; gap: 20px; flex-wrap: wrap;">
+                    <div><strong>Student:</strong> ${escapeHtml(student.full_name)}</div>
+                    <div><strong>Email:</strong> ${escapeHtml(student.email)}</div>
+                    <div><strong>Program:</strong> ${escapeHtml(student.program)} (${escapeHtml(student.intake_year)})</div>
+                    <div><strong>Status:</strong> <span id="modalTicketStatus" class="status-badge ${ticket.status}">${ticket.status}</span></div>
+                </div>
+                
+                <div style="padding: 12px 20px; background: #fef3c7;">
+                    <strong>📝 Description:</strong>
+                    <p style="margin: 8px 0 0 0;">${escapeHtml(ticket.description)}</p>
+                </div>
+                
+                <div style="flex: 1; overflow-y: auto; padding: 15px; background: #f3f4f6;" id="adminConversationArea">
+                    ${renderChatMessages(conversations || [], authorNames)}
+                </div>
+                
+                <div style="padding: 15px 20px; background: white; border-top: 1px solid #ddd;">
+                    <textarea id="adminReplyMessageInput" rows="3" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; resize: vertical;" placeholder="Type your reply..."></textarea>
+                    <div style="display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap;">
+                        <select id="adminReplyStatusSelect" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
+                            <option value="${ticket.status}">Current: ${ticket.status}</option>
+                            <option value="open">Open</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="closed">Closed</option>
+                            <option value="resolved">Resolved</option>
+                        </select>
+                        <label><input type="checkbox" id="adminReplyInternalCheckbox"> 🔒 Internal note</label>
+                        <button onclick="sendAdminChatReply()" style="background: #4C1D95; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer;">
+                            <i class="fas fa-paper-plane"></i> Send Reply
+                        </button>
+                        <button onclick="refreshAdminConversation()" style="background: #6b7280; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer;">
+                            <i class="fas fa-sync-alt"></i> Refresh
                         </button>
                     </div>
-                </div>
-                
-                <!-- Contact Info Bar -->
-                <div style="background: #f8f9fa; padding: 12px 24px; border-bottom: 1px solid #e5e7eb; display: flex; gap: 24px; flex-wrap: wrap; flex-shrink: 0;">
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <div style="width: 32px; height: 32px; background: #e0e7ff; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
-                            <i class="fas fa-user" style="color: #4C1D95; font-size: 14px;"></i>
-                        </div>
-                        <div>
-                            <div style="font-size: 13px; font-weight: 600;">${escapeHtml(student.full_name)}</div>
-                            <div style="font-size: 11px; color: #6b7280;">${escapeHtml(student.email)}</div>
-                        </div>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <i class="fas fa-graduation-cap" style="color: #9ca3af; font-size: 14px;"></i>
-                        <span style="font-size: 13px;">${escapeHtml(student.program)} (${escapeHtml(student.intake_year)})</span>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <i class="fas fa-tag" style="color: #9ca3af; font-size: 14px;"></i>
-                        <span id="adminModalTicketStatus" class="status-badge ${ticket.status}" style="padding: 2px 8px; border-radius: 12px; font-size: 11px;">${ticket.status}</span>
-                    </div>
-                </div>
-                
-                <!-- Description -->
-                <div style="background: #fefce8; padding: 12px 24px; border-bottom: 1px solid #fde68a; flex-shrink: 0;">
-                    <div style="display: flex; gap: 12px;">
-                        <i class="fas fa-file-alt" style="color: #d97706;"></i>
-                        <div style="flex: 1;">
-                            <div style="font-size: 12px; font-weight: 600; color: #92400e; margin-bottom: 4px;">Description</div>
-                            <div style="font-size: 13px; color: #78350f; line-height: 1.4;">${escapeHtml(ticket.description)}</div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Chat Messages Area -->
-                <div style="flex: 1; background: #f5f7fb; display: flex; flex-direction: column; min-height: 0; overflow: hidden;">
-                    <div id="adminConversationArea" style="flex: 1; overflow-y: auto; padding: 20px;">
-                        ${renderTawkChatMessages(conversations || [], authorNames)}
-                    </div>
-                </div>
-                
-                <!-- Reply Area -->
-                <div style="background: white; border-top: 1px solid #e5e7eb; flex-shrink: 0;">
-                    <div style="padding: 16px 24px;">
-                        <div style="display: flex; gap: 12px;">
-                            <textarea id="adminReplyMessageInput" rows="2" style="flex: 1; padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px; resize: none; font-family: inherit; font-size: 14px; background: #f9fafb;" placeholder="Type your reply..."></textarea>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px;">
-                            <div style="display: flex; gap: 12px;">
-                                <select id="adminReplyStatusSelect" style="padding: 6px 12px; border-radius: 6px; border: 1px solid #e5e7eb; font-size: 13px;">
-                                    <option value="${ticket.status}">📌 Status: ${ticket.status}</option>
-                                    <option value="open">🟢 Open</option>
-                                    <option value="in_progress">🟡 In Progress</option>
-                                    <option value="closed">🔴 Closed</option>
-                                    <option value="resolved">✅ Resolved</option>
-                                </select>
-                                <label style="display: flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer;">
-                                    <input type="checkbox" id="adminReplyInternalCheckbox">
-                                    🔒 Internal note
-                                </label>
-                            </div>
-                            <div style="display: flex; gap: 8px;">
-                                <button onclick="refreshAdminConversation()" style="background: #6b7280; color: white; border: none; padding: 6px 16px; border-radius: 6px; cursor: pointer; font-size: 13px;">
-                                    <i class="fas fa-sync-alt"></i> Refresh
-                                </button>
-                                <button onclick="sendAdminChatReply()" style="background: #4C1D95; color: white; border: none; padding: 6px 20px; border-radius: 6px; cursor: pointer; font-weight: 500; font-size: 13px;">
-                                    <i class="fas fa-paper-plane"></i> Send
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    <div style="background: #f9fafb; padding: 8px 24px; border-top: 1px solid #e5e7eb; font-size: 11px; color: #6b7280;">
-                        <i class="fas fa-user-circle"></i> Replying as: <strong>${escapeHtml(adminName)}</strong>
-                    </div>
+                    <p style="margin-top: 8px; font-size: 11px; color: #6b7280;">
+                        Replying as: <strong>${escapeHtml(adminName)}</strong>
+                    </p>
                 </div>
             </div>
         </div>
@@ -6017,7 +6017,6 @@ async function viewAdminTicket(ticketId) {
     
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     
-    // Auto-refresh every 5 seconds
     if (adminConversationInterval) {
         clearInterval(adminConversationInterval);
     }
@@ -6030,85 +6029,55 @@ async function viewAdminTicket(ticketId) {
     }, 5000);
 }
 
-// tawk.to style message renderer
-function renderTawkChatMessages(conversations, authorNames) {
+function renderChatMessages(conversations, authorNames) {
     if (!conversations || conversations.length === 0) {
-        return `
-            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #9ca3af; text-align: center;">
-                <i class="fas fa-comments" style="font-size: 48px; margin-bottom: 16px; opacity: 0.5;"></i>
-                <p style="margin: 0;">No messages yet</p>
-                <p style="font-size: 12px; margin-top: 8px;">Send the first reply to start the conversation</p>
-            </div>
-        `;
+        return '<div style="text-align: center; padding: 40px; color: #6b7280;">No messages yet. Start the conversation!</div>';
     }
     
-    let lastDate = null;
     let html = '';
+    let lastDate = null;
     
     for (const conv of conversations) {
-        const messageDate = new Date(conv.created_at);
-        const dateStr = messageDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-        const timeStr = messageDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const msgDate = new Date(conv.created_at);
+        const dateStr = msgDate.toLocaleDateString();
+        const timeStr = msgDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         
         if (lastDate !== dateStr) {
-            html += `
-                <div style="text-align: center; margin: 20px 0;">
-                    <span style="background: #e5e7eb; padding: 4px 12px; border-radius: 20px; font-size: 11px; color: #6b7280;">${dateStr}</span>
-                </div>
-            `;
+            html += `<div style="text-align: center; margin: 10px 0;"><span style="background: #e5e7eb; padding: 4px 12px; border-radius: 20px; font-size: 12px;">${dateStr}</span></div>`;
             lastDate = dateStr;
         }
         
         const authorName = authorNames[conv.author_id] || 'Unknown';
         const isInternal = conv.is_internal;
-        const isStaff = authorName.includes('Admin') || authorName.includes('Super') || authorName === 'Director';
+        const isAdmin = authorName.includes('Admin') || authorName.includes('Super');
         
         if (isInternal) {
             html += `
-                <div style="display: flex; justify-content: center; margin: 16px 0;">
-                    <div style="background: #fef3c7; padding: 8px 16px; border-radius: 20px; display: inline-flex; align-items: center; gap: 8px; max-width: 80%;">
-                        <i class="fas fa-lock" style="font-size: 11px; color: #d97706;"></i>
-                        <span style="font-size: 12px; color: #92400e;"><strong>${escapeHtml(authorName)}</strong> left an internal note</span>
-                    </div>
-                </div>
-                <div style="display: flex; justify-content: center; margin-top: -12px; margin-bottom: 16px;">
-                    <div style="background: #fffbeb; padding: 12px 18px; border-radius: 12px; max-width: 70%; border-left: 3px solid #f59e0b;">
-                        <div style="font-size: 13px; color: #78350f; line-height: 1.5;">${escapeHtml(conv.message)}</div>
-                        <div style="font-size: 10px; color: #92400e; margin-top: 6px;">${timeStr}</div>
+                <div style="display: flex; justify-content: center; margin-bottom: 10px;">
+                    <div style="background: #fef3c7; padding: 8px 12px; border-radius: 8px; max-width: 70%; border-left: 3px solid #f59e0b;">
+                        <small style="color: #92400e;">🔒 Internal note from ${escapeHtml(authorName)}</small>
+                        <p style="margin: 5px 0 0;">${escapeHtml(conv.message)}</p>
+                        <small style="color: #92400e;">${timeStr}</small>
                     </div>
                 </div>
             `;
-        } else if (isStaff) {
+        } else if (isAdmin) {
             html += `
-                <div style="display: flex; justify-content: flex-end; margin-bottom: 16px;">
-                    <div style="max-width: 70%;">
-                        <div style="background: #4C1D95; padding: 10px 14px; border-radius: 12px; border-bottom-right-radius: 4px;">
-                            <div style="font-size: 13px; color: white; line-height: 1.5;">${escapeHtml(conv.message)}</div>
-                        </div>
-                        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px;">
-                            <span style="font-size: 10px; color: #9ca3af;">${escapeHtml(authorName)}</span>
-                            <span style="font-size: 10px; color: #9ca3af;">${timeStr}</span>
-                        </div>
-                    </div>
-                    <div style="width: 32px; height: 32px; background: #4C1D95; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-left: 8px; flex-shrink: 0;">
-                        <i class="fas fa-user-tie" style="color: white; font-size: 14px;"></i>
+                <div style="display: flex; justify-content: flex-end; margin-bottom: 10px;">
+                    <div style="background: #4C1D95; padding: 10px 15px; border-radius: 12px; max-width: 70%; color: white;">
+                        <strong>${escapeHtml(authorName)}</strong>
+                        <small style="display: block; opacity: 0.7;">${timeStr}</small>
+                        <p style="margin: 5px 0 0;">${escapeHtml(conv.message)}</p>
                     </div>
                 </div>
             `;
         } else {
             html += `
-                <div style="display: flex; justify-content: flex-start; margin-bottom: 16px;">
-                    <div style="width: 32px; height: 32px; background: #e0e7ff; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 8px; flex-shrink: 0;">
-                        <i class="fas fa-user-graduate" style="color: #4C1D95; font-size: 14px;"></i>
-                    </div>
-                    <div style="max-width: 70%;">
-                        <div style="background: white; padding: 10px 14px; border-radius: 12px; border-bottom-left-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
-                            <div style="font-size: 13px; color: #1f2937; line-height: 1.5;">${escapeHtml(conv.message)}</div>
-                        </div>
-                        <div style="display: flex; gap: 8px; margin-top: 4px;">
-                            <span style="font-size: 10px; color: #9ca3af;">${escapeHtml(authorName)}</span>
-                            <span style="font-size: 10px; color: #9ca3af;">${timeStr}</span>
-                        </div>
+                <div style="display: flex; justify-content: flex-start; margin-bottom: 10px;">
+                    <div style="background: white; padding: 10px 15px; border-radius: 12px; max-width: 70%; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+                        <strong>${escapeHtml(authorName)}</strong>
+                        <small style="display: block; color: #6b7280;">${timeStr}</small>
+                        <p style="margin: 5px 0 0;">${escapeHtml(conv.message)}</p>
                     </div>
                 </div>
             `;
@@ -6118,7 +6087,6 @@ function renderTawkChatMessages(conversations, authorNames) {
     return html;
 }
 
-// Refresh conversation with new message detection
 async function refreshAdminConversation() {
     if (!currentAdminTicketId) return;
     
@@ -6128,9 +6096,6 @@ async function refreshAdminConversation() {
     const conversationArea = document.getElementById('adminConversationArea');
     if (!conversationArea) return;
     
-    // Get the last message timestamp before refresh
-    const lastTimestamp = lastMessageTimestamps[currentAdminTicketId];
-    
     const { data: conversations } = await supabase
         .from('ticket_conversations')
         .select('*')
@@ -6138,18 +6103,6 @@ async function refreshAdminConversation() {
         .order('created_at', { ascending: true });
     
     if (conversations) {
-        // Check for new messages
-        const newMessages = conversations.filter(c => 
-            !lastTimestamp || new Date(c.created_at) > new Date(lastTimestamp)
-        ).filter(c => c.author_id !== currentAdminProfileId); // Don't notify for own messages
-        
-        if (newMessages.length > 0 && !document.hidden) {
-            const lastNew = newMessages[newMessages.length - 1];
-            const authorName = authorNames[lastNew.author_id] || 'Student';
-            playNotificationSound();
-            showAdminToast(`🔔 New message from ${authorName}`, 'info');
-        }
-        
         const authorIds = [...new Set(conversations.map(c => c.author_id).filter(id => id))];
         let authorNames = {};
         
@@ -6166,25 +6119,12 @@ async function refreshAdminConversation() {
             }
         }
         
-        const newHtml = renderTawkChatMessages(conversations, authorNames);
-        const oldScrollTop = conversationArea.scrollTop;
-        const oldScrollHeight = conversationArea.scrollHeight;
-        
+        const newHtml = renderChatMessages(conversations, authorNames);
         conversationArea.innerHTML = newHtml;
-        
-        // Scroll to bottom if was near bottom or new message
-        if (newMessages.length > 0 || oldScrollHeight - oldScrollTop < 300) {
-            conversationArea.scrollTop = conversationArea.scrollHeight;
-        }
-        
-        // Update last message timestamp
-        if (conversations.length > 0) {
-            lastMessageTimestamps[currentAdminTicketId] = conversations[conversations.length - 1].created_at;
-        }
+        conversationArea.scrollTop = conversationArea.scrollHeight;
     }
 }
 
-// Send admin reply
 async function sendAdminChatReply() {
     const messageInput = document.getElementById('adminReplyMessageInput');
     const message = messageInput?.value.trim();
@@ -6250,7 +6190,7 @@ async function sendAdminChatReply() {
                 .eq('id', currentAdminTicketId);
             
             currentAdminTicketStatus = newStatus;
-            const statusSpan = document.getElementById('adminModalTicketStatus');
+            const statusSpan = document.getElementById('modalTicketStatus');
             if (statusSpan) {
                 statusSpan.textContent = newStatus;
                 statusSpan.className = `status-badge ${newStatus}`;
@@ -6264,7 +6204,11 @@ async function sendAdminChatReply() {
         await refreshAdminConversation();
         await loadAdminTickets();
         
-        showAdminToast(isInternal ? '✅ Internal note added!' : '✅ Reply sent!', 'success');
+        // Play notification for new message
+        playBellSound();
+        animateBell();
+        
+        alert(isInternal ? 'Internal note added!' : 'Reply sent!');
         
     } catch (error) {
         console.error('Error:', error);
@@ -6277,19 +6221,16 @@ async function sendAdminChatReply() {
     }
 }
 
-// Close modal
 function closeAdminTicketChatModal() {
     if (adminConversationInterval) {
         clearInterval(adminConversationInterval);
         adminConversationInterval = null;
     }
     currentAdminTicketId = null;
-    currentAdminTicket = null;
     const modal = document.getElementById('adminTicketChatModal');
     if (modal) modal.remove();
 }
 
-// Show admin toast notification
 function showAdminToast(message, type = 'info') {
     const toast = document.createElement('div');
     toast.style.cssText = `
@@ -6303,7 +6244,6 @@ function showAdminToast(message, type = 'info') {
         z-index: 100001;
         animation: slideIn 0.3s ease;
         box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        font-size: 14px;
     `;
     toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-info-circle'}"></i> ${message}`;
     document.body.appendChild(toast);
@@ -6314,7 +6254,6 @@ function showAdminToast(message, type = 'info') {
     }, 3000);
 }
 
-// Filter functions
 function filterAdminTickets() {
     const searchTerm = document.getElementById('admin_ticket_search')?.value.toLowerCase() || '';
     const statusFilter = document.getElementById('admin_ticket_status_filter')?.value || 'all';
@@ -6356,7 +6295,6 @@ function filterAdminTicketsDebounced() {
     adminFilterTimeout = setTimeout(() => filterAdminTickets(), 300);
 }
 
-// Export to CSV
 function exportAdminTicketsToCSV() {
     const tickets = adminAllTickets;
     let csv = 'Ticket #,Student,Student Email,Program,Subject,Category,Priority,Status,Created,Updated\n';
@@ -6376,21 +6314,12 @@ function exportAdminTicketsToCSV() {
     showAdminToast('Export complete!', 'success');
 }
 
-// Start global notification checker
-let globalNotificationInterval = null;
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', () => {
+    initNotificationSystem();
+});
 
-function startGlobalNotificationChecker() {
-    if (globalNotificationInterval) clearInterval(globalNotificationInterval);
-    globalNotificationInterval = setInterval(() => {
-        checkForNewMessages();
-    }, 10000); // Check every 10 seconds
-}
-
-// Initialize notifications on page load
-initNotifications();
-startGlobalNotificationChecker();
-
-// Make functions global
+// Global exports
 window.loadAdminTickets = loadAdminTickets;
 window.filterAdminTickets = filterAdminTickets;
 window.filterAdminTicketsDebounced = filterAdminTicketsDebounced;
@@ -6399,6 +6328,7 @@ window.sendAdminChatReply = sendAdminChatReply;
 window.closeAdminTicketChatModal = closeAdminTicketChatModal;
 window.refreshAdminConversation = refreshAdminConversation;
 window.exportAdminTicketsToCSV = exportAdminTicketsToCSV;
+window.checkForNewMessages = checkForNewMessages;
 /*******************************************************
  * 20. INITIALIZATION & EVENT LISTENERS
  *******************************************************/
