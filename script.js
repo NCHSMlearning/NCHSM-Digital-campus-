@@ -5452,14 +5452,15 @@ async function logout() {
     }
 }
 // ============================================
-// ADMIN SUPPORT TICKETS - COMPLETE FIXED VERSION
+// ADMIN SUPPORT TICKETS - COMPLETE WORKING VERSION
 // ============================================
 
 let adminAllTickets = [];
 let adminStudentMap = {};
-let conversationRefreshInterval = null;
+let adminConversationInterval = null;
 let currentAdminTicketId = null;
 let currentAdminTicketStatus = null;
+let currentAdminTicket = null;
 
 // Get Supabase client
 function getSupabaseClient() {
@@ -5483,11 +5484,11 @@ async function loadAdminTickets() {
         return;
     }
     
-    tbody.innerHTML = '<tr><td colspan="10" style="padding: 40px; text-align: center;"><div class="loading-spinner"></div> Loading tickets...<\/td><\/tr>';
+    tbody.innerHTML = '<tr><td colspan="10" style="padding: 40px; text-align: center;"><div class="loading-spinner"></div> Loading tickets...</td></tr>';
     
     const supabase = getSupabaseClient();
     if (!supabase) {
-        tbody.innerHTML = '<tr><td colspan="10" style="padding: 40px; text-align: center; color: red;">❌ Database connection not found<\/td><\/tr>';
+        tbody.innerHTML = '<tr><td colspan="10" style="padding: 40px; text-align: center; color: red;">❌ Database connection not found</td></tr>';
         return;
     }
     
@@ -5503,7 +5504,7 @@ async function loadAdminTickets() {
         console.log('✅ Found tickets:', tickets?.length || 0);
         
         if (!tickets || tickets.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="10" style="padding: 40px; text-align: center;">No tickets found<\/td><\/tr>';
+            tbody.innerHTML = '<tr><td colspan="10" style="padding: 40px; text-align: center;">No tickets found</td></tr>';
             updateAdminTicketCounts(0, 0, 0, 0);
             return;
         }
@@ -5541,7 +5542,7 @@ async function loadAdminTickets() {
         
     } catch (err) {
         console.error('❌ Error:', err);
-        tbody.innerHTML = `<tr><td colspan="10" style="padding: 40px; text-align: center; color: red;">Error: ${err.message}<\/td><\/tr>`;
+        tbody.innerHTML = `<tr><td colspan="10" style="padding: 40px; text-align: center; color: red;">Error: ${err.message}</td></tr>`;
     }
 }
 
@@ -5564,7 +5565,7 @@ function renderAdminTicketsTable(tickets) {
     if (!tbody) return;
     
     if (!tickets || tickets.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="10" style="padding: 40px; text-align: center;">No tickets found<\/td><\/tr>';
+        tbody.innerHTML = '<tr><td colspan="10" style="padding: 40px; text-align: center;">No tickets found</td></tr>';
         return;
     }
     
@@ -5593,29 +5594,29 @@ function renderAdminTicketsTable(tickets) {
         
         return `
             <tr style="border-bottom: 1px solid #e5e7eb; cursor: pointer;" onclick="viewAdminTicket('${ticket.id}')">
-                <td style="padding: 12px;"><strong>${escapeHtml(ticket.ticket_number || 'N/A')}</strong><\/td>
+                <td style="padding: 12px;"><strong>${escapeHtml(ticket.ticket_number || 'N/A')}</strong></td>
                 <td style="padding: 12px;">
                     ${escapeHtml(student.full_name)}<br>
                     <small style="color: #6b7280;">${escapeHtml(student.email)}</small>
-                <\/td>
-                <td style="padding: 12px;">${escapeHtml(student.program)}<br><small>${escapeHtml(student.intake_year)}</small><\/td>
-                <td style="padding: 12px;">${escapeHtml(ticket.subject)}<\/td>
-                <td style="padding: 12px;"><span class="badge badge-info">${escapeHtml(ticket.category || '-')}</span><\/td>
-                <td style="padding: 12px;"><span class="${priorityClass}" style="padding: 4px 8px; border-radius: 4px;">${escapeHtml(ticket.priority || 'medium')}</span><\/td>
-                <td style="padding: 12px;"><span class="${statusClass}" style="padding: 4px 8px; border-radius: 4px;">${escapeHtml(ticket.status || 'open')}</span><\/td>
-                <td style="padding: 12px;">${createdDate}<\/td>
-                <td style="padding: 12px;">${updatedDate}<\/td>
+                </td>
+                <td style="padding: 12px;">${escapeHtml(student.program)}<br><small>${escapeHtml(student.intake_year)}</small></td>
+                <td style="padding: 12px;">${escapeHtml(ticket.subject)}</td>
+                <td style="padding: 12px;"><span class="badge badge-info">${escapeHtml(ticket.category || '-')}</span></td>
+                <td style="padding: 12px;"><span class="${priorityClass}" style="padding: 4px 8px; border-radius: 4px;">${escapeHtml(ticket.priority || 'medium')}</span></td>
+                <td style="padding: 12px;"><span class="${statusClass}" style="padding: 4px 8px; border-radius: 4px;">${escapeHtml(ticket.status || 'open')}</span></td>
+                <td style="padding: 12px;">${createdDate}</td>
+                <td style="padding: 12px;">${updatedDate}</td>
                 <td style="padding: 12px;">
                     <button onclick="event.stopPropagation(); viewAdminTicket('${ticket.id}')" style="background: #4C1D95; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">
                         <i class="fas fa-eye"></i> View
                     </button>
-                <\/td>
-            <\/tr>
+                </td>
+            </tr>
         `;
     }).join('');
 }
 
-// View single ticket with chat interface
+// View single ticket with full chat interface
 async function viewAdminTicket(ticketId) {
     console.log('👁️ Viewing ticket:', ticketId);
     
@@ -5639,6 +5640,7 @@ async function viewAdminTicket(ticketId) {
         return;
     }
     
+    currentAdminTicket = ticket;
     currentAdminTicketStatus = ticket.status;
     
     // Get student info
@@ -5674,17 +5676,21 @@ async function viewAdminTicket(ticketId) {
     
     // Get current admin info
     let adminName = 'Admin';
+    let adminProfileId = null;
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
         const { data: profile } = await supabase
             .from('consolidated_user_profiles_table')
-            .select('full_name')
+            .select('id, full_name')
             .eq('user_id', user.id)
             .single();
-        if (profile) adminName = profile.full_name || 'Admin';
+        if (profile) {
+            adminProfileId = profile.id;
+            adminName = profile.full_name || 'Admin';
+        }
     }
     
-    // Build modal HTML
+    // Build modal HTML with reply section
     const modalHtml = `
         <div id="adminTicketChatModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 100000; display: flex; align-items: center; justify-content: center;">
             <div style="background: white; max-width: 900px; width: 95%; max-height: 90vh; display: flex; flex-direction: column; border-radius: 16px; overflow: hidden;">
@@ -5702,8 +5708,8 @@ async function viewAdminTicket(ticketId) {
                     <div><strong>👤 Student:</strong> ${escapeHtml(student?.full_name || 'Unknown')}</div>
                     <div><strong>📧 Email:</strong> ${escapeHtml(student?.email || '-')}</div>
                     <div><strong>🎓 Program:</strong> ${escapeHtml(student?.program || '-')} (${escapeHtml(student?.intake_year || '-')})</div>
-                    <div><strong>🏷️ Priority:</strong> <span id="modalTicketPriority" class="priority-badge priority-${ticket.priority}">${ticket.priority}</span></div>
-                    <div><strong>📌 Status:</strong> <span id="adminModalTicketStatus" class="status-badge status-${ticket.status}">${ticket.status}</span></div>
+                    <div><strong>🏷️ Priority:</strong> <span id="modalTicketPriority" class="priority-badge ${ticket.priority}">${ticket.priority}</span></div>
+                    <div><strong>📌 Status:</strong> <span id="adminModalTicketStatus" class="status-badge ${ticket.status}">${ticket.status}</span></div>
                 </div>
                 
                 <!-- Description -->
@@ -5716,36 +5722,39 @@ async function viewAdminTicket(ticketId) {
                 <div style="flex: 1; background: #f3f4f6; display: flex; flex-direction: column; min-height: 350px;">
                     <div style="padding: 10px 15px; background: #e5e7eb; border-bottom: 1px solid #d1d5db;">
                         <strong><i class="fas fa-comments"></i> Conversation</strong>
+                        <span id="newMsgIndicator" style="display: none; margin-left: 10px; background: #ef4444; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px;">New!</span>
                     </div>
                     <div id="adminConversationArea" style="flex: 1; overflow-y: auto; padding: 15px;">
                         ${renderAdminChatMessages(conversations || [], authorNames)}
                     </div>
                 </div>
                 
-                <!-- Reply Area -->
-                <div style="padding: 15px 20px; background: white; border-top: 1px solid #e5e7eb;">
-                    <textarea id="adminReplyMessageInput" rows="2" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; resize: none; font-family: inherit;" placeholder="Type your reply here..."></textarea>
-                    <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 10px;">
-                        <select id="adminReplyStatusSelect" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
+                <!-- REPLY SECTION - THIS IS WHAT WAS MISSING -->
+                <div style="padding: 15px 20px; background: white; border-top: 2px solid #e5e7eb;">
+                    <label style="font-weight: 600; margin-bottom: 8px; display: block;">✏️ Reply to Student</label>
+                    <textarea id="adminReplyMessageInput" rows="3" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ddd; resize: vertical; font-family: inherit; font-size: 14px;" placeholder="Type your reply here..."></textarea>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 12px;">
+                        <select id="adminReplyStatusSelect" style="padding: 8px 12px; border-radius: 6px; border: 1px solid #ddd; background: white;">
                             <option value="${ticket.status}">📌 Current: ${ticket.status}</option>
                             <option value="open">🟢 Open</option>
                             <option value="in_progress">🟡 In Progress</option>
                             <option value="closed">🔴 Closed</option>
                             <option value="resolved">✅ Resolved</option>
                         </select>
-                        <label style="display: flex; align-items: center; gap: 5px;">
+                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
                             <input type="checkbox" id="adminReplyInternalCheckbox">
-                            🔒 Internal note (staff only)
+                            🔒 Internal note (staff only - student won't see)
                         </label>
-                        <button onclick="sendAdminChatReply()" style="background: #4C1D95; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer;">
+                        <button onclick="sendAdminChatReply()" style="background: #4C1D95; color: white; border: none; padding: 8px 24px; border-radius: 6px; cursor: pointer; font-weight: 500;">
                             <i class="fas fa-paper-plane"></i> Send Reply
                         </button>
-                        <button onclick="refreshAdminConversation()" style="background: #6b7280; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer;">
+                        <button onclick="refreshAdminConversation()" style="background: #6b7280; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">
                             <i class="fas fa-sync-alt"></i> Refresh
                         </button>
                     </div>
-                    <p style="margin-top: 8px; font-size: 11px; color: #6b7280;">
+                    <p style="margin-top: 10px; font-size: 11px; color: #6b7280;">
                         <i class="fas fa-user-circle"></i> Replying as: <strong>${escapeHtml(adminName)}</strong>
+                        ${adminProfileId ? `<span style="margin-left: 10px;"><i class="fas fa-check-circle" style="color: #10b981;"></i> Authenticated</span>` : '<span style="margin-left: 10px; color: #f59e0b;"><i class="fas fa-exclamation-triangle"></i> Profile not found</span>'}
                     </p>
                 </div>
             </div>
@@ -5757,15 +5766,18 @@ async function viewAdminTicket(ticketId) {
     
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     
+    // Store adminProfileId globally for send function
+    window.currentAdminProfileId = adminProfileId;
+    
     // Start auto-refresh every 5 seconds
-    if (conversationRefreshInterval) {
-        clearInterval(conversationRefreshInterval);
+    if (adminConversationInterval) {
+        clearInterval(adminConversationInterval);
     }
-    conversationRefreshInterval = setInterval(() => {
+    adminConversationInterval = setInterval(() => {
         if (document.getElementById('adminTicketChatModal')) {
             refreshAdminConversation();
         } else {
-            clearInterval(conversationRefreshInterval);
+            clearInterval(adminConversationInterval);
         }
     }, 5000);
 }
@@ -5774,8 +5786,8 @@ async function viewAdminTicket(ticketId) {
 function renderAdminChatMessages(conversations, authorNames) {
     if (!conversations || conversations.length === 0) {
         return `
-            <div style="text-align: center; padding: 40px; color: #6b7280;">
-                <i class="fas fa-comments" style="font-size: 48px; margin-bottom: 10px;"></i>
+            <div style="text-align: center; padding: 60px 20px; color: #6b7280;">
+                <i class="fas fa-comments" style="font-size: 48px; margin-bottom: 15px; opacity: 0.5;"></i>
                 <p>No messages yet. Send the first reply!</p>
             </div>
         `;
@@ -5790,11 +5802,7 @@ function renderAdminChatMessages(conversations, authorNames) {
         const timeStr = messageDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         
         if (lastDate !== dateStr) {
-            if (lastDate) {
-                html += '<div style="text-align: center; margin: 15px 0;"><span style="background: #e5e7eb; padding: 4px 12px; border-radius: 20px; font-size: 12px;">' + dateStr + '</span></div>';
-            } else {
-                html += '<div style="text-align: center; margin: 15px 0;"><span style="background: #e5e7eb; padding: 4px 12px; border-radius: 20px; font-size: 12px;">' + dateStr + '</span></div>';
-            }
+            html += `<div style="text-align: center; margin: 15px 0;"><span style="background: #e5e7eb; padding: 4px 12px; border-radius: 20px; font-size: 12px;">${dateStr}</span></div>`;
             lastDate = dateStr;
         }
         
@@ -5802,26 +5810,29 @@ function renderAdminChatMessages(conversations, authorNames) {
         const isInternal = conv.is_internal;
         
         if (isInternal) {
+            // Internal note - shown in center with different style
             html += `
                 <div style="display: flex; justify-content: center; margin-bottom: 15px;">
-                    <div style="max-width: 80%; background: #fef3c7; padding: 10px 15px; border-radius: 12px; border: 1px solid #fde68a;">
+                    <div style="max-width: 80%; background: #fef3c7; padding: 10px 15px; border-radius: 12px; border-left: 4px solid #f59e0b;">
                         <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                            <strong style="font-size: 12px;">🔒 Internal Note - ${escapeHtml(authorName)}</strong>
-                            <small style="font-size: 10px;">${timeStr}</small>
+                            <strong style="font-size: 11px; color: #92400e;">🔒 INTERNAL NOTE - ${escapeHtml(authorName)}</strong>
+                            <small style="font-size: 10px; color: #92400e;">${timeStr}</small>
                         </div>
-                        <p style="margin: 5px 0 0 0;">${escapeHtml(conv.message)}</p>
+                        <p style="margin: 5px 0 0 0; font-size: 13px;">${escapeHtml(conv.message)}</p>
                     </div>
                 </div>
             `;
         } else {
-            const isStudent = authorName !== 'Admin' && !authorName.includes('Super');
-            const align = isStudent ? 'flex-start' : 'flex-end';
-            const bgColor = isStudent ? '#white' : '#4C1D95';
-            const textColor = isStudent ? '#1f2937' : 'white';
+            // Check if this is from admin (by checking if author is in admin list)
+            const isAdmin = authorName.includes('Admin') || authorName.includes('Super') || authorName === 'Director';
+            const align = isAdmin ? 'flex-end' : 'flex-start';
+            const bgColor = isAdmin ? '#4C1D95' : 'white';
+            const textColor = isAdmin ? 'white' : '#1f2937';
+            const bubbleStyle = isAdmin ? 'border-bottom-right-radius: 4px;' : 'border-bottom-left-radius: 4px;';
             
             html += `
                 <div style="display: flex; justify-content: ${align}; margin-bottom: 15px;">
-                    <div style="max-width: 70%; background: ${bgColor}; padding: 10px 15px; border-radius: 12px; ${!isStudent ? 'border-bottom-right-radius: 4px;' : 'border-bottom-left-radius: 4px;'} color: ${textColor}; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+                    <div style="max-width: 70%; background: ${bgColor}; padding: 10px 15px; border-radius: 12px; ${bubbleStyle} color: ${textColor}; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
                         <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
                             <strong style="font-size: 12px;">${escapeHtml(authorName)}</strong>
                             <small style="font-size: 10px; opacity: 0.7;">${timeStr}</small>
@@ -5890,28 +5901,43 @@ async function sendAdminChatReply() {
     const isInternal = document.getElementById('adminReplyInternalCheckbox')?.checked || false;
     
     if (!message) {
-        alert('Please enter a message');
+        showAdminAlert('Please enter a message', 'warning');
         return;
     }
     
     const supabase = getSupabaseClient();
     if (!supabase) return;
     
-    // Get admin profile ID
-    let adminProfileId = null;
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-        const { data: profile } = await supabase
-            .from('consolidated_user_profiles_table')
-            .select('id')
-            .eq('user_id', user.id)
-            .single();
-        if (profile) adminProfileId = profile.id;
+    // Use the stored admin profile ID
+    let adminProfileId = window.currentAdminProfileId;
+    
+    // If not stored, try to get it
+    if (!adminProfileId) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+            const { data: profile } = await supabase
+                .from('consolidated_user_profiles_table')
+                .select('id')
+                .eq('user_id', user.id)
+                .single();
+            if (profile) {
+                adminProfileId = profile.id;
+                window.currentAdminProfileId = adminProfileId;
+            }
+        }
     }
     
     if (!adminProfileId) {
-        alert('Unable to identify your admin profile. Please log out and log in again.');
+        showAdminAlert('Unable to identify your admin profile. Please log out and log in again.', 'error');
         return;
+    }
+    
+    // Disable send button
+    const sendBtn = document.querySelector('#adminTicketChatModal button[onclick="sendAdminChatReply()"]');
+    const originalText = sendBtn?.innerHTML;
+    if (sendBtn) {
+        sendBtn.disabled = true;
+        sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
     }
     
     try {
@@ -5942,7 +5968,7 @@ async function sendAdminChatReply() {
             const statusSpan = document.getElementById('adminModalTicketStatus');
             if (statusSpan) {
                 statusSpan.textContent = newStatus;
-                statusSpan.className = `status-badge status-${newStatus}`;
+                statusSpan.className = `status-badge ${newStatus}`;
             }
         }
         
@@ -5955,41 +5981,49 @@ async function sendAdminChatReply() {
         await refreshAdminConversation();
         await loadAdminTickets();
         
-        showAdminToast(isInternal ? 'Internal note added!' : 'Reply sent successfully!', 'success');
+        showAdminAlert(isInternal ? '✅ Internal note added!' : '✅ Reply sent successfully!', 'success');
         
     } catch (error) {
         console.error('Error:', error);
-        alert('Failed to send: ' + error.message);
+        showAdminAlert('Failed to send: ' + error.message, 'error');
+    } finally {
+        if (sendBtn) {
+            sendBtn.disabled = false;
+            sendBtn.innerHTML = originalText;
+        }
     }
 }
 
 // Close admin chat modal
 function closeAdminTicketChatModal() {
-    if (conversationRefreshInterval) {
-        clearInterval(conversationRefreshInterval);
-        conversationRefreshInterval = null;
+    if (adminConversationInterval) {
+        clearInterval(adminConversationInterval);
+        adminConversationInterval = null;
     }
     currentAdminTicketId = null;
+    currentAdminTicket = null;
+    window.currentAdminProfileId = null;
     const modal = document.getElementById('adminTicketChatModal');
     if (modal) modal.remove();
 }
 
-// Show admin toast notification
-function showAdminToast(message, type = 'info') {
+// Show admin alert notification
+function showAdminAlert(message, type = 'info') {
     const toast = document.createElement('div');
     toast.style.cssText = `
         position: fixed;
         bottom: 20px;
         right: 20px;
         padding: 12px 20px;
-        background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#3b82f6'};
+        background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : type === 'warning' ? '#f59e0b' : '#3b82f6'};
         color: white;
         border-radius: 8px;
         z-index: 100001;
         animation: slideIn 0.3s ease;
         box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        font-size: 14px;
     `;
-    toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-info-circle'}"></i> ${message}`;
+    toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'}"></i> ${message}`;
     document.body.appendChild(toast);
     
     setTimeout(() => {
@@ -6058,7 +6092,7 @@ function exportAdminTicketsToCSV() {
     a.download = `tickets_export_${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    showAdminToast('Export complete!', 'success');
+    showAdminAlert('Export complete!', 'success');
 }
 
 // Make functions global
@@ -6070,6 +6104,19 @@ window.sendAdminChatReply = sendAdminChatReply;
 window.closeAdminTicketChatModal = closeAdminTicketChatModal;
 window.refreshAdminConversation = refreshAdminConversation;
 window.exportAdminTicketsToCSV = exportAdminTicketsToCSV;
+
+// Add CSS animation if not present
+if (!document.querySelector('#adminToastStyle')) {
+    const style = document.createElement('style');
+    style.id = 'adminToastStyle';
+    style.textContent = `
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+    `;
+    document.head.appendChild(style);
+}
 /*******************************************************
  * 20. INITIALIZATION & EVENT LISTENERS
  *******************************************************/
