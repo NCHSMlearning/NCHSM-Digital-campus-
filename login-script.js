@@ -391,34 +391,34 @@ window.NCHSMLogin = {
         });
     },
     
-    // ============================================
-    // REDIRECT TO DASHBOARD
-    // ============================================
-    redirectToDashboard: function(profileData) {
-        console.log('🚀 Redirecting to dashboard...');
-        
-        const redirects = {
-            'student': 'student.html',
-            'lecturer': 'lecturer.html',
-            'admin': 'admin.html',
-            'superadmin': 'superadmin.html',
-            'hod': 'hod-tracker.html',
-            'staff': 'staff.html'
-        };
-        
-        const role = profileData.role?.toLowerCase() || 'student';
-        const redirectUrl = redirects[role] || 'student.html';
-        
-        console.log(`🎯 Role: ${role}, Redirecting to: ${redirectUrl}`);
-        
-        document.body.style.opacity = '0';
-        document.body.style.transition = 'opacity 0.3s ease';
-        
-        setTimeout(() => {
-            window.location.href = redirectUrl;
-        }, 300);
-    },
+   // ============================================
+// REDIRECT TO DASHBOARD - WITH CLEAN URLS
+// ============================================
+redirectToDashboard: function(profileData) {
+    console.log('🚀 Redirecting to dashboard...');
     
+    const redirects = {
+        'student': '/student',           // Clean URL - no .html
+        'lecturer': '/lecturer',
+        'admin': '/admin',
+        'superadmin': '/superadmin',
+        'hod': '/hod-tracker',
+        'staff': '/staff'
+    };
+    
+    const role = profileData.role?.toLowerCase() || 'student';
+    const redirectUrl = redirects[role] || '/student';
+    
+    console.log(`🎯 Role: ${role}, Redirecting to: ${redirectUrl}`);
+    
+    // Smooth transition
+    document.body.style.opacity = '0';
+    document.body.style.transition = 'opacity 0.3s ease';
+    
+    setTimeout(() => {
+        window.location.href = redirectUrl;
+    }, 300);
+},
     // ============================================
     // MODAL MANAGEMENT
     // ============================================
