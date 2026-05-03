@@ -7206,7 +7206,241 @@ async function initSession() {
     initializeModals();
     loadSectionData('dashboard');
 }
+// =====================================================
+// TIMETABLE UPLOAD FUNCTIONS - FIX FOR onClick
+// =====================================================
 
+// Alias functions to match HTML onclick
+window.uploadExcelTimetable = async function() {
+    const fileInput = document.getElementById('timetableExcelFile');
+    const file = fileInput ? fileInput.files[0] : null;
+    const program = document.getElementById('uploadProgram')?.value || 'General';
+    const block = document.getElementById('uploadBlock')?.value || 'General';
+    
+    if (!file) {
+        alert('Please select an Excel file first');
+        return;
+    }
+    
+    // Check if SheetJS is loaded
+    if (typeof XLSX === 'undefined') {
+        alert('Excel parser not loaded. Please refresh the page and try again.');
+        return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            const rows = XLSX.utils.sheet_to_json(sheet);
+            
+            let added = 0;
+            let errors = [];
+            
+            for (const row of rows) {
+                try {
+                    const eventData = {
+                        event_name: row.Title || row.title || row.Course || row.course,
+                        event_date: row.Date || row.date,
+                        start_time: row.Start_Time || row.start_time || row['Start Time'] || null,
+                        end_time: row.End_Time || row.end_time || row['End Time'] || null,
+                        venue: row.Venue || row.venue || null,
+                        type: (row.Type || row.type || 'CLASS').toUpperCase(),
+                        description: row.Description || row.description || '',
+                        target_program: program,
+                        target_block: block,
+                        organizer: 'Admin Upload'
+                    };
+                    
+                    if (!eventData.event_name || !eventData.event_date) {
+                        errors.push(row);
+                        continue;
+                    }
+                    
+                    const { error } = await sb.from('calendar_events').insert([eventData]);
+                    if (error) throw error;
+                    added++;
+                } catch (err) {
+                    errors.push(row);
+                }
+            }
+            
+            alert(`✅ Added ${added} events to calendar!\n${errors.length} errors.`);
+            
+            // Refresh calendar
+            if (typeof renderFullCalendar === 'function') {
+                renderFullCalendar();
+            }
+            
+            // Clear file input
+            if (fileInput) fileInput.value = '';
+            
+        } catch (err) {
+            console.error('Excel processing error:', err);
+            alert('Error processing Excel file: ' + err.message);
+        }
+    };
+    reader.readAsArrayBuffer(file);
+};
+
+// Add single event function
+window.addSingleEvent = async function() {
+    const title = document.getElementById('singleEventTitle')?.value;
+    const date = document.getElementById('singleEventDate')?.value;
+    const startTime = document.getElementById('singleEventStart')?.value;
+    const endTime = document.getElementById('singleEventEnd')?.value;
+    const venue = document.getElementById('singleEventVenue')?.value;
+    const type = document.getElementById('singleEventType')?.value;
+    const details = document.getElementById('singleEventDetails')?.value;
+    const program = document.getElementById('singleEventProgram')?.value;
+    const block = document.getElementById('singleEventBlock')?.value;
+    
+    if (!title || !date || !startTime) {
+        alert('Please fill required fields: Title, Date, Start Time');
+        return;
+    }
+    
+    const { error } = await sb.from('calendar_events').insert([{
+        event_name: title,
+        event_date: date,
+        start_time: startTime + ':00',
+        end_time: endTime ? endTime + ':00' : null,
+        venue: venue,
+        type: type,
+        description: details || '',
+        target_program: program || 'General',
+        target_block: block || 'General',
+        organizer: 'Admin'
+    }]);
+    
+    if (error) {
+        alert('Error: ' + error.message);
+    } else {
+        alert('✅ Event added to calendar!');
+        // Clear form
+        document.getElementById('singleEventTitle').value = '';
+        document.getElementById('singleEventVenue').value = '';
+        document.getElementById('singleEventDetails').value = '';
+        
+        // Refresh calendar
+        if (typeof renderFullCalendar === 'function') {
+            renderFullCalendar();
+        }
+    }
+};
+
+// Create weekly schedule function
+window.createWeeklySchedule = async function() {
+    const day = parseInt(document.getElementById('weeklyDay')?.value);
+    const startTime = document.getElementById('weeklyStartTime')?.value;
+    const endTime = document.getElementById('weeklyEndTime')?.value;
+    const course = document.getElementById('weeklyCourse')?.value;
+    const venue = document.getElementById('weeklyVenue')?.value;
+    const startDate = new Date(document.getElementById('weeklyStartDate')?.value);
+    const endDate = new Date(document.getElementById('weeklyEndDate')?.value);
+    const program = document.getElementById('weeklyProgram')?.value;
+    const block = document.getElementById('weeklyBlock')?.value;
+    
+    if (!course || !startDate || !endDate || !startTime) {
+        alert('Please fill all required fields');
+        return;
+    }
+    
+    const events = [];
+    let currentDate = new Date(startDate);
+    
+    while (currentDate <= endDate) {
+        if (currentDate.getDay() === day) {
+            events.push({
+                event_name: course,
+                event_date: currentDate.toISOString().split('T')[0],
+                start_time: startTime + ':00',
+                end_time: endTime + ':00',
+                venue: venue || '',
+                type: 'CLASS',
+                target_program: program || 'General',
+                target_block: block || 'General',
+                organizer: 'Weekly Schedule'
+            });
+        }
+        currentDate.setDate(currentDate.getDate() + 1);
+    }
+    
+    if (events.length === 0) {
+        alert('No dates found matching the selected day in the date range');
+        return;
+    }
+    
+    const { error } = await sb.from('calendar_events').insert(events);
+    
+    if (error) {
+        alert('Error: ' + error.message);
+    } else {
+        alert(`✅ Added ${events.length} class sessions to calendar!`);
+        
+        // Refresh calendar
+        if (typeof renderFullCalendar === 'function') {
+            renderFullCalendar();
+        }
+    }
+};
+
+// Show upload method function
+window.showUploadMethod = function(method) {
+    const excelDiv = document.getElementById('excelUploadMethod');
+    const singleDiv = document.getElementById('singleEventMethod');
+    const bulkDiv = document.getElementById('bulkScheduleMethod');
+    const excelBtn = document.getElementById('excelTabBtn');
+    const singleBtn = document.getElementById('singleTabBtn');
+    const bulkBtn = document.getElementById('bulkTabBtn');
+    
+    // Hide all
+    if (excelDiv) excelDiv.style.display = 'none';
+    if (singleDiv) singleDiv.style.display = 'none';
+    if (bulkDiv) bulkDiv.style.display = 'none';
+    
+    // Remove active class from all buttons
+    if (excelBtn) excelBtn.classList.remove('active');
+    if (singleBtn) singleBtn.classList.remove('active');
+    if (bulkBtn) bulkBtn.classList.remove('active');
+    
+    // Show selected
+    if (method === 'excel') {
+        if (excelDiv) excelDiv.style.display = 'block';
+        if (excelBtn) excelBtn.classList.add('active');
+    } else if (method === 'single') {
+        if (singleDiv) singleDiv.style.display = 'block';
+        if (singleBtn) singleBtn.classList.add('active');
+    } else if (method === 'bulk') {
+        if (bulkDiv) bulkDiv.style.display = 'block';
+        if (bulkBtn) bulkBtn.classList.add('active');
+    }
+};
+
+// Download template function
+window.downloadTimetableTemplate = function() {
+    // Check if SheetJS is loaded
+    if (typeof XLSX === 'undefined') {
+        alert('Excel parser not loaded. Please refresh the page and try again.');
+        return;
+    }
+    
+    const templateData = [
+        ['Date', 'Title', 'Start Time', 'End Time', 'Venue', 'Type', 'Description', 'Program', 'Block'],
+        ['2026-06-15', 'Nursing 101 Lecture', '09:00', '11:00', 'Hall A', 'CLASS', 'Introduction to Nursing', 'KRCHN', 'Block A'],
+        ['2026-06-16', 'Clinical Skills Lab', '10:00', '12:00', 'Skills Lab', 'CLINICAL', 'Practical session', 'KRCHN', 'Block A'],
+        ['2026-06-17', 'Anatomy CAT 1', '14:00', '16:00', 'Exam Hall', 'EXAM', 'First CAT examination', 'KRCHN', 'Block A']
+    ];
+    
+    const ws = XLSX.utils.aoa_to_sheet(templateData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Timetable_Template');
+    XLSX.writeFile(wb, 'timetable_template.xlsx');
+};
+
+console.log('✅ Timetable upload functions loaded');
 
 // =====================================================
 // INITIALIZE THE APPLICATION - ONLY ONE EVENT LISTENER
