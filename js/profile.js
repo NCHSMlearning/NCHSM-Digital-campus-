@@ -1,13 +1,10 @@
-// profile.js - Complete Profile Management Module with DOB, Gender, Admission Date, Block Progress, and Password Reset
-// UPDATED to work with two-column layout (photo on right, details on left)
-
 class ProfileModule {
     constructor() {
         this.userId = null;
         this.userProfile = null;
         this.isEditing = false;
         this.photoObjectURL = null;
-        this.pendingPhotoFile = null; // Store pending photo until save
+        this.pendingPhotoFile = null; 
         
         this.initializeElements();
     }
@@ -785,45 +782,65 @@ class ProfileModule {
     }
     
     setFieldsReadonly(readonly) {
-        // Fields that can be edited
-        const editableFields = [this.profileName, this.profilePhone, this.profileDob, this.profileGender];
-        editableFields.forEach(field => {
-            if (field) {
-                if (field.tagName === 'SELECT') {
-                    field.disabled = readonly;
-                } else {
-                    field.readOnly = readonly;
-                }
-                if (!readonly) {
-                    field.classList.add('editable');
-                } else {
-                    field.classList.remove('editable');
-                }
+    // Fields that can be edited (removed profileDob from this list)
+    const editableFields = [this.profileName, this.profilePhone, this.profileGender];
+    
+    editableFields.forEach(field => {
+        if (field) {
+            if (field.tagName === 'SELECT') {
+                field.disabled = readonly;
+            } else {
+                field.readOnly = readonly;
             }
-        });
-        
-        // Fields that are always readonly
-        const readonlyFields = [
-            this.profileStudentId,
-            this.profileEmail,
-            this.profileProgram,
-            this.profileBlock,
-            this.profileIntakeYear,
-            this.profileAdmissionDate,
-            this.profileAdmissionYear
-        ];
-        
-        readonlyFields.forEach(field => {
-            if (field) {
-                if (field.tagName === 'SELECT') {
-                    field.disabled = true;
-                } else {
-                    field.readOnly = true;
-                }
+            if (!readonly) {
+                field.classList.add('editable');
+            } else {
                 field.classList.remove('editable');
             }
-        });
+        }
+    });
+    
+    // Date of Birth - handle separately so calendar works when editable
+    if (this.profileDob) {
+        if (!readonly) {
+            // In edit mode: remove readonly, enable the date picker
+            this.profileDob.removeAttribute('readonly');
+            this.profileDob.disabled = false;
+            this.profileDob.classList.add('editable');
+            // Force the date picker to be interactive
+            this.profileDob.style.backgroundColor = '#fffbeb';
+            this.profileDob.style.cursor = 'pointer';
+        } else {
+            // In view mode: make it readonly
+            this.profileDob.setAttribute('readonly', 'readonly');
+            this.profileDob.disabled = false; // Keep enabled but readonly
+            this.profileDob.classList.remove('editable');
+            this.profileDob.style.backgroundColor = '#f8fafc';
+        }
     }
+    
+    // Fields that are always readonly
+    const readonlyFields = [
+        this.profileStudentId,
+        this.profileEmail,
+        this.profileProgram,
+        this.profileBlock,
+        this.profileIntakeYear,
+        this.profileAdmissionDate,
+        this.profileAdmissionYear
+    ];
+    
+    readonlyFields.forEach(field => {
+        if (field) {
+            if (field.tagName === 'SELECT') {
+                field.disabled = true;
+            } else {
+                field.readOnly = true;
+            }
+            field.classList.remove('editable');
+        }
+    });
+}
     
     enableEditing() {
         this.updateUIState('edit');
@@ -884,21 +901,38 @@ class ProfileModule {
         }
     }
     
-    async saveProfileData(updates) {
-        const supabase = this.getSupabaseClient();
-        if (!supabase) {
-            throw new Error('No database connection');
-        }
-        
-        const { error } = await supabase
-            .from('consolidated_user_profiles_table')
-            .upsert({
-                user_id: this.userId,
-                ...updates
-            }, { onConflict: 'user_id' });
-        
-        if (error) throw error;
+ async saveProfileData(updates) {
+    const supabase = this.getSupabaseClient();
+    if (!supabase) {
+        throw new Error('No database connection');
     }
+    
+    // Handle date of birth properly
+    if (updates.date_of_birth === '' || updates.date_of_birth === null || updates.date_of_birth === undefined) {
+        updates.date_of_birth = null;
+    } else if (updates.date_of_birth) {
+        // Validate and format the date
+        const testDate = new Date(updates.date_of_birth);
+        if (isNaN(testDate.getTime())) {
+            throw new Error('Invalid date format for date of birth');
+        }
+        // Format as YYYY-MM-DD for PostgreSQL
+        updates.date_of_birth = testDate.toISOString().split('T')[0];
+    }
+    
+    // Clean up other fields
+    if (updates.phone === '') updates.phone = null;
+    if (updates.gender === '') updates.gender = null;
+    
+    const { error } = await supabase
+        .from('consolidated_user_profiles_table')
+        .upsert({
+            user_id: this.userId,
+            ...updates
+        }, { onConflict: 'user_id' });
+    
+    if (error) throw error;
+}
     
     async savePhotoOnly() {
         if (!this.pendingPhotoFile) {
@@ -963,40 +997,54 @@ class ProfileModule {
         }
     }
     
-    validateForm() {
-        let isValid = true;
-        
-        this.clearAllErrors();
-        
-        if (this.profileName && !this.profileName.value.trim()) {
-            this.showFieldError(this.profileName, 'Name is required');
+   validateForm() {
+    let isValid = true;
+    
+    this.clearAllErrors();
+    
+    if (this.profileName && !this.profileName.value.trim()) {
+        this.showFieldError(this.profileName, 'Name is required');
+        isValid = false;
+    }
+    
+    if (this.profilePhone && this.profilePhone.value.trim()) {
+        const phoneRegex = /^[\d\s\-\+\(\)]{10,20}$/;
+        if (!phoneRegex.test(this.profilePhone.value.trim())) {
+            this.showFieldError(this.profilePhone, 'Please enter a valid phone number');
             isValid = false;
         }
+    }
+    
+    // IMPROVED DATE VALIDATION
+    if (this.profileDob && this.profileDob.value) {
+        const dobValue = this.profileDob.value;
+        const dobDate = new Date(dobValue);
         
-        if (this.profilePhone && this.profilePhone.value.trim()) {
-            const phoneRegex = /^[\d\s\-\+\(\)]{10,20}$/;
-            if (!phoneRegex.test(this.profilePhone.value.trim())) {
-                this.showFieldError(this.profilePhone, 'Please enter a valid phone number');
-                isValid = false;
-            }
-        }
-        
-        if (this.profileDob && this.profileDob.value) {
-            const dobDate = new Date(this.profileDob.value);
+        // Check if date is valid
+        if (isNaN(dobDate.getTime())) {
+            this.showFieldError(this.profileDob, 'Please enter a valid date');
+            isValid = false;
+        } else {
+            // Check age range
             const today = new Date();
             let age = today.getFullYear() - dobDate.getFullYear();
             const m = today.getMonth() - dobDate.getMonth();
             if (m < 0 || (m === 0 && today.getDate() < dobDate.getDate())) {
                 age--;
             }
-            if (isNaN(dobDate) || age < 16 || age > 100) {
-                this.showFieldError(this.profileDob, 'Please enter a valid date of birth (age must be between 16-100)');
+            
+            if (age < 16) {
+                this.showFieldError(this.profileDob, 'You must be at least 16 years old');
+                isValid = false;
+            } else if (age > 100) {
+                this.showFieldError(this.profileDob, 'Please enter a valid date of birth');
                 isValid = false;
             }
         }
-        
-        return isValid;
     }
+    
+    return isValid;
+}
     
     showFieldError(field, message) {
         field.classList.add('error');
