@@ -4046,7 +4046,7 @@ function triggerBackup() {
 }
 
 /*******************************************************
- * 18. CALENDAR INTEGRATION (ENHANCED with Timetable Upload)
+ * 18. CALENDAR INTEGRATION (FIXED - with proper array handling)
  *******************************************************/
 
 // Global calendar instance
@@ -4054,168 +4054,233 @@ let mainCalendar = null;
 
 async function renderFullCalendar() {
     const calendarEl = $('fullCalendarDisplay');
-    if (!calendarEl) return;
-    calendarEl.innerHTML = ''; 
-
+    if (!calendarEl) {
+        console.log('Calendar element not found');
+        return;
+    }
+    
+    calendarEl.innerHTML = '<div style="text-align: center; padding: 40px;"><div class="loading-spinner"></div><p>Loading calendar...</p></div>';
+    
     // Get current user for filtering (if student view)
-    const currentUser = getCurrentUser();
+    const currentUser = await getCurrentUser();
     const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'superadmin';
     
-    // Fetch from ALL relevant tables
-    const [sessions, exams, calendarEvents, units] = await Promise.all([
-        fetchData('scheduled_sessions', '*', {}, 'session_date', true),
-        fetchData('exams', '*, course:course_id(course_name)', {}, 'exam_date', true),
-        fetchData('calendar_events', '*', {}, 'event_date', true),
-        fetchData('unit_registrations', '*, units(*)', {}, 'created_at', true)
-    ]);
-
-    const events = [];
-
-    // 1. Add scheduled sessions (classes, clinicals)
-    sessions?.forEach(s => {
-        // Filter for student view
-        if (!isAdmin && !shouldShowToStudent(s, currentUser)) return;
+    try {
+        // Fetch from ALL relevant tables - ENSURE they are always arrays
+        let sessions = [];
+        let exams = [];
+        let calendarEvents = [];
+        let units = [];
         
-        let title = `${s.session_type.toUpperCase()}: ${s.session_title}`;
-        let color = s.session_type === 'clinical' ? '#2ecc71' : s.session_type === 'event' ? '#9b59b6' : '#3498db';
+        // Fetch sessions with error handling
+        try {
+            const { data } = await fetchData('scheduled_sessions', '*', {}, 'session_date', true);
+            sessions = Array.isArray(data) ? data : [];
+            console.log(`✅ Loaded ${sessions.length} sessions`);
+        } catch(e) { 
+            console.error('Sessions fetch error:', e);
+            sessions = [];
+        }
         
-        events.push({
-            id: `session_${s.id}`,
-            title: title,
-            start: s.session_date + (s.session_time ? `T${s.session_time}` : ''),
-            end: s.session_end_time ? s.session_date + `T${s.session_end_time}` : null,
-            allDay: !s.session_time,
-            color: color,
-            extendedProps: {
-                type: 'session',
-                venue: s.venue,
-                description: s.session_description,
-                program: s.target_program,
-                block: s.target_block
-            }
-        });
-    });
-
-    // 2. Add exams
-    exams?.forEach(e => {
-        if (!isAdmin && !shouldShowToStudent(e, currentUser)) return;
+        // Fetch exams with error handling
+        try {
+            const { data } = await fetchData('exams', '*, course:course_id(course_name)', {}, 'exam_date', true);
+            exams = Array.isArray(data) ? data : [];
+            console.log(`✅ Loaded ${exams.length} exams`);
+        } catch(e) { 
+            console.error('Exams fetch error:', e);
+            exams = [];
+        }
         
-        const courseName = e.course?.course_name || 'Exam';
-        const start = e.exam_date + (e.exam_start_time ? `T${e.exam_start_time}` : '');
-        let end = null;
-        if (e.exam_start_time && e.duration_minutes) {
-            const startDate = new Date(`2000-01-01T${e.exam_start_time}`);
-            const endDate = new Date(startDate.getTime() + e.duration_minutes * 60000);
-            end = e.exam_date + `T${endDate.toTimeString().slice(0, 8)}`;
+        // Fetch calendar events with error handling
+        try {
+            const { data } = await fetchData('calendar_events', '*', {}, 'event_date', true);
+            calendarEvents = Array.isArray(data) ? data : [];
+            console.log(`✅ Loaded ${calendarEvents.length} calendar events`);
+        } catch(e) { 
+            console.error('Calendar events fetch error:', e);
+            calendarEvents = [];
+        }
+        
+        // Fetch units with error handling
+        try {
+            const { data } = await fetchData('unit_registrations', '*, units(*)', {}, 'created_at', true);
+            units = Array.isArray(data) ? data : [];
+            console.log(`✅ Loaded ${units.length} unit registrations`);
+        } catch(e) { 
+            console.error('Units fetch error:', e);
+            units = [];
         }
 
-        events.push({
-            id: `exam_${e.id}`,
-            title: `${e.exam_type}: ${e.exam_name} (${courseName})`,
-            start: start,
-            end: end,
-            allDay: !e.exam_start_time,
-            color: '#e74c3c',
-            extendedProps: {
-                type: 'exam',
-                venue: 'Exam Hall',
-                description: `Duration: ${e.duration_minutes || 'N/A'} minutes`,
-                program: e.target_program,
-                block: e.target_block
-            }
-        });
-    });
+        const events = [];
 
-    // 3. Add calendar_events (admin uploaded timetables) - KEY ADDITION
-    calendarEvents?.forEach(event => {
-        if (!isAdmin && !shouldShowToStudent(event, currentUser)) return;
-        
-        let title = event.event_name;
-        let color = getEventColor(event.type);
-        let icon = getEventIcon(event.type);
-        
-        const start = event.event_date + (event.start_time ? `T${event.start_time}` : '');
-        let end = null;
-        if (event.start_time && event.end_time) {
-            end = event.event_date + `T${event.end_time}`;
+        // 1. Add scheduled sessions (classes, clinicals)
+        if (sessions && sessions.length > 0) {
+            sessions.forEach(s => {
+                if (!s) return;
+                // Filter for student view
+                if (!isAdmin && !shouldShowToStudent(s, currentUser)) return;
+                
+                let title = `${(s.session_type || 'CLASS').toUpperCase()}: ${s.session_title || 'Session'}`;
+                let color = s.session_type === 'clinical' ? '#2ecc71' : s.session_type === 'event' ? '#9b59b6' : '#3498db';
+                
+                let startDate = s.session_date;
+                if (s.session_time) {
+                    startDate = s.session_date + 'T' + s.session_time;
+                }
+                
+                let endDate = null;
+                if (s.session_end_time) {
+                    endDate = s.session_date + 'T' + s.session_end_time;
+                }
+                
+                events.push({
+                    id: `session_${s.id}`,
+                    title: title,
+                    start: startDate,
+                    end: endDate,
+                    allDay: !s.session_time,
+                    color: color,
+                    extendedProps: {
+                        type: s.session_type || 'session',
+                        venue: s.venue || 'TBA',
+                        description: s.session_description || 'No description',
+                        program: s.target_program || 'General',
+                        block: s.target_block || 'General'
+                    }
+                });
+            });
         }
 
-        events.push({
-            id: `calendar_${event.id}`,
-            title: `${icon} ${title}`,
-            start: start,
-            end: end,
-            allDay: !event.start_time,
-            color: color,
-            extendedProps: {
-                type: event.type,
-                venue: event.venue,
-                description: event.description,
-                program: event.target_program,
-                block: event.target_block,
-                organizer: event.organizer
-            }
-        });
-    });
+        // 2. Add exams
+        if (exams && exams.length > 0) {
+            exams.forEach(e => {
+                if (!e) return;
+                if (!isAdmin && !shouldShowToStudent(e, currentUser)) return;
+                
+                const courseName = e.course?.course_name || e.exam_name || 'Exam';
+                const start = e.exam_date + (e.exam_start_time ? `T${e.exam_start_time}` : '');
+                let end = null;
+                if (e.exam_start_time && e.duration_minutes) {
+                    const startDate = new Date(`2000-01-01T${e.exam_start_time}`);
+                    const endDate = new Date(startDate.getTime() + e.duration_minutes * 60000);
+                    end = e.exam_date + `T${endDate.toTimeString().slice(0, 8)}`;
+                }
 
-    // 4. Add unit deadlines from unit_registrations
-    units?.forEach(unitReg => {
-        if (unitReg.units?.assessment_deadline) {
-            events.push({
-                id: `unit_${unitReg.id}`,
-                title: `📝 Assignment: ${unitReg.units?.unit_name || 'Unit Assessment'}`,
-                start: unitReg.units.assessment_deadline,
-                allDay: true,
-                color: '#f39c12',
-                extendedProps: {
-                    type: 'assignment',
-                    description: `Unit: ${unitReg.units?.unit_code} - Assessment due`
+                events.push({
+                    id: `exam_${e.id}`,
+                    title: `${e.exam_type || 'EXAM'}: ${e.exam_name || 'Exam'} (${courseName})`,
+                    start: start,
+                    end: end,
+                    allDay: !e.exam_start_time,
+                    color: '#e74c3c',
+                    extendedProps: {
+                        type: 'exam',
+                        venue: 'Exam Hall',
+                        description: `Duration: ${e.duration_minutes || 'N/A'} minutes`,
+                        program: e.target_program || 'General',
+                        block: e.target_block || 'General'
+                    }
+                });
+            });
+        }
+
+        // 3. Add calendar_events (admin uploaded timetables) - THIS IS WHERE ADMIN UPLOADS APPEAR!
+        if (calendarEvents && calendarEvents.length > 0) {
+            calendarEvents.forEach(event => {
+                if (!event) return;
+                if (!isAdmin && !shouldShowToStudent(event, currentUser)) return;
+                
+                let title = event.event_name || 'Untitled Event';
+                let color = getEventColor(event.type);
+                let icon = getEventIcon(event.type);
+                
+                const start = event.event_date + (event.start_time ? `T${event.start_time}` : '');
+                let end = null;
+                if (event.start_time && event.end_time) {
+                    end = event.event_date + `T${event.end_time}`;
+                }
+
+                events.push({
+                    id: `calendar_${event.id}`,
+                    title: `${icon} ${title}`,
+                    start: start,
+                    end: end,
+                    allDay: !event.start_time,
+                    color: color,
+                    extendedProps: {
+                        type: event.type || 'event',
+                        venue: event.venue || 'TBA',
+                        description: event.description || 'No description',
+                        program: event.target_program || 'General',
+                        block: event.target_block || 'General',
+                        organizer: event.organizer || 'Admin'
+                    }
+                });
+            });
+        }
+
+        // 4. Add unit deadlines from unit_registrations
+        if (units && units.length > 0) {
+            units.forEach(unitReg => {
+                if (unitReg && unitReg.units && unitReg.units.assessment_deadline) {
+                    events.push({
+                        id: `unit_${unitReg.id}`,
+                        title: `📝 Assignment: ${unitReg.units?.unit_name || 'Unit Assessment'}`,
+                        start: unitReg.units.assessment_deadline,
+                        allDay: true,
+                        color: '#f39c12',
+                        extendedProps: {
+                            type: 'assignment',
+                            description: `Unit: ${unitReg.units?.unit_code || 'Unknown'} - Assessment due`
+                        }
+                    });
                 }
             });
         }
-    });
 
-    // Initialize or update calendar
-    if (typeof FullCalendar !== 'undefined' && calendarEl) {
-        if (mainCalendar) {
-            mainCalendar.destroy();
-        }
-        
-        mainCalendar = new FullCalendar.Calendar(calendarEl, {
-            initialView: 'dayGridMonth',
-            headerToolbar: {
-                left: 'prev,next today',
-                center: 'title',
-                right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
-            },
-            events: events,
-            eventClick: function(info) {
-                showEventDetails(info.event);
-            },
-            eventDidMount: function(info) {
-                // Add tooltip
-                info.el.title = info.event.extendedProps.description || info.event.title;
-                
-                // Add custom styling for different event types
-                if (info.event.extendedProps.type === 'exam') {
-                    info.el.style.borderLeft = '4px solid #e74c3c';
-                } else if (info.event.extendedProps.type === 'clinical') {
-                    info.el.style.borderLeft = '4px solid #2ecc71';
-                }
-            },
-            datesSet: function(info) {
-                console.log('Calendar view changed:', info.view.type);
+        console.log(`📅 Total events loaded: ${events.length}`);
+
+        // Initialize or update calendar
+        if (typeof FullCalendar !== 'undefined' && calendarEl) {
+            if (mainCalendar) {
+                mainCalendar.destroy();
             }
-        });
+            
+            mainCalendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
+                },
+                events: events,
+                eventClick: function(info) {
+                    showEventDetails(info.event);
+                },
+                eventDidMount: function(info) {
+                    // Add tooltip
+                    info.el.title = info.event.extendedProps.description || info.event.title;
+                    
+                    // Add custom styling for different event types
+                    if (info.event.extendedProps.type === 'exam') {
+                        info.el.style.borderLeft = '4px solid #e74c3c';
+                    } else if (info.event.extendedProps.type === 'clinical') {
+                        info.el.style.borderLeft = '4px solid #2ecc71';
+                    } else if (info.event.extendedProps.type === 'assignment') {
+                        info.el.style.borderLeft = '4px solid #f39c12';
+                    }
+                }
+            });
 
-        mainCalendar.render();
-        
-        // Add filter controls if admin
-        if (isAdmin) {
-            addCalendarFilters();
+            mainCalendar.render();
+            console.log('✅ Calendar rendered successfully');
+        } else {
+            calendarEl.innerHTML = '<p style="color: red;">FullCalendar library not loaded. Please ensure it is included in your HTML.</p>';
         }
-    } else {
-        calendarEl.innerHTML = '<p>FullCalendar library not loaded. Please ensure it is included in your HTML.</p>';
+    } catch (error) {
+        console.error('Calendar render error:', error);
+        calendarEl.innerHTML = `<p style="color: red;">Error loading calendar: ${error.message}</p>`;
     }
 }
 
@@ -4262,24 +4327,29 @@ function getEventIcon(type) {
 // Show event details modal when clicked
 function showEventDetails(event) {
     const props = event.extendedProps;
+    const startDate = event.start ? new Date(event.start) : new Date();
+    const startTime = startDate.getHours() !== 0 ? startDate.toLocaleTimeString() : '';
+    const endTime = event.end ? new Date(event.end).toLocaleTimeString() : '';
+    
     const modalHtml = `
         <div id="eventDetailModal" class="modal" style="display: flex;">
             <div class="modal-content" style="max-width: 500px;">
-                <div class="modal-header">
-                    <h3>${event.title}</h3>
-                    <span class="close" onclick="closeModal('eventDetailModal')">&times;</span>
+                <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #e5e7eb;">
+                    <h3 style="margin: 0;">${escapeHtml(event.title)}</h3>
+                    <span class="close" onclick="closeModal('eventDetailModal')" style="cursor: pointer; font-size: 24px;">&times;</span>
                 </div>
-                <div class="modal-body">
-                    <p><strong>📅 Date:</strong> ${event.start.toLocaleDateString()}</p>
-                    ${event.start.getHours() !== 0 ? `<p><strong>⏰ Time:</strong> ${event.start.toLocaleTimeString()} ${event.end ? '- ' + event.end.toLocaleTimeString() : ''}</p>` : ''}
-                    ${props.venue ? `<p><strong>📍 Venue:</strong> ${props.venue}</p>` : ''}
-                    ${props.type ? `<p><strong>🏷️ Type:</strong> ${props.type}</p>` : ''}
-                    ${props.description ? `<p><strong>📝 Details:</strong> ${props.description}</p>` : ''}
-                    ${props.program && props.program !== 'General' ? `<p><strong>🎓 Program:</strong> ${props.program}</p>` : ''}
-                    ${props.block && props.block !== 'General' ? `<p><strong>📌 Block:</strong> ${props.block}</p>` : ''}
+                <div class="modal-body" style="padding: 20px;">
+                    <p><strong>📅 Date:</strong> ${startDate.toLocaleDateString()}</p>
+                    ${startTime ? `<p><strong>⏰ Time:</strong> ${startTime} ${endTime ? '- ' + endTime : ''}</p>` : ''}
+                    ${props.venue && props.venue !== 'TBA' ? `<p><strong>📍 Venue:</strong> ${escapeHtml(props.venue)}</p>` : ''}
+                    ${props.type ? `<p><strong>🏷️ Type:</strong> ${escapeHtml(props.type)}</p>` : ''}
+                    ${props.description && props.description !== 'No description' ? `<p><strong>📝 Details:</strong> ${escapeHtml(props.description)}</p>` : ''}
+                    ${props.program && props.program !== 'General' ? `<p><strong>🎓 Program:</strong> ${escapeHtml(props.program)}</p>` : ''}
+                    ${props.block && props.block !== 'General' ? `<p><strong>📌 Block:</strong> ${escapeHtml(props.block)}</p>` : ''}
+                    ${props.organizer ? `<p><strong>👤 Organizer:</strong> ${escapeHtml(props.organizer)}</p>` : ''}
                 </div>
-                <div class="modal-actions">
-                    <button onclick="closeModal('eventDetailModal')" class="btn">Close</button>
+                <div class="modal-actions" style="padding: 15px; border-top: 1px solid #e5e7eb; display: flex; justify-content: flex-end;">
+                    <button onclick="closeModal('eventDetailModal')" class="btn" style="padding: 8px 16px; background: #6b7280; color: white; border: none; border-radius: 6px; cursor: pointer;">Close</button>
                 </div>
             </div>
         </div>
@@ -4290,64 +4360,6 @@ function showEventDetails(event) {
     if (existingModal) existingModal.remove();
     
     document.body.insertAdjacentHTML('beforeend', modalHtml);
-}
-
-// Add filter controls to calendar (Admin only)
-function addCalendarFilters() {
-    const calendarContainer = document.querySelector('#fullCalendarDisplay')?.parentElement;
-    if (!calendarContainer || document.getElementById('calendarFilterBar')) return;
-    
-    const filterBar = document.createElement('div');
-    filterBar.id = 'calendarFilterBar';
-    filterBar.style.cssText = 'display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; padding: 10px; background: #f8f9fa; border-radius: 8px;';
-    filterBar.innerHTML = `
-        <select id="calendarTypeFilter" onchange="filterCalendarByType()">
-            <option value="all">📅 All Events</option>
-            <option value="CLASS">📚 Classes</option>
-            <option value="EXAM">📝 Exams</option>
-            <option value="CLINICAL">🏥 Clinical</option>
-            <option value="EVENT">🎉 Events</option>
-            <option value="ASSIGNMENT">📄 Assignments</option>
-        </select>
-        <select id="calendarProgramFilter" onchange="filterCalendarByProgram()">
-            <option value="all">🎓 All Programs</option>
-            <option value="KRCHN">KRCHN</option>
-            <option value="TVET">TVET</option>
-            <option value="DPOTT">DPOTT</option>
-            <option value="DHRIT">DHRIT</option>
-        </select>
-        <select id="calendarBlockFilter" onchange="filterCalendarByBlock()">
-            <option value="all">📌 All Blocks</option>
-            <option value="Introductory">Introductory</option>
-            <option value="Block A">Block A</option>
-            <option value="Block B">Block B</option>
-            <option value="Block C">Block C</option>
-            <option value="Block D">Block D</option>
-            <option value="Block E">Block E</option>
-            <option value="Final">Final</option>
-        </select>
-        <button onclick="refreshCalendarData()" class="btn-action" style="padding: 5px 12px;">
-            🔄 Refresh
-        </button>
-    `;
-    
-    calendarContainer.insertBefore(filterBar, calendarContainer.firstChild);
-}
-
-// Filter calendar events by type
-function filterCalendarByType() {
-    const type = document.getElementById('calendarTypeFilter')?.value;
-    if (!mainCalendar) return;
-    
-    const events = mainCalendar.getEvents();
-    events.forEach(event => {
-        const eventType = event.extendedProps.type;
-        if (type === 'all' || eventType === type) {
-            event.setProp('display', 'auto');
-        } else {
-            event.setProp('display', 'none');
-        }
-    });
 }
 
 // Refresh calendar data
@@ -4365,66 +4377,95 @@ async function uploadTimetableExcel(file, program, block) {
         return false;
     }
     
-    // Use SheetJS to parse
+    // Check if SheetJS is loaded
+    if (typeof XLSX === 'undefined') {
+        alert('Excel parser not loaded. Please refresh the page and try again.');
+        return false;
+    }
+    
     const reader = new FileReader();
     reader.onload = async function(e) {
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        const rows = XLSX.utils.sheet_to_json(sheet);
-        
-        let added = 0;
-        let errors = [];
-        
-        for (const row of rows) {
-            try {
-                const eventData = {
-                    event_name: row.Title || row.title || row.Course,
-                    event_date: row.Date || row.date,
-                    start_time: row.Start_Time || row.start_time || row['Start Time'],
-                    end_time: row.End_Time || row.end_time || row['End Time'],
-                    venue: row.Venue || row.venue,
-                    type: (row.Type || row.type || 'CLASS').toUpperCase(),
-                    description: row.Description || row.description || '',
-                    target_program: program,
-                    target_block: block,
-                    organizer: 'Admin Upload'
-                };
-                
-                const { error } = await supabase.from('calendar_events').insert([eventData]);
-                if (error) throw error;
-                added++;
-            } catch (err) {
-                errors.push(row);
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            const rows = XLSX.utils.sheet_to_json(sheet);
+            
+            let added = 0;
+            let errors = [];
+            
+            for (const row of rows) {
+                try {
+                    const eventData = {
+                        event_name: row.Title || row.title || row.Course || row.course,
+                        event_date: row.Date || row.date,
+                        start_time: row.Start_Time || row.start_time || row['Start Time'] || null,
+                        end_time: row.End_Time || row.end_time || row['End Time'] || null,
+                        venue: row.Venue || row.venue || null,
+                        type: (row.Type || row.type || 'CLASS').toUpperCase(),
+                        description: row.Description || row.description || '',
+                        target_program: program || 'General',
+                        target_block: block || 'General',
+                        organizer: 'Admin Upload'
+                    };
+                    
+                    if (!eventData.event_name || !eventData.event_date) {
+                        errors.push(row);
+                        continue;
+                    }
+                    
+                    const { error } = await sb.from('calendar_events').insert([eventData]);
+                    if (error) throw error;
+                    added++;
+                } catch (err) {
+                    errors.push(row);
+                }
             }
+            
+            alert(`✅ Added ${added} events to calendar!\n${errors.length} errors.`);
+            refreshCalendarData();
+        } catch (err) {
+            console.error('Excel processing error:', err);
+            alert('Error processing Excel file: ' + err.message);
         }
-        
-        alert(`✅ Added ${added} events to calendar!\n${errors.length} errors.`);
-        refreshCalendarData();
     };
     reader.readAsArrayBuffer(file);
 }
 
 // Add single event to calendar (Admin function)
 async function addCalendarEvent(eventData) {
-    const { error } = await supabase.from('calendar_events').insert([eventData]);
+    const { error } = await sb.from('calendar_events').insert([eventData]);
     if (error) {
         console.error('Error adding event:', error);
         alert('Failed to add event: ' + error.message);
         return false;
     }
     refreshCalendarData();
+    alert('✅ Event added to calendar!');
     return true;
+}
+
+// Download Excel template
+function downloadTimetableTemplate() {
+    const templateData = [
+        ['Date', 'Title', 'Start Time', 'End Time', 'Venue', 'Type', 'Description'],
+        ['2026-06-15', 'Nursing 101 Lecture', '09:00', '11:00', 'Hall A', 'CLASS', 'Introduction to Nursing'],
+        ['2026-06-16', 'Clinical Skills Lab', '10:00', '12:00', 'Skills Lab', 'CLINICAL', 'Practical session'],
+        ['2026-06-17', 'Anatomy CAT 1', '14:00', '16:00', 'Exam Hall', 'EXAM', 'First CAT examination']
+    ];
+    
+    const ws = XLSX.utils.aoa_to_sheet(templateData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Timetable_Template');
+    XLSX.writeFile(wb, 'timetable_template.xlsx');
 }
 
 // Expose functions globally
 window.renderFullCalendar = renderFullCalendar;
-window.filterCalendarByType = filterCalendarByType;
-window.filterCalendarByProgram = filterCalendarByProgram;
-window.filterCalendarByBlock = filterCalendarByBlock;
 window.refreshCalendarData = refreshCalendarData;
 window.uploadTimetableExcel = uploadTimetableExcel;
 window.addCalendarEvent = addCalendarEvent;
+window.downloadTimetableTemplate = downloadTimetableTemplate;
 /*******************************************************
  * 19. ENHANCED FEATURES IMPLEMENTATION
  *******************************************************/
