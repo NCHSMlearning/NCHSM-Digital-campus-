@@ -1551,11 +1551,156 @@
                 </table>
             </section>
 
-            <!-- Calendar Section -->
-            <section id="calendar" class="tab-content">
-                <h2>System Calendar</h2>
-                <div id="fullCalendarDisplay"></div>
-            </section>
+           <!-- Calendar Section WITH TIMETABLE UPLOAD -->
+<section id="calendar" class="tab-content">
+    <h2><i class="fas fa-calendar-alt"></i> System Calendar & Timetable Management</h2>
+    
+    <!-- ADMIN UPLOAD SECTION -->
+    <div style="background: linear-gradient(135deg, #f3e8ff, #e9d5ff); padding: 20px; border-radius: 12px; margin-bottom: 25px;">
+        <h3><i class="fas fa-upload"></i> Upload Timetable / Add to Student Calendar</h3>
+        
+        <!-- Tab for different upload methods -->
+        <div style="display: flex; gap: 10px; margin-bottom: 15px; border-bottom: 2px solid #e5e7eb;">
+            <button onclick="showUploadMethod('excel')" id="excelTabBtn" class="upload-tab-btn active" style="padding: 10px 20px; background: none; border: none; cursor: pointer; font-weight: 600;">
+                📊 Excel/CSV Upload
+            </button>
+            <button onclick="showUploadMethod('single')" id="singleTabBtn" class="upload-tab-btn" style="padding: 10px 20px; background: none; border: none; cursor: pointer; font-weight: 600;">
+                📝 Single Event
+            </button>
+            <button onclick="showUploadMethod('bulk')" id="bulkTabBtn" class="upload-tab-btn" style="padding: 10px 20px; background: none; border: none; cursor: pointer; font-weight: 600;">
+                📅 Weekly Schedule
+            </button>
+        </div>
+        
+        <!-- EXCEL UPLOAD METHOD -->
+        <div id="excelUploadMethod" class="upload-method">
+            <p><i class="fas fa-info-circle"></i> Upload Excel/CSV file with columns: Date, Title, Start Time, End Time, Venue, Type, Program, Block</p>
+            <div class="inline-form" style="background: white; border-radius: 8px;">
+                <input type="file" id="timetableExcelFile" accept=".xlsx,.xls,.csv">
+                <select id="uploadProgram">
+                    <option value="KRCHN">KRCHN Program</option>
+                    <option value="TVET">TVET Program</option>
+                    <option value="DPOTT">DPOTT Program</option>
+                    <option value="General">All Programs</option>
+                </select>
+                <select id="uploadBlock">
+                    <option value="General">All Blocks</option>
+                    <option value="Introductory">Introductory Block</option>
+                    <option value="Block A">Block A</option>
+                    <option value="Block B">Block B</option>
+                    <option value="Block C">Block C</option>
+                    <option value="Block D">Block D</option>
+                    <option value="Block E">Block E</option>
+                    <option value="Final">Final Block</option>
+                </select>
+                <button onclick="uploadExcelTimetable()" class="btn-action">
+                    <i class="fas fa-cloud-upload-alt"></i> Upload & Add to Calendar
+                </button>
+            </div>
+            <div style="margin-top: 10px;">
+                <a href="#" onclick="downloadTimetableTemplate()" style="color: #4C1D95;">
+                    <i class="fas fa-download"></i> Download Excel Template
+                </a>
+            </div>
+        </div>
+        
+        <!-- SINGLE EVENT METHOD -->
+        <div id="singleEventMethod" class="upload-method" style="display: none;">
+            <div class="unit-form-row">
+                <input type="text" id="singleEventTitle" placeholder="Event Title *" required>
+                <input type="date" id="singleEventDate" required>
+                <input type="time" id="singleEventStart" required>
+                <input type="time" id="singleEventEnd">
+                <input type="text" id="singleEventVenue" placeholder="Venue">
+                <select id="singleEventType">
+                    <option value="CLASS">📚 Class</option>
+                    <option value="EXAM">📝 Exam</option>
+                    <option value="CLINICAL">🏥 Clinical</option>
+                    <option value="EVENT">🎉 Event</option>
+                    <option value="ASSIGNMENT">📄 Assignment</option>
+                </select>
+                <textarea id="singleEventDetails" placeholder="Description (optional)" rows="2"></textarea>
+            </div>
+            <div class="inline-form">
+                <select id="singleEventProgram">
+                    <option value="KRCHN">KRCHN Program</option>
+                    <option value="TVET">TVET Program</option>
+                    <option value="DPOTT">DPOTT Program</option>
+                    <option value="General">All Programs</option>
+                </select>
+                <select id="singleEventBlock">
+                    <option value="General">All Blocks</option>
+                    <option value="Introductory">Introductory Block</option>
+                    <option value="Block A">Block A</option>
+                    <option value="Block B">Block B</option>
+                    <option value="Block C">Block C</option>
+                    <option value="Block D">Block D</option>
+                    <option value="Block E">Block E</option>
+                    <option value="Final">Final Block</option>
+                </select>
+                <button onclick="addSingleEvent()" class="btn-action">
+                    <i class="fas fa-calendar-plus"></i> Add to Calendar
+                </button>
+            </div>
+        </div>
+        
+        <!-- WEEKLY SCHEDULE METHOD -->
+        <div id="bulkScheduleMethod" class="upload-method" style="display: none;">
+            <p><i class="fas fa-calendar-week"></i> Create recurring weekly schedule for the entire block</p>
+            <div class="unit-form-row">
+                <select id="weeklyDay">
+                    <option value="1">Monday</option>
+                    <option value="2">Tuesday</option>
+                    <option value="3">Wednesday</option>
+                    <option value="4">Thursday</option>
+                    <option value="5">Friday</option>
+                    <option value="6">Saturday</option>
+                </select>
+                <input type="time" id="weeklyStartTime" required>
+                <input type="time" id="weeklyEndTime" required>
+                <input type="text" id="weeklyCourse" placeholder="Course Name" required>
+                <input type="text" id="weeklyVenue" placeholder="Venue">
+                <input type="date" id="weeklyStartDate" required>
+                <input type="date" id="weeklyEndDate" required>
+            </div>
+            <div class="inline-form">
+                <select id="weeklyProgram">
+                    <option value="KRCHN">KRCHN Program</option>
+                    <option value="TVET">TVET Program</option>
+                </select>
+                <select id="weeklyBlock">
+                    <option value="Block A">Block A</option>
+                    <option value="Block B">Block B</option>
+                    <option value="Block C">Block C</option>
+                    <option value="Block D">Block D</option>
+                </select>
+                <button onclick="createWeeklySchedule()" class="btn-action">
+                    <i class="fas fa-repeat"></i> Create Weekly Schedule
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Calendar Display -->
+    <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+        <div id="fullCalendarDisplay"></div>
+    </div>
+    
+    <!-- Recent Events List -->
+    <div style="margin-top: 20px;">
+        <h3><i class="fas fa-history"></i> Upcoming Events (Next 14 Days)</h3>
+        <div class="table-responsive">
+            <table id="upcomingEventsTable" style="width: 100%;">
+                <thead>
+                    <tr><th>Date</th><th>Time</th><th>Title</th><th>Venue</th><th>Program</th><th>Block</th><th>Actions</th></tr>
+                </thead>
+                <tbody id="upcomingEventsBody">
+                    <tr><td colspan="7">Loading events...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
 
             <!-- Welcome Editor Section -->
             <section id="welcome-editor" class="tab-content">
