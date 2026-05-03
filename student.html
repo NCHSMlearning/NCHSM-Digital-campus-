@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>NCHSM Digital Student Dashboard | Unified Learning Hub</title>
@@ -19,9 +20,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="css/main.css">
     
-    <!-- Gamification Styles -->
+    <!-- Gamification CSS Styles -->
     <style>
-        /* Gamification Widget Styles */
         .gamification-widget {
             display: flex;
             gap: 12px;
@@ -32,11 +32,10 @@
         .streak-indicator, .points-indicator, .level-indicator {
             display: flex;
             align-items: center;
-            gap: 6px;
-            padding: 6px 12px;
+            gap: 8px;
+            padding: 6px 14px;
             border-radius: 30px;
             background: linear-gradient(135deg, rgba(76,29,149,0.1) 0%, rgba(139,92,246,0.1) 100%);
-            backdrop-filter: blur(10px);
             transition: all 0.3s ease;
         }
         
@@ -61,7 +60,6 @@
             color: #6b7280;
         }
         
-        /* Badges Section */
         .badges-section {
             background: white;
             border-radius: 20px;
@@ -86,13 +84,7 @@
             background: #f9fafb;
             border-radius: 16px;
             transition: all 0.3s ease;
-            cursor: pointer;
             border: 1px solid #e5e7eb;
-        }
-        
-        .badge-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1);
         }
         
         .badge-card.unlocked {
@@ -106,21 +98,19 @@
         }
         
         .badge-icon {
-            width: 55px;
-            height: 55px;
+            width: 50px;
+            height: 50px;
             background: linear-gradient(135deg, #4C1D95, #7c3aed);
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
-            font-size: 24px;
-            transition: all 0.3s;
+            font-size: 22px;
         }
         
         .badge-card.unlocked .badge-icon {
             background: linear-gradient(135deg, #f59e0b, #ea580c);
-            animation: pulse 0.5s ease;
         }
         
         .badge-info {
@@ -131,7 +121,6 @@
             margin: 0 0 4px 0;
             font-size: 14px;
             font-weight: 700;
-            color: #1f2937;
         }
         
         .badge-info p {
@@ -158,7 +147,6 @@
             color: #9ca3af;
         }
         
-        /* Leaderboard Section */
         .leaderboard-section {
             background: white;
             border-radius: 20px;
@@ -199,7 +187,6 @@
         .leaderboard-tab.active {
             background: #4C1D95;
             color: white;
-            box-shadow: 0 2px 4px rgba(76,29,149,0.2);
         }
         
         .leaderboard-list {
@@ -215,7 +202,6 @@
             padding: 14px;
             border-bottom: 1px solid #e5e7eb;
             transition: background 0.3s;
-            border-radius: 12px;
         }
         
         .leaderboard-item:hover {
@@ -229,7 +215,7 @@
             color: #4C1D95;
         }
         
-        .leaderboard-rank.gold { color: #f59e0b; text-shadow: 0 0 2px #fbbf24; }
+        .leaderboard-rank.gold { color: #f59e0b; }
         .leaderboard-rank.silver { color: #94a3b8; }
         .leaderboard-rank.bronze { color: #b45309; }
         
@@ -252,17 +238,11 @@
         .leaderboard-name {
             font-weight: 700;
             margin-bottom: 4px;
-            color: #1f2937;
         }
         
         .leaderboard-stats {
             font-size: 11px;
             color: #6b7280;
-        }
-        
-        .leaderboard-stats i {
-            margin-right: 4px;
-            font-size: 10px;
         }
         
         .leaderboard-points {
@@ -271,29 +251,35 @@
             font-size: 16px;
         }
         
-        /* Animations */
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.1); }
+        .level-progress {
+            margin: 20px 0;
+            padding: 12px 16px;
+            background: #f3f4f6;
+            border-radius: 30px;
         }
         
-        @keyframes bounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); }
+        .level-progress-bar {
+            height: 8px;
+            background: #e5e7eb;
+            border-radius: 4px;
+            overflow: hidden;
         }
         
-        @keyframes slideIn {
-            from {
-                transform: translateX(100%);
-                opacity: 0;
-            }
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
+        .level-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #f59e0b, #ea580c);
+            border-radius: 4px;
+            transition: width 0.5s ease;
+            width: 0%;
         }
         
-        /* Achievement Toast */
+        .level-progress-text {
+            font-size: 11px;
+            color: #6b7280;
+            margin-top: 8px;
+            text-align: center;
+        }
+        
         .achievement-toast {
             position: fixed;
             bottom: 30px;
@@ -309,7 +295,6 @@
             animation: slideIn 0.3s ease;
             box-shadow: 0 10px 25px -5px rgba(0,0,0,0.2);
             max-width: 350px;
-            cursor: pointer;
         }
         
         .achievement-toast i {
@@ -328,40 +313,21 @@
             opacity: 0.9;
         }
         
-        /* Level Progress Bar */
-        .level-progress {
-            margin-top: 10px;
-            padding: 8px 12px;
-            background: #f3f4f6;
-            border-radius: 30px;
-        }
-        
-        .level-progress-bar {
-            height: 6px;
-            background: #e5e7eb;
-            border-radius: 3px;
-            overflow: hidden;
-        }
-        
-        .level-progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #f59e0b, #ea580c);
-            border-radius: 3px;
-            transition: width 0.5s ease;
-            width: 0%;
-        }
-        
-        .level-progress-text {
-            font-size: 10px;
-            color: #6b7280;
-            margin-top: 6px;
-            text-align: center;
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
         }
     </style>
     
     <!-- PWA Metadata -->
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="true">
+    <meta name="apple-mobile-web-app-capable" content="true">
     <meta name="application-name" content="NCHSM Portal">
     <meta name="apple-mobile-web-app-title" content="NCHSM Portal">
     <meta name="theme-color" content="#4C1D95">
@@ -374,7 +340,7 @@
 </head>
 <body>
 
-<!-- ==================== LOADING SCREEN ==================== -->
+<!-- LOADING SCREEN -->
 <div id="loading-screen">
     <div class="loading-container">
         <div class="logo-animation">
@@ -397,9 +363,11 @@
             <div class="progress-text" id="progress-text">Preparing your portal...</div>
         </div>
         
+        <div class="status-steps" id="status-steps"></div>
+        
         <div class="fun-fact" id="fun-fact">
             <i class="fas fa-lightbulb"></i>
-            <span>Did you know? You can earn badges and level up by attending classes!</span>
+            <span>Did you know? Earn badges and level up by attending classes!</span>
         </div>
         
         <div class="loading-animation">
@@ -412,95 +380,107 @@
     </div>
 </div>
 
-<!-- ==================== MAIN APP CONTENT ==================== -->
+<!-- OFFLINE INDICATOR -->
+<div class="offline-indicator" id="offlineIndicator" style="display: none;">
+    <i class="fas fa-wifi-slash"></i> You are offline. Some features may be unavailable.
+</div>
+
+<!-- MAIN APP CONTENT -->
 <div id="app-content" style="display: none;">
     
-    <!-- ==================== HEADER WITH GAMIFICATION ==================== -->
-    <header class="main-header">
-        <div class="header-left">
-            <div class="logo-container">
-                <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" 
-                     alt="NCHSM Logo" 
-                     class="header-logo">
-                <div class="header-titles">
-                    <h1 class="main-title">NCHSM</h1>
-                    <h2 class="subtitle">Digital Student Portal</h2>
-                </div>
+   <!-- HEADER -->
+<header class="main-header">
+    <div class="header-left">
+        <div class="logo-container">
+            <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" 
+                 alt="NCHSM Logo" 
+                 class="header-logo">
+            <div class="header-titles">
+                <h1 class="main-title">NCHSM</h1>
+                <h2 class="subtitle">Digital Student Portal</h2>
+            </div>
+        </div>
+    </div>
+    
+    <div class="header-right">
+        <!-- GAMIFICATION WIDGET (ADDED) -->
+        <div class="gamification-widget">
+            <div class="streak-indicator" id="streak-indicator" title="Current Streak">
+                <i class="fas fa-fire"></i>
+                <span id="streak-count">0</span>
+                <span class="streak-label">Day Streak</span>
+            </div>
+            
+            <div class="points-indicator" id="points-indicator" title="Total Points">
+                <i class="fas fa-star"></i>
+                <span id="points-count">0</span>
+                <span class="points-label">Points</span>
+            </div>
+            
+            <div class="level-indicator" id="level-indicator" title="Current Level">
+                <i class="fas fa-trophy"></i>
+                <span id="level-number">1</span>
+                <span class="level-label">Level</span>
             </div>
         </div>
         
-        <div class="header-right">
-            <!-- GAMIFICATION WIDGET -->
-            <div class="gamification-widget">
-                <div class="streak-indicator" id="streak-indicator" title="Current Streak">
-                    <i class="fas fa-fire"></i>
-                    <span id="streak-count">0</span>
-                    <span class="streak-label">Day Streak</span>
-                </div>
-                
-                <div class="points-indicator" id="points-indicator" title="Total Points">
-                    <i class="fas fa-star"></i>
-                    <span id="points-count">0</span>
-                    <span class="points-label">Points</span>
-                </div>
-                
-                <div class="level-indicator" id="level-indicator" title="Current Level">
-                    <i class="fas fa-trophy"></i>
-                    <span id="level-number">1</span>
-                    <span class="level-label">Level</span>
-                </div>
-            </div>
-            
-            <button class="mobile-menu-toggle icon-btn" id="mobile-menu-toggle">
-                <i class="fas fa-bars"></i>
-            </button>
-            
-            <div class="user-profile-dropdown">
-                <div class="profile-trigger">
-                    <img id="header-profile-photo" 
-                         src="https://ui-avatars.com/api/?name=Student&background=667eea&color=fff&size=100" 
-                         alt="Profile" 
-                         class="profile-avatar round">
-                    <div class="profile-info">
-                        <span class="profile-name" id="header-user-name">Student</span>
-                        <span class="profile-role">Student</span>
-                    </div>
-                    <i class="fas fa-chevron-down dropdown-icon"></i>
-                </div>
-                
-                <div class="dropdown-menu" style="display: none;">
-                    <a href="#" data-tab="profile">
-                        <i class="fas fa-user"></i> My Profile
-                    </a>
-                    <a href="#" id="view-achievements">
-                        <i class="fas fa-medal"></i> My Achievements
-                    </a>
-                    <div class="dropdown-divider"></div>
-                    <a href="#" id="header-logout">
-                        <i class="fas fa-sign-out-alt"></i> Logout
-                    </a>
-                </div>
-            </div>
-            
-            <div class="current-time">
-                <i class="fas fa-clock"></i>
-                <span id="header-time">Loading...</span>
-            </div>
-            
-            <div class="header-actions">
-                <button class="icon-btn" id="header-refresh" title="Refresh Dashboard">
-                    <i class="fas fa-redo"></i>
-                </button>
+        <button class="mobile-menu-toggle icon-btn" id="mobile-menu-toggle">
+            <i class="fas fa-bars"></i>
+        </button>
+        
+        <div class="last-login-info">
+            <i class="fas fa-history"></i>
+            <div class="last-login-details">
+                <span class="last-login-label">Last Login</span>
+                <span class="last-login-time" id="header-last-login">Loading...</span>
             </div>
         </div>
-    </header>
+        
+        <div class="user-profile-dropdown">
+            <div class="profile-trigger">
+                <img id="header-profile-photo" 
+                     src="https://ui-avatars.com/api/?name=Student&background=667eea&color=fff&size=100" 
+                     alt="Profile" 
+                     class="profile-avatar round">
+                <div class="profile-info">
+                    <span class="profile-name" id="header-user-name">Student</span>
+                    <span class="profile-role">Student</span>
+                </div>
+                <i class="fas fa-chevron-down dropdown-icon"></i>
+            </div>
+            
+            <div class="dropdown-menu" style="display: none;">
+                <a href="#" data-tab="profile">
+                    <i class="fas fa-user"></i> My Profile
+                </a>
+                <a href="#" id="view-achievements">
+                    <i class="fas fa-medal"></i> My Achievements
+                </a>
+                <div class="dropdown-divider"></div>
+                <a href="#" id="header-logout">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            </div>
+        </div>
+        
+        <div class="current-time">
+            <i class="fas fa-clock"></i>
+            <span id="header-time">Loading...</span>
+        </div>
+        
+        <div class="header-actions">
+            <button class="icon-btn" id="header-refresh" title="Refresh Dashboard">
+                <i class="fas fa-redo"></i>
+            </button>
+        </div>
+    </div>
+</header>
     
     <div class="overlay" id="overlay" role="presentation" aria-hidden="true"></div>
 
-    <!-- ==================== MAIN CONTAINER ==================== -->
     <div class="container">
         
-        <!-- ==================== SIDEBAR NAVIGATION ==================== -->
+        <!-- SIDEBAR -->
         <aside class="sidebar" id="sidebar" aria-label="Main navigation">
             <div class="sidebar-header">
                 <h2><i class="fas fa-graduation-cap"></i> Portal Menu</h2>
@@ -549,6 +529,7 @@
                         <a href="#" data-tab="exam-card" role="menuitem">
                             <i class="fas fa-id-card"></i>
                             <span class="nav-text">Exam Card</span>
+                            <span class="nav-badge" id="examCardBadge" style="display: none;">New</span>
                         </a>
                     </li>
                     
@@ -556,6 +537,7 @@
                         <a href="#" data-tab="cats" role="menuitem">
                             <i class="fas fa-chart-line"></i>
                             <span class="nav-text">Exams & Grades</span>
+                            <span class="nav-badge" id="examsBadge" style="display: none;">0</span>
                         </a>
                     </li>
                     
@@ -563,6 +545,7 @@
                         <a href="#" data-tab="resources" role="menuitem">
                             <i class="fas fa-folder-open"></i>
                             <span class="nav-text">Resources</span>
+                            <span class="nav-badge" id="resourcesBadge" style="display: none;">0</span>
                         </a>
                     </li>
                     
@@ -570,20 +553,41 @@
                         <a href="#" data-tab="messages" role="menuitem">
                             <i class="fas fa-comment-dots"></i>
                             <span class="nav-text">Messages</span>
+                            <span class="nav-badge" id="messagesBadge" style="display: none;">0</span>
+                        </a>
+                    </li>
+                    
+                    <li role="none">
+                        <a href="#" data-tab="nurseiq" class="nurseiq-nav" role="menuitem">
+                            <div class="nav-icon-wrapper">
+                                <i class="fas fa-brain"></i>
+                                <span class="nav-pulse" aria-hidden="true"></span>
+                            </div>
+                            <span class="nav-text">NurseIQ</span>
+                            <span class="nav-subtitle">Practice Center</span>
+                            <span class="nav-badge" id="nurseiqBadge">0</span>
+                        </a>
+                    </li>
+                    
+                    <li role="none">
+                        <a href="#" data-tab="support-tickets" role="menuitem">
+                            <i class="fas fa-ticket-alt"></i>
+                            <span class="nav-text">Support Tickets</span>
+                            <span class="nav-badge" id="ticketsBadge" style="display: none;">0</span>
                         </a>
                     </li>
                 </ul>
             </nav>
             
             <div class="sidebar-footer">
-                <p class="version-info">Portal v3.0 - Gamified</p>
+                <p class="version-info" id="sidebarVersion">Portal v3.0 - Gamified</p>
             </div>
         </aside>
 
-        <!-- ==================== MAIN CONTENT AREA ==================== -->
+        <!-- MAIN CONTENT -->
         <main class="main" id="main-content">
             
-            <!-- ==================== DASHBOARD TAB ==================== -->
+            <!-- DASHBOARD TAB -->
             <section id="dashboard" class="tab-content active" role="region">
                 <div class="welcome-card" id="welcome-section">
                     <div class="welcome-header">
@@ -597,8 +601,8 @@
                         <span id="dashboard-time"></span>
                     </div>
                 </div>
-                
-                <!-- Level Progress Bar -->
+
+                <!-- LEVEL PROGRESS (ADDED) -->
                 <div class="level-progress">
                     <div class="level-progress-bar">
                         <div class="level-progress-fill" id="level-progress-fill" style="width: 0%"></div>
@@ -619,7 +623,6 @@
                 <h2 class="dashboard-section-title">Quick Snapshot</h2>
                 
                 <div class="cards-grid" role="group">
-                    <!-- Attendance Card -->
                     <div class="stat-card" data-tab="attendance" role="button" tabindex="0">
                         <div class="card-header">
                             <div class="card-icon attendance">
@@ -632,11 +635,24 @@
                             <p class="stat-subtitle">Overall attendance rate</p>
                             <div class="stat-details">
                                 <p>Verified: <strong id="dashboard-verified-count">0</strong> / <strong id="dashboard-total-count">0</strong></p>
+                                <p class="pending-text">Pending: <strong id="dashboard-pending-count">0</strong></p>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Active Courses Card -->
+                    <div class="stat-card" data-tab="cats" role="button" tabindex="0">
+                        <div class="card-header">
+                            <div class="card-icon exam">
+                                <i class="fas fa-file-alt"></i>
+                            </div>
+                            <h3>Upcoming Exam</h3>
+                        </div>
+                        <div class="card-body">
+                            <p class="stat-value" id="dashboard-upcoming-exam">Loading...</p>
+                            <p class="stat-subtitle">Next CAT/Exam date</p>
+                        </div>
+                    </div>
+
                     <div class="stat-card" data-tab="learning-hub" role="button" tabindex="0">
                         <div class="card-header">
                             <div class="card-icon courses">
@@ -650,7 +666,7 @@
                         </div>
                     </div>
 
-                    <!-- Points Card -->
+                    <!-- POINTS CARD (ADDED) -->
                     <div class="stat-card" id="points-card">
                         <div class="card-header">
                             <div class="card-icon points">
@@ -664,7 +680,7 @@
                         </div>
                     </div>
 
-                    <!-- Streak Card -->
+                    <!-- STREAK CARD (ADDED) -->
                     <div class="stat-card" id="streak-card">
                         <div class="card-header">
                             <div class="card-icon streak">
@@ -677,9 +693,55 @@
                             <p class="stat-subtitle">Days in a row</p>
                         </div>
                     </div>
+
+                    <div class="stat-card" data-tab="resources" role="button" tabindex="0">
+                        <div class="card-header">
+                            <div class="card-icon resources">
+                                <i class="fas fa-folder-open"></i>
+                            </div>
+                            <h3>New Resources</h3>
+                        </div>
+                        <div class="card-body">
+                            <p class="stat-value" id="dashboard-new-resources">0</p>
+                            <p class="stat-subtitle">Last 7 days</p>
+                        </div>
+                    </div>
+
+                    <div class="stat-card nurseiq-card" data-tab="nurseiq" role="button" tabindex="0">
+                        <div class="card-header">
+                            <div class="card-icon nurseiq">
+                                <i class="fas fa-brain"></i>
+                            </div>
+                            <h3>NurseIQ Progress</h3>
+                        </div>
+                        <div class="card-body">
+                            <p class="stat-value" id="dashboard-nurseiq-progress">--%</p>
+                            <p class="stat-subtitle">Overall progress</p>
+                            <div class="stat-details">
+                                <p>Accuracy: <strong id="dashboard-nurseiq-accuracy">--%</strong></p>
+                                <p>Questions: <strong id="dashboard-nurseiq-questions">0</strong> completed</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="stat-card examcard-card" data-tab="exam-card" role="button" tabindex="0">
+                        <div class="card-header">
+                            <div class="card-icon examcard">
+                                <i class="fas fa-id-card"></i>
+                            </div>
+                            <h3>Exam Card</h3>
+                        </div>
+                        <div class="card-body">
+                            <p class="stat-value" id="dashboard-exam-status">--</p>
+                            <p class="stat-subtitle">Exam eligibility status</p>
+                            <div class="stat-details">
+                                <p>Approved Units: <strong id="dashboard-approved-units">0</strong></p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- BADGES SECTION -->
+                <!-- BADGES SECTION (ADDED) -->
                 <div class="badges-section">
                     <div class="section-header" style="display: flex; justify-content: space-between; align-items: center;">
                         <div>
@@ -695,7 +757,7 @@
                     </div>
                 </div>
 
-                <!-- LEADERBOARD SECTION -->
+                <!-- LEADERBOARD SECTION (ADDED) -->
                 <div class="leaderboard-section">
                     <div class="leaderboard-header">
                         <div>
@@ -710,6 +772,77 @@
                     </div>
                     <div class="leaderboard-list" id="leaderboard-list">
                         <div class="loading-spinner"></div>
+                    </div>
+                </div>
+
+                <div class="section-header">
+                    <h2><i class="fas fa-bell"></i> Action Required</h2>
+                    <p class="section-subtitle">Items needing your attention</p>
+                </div>
+
+                <div class="actions-grid" id="dashboard-actions">
+                    <div class="card action-card alert" id="action-passport" style="display: none;" role="alert">
+                        <div class="action-header">
+                            <i class="fas fa-id-card"></i>
+                            <h3>Missing Passport Photo</h3>
+                        </div>
+                        <div class="action-body">
+                            <p>Your profile is incomplete. Please upload your passport photo immediately.</p>
+                        </div>
+                        <div class="action-footer">
+                            <button class="btn-action" data-tab="profile">
+                                <i class="fas fa-user-edit"></i> Go to Profile
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="card action-card warning" role="region">
+                        <div class="action-header">
+                            <i class="fas fa-book-medical"></i>
+                            <h3>Review New Course Material</h3>
+                        </div>
+                        <div class="action-body">
+                            <p>New study materials have been posted for this block.</p>
+                        </div>
+                        <div class="action-footer">
+                            <button class="btn-action" data-tab="resources">
+                                <i class="fas fa-external-link-alt"></i> View Resources
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="card action-card success" id="latest-announcement-card" style="display: none;" role="region">
+                        <div class="action-header">
+                            <i class="fas fa-bullhorn"></i>
+                            <h3 id="announcement-title">Latest Announcement</h3>
+                        </div>
+                        <div class="action-body">
+                            <p id="announcement-body">Loading message body...</p>
+                            <div class="announcement-meta">
+                                <span id="announcement-date"></span> • 
+                                <span id="announcement-status"></span>
+                            </div>
+                        </div>
+                        <div class="action-footer">
+                            <button class="btn-action" data-tab="messages">
+                                <i class="fas fa-comments"></i> Go to Messages
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="card action-card nurseiq" id="nurseiq-action-card" style="display: none;" role="region">
+                        <div class="action-header">
+                            <i class="fas fa-brain"></i>
+                            <h3>NurseIQ Practice Needed</h3>
+                        </div>
+                        <div class="action-body">
+                            <p id="nurseiq-action-message">Complete your NurseIQ assessments to improve your scores.</p>
+                        </div>
+                        <div class="action-footer">
+                            <button class="btn-action nurseiq-btn" data-tab="nurseiq">
+                                <i class="fas fa-play-circle"></i> Start Practicing
+                            </button>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -742,6 +875,413 @@
                                      src="https://ui-avatars.com/api/?name=Student&background=4C1D95&color=fff&size=160" 
                                      alt="Profile photo">
                             </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- CALENDAR TAB -->
+            <section id="calendar" class="tab-content" role="region" aria-label="Academic Calendar" hidden>
+                <div class="calendar-header">
+                    <div class="header-content">
+                        <h2><i class="fas fa-calendar-alt"></i> Academic Calendar</h2>
+                        <p class="calendar-subtitle">A unified view of your scheduled sessions, clinical rotations, and exams.</p>
+                    </div>
+                    <div class="current-date">
+                        <i class="fas fa-clock"></i>
+                        <span id="current-date-display">Today: Loading...</span>
+                    </div>
+                </div>
+
+                <div class="calendar-controls">
+                    <div class="filter-group">
+                        <label for="calendar-filter">
+                            <i class="fas fa-filter"></i> Filter by Type:
+                        </label>
+                        <div class="select-wrapper">
+                            <select id="calendar-filter" class="calendar-select">
+                                <option value="all">Show All</option>
+                                <option value="Clinical">Clinical Rotations</option>
+                                <option value="Class">Scheduled Sessions</option>
+                                <option value="Exam">Exams/CATS</option>
+                            </select>
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="calendar-actions">
+                        <button id="refresh-calendar" class="btn-icon" title="Refresh Calendar">
+                            <i class="fas fa-redo"></i>
+                        </button>
+                        <button id="export-calendar" class="btn-icon" title="Export to PDF">
+                            <i class="fas fa-download"></i>
+                        </button>
+                        <button id="calendar-view-toggle" class="btn-secondary">
+                            <i class="fas fa-list"></i>
+                            <span>List View</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <div id="calendar-loading" class="loading-state">
+                        <div class="loading-spinner"></div>
+                        <p>Loading academic schedule...</p>
+                    </div>
+
+                    <div id="calendar-empty" class="empty-state" style="display: none;">
+                        <i class="fas fa-calendar-times"></i>
+                        <h3>No Calendar Events</h3>
+                        <p>No scheduled events found for the selected period.</p>
+                        <button id="refresh-calendar-empty" class="btn-primary">
+                            <i class="fas fa-redo"></i> Refresh
+                        </button>
+                    </div>
+
+                    <div id="calendar-table-container" style="display: none;">
+                        <div class="horizontal-summary-row">
+                            <div class="summary-item">
+                                <div class="summary-icon"><i class="fas fa-calendar-day"></i></div>
+                                <div class="summary-content">
+                                    <div class="summary-value" id="total-events">0</div>
+                                    <div class="summary-title">Date & Time</div>
+                                    <div class="summary-label">Total Events</div>
+                                </div>
+                            </div>
+                            
+                            <div class="summary-item">
+                                <div class="summary-icon"><i class="fas fa-info-circle"></i></div>
+                                <div class="summary-content">
+                                    <div class="summary-value" id="upcoming-events">0</div>
+                                    <div class="summary-title">Event / Details</div>
+                                    <div class="summary-label">Upcoming</div>
+                                </div>
+                            </div>
+                            
+                            <div class="summary-item">
+                                <div class="summary-icon"><i class="fas fa-tag"></i></div>
+                                <div class="summary-content">
+                                    <div class="summary-value" id="week-events">0</div>
+                                    <div class="summary-title">Type</div>
+                                    <div class="summary-label">This Week</div>
+                                </div>
+                            </div>
+                            
+                            <div class="summary-item">
+                                <div class="summary-icon"><i class="fas fa-check-circle"></i></div>
+                                <div class="summary-content">
+                                    <div class="summary-value exam-count" id="exam-events">0</div>
+                                    <div class="summary-title">Status</div>
+                                    <div class="summary-label">Exams</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <table class="calendar-table" aria-label="Academic Calendar Events">
+                            <thead>
+                                <tr>
+                                    <th scope="col" class="date-col">Date & Time</th>
+                                    <th scope="col">Event / Details</th>
+                                    <th scope="col" class="type-col">Type</th>
+                                    <th scope="col" class="status-col">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="calendar-table"></tbody>
+                         </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- LEARNING HUB TAB -->
+            <section id="learning-hub" class="tab-content" hidden>
+                <div class="courses-header" style="margin-bottom: 2rem;">
+                    <div class="header-content">
+                        <h2><i class="fas fa-book-open"></i> My Courses</h2>
+                        <p class="subtitle">View your current and completed courses</p>
+                    </div>
+                    <div class="header-stats">
+                        <div class="stat-card">
+                            <i class="fas fa-spinner stat-icon active"></i>
+                            <div class="stat-info">
+                                <span class="stat-value" id="active-courses-count">0</span>
+                                <span class="stat-label">Active Courses</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <i class="fas fa-check-circle stat-icon completed"></i>
+                            <div class="stat-info">
+                                <span class="stat-value" id="completed-courses-count">0</span>
+                                <span class="stat-label">Completed</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <i class="fas fa-star stat-icon credits"></i>
+                            <div class="stat-info">
+                                <span class="stat-value" id="total-credits">0</span>
+                                <span class="stat-label">Credits Earned</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="quick-actions">
+                    <button id="view-all-courses" class="action-btn active">
+                        <i class="fas fa-list"></i> View All Courses
+                    </button>
+                    <button id="view-active-only" class="action-btn">
+                        <i class="fas fa-spinner"></i> Active Only
+                    </button>
+                    <button id="view-completed-only" class="action-btn">
+                        <i class="fas fa-check-circle"></i> Completed Only
+                    </button>
+                    <button id="refresh-courses-btn" class="action-btn refresh">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </div>
+
+                <div id="active-courses-section" class="courses-section">
+                    <div class="section-header">
+                        <h3><i class="fas fa-spinner"></i> Active Courses</h3>
+                        <div class="section-info">
+                            <span class="course-count" id="active-count">0 courses</span>
+                            <span class="term-info" id="current-term">Current Term</span>
+                        </div>
+                    </div>
+                    
+                    <div class="courses-grid" id="active-courses-grid">
+                        <div class="course-card loading">
+                            <div class="loading-content">
+                                <div class="loading-spinner"></div>
+                                <p>Loading active courses...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="active-empty" class="empty-state" style="display: none;">
+                        <div class="empty-icon">
+                            <i class="fas fa-calendar-plus"></i>
+                        </div>
+                        <h3>No Active Courses</h3>
+                        <p id="active-empty-message">You don't have any active courses at the moment.</p>
+                    </div>
+                </div>
+
+                <div id="completed-courses-section" class="courses-section completed-section">
+                    <div class="section-header">
+                        <h3><i class="fas fa-check-circle"></i> Completed Courses</h3>
+                        <div class="section-info">
+                            <span class="course-count" id="completed-total-count">0 courses</span>
+                            <span class="credits-earned" id="completed-credits-total">0 credits earned</span>
+                        </div>
+                    </div>
+                    
+                    <div class="courses-table-container">
+                        <table class="courses-table">
+                            <thead>
+                                <tr>
+                                    <th>Course Name</th>
+                                    <th>Unit Code</th>
+                                    <th>Credits</th>
+                                    <th>Term</th>
+                                    <th>Completion Date</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="completed-courses-table">
+                                <tr class="loading">
+                                    <td colspan="6">
+                                        <div class="loading-content">
+                                            <div class="loading-spinner"></div>
+                                            <p>Loading completed courses...</p>
+                                        </div>
+                                    </td>
+                                 </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="summary-cards">
+                        <div class="summary-card">
+                            <div class="card-header">
+                                <i class="fas fa-chart-bar"></i>
+                                <h4>Academic Summary</h4>
+                            </div>
+                            <div class="card-body">
+                                <div class="summary-item">
+                                    <span class="label">GPA (Completed)</span>
+                                    <span class="value" id="completed-gpa">--</span>
+                                </div>
+                                <div class="summary-item">
+                                    <span class="label">Highest Grade</span>
+                                    <span class="value grade-A" id="highest-grade">--</span>
+                                </div>
+                                <div class="summary-item">
+                                    <span class="label">Average Grade</span>
+                                    <span class="value" id="average-grade">--</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="summary-card">
+                            <div class="card-header">
+                                <i class="fas fa-calendar-alt"></i>
+                                <h4>Completion Timeline</h4>
+                            </div>
+                            <div class="card-body">
+                                <div class="timeline-item">
+                                    <span class="label">First Course</span>
+                                    <span class="value" id="first-course-date">--</span>
+                                </div>
+                                <div class="timeline-item">
+                                    <span class="label">Latest Course</span>
+                                    <span class="value" id="latest-course-date">--</span>
+                                </div>
+                                <div class="timeline-item">
+                                    <span class="label">Completion Rate</span>
+                                    <span class="value" id="completion-rate">0%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="completed-empty" class="empty-state" style="display: none;">
+                        <div class="empty-icon">
+                            <i class="fas fa-graduation-cap"></i>
+                        </div>
+                        <h3>No Completed Courses</h3>
+                        <p id="completed-empty-message">Complete your active courses to see them listed here!</p>
+                        <button onclick="switchToActiveCourses()" class="btn btn-primary" id="completed-empty-button">
+                            <i class="fas fa-eye"></i> View Active Courses
+                        </button>
+                    </div>
+                </div>
+
+                <!-- UNIT REGISTRATION SECTION -->
+                <div style="margin-top: 3rem; border-top: 2px solid #e5e7eb; padding-top: 2rem;">
+                    <div class="unit-reg-header">
+                        <h2><i class="fas fa-plus-circle"></i> Unit Registration</h2>
+                        <p class="subtitle">Select your units for the current trimester. Admin will review and approve your selections.</p>
+                        <div class="header-stats">
+                            <div class="stat-card" style="background:white; border-radius:12px; padding:15px 25px; flex:1;">
+                                <div>
+                                    <span class="stat-value" id="selected-units-count">0</span>
+                                    <br>
+                                    <span>Selected Units</span>
+                                </div>
+                            </div>
+                            <div class="stat-card" style="background:white; border-radius:12px; padding:15px 25px; flex:1;">
+                                <div>
+                                    <span class="stat-value" id="approved-units-count">0</span>
+                                    <br>
+                                    <span>Approved</span>
+                                </div>
+                            </div>
+                            <div class="stat-card" style="background:white; border-radius:12px; padding:15px 25px; flex:1;">
+                                <div>
+                                    <span class="stat-value" id="pending-units-count">0</span>
+                                    <br>
+                                    <span>Pending</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <label>Registration Type</label>
+                                <select id="RegType" class="modern-select">
+                                    <option value="">-- Select --</option>
+                                    <option value="Normal">Normal Registration</option>
+                                    <option value="Supplementary">Supplementary</option>
+                                    <option value="Special">Special</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label>Block/Trimester</label>
+                                <select id="BlockFilter" class="modern-select">
+                                    <option value="">All Blocks</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label>Unit Type</label>
+                                <select id="UnitTypeFilter" class="modern-select">
+                                    <option value="">All Types</option>
+                                    <option value="Core">Core Units</option>
+                                    <option value="Elective">Elective Units</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-12">
+                                <button id="refreshUnitsBtn" class="btn-primary">
+                                    <i class="fas fa-sync-alt"></i> Load Available Units
+                                </button>
+                                <button id="submitRegistrationBtn" class="btn-success" style="margin-left:10px">
+                                    <i class="fas fa-paper-plane"></i> Submit Registration
+                                </button>
+                            </div>
+                        </div>
+                        <div id="maxUnitsWarning" style="display:none; margin-top:10px; color:#dc2626; font-size:12px;">
+                            <i class="fas fa-exclamation-triangle"></i> You have reached the maximum allowed units!
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h4><i class="fas fa-list"></i> Available Units for Registration</h4>
+                            <p>Maximum: <strong id="maxUnitsAllowed">8</strong> units per trimester</p>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="units-table" id="tblAvailableUnits">
+                                <thead>
+                                    <tr>
+                                        <th><input type="checkbox" id="selectAllUnits"></th>
+                                        <th>Unit Code</th>
+                                        <th>Unit Name</th>
+                                        <th>Block</th>
+                                        <th>Type</th>
+                                        <th>Credits</th>
+                                        <th>Prerequisites</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="availableUnitsBody">
+                                    <tr class="loading-row">
+                                        <td colspan="8">
+                                            <div class="loading-spinner"></div> Loading units...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h4><i class="fas fa-clipboard-list"></i> My Registered Units</h4>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="units-table" id="tblRegisteredUnits">
+                                <thead>
+                                    <tr>
+                                        <th>Unit Code</th>
+                                        <th>Unit Name</th>
+                                        <th>Block</th>
+                                        <th>Reg Type</th>
+                                        <th>Status</th>
+                                        <th>Approval Date</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="registeredUnitsBody">
+                                    <tr class="loading-row">
+                                        <td colspan="7">
+                                            <div class="loading-spinner"></div> Loading your registered units...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -790,20 +1330,45 @@
                                 <label for="session-type">
                                     <i class="fas fa-graduation-cap"></i> Session Type
                                 </label>
-                                <select id="session-type" class="modern-select">
-                                    <option value="">Select session type...</option>
-                                    <option value="clinical">Clinical Session</option>
-                                    <option value="class">Classroom Session</option>
-                                    <option value="lab">Laboratory Session</option>
-                                    <option value="tutorial">Tutorial Session</option>
-                                </select>
+                                <div class="select-wrapper">
+                                    <select id="session-type" class="modern-select">
+                                        <option value="">Select session type...</option>
+                                        <option value="clinical">Clinical Session</option>
+                                        <option value="class">Classroom Session</option>
+                                        <option value="lab">Laboratory Session</option>
+                                        <option value="tutorial">Tutorial Session</option>
+                                    </select>
+                                    <i class="fas fa-chevron-down select-arrow"></i>
+                                </div>
                             </div>
 
                             <div class="control-group" id="target-control-group" style="display: none;">
-                                <label for="attendance-target">Select Target:</label>
-                                <select id="attendance-target" class="modern-select" disabled>
-                                    <option value="">Loading options...</option>
-                                </select>
+                                <label for="attendance-target" id="target-label">
+                                    <i class="fas fa-bullseye"></i>
+                                    <span id="target-text">Select Target:</span>
+                                </label>
+                                <div class="select-wrapper">
+                                    <select id="attendance-target" class="modern-select" disabled>
+                                        <option value="">Loading options...</option>
+                                    </select>
+                                    <i class="fas fa-chevron-down select-arrow"></i>
+                                </div>
+                            </div>
+
+                            <div class="control-group location-display">
+                                <label>
+                                    <i class="fas fa-location-dot"></i> Your Location
+                                </label>
+                                <div class="location-info" id="location-info">
+                                    <div class="location-coordinates">
+                                        <span class="coord-label">Lat:</span> <span id="latitude">Fetching...</span>
+                                        <span class="coord-label">Long:</span> <span id="longitude">Fetching...</span>
+                                    </div>
+                                    <div class="location-accuracy" id="accuracy-status">
+                                        <span class="accuracy-dot"></span>
+                                        Accuracy: <span id="accuracy-value">--</span> meters
+                                    </div>
+                                </div>
                             </div>
 
                             <div class="check-in-action">
@@ -812,6 +1377,15 @@
                                     <span class="btn-text">Check In Now (+10 points!)</span>
                                     <span class="btn-subtext">GPS verification required</span>
                                 </button>
+                                
+                                <div class="check-in-requirements">
+                                    <p><i class="fas fa-info-circle"></i> Requirements:</p>
+                                    <ul>
+                                        <li id="req-session"><i class="fas fa-times req-icon"></i> Select session type</li>
+                                        <li id="req-target"><i class="fas fa-times req-icon"></i> Select target</li>
+                                        <li id="req-location"><i class="fas fa-times req-icon"></i> GPS location acquired</li>
+                                    </ul>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -820,57 +1394,916 @@
                 <div class="history-section">
                     <div class="section-header">
                         <h3><i class="fas fa-history"></i> Attendance History</h3>
-                        <button id="refresh-history" class="btn-refresh">
-                            <i class="fas fa-redo"></i> Refresh
-                        </button>
+                        <div class="filter-controls">
+                            <div class="date-filter">
+                                <label><i class="fas fa-calendar"></i> Filter by:</label>
+                                <select id="history-filter">
+                                    <option value="today">Today</option>
+                                    <option value="week">This Week</option>
+                                    <option value="month">This Month</option>
+                                    <option value="all">All Time</option>
+                                </select>
+                            </div>
+                            <button id="refresh-history" class="btn-refresh">
+                                <i class="fas fa-redo"></i> Refresh
+                            </button>
+                        </div>
                     </div>
+                    
                     <div class="table-container">
                         <table class="attendance-table">
                             <thead>
-                                <tr><th>Date & Time</th><th>Session</th><th>Target</th><th>Points</th><th>Status</th></tr>
+                                <tr>
+                                    <th><i class="fas fa-clock"></i> Date & Time</th>
+                                    <th><i class="fas fa-graduation-cap"></i> Session Type</th>
+                                    <th><i class="fas fa-bullseye"></i> Target</th>
+                                    <th><i class="fas fa-star"></i> Points</th>
+                                    <th><i class="fas fa-check-circle"></i> Status</th>
+                                    <th><i class="fas fa-map-marker-alt"></i> Location</th>
+                                    <th><i class="fas fa-info-circle"></i> Details</th>
+                                </tr>
                             </thead>
                             <tbody id="geo-attendance-history">
-                                <tr><td colspan="5"><div class="loading-spinner"></div></td></tr>
+                                <tr class="loading-row">
+                                    <td colspan="7">
+                                        <div class="loading-content">
+                                            <div class="loading-spinner"></div>
+                                            <p>Loading attendance history...</p>
+                                        </div>
+                                    </td>
+                                </tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
             </section>
 
-            <!-- Other tabs remain the same -->
-            <section id="calendar" class="tab-content" hidden><h2>Academic Calendar</h2><p>Loading...</p></section>
-            <section id="learning-hub" class="tab-content" hidden><h2>My Learning Hub</h2><p>Loading...</p></section>
-            <section id="exam-card" class="tab-content" hidden><h2>Exam Card</h2><p>Loading...</p></section>
-            <section id="cats" class="tab-content" hidden><h2>Exams & Grades</h2><p>Loading...</p></section>
-            <section id="resources" class="tab-content" hidden><h2>Learning Resources</h2><p>Loading...</p></section>
-            <section id="messages" class="tab-content" hidden><h2>Messages</h2><p>Loading...</p></section>
+            <!-- EXAM CARD TAB -->
+            <section id="exam-card" class="tab-content" hidden>
+                <div class="exam-card-container">
+                    <div class="section-header">
+                        <h2><i class="fas fa-id-card"></i> Exam Card</h2>
+                        <p>Your exam entry permit - Valid only with approved units and cleared fees</p>
+                    </div>
+                    <div id="exam-card-content">
+                        <div class="loading-state">
+                            <div class="loading-spinner"></div>
+                            <p>Loading exam card information...</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- EXAMS & GRADES TAB -->
+            <section id="cats" class="tab-content" hidden>
+                <div class="exams-header">
+                    <div class="header-content">
+                        <h2><i class="fas fa-chart-bar"></i> Assessments & Grades</h2>
+                        <p class="subtitle">Track your CATS, exams, and assessment results</p>
+                    </div>
+                    <div class="header-stats">
+                        <div class="stat-card">
+                            <div class="stat-icon active">
+                                <i class="fas fa-spinner"></i>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="current-assessments-count">0</span>
+                                <span class="stat-label">Current</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon completed">
+                                <i class="fas fa-check-circle"></i>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="completed-assessments-count">0</span>
+                                <span class="stat-label">Completed</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon average">
+                                <i class="fas fa-percentage"></i>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="overall-average">--</span>
+                                <span class="stat-label">Avg Score</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="quick-actions">
+                    <button id="view-all-assessments" class="action-btn active">
+                        <i class="fas fa-list"></i> View All
+                    </button>
+                    <button id="view-current-only" class="action-btn">
+                        <i class="fas fa-spinner"></i> Current Only
+                    </button>
+                    <button id="view-completed-only" class="action-btn">
+                        <i class="fas fa-check-circle"></i> Completed Only
+                    </button>
+                    <button id="view-transcript" class="action-btn">
+                        <i class="fas fa-file-pdf"></i> View Transcript
+                    </button>
+                    <button id="refresh-assessments" class="action-btn refresh">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </div>
+
+                <div class="assessments-section current-section">
+                    <div class="section-header">
+                        <h3><i class="fas fa-spinner"></i> Current Assessments</h3>
+                        <div class="section-info">
+                            <span class="count-badge" id="current-count">0 pending</span>
+                            <span class="info-text">Available for completion</span>
+                        </div>
+                    </div>
+                    
+                    <div class="assessments-table-container">
+                        <table class="assessments-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 35%">Assessment</th>
+                                    <th style="width: 12%" class="text-center">Due Date</th>
+                                    <th style="width: 12%" class="text-center">Status</th>
+                                    <th style="width: 10%" class="text-center">CAT 1</th>
+                                    <th style="width: 10%" class="text-center">CAT 2</th>
+                                    <th style="width: 10%" class="text-center">Final</th>
+                                    <th style="width: 11%" class="text-center">Total</th>
+                                    <th style="width: 10%" class="text-center">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="current-assessments-table">
+                                <tr class="loading">
+                                    <td colspan="8">
+                                        <div class="loading-content">
+                                            <div class="loading-spinner"></div>
+                                            <p>Loading current assessments...</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div id="current-empty" class="empty-state" style="display: none;">
+                        <div class="empty-icon">
+                            <i class="fas fa-clipboard-list"></i>
+                        </div>
+                        <h3>No Current Assessments</h3>
+                        <p>You don't have any pending assessments at the moment.</p>
+                    </div>
+                </div>
+
+                <div class="assessments-section completed-section">
+                    <div class="section-header">
+                        <h3><i class="fas fa-check-circle"></i> Completed Assessments</h3>
+                        <div class="section-info">
+                            <span class="count-badge" id="completed-count">0 graded</span>
+                            <span class="average-score" id="completed-average">Average: --</span>
+                        </div>
+                    </div>
+                    
+                    <div class="assessments-table-container">
+                        <table class="assessments-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 35%">Assessment</th>
+                                    <th style="width: 12%" class="text-center">Graded Date</th>
+                                    <th style="width: 12%" class="text-center">Status</th>
+                                    <th style="width: 10%" class="text-center">CAT 1</th>
+                                    <th style="width: 10%" class="text-center">CAT 2</th>
+                                    <th style="width: 10%" class="text-center">Final</th>
+                                    <th style="width: 11%" class="text-center">Total</th>
+                                    <th style="width: 10%" class="text-center">Grade</th>
+                                </tr>
+                            </thead>
+                            <tbody id="completed-assessments-table">
+                                <tr class="loading">
+                                    <td colspan="8">
+                                        <div class="loading-content">
+                                            <div class="loading-spinner"></div>
+                                            <p>Loading completed assessments...</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div id="completed-empty" class="empty-state" style="display: none;">
+                        <div class="empty-icon">
+                            <i class="fas fa-graduation-cap"></i>
+                        </div>
+                        <h3>No Completed Assessments</h3>
+                        <p>Your assessment results will appear here once graded.</p>
+                        <button onclick="switchToCurrentAssessments()" class="btn btn-primary">
+                            <i class="fas fa-eye"></i> View Current Assessments
+                        </button>
+                    </div>
+                </div>
+
+                <div class="performance-summary">
+                    <div class="summary-card">
+                        <div class="card-header">
+                            <i class="fas fa-trophy"></i>
+                            <h4>Performance Overview</h4>
+                        </div>
+                        <div class="card-body">
+                            <div class="summary-item">
+                                <span class="label">Best Score</span>
+                                <span class="value best-score" id="best-score">--</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="label">Lowest Score</span>
+                                <span class="value lowest-score" id="lowest-score">--</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="label">Pass Rate</span>
+                                <span class="value" id="pass-rate">--</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="summary-card">
+                        <div class="card-header">
+                            <i class="fas fa-chart-pie"></i>
+                            <h4>Grade Distribution</h4>
+                        </div>
+                        <div class="card-body">
+                            <div class="distribution-item">
+                                <span class="label">Distinction (≥85%)</span>
+                                <div class="distribution-bar">
+                                    <div class="bar-fill" id="distinction-bar" style="width: 0%"></div>
+                                </div>
+                                <span class="value" id="distinction-count">0</span>
+                            </div>
+                            <div class="distribution-item">
+                                <span class="label">Credit (75-84%)</span>
+                                <div class="distribution-bar">
+                                    <div class="bar-fill" id="credit-bar" style="width: 0%"></div>
+                                </div>
+                                <span class="value" id="credit-count">0</span>
+                            </div>
+                            <div class="distribution-item">
+                                <span class="label">Pass (60-74%)</span>
+                                <div class="distribution-bar">
+                                    <div class="bar-fill" id="pass-bar" style="width: 0%"></div>
+                                </div>
+                                <span class="value" id="pass-count">0</span>
+                            </div>
+                            <div class="distribution-item">
+                                <span class="label">Fail (<60%)</span>
+                                <div class="distribution-bar">
+                                    <div class="bar-fill" id="fail-bar" style="width: 0%"></div>
+                                </div>
+                                <span class="value" id="fail-count">0</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="summary-card">
+                        <div class="card-header">
+                            <i class="fas fa-calendar-alt"></i>
+                            <h4>Assessment Timeline</h4>
+                        </div>
+                        <div class="card-body">
+                            <div class="timeline-item">
+                                <span class="label">First Assessment</span>
+                                <span class="value" id="first-assessment-date">--</span>
+                            </div>
+                            <div class="timeline-item">
+                                <span class="label">Latest Assessment</span>
+                                <span class="value" id="latest-assessment-date">--</span>
+                            </div>
+                            <div class="timeline-item">
+                                <span class="label">Total Submitted</span>
+                                <span class="value" id="total-submitted">0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="notes-section">
+                    <div class="notes-header">
+                        <i class="fas fa-info-circle"></i>
+                        <h4>Grading Information (Pass Mark: 60%)</h4>
+                    </div>
+                    <div class="notes-content">
+                        <div class="grading-breakdown">
+                            <h5>Grade Distribution:</h5>
+                            <ul>
+                                <li><strong>Distinction:</strong> 85% and above</li>
+                                <li><strong>Credit:</strong> 75% - 84%</li>
+                                <li><strong>Pass:</strong> 60% - 74%</li>
+                                <li><strong>Fail:</strong> Below 60%</li>
+                            </ul>
+                        </div>
+                        <div class="weighting-info">
+                            <h5>Assessment Weighting:</h5>
+                            <ul>
+                                <li><strong>CAT 1:</strong> 15% of final grade</li>
+                                <li><strong>CAT 2:</strong> 15% of final grade</li>
+                                <li><strong>Final Exam:</strong> 70% of final grade</li>
+                                <li><strong>Total Score:</strong> CAT 1 + CAT 2 + Final = 100%</li>
+                            </ul>
+                        </div>
+                        <div class="exam-notes">
+                            <h5>Exam Portal Notes:</h5>
+                            <ul>
+                                <li>Click "Start Exam" to open the exam portal in a new tab</li>
+                                <li>Exams are auto-graded upon submission</li>
+                                <li>Ensure stable internet connection during exams</li>
+                                <li>Results appear automatically after completion</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- RESOURCES TAB -->
+            <section id="resources" class="tab-content" hidden>
+                <div class="resources-header">
+                    <h2><i class="fas fa-folder-open"></i> Learning Resources</h2>
+                    <p class="subtitle">High-quality course materials and study resources - Read Only Mode</p>
+                    
+                    <div class="block-filter-premium">
+                        <div class="filter-premium-header">
+                            <div class="filter-premium-title">
+                                <div class="title-icon">
+                                    <i class="fas fa-layer-group"></i>
+                                </div>
+                                <div class="title-text">
+                                    <h3>Filter by Block</h3>
+                                    <p>Select academic block to view materials</p>
+                                </div>
+                            </div>
+                            <div class="current-block-premium">
+                                <i class="fas fa-user-graduate"></i>
+                                <span>Your Block: <strong id="current-user-block">Loading...</strong></span>
+                            </div>
+                        </div>
+                        
+                        <div class="filter-premium-controls">
+                            <div class="select-premium-wrapper">
+                                <select id="block-resource-filter" class="select-premium">
+                                    <option value="all">📚 All Blocks</option>
+                                    <option value="introductory">🎓 Introductory Block</option>
+                                    <option value="block1">📖 Block 1</option>
+                                    <option value="block2">📗 Block 2</option>
+                                    <option value="block3">📘 Block 3</option>
+                                    <option value="block4">📙 Block 4</option>
+                                    <option value="block5">📕 Block 5</option>
+                                    <option value="final">🏆 Final Block</option>
+                                </select>
+                                <i class="fas fa-chevron-down select-arrow"></i>
+                            </div>
+                            
+                            <button id="refresh-block-resources" class="btn-refresh-premium">
+                                <i class="fas fa-sync-alt"></i>
+                                <span>Refresh</span>
+                            </button>
+                        </div>
+                        
+                        <div class="filter-premium-info">
+                            <i class="fas fa-info-circle"></i>
+                            <span>Select a block and click Refresh to load high-quality materials</span>
+                        </div>
+                    </div>
+                    
+                    <div class="resources-controls">
+                        <div class="search-box-premium">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="resource-search" placeholder="Search resources...">
+                        </div>
+                        
+                        <div class="filter-group-premium">
+                            <select id="resource-filter" class="filter-select">
+                                <option value="all">All Resource Types</option>
+                                <option value="pdf">📄 PDF Documents</option>
+                                <option value="image">🖼️ Images</option>
+                                <option value="video">🎥 Videos</option>
+                            </select>
+                            
+                            <select id="course-filter" class="filter-select">
+                                <option value="all">All Courses</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="resources-grid" id="resources-grid">
+                    <div class="loading-state-premium">
+                        <div class="loading-spinner-premium"></div>
+                        <p>Loading high-quality resources...</p>
+                    </div>
+                </div>
+
+                <div id="mobile-reader" class="mobile-reader" style="display: none;">
+                    <div class="reader-header">
+                        <button class="reader-back" id="readerBackBtn">
+                            <i class="fas fa-arrow-left"></i>
+                        </button>
+                        <h3 id="reader-title">Resource Title</h3>
+                        <div class="read-only-badge">
+                            <i class="fas fa-eye"></i> Read Only
+                        </div>
+                    </div>
+                    <div class="reader-content" id="reader-content"></div>
+                </div>
+            </section>
+
+            <!-- MESSAGES TAB -->
+            <section id="messages" class="tab-content" hidden>
+                <div class="messages-container">
+                    <div class="messages-header">
+                        <h2 style="color: var(--color-primary); margin-bottom: 8px;">
+                            <i class="fas fa-comments"></i> Message Center
+                        </h2>
+                        <p class="subtitle" style="margin-bottom: 20px;">
+                            View messages and announcements from administration, lecturers, and departments
+                        </p>
+                        
+                        <div class="message-info-card">
+                            <div class="info-icon">
+                                <i class="fas fa-info-circle"></i>
+                            </div>
+                            <div class="info-content">
+                                <h4>Important Information</h4>
+                                <p>For support requests, technical issues, or specific inquiries, please use the <strong>Support Tickets</strong> section.</p>
+                                <div class="info-actions">
+                                    <a href="#" data-tab="support-tickets" class="info-link">
+                                        <i class="fas fa-ticket-alt"></i> Go to Support Tickets
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="message-history-section">
+                        <div class="section-header">
+                            <h3><i class="fas fa-history"></i> Message History</h3>
+                            <div class="message-summary">
+                                <span class="count-badge" id="total-messages-count">0 messages</span>
+                                <span class="unread-badge" id="unread-messages-count" style="display: none;">0 unread</span>
+                            </div>
+                        </div>
+                        
+                        <div class="message-filters">
+                            <div class="filter-group">
+                                <button class="filter-btn active" data-filter="all">
+                                    <i class="fas fa-list"></i> All Messages
+                                </button>
+                                <button class="filter-btn" data-filter="unread">
+                                    <i class="fas fa-envelope"></i> Unread
+                                    <span class="filter-count" id="unread-count">0</span>
+                                </button>
+                                <button class="filter-btn" data-filter="announcements">
+                                    <i class="fas fa-bullhorn"></i> Announcements
+                                </button>
+                                <button class="filter-btn" data-filter="academic">
+                                    <i class="fas fa-graduation-cap"></i> Academic
+                                </button>
+                            </div>
+                            
+                            <div class="search-box">
+                                <i class="fas fa-search"></i>
+                                <input type="text" id="message-search" placeholder="Search messages...">
+                            </div>
+                        </div>
+                        
+                        <div class="refresh-section">
+                            <button id="refresh-messages-btn" class="btn-secondary">
+                                <i class="fas fa-sync-alt"></i> Refresh Messages
+                            </button>
+                            <div class="last-updated">
+                                Last updated: <span id="messages-last-updated">Just now</span>
+                            </div>
+                        </div>
+                        
+                        <div id="messages-list" class="messages-list">
+                            <div class="loading-state">
+                                <div class="loading-spinner"></div>
+                                <p>Loading messages...</p>
+                            </div>
+                        </div>
+                        
+                        <div id="messages-empty" class="empty-state" style="display: none;">
+                            <div class="empty-icon">
+                                <i class="fas fa-inbox"></i>
+                            </div>
+                            <h3>No Messages Found</h3>
+                            <p>You don't have any messages at the moment.</p>
+                            <div class="empty-actions">
+                                <button id="refresh-empty-btn" class="btn-primary">
+                                    <i class="fas fa-redo"></i> Refresh
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="categories-info">
+                            <h4><i class="fas fa-tags"></i> Message Categories</h4>
+                            <div class="categories-grid">
+                                <div class="category-item">
+                                    <div class="category-icon announcement">
+                                        <i class="fas fa-bullhorn"></i>
+                                    </div>
+                                    <div class="category-content">
+                                        <h5>Announcements</h5>
+                                        <p>Official college announcements and notices</p>
+                                    </div>
+                                </div>
+                                <div class="category-item">
+                                    <div class="category-icon academic">
+                                        <i class="fas fa-graduation-cap"></i>
+                                    </div>
+                                    <div class="category-content">
+                                        <h5>Academic</h5>
+                                        <p>Course updates, exam schedules, grade releases</p>
+                                    </div>
+                                </div>
+                                <div class="category-item">
+                                    <div class="category-icon administrative">
+                                        <i class="fas fa-building"></i>
+                                    </div>
+                                    <div class="category-content">
+                                        <h5>Administrative</h5>
+                                        <p>Fee reminders, deadline extensions, policy changes</p>
+                                    </div>
+                                </div>
+                                <div class="category-item">
+                                    <div class="category-icon support">
+                                        <i class="fas fa-ticket-alt"></i>
+                                    </div>
+                                    <div class="category-content">
+                                        <h5>Support</h5>
+                                        <p>For support requests, use the Support Tickets section</p>
+                                        <a href="#" data-tab="support-tickets" class="category-link">
+                                            Go to Support Tickets <i class="fas fa-arrow-right"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SUPPORT TICKETS TAB -->
+            <section id="support-tickets" class="tab-content" hidden>
+                <div class="tickets-container">
+                    <div class="tickets-header">
+                        <div class="header-content">
+                            <h1><i class="fas fa-ticket-alt"></i> Support Tickets</h1>
+                            <p class="subtitle">Get help from our support team. Track and manage your support requests.</p>
+                        </div>
+                        <button id="new-ticket-btn" class="btn-primary">
+                            <i class="fas fa-plus"></i> New Ticket
+                        </button>
+                    </div>
+
+                    <div class="ticket-stats">
+                        <div class="stat-card">
+                            <div class="stat-icon open">
+                                <i class="fas fa-clock"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3 id="open-tickets-count">0</h3>
+                                <p>Open Tickets</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon progress">
+                                <i class="fas fa-cogs"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3 id="progress-tickets-count">0</h3>
+                                <p>In Progress</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon resolved">
+                                <i class="fas fa-check-circle"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3 id="resolved-tickets-count">0</h3>
+                                <p>Resolved</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon urgent">
+                                <i class="fas fa-exclamation-triangle"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3 id="urgent-tickets-count">0</h3>
+                                <p>Urgent</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="tickets-actions">
+                        <div class="search-box">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="ticket-search" placeholder="Search tickets by subject, ID, or description...">
+                        </div>
+                        <div class="action-buttons">
+                            <button id="refresh-tickets-btn" class="btn-secondary">
+                                <i class="fas fa-sync-alt"></i> Refresh
+                            </button>
+                            <div class="filter-dropdown">
+                                <button class="btn-secondary">
+                                    <i class="fas fa-filter"></i> Filter
+                                    <i class="fas fa-chevron-down"></i>
+                                </button>
+                                <div class="dropdown-menu">
+                                    <a href="#" data-filter="all">All Tickets</a>
+                                    <a href="#" data-filter="open">Open</a>
+                                    <a href="#" data-filter="progress">In Progress</a>
+                                    <a href="#" data-filter="resolved">Resolved</a>
+                                    <a href="#" data-filter="urgent">Urgent Priority</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="new-ticket-form" class="new-ticket-form" style="display: none;">
+                        <div class="form-header">
+                            <h3><i class="fas fa-ticket-alt"></i> Create New Support Ticket</h3>
+                            <button id="close-form-btn" class="close-btn">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        
+                        <form id="create-ticket-form">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="ticket-category"><i class="fas fa-folder"></i> Category *</label>
+                                    <select id="ticket-category" name="category" required>
+                                        <option value="">Select category</option>
+                                        <option value="technical">Technical Issues</option>
+                                        <option value="academic">Academic Matters</option>
+                                        <option value="financial">Financial Issues</option>
+                                        <option value="administrative">Administrative</option>
+                                        <option value="resources">Resources Access</option>
+                                        <option value="other">Other</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="ticket-priority"><i class="fas fa-exclamation-circle"></i> Priority</label>
+                                    <select id="ticket-priority" name="priority">
+                                        <option value="medium">Medium</option>
+                                        <option value="low">Low</option>
+                                        <option value="high">High</option>
+                                        <option value="urgent">Urgent</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="ticket-subject"><i class="fas fa-heading"></i> Subject *</label>
+                                <input type="text" id="ticket-subject" 
+                                       placeholder="Brief summary of your issue..." 
+                                       required
+                                       maxlength="255">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="ticket-description"><i class="fas fa-align-left"></i> Description *</label>
+                                <textarea id="ticket-description" 
+                                          placeholder="Please describe your issue in detail. Include any error messages, steps to reproduce, and what you've tried so far." 
+                                          required
+                                          rows="4"
+                                          maxlength="5000"></textarea>
+                                <div class="char-counter">
+                                    <span id="desc-char-count">0</span>/5000 characters
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="ticket-attachments"><i class="fas fa-paperclip"></i> Attachments (Optional)</label>
+                                <div class="file-upload">
+                                    <input type="file" id="ticket-attachments" 
+                                           multiple
+                                           accept=".jpg,.jpeg,.png,.pdf,.doc,.docx,.txt">
+                                    <label for="ticket-attachments" class="upload-label">
+                                        <i class="fas fa-cloud-upload-alt"></i>
+                                        <span>Choose files or drag & drop</span>
+                                        <small>Max file size: 10MB each. Supported: JPG, PNG, PDF, DOC, TXT</small>
+                                    </label>
+                                </div>
+                                <div id="file-preview" class="file-preview"></div>
+                            </div>
+                            
+                            <div class="form-actions">
+                                <button type="submit" class="btn-primary">
+                                    <i class="fas fa-paper-plane"></i> Submit Ticket
+                                </button>
+                                <button type="button" id="cancel-ticket-btn" class="btn-secondary">
+                                    Cancel
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="tickets-list-container">
+                        <div class="list-header">
+                            <h3><i class="fas fa-list"></i> My Support Tickets</h3>
+                            <div class="list-summary">
+                                <span id="total-tickets-count">0 tickets</span>
+                                <span class="last-updated">Last updated: <span id="last-updated-time">Just now</span></span>
+                            </div>
+                        </div>
+                        
+                        <div class="tickets-table-container">
+                            <table class="tickets-table">
+                                <thead>
+                                    <tr>
+                                        <th>Ticket ID</th>
+                                        <th>Subject</th>
+                                        <th>Category</th>
+                                        <th>Priority</th>
+                                        <th>Status</th>
+                                        <th>Created</th>
+                                        <th>Last Update</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tickets-table-body">
+                                    <tr class="empty-row">
+                                        <td colspan="8">
+                                            <div class="empty-state">
+                                                <i class="fas fa-ticket-alt"></i>
+                                                <h4>No tickets found</h4>
+                                                <p>You haven't created any support tickets yet.</p>
+                                                <button id="create-first-ticket" class="btn-primary">
+                                                    <i class="fas fa-plus"></i> Create Your First Ticket
+                                                </button>
+                                            </div>
+                                         </td>
+                                     </tr>
+                                </tbody>
+                             </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- NURSEIQ TAB -->
+            <section id="nurseiq" class="tab-content" hidden>
+                <h1>NurseIQ Question Bank</h1>
+                <p class="subtitle">NSCHEQ Curriculum practice questions for Kenya Registered Community Health Nursing program</p>
+                
+                <div id="questionBankModeContent">
+                    <div class="question-bank-section" style="background: white; border-radius: 12px; padding: 25px; margin: 25px 0; border: 1px solid #e5e7eb; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <div>
+                                <h2 style="margin: 0; color: #4f46e5; display: flex; align-items: center; gap: 10px;">
+                                    <i class="fas fa-database"></i> Question Bank
+                                </h2>
+                                <p style="margin: 5px 0 0 0; color: #6b7280; font-size: 14px;">
+                                    Browse NSCHEQ questions organized by courses - Click any course to start a test
+                                </p>
+                            </div>
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <div style="background: #4f46e5; color: white; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 500;">
+                                    <i class="fas fa-play-circle"></i> Interactive Tests
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div id="studentQuestionBankContent">
+                            <div style="text-align: center; padding: 40px 20px;">
+                                <div style="display: inline-block; width: 80px; height: 80px; background: linear-gradient(135deg, #4f46e5, #7c3aed); border-radius: 20px; display: flex; align-items: center; justify-content: center; margin-bottom: 20px;">
+                                    <i class="fas fa-book-medical" style="font-size: 32px; color: white;"></i>
+                                </div>
+                                <h3 style="color: #4f46e5; margin-bottom: 10px;">NurseIQ Question Bank</h3>
+                                <p style="color: #6b7280; max-width: 500px; margin: 0 auto 30px;">
+                                    Access practice questions organized by NSCHEQ courses. Click any course card to start a practice test.
+                                </p>
+                                
+                                <button id="loadCourseCatalogBtn" style="background: linear-gradient(135deg, #4f46e5, #7c3aed); color: white; border: none; padding: 14px 28px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 16px; display: inline-flex; align-items: center; gap: 10px; transition: transform 0.2s;">
+                                    <i class="fas fa-play-circle"></i> Load Course Catalog
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
 
         </main>
     </div>
 </div>
 
-<!-- Achievement Toast Container -->
+<!-- ACHIEVEMENT TOAST CONTAINER (ADDED) -->
 <div id="achievement-toast-container"></div>
 
-<!-- Scripts -->
+<!-- TOAST NOTIFICATION -->
+<div class="toast" id="toast" style="display: none;"></div>
+
+<!-- FOOTER -->
+<footer class="app-footer">
+    <div class="footer-content">
+        <div class="footer-section">
+            <h3>Nakuru College of Health Sciences and Management (NCHSM)</h3>
+            <p>Providing quality health sciences and management education with practical skills and digital innovation.</p>
+            <div class="contact-item">
+                <i class="fas fa-map-marker-alt"></i>
+                <span>Kiamunyi Off Nakuru - Kabarak Rd, Along Canon Ndungu Street, Nakuru</span>
+            </div>
+        </div>
+        
+        <div class="footer-section">
+            <h3>Contact Information</h3>
+            <div class="footer-contact">
+                <div class="contact-item">
+                    <i class="fas fa-envelope"></i>
+                    <span>portal.nchsm@gmail.com</span>
+                </div>
+                <div class="contact-item">
+                    <i class="fas fa-phone"></i>
+                    <span>0790969743</span>
+                </div>
+                <div class="contact-item">
+                    <i class="fas fa-map-pin"></i>
+                    <span>P. O. Box 12906 - 20100, Nakuru</span>
+                </div>
+                <div class="contact-item">
+                    <i class="fas fa-clock"></i>
+                    <span>Mon - Fri: 8:00 AM - 5:00 PM</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer-section">
+            <h3>Quick Links</h3>
+            <ul class="footer-links">
+                <li><a href="#" data-tab="dashboard"><i class="fas fa-home"></i> Dashboard</a></li>
+                <li><a href="#" data-tab="learning-hub"><i class="fas fa-book"></i> My Learning Hub</a></li>
+                <li><a href="#" data-tab="calendar"><i class="fas fa-calendar"></i> Academic Calendar</a></li>
+                <li><a href="#" data-tab="resources"><i class="fas fa-file-pdf"></i> Resources</a></li>
+            </ul>
+        </div>
+        
+        <div class="footer-section">
+            <h3>Support</h3>
+            <ul class="footer-links">
+                <li><a href="#" data-tab="messages"><i class="fas fa-question-circle"></i> Contact Admin</a></li>
+                <li><a href="#" id="clearCacheBtn"><i class="fas fa-broom"></i> Clear Cache</a></li>
+                <li><a href="#" id="exportDataBtn"><i class="fas fa-download"></i> Export Data</a></li>
+                <li><a href="#" id="systemInfoBtn"><i class="fas fa-info-circle"></i> System Info</a></li>
+            </ul>
+        </div>
+    </div>
+    
+    <div class="footer-bottom">
+        <div class="copyright">
+            © 2026 Nakuru College of Health Sciences and Management. All rights reserved.
+            <span id="appVersion" style="margin-left: 10px; opacity: 0.7;">v3.0 - Gamified</span>
+        </div>
+        <div class="footer-social">
+            <a href="#" class="social-icon" aria-label="Facebook">
+                <i class="fab fa-facebook-f"></i>
+            </a>
+            <a href="#" class="social-icon" aria-label="Twitter">
+                <i class="fab fa-twitter"></i>
+            </a>
+            <a href="#" class="social-icon" aria-label="Instagram">
+                <i class="fab fa-instagram"></i>
+            </a>
+            <a href="mailto:portal.nchsm@gmail.com" class="social-icon" aria-label="Email">
+                <i class="fas fa-envelope"></i>
+            </a>
+        </div>
+    </div>
+</footer>
+
+<!-- SCRIPTS -->
 <script src="./js/database.js"></script>
 <script src="./js/utils.js"></script>
 <script src="./js/gamification.js"></script>
 <script src="./js/courses.js"></script>
 <script src="./js/attendance.js"></script>
 <script src="./js/dashboard.js"></script>
+<script src="./js/profile.js"></script>
+<script src="./js/calendar.js"></script>
+<script src="./js/unit-registration.js"></script>
+<script src="./js/exams.js"></script>
+<script src="./js/resources.js"></script>
+<script src="./js/messages.js"></script>
+<script src="./js/student-tickets.js"></script>
+<script src="./js/nurseiq.js"></script>
+<script src="./js/exam-card.js"></script>
 
+<!-- INITIALIZATION -->
 <script>
-// Initialize everything
 document.addEventListener('DOMContentLoaded', async function() {
     console.log('🎮 Starting gamified portal...');
     
-    // Wait for database
     if (window.db) {
         await window.db.initialize();
     }
     
-    // Hide loading screen
     setTimeout(() => {
         const loadingScreen = document.getElementById('loading-screen');
         if (loadingScreen) loadingScreen.style.display = 'none';
@@ -878,6 +2311,46 @@ document.addEventListener('DOMContentLoaded', async function() {
         if (appContent) appContent.style.display = 'block';
     }, 2000);
 });
+</script>
+
+<!-- ROUTING -->
+<script>
+(function() {
+    const VALID_TABS = ['dashboard', 'profile', 'calendar', 'cats', 'support-tickets', 'learning-hub', 'attendance', 'resources', 'messages', 'nurseiq', 'exam-card'];
+    
+    function showTab(tabName) {
+        const allTabs = document.querySelectorAll('.tab-content');
+        const target = document.getElementById(tabName);
+        if (!target) return;
+        
+        allTabs.forEach(tab => {
+            tab.style.display = 'none';
+            tab.classList.remove('active');
+        });
+        
+        target.style.display = 'block';
+        target.classList.add('active');
+        
+        document.querySelectorAll('[data-tab]').forEach(link => {
+            link.classList.toggle('active', link.getAttribute('data-tab') === tabName);
+        });
+        
+        localStorage.setItem('nchsm_current_tab', tabName);
+    }
+    
+    document.querySelectorAll('[data-tab]').forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const tab = link.getAttribute('data-tab');
+            if (tab && VALID_TABS.includes(tab)) showTab(tab);
+        });
+    });
+    
+    const savedTab = localStorage.getItem('nchsm_current_tab');
+    if (savedTab && VALID_TABS.includes(savedTab)) showTab(savedTab);
+    
+    window.showTab = showTab;
+})();
 </script>
 
 </body>
