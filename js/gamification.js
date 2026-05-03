@@ -1,5 +1,5 @@
 // gamification.js - Complete Badges, Streaks, Points & Leaderboard System
-// FIXED - Works with your consolidated_user_profiles table
+// WORKS WITH consolidated_user_profiles_table
 
 (function() {
     'use strict';
@@ -126,26 +126,26 @@
             if (!this.userId || !window.db?.supabase) return;
             
             try {
-                // Load from consolidated_user_profiles table
+                // Load from consolidated_user_profiles_table
                 const { data, error } = await window.db.supabase
-                    .from('consolidated_user_profiles')
+                    .from('consolidated_user_profiles_table')
                     .select('*')
                     .eq('user_id', this.userId)
                     .single();
                 
                 if (data && !error) {
                     // Map your existing columns to gamification fields
-                    this.points = data.gamification_points || data.points || 0;
-                    this.streak = data.attendance_streak || data.current_streak || 0;
-                    this.level = data.gamification_level || data.level || 1;
-                    this.xp = data.gamification_xp || data.xp || 0;
-                    this.badges = data.earned_badges || data.badges || [];
+                    this.points = data.gamification_points || 0;
+                    this.streak = data.attendance_streak || 0;
+                    this.level = data.gamification_level || 1;
+                    this.xp = data.gamification_xp || 0;
+                    this.badges = data.earned_badges || [];
                     this.lastCheckIn = data.last_check_in ? new Date(data.last_check_in) : null;
                     
                     // Store in user profile for easy access
                     if (!this.userProfile) this.userProfile = data;
                 } else {
-                    // Create initial data in consolidated_user_profiles
+                    // Create initial data in consolidated_user_profiles_table
                     await this.createGamificationRecord();
                 }
                 
@@ -163,7 +163,7 @@
             try {
                 // Check if record exists first
                 const { data: existing } = await window.db.supabase
-                    .from('consolidated_user_profiles')
+                    .from('consolidated_user_profiles_table')
                     .select('user_id')
                     .eq('user_id', this.userId)
                     .single();
@@ -171,7 +171,7 @@
                 if (!existing) {
                     // Create new record with gamification fields
                     const { error } = await window.db.supabase
-                        .from('consolidated_user_profiles')
+                        .from('consolidated_user_profiles_table')
                         .insert([{
                             user_id: this.userId,
                             gamification_points: 0,
@@ -219,7 +219,7 @@
             
             try {
                 const { error } = await window.db.supabase
-                    .from('consolidated_user_profiles')
+                    .from('consolidated_user_profiles_table')
                     .update({
                         gamification_points: this.points,
                         attendance_streak: this.streak,
@@ -554,7 +554,7 @@
             if (!window.db?.supabase) return;
             
             try {
-                // Query from consolidated_user_profiles table
+                // Query from consolidated_user_profiles_table
                 const { data, error } = await window.db.supabase
                     .from('consolidated_user_profiles_table')
                     .select('user_id, full_name, gamification_points, attendance_streak, gamification_level')
