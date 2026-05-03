@@ -1,4 +1,6 @@
 // profile.js - Complete Profile Management Module with DOB, Gender, Admission Date, Block Progress, and Password Reset
+// UPDATED to work with two-column layout (photo on right, details on left)
+
 class ProfileModule {
     constructor() {
         this.userId = null;
@@ -15,17 +17,16 @@ class ProfileModule {
         this.profileForm = document.getElementById('profile-form');
         this.profileStatus = document.getElementById('profile-status');
         
-        // Profile photo section
+        // Profile photo section (RIGHT COLUMN)
         this.passportPreview = document.getElementById('passport-preview');
         this.passportFileInput = document.getElementById('passport-file-input');
         
-        // Upload buttons
-        this.choosePhotoButton = document.querySelector('label[for="passport-file-input"]');
+        // Upload buttons (photo controls in right column)
+        this.choosePhotoButton = document.querySelector('#profile .photo-controls label[for="passport-file-input"]');
         this.savePhotoButton = document.getElementById('save-photo-button');
         this.cancelPhotoButton = document.getElementById('cancel-photo-button');
-        this.photoStatus = document.getElementById('photo-status');
         
-        // Form fields
+        // Form fields (LEFT COLUMN)
         this.profileName = document.getElementById('profile-name');
         this.profileStudentId = document.getElementById('profile-student-id');
         this.profileEmail = document.getElementById('profile-email');
@@ -40,12 +41,12 @@ class ProfileModule {
         this.profileAdmissionDate = document.getElementById('profile-admission-date');
         this.profileAdmissionYear = document.getElementById('profile-admission-year');
         
-        // Block Progress elements
+        // Block Progress elements (in left column)
         this.blockProgressFill = document.getElementById('block-progress-fill');
         this.blockProgressText = document.getElementById('block-progress-text');
         this.currentBlockStatus = document.getElementById('current-block-status');
         this.completedBlocksContainer = document.getElementById('completed-blocks');
-        this.blockTimeline = document.getElementById('block-timeline');
+        this.blockTimeline = document.getElementById('block-timeline-profile') || document.getElementById('block-timeline');
         
         // ==================== PASSWORD RESET ELEMENTS ====================
         this.currentPassword = document.getElementById('current-password');
@@ -57,7 +58,7 @@ class ProfileModule {
         this.passwordRequirements = document.getElementById('password-requirements');
         this.passwordFeedback = document.getElementById('password-feedback');
         
-        // Action buttons
+        // Action buttons (form actions at bottom)
         this.editProfileButton = document.getElementById('edit-profile-button');
         this.saveProfileButton = document.getElementById('save-profile-button');
         this.cancelEditButton = document.getElementById('cancel-edit-button');
@@ -160,20 +161,6 @@ class ProfileModule {
             });
         }
         
-        // Toggle password visibility
-        document.querySelectorAll('.toggle-password').forEach(icon => {
-            icon.addEventListener('click', () => {
-                const targetId = icon.getAttribute('data-target');
-                const input = document.getElementById(targetId);
-                if (input) {
-                    const type = input.getAttribute('type') === 'password' ? 'text' : 'password';
-                    input.setAttribute('type', type);
-                    icon.classList.toggle('fa-eye');
-                    icon.classList.toggle('fa-eye-slash');
-                }
-            });
-        });
-        
         // Show password requirements when typing
         this.newPassword.addEventListener('focus', () => {
             if (this.passwordRequirements) {
@@ -234,6 +221,10 @@ class ProfileModule {
         this.passwordStrengthBar.className = 'strength-bar ' + strengthClass;
         this.passwordStrengthText.textContent = strengthLabel;
         this.passwordStrengthText.style.color = this.getStrengthColor(strengthClass);
+        
+        // Update bar width for visual feedback
+        const widthPercent = (strength / 7) * 100;
+        this.passwordStrengthBar.style.width = `${widthPercent}%`;
     }
     
     getStrengthColor(strength) {
@@ -274,8 +265,12 @@ class ProfileModule {
     updateRequirement(element, isValid) {
         if (isValid) {
             element.classList.add('valid');
+            element.style.color = '#10b981';
+            element.style.textDecoration = 'line-through';
         } else {
             element.classList.remove('valid');
+            element.style.color = '#dc2626';
+            element.style.textDecoration = 'none';
         }
     }
     
@@ -384,6 +379,7 @@ class ProfileModule {
             // Reset strength indicator
             if (this.passwordStrengthBar) {
                 this.passwordStrengthBar.className = 'strength-bar';
+                this.passwordStrengthBar.style.width = '0%';
             }
             if (this.passwordStrengthText) this.passwordStrengthText.textContent = 'Not set';
             
@@ -399,7 +395,7 @@ class ProfileModule {
             setTimeout(() => {
                 if (confirm('Password changed successfully! Would you like to login again with your new password?')) {
                     supabase.auth.signOut();
-                    window.location.href = 'login.html';
+                    window.location.href = '/login';
                 }
             }, 2000);
             
@@ -411,7 +407,7 @@ class ProfileModule {
         } finally {
             if (this.changePasswordBtn) {
                 this.changePasswordBtn.disabled = false;
-                this.changePasswordBtn.innerHTML = '<i class="fas fa-key"></i> Change Password';
+                this.changePasswordBtn.innerHTML = 'Change Password';
             }
         }
     }
@@ -557,7 +553,7 @@ class ProfileModule {
         }
         
         if (this.profileProgram) this.profileProgram.value = this.userProfile.program || this.userProfile.department || '';
-        if (this.profileBlock) this.profileBlock.value = this.userProfile.block || this.userProfile.current_block || '';
+        if (this.profileBlock) this.profileBlock.value = this.userProfile.block || this.userProfile.current_block || 'Introductory';
         if (this.profileIntakeYear) this.profileIntakeYear.value = this.userProfile.intake_year || this.userProfile.year_of_intake || '';
         
         // Admission Date
@@ -600,8 +596,8 @@ class ProfileModule {
         
         const totalBlocks = 7;
         const currentBlockNumber = blockOrder[currentBlock] || 1;
-        const completedBlocks = currentBlockNumber - 1;
-        const progressPercent = (completedBlocks / totalBlocks) * 100;
+        const completedBlocksCount = currentBlockNumber - 1;
+        const progressPercent = (completedBlocksCount / totalBlocks) * 100;
         
         // Update progress bar
         if (this.blockProgressFill) {
@@ -620,7 +616,7 @@ class ProfileModule {
         this.updateBlockTimeline(currentBlock);
         
         // Update completed blocks badges
-        this.updateCompletedBlocks(completedBlocks);
+        this.updateCompletedBlocks(completedBlocksCount);
     }
     
     updateBlockTimeline(currentBlock) {
@@ -676,7 +672,7 @@ class ProfileModule {
         if (!this.userProfile) return;
         
         const photoUrl = this.userProfile.passport_url;
-        let finalPhotoSrc = 'https://dummyimage.com/150x150/cccccc/000000.png&text=Upload+Photo';
+        let finalPhotoSrc = 'https://dummyimage.com/160x160/cccccc/000000.png&text=Photo';
         
         if (photoUrl) {
             try {
@@ -696,7 +692,7 @@ class ProfileModule {
                 
             } catch (error) {
                 console.warn('Photo load error:', error);
-                finalPhotoSrc = 'https://dummyimage.com/150x150/cccccc/000000.png&text=No+Photo';
+                finalPhotoSrc = 'https://dummyimage.com/160x160/cccccc/000000.png&text=No+Photo';
             }
         }
         
@@ -724,13 +720,12 @@ class ProfileModule {
         this.isEditing = false;
         
         // Show/Hide buttons
-        if (this.editProfileButton) this.editProfileButton.style.display = 'flex';
+        if (this.editProfileButton) this.editProfileButton.style.display = 'inline-flex';
         if (this.saveProfileButton) this.saveProfileButton.style.display = 'none';
         if (this.cancelEditButton) this.cancelEditButton.style.display = 'none';
-        if (this.choosePhotoButton) this.choosePhotoButton.style.display = 'flex';
+        if (this.choosePhotoButton) this.choosePhotoButton.style.display = 'inline-flex';
         if (this.savePhotoButton) this.savePhotoButton.style.display = 'none';
         if (this.cancelPhotoButton) this.cancelPhotoButton.style.display = 'none';
-        if (this.photoStatus) this.photoStatus.style.display = 'none';
         
         // Remove editing class
         if (this.profileForm) {
@@ -759,9 +754,9 @@ class ProfileModule {
         
         // Show/Hide buttons
         if (this.editProfileButton) this.editProfileButton.style.display = 'none';
-        if (this.saveProfileButton) this.saveProfileButton.style.display = 'flex';
-        if (this.cancelEditButton) this.cancelEditButton.style.display = 'flex';
-        if (this.choosePhotoButton) this.choosePhotoButton.style.display = 'flex';
+        if (this.saveProfileButton) this.saveProfileButton.style.display = 'inline-flex';
+        if (this.cancelEditButton) this.cancelEditButton.style.display = 'inline-flex';
+        if (this.choosePhotoButton) this.choosePhotoButton.style.display = 'inline-flex';
         if (this.savePhotoButton) this.savePhotoButton.style.display = 'none';
         if (this.cancelPhotoButton) this.cancelPhotoButton.style.display = 'none';
         
@@ -907,16 +902,16 @@ class ProfileModule {
     
     async savePhotoOnly() {
         if (!this.pendingPhotoFile) {
-            this.showPhotoStatus('No photo selected', 'error');
+            this.showStatus('No photo selected', 'error');
             return;
         }
         
-        this.showPhotoStatus('Uploading photo...', 'loading');
+        this.showStatus('Uploading photo...', 'info');
         
         try {
             await this.uploadPassportPhoto();
         } catch (error) {
-            this.showPhotoStatus(`Upload failed: ${error.message}`, 'error');
+            this.showStatus(`Upload failed: ${error.message}`, 'error');
         }
     }
     
@@ -929,9 +924,8 @@ class ProfileModule {
         
         this.loadProfilePhoto();
         
-        this.savePhotoButton.style.display = 'none';
-        this.cancelPhotoButton.style.display = 'none';
-        if (this.photoStatus) this.photoStatus.style.display = 'none';
+        if (this.savePhotoButton) this.savePhotoButton.style.display = 'none';
+        if (this.cancelPhotoButton) this.cancelPhotoButton.style.display = 'none';
         
         this.showStatus('Photo upload cancelled', 'info');
     }
@@ -950,8 +944,8 @@ class ProfileModule {
         
         if (this.savePhotoButton) this.savePhotoButton.style.display = 'none';
         if (this.cancelPhotoButton) this.cancelPhotoButton.style.display = 'none';
-        if (this.photoStatus) this.photoStatus.style.display = 'none';
         
+        // Reload profile to get updated data
         this.loadProfile();
         
         this.showStatus('Profile updated successfully!', 'success');
@@ -990,9 +984,13 @@ class ProfileModule {
         if (this.profileDob && this.profileDob.value) {
             const dobDate = new Date(this.profileDob.value);
             const today = new Date();
-            const age = today.getFullYear() - dobDate.getFullYear();
+            let age = today.getFullYear() - dobDate.getFullYear();
+            const m = today.getMonth() - dobDate.getMonth();
+            if (m < 0 || (m === 0 && today.getDate() < dobDate.getDate())) {
+                age--;
+            }
             if (isNaN(dobDate) || age < 16 || age > 100) {
-                this.showFieldError(this.profileDob, 'Please enter a valid date of birth');
+                this.showFieldError(this.profileDob, 'Please enter a valid date of birth (age must be between 16-100)');
                 isValid = false;
             }
         }
@@ -1010,6 +1008,9 @@ class ProfileModule {
             field.parentElement.appendChild(errorElement);
         }
         errorElement.textContent = message;
+        errorElement.style.color = '#dc2626';
+        errorElement.style.fontSize = '0.75rem';
+        errorElement.style.marginTop = '0.25rem';
     }
     
     clearAllErrors() {
@@ -1047,7 +1048,7 @@ class ProfileModule {
         if (this.cancelPhotoButton) this.cancelPhotoButton.style.display = 'inline-flex';
         
         const fileSize = (file.size / 1024 / 1024).toFixed(2);
-        this.showPhotoStatus(`Ready to upload: ${file.name} (${fileSize} MB)`, 'info');
+        this.showStatus(`Ready to upload: ${file.name} (${fileSize} MB)`, 'info');
     }
     
     validatePassportFile(file) {
@@ -1079,7 +1080,7 @@ class ProfileModule {
             return;
         }
         
-        this.showPhotoStatus('Uploading photo...', 'loading');
+        this.showStatus('Uploading photo...', 'info');
         
         try {
             const supabase = this.getSupabaseClient();
@@ -1116,7 +1117,7 @@ class ProfileModule {
             
             if (updateError) throw updateError;
             
-            this.showPhotoStatus('Photo uploaded successfully!', 'success');
+            this.showStatus('Photo uploaded successfully!', 'success');
             
             this.pendingPhotoFile = null;
             
@@ -1126,22 +1127,16 @@ class ProfileModule {
             await this.loadProfile();
             
             setTimeout(() => {
-                if (this.photoStatus) this.photoStatus.style.display = 'none';
+                if (this.profileStatus && this.profileStatus.textContent === 'Photo uploaded successfully!') {
+                    this.clearStatus();
+                }
             }, 3000);
             
         } catch (error) {
             console.error('Upload error:', error);
-            this.showPhotoStatus(`Upload failed: ${error.message}`, 'error');
+            this.showStatus(`Upload failed: ${error.message}`, 'error');
             throw error;
         }
-    }
-    
-    showPhotoStatus(message, type = 'info') {
-        if (!this.photoStatus) return;
-        
-        this.photoStatus.style.display = 'block';
-        this.photoStatus.textContent = message;
-        this.photoStatus.className = `photo-status ${type}`;
     }
     
     showStatus(message, type = 'info') {
@@ -1199,7 +1194,7 @@ function initProfileModule() {
     }
 }
 
-// Initialize when tab is clicked
+// Initialize when DOM is ready or when profile tab is clicked
 document.addEventListener('DOMContentLoaded', () => {
     const profileTab = document.querySelector('[data-tab="profile"]');
     if (profileTab) {
@@ -1214,7 +1209,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    if (document.getElementById('profile-form')) {
+    // If profile is visible initially
+    if (document.getElementById('profile') && document.getElementById('profile').style.display !== 'none') {
         setTimeout(() => {
             initProfileModule();
         }, 1000);
@@ -1229,4 +1225,4 @@ window.loadProfile = () => {
     }
 };
 
-console.log('Profile module loaded with DOB, Gender, Admission Date, Block Progress, and Password Reset');
+console.log('Profile module loaded with two-column layout (photo right, details left)');
