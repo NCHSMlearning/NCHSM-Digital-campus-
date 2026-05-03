@@ -1,10 +1,10 @@
 // gamification.js - Complete Badges, Streaks, Points & Leaderboard System
-// LIVE DATA VERSION - Uses your Supabase database
+// FIXED - Works with your consolidated_user_profiles table
 
 (function() {
     'use strict';
     
-    console.log('🏆 Gamification module loading (LIVE DATA VERSION)...');
+    console.log('🏆 Gamification module loading...');
     
     class GamificationModule {
         constructor() {
@@ -90,22 +90,11 @@
         }
         
         async init() {
-            // Wait for user
             await this.waitForUser();
-            
-            // Load data from Supabase
             await this.loadUserGamificationData();
-            
-            // Inject gamification UI into existing page
             this.injectGamificationUI();
-            
-            // Setup event listeners
             this.setupEventListeners();
-            
-            // Update all UI
             this.updateAllUI();
-            
-            // Load leaderboard from Supabase
             await this.loadLeaderboard();
             
             console.log(`✅ Gamification ready: Level ${this.level}, ${this.points} points, ${this.streak} day streak`);
@@ -137,31 +126,33 @@
             if (!this.userId || !window.db?.supabase) return;
             
             try {
-                // Load from Supabase
+                // Load from consolidated_user_profiles table
                 const { data, error } = await window.db.supabase
-                    .from('student_gamification')
+                    .from('consolidated_user_profiles')
                     .select('*')
-                    .eq('student_id', this.userId)
+                    .eq('user_id', this.userId)
                     .single();
                 
                 if (data && !error) {
-                    this.points = data.points || 0;
-                    this.streak = data.current_streak || 0;
-                    this.level = data.level || 1;
-                    this.xp = data.xp || 0;
-                    this.badges = data.badges || [];
+                    // Map your existing columns to gamification fields
+                    this.points = data.gamification_points || data.points || 0;
+                    this.streak = data.attendance_streak || data.current_streak || 0;
+                    this.level = data.gamification_level || data.level || 1;
+                    this.xp = data.gamification_xp || data.xp || 0;
+                    this.badges = data.earned_badges || data.badges || [];
                     this.lastCheckIn = data.last_check_in ? new Date(data.last_check_in) : null;
-                    this.max_streak = data.max_streak || 0;
+                    
+                    // Store in user profile for easy access
+                    if (!this.userProfile) this.userProfile = data;
                 } else {
-                    // Create new record if doesn't exist
+                    // Create initial data in consolidated_user_profiles
                     await this.createGamificationRecord();
                 }
                 
-                // Check streak continuity
                 await this.checkStreakContinuity();
                 
             } catch (error) {
-                console.log('No gamification data found, creating new record...');
+                console.log('Loading gamification data:', error.message);
                 await this.createGamificationRecord();
             }
         }
@@ -170,23 +161,31 @@
             if (!this.userId || !window.db?.supabase) return;
             
             try {
-                const { data, error } = await window.db.supabase
-                    .from('student_gamification')
-                    .insert([{
-                        student_id: this.userId,
-                        points: 0,
-                        current_streak: 0,
-                        max_streak: 0,
-                        level: 1,
-                        xp: 0,
-                        badges: [],
-                        total_checkins: 0
-                    }])
-                    .select()
+                // Check if record exists first
+                const { data: existing } = await window.db.supabase
+                    .from('consolidated_user_profiles')
+                    .select('user_id')
+                    .eq('user_id', this.userId)
                     .single();
                 
-                if (error) throw error;
-                console.log('✅ Created new gamification record');
+                if (!existing) {
+                    // Create new record with gamification fields
+                    const { error } = await window.db.supabase
+                        .from('consolidated_user_profiles')
+                        .insert([{
+                            user_id: this.userId,
+                            gamification_points: 0,
+                            attendance_streak: 0,
+                            gamification_level: 1,
+                            gamification_xp: 0,
+                            earned_badges: [],
+                            total_checkins: 0,
+                            created_at: new Date().toISOString()
+                        }]);
+                    
+                    if (error) throw error;
+                    console.log('✅ Created new gamification record');
+                }
                 
             } catch (error) {
                 console.error('Error creating gamification record:', error);
@@ -211,32 +210,31 @@
                     console.log(`💔 Streak broken at ${this.streak} days`);
                 }
                 this.streak = 0;
-                await this.saveToSupabase();
+                await this.saveToDatabase();
             }
         }
         
-        async saveToSupabase() {
+        async saveToDatabase() {
             if (!this.userId || !window.db?.supabase) return;
             
             try {
                 const { error } = await window.db.supabase
-                    .from('student_gamification')
+                    .from('consolidated_user_profiles')
                     .update({
-                        points: this.points,
-                        current_streak: this.streak,
-                        level: this.level,
-                        xp: this.xp,
-                        badges: this.badges,
+                        gamification_points: this.points,
+                        attendance_streak: this.streak,
+                        gamification_level: this.level,
+                        gamification_xp: this.xp,
+                        earned_badges: this.badges,
                         last_check_in: this.lastCheckIn ? this.lastCheckIn.toISOString() : null,
-                        max_streak: Math.max(this.streak, this.max_streak || 0),
                         updated_at: new Date().toISOString()
                     })
-                    .eq('student_id', this.userId);
+                    .eq('user_id', this.userId);
                 
                 if (error) throw error;
                 
             } catch (error) {
-                console.error('Error saving to Supabase:', error);
+                console.error('Error saving to database:', error);
             }
         }
         
@@ -437,7 +435,7 @@
                 await this.addPoints(500, '30-Day Streak Bonus!');
             }
             
-            await this.saveToSupabase();
+            await this.saveToDatabase();
             this.updateUI();
         }
         
@@ -465,7 +463,7 @@
                 this.showNotification('Level Up!', `Congratulations! You reached Level ${this.level}!`, 'levelup');
             }
             
-            await this.saveToSupabase();
+            await this.saveToDatabase();
             this.updateUI();
             this.showNotification('Points Earned!', `+${amount} points - ${reason}`, 'points');
             this.updateDashboardStats();
@@ -478,11 +476,12 @@
             
             this.badges.push({
                 id: badgeId,
+                name: badge.name,
                 unlockedAt: new Date().toISOString()
             });
             
             await this.addPoints(badge.points, `Unlocked badge: ${badge.name}`);
-            await this.saveToSupabase();
+            await this.saveToDatabase();
             this.updateBadgesDisplay();
             this.showNotification('Badge Unlocked!', `You earned the "${badge.name}" badge!`, 'badge', badge.icon);
         }
@@ -555,19 +554,12 @@
             if (!window.db?.supabase) return;
             
             try {
-                let query = window.db.supabase
-                    .from('student_gamification')
-                    .select(`
-                        student_id,
-                        points,
-                        current_streak,
-                        level,
-                        profiles!inner(full_name)
-                    `)
-                    .order('points', { ascending: false })
+                // Query from consolidated_user_profiles table
+                const { data, error } = await window.db.supabase
+                    .from('consolidated_user_profiles')
+                    .select('user_id, full_name, gamification_points, attendance_streak, gamification_level')
+                    .order('gamification_points', { ascending: false })
                     .limit(10);
-                
-                const { data, error } = await query;
                 
                 if (error) throw error;
                 
@@ -587,7 +579,7 @@
                     else if (index === 1) rankClass = 'silver';
                     else if (index === 2) rankClass = 'bronze';
                     
-                    const name = item.profiles?.full_name || `Student ${item.student_id?.slice(-4)}`;
+                    const name = item.full_name || `Student ${item.user_id?.slice(-4)}`;
                     const avatar = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0,2);
                     
                     return `
@@ -597,11 +589,11 @@
                             <div class="leaderboard-info">
                                 <div class="leaderboard-name">${name}</div>
                                 <div class="leaderboard-stats">
-                                    <i class="fas fa-fire"></i> ${item.current_streak || 0} day streak
-                                    <i class="fas fa-trophy" style="margin-left: 8px;"></i> Level ${item.level || 1}
+                                    <i class="fas fa-fire"></i> ${item.attendance_streak || 0} day streak
+                                    <i class="fas fa-trophy" style="margin-left: 8px;"></i> Level ${item.gamification_level || 1}
                                 </div>
                             </div>
-                            <div class="leaderboard-points">${item.points || 0} pts</div>
+                            <div class="leaderboard-points">${item.gamification_points || 0} pts</div>
                         </div>
                     `;
                 }).join('');
