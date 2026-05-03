@@ -268,82 +268,94 @@ class Database {
         }
     }
     
-  // Load user profile - CORRECTED VERSION
-async loadUserProfile() {
-    try {
-        console.log('👤 Loading user profile...');
-        
-        // First try consolidated_user_profiles_table with correct column name 'user_id'
-        const { data: consolidatedProfile, error: consolidatedError } = await this.supabase
-            .from('consolidated_user_profiles_table')
-            .select('*')
-            .eq('user_id', this.currentUserId)
-            .single();
-        
-        if (!consolidatedError && consolidatedProfile) {
-            this.currentUserProfile = consolidatedProfile;
-            console.log('✅ User loaded from consolidated_user_profiles_table');
-            return consolidatedProfile;
-        }
-        
-        // Fallback to profiles table with correct column name 'id'
-        const { data: regularProfile, error: regularError } = await this.supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', this.currentUserId)
-            .single();
-        
-        if (!regularError && regularProfile) {
-            this.currentUserProfile = regularProfile;
-            console.log('✅ User loaded from profiles table');
-            return regularProfile;
-        }
-        
-        // Last fallback - try by email
-        const { data: userData } = await this.supabase.auth.getUser();
-        if (userData?.user?.email) {
-            const { data: emailProfile, error: emailError } = await this.supabase
-                .from('consolidated_user_profiles_table')
-                .select('*')
-                .eq('email', userData.user.email)
-                .maybeSingle();
-            
-            if (!emailError && emailProfile) {
-                this.currentUserProfile = emailProfile;
-                console.log('✅ User loaded by email from consolidated table');
-                return emailProfile;
-            }
-        }
-        
-        // Create fallback profile
-        console.warn('⚠️ No profile found, using auth data as fallback');
-        const fallbackProfile = {
-            user_id: this.currentUserId,
-            id: this.currentUserId,
-            email: userData?.user?.email || 'unknown',
-            full_name: userData?.user?.email?.split('@')[0] || 'Student',
-            student_id: this.currentUserId.substring(0, 8),
-            program: 'KRCHN',
-            block: 'A',
-            intake_year: new Date().getFullYear(),
-            role: 'student',
-            status: 'approved'
-        };
-        
-        this.currentUserProfile = fallbackProfile;
-        return fallbackProfile;
-        
-    } catch (error) {
-        console.error('Failed to load profile:', error);
-        this.currentUserProfile = {
-            user_id: this.currentUserId,
-            id: this.currentUserId,
-            full_name: 'Student',
-            role: 'student'
-        };
+    // Get current user ID (used by profile.js and dashboard.js)
+    getCurrentUserId() {
+        return this.currentUserId;
+    }
+    
+    // Get current user profile (used by profile.js and dashboard.js)
+    getUserProfile() {
         return this.currentUserProfile;
     }
-}
+    
+    // Load user profile
+    async loadUserProfile() {
+        try {
+            console.log('👤 Loading user profile...');
+            
+            // First try consolidated_user_profiles_table with correct column name 'user_id'
+            const { data: consolidatedProfile, error: consolidatedError } = await this.supabase
+                .from('consolidated_user_profiles_table')
+                .select('*')
+                .eq('user_id', this.currentUserId)
+                .maybeSingle();
+            
+            if (!consolidatedError && consolidatedProfile) {
+                this.currentUserProfile = consolidatedProfile;
+                console.log('✅ User loaded from consolidated_user_profiles_table');
+                return consolidatedProfile;
+            }
+            
+            // Fallback to profiles table with correct column name 'id'
+            const { data: regularProfile, error: regularError } = await this.supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', this.currentUserId)
+                .maybeSingle();
+            
+            if (!regularError && regularProfile) {
+                this.currentUserProfile = regularProfile;
+                console.log('✅ User loaded from profiles table');
+                return regularProfile;
+            }
+            
+            // Last fallback - try by email
+            const { data: userData } = await this.supabase.auth.getUser();
+            if (userData?.user?.email) {
+                const { data: emailProfile, error: emailError } = await this.supabase
+                    .from('consolidated_user_profiles_table')
+                    .select('*')
+                    .eq('email', userData.user.email)
+                    .maybeSingle();
+                
+                if (!emailError && emailProfile) {
+                    this.currentUserProfile = emailProfile;
+                    console.log('✅ User loaded by email from consolidated table');
+                    return emailProfile;
+                }
+            }
+            
+            // Create fallback profile
+            console.warn('⚠️ No profile found, using auth data as fallback');
+            const fallbackProfile = {
+                user_id: this.currentUserId,
+                id: this.currentUserId,
+                email: userData?.user?.email || 'unknown',
+                full_name: userData?.user?.email?.split('@')[0] || 'Student',
+                student_id: this.currentUserId.substring(0, 8),
+                program: 'KRCHN',
+                block: 'Introductory',
+                current_block: 'Introductory',
+                intake_year: new Date().getFullYear(),
+                role: 'student',
+                status: 'active'
+            };
+            
+            this.currentUserProfile = fallbackProfile;
+            return fallbackProfile;
+            
+        } catch (error) {
+            console.error('Failed to load profile:', error);
+            this.currentUserProfile = {
+                user_id: this.currentUserId,
+                id: this.currentUserId,
+                full_name: 'Student',
+                role: 'student',
+                status: 'active'
+            };
+            return this.currentUserProfile;
+        }
+    }
     
     // Load profile data (called when profile tab is activated)
     async loadProfileData() {
@@ -428,7 +440,7 @@ async loadUserProfile() {
         
         const program = this.currentUserProfile?.program || this.currentUserProfile?.department;
         const intakeYear = this.currentUserProfile?.intake_year;
-        const block = this.currentUserProfile?.block;
+        const block = this.currentUserProfile?.block || this.currentUserProfile?.current_block;
         
         if (!program || !intakeYear) {
             return [];
@@ -464,7 +476,7 @@ async loadUserProfile() {
         }
         
         const program = this.currentUserProfile?.program || this.currentUserProfile?.department;
-        const block = this.currentUserProfile?.block;
+        const block = this.currentUserProfile?.block || this.currentUserProfile?.current_block;
         const intakeYear = this.currentUserProfile?.intake_year;
         const studentId = this.currentUserId;
         
@@ -537,7 +549,7 @@ async loadUserProfile() {
         
         const program = this.currentUserProfile?.program || this.currentUserProfile?.department;
         const intakeYear = this.currentUserProfile?.intake_year;
-        const blockTerm = this.currentUserProfile?.block || null;
+        const blockTerm = this.currentUserProfile?.block || this.currentUserProfile?.current_block || null;
         
         if (!program || !intakeYear) {
             return [];
@@ -586,7 +598,7 @@ async loadUserProfile() {
     async getClassTargets() {
         const program = this.currentUserProfile?.program || this.currentUserProfile?.department;
         const intakeYear = this.currentUserProfile?.intake_year;
-        const block = this.currentUserProfile?.block || null;
+        const block = this.currentUserProfile?.block || this.currentUserProfile?.current_block || null;
         
         if (!program || !intakeYear) {
             return [];
@@ -679,7 +691,7 @@ async loadUserProfile() {
                 p_accuracy_m: location.acc,
                 p_location_friendly_name: location.friendly,
                 p_program: studentProgram,
-                p_block: this.currentUserProfile.block,
+                p_block: this.currentUserProfile.block || this.currentUserProfile.current_block,
                 p_intake_year: this.currentUserProfile.intake_year,
                 p_device_id: deviceId,
                 p_is_verified: isVerified,
@@ -703,7 +715,7 @@ async loadUserProfile() {
         }
         
         const program = this.currentUserProfile?.program;
-        const block = this.currentUserProfile?.block;
+        const block = this.currentUserProfile?.block || this.currentUserProfile?.current_block;
         const intakeYear = this.currentUserProfile?.intake_year;
         
         if (!program || !intakeYear || !block) {
@@ -796,7 +808,7 @@ async loadUserProfile() {
     // === CALENDAR FUNCTIONS ===
     async getCalendarEvents() {
         const program = this.currentUserProfile?.program || this.currentUserProfile?.department;
-        const block = this.currentUserProfile?.block;
+        const block = this.currentUserProfile?.block || this.currentUserProfile?.current_block;
         const intakeYear = this.currentUserProfile?.intake_year;
         
         if (!program || !block || !intakeYear) {
@@ -972,11 +984,18 @@ async loadUserProfile() {
             
             if (uploadError) throw uploadError;
             
+            // Get public URL
+            const { data: urlData } = this.supabase.storage
+                .from('passports')
+                .getPublicUrl(filePath);
+            
+            const publicUrl = urlData.publicUrl;
+            
             // Update profile with photo URL
             const { error: updateError } = await this.supabase
                 .from('consolidated_user_profiles_table')
                 .update({ 
-                    passport_url: filePath,
+                    passport_url: publicUrl,
                     updated_at: new Date().toISOString() 
                 })
                 .eq('user_id', this.currentUserId);
@@ -985,10 +1004,10 @@ async loadUserProfile() {
             
             // Update cached profile
             if (this.currentUserProfile) {
-                this.currentUserProfile.passport_url = filePath;
+                this.currentUserProfile.passport_url = publicUrl;
             }
             
-            return { success: true, filePath };
+            return { success: true, filePath: publicUrl };
             
         } catch (error) {
             console.error('Failed to upload photo:', error);
