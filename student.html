@@ -2557,34 +2557,49 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-<!-- ==================== ROUTING & TAB PERSISTENCE ==================== -->
+<!-- ==================== ROUTING & TAB PERSISTENCE (CLEAN URLs - NO HASH) ==================== -->
 <script>
 (function() {
     'use strict';
     
-    console.log('🔧 Initializing routing...');
+    console.log('🔧 Initializing clean URL routing...');
     
     const VALID_TABS = ['dashboard', 'profile', 'calendar', 'cats', 'support-tickets', 'learning-hub', 'attendance', 'resources', 'messages', 'nurseiq', 'exam-card'];
+    const BASE_PATH = '/student';
     
-    function getCurrentTab() {
-        const hash = window.location.hash.substring(1);
-        if (hash && VALID_TABS.includes(hash)) return hash;
+    function getCurrentTabFromURL() {
+        let path = window.location.pathname;
         
-        const saved = localStorage.getItem('nchsm_current_tab');
-        if (saved && VALID_TABS.includes(saved)) return saved;
+        // Remove base path if present
+        if (path.startsWith(BASE_PATH)) {
+            path = path.substring(BASE_PATH.length);
+        }
+        
+        // Remove leading/trailing slashes
+        path = path.replace(/^\/+|\/+$/g, '');
+        
+        // Check if path is a valid tab
+        if (path && VALID_TABS.includes(path)) {
+            return path;
+        }
         
         return 'dashboard';
     }
     
-    function saveCurrentTab(tab) {
-        if (tab && tab !== 'dashboard') {
-            localStorage.setItem('nchsm_current_tab', tab);
-        } else if (tab === 'dashboard') {
+    function updateURL(tabName) {
+        const newPath = tabName === 'dashboard' ? BASE_PATH : `${BASE_PATH}/${tabName}`;
+        if (window.location.pathname !== newPath) {
+            window.history.pushState({ tab: tabName }, '', newPath);
+        }
+    }
+    
+    function saveCurrentTab(tabName) {
+        if (tabName && tabName !== 'dashboard') {
+            localStorage.setItem('nchsm_current_tab', tabName);
+        } else if (tabName === 'dashboard') {
             localStorage.removeItem('nchsm_current_tab');
         }
-        if (window.location.hash !== `#${tab}`) {
-            window.location.hash = tab;
-        }
+        updateURL(tabName);
     }
     
     function showTab(tabName) {
@@ -2606,7 +2621,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         
         saveCurrentTab(tabName);
-        console.log(`✅ Switched to tab: ${tabName}`);
+        console.log(`✅ Switched to tab: ${tabName} | URL: ${window.location.pathname}`);
         
         // Dispatch event for modules to refresh if needed
         setTimeout(() => {
@@ -2637,7 +2652,17 @@ document.addEventListener('DOMContentLoaded', function() {
     function handleTabClick(e) {
         e.preventDefault();
         const tab = this.getAttribute('data-tab');
-        if (tab && VALID_TABS.includes(tab)) showTab(tab);
+        if (tab && VALID_TABS.includes(tab)) {
+            showTab(tab);
+        }
+    }
+    
+    // Handle browser back/forward buttons
+    function handlePopState(e) {
+        const tab = getCurrentTabFromURL();
+        if (tab && VALID_TABS.includes(tab)) {
+            showTab(tab);
+        }
     }
     
     // Setup listeners when DOM is ready
@@ -2647,16 +2672,32 @@ document.addEventListener('DOMContentLoaded', function() {
             link.addEventListener('click', handleTabClick);
         });
         
-        // Show saved tab after UI is ready
-        const savedTab = getCurrentTab();
-        if (savedTab !== 'dashboard') {
+        window.addEventListener('popstate', handlePopState);
+        
+        // Show tab based on URL
+        const urlTab = getCurrentTabFromURL();
+        const savedTab = localStorage.getItem('nchsm_current_tab');
+        
+        // Priority: URL > localStorage > dashboard
+        let tabToShow = urlTab;
+        if (tabToShow === 'dashboard' && savedTab && savedTab !== 'dashboard') {
+            tabToShow = savedTab;
+        }
+        
+        if (tabToShow !== 'dashboard') {
             const checkInterval = setInterval(() => {
-                if (document.getElementById(savedTab)) {
+                if (document.getElementById(tabToShow)) {
                     clearInterval(checkInterval);
-                    showTab(savedTab);
+                    showTab(tabToShow);
                 }
             }, 100);
             setTimeout(() => clearInterval(checkInterval), 3000);
+        } else {
+            // Ensure dashboard is shown
+            const dashboard = document.getElementById('dashboard');
+            if (dashboard && !dashboard.classList.contains('active')) {
+                showTab('dashboard');
+            }
         }
     }
     
@@ -2671,10 +2712,10 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Listen for app ready event to ensure correct tab
     document.addEventListener('appReady', function() {
-        console.log('🎉 App ready, ensuring correct tab...');
-        const savedTab = getCurrentTab();
-        if (savedTab !== 'dashboard' && document.getElementById(savedTab)) {
-            showTab(savedTab);
+        console.log('🎉 App ready, ensuring correct tab from URL...');
+        const urlTab = getCurrentTabFromURL();
+        if (urlTab !== 'dashboard' && document.getElementById(urlTab)) {
+            showTab(urlTab);
         }
     });
 })();
