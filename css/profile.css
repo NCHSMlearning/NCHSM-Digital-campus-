@@ -19,21 +19,21 @@
     --profile-text-light: #6B7280;
     --profile-text-lighter: #9CA3AF;
     
-    /* Spacing - REDUCED for compact layout */
+    /* Spacing */
     --profile-spacing-xs: 0.35rem;
     --profile-spacing-sm: 0.75rem;
     --profile-spacing-md: 1rem;
     --profile-spacing-lg: 1.25rem;
     --profile-spacing-xl: 1.5rem;
     
-    /* Border radius - Modern rounded corners */
+    /* Border radius */
     --profile-radius-sm: 0.5rem;
     --profile-radius-md: 0.75rem;
     --profile-radius-lg: 1rem;
     --profile-radius-xl: 1.25rem;
     --profile-radius-full: 9999px;
     
-    /* Enhanced shadows with depth */
+    /* Shadows */
     --profile-shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.04);
     --profile-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
     --profile-shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
@@ -45,29 +45,53 @@
     --profile-transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* ===== Profile Container ===== */
+/* ===== TWO-COLUMN LAYOUT - PHOTO RIGHT, DETAILS LEFT ===== */
 #profile.tab-content {
     animation: fadeInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1);
     background: var(--profile-bg);
     min-height: 100vh;
+    padding-bottom: var(--profile-spacing-xl);
 }
 
+/* Two column flex container */
+.profile-two-columns {
+    display: flex;
+    flex-direction: row;
+    gap: var(--profile-spacing-xl);
+    padding: 0 var(--profile-spacing-md) var(--profile-spacing-md);
+}
+
+/* LEFT COLUMN - All information sections */
+.profile-left {
+    flex: 2;
+    min-width: 0; /* Prevents overflow */
+    display: flex;
+    flex-direction: column;
+    gap: var(--profile-spacing-lg);
+}
+
+/* RIGHT COLUMN - Photo card only */
+.profile-right {
+    flex: 1;
+    min-width: 260px;
+    max-width: 320px;
+}
+
+/* ===== Profile Header ===== */
 .profile-header {
     margin-bottom: var(--profile-spacing-lg);
-    padding-bottom: var(--profile-spacing-md);
+    padding: var(--profile-spacing-md) var(--profile-spacing-xl);
     border-bottom: 1px solid var(--profile-border-light);
     position: relative;
     background: linear-gradient(to right, rgba(91, 33, 182, 0.05), transparent);
-    padding: var(--profile-spacing-md);
     border-radius: var(--profile-radius-lg);
-    margin-top: var(--profile-spacing-sm);
 }
 
 .profile-header::after {
     content: '';
     position: absolute;
     bottom: -1px;
-    left: 0;
+    left: var(--profile-spacing-xl);
     width: 80px;
     height: 3px;
     background: var(--profile-primary-gradient);
@@ -98,14 +122,13 @@
     display: flex;
     flex-direction: column;
     gap: var(--profile-spacing-lg);
-    padding: 0 var(--profile-spacing-md);
 }
 
 .profile-form.editing {
     animation: subtleGlow 3s ease-in-out infinite;
 }
 
-/* ===== Profile Sections ===== */
+/* ===== Profile Sections (Left Column) ===== */
 .profile-section {
     background: var(--profile-card-bg);
     border-radius: var(--profile-radius-xl);
@@ -136,7 +159,6 @@
 
 .profile-section:hover::before {
     width: 6px;
-    background: linear-gradient(to bottom, #5B21B6, #7C3AED);
 }
 
 .section-title {
@@ -161,34 +183,46 @@
     left: 0;
 }
 
-/* ===== Profile Media (Photo Section) - UPDATED: Much Smaller ===== */
-.profile-media {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    text-align: left;
-    gap: var(--profile-spacing-lg);
-    padding: var(--profile-spacing-md);
-    background: linear-gradient(135deg, rgba(91, 33, 182, 0.03), rgba(124, 58, 237, 0.03));
+/* ===== PHOTO CARD (Right Column) - Professional & Well Aligned ===== */
+.photo-card {
+    background: var(--profile-card-bg);
     border-radius: var(--profile-radius-xl);
-    border: 2px dashed var(--profile-border-light);
+    padding: var(--profile-spacing-xl) var(--profile-spacing-lg);
+    box-shadow: var(--profile-shadow-md);
+    border: 1px solid var(--profile-border-light);
+    text-align: center;
+    position: sticky;
+    top: 1.5rem;
     transition: all var(--profile-transition-normal);
-    flex-wrap: wrap;
 }
 
-.profile-media:hover {
-    border-color: var(--profile-primary-light);
-    background: linear-gradient(135deg, rgba(91, 33, 182, 0.05), rgba(124, 58, 237, 0.05));
+.photo-card:hover {
+    box-shadow: var(--profile-shadow-lg);
     transform: translateY(-2px);
 }
 
-/* SMALLER PHOTO CONTAINER - 70px instead of 120px */
-.passport-photo-container {
+.photo-card h3 {
+    color: var(--profile-primary);
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: var(--profile-spacing-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.photo-card h3::before {
+    content: '📸';
+    font-size: 1.2rem;
+}
+
+/* Photo container - Perfect circle sizing */
+.passport-photo-container-large {
     position: relative;
-    margin: 0;
-    width: 70px;
-    height: 70px;
-    flex-shrink: 0;
+    width: 160px;
+    height: 160px;
+    margin: 0 auto var(--profile-spacing-md);
 }
 
 #passport-preview {
@@ -196,72 +230,53 @@
     height: 100%;
     border-radius: 50%;
     object-fit: cover;
-    border: 3px solid white;
-    box-shadow: var(--profile-shadow-md), 0 0 0 4px rgba(91, 33, 182, 0.1);
+    border: 4px solid white;
+    box-shadow: var(--profile-shadow-lg), 0 0 0 2px rgba(91, 33, 182, 0.1);
     cursor: pointer;
     transition: all var(--profile-transition-normal);
     background: linear-gradient(135deg, #f3f4f6, #e5e7eb);
 }
 
 #passport-preview:hover {
-    transform: scale(1.05);
-    border-color: var(--profile-primary-light);
-    box-shadow: var(--profile-shadow-lg), 0 0 0 6px rgba(91, 33, 182, 0.15);
+    transform: scale(1.02);
+    box-shadow: var(--profile-shadow-xl), 0 0 0 4px rgba(91, 33, 182, 0.15);
 }
 
+/* Photo upload indicator */
 .photo-upload-indicator {
-    position: absolute;
-    bottom: 0px;
-    right: 0px;
-    background: var(--profile-primary);
-    color: white;
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.7rem;
-    box-shadow: var(--profile-shadow-sm);
-    opacity: 0;
-    transform: scale(0.8);
-    transition: all var(--profile-transition-normal);
-}
-
-.passport-photo-container:hover .photo-upload-indicator {
-    opacity: 1;
-    transform: scale(1);
-}
-
-.photo-info {
-    flex: 1;
-    min-width: 160px;
-}
-
-.photo-caption {
+    text-align: center;
+    margin-top: var(--profile-spacing-xs);
     font-size: 0.75rem;
     color: var(--profile-text-light);
-    margin-bottom: var(--profile-spacing-xs);
-    line-height: 1.4;
 }
 
-.photo-requirements {
-    font-size: 0.65rem;
-    color: var(--profile-text-lighter);
-    margin-bottom: var(--profile-spacing-sm);
-    line-height: 1.3;
+.photo-upload-indicator span {
+    background: var(--profile-primary-light);
+    color: white;
+    padding: 0.2rem 0.6rem;
+    border-radius: var(--profile-radius-full);
+    font-size: 0.7rem;
 }
 
+/* Photo controls */
 .photo-controls {
     display: flex;
     flex-wrap: wrap;
+    justify-content: center;
     gap: var(--profile-spacing-xs);
-    justify-content: flex-start;
+    margin-top: var(--profile-spacing-sm);
 }
 
-/* Small button variant for photo section */
+.photo-caption {
+    font-size: 0.7rem;
+    color: var(--profile-text-lighter);
+    margin-top: var(--profile-spacing-sm);
+    text-align: center;
+}
+
+/* Small button variant */
 .button-small {
-    padding: 0.35rem 1rem;
+    padding: 0.4rem 1rem;
     font-size: 0.75rem;
     min-width: auto;
 }
@@ -271,7 +286,7 @@
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: var(--profile-spacing-md);
-    margin-top: var(--profile-spacing-md);
+    margin-top: var(--profile-spacing-sm);
 }
 
 .form-field {
@@ -299,7 +314,6 @@
     content: '*';
     color: var(--profile-error);
     font-size: 1.1em;
-    line-height: 1;
     margin-left: 0.125rem;
 }
 
@@ -337,7 +351,6 @@
     border-color: var(--profile-primary);
     box-shadow: 0 0 0 3px rgba(91, 33, 182, 0.1);
     background: white;
-    transform: translateY(-1px);
 }
 
 .form-field input:read-only,
@@ -346,14 +359,6 @@
     border-color: #e2e8f0;
     color: var(--profile-text-light);
     cursor: not-allowed;
-    font-style: italic;
-}
-
-.form-field input:read-only:focus,
-.form-field select:read-only:focus {
-    border-color: #e2e8f0;
-    box-shadow: none;
-    transform: none;
 }
 
 .form-field input.error {
@@ -362,37 +367,18 @@
     animation: shake 0.4s ease-in-out;
 }
 
-.form-field input.error:focus {
-    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
-}
-
-.form-field input.success {
-    border-color: var(--profile-success);
-    background: rgba(16, 185, 129, 0.03);
-}
-
-.form-field.focused label {
-    color: var(--profile-primary);
-}
-
-/* Help text styling */
 .help-text {
     font-size: 0.65rem;
     color: var(--profile-text-lighter);
     line-height: 1.4;
     margin-top: 0.2rem;
-    padding-left: 0.2rem;
 }
 
-/* ===== Password Section Styles ===== */
+/* ===== Password Section ===== */
 .password-reset-container {
     display: flex;
     flex-direction: column;
     gap: var(--profile-spacing-sm);
-}
-
-.password-field-group {
-    position: relative;
 }
 
 .password-field-group input {
@@ -401,7 +387,6 @@
     border-radius: var(--profile-radius-md);
     font-size: 0.85rem;
     width: 100%;
-    transition: all var(--profile-transition-fast);
 }
 
 .password-field-group input:focus {
@@ -410,17 +395,20 @@
     box-shadow: 0 0 0 3px rgba(91, 33, 182, 0.1);
 }
 
-.password-strength {
-    margin-top: var(--profile-spacing-xs);
-}
-
 .strength-bar {
     height: 4px;
     background: var(--profile-border);
     border-radius: var(--profile-radius-full);
     overflow: hidden;
     margin-bottom: var(--profile-spacing-xs);
+    width: 100%;
+    transition: width 0.3s ease;
 }
+
+.strength-bar.weak { background: #dc2626; width: 25%; }
+.strength-bar.medium { background: #f59e0b; width: 50%; }
+.strength-bar.strong { background: #10b981; width: 75%; }
+.strength-bar.very-strong { background: #059669; width: 100%; }
 
 .strength-text {
     font-size: 0.7rem;
@@ -432,12 +420,6 @@
     padding: var(--profile-spacing-sm);
     border-radius: var(--profile-radius-md);
     font-size: 0.7rem;
-}
-
-.password-requirements p {
-    font-weight: 600;
-    margin-bottom: var(--profile-spacing-xs);
-    color: var(--profile-text);
 }
 
 .password-requirements ul {
@@ -454,6 +436,7 @@
 
 .password-requirements li.valid {
     color: var(--profile-success);
+    text-decoration: line-through;
 }
 
 .password-requirements li.valid::before {
@@ -466,8 +449,6 @@
 .password-feedback {
     font-size: 0.75rem;
     margin-top: var(--profile-spacing-xs);
-    padding: var(--profile-spacing-xs);
-    border-radius: var(--profile-radius-md);
 }
 
 /* ===== Buttons ===== */
@@ -485,43 +466,6 @@
     border: 2px solid transparent;
     text-align: center;
     min-width: 120px;
-    letter-spacing: 0.01em;
-    position: relative;
-    overflow: hidden;
-}
-
-.button::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 5px;
-    height: 5px;
-    background: rgba(255, 255, 255, 0.5);
-    opacity: 0;
-    border-radius: 100%;
-    transform: scale(1, 1) translate(-50%);
-    transform-origin: 50% 50%;
-}
-
-.button:focus:not(:active)::after {
-    animation: ripple 1s ease-out;
-}
-
-.button:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--profile-shadow-lg);
-}
-
-.button:active {
-    transform: translateY(0);
-}
-
-.button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    transform: none !important;
-    box-shadow: none !important;
 }
 
 .button-primary {
@@ -532,6 +476,7 @@
 
 .button-primary:hover {
     background: linear-gradient(135deg, var(--profile-primary-dark), var(--profile-primary));
+    transform: translateY(-2px);
     box-shadow: var(--profile-shadow-lg);
 }
 
@@ -539,25 +484,22 @@
     background: white;
     color: var(--profile-primary);
     border-color: var(--profile-border);
-    box-shadow: var(--profile-shadow-sm);
 }
 
 .button-secondary:hover {
     background: var(--profile-primary);
     color: white;
     border-color: var(--profile-primary);
-    box-shadow: var(--profile-shadow-md);
 }
 
 .button-success {
     background: var(--profile-success);
     color: white;
-    box-shadow: var(--profile-shadow-md);
 }
 
 .button-success:hover {
     background: #0da271;
-    box-shadow: var(--profile-shadow-lg);
+    transform: translateY(-2px);
 }
 
 .button-text {
@@ -571,34 +513,6 @@
 .button-text:hover {
     background: var(--profile-bg);
     color: var(--profile-text);
-    transform: none;
-    box-shadow: none;
-}
-
-.button-icon {
-    font-size: 1em;
-    line-height: 1;
-    transition: transform var(--profile-transition-fast);
-}
-
-.button:hover .button-icon {
-    transform: translateX(3px);
-}
-
-.button-loading {
-    pointer-events: none;
-    opacity: 0.8;
-}
-
-.button-loading::before {
-    content: '';
-    width: 14px;
-    height: 14px;
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    border-radius: 50%;
-    border-top-color: white;
-    animation: spin 1s linear infinite;
-    margin-right: 6px;
 }
 
 .form-actions {
@@ -609,23 +523,34 @@
     padding-top: var(--profile-spacing-md);
     border-top: 1px solid var(--profile-border-light);
     justify-content: flex-end;
-    align-items: center;
 }
 
-/* ===== Status Messages ===== */
 .form-status {
     padding: 0.75rem 1rem;
     border-radius: var(--profile-radius-md);
     font-size: 0.85rem;
     margin-top: var(--profile-spacing-md);
-    animation: slideDown 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    border: 1px solid transparent;
 }
 
-/* ===== Block Timeline Styles ===== */
+.form-status-success {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--profile-success);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.form-status-error {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--profile-error);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.form-status-info {
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--profile-info);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+/* ===== Block Timeline ===== */
 .block-progress-container {
     background: var(--profile-bg);
     padding: var(--profile-spacing-md);
@@ -662,7 +587,7 @@
     box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
 }
 
-.block-step.active .block-marker {
+.block-step.current .block-marker {
     background: var(--profile-primary);
     width: 12px;
     height: 12px;
@@ -675,21 +600,11 @@
     text-align: center;
 }
 
-.block-step.completed .block-name,
-.block-step.active .block-name {
-    color: var(--profile-text);
-    font-weight: 600;
-}
-
 .block-connector {
     flex: 1;
     height: 2px;
     background: var(--profile-border);
     min-width: 15px;
-}
-
-.progress-container {
-    margin-top: var(--profile-spacing-sm);
 }
 
 .progress-bar-block {
@@ -730,8 +645,79 @@
     font-weight: 500;
 }
 
-/* ===== Responsive Design ===== */
+/* ===== RESPONSIVE DESIGN - PHOTO STACKS PROPERLY ON MOBILE ===== */
+@media (max-width: 992px) {
+    .profile-two-columns {
+        gap: var(--profile-spacing-lg);
+    }
+    
+    .profile-right {
+        max-width: 280px;
+    }
+    
+    .passport-photo-container-large {
+        width: 140px;
+        height: 140px;
+    }
+}
+
 @media (max-width: 768px) {
+    /* Stack columns vertically on mobile - photo goes ABOVE details */
+    .profile-two-columns {
+        flex-direction: column;
+        padding: 0 var(--profile-spacing-sm) var(--profile-spacing-sm);
+    }
+    
+    .profile-left {
+        order: 2; /* Details come after photo */
+    }
+    
+    .profile-right {
+        order: 1; /* Photo comes first on mobile */
+        max-width: 100%;
+        margin-bottom: var(--profile-spacing-md);
+    }
+    
+    .photo-card {
+        position: static; /* Remove sticky on mobile */
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        text-align: left;
+        gap: var(--profile-spacing-lg);
+        padding: var(--profile-spacing-lg);
+    }
+    
+    .photo-card h3 {
+        width: 100%;
+        margin-bottom: var(--profile-spacing-sm);
+        justify-content: center;
+    }
+    
+    .passport-photo-container-large {
+        width: 100px;
+        height: 100px;
+        margin: 0;
+    }
+    
+    .photo-controls {
+        justify-content: flex-start;
+    }
+    
+    .photo-upload-indicator,
+    .photo-caption {
+        text-align: left;
+    }
+    
+    .profile-header {
+        padding: var(--profile-spacing-sm);
+    }
+    
+    .profile-header h2 {
+        font-size: 1.5rem;
+    }
+    
     .profile-details.grid-layout {
         grid-template-columns: 1fr;
         gap: var(--profile-spacing-sm);
@@ -739,16 +725,6 @@
     
     .profile-section {
         padding: var(--profile-spacing-md);
-        border-radius: var(--profile-radius-lg);
-    }
-    
-    .profile-header {
-        padding: var(--profile-spacing-sm);
-        margin-top: 0;
-    }
-    
-    .profile-header h2 {
-        font-size: 1.5rem;
     }
     
     .form-actions {
@@ -761,20 +737,7 @@
         min-width: 0;
     }
     
-    .profile-media {
-        flex-direction: column;
-        text-align: center;
-    }
-    
-    .photo-controls {
-        justify-content: center;
-    }
-    
-    .passport-photo-container {
-        width: 70px;
-        height: 70px;
-    }
-    
+    /* Timeline becomes vertical on mobile */
     .block-timeline {
         flex-direction: column;
         align-items: stretch;
@@ -794,6 +757,26 @@
 }
 
 @media (max-width: 480px) {
+    .photo-card {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .passport-photo-container-large {
+        width: 120px;
+        height: 120px;
+        margin: 0 auto;
+    }
+    
+    .photo-controls {
+        justify-content: center;
+    }
+    
+    .photo-upload-indicator,
+    .photo-caption {
+        text-align: center;
+    }
+    
     .profile-header h2 {
         font-size: 1.25rem;
     }
@@ -805,16 +788,6 @@
     .profile-section {
         padding: var(--profile-spacing-sm);
     }
-    
-    #passport-preview {
-        width: 60px;
-        height: 60px;
-    }
-    
-    .passport-photo-container {
-        width: 60px;
-        height: 60px;
-    }
 }
 
 /* ===== Animations ===== */
@@ -822,17 +795,6 @@
     from {
         opacity: 0;
         transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-@keyframes slideDown {
-    from {
-        opacity: 0;
-        transform: translateY(-10px);
     }
     to {
         opacity: 1;
@@ -849,69 +811,36 @@
     }
 }
 
-@keyframes ripple {
-    0% {
-        transform: scale(0, 0);
-        opacity: 0.5;
-    }
-    100% {
-        transform: scale(100, 100);
-        opacity: 0;
-    }
-}
-
 @keyframes shake {
     0%, 100% { transform: translateX(0); }
     25% { transform: translateX(-4px); }
     75% { transform: translateX(4px); }
 }
 
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
-
-/* ===== Additional CSS fixes ===== */
-#edit-profile-button,
-#save-profile-button,
-#cancel-edit-button,
-#upload-button {
-    display: inline-flex !important;
-}
-
-/* Button visibility fixes */
-#save-profile-button[style*="display: none"] {
-    display: none !important;
-}
-
-#cancel-edit-button[style*="display: none"] {
-    display: none !important;
-}
-
-#upload-button[style*="display: none"] {
-    display: none !important;
-}
-
-#edit-profile-button[style*="display: none"] {
-    display: none !important;
-}
-
-/* Make sure form status is visible */
-.form-status {
-    opacity: 1 !important;
-    visibility: visible !important;
-}
-
-/* Photo upload button fix */
-label[for="passport-file-input"] {
-    display: inline-flex !important;
-}
-
-/* Focus styles for accessibility */
+/* ===== Accessibility & Focus ===== */
 .button:focus-visible,
 .form-field input:focus-visible,
 .form-field select:focus-visible,
 #passport-preview:focus-visible {
     outline: 3px solid var(--profile-primary);
     outline-offset: 2px;
-    outline-style: solid;
+}
+
+/* ===== Field Error Styling ===== */
+.field-error {
+    color: var(--profile-error);
+    font-size: 0.7rem;
+    margin-top: 0.25rem;
+    padding-left: 0.25rem;
+}
+
+/* ===== Edit Mode Styling ===== */
+.editable {
+    background: #fffbeb !important;
+    border-color: var(--profile-warning) !important;
+}
+
+.editable:focus {
+    background: white !important;
+    border-color: var(--profile-primary) !important;
 }
