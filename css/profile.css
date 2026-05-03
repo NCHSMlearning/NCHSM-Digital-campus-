@@ -844,3 +844,44 @@
     background: white !important;
     border-color: var(--profile-primary) !important;
 }
+/* Make date input show calendar icon properly */
+.form-field input[type="date"] {
+    position: relative;
+    cursor: pointer;
+}
+
+.form-field input[type="date"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    padding: 5px;
+    border-radius: var(--profile-radius-sm);
+    background: var(--profile-primary-light);
+    color: white;
+}
+
+.form-field input[type="date"]:read-only::-webkit-calendar-picker-indicator {
+    display: none;
+    pointer-events: none;
+}
+
+.form-field input[type="date"].editable::-webkit-calendar-picker-indicator {
+    display: block;
+    opacity: 1;
+    cursor: pointer;
+    background: var(--profile-primary);
+    filter: invert(1);
+}
+
+/* Date input styling */
+input[type="date"] {
+    font-family: inherit;
+}
+
+input[type="date"]:read-only {
+    background-color: #f8fafc;
+    cursor: not-allowed;
+}
+
+input[type="date"]:not(:read-only) {
+    background-color: #fffbeb;
+    cursor: pointer;
+}
