@@ -1,27 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <head>
-    <script>
-    // Convert hash URLs to clean path URLs
-    (function() {
-        const hash = window.location.hash;
-        if (hash && hash.length > 1) {
-            let tab = hash.substring(1);
-            const validTabs = ['dashboard', 'profile', 'calendar', 'cats', 'support-tickets', 'learning-hub', 'attendance', 'resources', 'messages', 'nurseiq', 'exam-card'];
-            let cleanUrl = '/student';
-            if (tab && tab !== 'dashboard' && validTabs.includes(tab)) {
-                cleanUrl = `/student/${tab}`;
-            }
-            if (window.location.pathname !== cleanUrl) {
-                window.location.replace(cleanUrl);
-            }
-        }
-    })();
-    </script>
-    
-    <meta charset="UTF-8">
-    <!-- rest of your head content -->
+   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>NCHSM Digital Student Dashboard | Unified Learning Hub</title>
@@ -2395,289 +2375,310 @@
 
 <!-- ==================== INITIALIZATION SCRIPT ==================== -->
 <script>
-    // Global app state
-    window.app = {
-        config: null,
-        supabase: null,
-        db: null,
-        user: null,
-        isInitialized: false
-    };
+// Global app state
+window.app = {
+    config: null,
+    supabase: null,
+    db: null,
+    user: null,
+    isInitialized: false
+};
 
-    // Initialize application
-    async function initializeApp() {
+// Initialize application
+async function initializeApp() {
+    try {
+        console.log('🚀 Starting app initialization...');
+        
+        // Check config
+        if (!window.APP_CONFIG) {
+            throw new Error('Configuration not loaded. Check if config.js exists.');
+        }
+        
+        const config = window.APP_CONFIG;
+        window.app.config = config;
+        
+        // Validate configuration
+        if (!config.SUPABASE_URL || config.SUPABASE_URL === '%%SUPABASE_URL%%') {
+            throw new Error('SUPABASE_URL is not configured in GitHub Secrets');
+        }
+        
+        if (!config.SUPABASE_ANON_KEY || config.SUPABASE_ANON_KEY === '%%SUPABASE_ANON_KEY%%') {
+            throw new Error('SUPABASE_ANON_KEY is not configured in GitHub Secrets');
+        }
+        
+        // Initialize database
+        if (typeof window.db === 'undefined') {
+            throw new Error('Database module not loaded. Check js/database.js');
+        }
+        
+        const dbInstance = await window.db.initialize();
+        if (!dbInstance) {
+            throw new Error('Database initialization failed');
+        }
+        
+        console.log('✅ Database initialized');
+        
+        // Check authentication
+        let userSession = null;
+        if (window.db.supabase) {
+            const { data, error } = await window.db.supabase.auth.getSession();
+            if (error) throw error;
+            userSession = data.session;
+        }
+        
+        if (!userSession) {
+            console.log('⚠️ No active session, redirecting to login...');
+            window.location.href = '/login';
+            return;
+        }
+        
+        // Set user ID
+        window.db.currentUserId = userSession.user.id;
+        
+        // Load user profile
+        await window.db.loadUserProfile();
+        
+        console.log('✅ User authenticated:', {
+            userId: window.db.currentUserId,
+            email: window.db.currentUserProfile?.email,
+            name: window.db.currentUserProfile?.full_name
+        });
+        
+        // Hide loading screen and show app
+        const loadingScreen = document.getElementById('loading-screen');
+        if (loadingScreen) loadingScreen.style.display = 'none';
+        
+        const appContent = document.getElementById('app-content');
+        if (appContent) appContent.style.display = 'block';
+        
+        // Set global variables
+        window.supabase = window.db.supabase;
+        window.currentUserId = window.db.currentUserId;
+        window.currentUserProfile = window.db.currentUserProfile;
+        
+        // Update welcome message and header
+        const welcomeHeader = document.getElementById('welcome-header');
+        if (welcomeHeader && window.db.currentUserProfile?.full_name) {
+            welcomeHeader.textContent = 'Welcome back, ' + window.db.currentUserProfile.full_name + '!';
+        }
+        
+        const headerName = document.getElementById('header-user-name');
+        if (headerName && window.db.currentUserProfile?.full_name) {
+            headerName.textContent = window.db.currentUserProfile.full_name;
+        }
+        
+        const headerPhoto = document.getElementById('header-profile-photo');
+        if (headerPhoto && window.db.currentUserProfile?.full_name) {
+            const nameForAvatar = window.db.currentUserProfile.full_name.replace(/\s+/g, '');
+            headerPhoto.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(nameForAvatar)}&background=667eea&color=fff&size=100`;
+        }
+        
+        // Initialize UI modules
+        if (typeof initUI === 'function') {
+            initUI();
+        }
+        
+        // Initialize modules
+        if (typeof initProfileModule === 'function') {
+            setTimeout(() => initProfileModule(), 100);
+        }
+        
+        if (typeof initDashboardModule === 'function') {
+            setTimeout(() => initDashboardModule(window.db.supabase), 200);
+        }
+        
+        // Mark as initialized
+        window.app.isInitialized = true;
+        window.app.supabase = window.db.supabase;
+        window.app.user = window.db.currentUserProfile;
+        
+        console.log('✅ Application initialized successfully');
+        
+        // Dispatch app ready event
+        document.dispatchEvent(new CustomEvent('appReady', {
+            detail: {
+                userId: window.currentUserId,
+                userProfile: window.currentUserProfile,
+                database: window.db
+            }
+        }));
+        
+    } catch (error) {
+        console.error('❌ Initialization failed:', error);
+        
         try {
-            console.log('🚀 Starting app initialization...');
-            
-            // Check config
-            if (!window.APP_CONFIG) {
-                throw new Error('Configuration not loaded. Check if config.js exists.');
-            }
-            
-            const config = window.APP_CONFIG;
-            window.app.config = config;
-            
-            // Validate configuration
-            if (!config.SUPABASE_URL || config.SUPABASE_URL === '%%SUPABASE_URL%%') {
-                throw new Error('SUPABASE_URL is not configured in GitHub Secrets');
-            }
-            
-            if (!config.SUPABASE_ANON_KEY || config.SUPABASE_ANON_KEY === '%%SUPABASE_ANON_KEY%%') {
-                throw new Error('SUPABASE_ANON_KEY is not configured in GitHub Secrets');
-            }
-            
-            // Initialize database
-            if (typeof window.db === 'undefined') {
-                throw new Error('Database module not loaded. Check js/database.js');
-            }
-            
-            const dbInstance = await window.db.initialize();
-            if (!dbInstance) {
-                throw new Error('Database initialization failed');
-            }
-            
-            console.log('✅ Database initialized');
-            
-            // Check authentication
-            let userSession = null;
-            if (window.db.supabase) {
-                const { data, error } = await window.db.supabase.auth.getSession();
-                if (error) throw error;
-                userSession = data.session;
-            }
-            
-            if (!userSession) {
-                console.log('⚠️ No active session, redirecting to login...');
-                window.location.href = '/login';
-                return;
-            }
-            
-            // Set user ID
-            window.db.currentUserId = userSession.user.id;
-            
-            // Load user profile
-            try {
-                const { data: consolidatedProfile, error: consolidatedError } = await window.db.supabase
-                    .from('consolidated_user_profiles_table')
-                    .select('*')
-                    .eq('user_id', userSession.user.id) 
-                    .single();
-                
-                if (!consolidatedError && consolidatedProfile) {
-                    window.db.currentUserProfile = consolidatedProfile;
-                    console.log('✅ User loaded from consolidated_user_profiles_table');
-                } else {
-                    const { data: regularProfile, error: regularError } = await window.db.supabase
-                        .from('profiles')
-                        .select('*')
-                        .eq('id', userSession.user.id)
-                        .single();
-                    
-                    if (!regularError && regularProfile) {
-                        window.db.currentUserProfile = regularProfile;
-                        console.log('✅ User loaded from profiles table');
-                    } else {
-                        const { data: emailProfile, error: emailError } = await window.db.supabase
-                            .from('consolidated_user_profiles_table')
-                            .select('*')
-                            .eq('email', userSession.user.email)
-                            .single();
-                        
-                        if (!emailError && emailProfile) {
-                            window.db.currentUserProfile = emailProfile;
-                            console.log('✅ User loaded by email from consolidated table');
-                        } else {
-                            console.warn('Using auth data as fallback');
-                            window.db.currentUserProfile = {
-                                id: userSession.user.id,
-                                email: userSession.user.email,
-                                full_name: userSession.user.email.split('@')[0],
-                                student_id: userSession.user.id.substring(0, 8),
-                                program: 'Unknown',
-                                block: 'Unknown',
-                                intake_year: new Date().getFullYear()
-                            };
-                        }
-                    }
-                }
-            } catch (profileError) {
-                console.error('Profile loading error:', profileError);
-                window.db.currentUserProfile = {
-                    id: userSession.user.id,
-                    email: userSession.user.email,
-                    full_name: userSession.user.email.split('@')[0]
-                };
-            }
-            
-            console.log('✅ User authenticated:', {
-                userId: window.db.currentUserId,
-                email: window.db.currentUserProfile.email,
-                name: window.db.currentUserProfile.full_name
-            });
-            
-            // Hide loading screen and show app
             const loadingScreen = document.getElementById('loading-screen');
             if (loadingScreen) loadingScreen.style.display = 'none';
             
             const appContent = document.getElementById('app-content');
             if (appContent) appContent.style.display = 'block';
             
-            // Set global variables
-            window.supabase = window.db.supabase;
-            window.currentUserId = window.db.currentUserId;
-            window.currentUserProfile = window.db.currentUserProfile;
-            
-            // Update welcome message and header
-            const welcomeHeader = document.getElementById('welcome-header');
-            if (welcomeHeader && window.db.currentUserProfile.full_name) {
-                welcomeHeader.textContent = 'Welcome back, ' + window.db.currentUserProfile.full_name + '!';
+            const welcomeSection = document.getElementById('welcome-section');
+            if (welcomeSection) {
+                welcomeSection.innerHTML = 
+                    '<h2>Application Error</h2>' +
+                    '<p>' + error.message + '</p>' +
+                    '<button onclick="location.reload()" class="profile-button">Retry</button>';
             }
             
-            const headerName = document.getElementById('header-user-name');
-            if (headerName && window.db.currentUserProfile.full_name) {
-                headerName.textContent = window.db.currentUserProfile.full_name;
-            }
-            
-            const headerPhoto = document.getElementById('header-profile-photo');
-            if (headerPhoto && window.db.currentUserProfile.full_name) {
-                const nameForAvatar = window.db.currentUserProfile.full_name.replace(/\s+/g, '');
-                headerPhoto.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(nameForAvatar)}&background=667eea&color=fff&size=100`;
-            }
-            
-            // Initialize UI
-            if (typeof initUI === 'function') {
-                initUI();
-            }
-            
-            // Show appropriate tab - USING CLEAN URL (NO HASH)
-            if (window.ui && typeof window.ui.showTab === 'function') {
-                console.log('✅ UI module loaded, checking current tab state...');
-                
-                // Get tab from pathname (clean URL)
-                let path = window.location.pathname;
-                let targetTab = 'dashboard';
-                
-                // Remove /student prefix
-                if (path.startsWith('/student/')) {
-                    path = path.replace('/student/', '');
-                } else if (path === '/student') {
-                    path = '';
-                }
-                path = path.replace(/\/$/, '');
-                
-                // Check if path is a valid tab
-                if (path && window.ui.isValidTab(path)) {
-                    targetTab = path;
-                    console.log(`🔗 Using path from URL: ${targetTab}`);
-                }
-                
-                // Also check localStorage for last tab (fallback)
-                const lastTab = localStorage.getItem('nchsm_last_tab');
-                if (lastTab && window.ui.isValidTab(lastTab) && targetTab === 'dashboard') {
-                    targetTab = lastTab;
-                    console.log(`💾 Using saved tab: ${lastTab}`);
-                }
-                
-                console.log(`🎯 Showing tab: ${targetTab}`);
-                window.ui.showTab(targetTab);
-                
-                // Update URL without hash
-                const cleanUrl = targetTab === 'dashboard' ? '/student' : `/student/${targetTab}`;
-                if (window.location.pathname !== cleanUrl) {
-                    history.replaceState(null, null, cleanUrl);
-                }
-            } else {
-                console.warn('⚠️ UI module not available, using fallback');
-                document.querySelectorAll('.tab-content').forEach(tab => {
-                    tab.classList.remove('active');
-                });
-                const dashboard = document.getElementById('dashboard');
-                if (dashboard) {
-                    dashboard.classList.add('active');
-                }
-            }
-            
-            // Mark as initialized
-            window.app.isInitialized = true;
-            window.app.supabase = window.db.supabase;
-            window.app.user = window.db.currentUserProfile;
-            
-            console.log('✅ Application initialized successfully');
-            
-            // Dispatch app ready event
-            document.dispatchEvent(new CustomEvent('appReady', {
-                detail: {
-                    userId: window.currentUserId,
-                    userProfile: window.currentUserProfile,
-                    database: window.db
-                }
-            }));
-            
-        } catch (error) {
-            console.error('❌ Initialization failed:', error);
-            
-            try {
-                const loadingScreen = document.getElementById('loading-screen');
-                if (loadingScreen) loadingScreen.style.display = 'none';
-                
-                const appContent = document.getElementById('app-content');
-                if (appContent) appContent.style.display = 'block';
-                
-                if (window.ui && typeof window.ui.showTab === 'function') {
-                    window.ui.showTab('dashboard');
-                } else {
-                    const dashboard = document.getElementById('dashboard');
-                    if (dashboard) {
-                        dashboard.classList.add('active');
-                    }
-                }
-                
-                const welcomeSection = document.getElementById('welcome-section');
-                if (welcomeSection) {
-                    welcomeSection.innerHTML = 
-                        '<h2>Application Error</h2>' +
-                        '<p>' + error.message + '</p>' +
-                        '<button onclick="location.reload()" class="profile-button">Retry</button>';
-                }
-                
-                console.log('⚠️ Showing UI in error fallback mode');
-            } catch (uiError) {
-                console.error('Fatal error:', uiError);
-            }
+            console.log('⚠️ Showing UI in error fallback mode');
+        } catch (uiError) {
+            console.error('Fatal error:', uiError);
         }
     }
+}
 
-    // Start initialization when DOM is loaded
-    document.addEventListener('DOMContentLoaded', function() {
-        console.log('📱 DOM ready, starting app initialization...');
+// Start initialization when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('📱 DOM ready, starting app initialization...');
+    
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.style.removeProperty('display');
+    });
+    
+    if (typeof initializeApp === 'function') {
+        console.log('✅ initializeApp function found, calling it...');
+        initializeApp();
+    } else {
+        console.error('❌ initializeApp function NOT FOUND!');
+        setTimeout(() => {
+            const loadingScreen = document.getElementById('loading-screen');
+            if (loadingScreen) loadingScreen.style.display = 'none';
+            
+            const appContent = document.getElementById('app-content');
+            if (appContent) appContent.style.display = 'block';
+            
+            const dashboard = document.getElementById('dashboard');
+            if (dashboard) dashboard.classList.add('active');
+            
+            console.log('⚠️ Manual fallback activated');
+        }, 1000);
+    }
+});
+</script>
+
+<!-- ==================== ROUTING & TAB PERSISTENCE ==================== -->
+<script>
+(function() {
+    'use strict';
+    
+    console.log('🔧 Initializing routing...');
+    
+    const VALID_TABS = ['dashboard', 'profile', 'calendar', 'cats', 'support-tickets', 'learning-hub', 'attendance', 'resources', 'messages', 'nurseiq', 'exam-card'];
+    
+    function getCurrentTab() {
+        const hash = window.location.hash.substring(1);
+        if (hash && VALID_TABS.includes(hash)) return hash;
         
-        document.querySelectorAll('.tab-content').forEach(tab => {
-            tab.style.removeProperty('display');
+        const saved = localStorage.getItem('nchsm_current_tab');
+        if (saved && VALID_TABS.includes(saved)) return saved;
+        
+        return 'dashboard';
+    }
+    
+    function saveCurrentTab(tab) {
+        if (tab && tab !== 'dashboard') {
+            localStorage.setItem('nchsm_current_tab', tab);
+        } else if (tab === 'dashboard') {
+            localStorage.removeItem('nchsm_current_tab');
+        }
+        if (window.location.hash !== `#${tab}`) {
+            window.location.hash = tab;
+        }
+    }
+    
+    function showTab(tabName) {
+        const allTabs = document.querySelectorAll('.tab-content');
+        const target = document.getElementById(tabName);
+        
+        if (!target) return false;
+        
+        allTabs.forEach(tab => {
+            tab.style.display = 'none';
+            tab.classList.remove('active');
         });
         
-        if (typeof initializeApp === 'function') {
-            console.log('✅ initializeApp function found, calling it...');
-            initializeApp();
-        } else {
-            console.error('❌ initializeApp function NOT FOUND!');
-            setTimeout(() => {
-                const loadingScreen = document.getElementById('loading-screen');
-                if (loadingScreen) loadingScreen.style.display = 'none';
-                
-                const appContent = document.getElementById('app-content');
-                if (appContent) appContent.style.display = 'block';
-                
-                if (window.ui && window.ui.showTab) {
-                    window.ui.showTab('dashboard');
-                } else {
-                    const dashboard = document.getElementById('dashboard');
-                    if (dashboard) dashboard.classList.add('active');
+        target.style.display = 'block';
+        target.classList.add('active');
+        
+        document.querySelectorAll('[data-tab]').forEach(link => {
+            link.classList.toggle('active', link.getAttribute('data-tab') === tabName);
+        });
+        
+        saveCurrentTab(tabName);
+        console.log(`✅ Switched to tab: ${tabName}`);
+        
+        // Dispatch event for modules to refresh if needed
+        setTimeout(() => {
+            const event = new CustomEvent('tabSwitched', { detail: { tab: tabName } });
+            document.dispatchEvent(event);
+            
+            // Refresh module data based on tab
+            if (tabName === 'profile' && window.profileModule) {
+                window.profileModule.loadProfile();
+            } else if (tabName === 'dashboard' && window.dashboardModule) {
+                if (typeof window.dashboardModule.refreshDashboard === 'function') {
+                    window.dashboardModule.refreshDashboard(true);
                 }
-                
-                console.log('⚠️ Manual fallback activated');
-            }, 1000);
+            } else if (tabName === 'attendance' && window.attendanceModule) {
+                if (typeof window.attendanceModule.loadAttendanceHistory === 'function') {
+                    window.attendanceModule.loadAttendanceHistory();
+                }
+            } else if (tabName === 'nurseiq' && window.nurseiqModule) {
+                if (typeof window.nurseiqModule.loadCourses === 'function') {
+                    window.nurseiqModule.loadCourses();
+                }
+            }
+        }, 100);
+        
+        return true;
+    }
+    
+    function handleTabClick(e) {
+        e.preventDefault();
+        const tab = this.getAttribute('data-tab');
+        if (tab && VALID_TABS.includes(tab)) showTab(tab);
+    }
+    
+    // Setup listeners when DOM is ready
+    function setup() {
+        document.querySelectorAll('[data-tab]').forEach(link => {
+            link.removeEventListener('click', handleTabClick);
+            link.addEventListener('click', handleTabClick);
+        });
+        
+        // Show saved tab after UI is ready
+        const savedTab = getCurrentTab();
+        if (savedTab !== 'dashboard') {
+            const checkInterval = setInterval(() => {
+                if (document.getElementById(savedTab)) {
+                    clearInterval(checkInterval);
+                    showTab(savedTab);
+                }
+            }, 100);
+            setTimeout(() => clearInterval(checkInterval), 3000);
+        }
+    }
+    
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', setup);
+    } else {
+        setup();
+    }
+    
+    // Expose globally
+    window.showTab = showTab;
+    
+    // Listen for app ready event to ensure correct tab
+    document.addEventListener('appReady', function() {
+        console.log('🎉 App ready, ensuring correct tab...');
+        const savedTab = getCurrentTab();
+        if (savedTab !== 'dashboard' && document.getElementById(savedTab)) {
+            showTab(savedTab);
         }
     });
+})();
 </script>
+
 </body>
 </html>
