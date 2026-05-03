@@ -1,4 +1,4 @@
-// dashboard.js - COMPLETE FIXED VERSION with Exam Card Integration (No Emojis)
+// dashboard.js - COMPLETE FIXED VERSION with Profile Photo Persistence
 class DashboardModule {
     constructor(supabaseClient) {
         console.log('🚀 Initializing DashboardModule...');
@@ -23,6 +23,7 @@ class DashboardModule {
         
         this.userId = null;
         this.userProfile = null;
+        this.currentPhotoUrl = null;
         this.cachedCourses = [];
         this.autoRefreshInterval = null;
         
@@ -128,7 +129,7 @@ class DashboardModule {
         // Listen for profile photo updates
         document.addEventListener('profilePhotoUpdated', (e) => {
             console.log('📸 Dashboard: profilePhotoUpdated event received', e.detail);
-            this.updateAllProfilePhotos(e.detail?.photoUrl);
+            this.loadAndDisplayProfilePhoto();
         });
         
         // Listen for profile updates
@@ -137,6 +138,7 @@ class DashboardModule {
             if (window.currentUserProfile) {
                 this.userProfile = window.currentUserProfile;
                 this.updateAllUserInfo();
+                this.loadAndDisplayProfilePhoto();
             }
         });
         
@@ -168,6 +170,118 @@ class DashboardModule {
         
         console.log('✅ Event listeners setup complete');
     }
+    
+    // ==================== PROFILE PHOTO PERSISTENCE METHODS ====================
+    
+    async loadAndDisplayProfilePhoto() {
+        console.log('📸 Loading profile photo for dashboard...');
+        
+        let photoUrl = null;
+        
+        // Method 1: Get from userProfile (most reliable)
+        if (this.userProfile && this.userProfile.passport_url) {
+            photoUrl = this.userProfile.passport_url;
+            console.log('✅ Found photo in userProfile');
+        }
+        
+        // Method 2: Try to get from localStorage (cache)
+        if (!photoUrl) {
+            try {
+                const cached = localStorage.getItem('userProfilePhoto');
+                if (cached && cached.startsWith('http')) {
+                    photoUrl = cached;
+                    console.log('✅ Using cached photo URL from localStorage');
+                }
+            } catch (e) {
+                console.warn('Could not read from localStorage:', e);
+            }
+        }
+        
+        // Method 3: Query database directly
+        if (!photoUrl && this.userId && this.sb) {
+            try {
+                const { data, error } = await this.sb
+                    .from('consolidated_user_profiles_table')
+                    .select('passport_url')
+                    .eq('user_id', this.userId)
+                    .maybeSingle();
+                
+                if (!error && data && data.passport_url) {
+                    photoUrl = data.passport_url;
+                    console.log('✅ Retrieved photo from database');
+                    
+                    // Cache it
+                    try {
+                        localStorage.setItem('userProfilePhoto', photoUrl);
+                    } catch (e) {}
+                }
+            } catch (error) {
+                console.warn('Could not fetch photo from DB:', error);
+            }
+        }
+        
+        // Method 4: Use avatar fallback
+        if (!photoUrl) {
+            const nameForAvatar = this.userProfile?.full_name?.replace(/\s+/g, '+') || 'Student';
+            photoUrl = `https://ui-avatars.com/api/?name=${nameForAvatar}&background=667eea&color=fff&size=100`;
+            console.log('🎨 Using avatar fallback');
+        }
+        
+        // Update ALL profile photo elements
+        this.updateAllProfilePhotoElements(photoUrl);
+        
+        // Store for future use
+        this.currentPhotoUrl = photoUrl;
+    }
+    
+    updateAllProfilePhotoElements(photoUrl) {
+        console.log('📸 Updating all profile photo elements');
+        
+        // Update header profile photo
+        if (this.elements.headerProfilePhoto) {
+            this.elements.headerProfilePhoto.src = photoUrl;
+            this.elements.headerProfilePhoto.onerror = () => {
+                console.warn('Header photo failed to load, using fallback');
+                const name = this.userProfile?.full_name?.replace(/\s+/g, '+') || 'Student';
+                this.elements.headerProfilePhoto.src = `https://ui-avatars.com/api/?name=${name}&background=667eea&color=fff&size=100`;
+            };
+        }
+        
+        // Update any other profile photo elements in dashboard
+        const allProfileImages = document.querySelectorAll(`
+            .profile-avatar, 
+            .user-avatar, 
+            #header-profile-photo,
+            .nav-profile-img,
+            .sidebar-avatar img,
+            [data-profile-photo],
+            .profile-photo,
+            .avatar-img
+        `);
+        
+        allProfileImages.forEach(img => {
+            if (img !== this.elements.headerProfilePhoto) {
+                img.src = photoUrl;
+                img.onerror = () => {
+                    const name = this.userProfile?.full_name?.replace(/\s+/g, '+') || 'Student';
+                    img.src = `https://ui-avatars.com/api/?name=${name}&background=667eea&color=fff&size=100`;
+                };
+            }
+        });
+        
+        // Also update any dropdown profile images
+        const dropdownProfileImg = document.querySelector('.dropdown-profile-img, .user-dropdown img, .profile-dropdown img');
+        if (dropdownProfileImg) {
+            dropdownProfileImg.src = photoUrl;
+        }
+        
+        // Store in localStorage for persistence across page loads
+        try {
+            localStorage.setItem('userProfilePhoto', photoUrl);
+        } catch (e) {}
+    }
+    
+    // ==================== END PROFILE PHOTO METHODS ====================
     
     // Handle courses when they're ready
     handleCoursesReady(detail = null) {
@@ -244,7 +358,7 @@ class DashboardModule {
         console.log('✅ Exams metrics updated');
     }
     
-    // Load Exam Card Dashboard Data - NO EMOJIS
+    // Load Exam Card Dashboard Data
     async loadExamCardDashboardData() {
         console.log('📇 Loading exam card dashboard data...');
         
@@ -285,7 +399,7 @@ class DashboardModule {
             const isEligible = approvedCount > 0;
             const currentSemester = student?.block || 'Current Semester';
             
-            // Update dashboard elements - NO EMOJIS
+            // Update dashboard elements
             if (this.elements.dashboardExamStatus) {
                 this.elements.dashboardExamStatus.textContent = isEligible ? 'ELIGIBLE' : 'NOT ELIGIBLE';
                 this.elements.dashboardExamStatus.style.color = isEligible ? '#059669' : '#dc2626';
@@ -433,6 +547,9 @@ class DashboardModule {
         // Update ALL user info immediately
         console.log('🔄 Updating all user info...');
         this.updateAllUserInfo();
+        
+        // Load and display profile photo (PERSISTENT)
+        await this.loadAndDisplayProfilePhoto();
         
         // Show loading states
         this.showLoadingStates();
@@ -610,7 +727,7 @@ class DashboardModule {
         }, 5000);
     }
     
-    // Update ALL user information (name, photo, dropdown, etc.)
+    // Update ALL user information
     updateAllUserInfo() {
         console.log('👤 Updating ALL user information...');
         
@@ -641,40 +758,6 @@ class DashboardModule {
             const hour = now.getHours();
             this.elements.welcomeHeader.textContent = `${getGreeting(hour)}, ${studentName}!`;
         }
-        
-        // Update profile photos
-        this.updateAllProfilePhotos();
-    }
-    
-    // Update ALL profile photo elements
-    updateAllProfilePhotos(photoUrl = null) {
-        console.log('📸 Updating ALL profile photos...');
-        
-        let finalPhotoUrl = photoUrl;
-        
-        // Determine which photo URL to use
-        if (!finalPhotoUrl) {
-            const nameForAvatar = this.userProfile?.full_name?.replace(/\s+/g, '+') || 'Student';
-            finalPhotoUrl = `https://ui-avatars.com/api/?name=${nameForAvatar}&background=667eea&color=fff&size=100`;
-        }
-        
-        console.log('✅ Using photo URL:', finalPhotoUrl);
-        
-        // Update specific profile photo elements
-        if (this.elements.headerProfilePhoto) {
-            this.elements.headerProfilePhoto.src = finalPhotoUrl;
-            this.elements.headerProfilePhoto.onerror = () => {
-                const nameForAvatar = this.userProfile?.full_name?.replace(/\s+/g, '+') || 'Student';
-                this.elements.headerProfilePhoto.src = `https://ui-avatars.com/api/?name=${nameForAvatar}&background=667eea&color=fff&size=100`;
-            };
-        }
-        
-        if (this.elements.studentProfilePic) {
-            this.elements.studentProfilePic.src = finalPhotoUrl;
-        }
-        
-        // Cache the photo URL
-        localStorage.setItem('userProfilePhoto', finalPhotoUrl);
     }
     
     // Get cached exam metrics
@@ -1000,7 +1083,6 @@ class DashboardModule {
         return tvetPrograms.some(tvet => program.toUpperCase().includes(tvet));
     }
     
-    // updateExamsUI - NO EMOJIS
     updateExamsUI(metrics) {
         if (!metrics) return;
         
@@ -1405,6 +1487,9 @@ class DashboardModule {
             this.showLoadingStates();
         }
         
+        // Refresh profile photo
+        await this.loadAndDisplayProfilePhoto();
+        
         await Promise.allSettled([
             this.loadAttendanceMetrics(),
             this.loadResourceMetrics(true),
@@ -1519,62 +1604,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 dashboardModule.handleExamsReady(e.detail);
             }
         });
-    }
-});
-
-// Force dashboard to show on first load
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('🎯 DOM loaded - checking dashboard visibility...');
-    
-    setTimeout(() => {
-        const dashboardTab = document.getElementById('dashboard');
-        const isDashboardVisible = dashboardTab && 
-            (dashboardTab.classList.contains('active') || 
-             getComputedStyle(dashboardTab).display !== 'none');
         
-        if (!isDashboardVisible && window.ui) {
-            console.log('🚨 Dashboard not visible - forcing it to show...');
-            window.ui.showTab('dashboard');
-            dashboardTab.style.display = 'block';
-            dashboardTab.classList.add('active');
-            
-            document.querySelectorAll('.tab-content:not(#dashboard)').forEach(tab => {
-                tab.style.display = 'none';
-                tab.classList.remove('active');
-            });
-        }
-    }, 1500);
-});
-
-// Listen for appReady event and force dashboard
-document.addEventListener('appReady', function(e) {
-    console.log('🎉 App ready - ensuring dashboard shows...');
-    
-    setTimeout(() => {
-        if (window.ui) {
-            window.ui.showTab('dashboard');
-        } else {
-            const dashboard = document.getElementById('dashboard');
-            if (dashboard) {
-                dashboard.style.display = 'block';
-                dashboard.classList.add('active');
+        // Listen for profile updates
+        document.addEventListener('profilePhotoUpdated', () => {
+            if (dashboardModule) {
+                dashboardModule.loadAndDisplayProfilePhoto();
             }
-        }
-    }, 500);
-});
-
-// Emergency: If still not showing after 3 seconds
-setTimeout(() => {
-    const dashboard = document.getElementById('dashboard');
-    if (dashboard && getComputedStyle(dashboard).display === 'none') {
-        console.log('🚨 EMERGENCY: Dashboard still hidden after 3s - forcing display');
-        dashboard.style.display = 'block';
-        dashboard.style.visibility = 'visible';
-        dashboard.style.opacity = '1';
-        dashboard.classList.add('active');
-        
-        document.querySelectorAll('.tab-content:not(#dashboard)').forEach(tab => {
-            tab.style.display = 'none';
         });
     }
-}, 3000);
+});
+
+console.log('Dashboard module loaded with profile photo persistence');
