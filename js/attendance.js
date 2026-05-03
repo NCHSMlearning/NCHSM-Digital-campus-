@@ -1,47 +1,68 @@
-// attendance.js - FIXED LOCATION TIMEOUT ISSUE
+// attendance.js - INTEGRATED with courses.js (shows only APPROVED units)
 (function() {
     'use strict';
     
-    // Check if db is ready before initializing
-    if (!window.db?.supabase || !window.db?.currentUserProfile) {
-        console.log('Attendance: Waiting for database to initialize...');
-        
-        // Wait for dbReady event
-        document.addEventListener('dbReady', function initOnReady() {
-            console.log('Attendance: dbReady received, initializing...');
-            document.removeEventListener('dbReady', initOnReady);
-            startAttendanceSystem();
+    console.log('✅ attendance.js - Integrated with courses module for approved units');
+    
+    // Check if courses module is ready
+    let coursesModuleReady = false;
+    let approvedUnits = [];
+    
+    // Wait for courses module before initializing
+    function waitForCoursesModule() {
+        return new Promise((resolve) => {
+            if (window.coursesModule && window.coursesModule.getAllCourses) {
+                console.log('✅ Courses module already available');
+                resolve();
+                return;
+            }
+            
+            document.addEventListener('coursesModuleReady', () => {
+                console.log('📚 Courses module ready event received');
+                resolve();
+            });
+            
+            // Also check periodically
+            let checks = 0;
+            const interval = setInterval(() => {
+                if (window.coursesModule && window.coursesModule.getAllCourses) {
+                    clearInterval(interval);
+                    resolve();
+                }
+                checks++;
+                if (checks > 20) {
+                    clearInterval(interval);
+                    console.warn('Courses module not ready after 10 seconds');
+                    resolve(); // Continue anyway
+                }
+            }, 500);
         });
-        
-        // Also check periodically as fallback
-        let checkCount = 0;
-        const checkInterval = setInterval(() => {
-            if (window.db?.supabase && window.db?.currentUserProfile) {
-                console.log('Attendance: Database ready via interval check');
-                clearInterval(checkInterval);
-                startAttendanceSystem();
-            }
-            checkCount++;
-            if (checkCount > 10) {
-                clearInterval(checkInterval);
-                console.log('Attendance: Database not ready after 5 seconds');
-            }
-        }, 500);
-        
-        // Don't initialize yet
-        return;
     }
     
-    // If db is already ready, start immediately
-    startAttendanceSystem();
-    
-    // Main attendance system function
-    function startAttendanceSystem() {
-        console.log('Attendance: Starting attendance system with user:', window.db?.currentUserProfile?.full_name);
+    // Main attendance system
+    async function startAttendanceSystem() {
+        console.log('🎯 Starting attendance system with courses integration...');
+        
+        // Wait for courses module
+        await waitForCoursesModule();
+        
+        // Get approved units from courses module
+        if (window.coursesModule) {
+            approvedUnits = window.coursesModule.getAllCourses() || [];
+            console.log(`📚 Loaded ${approvedUnits.length} approved units for attendance`);
+            
+            // Listen for course updates
+            document.addEventListener('studentStatsUpdated', (e) => {
+                if (window.coursesModule) {
+                    approvedUnits = window.coursesModule.getAllCourses() || [];
+                    console.log(`🔄 Attendance: Updated to ${approvedUnits.length} approved units`);
+                    refreshCourseSelectors();
+                }
+            });
+        }
         
         // Set global variables
         let attendanceCachedClinicalAreas = [];
-        let attendanceCachedCourses = [];
         let attendanceUserId = window.db?.currentUserId;
         let attendanceUserProfile = window.db?.currentUserProfile;
         let currentLocation = null;
@@ -54,9 +75,17 @@
             radius: 100
         };
         
-        // Initialize attendance system
-        function initializeAttendanceSystem() {
-            console.log('Initializing attendance system UI...');
+        // Helper: Refresh course selectors when approved units change
+        function refreshCourseSelectors() {
+            const sessionTypeSelect = document.getElementById('session-type');
+            if (sessionTypeSelect && sessionTypeSelect.value === 'class') {
+                populateTargetOptions('class');
+            }
+        }
+        
+        // Initialize attendance system UI
+        function initializeAttendanceUI() {
+            console.log('Initializing attendance system UI with approved courses...');
             
             // Cache DOM elements
             const sessionTypeSelect = document.getElementById('session-type');
@@ -99,7 +128,7 @@
             updateTimeDisplay();
             setInterval(updateTimeDisplay, 60000);
             
-            // Start location monitoring immediately
+            // Start location monitoring
             startLocationMonitoring();
             
             // Check if we're already on attendance tab
@@ -195,9 +224,9 @@
                 let label = 'Select:';
                 switch(sessionType) {
                     case 'clinical': label = 'Clinical Department:'; break;
-                    case 'class': label = 'Course:'; break;
-                    case 'lab': label = 'Laboratory:'; break;
-                    case 'tutorial': label = 'Tutorial Room:'; break;
+                    case 'class': label = 'Course (Approved Units):'; break;
+                    case 'lab': label = 'Lab Session:'; break;
+                    case 'tutorial': label = 'Tutorial:'; break;
                     default: label = 'Target:';
                 }
                 
@@ -215,7 +244,7 @@
             updateCheckInButton();
         }
         
-        // Populate target options
+        // Populate target options (using APPROVED UNITS for class sessions)
         async function populateTargetOptions(sessionType) {
             const targetSelect = document.getElementById('attendance-target');
             if (!targetSelect) return;
@@ -236,33 +265,97 @@
                     targetSelect.innerHTML = '<option value="">Select clinical department...</option>';
                     attendanceCachedClinicalAreas.forEach(area => {
                         const opt = document.createElement('option');
-                        opt.value = `${area.id}|${area.name}`;
+                        opt.value = `${area.id}|${area.name}|clinical`;
                         opt.textContent = area.name;
                         targetSelect.appendChild(opt);
                     });
                     
-                } else if (['class', 'lab', 'tutorial'].includes(sessionType)) {
-                    const courses = await loadCoursesForAttendance();
+                } else if (sessionType === 'class') {
+                    // CRITICAL: Use APPROVED UNITS from courses module
+                    if (!approvedUnits || approvedUnits.length === 0) {
+                        targetSelect.innerHTML = '<option value="">No approved units found. Please register for units first.</option>';
+                        targetSelect.disabled = false;
+                        
+                        // Add helpful message and link
+                        const helpText = document.createElement('div');
+                        helpText.className = 'help-text mt-2';
+                        helpText.style.fontSize = '12px';
+                        helpText.style.color = '#f59e0b';
+                        helpText.innerHTML = '<i class="fas fa-info-circle"></i> You need to register for units in the Learning Hub first.';
+                        
+                        const existingHelp = targetSelect.parentElement.querySelector('.help-text');
+                        if (existingHelp) existingHelp.remove();
+                        targetSelect.parentElement.appendChild(helpText);
+                        return;
+                    }
                     
-                    if (!courses || courses.length === 0) {
-                        targetSelect.innerHTML = '<option value="">No courses found. Please refresh.</option>';
+                    targetSelect.innerHTML = '<option value="">Select approved course...</option>';
+                    
+                    // Display approved units from student_unit_registrations
+                    approvedUnits.forEach(unit => {
+                        const opt = document.createElement('option');
+                        const unitCode = unit.unit_code || '';
+                        const unitName = unit.unit_name || 'Unknown Course';
+                        
+                        let displayText = unitName;
+                        if (unitCode) {
+                            displayText = `${unitCode} - ${unitName}`;
+                        }
+                        
+                        // Add block/term info if available
+                        if (unit.block) {
+                            displayText += ` (Block: ${unit.block})`;
+                        }
+                        if (unit.term) {
+                            displayText += ` (Term: ${unit.term})`;
+                        }
+                        
+                        opt.value = `unit_${unit.id || unit.unit_code}|${displayText}|class|${unit.unit_code}`;
+                        opt.textContent = displayText;
+                        
+                        // Add data attributes for additional info
+                        opt.setAttribute('data-unit-code', unit.unit_code || '');
+                        opt.setAttribute('data-unit-name', unit.unit_name || '');
+                        opt.setAttribute('data-credits', unit.credits || 3);
+                        opt.setAttribute('data-status', unit.status || 'approved');
+                        
+                        targetSelect.appendChild(opt);
+                    });
+                    
+                    // Remove any help text
+                    const existingHelp = targetSelect.parentElement.querySelector('.help-text');
+                    if (existingHelp) existingHelp.remove();
+                    
+                    // Show count of available courses
+                    console.log(`📚 Showing ${approvedUnits.length} approved units for attendance check-in`);
+                    
+                    // Add course count indicator
+                    const countIndicator = document.createElement('div');
+                    countIndicator.className = 'course-count-indicator mt-1';
+                    countIndicator.style.fontSize = '11px';
+                    countIndicator.style.color = '#6b7280';
+                    countIndicator.innerHTML = `<i class="fas fa-check-circle"></i> ${approvedUnits.length} approved course(s) available`;
+                    
+                    const existingIndicator = targetSelect.parentElement.querySelector('.course-count-indicator');
+                    if (existingIndicator) existingIndicator.remove();
+                    targetSelect.parentElement.appendChild(countIndicator);
+                    
+                } else {
+                    // For lab/tutorial - use approved units as well
+                    if (!approvedUnits || approvedUnits.length === 0) {
+                        targetSelect.innerHTML = '<option value="">No approved units available</option>';
                         targetSelect.disabled = false;
                         return;
                     }
                     
-                    targetSelect.innerHTML = '<option value="">Select course...</option>';
-                    
-                    courses.forEach(course => {
+                    targetSelect.innerHTML = '<option value="">Select session...</option>';
+                    approvedUnits.forEach(unit => {
                         const opt = document.createElement('option');
-                        const courseName = course.course_name || course.name || 'Unknown Course';
-                        const unitCode = course.unit_code || course.code || '';
-                        
-                        let displayText = courseName;
-                        if (unitCode) {
-                            displayText = `${unitCode} - ${courseName}`;
-                        }
-                        
-                        opt.value = `${course.id}|${displayText}`;
+                        const unitCode = unit.unit_code || '';
+                        const unitName = unit.unit_name || 'Unknown';
+                        let displayText = unitName;
+                        if (unitCode) displayText = `${unitCode} - ${unitName}`;
+                        opt.value = `unit_${unit.id || unit.unit_code}|${displayText}|${sessionType}|${unit.unit_code}`;
                         opt.textContent = displayText;
                         targetSelect.appendChild(opt);
                     });
@@ -279,52 +372,6 @@
                 updateRequirement('target', targetSelect.value && targetSelect.value !== '');
                 updateCheckInButton();
             });
-        }
-        
-        // Load courses for attendance
-        async function loadCoursesForAttendance() {
-            if (!attendanceUserProfile || !window.db?.supabase) {
-                return [];
-            }
-            
-            const supabaseClient = window.db.supabase;
-            const yourProgram = attendanceUserProfile.program;
-            const yourIntakeYear = attendanceUserProfile.intake_year;
-            const yourBlock = attendanceUserProfile.block;
-            
-            try {
-                let query = supabaseClient
-                    .from('courses')
-                    .select('id, course_name, name, unit_code, code, status, target_program, intake_year, block, latitude, longitude, radius_m')
-                    .eq('status', 'Active')
-                    .order('course_name');
-                
-                if (yourProgram) {
-                    query = query.or(`target_program.ilike.%${yourProgram}%,target_program.is.null`);
-                }
-                
-                if (yourIntakeYear) {
-                    query = query.or(`intake_year.eq.${yourIntakeYear},intake_year.is.null`);
-                }
-                
-                if (yourBlock) {
-                    query = query.or(`block.eq.${yourBlock},block.is.null`);
-                }
-                
-                const { data: courses, error } = await query;
-                
-                if (error) {
-                    console.error('Error loading courses:', error);
-                    return [];
-                }
-                
-                attendanceCachedCourses = courses || [];
-                return courses;
-                
-            } catch (error) {
-                console.error('Exception loading courses:', error);
-                return [];
-            }
         }
         
         // Update requirement status
@@ -460,29 +507,6 @@
             updateGPSStatus('error', message);
             updateRequirement('location', false);
             updateCheckInButton();
-            
-            const gpsStatus = document.getElementById('gps-status');
-            if (gpsStatus && error.code !== error.PERMISSION_DENIED) {
-                const retryBtn = document.createElement('button');
-                retryBtn.innerHTML = '<i class="fas fa-redo"></i> Retry';
-                retryBtn.style.marginLeft = '10px';
-                retryBtn.style.padding = '2px 8px';
-                retryBtn.style.fontSize = '12px';
-                retryBtn.style.borderRadius = '4px';
-                retryBtn.style.backgroundColor = '#3b82f6';
-                retryBtn.style.color = 'white';
-                retryBtn.style.border = 'none';
-                retryBtn.style.cursor = 'pointer';
-                retryBtn.addEventListener('click', () => {
-                    retryBtn.remove();
-                    startLocationMonitoring();
-                });
-                
-                const existingRetry = gpsStatus.querySelector('button');
-                if (existingRetry) existingRetry.remove();
-                
-                gpsStatus.appendChild(retryBtn);
-            }
         }
         
         function updateGPSStatus(status, message) {
@@ -543,7 +567,6 @@
                 }
                 
                 await loadClinicalTargets();
-                await loadCoursesForAttendance();
                 await loadTodayAttendanceCount();
                 await loadGeoAttendanceHistory('today');
                 
@@ -802,7 +825,7 @@
             return distanceMeters;
         }
         
-        // Check-in function
+        // Check-in function with unit tracking
         async function attendanceGeoCheckIn() {
             const button = document.getElementById('check-in-button');
             const sessionTypeSelect = document.getElementById('session-type');
@@ -827,12 +850,12 @@
                     throw new Error('Location not available. Enable GPS and try again.');
                 }
                 
-                const [targetId, targetName] = targetSelect.value.split('|');
+                const [targetId, targetName, sessionType, unitCode] = targetSelect.value.split('|');
                 
-                const sessionType = sessionTypeSelect.value;
+                const targetType = sessionTypeSelect.value;
                 let targetLat, targetLon, targetRadius;
                 
-                if (sessionType === 'clinical') {
+                if (targetType === 'clinical') {
                     const target = attendanceCachedClinicalAreas.find(t => t.id === targetId);
                     if (target) {
                         targetLat = target.latitude;
@@ -863,10 +886,15 @@
                     throw new Error('Database connection error');
                 }
                 
+                // Find the unit information from approved units
+                const selectedUnit = approvedUnits.find(u => 
+                    (u.id === targetId || u.unit_code === unitCode || u.id === parseInt(targetId))
+                );
+                
                 const checkInData = {
                     student_id: attendanceUserId,
                     check_in_time: new Date().toISOString(),
-                    session_type: sessionType.charAt(0).toUpperCase() + sessionType.slice(1),
+                    session_type: targetType.charAt(0).toUpperCase() + targetType.slice(1),
                     target_id: targetId,
                     target_name: targetName,
                     latitude: currentLocation.latitude,
@@ -877,7 +905,13 @@
                     student_name: attendanceUserProfile?.full_name || 'Unknown',
                     distance_meters: distance,
                     target_latitude: targetLat,
-                    target_longitude: targetLon
+                    target_longitude: targetLon,
+                    // Additional fields for unit tracking
+                    unit_code: selectedUnit?.unit_code || unitCode,
+                    unit_name: selectedUnit?.unit_name || targetName,
+                    program: attendanceUserProfile?.program,
+                    block: attendanceUserProfile?.block,
+                    term: attendanceUserProfile?.term
                 };
                 
                 const { error } = await supabaseClient
@@ -885,6 +919,17 @@
                     .insert([checkInData]);
                 
                 if (error) throw error;
+                
+                // Dispatch attendance event for tracking
+                document.dispatchEvent(new CustomEvent('attendanceRecorded', {
+                    detail: {
+                        unitCode: selectedUnit?.unit_code || unitCode,
+                        unitName: selectedUnit?.unit_name || targetName,
+                        isVerified: isVerified,
+                        timestamp: new Date().toISOString(),
+                        sessionType: targetType
+                    }
+                }));
                 
                 if (window.AppUtils?.showToast) {
                     let message;
@@ -898,7 +943,7 @@
                     }
                     
                     if (isVerified) {
-                        if (sessionType === 'clinical') {
+                        if (targetType === 'clinical') {
                             message = `✅ Checked in at ${targetName} successfully!`;
                         } else {
                             message = `✅ Checked into ${targetName} at college successfully!`;
@@ -913,9 +958,10 @@
                 await loadTodayAttendanceCount();
                 triggerDashboardAttendanceUpdate();
                 
+                // Reset form but keep location monitoring active
                 sessionTypeSelect.value = '';
                 targetSelect.value = '';
-                handleSessionTypeChange();
+                handleSessionTypeChange(); // This will clear the target selector
                 await loadGeoAttendanceHistory('today');
                 
             } catch (error) {
@@ -986,21 +1032,39 @@
             .text-center { text-align: center; }
             .py-4 { padding-top: 1rem; padding-bottom: 1rem; }
             .mb-2 { margin-bottom: 0.5rem; }
+            .mt-1 { margin-top: 0.25rem; }
+            .mt-2 { margin-top: 0.5rem; }
+            
+            .help-text {
+                font-size: 12px;
+                color: #f59e0b;
+                margin-top: 4px;
+            }
+            
+            .course-count-indicator {
+                font-size: 11px;
+                color: #10b981;
+                margin-top: 4px;
+            }
         `;
         document.head.appendChild(style);
         
         // Initialize when DOM is ready
         if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initializeAttendanceSystem);
+            document.addEventListener('DOMContentLoaded', initializeAttendanceUI);
         } else {
-            initializeAttendanceSystem();
+            initializeAttendanceUI();
         }
         
         // Make functions available globally
-        window.initializeAttendanceSystem = initializeAttendanceSystem;
+        window.initializeAttendanceUI = initializeAttendanceUI;
         window.attendanceGeoCheckIn = attendanceGeoCheckIn;
         window.loadAttendanceData = loadAttendanceData;
         window.loadGeoAttendanceHistory = loadGeoAttendanceHistory;
         window.triggerDashboardAttendanceUpdate = triggerDashboardAttendanceUpdate;
+        window.refreshCourseSelectors = refreshCourseSelectors;
     }
+    
+    // Start the attendance system
+    startAttendanceSystem();
 })();
