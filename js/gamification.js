@@ -556,7 +556,7 @@
             try {
                 // Query from consolidated_user_profiles table
                 const { data, error } = await window.db.supabase
-                    .from('consolidated_user_profiles')
+                    .from('consolidated_user_profiles_table')
                     .select('user_id, full_name, gamification_points, attendance_streak, gamification_level')
                     .order('gamification_points', { ascending: false })
                     .limit(10);
