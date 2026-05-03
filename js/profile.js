@@ -901,7 +901,7 @@ class ProfileModule {
         }
     }
     
- async saveProfileData(updates) {
+async saveProfileData(updates) {
     const supabase = this.getSupabaseClient();
     if (!supabase) {
         throw new Error('No database connection');
@@ -911,12 +911,10 @@ class ProfileModule {
     if (updates.date_of_birth === '' || updates.date_of_birth === null || updates.date_of_birth === undefined) {
         updates.date_of_birth = null;
     } else if (updates.date_of_birth) {
-        // Validate and format the date
         const testDate = new Date(updates.date_of_birth);
         if (isNaN(testDate.getTime())) {
             throw new Error('Invalid date format for date of birth');
         }
-        // Format as YYYY-MM-DD for PostgreSQL
         updates.date_of_birth = testDate.toISOString().split('T')[0];
     }
     
@@ -924,12 +922,39 @@ class ProfileModule {
     if (updates.phone === '') updates.phone = null;
     if (updates.gender === '') updates.gender = null;
     
+    // CRITICAL FIX: Include the email field (required by database)
+    // Get email from the userProfile or from the email input field
+    const emailValue = this.userProfile?.email || (this.profileEmail ? this.profileEmail.value : null);
+    
+    if (!emailValue) {
+        throw new Error('Email is required but not available');
+    }
+    
+    // Build the complete object with ALL required fields
+    const upsertData = {
+        user_id: this.userId,
+        email: emailValue,  // REQUIRED - database has NOT NULL constraint
+        full_name: updates.full_name || this.userProfile?.full_name || '',
+        phone: updates.phone,
+        date_of_birth: updates.date_of_birth,
+        gender: updates.gender,
+        updated_at: new Date().toISOString()
+    };
+    
+    // Also preserve other existing profile data if not being updated
+    if (this.userProfile) {
+        if (!upsertData.full_name && this.userProfile.full_name) upsertData.full_name = this.userProfile.full_name;
+        if (this.userProfile.student_id) upsertData.student_id = this.userProfile.student_id;
+        if (this.userProfile.program) upsertData.program = this.userProfile.program;
+        if (this.userProfile.block) upsertData.block = this.userProfile.block;
+        if (this.userProfile.intake_year) upsertData.intake_year = this.userProfile.intake_year;
+    }
+    
+    console.log('Upserting profile data:', { user_id: upsertData.user_id, email: upsertData.email });
+    
     const { error } = await supabase
         .from('consolidated_user_profiles_table')
-        .upsert({
-            user_id: this.userId,
-            ...updates
-        }, { onConflict: 'user_id' });
+        .upsert(upsertData, { onConflict: 'user_id' });
     
     if (error) throw error;
 }
