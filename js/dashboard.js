@@ -1,4 +1,3 @@
-now the photo should display up there in the dashboard and should not change even on refresh // dashboard.js - COMPLETE FIXED VERSION with Exam Card Integration (No Emojis)
 class DashboardModule {
     constructor(supabaseClient) {
         console.log('🚀 Initializing DashboardModule...');
