@@ -1,10 +1,10 @@
 // gamification.js - Complete Badges, Streaks, Points & Leaderboard System
-// This file works with your existing HTML - no HTML changes needed
+// LIVE DATA VERSION - Uses your Supabase database
 
 (function() {
     'use strict';
     
-    console.log('🏆 Gamification module loading...');
+    console.log('🏆 Gamification module loading (LIVE DATA VERSION)...');
     
     class GamificationModule {
         constructor() {
@@ -17,7 +17,6 @@
             this.xpToNextLevel = 100;
             this.badges = [];
             this.lastCheckIn = null;
-            this.leaderboardData = [];
             this.currentRankFilter = 'weekly';
             
             // Badge definitions
@@ -94,8 +93,8 @@
             // Wait for user
             await this.waitForUser();
             
-            // Load saved data
-            this.loadLocalData();
+            // Load data from Supabase
+            await this.loadUserGamificationData();
             
             // Inject gamification UI into existing page
             this.injectGamificationUI();
@@ -106,8 +105,8 @@
             // Update all UI
             this.updateAllUI();
             
-            // Load leaderboard
-            this.loadLeaderboard();
+            // Load leaderboard from Supabase
+            await this.loadLeaderboard();
             
             console.log(`✅ Gamification ready: Level ${this.level}, ${this.points} points, ${this.streak} day streak`);
         }
@@ -134,25 +133,67 @@
             });
         }
         
-        loadLocalData() {
-            if (!this.userId) return;
+        async loadUserGamificationData() {
+            if (!this.userId || !window.db?.supabase) return;
             
-            const savedData = localStorage.getItem(`gamification_${this.userId}`);
-            if (savedData) {
-                const data = JSON.parse(savedData);
-                this.points = data.points || 0;
-                this.streak = data.streak || 0;
-                this.level = data.level || 1;
-                this.xp = data.xp || 0;
-                this.badges = data.badges || [];
-                this.lastCheckIn = data.lastCheckIn ? new Date(data.lastCheckIn) : null;
+            try {
+                // Load from Supabase
+                const { data, error } = await window.db.supabase
+                    .from('student_gamification')
+                    .select('*')
+                    .eq('student_id', this.userId)
+                    .single();
+                
+                if (data && !error) {
+                    this.points = data.points || 0;
+                    this.streak = data.current_streak || 0;
+                    this.level = data.level || 1;
+                    this.xp = data.xp || 0;
+                    this.badges = data.badges || [];
+                    this.lastCheckIn = data.last_check_in ? new Date(data.last_check_in) : null;
+                    this.max_streak = data.max_streak || 0;
+                } else {
+                    // Create new record if doesn't exist
+                    await this.createGamificationRecord();
+                }
+                
+                // Check streak continuity
+                await this.checkStreakContinuity();
+                
+            } catch (error) {
+                console.log('No gamification data found, creating new record...');
+                await this.createGamificationRecord();
             }
-            
-            // Check streak continuity
-            this.checkStreakContinuity();
         }
         
-        checkStreakContinuity() {
+        async createGamificationRecord() {
+            if (!this.userId || !window.db?.supabase) return;
+            
+            try {
+                const { data, error } = await window.db.supabase
+                    .from('student_gamification')
+                    .insert([{
+                        student_id: this.userId,
+                        points: 0,
+                        current_streak: 0,
+                        max_streak: 0,
+                        level: 1,
+                        xp: 0,
+                        badges: [],
+                        total_checkins: 0
+                    }])
+                    .select()
+                    .single();
+                
+                if (error) throw error;
+                console.log('✅ Created new gamification record');
+                
+            } catch (error) {
+                console.error('Error creating gamification record:', error);
+            }
+        }
+        
+        async checkStreakContinuity() {
             if (!this.lastCheckIn) return;
             
             const today = new Date();
@@ -170,44 +211,45 @@
                     console.log(`💔 Streak broken at ${this.streak} days`);
                 }
                 this.streak = 0;
-                this.saveData();
-                this.updateUI();
+                await this.saveToSupabase();
             }
         }
         
-        saveData() {
-            if (!this.userId) return;
+        async saveToSupabase() {
+            if (!this.userId || !window.db?.supabase) return;
             
-            const data = {
-                points: this.points,
-                streak: this.streak,
-                level: this.level,
-                xp: this.xp,
-                badges: this.badges,
-                lastCheckIn: this.lastCheckIn ? this.lastCheckIn.toISOString() : null
-            };
-            localStorage.setItem(`gamification_${this.userId}`, JSON.stringify(data));
+            try {
+                const { error } = await window.db.supabase
+                    .from('student_gamification')
+                    .update({
+                        points: this.points,
+                        current_streak: this.streak,
+                        level: this.level,
+                        xp: this.xp,
+                        badges: this.badges,
+                        last_check_in: this.lastCheckIn ? this.lastCheckIn.toISOString() : null,
+                        max_streak: Math.max(this.streak, this.max_streak || 0),
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('student_id', this.userId);
+                
+                if (error) throw error;
+                
+            } catch (error) {
+                console.error('Error saving to Supabase:', error);
+            }
         }
         
         injectGamificationUI() {
-            // Add gamification widget to header
             this.addGamificationWidget();
-            
-            // Add level progress bar to dashboard
             this.addLevelProgressBar();
-            
-            // Add badges section to dashboard
             this.addBadgesSection();
-            
-            // Add leaderboard section to dashboard
             this.addLeaderboardSection();
         }
         
         addGamificationWidget() {
             const headerRight = document.querySelector('.header-right');
             if (!headerRight) return;
-            
-            // Check if already added
             if (document.querySelector('.gamification-widget')) return;
             
             const widget = document.createElement('div');
@@ -215,22 +257,21 @@
             widget.innerHTML = `
                 <div class="streak-indicator" id="streak-indicator" title="Current Streak">
                     <i class="fas fa-fire"></i>
-                    <span id="streak-count">0</span>
+                    <span id="streak-count">${this.streak}</span>
                     <span class="streak-label">Day Streak</span>
                 </div>
                 <div class="points-indicator" id="points-indicator" title="Total Points">
                     <i class="fas fa-star"></i>
-                    <span id="points-count">0</span>
+                    <span id="points-count">${this.points}</span>
                     <span class="points-label">Points</span>
                 </div>
                 <div class="level-indicator" id="level-indicator" title="Current Level">
                     <i class="fas fa-trophy"></i>
-                    <span id="level-number">1</span>
+                    <span id="level-number">${this.level}</span>
                     <span class="level-label">Level</span>
                 </div>
             `;
             
-            // Insert after mobile-menu-toggle
             const mobileToggle = headerRight.querySelector('#mobile-menu-toggle');
             if (mobileToggle) {
                 headerRight.insertBefore(widget, mobileToggle);
@@ -242,17 +283,18 @@
         addLevelProgressBar() {
             const welcomeCard = document.querySelector('.welcome-card');
             if (!welcomeCard) return;
-            
             if (document.querySelector('.level-progress-container')) return;
+            
+            const percent = (this.xp / this.xpToNextLevel) * 100;
             
             const progressContainer = document.createElement('div');
             progressContainer.className = 'level-progress-container';
             progressContainer.id = 'level-progress-container';
             progressContainer.innerHTML = `
                 <div class="level-progress-bar">
-                    <div class="level-progress-fill" id="level-progress-fill" style="width: 0%"></div>
+                    <div class="level-progress-fill" id="level-progress-fill" style="width: ${percent}%"></div>
                 </div>
-                <div class="level-progress-text" id="level-progress-text">Level 1 · 0/100 XP to Level 2</div>
+                <div class="level-progress-text" id="level-progress-text">Level ${this.level} · ${this.xp}/${this.xpToNextLevel} XP to Level ${this.level + 1}</div>
             `;
             
             welcomeCard.insertAdjacentElement('afterend', progressContainer);
@@ -261,7 +303,6 @@
         addBadgesSection() {
             const cardsGrid = document.querySelector('.cards-grid');
             if (!cardsGrid) return;
-            
             if (document.querySelector('.badges-section')) return;
             
             const badgesSection = document.createElement('div');
@@ -282,7 +323,6 @@
             
             cardsGrid.insertAdjacentElement('afterend', badgesSection);
             
-            // Add event listener for view all button
             const viewAllBtn = document.getElementById('view-all-badges');
             if (viewAllBtn) {
                 viewAllBtn.addEventListener('click', () => this.showAllBadges());
@@ -292,7 +332,6 @@
         addLeaderboardSection() {
             const badgesSection = document.querySelector('.badges-section');
             if (!badgesSection) return;
-            
             if (document.querySelector('.leaderboard-section')) return;
             
             const leaderboardSection = document.createElement('div');
@@ -317,7 +356,6 @@
             
             badgesSection.insertAdjacentElement('afterend', leaderboardSection);
             
-            // Add tab event listeners
             const tabs = document.querySelectorAll('.leaderboard-tab');
             tabs.forEach(tab => {
                 tab.addEventListener('click', (e) => {
@@ -330,23 +368,19 @@
         }
         
         setupEventListeners() {
-            // Listen for attendance check-ins
             document.addEventListener('attendanceRecorded', (e) => {
                 console.log('🎯 Attendance recorded, awarding points...');
                 this.handleAttendance(e.detail);
             });
             
-            // Listen for course completion
             document.addEventListener('courseCompleted', (e) => {
                 this.handleCourseComplete(e.detail);
             });
             
-            // Listen for quiz completion
             document.addEventListener('quizCompleted', (e) => {
                 this.handleQuizComplete(e.detail);
             });
             
-            // Listen for unit registration
             document.addEventListener('unitRegistrationComplete', (e) => {
                 this.addPoints(5, 'Registered for a unit');
             });
@@ -356,14 +390,10 @@
             const now = new Date();
             const hour = now.getHours();
             
-            // Award points
             const points = detail.isVerified ? 10 : 5;
             await this.addPoints(points, `Attendance check-in${detail.isVerified ? ' (Verified)' : ''}`);
-            
-            // Update streak
             await this.updateStreak();
             
-            // Check for early bird or night owl
             if (hour < 8) {
                 await this.unlockBadge('early_bird');
                 await this.addPoints(20, 'Early Bird Bonus!');
@@ -372,7 +402,6 @@
                 await this.addPoints(20, 'Night Owl Bonus!');
             }
             
-            // Check for first check-in
             if (!this.hasBadge('first_checkin')) {
                 await this.unlockBadge('first_checkin');
             }
@@ -383,9 +412,7 @@
             const todayStr = today.toDateString();
             const lastCheckStr = this.lastCheckIn ? this.lastCheckIn.toDateString() : null;
             
-            if (lastCheckStr === todayStr) {
-                return;
-            }
+            if (lastCheckStr === todayStr) return;
             
             const yesterday = new Date(today);
             yesterday.setDate(yesterday.getDate() - 1);
@@ -399,7 +426,6 @@
             
             this.lastCheckIn = today;
             
-            // Check streak badges
             if (this.streak === 5) {
                 await this.unlockBadge('streak_5');
                 await this.addPoints(50, '5-Day Streak Bonus!');
@@ -411,7 +437,7 @@
                 await this.addPoints(500, '30-Day Streak Bonus!');
             }
             
-            this.saveData();
+            await this.saveToSupabase();
             this.updateUI();
         }
         
@@ -432,7 +458,6 @@
             this.points += amount;
             this.xp += amount;
             
-            // Check level up
             while (this.xp >= this.xpToNextLevel) {
                 this.xp -= this.xpToNextLevel;
                 this.level++;
@@ -440,20 +465,15 @@
                 this.showNotification('Level Up!', `Congratulations! You reached Level ${this.level}!`, 'levelup');
             }
             
-            this.saveData();
+            await this.saveToSupabase();
             this.updateUI();
-            
-            // Show point notification
             this.showNotification('Points Earned!', `+${amount} points - ${reason}`, 'points');
-            
-            // Update dashboard points display
             this.updateDashboardStats();
         }
         
         async unlockBadge(badgeId) {
             const badge = this.badgeDefinitions[badgeId];
             if (!badge) return;
-            
             if (this.hasBadge(badgeId)) return;
             
             this.badges.push({
@@ -461,10 +481,9 @@
                 unlockedAt: new Date().toISOString()
             });
             
-            this.addPoints(badge.points, `Unlocked badge: ${badge.name}`);
-            this.saveData();
+            await this.addPoints(badge.points, `Unlocked badge: ${badge.name}`);
+            await this.saveToSupabase();
             this.updateBadgesDisplay();
-            
             this.showNotification('Badge Unlocked!', `You earned the "${badge.name}" badge!`, 'badge', badge.icon);
         }
         
@@ -478,19 +497,15 @@
         }
         
         updateUI() {
-            // Update streak display
             const streakCount = document.getElementById('streak-count');
             if (streakCount) streakCount.textContent = this.streak;
             
-            // Update points display
             const pointsCount = document.getElementById('points-count');
             if (pointsCount) pointsCount.textContent = this.points;
             
-            // Update level display
             const levelNumber = document.getElementById('level-number');
             if (levelNumber) levelNumber.textContent = this.level;
             
-            // Update level progress bar
             const progressFill = document.getElementById('level-progress-fill');
             const progressText = document.getElementById('level-progress-text');
             if (progressFill && progressText) {
@@ -505,16 +520,6 @@
             if (!badgesGrid) return;
             
             const badgesList = Object.values(this.badgeDefinitions);
-            
-            if (badgesList.length === 0) {
-                badgesGrid.innerHTML = `
-                    <div class="gamification-empty">
-                        <i class="fas fa-medal"></i>
-                        <p>Complete activities to earn badges!</p>
-                    </div>
-                `;
-                return;
-            }
             
             badgesGrid.innerHTML = badgesList.map(badge => {
                 const isUnlocked = this.hasBadge(badge.id);
@@ -547,17 +552,26 @@
                 </div>
             `;
             
-            // Simulate leaderboard data (in production, fetch from Supabase)
-            setTimeout(() => {
-                const mockData = [
-                    { name: 'James Mwangi', points: 1250, streak: 12, avatar: 'JM' },
-                    { name: 'Sarah Kimani', points: 980, streak: 8, avatar: 'SK' },
-                    { name: 'John Otieno', points: 750, streak: 5, avatar: 'JO' },
-                    { name: 'Mary Wanjiku', points: 620, streak: 4, avatar: 'MW' },
-                    { name: 'Peter Njoroge', points: 450, streak: 3, avatar: 'PN' }
-                ];
+            if (!window.db?.supabase) return;
+            
+            try {
+                let query = window.db.supabase
+                    .from('student_gamification')
+                    .select(`
+                        student_id,
+                        points,
+                        current_streak,
+                        level,
+                        profiles!inner(full_name)
+                    `)
+                    .order('points', { ascending: false })
+                    .limit(10);
                 
-                if (mockData.length === 0) {
+                const { data, error } = await query;
+                
+                if (error) throw error;
+                
+                if (!data || data.length === 0) {
                     leaderboardList.innerHTML = `
                         <div class="gamification-empty">
                             <i class="fas fa-chart-line"></i>
@@ -567,31 +581,43 @@
                     return;
                 }
                 
-                leaderboardList.innerHTML = mockData.map((item, index) => {
+                leaderboardList.innerHTML = data.map((item, index) => {
                     let rankClass = '';
                     if (index === 0) rankClass = 'gold';
                     else if (index === 1) rankClass = 'silver';
                     else if (index === 2) rankClass = 'bronze';
                     
+                    const name = item.profiles?.full_name || `Student ${item.student_id?.slice(-4)}`;
+                    const avatar = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0,2);
+                    
                     return `
                         <div class="leaderboard-item">
                             <div class="leaderboard-rank ${rankClass}">${index + 1}</div>
-                            <div class="leaderboard-avatar">${item.avatar}</div>
+                            <div class="leaderboard-avatar">${avatar}</div>
                             <div class="leaderboard-info">
-                                <div class="leaderboard-name">${item.name}</div>
+                                <div class="leaderboard-name">${name}</div>
                                 <div class="leaderboard-stats">
-                                    <i class="fas fa-fire"></i> ${item.streak} day streak
+                                    <i class="fas fa-fire"></i> ${item.current_streak || 0} day streak
+                                    <i class="fas fa-trophy" style="margin-left: 8px;"></i> Level ${item.level || 1}
                                 </div>
                             </div>
-                            <div class="leaderboard-points">${item.points} pts</div>
+                            <div class="leaderboard-points">${item.points || 0} pts</div>
                         </div>
                     `;
                 }).join('');
-            }, 500);
+                
+            } catch (error) {
+                console.error('Error loading leaderboard:', error);
+                leaderboardList.innerHTML = `
+                    <div class="gamification-empty">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <p>Error loading leaderboard</p>
+                    </div>
+                `;
+            }
         }
         
         updateDashboardStats() {
-            // Update dashboard points card if it exists
             const dashboardPoints = document.getElementById('dashboard-points');
             if (dashboardPoints) dashboardPoints.textContent = this.points;
             
@@ -600,7 +626,6 @@
         }
         
         showNotification(title, message, type, icon = 'fa-award') {
-            // Remove existing toast
             const existingToast = document.querySelector('.achievement-toast');
             if (existingToast) existingToast.remove();
             
@@ -632,7 +657,6 @@
         }
     }
     
-    // Initialize when DOM is ready
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {
             window.gamificationModule = new GamificationModule();
