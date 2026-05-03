@@ -907,50 +907,99 @@ async saveProfileData(updates) {
         throw new Error('No database connection');
     }
     
-    // Handle date of birth properly
-    if (updates.date_of_birth === '' || updates.date_of_birth === null || updates.date_of_birth === undefined) {
-        updates.date_of_birth = null;
-    } else if (updates.date_of_birth) {
-        const testDate = new Date(updates.date_of_birth);
-        if (isNaN(testDate.getTime())) {
-            throw new Error('Invalid date format for date of birth');
-        }
-        updates.date_of_birth = testDate.toISOString().split('T')[0];
+    // First, get the existing profile to preserve all required fields
+    const { data: existingProfile, error: fetchError } = await supabase
+        .from('consolidated_user_profiles_table')
+        .select('*')
+        .eq('user_id', this.userId)
+        .maybeSingle();
+    
+    if (fetchError && fetchError.code !== 'PGRST116') {
+        console.warn('Error fetching existing profile:', fetchError);
     }
     
-    // Clean up other fields
-    if (updates.phone === '') updates.phone = null;
-    if (updates.gender === '') updates.gender = null;
+    // Handle date of birth properly
+    let dobValue = updates.date_of_birth;
+    if (dobValue === '' || dobValue === null || dobValue === undefined) {
+        dobValue = existingProfile?.date_of_birth || null;
+    } else if (dobValue) {
+        const testDate = new Date(dobValue);
+        if (!isNaN(testDate.getTime())) {
+            dobValue = testDate.toISOString().split('T')[0];
+        }
+    }
     
-    // CRITICAL FIX: Include the email field (required by database)
-    // Get email from the userProfile or from the email input field
-    const emailValue = this.userProfile?.email || (this.profileEmail ? this.profileEmail.value : null);
+    // Get required values (from updates, existing profile, or defaults)
+    const emailValue = updates.email || existingProfile?.email || this.userProfile?.email || (this.profileEmail?.value);
+    const fullNameValue = updates.full_name || existingProfile?.full_name || this.userProfile?.full_name || '';
+    const roleValue = existingProfile?.role || 'student';
+    const statusValue = existingProfile?.status || 'active';
+    
+    // Generate an ID if this is a new record (id is NOT NULL)
+    let idValue = existingProfile?.id;
+    if (!idValue) {
+        // Generate a UUID or use user_id as fallback
+        idValue = this.userId;
+    }
     
     if (!emailValue) {
         throw new Error('Email is required but not available');
     }
     
-    // Build the complete object with ALL required fields
-    const upsertData = {
-        user_id: this.userId,
-        email: emailValue,  // REQUIRED - database has NOT NULL constraint
-        full_name: updates.full_name || this.userProfile?.full_name || '',
-        phone: updates.phone,
-        date_of_birth: updates.date_of_birth,
-        gender: updates.gender,
-        updated_at: new Date().toISOString()
-    };
-    
-    // Also preserve other existing profile data if not being updated
-    if (this.userProfile) {
-        if (!upsertData.full_name && this.userProfile.full_name) upsertData.full_name = this.userProfile.full_name;
-        if (this.userProfile.student_id) upsertData.student_id = this.userProfile.student_id;
-        if (this.userProfile.program) upsertData.program = this.userProfile.program;
-        if (this.userProfile.block) upsertData.block = this.userProfile.block;
-        if (this.userProfile.intake_year) upsertData.intake_year = this.userProfile.intake_year;
+    if (!fullNameValue) {
+        throw new Error('Full name is required');
     }
     
-    console.log('Upserting profile data:', { user_id: upsertData.user_id, email: upsertData.email });
+    // Build complete object with ALL required NOT NULL fields
+    const upsertData = {
+        // REQUIRED fields (NOT NULL)
+        user_id: this.userId,
+        id: idValue,
+        email: emailValue,
+        full_name: fullNameValue,
+        role: roleValue,
+        status: statusValue,
+        
+        // Optional fields that can be updated
+        phone: updates.phone !== undefined ? updates.phone : (existingProfile?.phone || null),
+        date_of_birth: dobValue,
+        gender: updates.gender !== undefined ? updates.gender : (existingProfile?.gender || null),
+        updated_at: new Date().toISOString(),
+        
+        // Preserve other fields from existing profile
+        student_id: existingProfile?.student_id || this.userProfile?.student_id || null,
+        program: existingProfile?.program || this.userProfile?.program || null,
+        block: existingProfile?.block || this.userProfile?.block || null,
+        current_block: existingProfile?.current_block || this.userProfile?.current_block || null,
+        intake_year: existingProfile?.intake_year || this.userProfile?.intake_year || null,
+        admission_date: existingProfile?.admission_date || this.userProfile?.admission_date || null,
+        admission_year: existingProfile?.admission_year || this.userProfile?.admission_year || null,
+        passport_url: existingProfile?.passport_url || this.userProfile?.passport_url || null,
+        department: existingProfile?.department || this.userProfile?.department || null,
+        block_program_year: existingProfile?.block_program_year || null,
+        student_uuid: existingProfile?.student_uuid || this.userId,
+        two_factor_enabled: existingProfile?.two_factor_enabled || false,
+        block_progress: existingProfile?.block_progress || null,
+        role_id: existingProfile?.role_id || null,
+        last_login: existingProfile?.last_login || null,
+        created_at: existingProfile?.created_at || new Date().toISOString()
+    };
+    
+    // Remove any undefined values
+    Object.keys(upsertData).forEach(key => {
+        if (upsertData[key] === undefined) {
+            delete upsertData[key];
+        }
+    });
+    
+    console.log('Upserting with complete data. Required fields present:', {
+        hasUserId: !!upsertData.user_id,
+        hasId: !!upsertData.id,
+        hasEmail: !!upsertData.email,
+        hasFullName: !!upsertData.full_name,
+        hasRole: !!upsertData.role,
+        hasStatus: !!upsertData.status
+    });
     
     const { error } = await supabase
         .from('consolidated_user_profiles_table')
