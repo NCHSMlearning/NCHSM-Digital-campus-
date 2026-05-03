@@ -2230,7 +2230,177 @@
 <script src="./js/nurseiq.js"></script>
 <script src="./js/exam-card.js"></script>
 <script src="./js/sidebar-dropdown.js"></script>
-
+<script>
+// ==================== LEARNING HUB MODULE HANDLER ====================
+(function() {
+    'use strict';
+    
+    console.log('🎯 Learning Hub Module Handler Initializing...');
+    
+    // Get all sections
+    const dashboard = document.getElementById('dashboard');
+    const profile = document.getElementById('profile');
+    const calendar = document.getElementById('calendar');
+    const attendance = document.getElementById('attendance');
+    const messages = document.getElementById('messages');
+    const supportTickets = document.getElementById('support-tickets');
+    const cats = document.getElementById('cats');
+    const resources = document.getElementById('resources');
+    const nurseiq = document.getElementById('nurseiq');
+    const learningHub = document.getElementById('learning-hub');
+    
+    // Get hub modules
+    const hubCourses = document.getElementById('hub-courses');
+    const hubRegister = document.getElementById('hub-register');
+    const hubOnlineLearning = document.getElementById('hub-online-learning');
+    const hubExamCard = document.getElementById('hub-exam-card');
+    
+    // Hide all sections function
+    function hideAllSections() {
+        const sections = [dashboard, profile, calendar, attendance, messages, supportTickets, cats, resources, nurseiq, learningHub];
+        sections.forEach(section => {
+            if (section) section.style.display = 'none';
+        });
+    }
+    
+    // Hide all hub modules function
+    function hideAllHubModules() {
+        const modules = [hubCourses, hubRegister, hubOnlineLearning, hubExamCard];
+        modules.forEach(module => {
+            if (module) module.style.display = 'none';
+        });
+    }
+    
+    // Show content based on tab
+    function showContent(tabId) {
+        console.log('📂 Showing:', tabId);
+        
+        // Hide everything first
+        hideAllSections();
+        hideAllHubModules();
+        
+        // Handle based on tab
+        if (tabId === 'dashboard') {
+            if (dashboard) dashboard.style.display = 'block';
+        }
+        else if (tabId === 'profile') {
+            if (profile) profile.style.display = 'block';
+        }
+        else if (tabId === 'calendar') {
+            if (calendar) calendar.style.display = 'block';
+        }
+        else if (tabId === 'attendance') {
+            if (attendance) attendance.style.display = 'block';
+        }
+        else if (tabId === 'messages') {
+            if (messages) messages.style.display = 'block';
+        }
+        else if (tabId === 'support-tickets') {
+            if (supportTickets) supportTickets.style.display = 'block';
+        }
+        else if (tabId === 'cats') {
+            if (cats) cats.style.display = 'block';
+        }
+        else if (tabId === 'resources') {
+            if (resources) resources.style.display = 'block';
+        }
+        else if (tabId === 'nurseiq') {
+            if (nurseiq) nurseiq.style.display = 'block';
+        }
+        else if (tabId === 'hub-courses') {
+            // Show Learning Hub and Courses module ONLY
+            if (learningHub) learningHub.style.display = 'block';
+            if (hubCourses) hubCourses.style.display = 'block';
+            // Load courses data
+            setTimeout(() => {
+                if (window.coursesModule) {
+                    console.log('📚 Loading courses...');
+                    window.coursesModule.loadCourses();
+                }
+            }, 100);
+        }
+        else if (tabId === 'hub-register') {
+            // Show Learning Hub and Register module ONLY
+            if (learningHub) learningHub.style.display = 'block';
+            if (hubRegister) hubRegister.style.display = 'block';
+            // Load registration data
+            setTimeout(() => {
+                if (window.unitRegistrationModule) {
+                    console.log('📝 Loading unit registration...');
+                    window.unitRegistrationModule.loadUnits();
+                }
+            }, 100);
+        }
+        else if (tabId === 'hub-online-learning') {
+            if (learningHub) learningHub.style.display = 'block';
+            if (hubOnlineLearning) hubOnlineLearning.style.display = 'block';
+        }
+        else if (tabId === 'hub-exam-card') {
+            if (learningHub) learningHub.style.display = 'block';
+            if (hubExamCard) hubExamCard.style.display = 'block';
+            // Load exam card data
+            setTimeout(() => {
+                if (window.examCardModule) {
+                    console.log('📇 Loading exam card...');
+                    window.examCardModule.loadExamCard();
+                }
+            }, 100);
+        }
+        
+        // Update active class on sidebar links
+        document.querySelectorAll('.nav a, .dropdown-submenu a').forEach(link => {
+            link.classList.remove('active');
+        });
+        const activeLink = document.querySelector(`a[data-tab="${tabId}"]`);
+        if (activeLink) activeLink.classList.add('active');
+    }
+    
+    // Setup dropdown toggle
+    const dropdownToggle = document.querySelector('.has-dropdown > a');
+    const dropdownMenu = document.querySelector('.dropdown-submenu');
+    
+    if (dropdownToggle && dropdownMenu) {
+        // Remove existing listener
+        const newToggle = dropdownToggle.cloneNode(true);
+        dropdownToggle.parentNode.replaceChild(newToggle, dropdownToggle);
+        
+        newToggle.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const parent = newToggle.closest('.has-dropdown');
+            const isOpen = parent.classList.contains('open');
+            if (isOpen) {
+                parent.classList.remove('open');
+                dropdownMenu.style.display = 'none';
+            } else {
+                parent.classList.add('open');
+                dropdownMenu.style.display = 'block';
+            }
+        });
+    }
+    
+    // Setup all menu clicks
+    document.querySelectorAll('.nav a[data-tab], .dropdown-submenu a[data-tab]').forEach(item => {
+        const newItem = item.cloneNode(true);
+        item.parentNode.replaceChild(newItem, item);
+        
+        newItem.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const tabId = newItem.getAttribute('data-tab');
+            if (tabId) {
+                showContent(tabId);
+            }
+        });
+    });
+    
+    // Set default to dashboard
+    showContent('dashboard');
+    
+    console.log('✅ Learning Hub Module Handler Ready!');
+    console.log('📚 My Courses and Register Units are now SEPARATE modules');
+})();
+</script>
 <!-- ==================== INITIALIZATION SCRIPT ==================== -->
 <script>
 // Global app state
