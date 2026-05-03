@@ -839,305 +839,337 @@
                     </div>
                 </div>
             </section>
+<!-- ==================== UNIFIED LEARNING HUB TAB ==================== -->
+<section id="learning-hub" class="tab-content" hidden>
+    
+    <!-- Module Navigation Tabs -->
+    <div class="learning-hub-nav">
+        <button class="hub-tab active" data-hub-tab="courses">
+            <i class="fas fa-book-open"></i> My Courses
+        </button>
+        <button class="hub-tab" data-hub-tab="register">
+            <i class="fas fa-plus-circle"></i> Register Units
+        </button>
+        <button class="hub-tab" data-hub-tab="online-learning">
+            <i class="fas fa-video"></i> Online Learning
+        </button>
+        <button class="hub-tab" data-hub-tab="exam-card">
+            <i class="fas fa-id-card"></i> Exam Card
+        </button>
+    </div>
 
-            <!-- ==================== UNIFIED LEARNING HUB TAB ==================== -->
-            <!-- This combines both "My Courses" and "Unit Registration" functionality -->
-            <section id="learning-hub" class="tab-content" hidden>
-                
-                <!-- SECTION 1: MY COURSES (formerly separate tab) -->
-                <div class="courses-header" style="margin-bottom: 2rem;">
-                    <div class="header-content">
-                        <h2><i class="fas fa-book-open"></i> My Courses</h2>
-                        <p class="subtitle">View your current and completed courses</p>
-                    </div>
-                    <div class="header-stats">
-                        <div class="stat-card">
-                            <i class="fas fa-spinner stat-icon active"></i>
-                            <div class="stat-info">
-                                <span class="stat-value" id="active-courses-count">0</span>
-                                <span class="stat-label">Active Courses</span>
-                            </div>
-                        </div>
-                        <div class="stat-card">
-                            <i class="fas fa-check-circle stat-icon completed"></i>
-                            <div class="stat-info">
-                                <span class="stat-value" id="completed-courses-count">0</span>
-                                <span class="stat-label">Completed</span>
-                            </div>
-                        </div>
-                        <div class="stat-card">
-                            <i class="fas fa-star stat-icon credits"></i>
-                            <div class="stat-info">
-                                <span class="stat-value" id="total-credits">0</span>
-                                <span class="stat-label">Credits Earned</span>
-                            </div>
-                        </div>
+    <!-- MODULE 1: MY COURSES -->
+    <div id="hub-courses" class="hub-module active">
+        <div class="courses-header" style="margin-bottom: 2rem;">
+            <div class="header-content">
+                <h2><i class="fas fa-book-open"></i> My Courses</h2>
+                <p class="subtitle">View your current and completed courses</p>
+            </div>
+            <div class="header-stats">
+                <div class="stat-card">
+                    <i class="fas fa-spinner stat-icon active"></i>
+                    <div class="stat-info">
+                        <span class="stat-value" id="active-courses-count">0</span>
+                        <span class="stat-label">Active Courses</span>
                     </div>
                 </div>
+                <div class="stat-card">
+                    <i class="fas fa-check-circle stat-icon completed"></i>
+                    <div class="stat-info">
+                        <span class="stat-value" id="completed-courses-count">0</span>
+                        <span class="stat-label">Completed</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-star stat-icon credits"></i>
+                    <div class="stat-info">
+                        <span class="stat-value" id="total-credits">0</span>
+                        <span class="stat-label">Credits Earned</span>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-                <div class="quick-actions">
-                    <button id="view-all-courses" class="action-btn active">
-                        <i class="fas fa-list"></i> View All Courses
+        <div class="quick-actions">
+            <button id="view-all-courses" class="action-btn active">
+                <i class="fas fa-list"></i> View All Courses
+            </button>
+            <button id="view-active-only" class="action-btn">
+                <i class="fas fa-spinner"></i> Active Only
+            </button>
+            <button id="view-completed-only" class="action-btn">
+                <i class="fas fa-check-circle"></i> Completed Only
+            </button>
+            <button id="refresh-courses-btn" class="action-btn refresh">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+        </div>
+
+        <div id="active-courses-section" class="courses-section">
+            <div class="section-header">
+                <h3><i class="fas fa-spinner"></i> Active Courses</h3>
+                <div class="section-info">
+                    <span class="course-count" id="active-count">0 courses</span>
+                    <span class="term-info" id="current-term">Current Term</span>
+                </div>
+            </div>
+            
+            <div class="courses-grid" id="active-courses-grid">
+                <div class="course-card loading">
+                    <div class="loading-content">
+                        <div class="loading-spinner"></div>
+                        <p>Loading active courses...</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="active-empty" class="empty-state" style="display: none;">
+                <div class="empty-icon">
+                    <i class="fas fa-calendar-plus"></i>
+                </div>
+                <h3>No Active Courses</h3>
+                <p id="active-empty-message">You don't have any active courses at the moment.</p>
+            </div>
+        </div>
+
+        <div id="completed-courses-section" class="courses-section completed-section">
+            <div class="section-header">
+                <h3><i class="fas fa-check-circle"></i> Completed Courses</h3>
+                <div class="section-info">
+                    <span class="course-count" id="completed-total-count">0 courses</span>
+                    <span class="credits-earned" id="completed-credits-total">0 credits earned</span>
+                </div>
+            </div>
+            
+            <div class="courses-table-container">
+                <table class="courses-table">
+                    <thead>
+                        <tr>
+                            <th>Course Name</th>
+                            <th>Unit Code</th>
+                            <th>Credits</th>
+                            <th>Term</th>
+                            <th>Completion Date</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="completed-courses-table">
+                        <tr class="loading">
+                            <td colspan="6">
+                                <div class="loading-content">
+                                    <div class="loading-spinner"></div>
+                                    <p>Loading completed courses...</p>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="completed-empty" class="empty-state" style="display: none;">
+                <div class="empty-icon">
+                    <i class="fas fa-graduation-cap"></i>
+                </div>
+                <h3>No Completed Courses</h3>
+                <p id="completed-empty-message">Complete your active courses to see them listed here!</p>
+                <button onclick="switchToActiveCourses()" class="btn btn-primary" id="completed-empty-button">
+                    <i class="fas fa-eye"></i> View Active Courses
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODULE 2: REGISTER UNITS -->
+    <div id="hub-register" class="hub-module" style="display: none;">
+        <div class="unit-reg-header">
+            <h2><i class="fas fa-plus-circle"></i> Unit Registration</h2>
+            <p class="subtitle">Select your units for the current trimester. Admin will review and approve your selections.</p>
+            <div class="header-stats">
+                <div class="stat-card" style="background:white; border-radius:12px; padding:15px 25px; flex:1;">
+                    <div>
+                        <span class="stat-value" id="selected-units-count">0</span>
+                        <br>
+                        <span>Selected Units</span>
+                    </div>
+                </div>
+                <div class="stat-card" style="background:white; border-radius:12px; padding:15px 25px; flex:1;">
+                    <div>
+                        <span class="stat-value" id="approved-units-count">0</span>
+                        <br>
+                        <span>Approved</span>
+                    </div>
+                </div>
+                <div class="stat-card" style="background:white; border-radius:12px; padding:15px 25px; flex:1;">
+                    <div>
+                        <span class="stat-value" id="pending-units-count">0</span>
+                        <br>
+                        <span>Pending</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="row">
+                <div class="col-md-4">
+                    <label>Registration Type</label>
+                    <select id="RegType" class="modern-select">
+                        <option value="">-- Select --</option>
+                        <option value="Normal">Normal Registration</option>
+                        <option value="Supplementary">Supplementary</option>
+                        <option value="Special">Special</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label>Block/Trimester</label>
+                    <select id="BlockFilter" class="modern-select">
+                        <option value="">All Blocks</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label>Unit Type</label>
+                    <select id="UnitTypeFilter" class="modern-select">
+                        <option value="">All Types</option>
+                        <option value="Core">Core Units</option>
+                        <option value="Elective">Elective Units</option>
+                    </select>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-12">
+                    <button id="refreshUnitsBtn" class="btn-primary">
+                        <i class="fas fa-sync-alt"></i> Load Available Units
                     </button>
-                    <button id="view-active-only" class="action-btn">
-                        <i class="fas fa-spinner"></i> Active Only
-                    </button>
-                    <button id="view-completed-only" class="action-btn">
-                        <i class="fas fa-check-circle"></i> Completed Only
-                    </button>
-                    <button id="refresh-courses-btn" class="action-btn refresh">
-                        <i class="fas fa-sync-alt"></i> Refresh
+                    <button id="submitRegistrationBtn" class="btn-success" style="margin-left:10px">
+                        <i class="fas fa-paper-plane"></i> Submit Registration
                     </button>
                 </div>
+            </div>
+            <div id="maxUnitsWarning" style="display:none; margin-top:10px; color:#dc2626; font-size:12px;">
+                <i class="fas fa-exclamation-triangle"></i> You have reached the maximum allowed units!
+            </div>
+        </div>
 
-                <div id="active-courses-section" class="courses-section">
-                    <div class="section-header">
-                        <h3><i class="fas fa-spinner"></i> Active Courses</h3>
-                        <div class="section-info">
-                            <span class="course-count" id="active-count">0 courses</span>
-                            <span class="term-info" id="current-term">Current Term</span>
-                        </div>
-                    </div>
-                    
-                    <div class="courses-grid" id="active-courses-grid">
-                        <div class="course-card loading">
-                            <div class="loading-content">
-                                <div class="loading-spinner"></div>
-                                <p>Loading active courses...</p>
-                            </div>
-                        </div>
-                    </div>
+        <div class="card">
+            <div class="card-header">
+                <h4><i class="fas fa-list"></i> Available Units for Registration</h4>
+                <p>Maximum: <strong id="maxUnitsAllowed">8</strong> units per trimester</p>
+            </div>
+            <div class="table-responsive">
+                <table class="units-table" id="tblAvailableUnits">
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" id="selectAllUnits"></th>
+                            <th>Unit Code</th>
+                            <th>Unit Name</th>
+                            <th>Block</th>
+                            <th>Type</th>
+                            <th>Credits</th>
+                            <th>Prerequisites</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="availableUnitsBody">
+                        <tr class="loading-row">
+                            <td colspan="8">
+                                <div class="loading-spinner"></div> Loading units...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
 
-                    <div id="active-empty" class="empty-state" style="display: none;">
-                        <div class="empty-icon">
-                            <i class="fas fa-calendar-plus"></i>
-                        </div>
-                        <h3>No Active Courses</h3>
-                        <p id="active-empty-message">You don't have any active courses at the moment.</p>
-                    </div>
+        <div class="card">
+            <div class="card-header">
+                <h4><i class="fas fa-clipboard-list"></i> My Registered Units</h4>
+            </div>
+            <div class="table-responsive">
+                <table class="units-table" id="tblRegisteredUnits">
+                    <thead>
+                        <tr>
+                            <th>Unit Code</th>
+                            <th>Unit Name</th>
+                            <th>Block</th>
+                            <th>Reg Type</th>
+                            <th>Status</th>
+                            <th>Approval Date</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="registeredUnitsBody">
+                        <tr class="loading-row">
+                            <td colspan="7">
+                                <div class="loading-spinner"></div> Loading your registered units...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODULE 3: ONLINE LEARNING -->
+    <div id="hub-online-learning" class="hub-module" style="display: none;">
+        <div class="online-learning-header">
+            <h2><i class="fas fa-video"></i> Online Learning</h2>
+            <p class="subtitle">Video lessons, quizzes, and interactive content</p>
+        </div>
+
+        <!-- Video Lessons Section -->
+        <div class="learning-section">
+            <div class="section-header">
+                <h3><i class="fas fa-video"></i> Video Lessons</h3>
+                <select id="video-course-filter" class="filter-select">
+                    <option value="all">All Courses</option>
+                </select>
+            </div>
+            <div class="videos-grid" id="videos-grid">
+                <div class="loading-state"><div class="loading-spinner"></div><p>Loading video lessons...</p></div>
+            </div>
+        </div>
+
+        <!-- Quizzes Section -->
+        <div class="learning-section">
+            <div class="section-header">
+                <h3><i class="fas fa-puzzle-piece"></i> Quizzes & Assessments</h3>
+                <select id="quiz-course-filter" class="filter-select">
+                    <option value="all">All Courses</option>
+                </select>
+            </div>
+            <div class="quizzes-grid" id="quizzes-grid">
+                <div class="loading-state"><div class="loading-spinner"></div><p>Loading quizzes...</p></div>
+            </div>
+        </div>
+
+        <!-- Study Notes Section -->
+        <div class="learning-section">
+            <div class="section-header">
+                <h3><i class="fas fa-file-pdf"></i> Study Notes</h3>
+            </div>
+            <div class="notes-grid" id="notes-grid">
+                <div class="loading-state"><div class="loading-spinner"></div><p>Loading study notes...</p></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODULE 4: EXAM CARD -->
+    <div id="hub-exam-card" class="hub-module" style="display: none;">
+        <div class="exam-card-container">
+            <div class="section-header">
+                <h2><i class="fas fa-id-card"></i> Exam Card</h2>
+                <p>Your exam entry permit - Valid only with approved units and cleared fees</p>
+            </div>
+            <div id="hub-exam-card-content">
+                <!-- Exam card will be dynamically generated here -->
+                <div class="loading-state">
+                    <div class="loading-spinner"></div>
+                    <p>Loading exam card information...</p>
                 </div>
-
-                <div id="completed-courses-section" class="courses-section completed-section">
-                    <div class="section-header">
-                        <h3><i class="fas fa-check-circle"></i> Completed Courses</h3>
-                        <div class="section-info">
-                            <span class="course-count" id="completed-total-count">0 courses</span>
-                            <span class="credits-earned" id="completed-credits-total">0 credits earned</span>
-                        </div>
-                    </div>
-                    
-                    <div class="courses-table-container">
-                        <table class="courses-table">
-                            <thead>
-                                <tr>
-                                    <th>Course Name</th>
-                                    <th>Unit Code</th>
-                                    <th>Credits</th>
-                                    <th>Term</th>
-                                    <th>Completion Date</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody id="completed-courses-table">
-                                <tr class="loading">
-                                    <td colspan="6">
-                                        <div class="loading-content">
-                                            <div class="loading-spinner"></div>
-                                            <p>Loading completed courses...</p>
-                                        </div>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div class="summary-cards">
-                        <div class="summary-card">
-                            <div class="card-header">
-                                <i class="fas fa-chart-bar"></i>
-                                <h4>Academic Summary</h4>
-                            </div>
-                            <div class="card-body">
-                                <div class="summary-item">
-                                    <span class="label">GPA (Completed)</span>
-                                    <span class="value" id="completed-gpa">--</span>
-                                </div>
-                                <div class="summary-item">
-                                    <span class="label">Highest Grade</span>
-                                    <span class="value grade-A" id="highest-grade">--</span>
-                                </div>
-                                <div class="summary-item">
-                                    <span class="label">Average Grade</span>
-                                    <span class="value" id="average-grade">--</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="summary-card">
-                            <div class="card-header">
-                                <i class="fas fa-calendar-alt"></i>
-                                <h4>Completion Timeline</h4>
-                            </div>
-                            <div class="card-body">
-                                <div class="timeline-item">
-                                    <span class="label">First Course</span>
-                                    <span class="value" id="first-course-date">--</span>
-                                </div>
-                                <div class="timeline-item">
-                                    <span class="label">Latest Course</span>
-                                    <span class="value" id="latest-course-date">--</span>
-                                </div>
-                                <div class="timeline-item">
-                                    <span class="label">Completion Rate</span>
-                                    <span class="value" id="completion-rate">0%</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div id="completed-empty" class="empty-state" style="display: none;">
-                        <div class="empty-icon">
-                            <i class="fas fa-graduation-cap"></i>
-                        </div>
-                        <h3>No Completed Courses</h3>
-                        <p id="completed-empty-message">Complete your active courses to see them listed here!</p>
-                        <button onclick="switchToActiveCourses()" class="btn btn-primary" id="completed-empty-button">
-                            <i class="fas fa-eye"></i> View Active Courses
-                        </button>
-                    </div>
-                </div>
-
-                <!-- SECTION 2: UNIT REGISTRATION (formerly separate tab) -->
-                <div style="margin-top: 3rem; border-top: 2px solid #e5e7eb; padding-top: 2rem;">
-                    <div class="unit-reg-header">
-                        <h2><i class="fas fa-plus-circle"></i> Unit Registration</h2>
-                        <p class="subtitle">Select your units for the current trimester. Admin will review and approve your selections.</p>
-                        <div class="header-stats">
-                            <div class="stat-card" style="background:white; border-radius:12px; padding:15px 25px; flex:1;">
-                                <div>
-                                    <span class="stat-value" id="selected-units-count">0</span>
-                                    <br>
-                                    <span>Selected Units</span>
-                                </div>
-                            </div>
-                            <div class="stat-card" style="background:white; border-radius:12px; padding:15px 25px; flex:1;">
-                                <div>
-                                    <span class="stat-value" id="approved-units-count">0</span>
-                                    <br>
-                                    <span>Approved</span>
-                                </div>
-                            </div>
-                            <div class="stat-card" style="background:white; border-radius:12px; padding:15px 25px; flex:1;">
-                                <div>
-                                    <span class="stat-value" id="pending-units-count">0</span>
-                                    <br>
-                                    <span>Pending</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="card">
-                        <div class="row">
-                            <div class="col-md-4">
-                                <label>Registration Type</label>
-                                <select id="RegType" class="modern-select">
-                                    <option value="">-- Select --</option>
-                                    <option value="Normal">Normal Registration</option>
-                                    <option value="Supplementary">Supplementary</option>
-                                    <option value="Special">Special</option>
-                                </select>
-                            </div>
-                            <div class="col-md-4">
-                                <label>Block/Trimester</label>
-                                <select id="BlockFilter" class="modern-select">
-                                    <option value="">All Blocks</option>
-                                </select>
-                            </div>
-                            <div class="col-md-4">
-                                <label>Unit Type</label>
-                                <select id="UnitTypeFilter" class="modern-select">
-                                    <option value="">All Types</option>
-                                    <option value="Core">Core Units</option>
-                                    <option value="Elective">Elective Units</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-12">
-                                <button id="refreshUnitsBtn" class="btn-primary">
-                                    <i class="fas fa-sync-alt"></i> Load Available Units
-                                </button>
-                                <button id="submitRegistrationBtn" class="btn-success" style="margin-left:10px">
-                                    <i class="fas fa-paper-plane"></i> Submit Registration
-                                </button>
-                            </div>
-                        </div>
-                        <div id="maxUnitsWarning" style="display:none; margin-top:10px; color:#dc2626; font-size:12px;">
-                            <i class="fas fa-exclamation-triangle"></i> You have reached the maximum allowed units!
-                        </div>
-                    </div>
-
-                    <div class="card">
-                        <div class="card-header">
-                            <h4><i class="fas fa-list"></i> Available Units for Registration</h4>
-                            <p>Maximum: <strong id="maxUnitsAllowed">8</strong> units per trimester</p>
-                        </div>
-                        <div class="table-responsive">
-                            <table class="units-table" id="tblAvailableUnits">
-                                <thead>
-                                    <tr>
-                                        <th><input type="checkbox" id="selectAllUnits"></th>
-                                        <th>Unit Code</th>
-                                        <th>Unit Name</th>
-                                        <th>Block</th>
-                                        <th>Type</th>
-                                        <th>Credits</th>
-                                        <th>Prerequisites</th>
-                                        <th>Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="availableUnitsBody">
-                                    <tr class="loading-row">
-                                        <td colspan="8">
-                                            <div class="loading-spinner"></div> Loading units...
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <div class="card">
-                        <div class="card-header">
-                            <h4><i class="fas fa-clipboard-list"></i> My Registered Units</h4>
-                        </div>
-                        <div class="table-responsive">
-                            <table class="units-table" id="tblRegisteredUnits">
-                                <thead>
-                                    <tr>
-                                        <th>Unit Code</th>
-                                        <th>Unit Name</th>
-                                        <th>Block</th>
-                                        <th>Reg Type</th>
-                                        <th>Status</th>
-                                        <th>Approval Date</th>
-                                        <th>Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="registeredUnitsBody">
-                                    <tr class="loading-row">
-                                        <td colspan="7">
-                                            <div class="loading-spinner"></div> Loading your registered units...
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
+            </div>
+        </div>
+    </div>
+</section>
             <!-- ==================== ATTENDANCE TAB ==================== -->
             <section id="attendance" class="tab-content" hidden>
                 <div class="attendance-header">
