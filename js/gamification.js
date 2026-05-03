@@ -1,10 +1,10 @@
 // gamification.js - Complete Badges, Streaks, Points & Leaderboard System
-// WORKS WITH consolidated_user_profiles_table
+// NOW INCLUDES NurseIQ attempts and scores
 
 (function() {
     'use strict';
     
-    console.log('🏆 Gamification module loading...');
+    console.log('🏆 Gamification module loading (with NurseIQ integration)...');
     
     class GamificationModule {
         constructor() {
@@ -18,6 +18,8 @@
             this.badges = [];
             this.lastCheckIn = null;
             this.currentRankFilter = 'weekly';
+            this.nurseiqPoints = 0;
+            this.nurseiqAttempts = [];
             
             // Badge definitions
             this.badgeDefinitions = {
@@ -70,6 +72,20 @@
                     icon: 'fa-brain',
                     points: 50
                 },
+                nurseiq_master: {
+                    id: 'nurseiq_master',
+                    name: 'NurseIQ Master',
+                    description: 'Complete 50 NurseIQ questions',
+                    icon: 'fa-stethoscope',
+                    points: 100
+                },
+                nurseiq_perfect: {
+                    id: 'nurseiq_perfect',
+                    name: 'Perfect Practice',
+                    description: 'Score 100% on a NurseIQ test',
+                    icon: 'fa-heartbeat',
+                    points: 75
+                },
                 early_bird: {
                     id: 'early_bird',
                     name: 'Early Bird',
@@ -92,12 +108,14 @@
         async init() {
             await this.waitForUser();
             await this.loadUserGamificationData();
+            await this.loadNurseIQData();
             this.injectGamificationUI();
             this.setupEventListeners();
             this.updateAllUI();
             await this.loadLeaderboard();
             
             console.log(`✅ Gamification ready: Level ${this.level}, ${this.points} points, ${this.streak} day streak`);
+            console.log(`📚 NurseIQ: ${this.nurseiqPoints} points from ${this.nurseiqAttempts.length} attempts`);
         }
         
         async waitForUser() {
@@ -122,11 +140,78 @@
             });
         }
         
+        async loadNurseIQData() {
+            if (!this.userId || !window.db?.supabase) return;
+            
+            try {
+                // Load NurseIQ attempts
+                const { data: attempts, error } = await window.db.supabase
+                    .from('nurseiq_attempts')
+                    .select('*')
+                    .eq('student_id', this.userId)
+                    .order('completed_at', { ascending: false });
+                
+                if (error) throw error;
+                
+                this.nurseiqAttempts = attempts || [];
+                
+                // Calculate NurseIQ points
+                let totalNurseIQPoints = 0;
+                let totalQuestions = 0;
+                let perfectScores = 0;
+                
+                for (const attempt of this.nurseiqAttempts) {
+                    // Points based on score percentage
+                    const scorePercent = (attempt.score / attempt.total_questions) * 100;
+                    
+                    if (scorePercent >= 90) {
+                        totalNurseIQPoints += 30;
+                    } else if (scorePercent >= 70) {
+                        totalNurseIQPoints += 20;
+                    } else if (scorePercent >= 50) {
+                        totalNurseIQPoints += 10;
+                    } else {
+                        totalNurseIQPoints += 5;
+                    }
+                    
+                    totalQuestions += attempt.total_questions || 0;
+                    
+                    if (scorePercent === 100) {
+                        perfectScores++;
+                    }
+                }
+                
+                // Add bonus for total questions
+                if (totalQuestions >= 50) {
+                    await this.unlockBadge('nurseiq_master');
+                    totalNurseIQPoints += 100;
+                }
+                
+                // Add bonus for perfect scores
+                if (perfectScores >= 3) {
+                    await this.unlockBadge('nurseiq_perfect');
+                    totalNurseIQPoints += 75;
+                }
+                
+                this.nurseiqPoints = totalNurseIQPoints;
+                
+                // Update total points (attendance + nurseiq)
+                const attendancePoints = this.points;
+                this.totalPoints = attendancePoints + this.nurseiqPoints;
+                
+                console.log(`📊 NurseIQ: ${this.nurseiqPoints} points from ${this.nurseiqAttempts.length} attempts`);
+                
+            } catch (error) {
+                console.error('Error loading NurseIQ data:', error);
+                this.nurseiqPoints = 0;
+                this.nurseiqAttempts = [];
+            }
+        }
+        
         async loadUserGamificationData() {
             if (!this.userId || !window.db?.supabase) return;
             
             try {
-                // Load from consolidated_user_profiles_table
                 const { data, error } = await window.db.supabase
                     .from('consolidated_user_profiles_table')
                     .select('*')
@@ -134,7 +219,6 @@
                     .single();
                 
                 if (data && !error) {
-                    // Map your existing columns to gamification fields
                     this.points = data.gamification_points || 0;
                     this.streak = data.attendance_streak || 0;
                     this.level = data.gamification_level || 1;
@@ -142,10 +226,8 @@
                     this.badges = data.earned_badges || [];
                     this.lastCheckIn = data.last_check_in ? new Date(data.last_check_in) : null;
                     
-                    // Store in user profile for easy access
                     if (!this.userProfile) this.userProfile = data;
                 } else {
-                    // Create initial data in consolidated_user_profiles_table
                     await this.createGamificationRecord();
                 }
                 
@@ -161,7 +243,6 @@
             if (!this.userId || !window.db?.supabase) return;
             
             try {
-                // Check if record exists first
                 const { data: existing } = await window.db.supabase
                     .from('consolidated_user_profiles_table')
                     .select('user_id')
@@ -169,7 +250,6 @@
                     .single();
                 
                 if (!existing) {
-                    // Create new record with gamification fields
                     const { error } = await window.db.supabase
                         .from('consolidated_user_profiles_table')
                         .insert([{
@@ -180,6 +260,8 @@
                             gamification_xp: 0,
                             earned_badges: [],
                             total_checkins: 0,
+                            nurseiq_points: 0,
+                            total_nurseiq_attempts: 0,
                             created_at: new Date().toISOString()
                         }]);
                     
@@ -221,12 +303,14 @@
                 const { error } = await window.db.supabase
                     .from('consolidated_user_profiles_table')
                     .update({
-                        gamification_points: this.points,
+                        gamification_points: this.points + this.nurseiqPoints,
                         attendance_streak: this.streak,
                         gamification_level: this.level,
                         gamification_xp: this.xp,
                         earned_badges: this.badges,
                         last_check_in: this.lastCheckIn ? this.lastCheckIn.toISOString() : null,
+                        nurseiq_points: this.nurseiqPoints,
+                        total_nurseiq_attempts: this.nurseiqAttempts.length,
                         updated_at: new Date().toISOString()
                     })
                     .eq('user_id', this.userId);
@@ -250,6 +334,8 @@
             if (!headerRight) return;
             if (document.querySelector('.gamification-widget')) return;
             
+            const totalDisplayPoints = this.points + this.nurseiqPoints;
+            
             const widget = document.createElement('div');
             widget.className = 'gamification-widget';
             widget.innerHTML = `
@@ -258,9 +344,9 @@
                     <span id="streak-count">${this.streak}</span>
                     <span class="streak-label">Day Streak</span>
                 </div>
-                <div class="points-indicator" id="points-indicator" title="Total Points">
+                <div class="points-indicator" id="points-indicator" title="Total Points (Attendance + NurseIQ)">
                     <i class="fas fa-star"></i>
-                    <span id="points-count">${this.points}</span>
+                    <span id="points-count">${totalDisplayPoints}</span>
                     <span class="points-label">Points</span>
                 </div>
                 <div class="level-indicator" id="level-indicator" title="Current Level">
@@ -293,6 +379,10 @@
                     <div class="level-progress-fill" id="level-progress-fill" style="width: ${percent}%"></div>
                 </div>
                 <div class="level-progress-text" id="level-progress-text">Level ${this.level} · ${this.xp}/${this.xpToNextLevel} XP to Level ${this.level + 1}</div>
+                <div class="level-progress-text" style="font-size: 10px; margin-top: 4px;">
+                    <i class="fas fa-stethoscope"></i> NurseIQ: ${this.nurseiqPoints} pts | 
+                    <i class="fas fa-calendar-check"></i> Attendance: ${this.points} pts
+                </div>
             `;
             
             welcomeCard.insertAdjacentElement('afterend', progressContainer);
@@ -381,6 +471,16 @@
             
             document.addEventListener('unitRegistrationComplete', (e) => {
                 this.addPoints(5, 'Registered for a unit');
+            });
+            
+            // Listen for NurseIQ test completion
+            document.addEventListener('nurseiqTestCompleted', async (e) => {
+                console.log('📚 NurseIQ test completed, updating points...');
+                await this.loadNurseIQData();
+                await this.saveToDatabase();
+                this.updateUI();
+                await this.loadLeaderboard();
+                this.showNotification('NurseIQ Update!', `You earned ${e.detail.points || 0} points from your practice!`, 'points');
             });
         }
         
@@ -496,11 +596,13 @@
         }
         
         updateUI() {
+            const totalPoints = this.points + this.nurseiqPoints;
+            
             const streakCount = document.getElementById('streak-count');
             if (streakCount) streakCount.textContent = this.streak;
             
             const pointsCount = document.getElementById('points-count');
-            if (pointsCount) pointsCount.textContent = this.points;
+            if (pointsCount) pointsCount.textContent = totalPoints;
             
             const levelNumber = document.getElementById('level-number');
             if (levelNumber) levelNumber.textContent = this.level;
@@ -554,10 +656,18 @@
             if (!window.db?.supabase) return;
             
             try {
-                // Query from consolidated_user_profiles_table
+                // Get combined points from both attendance and NurseIQ
                 const { data, error } = await window.db.supabase
                     .from('consolidated_user_profiles_table')
-                    .select('user_id, full_name, gamification_points, attendance_streak, gamification_level')
+                    .select(`
+                        user_id, 
+                        full_name, 
+                        gamification_points, 
+                        attendance_streak, 
+                        gamification_level,
+                        nurseiq_points,
+                        total_nurseiq_attempts
+                    `)
                     .order('gamification_points', { ascending: false })
                     .limit(10);
                 
@@ -581,19 +691,38 @@
                     
                     const name = item.full_name || `Student ${item.user_id?.slice(-4)}`;
                     const avatar = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0,2);
+                    const totalPoints = (item.gamification_points || 0) + (item.nurseiq_points || 0);
+                    
+                    // Determine badge icon based on top contributor type
+                    let badgeIcon = '';
+                    if (index === 0) {
+                        if ((item.nurseiq_points || 0) > (item.gamification_points || 0)) {
+                            badgeIcon = '<i class="fas fa-stethoscope" style="margin-left: 5px; font-size: 12px;" title="NurseIQ Leader"></i>';
+                        } else {
+                            badgeIcon = '<i class="fas fa-calendar-check" style="margin-left: 5px; font-size: 12px;" title="Attendance Leader"></i>';
+                        }
+                    }
                     
                     return `
                         <div class="leaderboard-item">
                             <div class="leaderboard-rank ${rankClass}">${index + 1}</div>
                             <div class="leaderboard-avatar">${avatar}</div>
                             <div class="leaderboard-info">
-                                <div class="leaderboard-name">${name}</div>
+                                <div class="leaderboard-name">
+                                    ${name} ${badgeIcon}
+                                </div>
                                 <div class="leaderboard-stats">
                                     <i class="fas fa-fire"></i> ${item.attendance_streak || 0} day streak
                                     <i class="fas fa-trophy" style="margin-left: 8px;"></i> Level ${item.gamification_level || 1}
+                                    ${item.total_nurseiq_attempts > 0 ? `<i class="fas fa-stethoscope" style="margin-left: 8px;"></i> ${item.total_nurseiq_attempts} tests` : ''}
                                 </div>
                             </div>
-                            <div class="leaderboard-points">${item.gamification_points || 0} pts</div>
+                            <div class="leaderboard-points">
+                                ${totalPoints} pts
+                                <small style="display: block; font-size: 9px; color: #6b7280;">
+                                    ${item.nurseiq_points || 0} NurseIQ
+                                </small>
+                            </div>
                         </div>
                     `;
                 }).join('');
@@ -610,8 +739,10 @@
         }
         
         updateDashboardStats() {
+            const totalPoints = this.points + this.nurseiqPoints;
+            
             const dashboardPoints = document.getElementById('dashboard-points');
-            if (dashboardPoints) dashboardPoints.textContent = this.points;
+            if (dashboardPoints) dashboardPoints.textContent = totalPoints;
             
             const dashboardStreak = document.getElementById('dashboard-streak');
             if (dashboardStreak) dashboardStreak.textContent = this.streak;
