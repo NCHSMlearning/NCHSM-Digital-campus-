@@ -4046,59 +4046,385 @@ function triggerBackup() {
 }
 
 /*******************************************************
- * 18. CALENDAR INTEGRATION
+ * 18. CALENDAR INTEGRATION (ENHANCED with Timetable Upload)
  *******************************************************/
+
+// Global calendar instance
+let mainCalendar = null;
+
 async function renderFullCalendar() {
     const calendarEl = $('fullCalendarDisplay');
     if (!calendarEl) return;
     calendarEl.innerHTML = ''; 
 
-    const { data: sessions } = await fetchData('scheduled_sessions', '*', {}, 'session_date', true);
-    const { data: exams } = await fetchData('exams', '*, course:course_id(course_name)', {}, 'exam_date', true);
+    // Get current user for filtering (if student view)
+    const currentUser = getCurrentUser();
+    const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'superadmin';
+    
+    // Fetch from ALL relevant tables
+    const [sessions, exams, calendarEvents, units] = await Promise.all([
+        fetchData('scheduled_sessions', '*', {}, 'session_date', true),
+        fetchData('exams', '*, course:course_id(course_name)', {}, 'exam_date', true),
+        fetchData('calendar_events', '*', {}, 'event_date', true),
+        fetchData('unit_registrations', '*, units(*)', {}, 'created_at', true)
+    ]);
 
     const events = [];
 
+    // 1. Add scheduled sessions (classes, clinicals)
     sessions?.forEach(s => {
+        // Filter for student view
+        if (!isAdmin && !shouldShowToStudent(s, currentUser)) return;
+        
         let title = `${s.session_type.toUpperCase()}: ${s.session_title}`;
         let color = s.session_type === 'clinical' ? '#2ecc71' : s.session_type === 'event' ? '#9b59b6' : '#3498db';
         
         events.push({
+            id: `session_${s.id}`,
             title: title,
             start: s.session_date + (s.session_time ? `T${s.session_time}` : ''),
+            end: s.session_end_time ? s.session_date + `T${s.session_end_time}` : null,
             allDay: !s.session_time,
-            color: color
+            color: color,
+            extendedProps: {
+                type: 'session',
+                venue: s.venue,
+                description: s.session_description,
+                program: s.target_program,
+                block: s.target_block
+            }
         });
     });
 
+    // 2. Add exams
     exams?.forEach(e => {
+        if (!isAdmin && !shouldShowToStudent(e, currentUser)) return;
+        
         const courseName = e.course?.course_name || 'Exam';
         const start = e.exam_date + (e.exam_start_time ? `T${e.exam_start_time}` : '');
+        let end = null;
+        if (e.exam_start_time && e.duration_minutes) {
+            const startDate = new Date(`2000-01-01T${e.exam_start_time}`);
+            const endDate = new Date(startDate.getTime() + e.duration_minutes * 60000);
+            end = e.exam_date + `T${endDate.toTimeString().slice(0, 8)}`;
+        }
 
         events.push({
+            id: `exam_${e.id}`,
             title: `${e.exam_type}: ${e.exam_name} (${courseName})`,
             start: start,
+            end: end,
             allDay: !e.exam_start_time,
-            color: '#e74c3c'
+            color: '#e74c3c',
+            extendedProps: {
+                type: 'exam',
+                venue: 'Exam Hall',
+                description: `Duration: ${e.duration_minutes || 'N/A'} minutes`,
+                program: e.target_program,
+                block: e.target_block
+            }
         });
     });
 
+    // 3. Add calendar_events (admin uploaded timetables) - KEY ADDITION
+    calendarEvents?.forEach(event => {
+        if (!isAdmin && !shouldShowToStudent(event, currentUser)) return;
+        
+        let title = event.event_name;
+        let color = getEventColor(event.type);
+        let icon = getEventIcon(event.type);
+        
+        const start = event.event_date + (event.start_time ? `T${event.start_time}` : '');
+        let end = null;
+        if (event.start_time && event.end_time) {
+            end = event.event_date + `T${event.end_time}`;
+        }
+
+        events.push({
+            id: `calendar_${event.id}`,
+            title: `${icon} ${title}`,
+            start: start,
+            end: end,
+            allDay: !event.start_time,
+            color: color,
+            extendedProps: {
+                type: event.type,
+                venue: event.venue,
+                description: event.description,
+                program: event.target_program,
+                block: event.target_block,
+                organizer: event.organizer
+            }
+        });
+    });
+
+    // 4. Add unit deadlines from unit_registrations
+    units?.forEach(unitReg => {
+        if (unitReg.units?.assessment_deadline) {
+            events.push({
+                id: `unit_${unitReg.id}`,
+                title: `📝 Assignment: ${unitReg.units?.unit_name || 'Unit Assessment'}`,
+                start: unitReg.units.assessment_deadline,
+                allDay: true,
+                color: '#f39c12',
+                extendedProps: {
+                    type: 'assignment',
+                    description: `Unit: ${unitReg.units?.unit_code} - Assessment due`
+                }
+            });
+        }
+    });
+
+    // Initialize or update calendar
     if (typeof FullCalendar !== 'undefined' && calendarEl) {
-        const calendar = new FullCalendar.Calendar(calendarEl, {
+        if (mainCalendar) {
+            mainCalendar.destroy();
+        }
+        
+        mainCalendar = new FullCalendar.Calendar(calendarEl, {
             initialView: 'dayGridMonth',
             headerToolbar: {
                 left: 'prev,next today',
                 center: 'title',
-                right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
             },
-            events: events
+            events: events,
+            eventClick: function(info) {
+                showEventDetails(info.event);
+            },
+            eventDidMount: function(info) {
+                // Add tooltip
+                info.el.title = info.event.extendedProps.description || info.event.title;
+                
+                // Add custom styling for different event types
+                if (info.event.extendedProps.type === 'exam') {
+                    info.el.style.borderLeft = '4px solid #e74c3c';
+                } else if (info.event.extendedProps.type === 'clinical') {
+                    info.el.style.borderLeft = '4px solid #2ecc71';
+                }
+            },
+            datesSet: function(info) {
+                console.log('Calendar view changed:', info.view.type);
+            }
         });
 
-        calendar.render();
+        mainCalendar.render();
+        
+        // Add filter controls if admin
+        if (isAdmin) {
+            addCalendarFilters();
+        }
     } else {
         calendarEl.innerHTML = '<p>FullCalendar library not loaded. Please ensure it is included in your HTML.</p>';
     }
 }
 
+// Helper: Check if event should show to student based on program/block
+function shouldShowToStudent(event, user) {
+    if (!user || user.role === 'admin' || user.role === 'superadmin') return true;
+    
+    const eventProgram = event.target_program || event.program_type || 'General';
+    const eventBlock = event.target_block || event.block_term || 'General';
+    const userProgram = user.program;
+    const userBlock = user.block;
+    
+    // Show if event is for everyone OR matches student's program AND block
+    const programMatch = eventProgram === 'General' || eventProgram === userProgram;
+    const blockMatch = eventBlock === 'General' || eventBlock === userBlock;
+    
+    return programMatch && blockMatch;
+}
+
+// Get color based on event type
+function getEventColor(type) {
+    const eventType = (type || '').toUpperCase();
+    if (eventType.includes('EXAM')) return '#e74c3c';
+    if (eventType.includes('CAT')) return '#e67e22';
+    if (eventType.includes('CLINICAL')) return '#2ecc71';
+    if (eventType.includes('CLASS') || eventType.includes('LECTURE')) return '#3498db';
+    if (eventType.includes('ASSIGNMENT')) return '#f39c12';
+    if (eventType.includes('EVENT')) return '#9b59b6';
+    return '#95a5a6';
+}
+
+// Get icon for event type
+function getEventIcon(type) {
+    const eventType = (type || '').toUpperCase();
+    if (eventType.includes('EXAM')) return '📝';
+    if (eventType.includes('CAT')) return '📋';
+    if (eventType.includes('CLINICAL')) return '🏥';
+    if (eventType.includes('CLASS')) return '📚';
+    if (eventType.includes('ASSIGNMENT')) return '📄';
+    if (eventType.includes('EVENT')) return '🎉';
+    return '📅';
+}
+
+// Show event details modal when clicked
+function showEventDetails(event) {
+    const props = event.extendedProps;
+    const modalHtml = `
+        <div id="eventDetailModal" class="modal" style="display: flex;">
+            <div class="modal-content" style="max-width: 500px;">
+                <div class="modal-header">
+                    <h3>${event.title}</h3>
+                    <span class="close" onclick="closeModal('eventDetailModal')">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <p><strong>📅 Date:</strong> ${event.start.toLocaleDateString()}</p>
+                    ${event.start.getHours() !== 0 ? `<p><strong>⏰ Time:</strong> ${event.start.toLocaleTimeString()} ${event.end ? '- ' + event.end.toLocaleTimeString() : ''}</p>` : ''}
+                    ${props.venue ? `<p><strong>📍 Venue:</strong> ${props.venue}</p>` : ''}
+                    ${props.type ? `<p><strong>🏷️ Type:</strong> ${props.type}</p>` : ''}
+                    ${props.description ? `<p><strong>📝 Details:</strong> ${props.description}</p>` : ''}
+                    ${props.program && props.program !== 'General' ? `<p><strong>🎓 Program:</strong> ${props.program}</p>` : ''}
+                    ${props.block && props.block !== 'General' ? `<p><strong>📌 Block:</strong> ${props.block}</p>` : ''}
+                </div>
+                <div class="modal-actions">
+                    <button onclick="closeModal('eventDetailModal')" class="btn">Close</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Remove existing modal if any
+    const existingModal = document.getElementById('eventDetailModal');
+    if (existingModal) existingModal.remove();
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+// Add filter controls to calendar (Admin only)
+function addCalendarFilters() {
+    const calendarContainer = document.querySelector('#fullCalendarDisplay')?.parentElement;
+    if (!calendarContainer || document.getElementById('calendarFilterBar')) return;
+    
+    const filterBar = document.createElement('div');
+    filterBar.id = 'calendarFilterBar';
+    filterBar.style.cssText = 'display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; padding: 10px; background: #f8f9fa; border-radius: 8px;';
+    filterBar.innerHTML = `
+        <select id="calendarTypeFilter" onchange="filterCalendarByType()">
+            <option value="all">📅 All Events</option>
+            <option value="CLASS">📚 Classes</option>
+            <option value="EXAM">📝 Exams</option>
+            <option value="CLINICAL">🏥 Clinical</option>
+            <option value="EVENT">🎉 Events</option>
+            <option value="ASSIGNMENT">📄 Assignments</option>
+        </select>
+        <select id="calendarProgramFilter" onchange="filterCalendarByProgram()">
+            <option value="all">🎓 All Programs</option>
+            <option value="KRCHN">KRCHN</option>
+            <option value="TVET">TVET</option>
+            <option value="DPOTT">DPOTT</option>
+            <option value="DHRIT">DHRIT</option>
+        </select>
+        <select id="calendarBlockFilter" onchange="filterCalendarByBlock()">
+            <option value="all">📌 All Blocks</option>
+            <option value="Introductory">Introductory</option>
+            <option value="Block A">Block A</option>
+            <option value="Block B">Block B</option>
+            <option value="Block C">Block C</option>
+            <option value="Block D">Block D</option>
+            <option value="Block E">Block E</option>
+            <option value="Final">Final</option>
+        </select>
+        <button onclick="refreshCalendarData()" class="btn-action" style="padding: 5px 12px;">
+            🔄 Refresh
+        </button>
+    `;
+    
+    calendarContainer.insertBefore(filterBar, calendarContainer.firstChild);
+}
+
+// Filter calendar events by type
+function filterCalendarByType() {
+    const type = document.getElementById('calendarTypeFilter')?.value;
+    if (!mainCalendar) return;
+    
+    const events = mainCalendar.getEvents();
+    events.forEach(event => {
+        const eventType = event.extendedProps.type;
+        if (type === 'all' || eventType === type) {
+            event.setProp('display', 'auto');
+        } else {
+            event.setProp('display', 'none');
+        }
+    });
+}
+
+// Refresh calendar data
+async function refreshCalendarData() {
+    const calendarEl = $('fullCalendarDisplay');
+    if (calendarEl) {
+        await renderFullCalendar();
+    }
+}
+
+// ADMIN TIMETABLE UPLOAD FUNCTIONS
+async function uploadTimetableExcel(file, program, block) {
+    if (!file) {
+        alert('Please select an Excel file');
+        return false;
+    }
+    
+    // Use SheetJS to parse
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet);
+        
+        let added = 0;
+        let errors = [];
+        
+        for (const row of rows) {
+            try {
+                const eventData = {
+                    event_name: row.Title || row.title || row.Course,
+                    event_date: row.Date || row.date,
+                    start_time: row.Start_Time || row.start_time || row['Start Time'],
+                    end_time: row.End_Time || row.end_time || row['End Time'],
+                    venue: row.Venue || row.venue,
+                    type: (row.Type || row.type || 'CLASS').toUpperCase(),
+                    description: row.Description || row.description || '',
+                    target_program: program,
+                    target_block: block,
+                    organizer: 'Admin Upload'
+                };
+                
+                const { error } = await supabase.from('calendar_events').insert([eventData]);
+                if (error) throw error;
+                added++;
+            } catch (err) {
+                errors.push(row);
+            }
+        }
+        
+        alert(`✅ Added ${added} events to calendar!\n${errors.length} errors.`);
+        refreshCalendarData();
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+// Add single event to calendar (Admin function)
+async function addCalendarEvent(eventData) {
+    const { error } = await supabase.from('calendar_events').insert([eventData]);
+    if (error) {
+        console.error('Error adding event:', error);
+        alert('Failed to add event: ' + error.message);
+        return false;
+    }
+    refreshCalendarData();
+    return true;
+}
+
+// Expose functions globally
+window.renderFullCalendar = renderFullCalendar;
+window.filterCalendarByType = filterCalendarByType;
+window.filterCalendarByProgram = filterCalendarByProgram;
+window.filterCalendarByBlock = filterCalendarByBlock;
+window.refreshCalendarData = refreshCalendarData;
+window.uploadTimetableExcel = uploadTimetableExcel;
+window.addCalendarEvent = addCalendarEvent;
 /*******************************************************
  * 19. ENHANCED FEATURES IMPLEMENTATION
  *******************************************************/
