@@ -495,80 +495,82 @@
             <!-- LEFT COLUMN: All information sections -->
             <div class="profile-left">
                 <!-- PERSONAL INFORMATION SECTION -->
-                <div class="profile-section">
-                    <h3 class="section-title">Personal Information</h3>
-                    <div class="profile-details grid-layout">
-                        <div class="form-field full-width">
-                            <label for="profile-name" class="required">Full Name</label>
-                            <input type="text" id="profile-name" name="full-name" readonly required>
-                            <div id="name-help" class="help-text">Your legal name as on official documents</div>
-                        </div>
-                        
-                        <div class="form-field">
-                            <label for="profile-student-id" class="required">Student ID</label>
-                            <input type="text" id="profile-student-id" name="student-id" readonly>
-                            <div id="id-help" class="help-text">Your registration number</div>
-                        </div>
-                        
-                        <div class="form-field">
-                            <label for="profile-email" class="required">Email Address</label>
-                            <input type="email" id="profile-email" name="email" readonly required>
-                            <div id="email-help" class="help-text">Used for login and notifications</div>
-                        </div>
-                        
-                        <div class="form-field">
-                            <label for="profile-phone">Phone Number</label>
-                            <input type="tel" id="profile-phone" name="phone" readonly>
-                            <div id="phone-help" class="help-text">Include country code if international</div>
-                        </div>
-                        
-                        <div class="form-field">
-                            <label for="profile-dob">Date of Birth</label>
-                            <input type="date" id="profile-dob" name="dob" readonly>
-                            <div id="dob-help" class="help-text">Your date of birth</div>
-                        </div>
-                        
-                        <div class="form-field">
-                            <label for="profile-gender">Gender</label>
-                            <select id="profile-gender" name="gender" disabled>
-                                <option value="">Select Gender</option>
-                                <option value="Female">Female</option>
-                                <option value="Male">Male</option>
-                                <option value="Other">Other</option>
-                                <option value="Prefer not to say">Prefer not to say</option>
-                            </select>
-                            <div id="gender-help" class="help-text">Your gender identity</div>
-                        </div>
-                        
-                        <div class="form-field">
-                            <label for="profile-program">Program</label>
-                            <input type="text" id="profile-program" name="program" readonly>
-                        </div>
-                        
-                        <div class="form-field">
-                            <label for="profile-admission-date">Admission Date</label>
-                            <input type="date" id="profile-admission-date" name="admission-date" readonly>
-                            <div id="admission-help" class="help-text">Date you joined the college</div>
-                        </div>
-                        
-                        <div class="form-field">
-                            <label for="profile-admission-year">Admission Year</label>
-                            <input type="text" id="profile-admission-year" name="admission-year" readonly>
-                            <div id="admission-year-help" class="help-text">Year of admission</div>
-                        </div>
-                        
-                        <div class="form-field">
-                            <label for="profile-block">Current Block</label>
-                            <input type="text" id="profile-block" name="block" readonly>
-                            <div id="block-help" class="help-text">Your current academic block</div>
-                        </div>
-                        
-                        <div class="form-field">
-                            <label for="profile-intake-year">Intake Year</label>
-                            <input type="text" id="profile-intake-year" name="intake-year" readonly>
-                        </div>
-                    </div>
-                </div>
+               <!-- PERSONAL INFORMATION SECTION -->
+<div class="profile-section">
+    <h3 class="section-title">Personal Information</h3>
+    <div class="profile-details grid-layout">
+        <div class="form-field full-width">
+            <label for="profile-name" class="required">Full Name</label>
+            <input type="text" id="profile-name" name="full-name" readonly required>
+            <div id="name-help" class="help-text">Your legal name as on official documents</div>
+        </div>
+        
+        <div class="form-field">
+            <label for="profile-student-id" class="required">Student ID</label>
+            <input type="text" id="profile-student-id" name="student-id" readonly>
+            <div id="id-help" class="help-text">Your registration number</div>
+        </div>
+        
+        <div class="form-field">
+            <label for="profile-email" class="required">Email Address</label>
+            <input type="email" id="profile-email" name="email" readonly required>
+            <div id="email-help" class="help-text">Used for login and notifications</div>
+        </div>
+        
+        <div class="form-field">
+            <label for="profile-phone">Phone Number</label>
+            <input type="tel" id="profile-phone" name="phone" readonly>
+            <div id="phone-help" class="help-text">Include country code if international</div>
+        </div>
+        
+        <!-- DATE OF BIRTH - REMOVE readonly so calendar works -->
+        <div class="form-field">
+            <label for="profile-dob">Date of Birth</label>
+            <input type="date" id="profile-dob" name="dob">
+            <div id="dob-help" class="help-text">Select your date of birth from calendar</div>
+        </div>
+        
+        <div class="form-field">
+            <label for="profile-gender">Gender</label>
+            <select id="profile-gender" name="gender" disabled>
+                <option value="">Select Gender</option>
+                <option value="Female">Female</option>
+                <option value="Male">Male</option>
+                <option value="Other">Other</option>
+                <option value="Prefer not to say">Prefer not to say</option>
+            </select>
+            <div id="gender-help" class="help-text">Your gender identity</div>
+        </div>
+        
+        <div class="form-field">
+            <label for="profile-program">Program</label>
+            <input type="text" id="profile-program" name="program" readonly>
+        </div>
+        
+        <div class="form-field">
+            <label for="profile-admission-date">Admission Date</label>
+            <input type="date" id="profile-admission-date" name="admission-date" readonly>
+            <div id="admission-help" class="help-text">Date you joined the college</div>
+        </div>
+        
+        <div class="form-field">
+            <label for="profile-admission-year">Admission Year</label>
+            <input type="text" id="profile-admission-year" name="admission-year" readonly>
+            <div id="admission-year-help" class="help-text">Year of admission</div>
+        </div>
+        
+        <div class="form-field">
+            <label for="profile-block">Current Block</label>
+            <input type="text" id="profile-block" name="block" readonly>
+            <div id="block-help" class="help-text">Your current academic block</div>
+        </div>
+        
+        <div class="form-field">
+            <label for="profile-intake-year">Intake Year</label>
+            <input type="text" id="profile-intake-year" name="intake-year" readonly>
+        </div>
+    </div>
+</div>
 
                 <!-- ACADEMIC PROGRESS SECTION -->
                 <div class="profile-section">
