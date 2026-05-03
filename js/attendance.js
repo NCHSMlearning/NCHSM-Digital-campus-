@@ -1,8 +1,12 @@
-// attendance.js - INTEGRATED with courses.js (shows only APPROVED units)
+// attendance.js - ENHANCED with 50 METERS MAX ACCURACY
 (function() {
     'use strict';
     
-    console.log('✅ attendance.js - Integrated with courses module for approved units');
+    console.log('✅ attendance.js - ENHANCED with 50m max accuracy requirement');
+    
+    // Configuration
+    const MAX_ALLOWED_DISTANCE = 50; // MAX 50 METERS for verification
+    const MIN_GPS_ACCURACY = 30; // Need accuracy within 30 meters
     
     // Check if courses module is ready
     let coursesModuleReady = false;
@@ -33,7 +37,7 @@
                 if (checks > 20) {
                     clearInterval(interval);
                     console.warn('Courses module not ready after 10 seconds');
-                    resolve(); // Continue anyway
+                    resolve();
                 }
             }, 500);
         });
@@ -41,7 +45,7 @@
     
     // Main attendance system
     async function startAttendanceSystem() {
-        console.log('🎯 Starting attendance system with courses integration...');
+        console.log('🎯 Starting attendance system with 50m max distance requirement...');
         
         // Wait for courses module
         await waitForCoursesModule();
@@ -67,12 +71,13 @@
         let attendanceUserProfile = window.db?.currentUserProfile;
         let currentLocation = null;
         let locationWatchId = null;
+        let lastDistanceCheck = null;
         
         // College coordinates - NAKURU COLLEGE
         const NAKURU_COLLEGE = {
             latitude: -0.2610284,
             longitude: 36.0116283,
-            radius: 100
+            radius: MAX_ALLOWED_DISTANCE // NOW 50 METERS
         };
         
         // Helper: Refresh course selectors when approved units change
@@ -85,7 +90,7 @@
         
         // Initialize attendance system UI
         function initializeAttendanceUI() {
-            console.log('Initializing attendance system UI with approved courses...');
+            console.log('Initializing attendance system UI with 50m accuracy requirement...');
             
             // Cache DOM elements
             const sessionTypeSelect = document.getElementById('session-type');
@@ -271,9 +276,9 @@
                     });
                     
                 } else if (sessionType === 'class') {
-                    // CRITICAL: Use APPROVED UNITS from courses module
+                    // Use APPROVED UNITS from courses module
                     if (!approvedUnits || approvedUnits.length === 0) {
-                        targetSelect.innerHTML = '<option value="">No approved units found. Please register for units first.</option>';
+                        targetSelect.innerHTML = '<option value="">⚠️ No approved units found. Please register for units first.</option>';
                         targetSelect.disabled = false;
                         
                         // Add helpful message and link
@@ -289,7 +294,7 @@
                         return;
                     }
                     
-                    targetSelect.innerHTML = '<option value="">Select approved course...</option>';
+                    targetSelect.innerHTML = '<option value="">📚 Select approved course...</option>';
                     
                     // Display approved units from student_unit_registrations
                     approvedUnits.forEach(unit => {
@@ -304,10 +309,15 @@
                         
                         // Add block/term info if available
                         if (unit.block) {
-                            displayText += ` (Block: ${unit.block})`;
+                            displayText += ` [Block: ${unit.block}]`;
                         }
                         if (unit.term) {
-                            displayText += ` (Term: ${unit.term})`;
+                            displayText += ` [Term: ${unit.term}]`;
+                        }
+                        
+                        // Add credits info
+                        if (unit.credits) {
+                            displayText += ` (${unit.credits} credits)`;
                         }
                         
                         opt.value = `unit_${unit.id || unit.unit_code}|${displayText}|class|${unit.unit_code}`;
@@ -333,8 +343,8 @@
                     const countIndicator = document.createElement('div');
                     countIndicator.className = 'course-count-indicator mt-1';
                     countIndicator.style.fontSize = '11px';
-                    countIndicator.style.color = '#6b7280';
-                    countIndicator.innerHTML = `<i class="fas fa-check-circle"></i> ${approvedUnits.length} approved course(s) available`;
+                    countIndicator.style.color = '#10b981';
+                    countIndicator.innerHTML = `<i class="fas fa-check-circle"></i> ${approvedUnits.length} approved course(s) available for check-in`;
                     
                     const existingIndicator = targetSelect.parentElement.querySelector('.course-count-indicator');
                     if (existingIndicator) existingIndicator.remove();
@@ -386,11 +396,12 @@
             }
         }
         
-        // Update check-in button state
+        // Update check-in button state with distance check
         function updateCheckInButton() {
             const checkInButton = document.getElementById('check-in-button');
             const sessionTypeSelect = document.getElementById('session-type');
             const targetSelect = document.getElementById('attendance-target');
+            const distanceStatus = document.getElementById('distance-status');
             
             if (!checkInButton) return;
             
@@ -398,18 +409,78 @@
             const hasTarget = targetSelect?.value && targetSelect.value !== '';
             const hasLocation = currentLocation !== null;
             
-            const allRequirementsMet = hasSession && hasTarget && hasLocation;
+            // Check distance if location and target exist
+            let isWithinRange = false;
+            let distance = null;
+            
+            if (hasLocation && hasTarget) {
+                const [targetId, targetName, sessionType] = targetSelect.value.split('|');
+                const targetType = sessionTypeSelect?.value;
+                
+                let targetLat = NAKURU_COLLEGE.latitude;
+                let targetLon = NAKURU_COLLEGE.longitude;
+                
+                if (targetType === 'clinical') {
+                    const target = attendanceCachedClinicalAreas.find(t => t.id === targetId);
+                    if (target) {
+                        targetLat = target.latitude;
+                        targetLon = target.longitude;
+                    }
+                }
+                
+                distance = calculateAttendanceDistance(
+                    currentLocation.latitude,
+                    currentLocation.longitude,
+                    targetLat,
+                    targetLon
+                );
+                
+                isWithinRange = distance <= MAX_ALLOWED_DISTANCE;
+                lastDistanceCheck = distance;
+                
+                // Update distance status display
+                if (distanceStatus) {
+                    const distanceMeters = distance.toFixed(0);
+                    const isAccurate = currentLocation.accuracy <= MIN_GPS_ACCURACY;
+                    
+                    if (isWithinRange && isAccurate) {
+                        distanceStatus.innerHTML = `<i class="fas fa-check-circle" style="color: #10b981;"></i> <span style="color: #10b981;">✓ Within ${MAX_ALLOWED_DISTANCE}m range (${distanceMeters}m) - Ready to check in!</span>`;
+                        distanceStatus.style.backgroundColor = '#d1fae5';
+                    } else if (isWithinRange && !isAccurate) {
+                        distanceStatus.innerHTML = `<i class="fas fa-exclamation-triangle" style="color: #f59e0b;"></i> <span style="color: #f59e0b;">⚠️ Within range but GPS accuracy is ${currentLocation.accuracy.toFixed(0)}m (need ≤${MIN_GPS_ACCURACY}m)</span>`;
+                        distanceStatus.style.backgroundColor = '#fed7aa';
+                    } else {
+                        let distanceText = distanceMeters;
+                        if (distanceMeters >= 1000) {
+                            distanceText = (distanceMeters / 1000).toFixed(2) + 'km';
+                        }
+                        distanceStatus.innerHTML = `<i class="fas fa-times-circle" style="color: #ef4444;"></i> <span style="color: #ef4444;">❌ Too far! ${distanceText} away (must be within ${MAX_ALLOWED_DISTANCE}m)</span>`;
+                        distanceStatus.style.backgroundColor = '#fee2e2';
+                    }
+                    distanceStatus.style.display = 'flex';
+                }
+            } else if (distanceStatus) {
+                distanceStatus.style.display = 'none';
+            }
+            
+            const allRequirementsMet = hasSession && hasTarget && hasLocation && isWithinRange && 
+                                       (currentLocation?.accuracy <= MIN_GPS_ACCURACY);
             
             checkInButton.disabled = !allRequirementsMet;
             
             const btnSubtext = checkInButton.querySelector('.btn-subtext');
             if (btnSubtext) {
                 if (!hasLocation) {
-                    btnSubtext.textContent = 'GPS location required';
+                    btnSubtext.textContent = '📍 GPS location required';
+                } else if (currentLocation?.accuracy > MIN_GPS_ACCURACY) {
+                    btnSubtext.textContent = `🎯 Need better GPS accuracy (${currentLocation.accuracy.toFixed(0)}m / need ≤${MIN_GPS_ACCURACY}m)`;
                 } else if (!hasSession || !hasTarget) {
-                    btnSubtext.textContent = 'Complete all fields above';
+                    btnSubtext.textContent = '📝 Complete all fields above';
+                } else if (!isWithinRange) {
+                    const distanceText = distance ? (distance >= 1000 ? (distance/1000).toFixed(2) + 'km' : distance.toFixed(0) + 'm') : 'unknown';
+                    btnSubtext.textContent = `📍 Too far! ${distanceText} from campus (must be within ${MAX_ALLOWED_DISTANCE}m)`;
                 } else {
-                    btnSubtext.textContent = `Ready (${currentLocation.accuracy.toFixed(0)}m accuracy)`;
+                    btnSubtext.textContent = `✅ Ready! Within ${MAX_ALLOWED_DISTANCE}m (${distance?.toFixed(0)}m)`;
                 }
             }
             
@@ -421,10 +492,10 @@
             
             updateRequirement('session', hasSession);
             updateRequirement('target', hasTarget);
-            updateRequirement('location', hasLocation);
+            updateRequirement('location', hasLocation && currentLocation?.accuracy <= MIN_GPS_ACCURACY);
         }
         
-        // Start location monitoring
+        // Start location monitoring with high accuracy
         function startLocationMonitoring() {
             if (!navigator.geolocation) {
                 updateGPSStatus('error', 'Geolocation not supported');
@@ -435,55 +506,71 @@
                 navigator.geolocation.clearWatch(locationWatchId);
             }
             
-            updateGPSStatus('loading', 'Getting location...');
+            updateGPSStatus('loading', 'Getting precise location (need ≤30m accuracy)...');
             
-            const getLocationWithRetry = (retryCount = 0) => {
+            // First get high accuracy position
+            const getHighAccuracyLocation = () => {
                 const options = {
                     enableHighAccuracy: true,
-                    timeout: retryCount === 0 ? 10000 : 15000,
-                    maximumAge: 60000
+                    timeout: 15000,
+                    maximumAge: 0
                 };
                 
                 navigator.geolocation.getCurrentPosition(
                     (position) => {
                         handleLocationSuccess(position);
+                        // Then watch for updates
+                        startWatchingLocation();
                     },
                     (error) => {
-                        if (error.code === error.TIMEOUT && retryCount < 2) {
-                            updateGPSStatus('loading', `Getting location... Retry ${retryCount + 1}/2`);
-                            setTimeout(() => getLocationWithRetry(retryCount + 1), 1000);
-                        } else {
-                            handleLocationError(error);
-                        }
+                        console.warn('High accuracy failed:', error);
+                        // Fall back to standard accuracy
+                        startWatchingLocation();
                     },
                     options
                 );
+            };
+            
+            const startWatchingLocation = () => {
+                const watchOptions = {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 5000
+                };
                 
                 locationWatchId = navigator.geolocation.watchPosition(
                     (position) => {
                         handleLocationSuccess(position);
                     },
-                    (error) => {},
-                    {
-                        enableHighAccuracy: false,
-                        timeout: 30000,
-                        maximumAge: 10000
-                    }
+                    (error) => {
+                        console.warn('Watch position error:', error);
+                        handleLocationError(error);
+                    },
+                    watchOptions
                 );
             };
             
-            getLocationWithRetry(0);
+            getHighAccuracyLocation();
         }
         
         function handleLocationSuccess(position) {
+            const accuracy = position.coords.accuracy;
+            const isHighAccuracy = accuracy <= MIN_GPS_ACCURACY;
+            
             currentLocation = {
                 latitude: position.coords.latitude,
                 longitude: position.coords.longitude,
-                accuracy: position.coords.accuracy,
-                timestamp: new Date(position.timestamp)
+                accuracy: accuracy,
+                timestamp: new Date(position.timestamp),
+                isHighAccuracy: isHighAccuracy
             };
             
-            updateGPSStatus('success', 'Location active');
+            if (isHighAccuracy) {
+                updateGPSStatus('success', `High accuracy GPS: ±${accuracy.toFixed(0)}m`);
+            } else {
+                updateGPSStatus('warning', `Low accuracy: ±${accuracy.toFixed(0)}m (need ≤${MIN_GPS_ACCURACY}m)`);
+            }
+            
             updateLocationDisplay();
             updateCheckInButton();
         }
@@ -514,20 +601,32 @@
             if (!gpsStatus) return;
             
             let icon = '';
+            let bgColor = '';
             switch(status) {
                 case 'success':
                     icon = '<i class="fas fa-check-circle"></i>';
-                    gpsStatus.style.color = '#22c55e';
+                    gpsStatus.style.color = '#10b981';
+                    bgColor = '#d1fae5';
+                    break;
+                case 'warning':
+                    icon = '<i class="fas fa-exclamation-triangle"></i>';
+                    gpsStatus.style.color = '#f59e0b';
+                    bgColor = '#fed7aa';
                     break;
                 case 'error':
-                    icon = '<i class="fas fa-exclamation-triangle"></i>';
+                    icon = '<i class="fas fa-times-circle"></i>';
                     gpsStatus.style.color = '#ef4444';
+                    bgColor = '#fee2e2';
                     break;
                 default:
                     icon = '<i class="fas fa-spinner fa-spin"></i>';
                     gpsStatus.style.color = '#f59e0b';
+                    bgColor = '#fed7aa';
             }
             
+            gpsStatus.style.backgroundColor = bgColor;
+            gpsStatus.style.padding = '8px 12px';
+            gpsStatus.style.borderRadius = '8px';
             gpsStatus.innerHTML = `${icon} <span>${message}</span>`;
         }
         
@@ -538,15 +637,27 @@
             const lonElement = document.getElementById('longitude');
             const accuracyElement = document.getElementById('accuracy-value');
             const accuracyDot = document.querySelector('.accuracy-dot');
+            const accuracyWarning = document.getElementById('accuracy-warning');
             
             if (latElement) latElement.textContent = currentLocation.latitude.toFixed(6);
             if (lonElement) lonElement.textContent = currentLocation.longitude.toFixed(6);
-            if (accuracyElement) accuracyElement.textContent = currentLocation.accuracy.toFixed(1);
+            if (accuracyElement) {
+                accuracyElement.textContent = currentLocation.accuracy.toFixed(1);
+                if (currentLocation.accuracy > MIN_GPS_ACCURACY) {
+                    accuracyElement.style.color = '#f59e0b';
+                    if (accuracyWarning) accuracyWarning.style.display = 'inline';
+                } else {
+                    accuracyElement.style.color = '#10b981';
+                    if (accuracyWarning) accuracyWarning.style.display = 'none';
+                }
+            }
             
             if (accuracyDot) {
                 accuracyDot.className = 'accuracy-dot';
-                if (currentLocation.accuracy <= 20) {
-                    accuracyDot.classList.add('high');
+                if (currentLocation.accuracy <= 10) {
+                    accuracyDot.classList.add('excellent');
+                } else if (currentLocation.accuracy <= MIN_GPS_ACCURACY) {
+                    accuracyDot.classList.add('good');
                 } else if (currentLocation.accuracy <= 50) {
                     accuracyDot.classList.add('medium');
                 } else {
@@ -591,8 +702,6 @@
                 const intakeYear = attendanceUserProfile?.intake_year;
                 const block = attendanceUserProfile?.block;
                 
-                console.log('User profile:', { program, intakeYear, block });
-                
                 if (program !== 'KRCHN') {
                     console.log('Program is not KRCHN, no clinical areas');
                     attendanceCachedClinicalAreas = [];
@@ -614,40 +723,27 @@
                 
                 query = query.order('clinical_area_name');
                 
-                console.log('Executing query...');
                 const { data, error } = await query;
                 
-                if (error) {
-                    console.error('Error loading clinical areas:', error);
-                    attendanceCachedClinicalAreas = [];
-                    return [];
-                }
+                if (error) throw error;
                 
-                console.log('Clinical areas loaded:', data);
-                
-                if (!data || data.length === 0) {
-                    console.log('No clinical areas found for your program');
-                    attendanceCachedClinicalAreas = [];
-                    return [];
-                }
-                
-                attendanceCachedClinicalAreas = data.map(area => ({
+                attendanceCachedClinicalAreas = (data || []).map(area => ({
                     id: area.id,
                     name: area.clinical_area_name,
                     clinicalArea: area.clinical_area_name,
-                    latitude: parseFloat(area.latitude) || 0,
-                    longitude: parseFloat(area.longitude) || 0,
-                    radius: 100,
+                    latitude: parseFloat(area.latitude) || NAKURU_COLLEGE.latitude,
+                    longitude: parseFloat(area.longitude) || NAKURU_COLLEGE.longitude,
+                    radius: MAX_ALLOWED_DISTANCE,
                     program: area.program,
                     intakeYear: area.intake_year,
                     block: area.block_term
                 }));
                 
-                console.log('Cached clinical areas:', attendanceCachedClinicalAreas.length);
+                console.log(`Loaded ${attendanceCachedClinicalAreas.length} clinical areas`);
                 return attendanceCachedClinicalAreas;
                 
             } catch (error) {
-                console.error('Exception in loadClinicalTargets:', error);
+                console.error('Error loading clinical areas:', error);
                 attendanceCachedClinicalAreas = [];
                 return [];
             }
@@ -671,6 +767,7 @@
                     .from('geo_attendance_logs')
                     .select('*', { count: 'exact', head: true })
                     .eq('student_id', attendanceUserId)
+                    .eq('is_verified', true)
                     .gte('check_in_time', today.toISOString())
                     .lt('check_in_time', tomorrow.toISOString());
                 
@@ -682,27 +779,23 @@
             }
         }
         
-        // Load attendance history
+        // Load attendance history with enhanced display
         async function loadGeoAttendanceHistory(filter = 'today') {
             const tableBody = document.getElementById('geo-attendance-history');
-            if (!tableBody || !attendanceUserId) {
-                return;
-            }
+            if (!tableBody || !attendanceUserId) return;
             
-            tableBody.innerHTML = '<tr><td colspan="6"><div class="loading-spinner"></div> Loading history...</td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="7"><div class="loading-spinner"></div> Loading history...</td></tr>';
             
             try {
                 const supabaseClient = window.db?.supabase;
-                if (!supabaseClient) {
-                    throw new Error('Database not available');
-                }
+                if (!supabaseClient) throw new Error('Database not available');
                 
                 let query = supabaseClient
                     .from('geo_attendance_logs')
                     .select('*')
                     .eq('student_id', attendanceUserId)
                     .order('check_in_time', { ascending: false })
-                    .limit(50);
+                    .limit(100);
                 
                 const now = new Date();
                 if (filter === 'today') {
@@ -717,7 +810,6 @@
                 }
                 
                 const { data: logs, error } = await query;
-                
                 if (error) throw error;
                 
                 tableBody.innerHTML = '';
@@ -725,9 +817,9 @@
                 if (!logs || logs.length === 0) {
                     tableBody.innerHTML = `
                         <tr>
-                            <td colspan="6" class="text-center py-4">
-                                <i class="fas fa-history fa-2x text-gray-300 mb-2"></i>
-                                <p class="text-gray-500">No check-in history found</p>
+                            <td colspan="7" class="text-center py-4">
+                                <i class="fas fa-history fa-2x" style="color: #cbd5e1;"></i>
+                                <p style="color: #94a3b8; margin-top: 8px;">No check-in history found</p>
                             </td>
                         </tr>
                     `;
@@ -743,57 +835,144 @@
                         minute: '2-digit'
                     });
                     
-                    const isVerified = log.is_verified || false;
-                    const statusIcon = isVerified ? 'fa-check-circle' : 'fa-clock';
-                    const statusColor = isVerified ? 'text-green-600' : 'text-yellow-600';
-                    const statusText = isVerified ? 'Verified' : 'Pending';
+                    const distance = log.distance_meters;
+                    const isVerified = log.is_verified;
+                    const distanceWithinRange = distance && distance <= MAX_ALLOWED_DISTANCE;
                     
-                    const locationIcon = isVerified ? 'fa-check-circle' : 'fa-exclamation-triangle';
-                    const locationColor = isVerified ? 'text-green-600' : 'text-yellow-600';
-                    const locationText = isVerified ? 'On-site' : 'Remote';
-                    
-                    let detailsText = '';
-                    if (log.accuracy_m) {
-                        detailsText += `Accuracy: ${parseFloat(log.accuracy_m).toFixed(0)}m`;
+                    let statusIcon, statusColor, statusText;
+                    if (isVerified && distanceWithinRange) {
+                        statusIcon = 'fa-check-circle';
+                        statusColor = '#10b981';
+                        statusText = '✓ Verified';
+                    } else if (distance && distance <= MAX_ALLOWED_DISTANCE && !isVerified) {
+                        statusIcon = 'fa-clock';
+                        statusColor = '#f59e0b';
+                        statusText = '⏳ Pending Review';
+                    } else {
+                        statusIcon = 'fa-times-circle';
+                        statusColor = '#ef4444';
+                        statusText = '✗ Out of Range';
                     }
-                    if (log.distance_meters && !isVerified) {
-                        if (detailsText) detailsText += '<br>';
-                        const distanceM = parseFloat(log.distance_meters);
-                        let distanceText;
-                        if (distanceM >= 1000) {
-                            distanceText = `${(distanceM / 1000).toFixed(2)} km`;
+                    
+                    let locationIcon, locationColor, locationText;
+                    if (distance && distance <= MAX_ALLOWED_DISTANCE) {
+                        locationIcon = 'fa-check-circle';
+                        locationColor = '#10b981';
+                        locationText = 'On Campus ✓';
+                    } else if (distance && distance <= 100) {
+                        locationIcon = 'fa-exclamation-triangle';
+                        locationColor = '#f59e0b';
+                        locationText = 'Near Campus';
+                    } else {
+                        locationIcon = 'fa-map-marker-alt';
+                        locationColor = '#ef4444';
+                        locationText = 'Off Campus';
+                    }
+                    
+                    let distanceText = '';
+                    let distanceClass = '';
+                    if (distance) {
+                        if (distance <= MAX_ALLOWED_DISTANCE) {
+                            distanceClass = 'distance-good';
+                            distanceText = `${distance.toFixed(0)}m ✓`;
+                        } else if (distance <= 100) {
+                            distanceClass = 'distance-warning';
+                            distanceText = `${distance.toFixed(0)}m ⚠️`;
                         } else {
-                            distanceText = `${distanceM.toFixed(0)} m`;
+                            distanceClass = 'distance-bad';
+                            if (distance >= 1000) {
+                                distanceText = `${(distance / 1000).toFixed(2)}km ✗`;
+                            } else {
+                                distanceText = `${distance.toFixed(0)}m ✗`;
+                            }
                         }
-                        detailsText += `Distance: ${distanceText}`;
+                    } else {
+                        distanceText = 'N/A';
+                    }
+                    
+                    const accuracy = log.accuracy_m;
+                    let accuracyText = '';
+                    let accuracyClass = '';
+                    if (accuracy) {
+                        if (accuracy <= MIN_GPS_ACCURACY) {
+                            accuracyClass = 'accuracy-good';
+                            accuracyText = `±${accuracy.toFixed(0)}m ✓`;
+                        } else if (accuracy <= 50) {
+                            accuracyClass = 'accuracy-warning';
+                            accuracyText = `±${accuracy.toFixed(0)}m ⚠️`;
+                        } else {
+                            accuracyClass = 'accuracy-bad';
+                            accuracyText = `±${accuracy.toFixed(0)}m ✗`;
+                        }
+                    } else {
+                        accuracyText = 'N/A';
                     }
                     
                     const row = document.createElement('tr');
+                    row.className = 'attendance-row';
                     row.innerHTML = `
-                        <td>${timeStr}</td>
-                        <td>${log.session_type || 'N/A'}</td>
-                        <td>${log.target_name || 'N/A'}</td>
-                        <td class="${statusColor}">
-                            <i class="fas ${statusIcon}"></i> ${statusText}
+                        <td style="white-space: nowrap;"><i class="far fa-calendar-alt" style="color: #94a3b8; margin-right: 6px;"></i>${timeStr}</td>
+                        <td><span class="session-badge session-${log.session_type?.toLowerCase()}">${log.session_type || 'N/A'}</span></td>
+                        <td><strong>${log.target_name || 'N/A'}</strong></td>
+                        <td style="color: ${statusColor}; font-weight: 500;">
+                            <i class="fas ${statusIcon}" style="margin-right: 4px;"></i>${statusText}
                         </td>
-                        <td class="${locationColor}">
-                            <i class="fas ${locationIcon}"></i> ${locationText}
+                        <td style="color: ${locationColor};">
+                            <i class="fas ${locationIcon}" style="margin-right: 4px;"></i>${locationText}
                         </td>
-                        <td>${detailsText || '-'}</td>
+                        <td>
+                            <div class="distance-badge ${distanceClass}">${distanceText}</div>
+                            <div class="accuracy-badge ${accuracyClass}" style="margin-top: 4px;">${accuracyText}</div>
+                        </td>
+                     </tr>
                     `;
                     tableBody.appendChild(row);
                 });
+                
+                // Update summary stats
+                updateHistoryStats(logs);
                 
             } catch (error) {
                 console.error('Error loading history:', error);
                 tableBody.innerHTML = `
                     <tr>
-                        <td colspan="6" class="text-center text-red-600 py-4">
+                        <td colspan="7" class="text-center" style="color: #ef4444; padding: 20px;">
                             <i class="fas fa-exclamation-triangle"></i> Error loading history
                         </td>
                     </tr>
                 `;
             }
+        }
+        
+        function updateHistoryStats(logs) {
+            const statsContainer = document.getElementById('history-stats');
+            if (!statsContainer) return;
+            
+            const total = logs.length;
+            const verified = logs.filter(l => l.is_verified).length;
+            const withinRange = logs.filter(l => l.distance_meters && l.distance_meters <= MAX_ALLOWED_DISTANCE).length;
+            const highAccuracy = logs.filter(l => l.accuracy_m && l.accuracy_m <= MIN_GPS_ACCURACY).length;
+            
+            statsContainer.innerHTML = `
+                <div style="display: flex; gap: 1rem; flex-wrap: wrap; padding: 1rem; background: #f8fafc; border-radius: 12px; margin-bottom: 1rem;">
+                    <div style="flex: 1; text-align: center;">
+                        <div style="font-size: 11px; color: #64748b; text-transform: uppercase;">Total Check-ins</div>
+                        <div style="font-size: 24px; font-weight: bold; color: #4C1D95;">${total}</div>
+                    </div>
+                    <div style="flex: 1; text-align: center;">
+                        <div style="font-size: 11px; color: #64748b; text-transform: uppercase;">Verified</div>
+                        <div style="font-size: 24px; font-weight: bold; color: #10b981;">${verified}</div>
+                    </div>
+                    <div style="flex: 1; text-align: center;">
+                        <div style="font-size: 11px; color: #64748b; text-transform: uppercase;">Within ${MAX_ALLOWED_DISTANCE}m</div>
+                        <div style="font-size: 24px; font-weight: bold; color: #3b82f6;">${withinRange}</div>
+                    </div>
+                    <div style="flex: 1; text-align: center;">
+                        <div style="font-size: 11px; color: #64748b; text-transform: uppercase;">High Accuracy (≤${MIN_GPS_ACCURACY}m)</div>
+                        <div style="font-size: 24px; font-weight: bold; color: #8b5cf6;">${highAccuracy}</div>
+                    </div>
+                </div>
+            `;
         }
         
         // Get device ID
@@ -820,12 +999,11 @@
                     Math.cos(radLat1) * Math.cos(radLat2) *
                     Math.sin(dLon / 2) ** 2;
             const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-            const distanceMeters = R * c;
             
-            return distanceMeters;
+            return R * c;
         }
         
-        // Check-in function with unit tracking
+        // Check-in function with 50m verification
         async function attendanceGeoCheckIn() {
             const button = document.getElementById('check-in-button');
             const sessionTypeSelect = document.getElementById('session-type');
@@ -835,41 +1013,30 @@
             
             button.disabled = true;
             const originalHTML = button.innerHTML;
-            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking in...';
+            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying location within 50m...';
             
             try {
-                if (!sessionTypeSelect.value) {
-                    throw new Error('Please select session type');
-                }
+                if (!sessionTypeSelect.value) throw new Error('Please select session type');
+                if (!targetSelect.value || targetSelect.value === '') throw new Error('Please select target');
+                if (!currentLocation) throw new Error('Location not available. Enable GPS and try again.');
                 
-                if (!targetSelect.value || targetSelect.value === '') {
-                    throw new Error('Please select target');
-                }
-                
-                if (!currentLocation) {
-                    throw new Error('Location not available. Enable GPS and try again.');
+                // Check GPS accuracy
+                if (currentLocation.accuracy > MIN_GPS_ACCURACY) {
+                    throw new Error(`GPS accuracy too low (${currentLocation.accuracy.toFixed(0)}m). Need ≤${MIN_GPS_ACCURACY}m accuracy. Please move to an open area.`);
                 }
                 
                 const [targetId, targetName, sessionType, unitCode] = targetSelect.value.split('|');
-                
                 const targetType = sessionTypeSelect.value;
-                let targetLat, targetLon, targetRadius;
+                
+                let targetLat = NAKURU_COLLEGE.latitude;
+                let targetLon = NAKURU_COLLEGE.longitude;
                 
                 if (targetType === 'clinical') {
                     const target = attendanceCachedClinicalAreas.find(t => t.id === targetId);
                     if (target) {
                         targetLat = target.latitude;
                         targetLon = target.longitude;
-                        targetRadius = 100;
-                    } else {
-                        targetLat = NAKURU_COLLEGE.latitude;
-                        targetLon = NAKURU_COLLEGE.longitude;
-                        targetRadius = NAKURU_COLLEGE.radius;
                     }
-                } else {
-                    targetLat = NAKURU_COLLEGE.latitude;
-                    targetLon = NAKURU_COLLEGE.longitude;
-                    targetRadius = NAKURU_COLLEGE.radius;
                 }
                 
                 const distance = calculateAttendanceDistance(
@@ -879,12 +1046,16 @@
                     targetLon
                 );
                 
-                const isVerified = distance <= targetRadius;
+                // CRITICAL: Check if within 50 METERS
+                const isVerified = distance <= MAX_ALLOWED_DISTANCE;
+                
+                if (!isVerified) {
+                    let distanceText = distance >= 1000 ? `${(distance/1000).toFixed(2)} km` : `${distance.toFixed(0)} meters`;
+                    throw new Error(`You are ${distanceText} away from campus. Must be within ${MAX_ALLOWED_DISTANCE} meters to check in.`);
+                }
                 
                 const supabaseClient = window.db?.supabase;
-                if (!supabaseClient) {
-                    throw new Error('Database connection error');
-                }
+                if (!supabaseClient) throw new Error('Database connection error');
                 
                 // Find the unit information from approved units
                 const selectedUnit = approvedUnits.find(u => 
@@ -900,13 +1071,12 @@
                     latitude: currentLocation.latitude,
                     longitude: currentLocation.longitude,
                     accuracy_m: currentLocation.accuracy,
-                    is_verified: isVerified,
+                    is_verified: true, // Auto-verified since we checked distance
                     device_id: getAttendanceDeviceId(),
                     student_name: attendanceUserProfile?.full_name || 'Unknown',
                     distance_meters: distance,
                     target_latitude: targetLat,
                     target_longitude: targetLon,
-                    // Additional fields for unit tracking
                     unit_code: selectedUnit?.unit_code || unitCode,
                     unit_name: selectedUnit?.unit_name || targetName,
                     program: attendanceUserProfile?.program,
@@ -920,48 +1090,32 @@
                 
                 if (error) throw error;
                 
-                // Dispatch attendance event for tracking
+                // Dispatch attendance event
                 document.dispatchEvent(new CustomEvent('attendanceRecorded', {
                     detail: {
                         unitCode: selectedUnit?.unit_code || unitCode,
                         unitName: selectedUnit?.unit_name || targetName,
-                        isVerified: isVerified,
+                        isVerified: true,
+                        distance: distance,
                         timestamp: new Date().toISOString(),
                         sessionType: targetType
                     }
                 }));
                 
                 if (window.AppUtils?.showToast) {
-                    let message;
-                    let distanceText = '';
-                    
-                    if (distance >= 1000) {
-                        const distanceKm = (distance / 1000).toFixed(2);
-                        distanceText = ` (${distanceKm} km away)`;
-                    } else {
-                        distanceText = ` (${distance.toFixed(0)} m away)`;
-                    }
-                    
-                    if (isVerified) {
-                        if (targetType === 'clinical') {
-                            message = `✅ Checked in at ${targetName} successfully!`;
-                        } else {
-                            message = `✅ Checked into ${targetName} at college successfully!`;
-                        }
-                        window.AppUtils.showToast(message, 'success');
-                    } else {
-                        message = `📍 Checked into ${targetName}${distanceText} - Outside range`;
-                        window.AppUtils.showToast(message, 'warning');
-                    }
+                    window.AppUtils.showToast(
+                        `✅ Successfully checked into ${targetName}! (${distance.toFixed(0)}m from campus)`, 
+                        'success'
+                    );
                 }
                 
                 await loadTodayAttendanceCount();
                 triggerDashboardAttendanceUpdate();
                 
-                // Reset form but keep location monitoring active
+                // Reset form
                 sessionTypeSelect.value = '';
                 targetSelect.value = '';
-                handleSessionTypeChange(); // This will clear the target selector
+                handleSessionTypeChange();
                 await loadGeoAttendanceHistory('today');
                 
             } catch (error) {
@@ -975,76 +1129,50 @@
             }
         }
         
-        // Add CSS for attendance system
+        // Add CSS for enhanced attendance system
         const style = document.createElement('style');
         style.textContent = `
-            .accuracy-dot {
-                width: 10px;
-                height: 10px;
-                border-radius: 50%;
-                display: inline-block;
-                margin-right: 5px;
-            }
-            .accuracy-dot.high { background-color: #22c55e; }
+            .accuracy-dot.excellent { background-color: #10b981; box-shadow: 0 0 0 2px #d1fae5; }
+            .accuracy-dot.good { background-color: #3b82f6; box-shadow: 0 0 0 2px #dbeafe; }
             .accuracy-dot.medium { background-color: #f59e0b; }
             .accuracy-dot.low { background-color: #ef4444; }
             
-            .req-icon {
-                margin-right: 5px;
-                font-size: 0.9em;
-            }
-            
-            #check-in-button:disabled {
-                opacity: 0.5;
-                cursor: not-allowed;
-            }
-            
-            #check-in-button:not(:disabled):hover {
-                transform: translateY(-2px);
-                transition: transform 0.2s;
-            }
-            
-            #check-in-button.ready {
-                background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
-            }
-            
-            .loading-spinner {
-                width: 30px;
-                height: 30px;
-                border: 3px solid #f3f3f3;
-                border-top: 3px solid var(--color-primary);
-                border-radius: 50%;
-                animation: spin 1s linear infinite;
-                margin: 0 auto;
-            }
-            
-            @keyframes spin {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
-            }
-            
-            .text-green-600 { color: #16a34a; }
-            .text-yellow-600 { color: #ca8a04; }
-            .text-red-600 { color: #dc2626; }
-            .text-gray-300 { color: #d1d5db; }
-            .text-gray-500 { color: #6b7280; }
-            
-            .text-center { text-align: center; }
-            .py-4 { padding-top: 1rem; padding-bottom: 1rem; }
-            .mb-2 { margin-bottom: 0.5rem; }
-            .mt-1 { margin-top: 0.25rem; }
-            .mt-2 { margin-top: 0.5rem; }
-            
-            .help-text {
-                font-size: 12px;
-                color: #f59e0b;
-                margin-top: 4px;
-            }
-            
-            .course-count-indicator {
+            .session-badge {
+                display: inline-block;
+                padding: 4px 10px;
+                border-radius: 20px;
                 font-size: 11px;
-                color: #10b981;
-                margin-top: 4px;
+                font-weight: 600;
+            }
+            .session-class { background: #e0e7ff; color: #3730a3; }
+            .session-clinical { background: #dcfce7; color: #166534; }
+            .session-lab { background: #fef3c7; color: #92400e; }
+            .session-tutorial { background: #fce7f3; color: #9d174d; }
+            
+            .distance-good { color: #10b981; font-weight: 500; }
+            .distance-warning { color: #f59e0b; font-weight: 500; }
+            .distance-bad { color: #ef4444; font-weight: 500; }
+            
+            .accuracy-good { color: #10b981; font-size: 11px; }
+            .accuracy-warning { color: #f59e0b; font-size: 11px; }
+            .accuracy-bad { color: #ef4444; font-size: 11px; }
+            
+            .attendance-row:hover {
+                background-color: #f8fafc;
+                transition: background-color 0.2s;
+            }
+            
+            #distance-status {
+                margin-top: 10px;
+                padding: 10px;
+                border-radius: 8px;
+                font-size: 13px;
+                align-items: center;
+                gap: 8px;
+            }
+            
+            #gps-status {
+                transition: all 0.3s ease;
             }
         `;
         document.head.appendChild(style);
