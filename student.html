@@ -2231,7 +2231,7 @@
 <script src="./js/exam-card.js"></script>
 <script src="./js/sidebar-dropdown.js"></script>
 <script>
-// ==================== LEARNING HUB MODULE HANDLER ====================
+// ==================== LEARNING HUB MODULE HANDLER WITH AUTO-CLOSE ====================
 (function() {
     'use strict';
     
@@ -2255,6 +2255,18 @@
     const hubOnlineLearning = document.getElementById('hub-online-learning');
     const hubExamCard = document.getElementById('hub-exam-card');
     
+    // Get dropdown elements
+    const dropdownParent = document.querySelector('.has-dropdown');
+    const dropdownMenu = document.querySelector('.dropdown-submenu');
+    
+    // Function to close dropdown
+    function closeDropdown() {
+        if (dropdownParent && dropdownMenu) {
+            dropdownParent.classList.remove('open');
+            dropdownMenu.style.display = 'none';
+        }
+    }
+    
     // Hide all sections function
     function hideAllSections() {
         const sections = [dashboard, profile, calendar, attendance, messages, supportTickets, cats, resources, nurseiq, learningHub];
@@ -2271,11 +2283,14 @@
         });
     }
     
-    // Show content based on tab
+    // Show content based on tab and close dropdown
     function showContent(tabId) {
         console.log('📂 Showing:', tabId);
         
-        // Hide everything first
+        // Close the dropdown first
+        closeDropdown();
+        
+        // Hide everything
         hideAllSections();
         hideAllHubModules();
         
@@ -2291,6 +2306,12 @@
         }
         else if (tabId === 'attendance') {
             if (attendance) attendance.style.display = 'block';
+            // Trigger attendance load
+            setTimeout(() => {
+                if (window.attendanceModule?.loadAttendanceHistory) {
+                    window.attendanceModule.loadAttendanceHistory();
+                }
+            }, 100);
         }
         else if (tabId === 'messages') {
             if (messages) messages.style.display = 'block';
@@ -2308,10 +2329,8 @@
             if (nurseiq) nurseiq.style.display = 'block';
         }
         else if (tabId === 'hub-courses') {
-            // Show Learning Hub and Courses module ONLY
             if (learningHub) learningHub.style.display = 'block';
             if (hubCourses) hubCourses.style.display = 'block';
-            // Load courses data
             setTimeout(() => {
                 if (window.coursesModule) {
                     console.log('📚 Loading courses...');
@@ -2320,10 +2339,8 @@
             }, 100);
         }
         else if (tabId === 'hub-register') {
-            // Show Learning Hub and Register module ONLY
             if (learningHub) learningHub.style.display = 'block';
             if (hubRegister) hubRegister.style.display = 'block';
-            // Load registration data
             setTimeout(() => {
                 if (window.unitRegistrationModule) {
                     console.log('📝 Loading unit registration...');
@@ -2338,7 +2355,6 @@
         else if (tabId === 'hub-exam-card') {
             if (learningHub) learningHub.style.display = 'block';
             if (hubExamCard) hubExamCard.style.display = 'block';
-            // Load exam card data
             setTimeout(() => {
                 if (window.examCardModule) {
                     console.log('📇 Loading exam card...');
@@ -2357,7 +2373,6 @@
     
     // Setup dropdown toggle
     const dropdownToggle = document.querySelector('.has-dropdown > a');
-    const dropdownMenu = document.querySelector('.dropdown-submenu');
     
     if (dropdownToggle && dropdownMenu) {
         // Remove existing listener
@@ -2367,19 +2382,18 @@
         newToggle.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            const parent = newToggle.closest('.has-dropdown');
-            const isOpen = parent.classList.contains('open');
+            const isOpen = dropdownParent.classList.contains('open');
             if (isOpen) {
-                parent.classList.remove('open');
+                dropdownParent.classList.remove('open');
                 dropdownMenu.style.display = 'none';
             } else {
-                parent.classList.add('open');
+                dropdownParent.classList.add('open');
                 dropdownMenu.style.display = 'block';
             }
         });
     }
     
-    // Setup all menu clicks
+    // Setup all menu clicks - with auto-close
     document.querySelectorAll('.nav a[data-tab], .dropdown-submenu a[data-tab]').forEach(item => {
         const newItem = item.cloneNode(true);
         item.parentNode.replaceChild(newItem, item);
@@ -2394,11 +2408,20 @@
         });
     });
     
+    // Also close dropdown when clicking outside (optional)
+    document.addEventListener('click', function(e) {
+        if (dropdownParent && !dropdownParent.contains(e.target)) {
+            if (dropdownParent.classList.contains('open')) {
+                dropdownParent.classList.remove('open');
+                if (dropdownMenu) dropdownMenu.style.display = 'none';
+            }
+        }
+    });
+    
     // Set default to dashboard
     showContent('dashboard');
     
-    console.log('✅ Learning Hub Module Handler Ready!');
-    console.log('📚 My Courses and Register Units are now SEPARATE modules');
+    console.log('✅ Learning Hub Module Handler Ready with Auto-Close!');
 })();
 </script>
 <!-- ==================== INITIALIZATION SCRIPT ==================== -->
