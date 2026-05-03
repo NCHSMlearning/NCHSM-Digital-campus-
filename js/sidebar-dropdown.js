@@ -1,137 +1,53 @@
 <script>
-// COMPLETE MODULE HANDLER - Fixes all Learning Hub modules
+// Sidebar Dropdown for My Learning Hub
 (function() {
     'use strict';
     
-    console.log('🎯 COMPLETE MODULE HANDLER Initializing...');
+    console.log('📂 Sidebar dropdown initializing...');
     
-    // Define all modules and their load functions
-    const MODULES = {
-        // Hub modules (inside Learning Hub)
-        'hub-courses': {
-            elementId: 'hub-courses',
-            loadFn: () => window.coursesModule?.loadCourses ? window.coursesModule.loadCourses() : null,
-            moduleName: 'My Courses'
-        },
-        'hub-register': {
-            elementId: 'hub-register',
-            loadFn: () => window.unitRegistrationModule?.loadUnits ? window.unitRegistrationModule.loadUnits() : null,
-            moduleName: 'Register Units'
-        },
-        'hub-online-learning': {
-            elementId: 'hub-online-learning',
-            loadFn: () => console.log('📖 Online Learning module ready'),
-            moduleName: 'Online Learning'
-        },
-        'hub-exam-card': {
-            elementId: 'hub-exam-card',
-            loadFn: () => window.examCardModule?.loadExamCard ? window.examCardModule.loadExamCard() : null,
-            moduleName: 'Exam Card'
-        },
-        // Regular tabs (outside Learning Hub)
-        'dashboard': { elementId: 'dashboard', loadFn: null, moduleName: 'Dashboard' },
-        'profile': { elementId: 'profile', loadFn: null, moduleName: 'Profile' },
-        'calendar': { elementId: 'calendar', loadFn: null, moduleName: 'Calendar' },
-        'attendance': { elementId: 'attendance', loadFn: null, moduleName: 'Attendance' },
-        'messages': { elementId: 'messages', loadFn: null, moduleName: 'Messages' },
-        'support-tickets': { elementId: 'support-tickets', loadFn: null, moduleName: 'Support Tickets' },
-        'cats': { elementId: 'cats', loadFn: null, moduleName: 'Exams & Grades' },
-        'resources': { elementId: 'resources', loadFn: null, moduleName: 'Resources' },
-        'nurseiq': { elementId: 'nurseiq', loadFn: null, moduleName: 'NurseIQ' }
-    };
-    
-    // Helper: Show content
-    function showContent(tabId) {
-        console.log(`📂 Switching to: ${tabId}`);
-        
-        const isHubModule = tabId.startsWith('hub-');
-        const learningHub = document.getElementById('learning-hub');
-        
-        if (isHubModule) {
-            // Show Learning Hub section
-            if (learningHub) learningHub.style.display = 'block';
-            
-            // Hide all regular tabs
-            Object.keys(MODULES).forEach(id => {
-                if (!id.startsWith('hub-')) {
-                    const el = document.getElementById(MODULES[id].elementId);
-                    if (el) el.style.display = 'none';
-                }
-            });
-            
-            // Hide all hub modules first
-            Object.keys(MODULES).forEach(id => {
-                if (id.startsWith('hub-')) {
-                    const el = document.getElementById(MODULES[id].elementId);
-                    if (el) el.style.display = 'none';
-                }
-            });
-            
-            // Show selected hub module
-            const selectedModule = document.getElementById(tabId);
-            if (selectedModule) {
-                selectedModule.style.display = 'block';
-                console.log(`✅ Showing ${MODULES[tabId]?.moduleName || tabId}`);
-                
-                // Load data for this module
-                if (MODULES[tabId]?.loadFn) {
-                    setTimeout(() => {
-                        console.log(`🔄 Loading ${MODULES[tabId].moduleName} data...`);
-                        MODULES[tabId].loadFn();
-                    }, 150);
-                }
-            } else {
-                console.log(`❌ Module element not found: ${tabId}`);
-            }
-        } else {
-            // Regular tab - hide Learning Hub
-            if (learningHub) learningHub.style.display = 'none';
-            
-            // Hide all hub modules
-            Object.keys(MODULES).forEach(id => {
-                if (id.startsWith('hub-')) {
-                    const el = document.getElementById(MODULES[id].elementId);
-                    if (el) el.style.display = 'none';
-                }
-            });
-            
-            // Hide all regular tabs
-            Object.keys(MODULES).forEach(id => {
-                if (!id.startsWith('hub-')) {
-                    const el = document.getElementById(MODULES[id].elementId);
-                    if (el) el.style.display = 'none';
-                }
-            });
-            
-            // Show selected regular tab
-            const selectedTab = document.getElementById(tabId);
-            if (selectedTab) {
-                selectedTab.style.display = 'block';
-                console.log(`✅ Showing ${MODULES[tabId]?.moduleName || tabId}`);
-            }
-        }
-        
-        // Update active states in sidebar
-        document.querySelectorAll('.nav a, .dropdown-submenu a').forEach(link => {
-            link.classList.remove('active');
+    // Function to show regular tabs
+    function showRegularTab(tabName) {
+        document.querySelectorAll('.tab-content').forEach(tab => {
+            tab.style.display = 'none';
+            tab.classList.remove('active');
         });
-        const activeLink = document.querySelector(`a[data-tab="${tabId}"]`);
+        const selectedTab = document.getElementById(tabName);
+        if (selectedTab) {
+            selectedTab.style.display = 'block';
+            selectedTab.classList.add('active');
+        }
+        document.querySelectorAll('.nav a').forEach(link => link.classList.remove('active'));
+        const activeLink = document.querySelector(`a[data-tab="${tabName}"]`);
         if (activeLink) activeLink.classList.add('active');
     }
     
-    // Setup dropdown toggle (My Learning Hub)
+    // Function to show hub modules
+    function showHubModule(moduleId) {
+        // Show learning hub tab first
+        const learningHubTab = document.getElementById('learning-hub');
+        if (learningHubTab && learningHubTab.style.display === 'none') {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.style.display = 'none');
+            learningHubTab.style.display = 'block';
+        }
+        // Hide all hub modules
+        const modules = ['hub-courses', 'hub-register', 'hub-online-learning', 'hub-exam-card'];
+        modules.forEach(id => {
+            const module = document.getElementById(id);
+            if (module) module.style.display = 'none';
+        });
+        // Show selected module
+        const selected = document.getElementById(moduleId);
+        if (selected) selected.style.display = 'block';
+        console.log('Showing:', moduleId);
+    }
+    
+    // Setup dropdown toggle
     const dropdownToggle = document.querySelector('.has-dropdown > a');
     const dropdownMenu = document.querySelector('.dropdown-submenu');
-    
     if (dropdownToggle && dropdownMenu) {
-        // Remove existing listeners to avoid duplicates
-        const newToggle = dropdownToggle.cloneNode(true);
-        dropdownToggle.parentNode.replaceChild(newToggle, dropdownToggle);
-        
-        newToggle.addEventListener('click', (e) => {
+        dropdownToggle.addEventListener('click', function(e) {
             e.preventDefault();
-            e.stopPropagation();
-            const parent = newToggle.closest('.has-dropdown');
+            const parent = this.closest('.has-dropdown');
             const isOpen = parent.classList.contains('open');
             if (isOpen) {
                 parent.classList.remove('open');
@@ -143,27 +59,23 @@
         });
     }
     
-    // Setup all menu clicks (sidebar items and dropdown items)
-    document.querySelectorAll('.nav a[data-tab], .dropdown-submenu a[data-tab]').forEach(item => {
-        // Remove existing listeners
-        const newItem = item.cloneNode(true);
-        item.parentNode.replaceChild(newItem, item);
-        
-        newItem.addEventListener('click', (e) => {
+    // Setup submenu items
+    document.querySelectorAll('.dropdown-submenu a').forEach(item => {
+        item.addEventListener('click', function(e) {
             e.preventDefault();
-            e.stopPropagation();
-            const tabId = newItem.getAttribute('data-tab');
-            if (tabId && MODULES[tabId]) {
-                showContent(tabId);
-            } else if (tabId) {
-                console.log(`⚠️ Unknown tab: ${tabId}`);
+            const tab = this.getAttribute('data-tab');
+            if (tab) {
+                if (tab.startsWith('hub-')) {
+                    showHubModule(tab);
+                } else {
+                    showRegularTab(tab);
+                }
+                document.querySelectorAll('.dropdown-submenu a').forEach(a => a.classList.remove('active'));
+                this.classList.add('active');
             }
         });
     });
     
-    // Set default view to Dashboard
-    showContent('dashboard');
-    
-    console.log(`✅ Module handler ready! Registered modules: ${Object.keys(MODULES).join(', ')}`);
+    console.log('✅ Sidebar dropdown initialized');
 })();
 </script>
