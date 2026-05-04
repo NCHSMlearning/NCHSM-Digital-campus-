@@ -1,4 +1,4 @@
-// js/ui.js - COMPLETE WORKING VERSION WITH CLEAN URLs (NO HASHES)
+// js/ui.js - COMPLETE WORKING VERSION WITH FIXED MOBILE MENU CLOSING
 class UIModule {
     constructor() {
         console.log('🚀 Initializing UIModule...');
@@ -136,20 +136,140 @@ class UIModule {
             tab.classList.remove('active');
         });
         this.navLinks.forEach(link => link.classList.remove('active'));
-        if (window.innerWidth <= 768 && this.sidebar) this.sidebar.classList.remove('active');
+        if (window.innerWidth <= 768 && this.sidebar) this.sidebar.classList.remove('active', 'open');
     }
     
     // ============================================
-    // CLEAN URL NAVIGATION - NO HASHES, PERSISTS ON REFRESH
+    // MOBILE MENU FUNCTIONS - FIXED FOR BOTH 'active' AND 'open' CLASSES
     // ============================================
     
-    setupUrlNavigation() { 
-        this.setupHistoryNavigation(); 
+    isMenuOpen() {
+        // Check for both 'active' and 'open' classes (CSS compatibility)
+        return (this.sidebar && (this.sidebar.classList.contains('active') || this.sidebar.classList.contains('open')));
     }
     
-    setupHistoryNavigation() {
+    openMenu() {
+        if (this.sidebar) {
+            this.sidebar.classList.add('active');
+            this.sidebar.classList.add('open'); // Add both for CSS compatibility
+        }
+        if (this.overlay) {
+            this.overlay.classList.add('active');
+            this.overlay.style.display = 'block';
+        }
+        document.body.style.overflow = 'hidden';
+        document.body.classList.add('menu-open');
+        console.log('📱 Mobile menu opened');
+    }
+    
+    closeMenu() {
+        if (this.sidebar) {
+            this.sidebar.classList.remove('active');
+            this.sidebar.classList.remove('open');
+        }
+        if (this.overlay) {
+            this.overlay.classList.remove('active');
+            this.overlay.style.display = 'none';
+        }
+        document.body.style.overflow = '';
+        document.body.classList.remove('menu-open');
+        console.log('📱 Mobile menu closed');
+    }
+    
+    toggleMenu() {
+        if (this.isMenuOpen()) {
+            this.closeMenu();
+        } else {
+            this.openMenu();
+        }
+    }
+    
+    // ============================================
+    // TAB NAVIGATION - ALWAYS CLOSES MENU FIRST
+    // ============================================
+    
+    showTab(tabId, fromNavigation = false) {
+        if (!this.isValidTab(tabId)) tabId = 'dashboard';
+        
+        // Don't change tab if already on this tab and not forced
+        if (this.currentTab === tabId && !fromNavigation) return;
+        
+        console.log(`📂 Showing tab: ${tabId} (fromNavigation: ${fromNavigation})`);
+        
+        // ========== CRITICAL FIX: ALWAYS CLOSE MOBILE MENU FIRST ==========
+        if (this.isMenuOpen()) {
+            console.log('🔒 Closing mobile menu before showing tab...');
+            this.closeMenu();
+        }
+        
+        // Update the content
+        this.tabs.forEach(tab => {
+            tab.style.display = 'none';
+            tab.classList.remove('active');
+        });
+        
+        const selectedTab = document.getElementById(tabId);
+        if (selectedTab) {
+            selectedTab.style.display = 'block';
+            selectedTab.classList.add('active');
+        } else {
+            console.warn(`⚠️ Tab element "${tabId}" not found`);
+        }
+        
+        // Update nav links active state
+        this.navLinks.forEach(link => {
+            link.classList.remove('active');
+            if (link.getAttribute('data-tab') === tabId) link.classList.add('active');
+        });
+        
+        // Save to localStorage
+        localStorage.setItem(this.storageKey, tabId);
+        this.currentTab = tabId;
+        this.updatePageTitle(tabId);
+        
+        // Update URL if from navigation
+        if (fromNavigation) {
+            let newUrl = tabId === 'dashboard' ? '/student' : `/student/${tabId}`;
+            if (window.location.pathname !== newUrl) {
+                history.pushState({}, '', newUrl);
+            }
+        }
+        
+        // Load the module for this tab
+        setTimeout(() => this.loadTabModule(tabId), 100);
+        
+        // Update last login when showing dashboard
+        if (tabId === 'dashboard') {
+            setTimeout(() => {
+                this.updateLastLogin(window.currentUserId);
+                this.updateProfilePhoto();
+            }, 500);
+        }
+    }
+    
+    navigateToTab(tabId) {
+        if (!this.isValidTab(tabId)) tabId = 'dashboard';
+        
+        console.log(`🖱️ Navigating to tab: ${tabId}`);
+        
+        // Build clean URL
+        let newUrl = tabId === 'dashboard' ? '/student' : `/student/${tabId}`;
+        
+        // Update URL
+        if (window.location.pathname !== newUrl) {
+            history.pushState({}, '', newUrl);
+        }
+        
+        // Show the tab (with fromNavigation = true)
+        this.showTab(tabId, true);
+    }
+    
+    // ============================================
+    // URL NAVIGATION SETUP
+    // ============================================
+    
+    setupUrlNavigation() {
         const handleRoute = () => {
-            // Get tab from pathname (clean URL - no hashes)
             let tabId = 'dashboard';
             let path = window.location.pathname;
             
@@ -165,97 +285,187 @@ class UIModule {
             if (path && this.isValidTab(path)) {
                 tabId = path;
             } else {
-                // Check localStorage for last tab
                 const lastTab = localStorage.getItem(this.storageKey);
                 if (lastTab && this.isValidTab(lastTab)) {
                     tabId = lastTab;
                 }
             }
             
-            // Show the tab WITHOUT updating URL (to avoid infinite loop)
             if (this.isValidTab(tabId)) {
-                this.showTab(tabId, false);  // false = not from navigation
-            } else {
-                this.showTab('dashboard', false);
+                this.showTab(tabId, false);
             }
         };
         
         window.addEventListener('popstate', handleRoute);
-        
-        // Handle clicks on data-tab links
-        document.addEventListener('click', (e) => {
-            const link = e.target.closest('a[data-tab]');
-            if (!link) return;
-            e.preventDefault();
-            const tabId = link.getAttribute('data-tab');
-            if (tabId && this.isValidTab(tabId)) {
-                this.navigateToTab(tabId);
-            }
-        });
-        
         setTimeout(handleRoute, 100);
     }
     
-    navigateToTab(tabId) {
-        if (!this.isValidTab(tabId)) tabId = 'dashboard';
-        
-        // Build clean URL without hash
-        let newUrl = tabId === 'dashboard' ? '/student' : `/student/${tabId}`;
-        
-        // Update URL
-        if (window.location.pathname !== newUrl) {
-            history.pushState({}, '', newUrl);
-        }
-        
-        // Show the tab (with fromNavigation = true to update URL)
-        this.showTab(tabId, true);
-    }
-    
-    getCurrentPath() {
-        let path = window.location.pathname;
-        if (path.startsWith('/student/')) {
-            path = path.replace('/student/', '');
-        } else if (path === '/student') {
-            path = '';
-        }
-        path = path.replace(/\/$/, '');
-        return path && this.isValidTab(path) ? path : 'dashboard';
-    }
-    
     // ============================================
-    // EVENT LISTENERS
+    // EVENT LISTENERS - FIXED FOR PROPER MENU CLOSING
     // ============================================
     
     setupEventListeners() {
-        if (this.mobileMenuToggle) this.mobileMenuToggle.addEventListener('click', () => this.toggleMenu());
-        if (this.overlay) this.overlay.addEventListener('click', () => this.closeMenu());
-        
-        this.navLinks.forEach(link => {
-            link.addEventListener('click', (e) => {
+        // Mobile menu toggle button
+        if (this.mobileMenuToggle) {
+            const newToggle = this.mobileMenuToggle.cloneNode(true);
+            this.mobileMenuToggle.parentNode.replaceChild(newToggle, this.mobileMenuToggle);
+            this.mobileMenuToggle = newToggle;
+            this.mobileMenuToggle.addEventListener('click', (e) => {
                 e.preventDefault();
-                const tabId = link.getAttribute('data-tab');
+                e.stopPropagation();
+                this.toggleMenu();
+            });
+        }
+        
+        // Overlay click - close menu
+        if (this.overlay) {
+            const newOverlay = this.overlay.cloneNode(true);
+            this.overlay.parentNode.replaceChild(newOverlay, this.overlay);
+            this.overlay = newOverlay;
+            this.overlay.addEventListener('click', () => {
+                console.log('🖱️ Overlay clicked, closing menu');
+                this.closeMenu();
+            });
+        }
+        
+        // ========== CRITICAL FIX: Sidebar navigation links ==========
+        // Remove existing listeners and add new ones that ALWAYS close menu first
+        const allNavLinks = document.querySelectorAll('.nav a[data-tab], .dropdown-submenu a[data-tab], .footer-links a[data-tab]');
+        console.log(`🔗 Found ${allNavLinks.length} navigation links to attach`);
+        
+        allNavLinks.forEach(link => {
+            // Clone to remove existing listeners
+            const newLink = link.cloneNode(true);
+            link.parentNode.replaceChild(newLink, link);
+            
+            newLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const tabId = newLink.getAttribute('data-tab');
                 if (tabId && this.isValidTab(tabId)) {
+                    console.log(`🖱️ Sidebar link clicked: ${tabId}`);
+                    
+                    // ALWAYS close menu first (no matter what)
+                    if (this.isMenuOpen()) {
+                        console.log('🔒 Closing mobile menu before navigation');
+                        this.closeMenu();
+                    }
+                    
+                    // Then navigate to the tab
                     this.navigateToTab(tabId);
-                    this.closeMenu();
                 }
             });
         });
         
-        if (this.headerLogout) this.headerLogout.addEventListener('click', (e) => { e.preventDefault(); this.logout(); });
-        if (this.headerRefresh) this.headerRefresh.addEventListener('click', () => this.refreshDashboard());
-        if (this.clearCacheBtn) this.clearCacheBtn.addEventListener('click', (e) => { e.preventDefault(); this.clearCache(); });
-        if (this.exportDataBtn) this.exportDataBtn.addEventListener('click', (e) => { e.preventDefault(); this.exportData(); });
-        if (this.systemInfoBtn) this.systemInfoBtn.addEventListener('click', (e) => { e.preventDefault(); this.showSystemInfo(); });
+        // Handle dropdown toggles separately (don't close menu)
+        const dropdownToggles = document.querySelectorAll('.has-dropdown > a');
+        dropdownToggles.forEach(toggle => {
+            const newToggle = toggle.cloneNode(true);
+            toggle.parentNode.replaceChild(newToggle, toggle);
+            
+            newToggle.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const parent = newToggle.closest('.has-dropdown');
+                if (parent) {
+                    const isOpen = parent.classList.contains('open');
+                    // Close other dropdowns
+                    document.querySelectorAll('.has-dropdown.open').forEach(drop => {
+                        if (drop !== parent) {
+                            drop.classList.remove('open');
+                            const submenu = drop.querySelector('.dropdown-submenu');
+                            if (submenu) submenu.style.display = 'none';
+                        }
+                    });
+                    // Toggle this one
+                    if (isOpen) {
+                        parent.classList.remove('open');
+                        const submenu = parent.querySelector('.dropdown-submenu');
+                        if (submenu) submenu.style.display = 'none';
+                    } else {
+                        parent.classList.add('open');
+                        const submenu = parent.querySelector('.dropdown-submenu');
+                        if (submenu) submenu.style.display = 'block';
+                    }
+                }
+            });
+        });
         
+        // Header logout
+        if (this.headerLogout) {
+            const newLogout = this.headerLogout.cloneNode(true);
+            this.headerLogout.parentNode.replaceChild(newLogout, this.headerLogout);
+            this.headerLogout = newLogout;
+            this.headerLogout.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.logout();
+            });
+        }
+        
+        // Header refresh
+        if (this.headerRefresh) {
+            const newRefresh = this.headerRefresh.cloneNode(true);
+            this.headerRefresh.parentNode.replaceChild(newRefresh, this.headerRefresh);
+            this.headerRefresh = newRefresh;
+            this.headerRefresh.addEventListener('click', () => this.refreshDashboard());
+        }
+        
+        // Utility buttons
+        if (this.clearCacheBtn) {
+            this.clearCacheBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.clearCache();
+            });
+        }
+        
+        if (this.exportDataBtn) {
+            this.exportDataBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.exportData();
+            });
+        }
+        
+        if (this.systemInfoBtn) {
+            this.systemInfoBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.showSystemInfo();
+            });
+        }
+        
+        // Dashboard stat cards
         setTimeout(() => {
             document.querySelectorAll('.stat-card[data-tab]').forEach(card => {
-                card.addEventListener('click', (e) => {
+                const newCard = card.cloneNode(true);
+                card.parentNode.replaceChild(newCard, card);
+                newCard.addEventListener('click', (e) => {
                     e.preventDefault();
-                    const tabId = card.getAttribute('data-tab');
-                    if (tabId && this.isValidTab(tabId)) this.navigateToTab(tabId);
+                    const tabId = newCard.getAttribute('data-tab');
+                    if (tabId && this.isValidTab(tabId)) {
+                        if (this.isMenuOpen()) this.closeMenu();
+                        this.navigateToTab(tabId);
+                    }
                 });
             });
         }, 1000);
+        
+        // Close menu on Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && this.isMenuOpen()) {
+                console.log('🔑 Escape key pressed, closing menu');
+                this.closeMenu();
+            }
+        });
+        
+        // Close menu on window resize (if screen becomes large)
+        window.addEventListener('resize', () => {
+            if (window.innerWidth > 768 && this.isMenuOpen()) {
+                this.closeMenu();
+            }
+        });
+        
+        console.log('✅ Event listeners setup complete');
     }
     
     setupProfileDropdown() {
@@ -340,60 +550,6 @@ class UIModule {
         }, 300);
     }
     
-    showTab(tabId, fromNavigation = false) {
-        if (!this.isValidTab(tabId)) tabId = 'dashboard';
-        
-        // Don't change tab if already on this tab and not forced
-        if (this.currentTab === tabId && !fromNavigation) return;
-        
-        // Update the content
-        this.tabs.forEach(tab => {
-            tab.style.display = 'none';
-            tab.classList.remove('active');
-        });
-        
-        const selectedTab = document.getElementById(tabId);
-        if (selectedTab) {
-            selectedTab.style.display = 'block';
-            selectedTab.classList.add('active');
-        }
-        
-        this.navLinks.forEach(link => {
-            link.classList.remove('active');
-            if (link.getAttribute('data-tab') === tabId) link.classList.add('active');
-        });
-        
-        localStorage.setItem(this.storageKey, tabId);
-        this.closeMenu();
-        this.currentTab = tabId;
-        this.updatePageTitle(tabId);
-        
-        // 🔧 FIX: Only update URL if coming from navigation, not on page load/refresh
-        if (fromNavigation) {
-            let newUrl;
-            if (tabId === 'dashboard') {
-                newUrl = '/student';
-            } else {
-                newUrl = `/student/${tabId}`;
-            }
-            
-            // Only update if URL is different
-            if (window.location.pathname !== newUrl) {
-                history.pushState({}, '', newUrl);
-            }
-        }
-        
-        // Update last login when showing dashboard
-        if (tabId === 'dashboard') {
-            setTimeout(() => {
-                this.updateLastLogin(window.currentUserId);
-                this.updateProfilePhoto();
-            }, 500);
-        }
-        
-        setTimeout(() => this.loadTabModule(tabId), 100);
-    }
-    
     updatePageTitle(tabId) {
         const tabName = this.tabNames[tabId] || 'Dashboard';
         document.title = `${tabName} - NCHSM Student Portal`;
@@ -406,23 +562,6 @@ class UIModule {
         if (lastTab && this.isValidTab(lastTab)) {
             this.currentTab = lastTab;
         }
-    }
-    
-    toggleMenu() {
-        if (this.sidebar.classList.contains('active')) this.closeMenu();
-        else this.openMenu();
-    }
-    
-    openMenu() {
-        if (this.sidebar) this.sidebar.classList.add('active');
-        if (this.overlay) this.overlay.classList.add('active');
-        document.body.style.overflow = 'hidden';
-    }
-    
-    closeMenu() {
-        if (this.sidebar) this.sidebar.classList.remove('active');
-        if (this.overlay) this.overlay.classList.remove('active');
-        document.body.style.overflow = 'auto';
     }
     
     refreshDashboard() {
@@ -782,7 +921,9 @@ class UIModule {
     debugAll() {
         console.log('🔍 UI DEBUG INFO:');
         console.log('- Current tab:', this.currentTab);
-        console.log('- Profile trigger:', !!this.profileTrigger);
+        console.log('- Menu open:', this.isMenuOpen());
+        console.log('- Sidebar classes:', this.sidebar ? this.sidebar.className : 'no sidebar');
+        console.log('- Overlay visible:', this.overlay ? this.overlay.style.display : 'no overlay');
         console.log('- Valid tabs:', this.validTabs);
         console.log('- Current path:', window.location.pathname);
     }
@@ -806,4 +947,4 @@ document.addEventListener('DOMContentLoaded', () => { if (!window.ui) window.ui 
 document.addEventListener('appReady', (e) => { if (window.ui && e.detail?.userProfile) window.ui.updateAllUserInfo(e.detail.userProfile); });
 document.addEventListener('profilePhotoUpdated', (e) => { if (window.ui && e.detail?.photoUrl) window.ui.updateProfilePhoto(); });
 
-console.log('✅ UI Module loaded successfully');
+console.log('✅ UI Module loaded successfully with fixed mobile menu closing');
