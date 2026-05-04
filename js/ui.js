@@ -1,4 +1,4 @@
-// js/ui.js - COMPLETE WORKING VERSION WITH FIXED MOBILE MENU CLOSING
+// js/ui.js - COMPLETE WORKING VERSION WITH FIXED DROPDOWN
 class UIModule {
     constructor() {
         console.log('🚀 Initializing UIModule...');
@@ -140,18 +140,17 @@ class UIModule {
     }
     
     // ============================================
-    // MOBILE MENU FUNCTIONS - FIXED FOR BOTH 'active' AND 'open' CLASSES
+    // MOBILE MENU FUNCTIONS
     // ============================================
     
     isMenuOpen() {
-        // Check for both 'active' and 'open' classes (CSS compatibility)
         return (this.sidebar && (this.sidebar.classList.contains('active') || this.sidebar.classList.contains('open')));
     }
     
     openMenu() {
         if (this.sidebar) {
             this.sidebar.classList.add('active');
-            this.sidebar.classList.add('open'); // Add both for CSS compatibility
+            this.sidebar.classList.add('open');
         }
         if (this.overlay) {
             this.overlay.classList.add('active');
@@ -185,24 +184,23 @@ class UIModule {
     }
     
     // ============================================
-    // TAB NAVIGATION - ALWAYS CLOSES MENU FIRST
+    // TAB NAVIGATION
     // ============================================
     
     showTab(tabId, fromNavigation = false) {
         if (!this.isValidTab(tabId)) tabId = 'dashboard';
         
-        // Don't change tab if already on this tab and not forced
         if (this.currentTab === tabId && !fromNavigation) return;
         
-        console.log(`📂 Showing tab: ${tabId} (fromNavigation: ${fromNavigation})`);
+        console.log(`📂 Showing tab: ${tabId}`);
         
-        // ========== CRITICAL FIX: ALWAYS CLOSE MOBILE MENU FIRST ==========
+        // ALWAYS close mobile menu first
         if (this.isMenuOpen()) {
             console.log('🔒 Closing mobile menu before showing tab...');
             this.closeMenu();
         }
         
-        // Update the content
+        // Update content
         this.tabs.forEach(tab => {
             tab.style.display = 'none';
             tab.classList.remove('active');
@@ -212,22 +210,18 @@ class UIModule {
         if (selectedTab) {
             selectedTab.style.display = 'block';
             selectedTab.classList.add('active');
-        } else {
-            console.warn(`⚠️ Tab element "${tabId}" not found`);
         }
         
-        // Update nav links active state
+        // Update nav links
         this.navLinks.forEach(link => {
             link.classList.remove('active');
             if (link.getAttribute('data-tab') === tabId) link.classList.add('active');
         });
         
-        // Save to localStorage
         localStorage.setItem(this.storageKey, tabId);
         this.currentTab = tabId;
         this.updatePageTitle(tabId);
         
-        // Update URL if from navigation
         if (fromNavigation) {
             let newUrl = tabId === 'dashboard' ? '/student' : `/student/${tabId}`;
             if (window.location.pathname !== newUrl) {
@@ -235,10 +229,8 @@ class UIModule {
             }
         }
         
-        // Load the module for this tab
         setTimeout(() => this.loadTabModule(tabId), 100);
         
-        // Update last login when showing dashboard
         if (tabId === 'dashboard') {
             setTimeout(() => {
                 this.updateLastLogin(window.currentUserId);
@@ -249,23 +241,17 @@ class UIModule {
     
     navigateToTab(tabId) {
         if (!this.isValidTab(tabId)) tabId = 'dashboard';
-        
         console.log(`🖱️ Navigating to tab: ${tabId}`);
         
-        // Build clean URL
         let newUrl = tabId === 'dashboard' ? '/student' : `/student/${tabId}`;
-        
-        // Update URL
         if (window.location.pathname !== newUrl) {
             history.pushState({}, '', newUrl);
         }
-        
-        // Show the tab (with fromNavigation = true)
         this.showTab(tabId, true);
     }
     
     // ============================================
-    // URL NAVIGATION SETUP
+    // URL NAVIGATION
     // ============================================
     
     setupUrlNavigation() {
@@ -273,7 +259,6 @@ class UIModule {
             let tabId = 'dashboard';
             let path = window.location.pathname;
             
-            // Remove /student prefix
             if (path === '/student') {
                 path = '';
             } else if (path.startsWith('/student/')) {
@@ -281,7 +266,6 @@ class UIModule {
             }
             path = path.replace(/\/$/, '');
             
-            // Check if path is a valid tab
             if (path && this.isValidTab(path)) {
                 tabId = path;
             } else {
@@ -301,11 +285,11 @@ class UIModule {
     }
     
     // ============================================
-    // EVENT LISTENERS - FIXED FOR PROPER MENU CLOSING
+    // EVENT LISTENERS - WITH FIXED DROPDOWN
     // ============================================
     
     setupEventListeners() {
-        // Mobile menu toggle button
+        // Mobile menu toggle
         if (this.mobileMenuToggle) {
             const newToggle = this.mobileMenuToggle.cloneNode(true);
             this.mobileMenuToggle.parentNode.replaceChild(newToggle, this.mobileMenuToggle);
@@ -317,24 +301,24 @@ class UIModule {
             });
         }
         
-        // Overlay click - close menu
+        // Overlay click
         if (this.overlay) {
             const newOverlay = this.overlay.cloneNode(true);
             this.overlay.parentNode.replaceChild(newOverlay, this.overlay);
             this.overlay = newOverlay;
             this.overlay.addEventListener('click', () => {
-                console.log('🖱️ Overlay clicked, closing menu');
                 this.closeMenu();
             });
         }
         
-        // ========== CRITICAL FIX: Sidebar navigation links ==========
-        // Remove existing listeners and add new ones that ALWAYS close menu first
+        // ========== FIXED DROPDOWN TOGGLE FOR "MY LEARNING HUB" ==========
+        this.setupDropdownToggle();
+        
+        // ========== SIDEBAR NAVIGATION LINKS ==========
         const allNavLinks = document.querySelectorAll('.nav a[data-tab], .dropdown-submenu a[data-tab], .footer-links a[data-tab]');
-        console.log(`🔗 Found ${allNavLinks.length} navigation links to attach`);
+        console.log(`🔗 Found ${allNavLinks.length} navigation links`);
         
         allNavLinks.forEach(link => {
-            // Clone to remove existing listeners
             const newLink = link.cloneNode(true);
             link.parentNode.replaceChild(newLink, link);
             
@@ -344,51 +328,9 @@ class UIModule {
                 
                 const tabId = newLink.getAttribute('data-tab');
                 if (tabId && this.isValidTab(tabId)) {
-                    console.log(`🖱️ Sidebar link clicked: ${tabId}`);
-                    
-                    // ALWAYS close menu first (no matter what)
-                    if (this.isMenuOpen()) {
-                        console.log('🔒 Closing mobile menu before navigation');
-                        this.closeMenu();
-                    }
-                    
-                    // Then navigate to the tab
+                    console.log(`🖱️ Link clicked: ${tabId}`);
+                    if (this.isMenuOpen()) this.closeMenu();
                     this.navigateToTab(tabId);
-                }
-            });
-        });
-        
-        // Handle dropdown toggles separately (don't close menu)
-        const dropdownToggles = document.querySelectorAll('.has-dropdown > a');
-        dropdownToggles.forEach(toggle => {
-            const newToggle = toggle.cloneNode(true);
-            toggle.parentNode.replaceChild(newToggle, toggle);
-            
-            newToggle.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                
-                const parent = newToggle.closest('.has-dropdown');
-                if (parent) {
-                    const isOpen = parent.classList.contains('open');
-                    // Close other dropdowns
-                    document.querySelectorAll('.has-dropdown.open').forEach(drop => {
-                        if (drop !== parent) {
-                            drop.classList.remove('open');
-                            const submenu = drop.querySelector('.dropdown-submenu');
-                            if (submenu) submenu.style.display = 'none';
-                        }
-                    });
-                    // Toggle this one
-                    if (isOpen) {
-                        parent.classList.remove('open');
-                        const submenu = parent.querySelector('.dropdown-submenu');
-                        if (submenu) submenu.style.display = 'none';
-                    } else {
-                        parent.classList.add('open');
-                        const submenu = parent.querySelector('.dropdown-submenu');
-                        if (submenu) submenu.style.display = 'block';
-                    }
                 }
             });
         });
@@ -453,12 +395,11 @@ class UIModule {
         // Close menu on Escape key
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && this.isMenuOpen()) {
-                console.log('🔑 Escape key pressed, closing menu');
                 this.closeMenu();
             }
         });
         
-        // Close menu on window resize (if screen becomes large)
+        // Close menu on resize
         window.addEventListener('resize', () => {
             if (window.innerWidth > 768 && this.isMenuOpen()) {
                 this.closeMenu();
@@ -466,6 +407,81 @@ class UIModule {
         });
         
         console.log('✅ Event listeners setup complete');
+    }
+    
+    // ============================================
+    // DROPDOWN TOGGLE SETUP - FIXED
+    // ============================================
+    
+    setupDropdownToggle() {
+        // Find dropdown elements
+        const dropdownParent = document.querySelector('.has-dropdown');
+        const dropdownToggle = document.querySelector('.has-dropdown > a');
+        const dropdownMenu = document.querySelector('.dropdown-submenu');
+        
+        if (!dropdownToggle || !dropdownMenu) {
+            console.warn('⚠️ Dropdown elements not found - check HTML structure');
+            console.log('Looking for: .has-dropdown > a and .dropdown-submenu');
+            return;
+        }
+        
+        console.log('✅ Found dropdown elements, setting up toggle...');
+        
+        // Remove existing listeners by cloning
+        const newToggle = dropdownToggle.cloneNode(true);
+        dropdownToggle.parentNode.replaceChild(newToggle, dropdownToggle);
+        
+        // Add click handler
+        newToggle.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            console.log('🖱️ Dropdown toggle clicked');
+            
+            const parent = newToggle.closest('.has-dropdown');
+            if (parent) {
+                const isOpen = parent.classList.contains('open');
+                console.log(`Dropdown state: ${isOpen ? 'open' : 'closed'}`);
+                
+                // Close all other dropdowns
+                document.querySelectorAll('.has-dropdown.open').forEach(drop => {
+                    if (drop !== parent) {
+                        drop.classList.remove('open');
+                        const submenu = drop.querySelector('.dropdown-submenu');
+                        if (submenu) submenu.style.display = 'none';
+                    }
+                });
+                
+                // Toggle this dropdown
+                if (isOpen) {
+                    parent.classList.remove('open');
+                    dropdownMenu.style.display = 'none';
+                    console.log('📂 Dropdown closed');
+                } else {
+                    parent.classList.add('open');
+                    dropdownMenu.style.display = 'block';
+                    console.log('📂 Dropdown opened');
+                }
+            }
+        });
+        
+        // Also handle clicking on dropdown menu items (they should close dropdown on mobile)
+        const menuItems = dropdownMenu.querySelectorAll('a[data-tab]');
+        menuItems.forEach(item => {
+            const newItem = item.cloneNode(true);
+            item.parentNode.replaceChild(newItem, item);
+            
+            newItem.addEventListener('click', (e) => {
+                console.log('🖱️ Dropdown item clicked:', newItem.getAttribute('data-tab'));
+                // Close dropdown on mobile after selection
+                if (window.innerWidth <= 768) {
+                    dropdownParent.classList.remove('open');
+                    dropdownMenu.style.display = 'none';
+                }
+            });
+        });
+        
+        console.log('✅ Dropdown toggle setup complete');
     }
     
     setupProfileDropdown() {
@@ -926,6 +942,15 @@ class UIModule {
         console.log('- Overlay visible:', this.overlay ? this.overlay.style.display : 'no overlay');
         console.log('- Valid tabs:', this.validTabs);
         console.log('- Current path:', window.location.pathname);
+        
+        // Check dropdown
+        const dropdown = document.querySelector('.has-dropdown');
+        const dropdownMenu = document.querySelector('.dropdown-submenu');
+        console.log('- Dropdown exists:', !!dropdown);
+        console.log('- Dropdown menu exists:', !!dropdownMenu);
+        if (dropdown) {
+            console.log('- Dropdown open class:', dropdown.classList.contains('open'));
+        }
     }
 }
 
@@ -947,4 +972,4 @@ document.addEventListener('DOMContentLoaded', () => { if (!window.ui) window.ui 
 document.addEventListener('appReady', (e) => { if (window.ui && e.detail?.userProfile) window.ui.updateAllUserInfo(e.detail.userProfile); });
 document.addEventListener('profilePhotoUpdated', (e) => { if (window.ui && e.detail?.photoUrl) window.ui.updateProfilePhoto(); });
 
-console.log('✅ UI Module loaded successfully with fixed mobile menu closing');
+console.log('✅ UI Module loaded successfully with fixed dropdown');
