@@ -36,29 +36,25 @@ function getSupabaseClient() {
     }
     return client;
 }
+
+// ✅ FIXED: No hardcoded email, uses authenticated user
 function getUserProfile() {
-    // Check if profile already exists in window
-    const existingProfile = window.db?.currentUserProfile || 
-                            window.currentUserProfile || 
-                            window.userProfile || 
+    const existingProfile = window.db?.currentUserProfile ||
+                            window.currentUserProfile ||
+                            window.userProfile ||
                             {};
-    
-    // If we already have valid profile data, return it
+
     if (existingProfile.program && existingProfile.intake_year) {
         return existingProfile;
     }
-    
-    // Otherwise, try to fetch from the database using current session
+
     const supabase = getSupabaseClient();
     if (supabase) {
-        // Get current authenticated user
         supabase.auth.getUser().then(({ data: { user }, error: userError }) => {
             if (userError || !user) {
                 console.error('❌ No authenticated user found');
                 return;
             }
-            
-            // Fetch profile using the user's email from auth session
             supabase
                 .from('consolidated_user_profiles_table')
                 .select('program, intake_year, block')
@@ -69,12 +65,10 @@ function getUserProfile() {
                         console.log('✅ Profile loaded from database');
                         window.currentUserProfile = data;
                         if (window.db) window.db.currentUserProfile = data;
-                        
-                        // Update UI display
+
                         const blockDisplay = document.getElementById('current-user-block');
                         if (blockDisplay) blockDisplay.textContent = data.block;
-                        
-                        // Reload resources with the new profile
+
                         if (currentResources.length === 0) {
                             loadAllResourcesForBlocks();
                         }
@@ -84,44 +78,36 @@ function getUserProfile() {
                 });
         });
     }
-    
-    // Return default/fallback values while fetching
+
     return existingProfile;
 }
-    
 
 function getCurrentUserId() {
     return window.db?.currentUserId || window.currentUserId;
 }
 
-// Initialize PDF.js with high-quality settings
+// Initialize PDF.js
 async function initializePDFJS() {
     if (pdfjsLoaded) return true;
-    
+
     return new Promise((resolve, reject) => {
         if (typeof window.pdfjsLib !== 'undefined') {
-            console.log('✅ PDF.js already loaded');
             pdfjsLib = window.pdfjsLib;
-            
             if (pdfjsLib.GlobalWorkerOptions) {
-                pdfjsLib.GlobalWorkerOptions.workerSrc = 
+                pdfjsLib.GlobalWorkerOptions.workerSrc =
                     'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
             }
-            
-            pdfjsLib.disableTextLayer = false;
-            pdfjsLib.disableRange = true;
-            
             pdfjsLoaded = true;
             resolve(true);
             return;
         }
-        
+
         const script = document.createElement('script');
         script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
         script.onload = () => {
             pdfjsLib = window.pdfjsLib;
             if (pdfjsLib.GlobalWorkerOptions) {
-                pdfjsLib.GlobalWorkerOptions.workerSrc = 
+                pdfjsLib.GlobalWorkerOptions.workerSrc =
                     'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
             }
             pdfjsLoaded = true;
@@ -161,7 +147,7 @@ function createBlockFilterUI() {
     const resourcesHeader = document.querySelector('#resources .resources-header');
     if (!resourcesHeader) return;
     if (document.getElementById('block-resource-filter')) return;
-    
+
     const blockFilterHTML = `
         <div class="block-filter-card premium-card">
             <div class="filter-header">
@@ -174,7 +160,6 @@ function createBlockFilterUI() {
                     <span>Your Block: <strong id="current-user-block">Loading...</strong></span>
                 </div>
             </div>
-            
             <div class="filter-controls-group">
                 <div class="filter-select-wrapper">
                     <select id="block-resource-filter" class="premium-select">
@@ -183,50 +168,48 @@ function createBlockFilterUI() {
                         `).join('')}
                     </select>
                 </div>
-                
                 <button id="refresh-block-resources" class="refresh-block-btn" title="Refresh Resources for this Block">
                     <i class="fas fa-sync-alt"></i>
                     <span>Refresh</span>
                 </button>
             </div>
-            
             <div class="filter-info">
                 <i class="fas fa-info-circle"></i>
                 <span>Select a block and click Refresh to load materials</span>
             </div>
         </div>
     `;
-    
+
     const h2 = resourcesHeader.querySelector('h2');
     if (h2 && h2.nextSibling) {
         h2.insertAdjacentHTML('afterend', blockFilterHTML);
     } else {
         resourcesHeader.insertAdjacentHTML('beforeend', blockFilterHTML);
     }
-    
+
     const blockFilter = document.getElementById('block-resource-filter');
     const refreshBtn = document.getElementById('refresh-block-resources');
-    
+
     if (refreshBtn) {
         refreshBtn.addEventListener('click', async () => {
             if (isLoading) return;
-            
+
             const selectedBlock = blockFilter.value;
             const selectedLabel = blockFilter.options[blockFilter.selectedIndex]?.text || 'selected block';
-            
+
             refreshBtn.disabled = true;
             refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Loading...</span>';
-            
+
             currentBlockFilter = selectedBlock;
             await loadAllResourcesForBlocks();
-            
+
             showToast(`📚 Loaded ${filteredResources.length} resources for ${selectedLabel}`, 'success');
-            
+
             refreshBtn.disabled = false;
             refreshBtn.innerHTML = '<i class="fas fa-sync-alt"></i><span>Refresh</span>';
         });
     }
-    
+
     if (blockFilter) {
         blockFilter.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
@@ -234,12 +217,12 @@ function createBlockFilterUI() {
             }
         });
     }
-    
+
     const userProfile = getUserProfile();
     const userBlock = userProfile?.block || 'Introductory';
     const blockDisplay = document.getElementById('current-user-block');
     if (blockDisplay) blockDisplay.textContent = userBlock;
-    
+
     let userBlockValue = 'all';
     for (const [value, keywords] of Object.entries(BLOCK_MAPPING)) {
         if (keywords.some(k => userBlock.toLowerCase().includes(k.toLowerCase()))) {
@@ -247,7 +230,7 @@ function createBlockFilterUI() {
             break;
         }
     }
-    
+
     if (userBlockValue !== 'all' && blockFilter) {
         blockFilter.value = userBlockValue;
         currentBlockFilter = userBlockValue;
@@ -257,21 +240,21 @@ function createBlockFilterUI() {
 // Load all resources from all blocks
 async function loadAllResourcesForBlocks() {
     if (isLoading) return;
-    
+
     console.log('📁 Loading read-only resources...');
-    
+
     const userProfile = getUserProfile();
     const supabaseClient = getSupabaseClient();
-    
+
     if (!supabaseClient) {
         const resourcesGrid = document.getElementById('resources-grid');
         if (resourcesGrid) showError(resourcesGrid, 'Database connection error');
         return;
     }
-    
+
     const resourcesGrid = document.getElementById('resources-grid');
     if (!resourcesGrid) return;
-    
+
     isLoading = true;
     showLoading(resourcesGrid, 'Loading resources...');
     currentResources = [];
@@ -312,38 +295,38 @@ async function filterResourcesByBlock() {
         await loadAllResourcesForBlocks();
         return;
     }
-    
+
     let filtered = [...currentResources];
-    
+
     if (currentBlockFilter !== 'all') {
         const targetKeywords = BLOCK_MAPPING[currentBlockFilter] || [];
-        
+
         filtered = filtered.filter(resource => {
             const resourceBlock = (resource.block || '').toString().toLowerCase();
-            return targetKeywords.some(keyword => 
+            return targetKeywords.some(keyword =>
                 resourceBlock.includes(keyword.toLowerCase())
             );
         });
     }
-    
+
     const searchTerm = document.getElementById('resource-search')?.value.toLowerCase() || '';
     if (searchTerm) {
-        filtered = filtered.filter(r => 
+        filtered = filtered.filter(r =>
             (r.title || '').toLowerCase().includes(searchTerm) ||
             (r.description || '').toLowerCase().includes(searchTerm)
         );
     }
-    
+
     const typeFilter = document.getElementById('resource-filter')?.value || 'all';
     if (typeFilter !== 'all') {
         filtered = filtered.filter(r => getFileType(r.file_path) === typeFilter);
     }
-    
+
     const courseFilter = document.getElementById('course-filter')?.value || 'all';
     if (courseFilter !== 'all') {
         filtered = filtered.filter(r => r.program_type === courseFilter);
     }
-    
+
     filteredResources = filtered;
     renderResourcesGrid();
     updateResourceCountDisplay();
@@ -401,11 +384,11 @@ function renderResourcesGrid() {
 function updateResourceCountDisplay() {
     const blockFilter = document.getElementById('block-resource-filter');
     const refreshBtn = document.getElementById('refresh-block-resources');
-    
+
     if (blockFilter && refreshBtn) {
         const selectedBlock = blockFilter.value;
         const selectedLabel = blockFilter.options[blockFilter.selectedIndex]?.text || '';
-        
+
         if (currentBlockFilter !== 'all') {
             refreshBtn.classList.add('active-filter');
             refreshBtn.setAttribute('data-count', filteredResources.length);
@@ -466,7 +449,7 @@ async function openResource(resourceId) {
 
     currentResource = resource;
     const fileType = getFileType(resource.file_path);
-    
+
     if (fileType === 'pdf') {
         await openReadOnlyPDF(resource);
     } else if (fileType === 'image') {
@@ -492,7 +475,7 @@ async function openReadOnlyPDF(resource) {
 function createReadOnlyPDFViewer(resource) {
     const existingModal = document.getElementById('readonly-pdf-modal');
     if (existingModal) existingModal.remove();
-    
+
     const modal = document.createElement('div');
     modal.id = 'readonly-pdf-modal';
     modal.className = 'readonly-pdf-modal';
@@ -515,27 +498,23 @@ function createReadOnlyPDFViewer(resource) {
                     </button>
                 </div>
             </div>
-            
             <div class="readonly-pdf-body">
                 <div id="pdf-loading" class="pdf-loading-overlay">
                     <div class="loading-spinner premium"></div>
                     <p>Loading high-quality document...</p>
                 </div>
-                
                 <div id="pdf-error" class="pdf-error-overlay" style="display: none;">
                     <i class="fas fa-exclamation-triangle"></i>
                     <h3>Failed to Load Document</h3>
                     <p id="pdf-error-message"></p>
                     <button id="retry-pdf-btn" class="premium-btn">Retry</button>
                 </div>
-                
                 <div id="pdf-viewer-area" class="pdf-viewer-area" style="display: none;">
                     <div class="pdf-canvas-wrapper" id="pdf-canvas-wrapper">
                         <canvas id="readonly-pdf-canvas" class="readonly-pdf-canvas"></canvas>
                     </div>
                 </div>
             </div>
-            
             <div class="readonly-pdf-footer">
                 <div class="pdf-nav-controls">
                     <button id="pdf-first-page" class="pdf-nav-btn" title="First Page">
@@ -544,13 +523,11 @@ function createReadOnlyPDFViewer(resource) {
                     <button id="pdf-prev-page" class="pdf-nav-btn" title="Previous Page">
                         <i class="fas fa-chevron-left"></i>
                     </button>
-                    
                     <div class="pdf-page-indicator">
                         <input type="number" id="pdf-page-number" min="1" value="1">
                         <span>/</span>
                         <span id="pdf-total-pages">1</span>
                     </div>
-                    
                     <button id="pdf-next-page" class="pdf-nav-btn" title="Next Page">
                         <i class="fas fa-chevron-right"></i>
                     </button>
@@ -558,7 +535,6 @@ function createReadOnlyPDFViewer(resource) {
                         <i class="fas fa-fast-forward"></i>
                     </button>
                 </div>
-                
                 <div class="pdf-zoom-controls">
                     <button id="pdf-zoom-out" class="pdf-zoom-btn" title="Zoom Out">
                         <i class="fas fa-search-minus"></i>
@@ -574,7 +550,6 @@ function createReadOnlyPDFViewer(resource) {
                         <i class="fas fa-percent"></i>
                     </button>
                 </div>
-                
                 <div class="readonly-warning">
                     <i class="fas fa-lock"></i>
                     <span>Protected Document - No Download Available</span>
@@ -582,7 +557,7 @@ function createReadOnlyPDFViewer(resource) {
             </div>
         </div>
     `;
-    
+
     document.body.appendChild(modal);
     addReadOnlyPDFStyles();
     setupReadOnlyPDFEvents();
@@ -592,7 +567,7 @@ function createReadOnlyPDFViewer(resource) {
 function addReadOnlyPDFStyles() {
     const styleId = 'readonly-pdf-styles';
     if (document.getElementById(styleId)) return;
-    
+
     const styles = `
         .readonly-pdf-modal {
             position: fixed;
@@ -786,7 +761,7 @@ function addReadOnlyPDFStyles() {
             }
         }
     `;
-    
+
     const style = document.createElement('style');
     style.id = styleId;
     style.textContent = styles;
@@ -797,18 +772,18 @@ function setupReadOnlyPDFEvents() {
     const modal = document.getElementById('readonly-pdf-modal');
     const closeBtn = document.getElementById('close-readonly-pdf');
     const fullscreenBtn = document.getElementById('fullscreen-btn');
-    
+
     if (closeBtn) {
         closeBtn.addEventListener('click', () => {
             modal.style.display = 'none';
             cleanupPDF();
         });
     }
-    
+
     if (fullscreenBtn) {
         fullscreenBtn.addEventListener('click', toggleFullscreen);
     }
-    
+
     if (modal) {
         modal.addEventListener('click', (e) => {
             if (e.target === modal) {
@@ -817,12 +792,12 @@ function setupReadOnlyPDFEvents() {
             }
         });
     }
-    
+
     document.getElementById('pdf-first-page')?.addEventListener('click', () => goToPDFPage(1));
     document.getElementById('pdf-prev-page')?.addEventListener('click', () => goToPDFPage(currentPDFPage - 1));
     document.getElementById('pdf-next-page')?.addEventListener('click', () => goToPDFPage(currentPDFPage + 1));
     document.getElementById('pdf-last-page')?.addEventListener('click', () => goToPDFPage(totalPDFPages));
-    
+
     document.getElementById('pdf-zoom-in')?.addEventListener('click', () => zoomPDF(1.2));
     document.getElementById('pdf-zoom-out')?.addEventListener('click', () => zoomPDF(0.8));
     document.getElementById('pdf-fit-width')?.addEventListener('click', fitToWidth);
@@ -831,7 +806,7 @@ function setupReadOnlyPDFEvents() {
         updateZoomDisplay();
         renderPDFPage(currentPDFPage);
     });
-    
+
     const pageInput = document.getElementById('pdf-page-number');
     pageInput?.addEventListener('change', () => {
         const page = parseInt(pageInput.value);
@@ -839,14 +814,14 @@ function setupReadOnlyPDFEvents() {
             goToPDFPage(page);
         }
     });
-    
+
     document.addEventListener('keydown', handlePDFKeyboard);
 }
 
 async function loadHighQualityPDF(pdfUrl) {
     try {
         showPDFLoading();
-        
+
         const loadingTask = pdfjsLib.getDocument({
             url: pdfUrl,
             cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/',
@@ -854,19 +829,19 @@ async function loadHighQualityPDF(pdfUrl) {
             enableXfa: true,
             verbosity: 0
         });
-        
+
         currentPDFDoc = await loadingTask.promise;
         totalPDFPages = currentPDFDoc.numPages;
-        
+
         document.getElementById('pdf-total-pages').textContent = totalPDFPages;
         document.getElementById('pdf-page-number').max = totalPDFPages;
-        
+
         hidePDFLoading();
         showPDFViewer();
-        
+
         pdfScale = 1.5;
         await renderPDFPage(1);
-        
+
     } catch (error) {
         console.error('PDF loading error:', error);
         showPDFError('Failed to load document: ' + error.message);
@@ -875,14 +850,14 @@ async function loadHighQualityPDF(pdfUrl) {
 
 async function renderPDFPage(pageNum) {
     if (!currentPDFDoc || pageNum < 1 || pageNum > totalPDFPages) return;
-    
+
     if (pageRendering) {
         pageNumPending = pageNum;
         return;
     }
-    
+
     pageRendering = true;
-    
+
     try {
         const page = await currentPDFDoc.getPage(pageNum);
         const canvas = document.getElementById('readonly-pdf-canvas');
@@ -890,21 +865,21 @@ async function renderPDFPage(pageNum) {
             pageRendering = false;
             return;
         }
-        
+
         const ctx = canvas.getContext('2d', { alpha: false });
         const wrapper = document.getElementById('pdf-canvas-wrapper');
         const viewport = page.getViewport({ scale: 1 });
         const scale = pdfScale;
         const scaledViewport = page.getViewport({ scale: scale });
-        
+
         const pixelRatio = window.devicePixelRatio || 1;
         canvas.width = scaledViewport.width * pixelRatio;
         canvas.height = scaledViewport.height * pixelRatio;
         canvas.style.width = scaledViewport.width + 'px';
         canvas.style.height = scaledViewport.height + 'px';
-        
+
         ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
-        
+
         const renderContext = {
             canvasContext: ctx,
             viewport: scaledViewport,
@@ -912,21 +887,21 @@ async function renderPDFPage(pageNum) {
             renderInteractiveForms: true,
             background: 'white'
         };
-        
+
         await page.render(renderContext).promise;
-        
+
         currentPDFPage = pageNum;
         document.getElementById('pdf-page-number').value = pageNum;
         updateZoomDisplay();
         updatePDFNavButtons();
-        
+
     } catch (error) {
         console.error('Render error:', error);
         showPDFError('Failed to render page');
     }
-    
+
     pageRendering = false;
-    
+
     if (pageNumPending !== null) {
         renderPDFPage(pageNumPending);
         pageNumPending = null;
@@ -950,7 +925,7 @@ function fitToWidth() {
     const canvas = document.getElementById('readonly-pdf-canvas');
     const wrapper = document.getElementById('pdf-canvas-wrapper');
     if (!canvas || !wrapper || !currentPDFDoc) return;
-    
+
     const containerWidth = wrapper.clientWidth - 40;
     currentPDFDoc.getPage(currentPDFPage).then(page => {
         const originalViewport = page.getViewport({ scale: 1 });
@@ -972,7 +947,7 @@ function updatePDFNavButtons() {
     const prevBtn = document.getElementById('pdf-prev-page');
     const nextBtn = document.getElementById('pdf-next-page');
     const lastBtn = document.getElementById('pdf-last-page');
-    
+
     if (firstBtn) firstBtn.disabled = currentPDFPage <= 1;
     if (prevBtn) prevBtn.disabled = currentPDFPage <= 1;
     if (nextBtn) nextBtn.disabled = currentPDFPage >= totalPDFPages;
@@ -1003,12 +978,12 @@ function showPDFError(message) {
     const error = document.getElementById('pdf-error');
     const viewer = document.getElementById('pdf-viewer-area');
     const errorMsg = document.getElementById('pdf-error-message');
-    
+
     if (loading) loading.style.display = 'none';
     if (error) error.style.display = 'flex';
     if (viewer) viewer.style.display = 'none';
     if (errorMsg) errorMsg.textContent = message;
-    
+
     const retryBtn = document.getElementById('retry-pdf-btn');
     if (retryBtn && currentResource) {
         retryBtn.onclick = () => loadHighQualityPDF(currentResource.file_url);
@@ -1018,7 +993,7 @@ function showPDFError(message) {
 function toggleFullscreen() {
     const container = document.querySelector('.readonly-pdf-container');
     if (!container) return;
-    
+
     if (!document.fullscreenElement) {
         container.requestFullscreen();
         const fullscreenBtn = document.getElementById('fullscreen-btn');
@@ -1033,7 +1008,7 @@ function toggleFullscreen() {
 function handlePDFKeyboard(e) {
     const modal = document.getElementById('readonly-pdf-modal');
     if (!modal || modal.style.display !== 'flex') return;
-    
+
     switch(e.key) {
         case 'ArrowLeft':
             e.preventDefault();
@@ -1108,8 +1083,7 @@ function openReadOnlyImage(resource) {
         </div>
     `;
     document.body.appendChild(modal);
-    
-    // Add styles if not exist
+
     if (!document.getElementById('image-modal-styles')) {
         const style = document.createElement('style');
         style.id = 'image-modal-styles';
@@ -1204,7 +1178,7 @@ function openReadOnlyVideo(resource) {
         </div>
     `;
     document.body.appendChild(modal);
-    
+
     if (!document.getElementById('video-modal-styles')) {
         const style = document.createElement('style');
         style.id = 'video-modal-styles';
@@ -1350,19 +1324,37 @@ function showToast(message, type = 'info') {
     }
 }
 
-// Initialize module
-function initializeResourcesModule() {
+// Initialize module with profile pre‑load
+async function initializeResourcesModule() {
     console.log('📁 Initializing Premium Resources Module...');
+
+    // Pre‑load profile from database before building UI
+    const supabase = getSupabaseClient();
+    if (supabase) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user?.email) {
+            const { data } = await supabase
+                .from('consolidated_user_profiles_table')
+                .select('program, intake_year, block')
+                .eq('email', user.email)
+                .single();
+            if (data) {
+                window.currentUserProfile = data;
+                if (window.db) window.db.currentUserProfile = data;
+            }
+        }
+    }
+
     createBlockFilterUI();
-    
+
     const resourceSearch = document.getElementById('resource-search');
     const resourceFilter = document.getElementById('resource-filter');
     const courseFilter = document.getElementById('course-filter');
-    
+
     if (resourceSearch) resourceSearch.addEventListener('input', filterResources);
     if (resourceFilter) resourceFilter.addEventListener('change', filterResources);
     if (courseFilter) courseFilter.addEventListener('change', filterResources);
-    
+
     const resourcesTab = document.querySelector('.nav a[data-tab="resources"]');
     if (resourcesTab) {
         resourcesTab.addEventListener('click', () => {
@@ -1371,7 +1363,7 @@ function initializeResourcesModule() {
             }
         });
     }
-    
+
     const currentTab = localStorage.getItem('nchsm_last_tab');
     if (currentTab === 'resources' && getCurrentUserId()) {
         loadAllResourcesForBlocks();
@@ -1389,4 +1381,4 @@ if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initializeResourcesModule);
 } else {
     initializeResourcesModule();
-}    
+}
