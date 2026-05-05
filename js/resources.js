@@ -37,49 +37,32 @@ function getSupabaseClient() {
     return client;
 }
 
-// ✅ FIXED: No hardcoded email, uses authenticated user
-function getUserProfile() {
-    const existingProfile = window.db?.currentUserProfile ||
-                            window.currentUserProfile ||
-                            window.userProfile ||
-                            {};
-
-    if (existingProfile.program && existingProfile.intake_year) {
-        return existingProfile;
+async function getUserProfile() {
+    // Check if already cached
+    if (window.currentUserProfile?.program) {
+        return window.currentUserProfile;
     }
-
+    
+    // Get from database only
     const supabase = getSupabaseClient();
-    if (supabase) {
-        supabase.auth.getUser().then(({ data: { user }, error: userError }) => {
-            if (userError || !user) {
-                console.error('❌ No authenticated user found');
-                return;
-            }
-            supabase
-                .from('consolidated_user_profiles_table')
-                .select('program, intake_year, block')
-                .eq('email', user.email)
-                .single()
-                .then(({ data, error }) => {
-                    if (data && !error) {
-                        console.log('✅ Profile loaded from database');
-                        window.currentUserProfile = data;
-                        if (window.db) window.db.currentUserProfile = data;
-
-                        const blockDisplay = document.getElementById('current-user-block');
-                        if (blockDisplay) blockDisplay.textContent = data.block;
-
-                        if (currentResources.length === 0) {
-                            loadAllResourcesForBlocks();
-                        }
-                    } else {
-                        console.error('❌ Failed to load profile:', error);
-                    }
-                });
-        });
+    if (!supabase) return {};
+    
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user?.email) return {};
+    
+    const { data } = await supabase
+        .from('consolidated_user_profiles_table')
+        .select('program, intake_year, block')
+        .eq('email', user.email)
+        .single();
+    
+    if (data) {
+        window.currentUserProfile = data;
+        if (window.db) window.db.currentUserProfile = data;
+        return data;
     }
-
-    return existingProfile;
+    
+    return {};
 }
 
 function getCurrentUserId() {
@@ -143,7 +126,7 @@ function getAllBlocks() {
     ];
 }
 
-function createBlockFilterUI() {
+async function createBlockFilterUI() {
     const resourcesHeader = document.querySelector('#resources .resources-header');
     if (!resourcesHeader) return;
     if (document.getElementById('block-resource-filter')) return;
@@ -218,7 +201,8 @@ function createBlockFilterUI() {
         });
     }
 
-    const userProfile = getUserProfile();
+    // FIXED: Added 'await' here
+    const userProfile = await getUserProfile();
     const userBlock = userProfile?.block || 'Introductory';
     const blockDisplay = document.getElementById('current-user-block');
     if (blockDisplay) blockDisplay.textContent = userBlock;
@@ -236,14 +220,13 @@ function createBlockFilterUI() {
         currentBlockFilter = userBlockValue;
     }
 }
-
 // Load all resources from all blocks
 async function loadAllResourcesForBlocks() {
     if (isLoading) return;
 
     console.log('📁 Loading read-only resources...');
 
-    const userProfile = getUserProfile();
+    const userProfile = await getUserProfile();  // ADDED 'await' HERE
     const supabaseClient = getSupabaseClient();
 
     if (!supabaseClient) {
@@ -289,7 +272,6 @@ async function loadAllResourcesForBlocks() {
         isLoading = false;
     }
 }
-
 async function filterResourcesByBlock() {
     if (!currentResources.length) {
         await loadAllResourcesForBlocks();
@@ -1324,37 +1306,19 @@ function showToast(message, type = 'info') {
     }
 }
 
-// Initialize module with profile pre‑load
 async function initializeResourcesModule() {
     console.log('📁 Initializing Premium Resources Module...');
-
-    // Pre‑load profile from database before building UI
-    const supabase = getSupabaseClient();
-    if (supabase) {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user?.email) {
-            const { data } = await supabase
-                .from('consolidated_user_profiles_table')
-                .select('program, intake_year, block')
-                .eq('email', user.email)
-                .single();
-            if (data) {
-                window.currentUserProfile = data;
-                if (window.db) window.db.currentUserProfile = data;
-            }
-        }
-    }
-
-    createBlockFilterUI();
-
+    
+    await createBlockFilterUI();  // Added 'await' here
+    
     const resourceSearch = document.getElementById('resource-search');
     const resourceFilter = document.getElementById('resource-filter');
     const courseFilter = document.getElementById('course-filter');
-
+    
     if (resourceSearch) resourceSearch.addEventListener('input', filterResources);
     if (resourceFilter) resourceFilter.addEventListener('change', filterResources);
     if (courseFilter) courseFilter.addEventListener('change', filterResources);
-
+    
     const resourcesTab = document.querySelector('.nav a[data-tab="resources"]');
     if (resourcesTab) {
         resourcesTab.addEventListener('click', () => {
@@ -1363,7 +1327,7 @@ async function initializeResourcesModule() {
             }
         });
     }
-
+    
     const currentTab = localStorage.getItem('nchsm_last_tab');
     if (currentTab === 'resources' && getCurrentUserId()) {
         loadAllResourcesForBlocks();
