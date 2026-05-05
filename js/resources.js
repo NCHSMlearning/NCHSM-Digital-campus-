@@ -1316,7 +1316,7 @@ function showToast(message, type = 'info') {
 async function initializeResourcesModule() {
     console.log('📁 Initializing Premium Resources Module...');
     
-    await createBlockFilterUI();  // Added 'await' here
+    await createBlockFilterUI();
     
     const resourceSearch = document.getElementById('resource-search');
     const resourceFilter = document.getElementById('resource-filter');
@@ -1339,6 +1339,9 @@ async function initializeResourcesModule() {
     if (currentTab === 'resources' && getCurrentUserId()) {
         loadAllResourcesForBlocks();
     }
+    
+    // ✅ ADD THIS LINE - Force load resources on page load
+    await loadAllResourcesForBlocks();
 }
 
 // Global exports
