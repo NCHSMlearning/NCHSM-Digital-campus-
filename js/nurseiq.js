@@ -181,7 +181,18 @@ class NurseIQModule {
             console.warn('Could not save progress:', error);
         }
     }
+    async saveAttemptToDatabase(score, totalQuestions) {
+    if (!this.userId) return;
     
+    await window.db.supabase
+        .from('nurseiq_attempts')
+        .insert({
+            student_id: this.userId,
+            score: score,
+            total_questions: totalQuestions,
+            completed_at: new Date().toISOString()
+        });
+}
     async saveProgressToDatabase() {
         try {
             const supabase = this.getSupabaseClient();
