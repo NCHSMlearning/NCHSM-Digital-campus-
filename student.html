@@ -2297,12 +2297,32 @@
         return false;
     }
     
-    // Show content based on tab and close dropdown
-    function showContent(tabId) {
-        console.log('📂 Showing:', tabId);
+ function showContent(tabId) {
+    console.log('📂 Showing:', tabId);
+    
+    // ✅ CLOSE MOBILE SIDEBAR WHEN CLICKING ANY MODULE
+    if (window.innerWidth <= 768) {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('overlay');
+        const mobileToggle = document.getElementById('mobile-menu-toggle');
         
-        // Close the dropdown first
-        closeDropdown();
+        if (sidebar) {
+            sidebar.classList.remove('active', 'open');
+        }
+        if (overlay) {
+            overlay.classList.remove('active');
+            overlay.style.display = 'none';
+        }
+        if (mobileToggle) {
+            mobileToggle.classList.toggle('active');
+        }
+        document.body.style.overflow = '';
+        document.body.classList.remove('menu-open');
+        console.log('📱 Mobile sidebar closed');
+    }
+    
+    // Close the dropdown first
+    closeDropdown();
         
         // Hide everything
         hideAllSections();
