@@ -1425,18 +1425,21 @@ class NurseIQModule {
         this.goToQuestion(questionNum - 1);
     }
     
-    finishPractice() {
-        const userStats = this.getCourseUserStats(this.currentCourseForTest.id, this.currentCourseQuestions);
-        const answeredCount = userStats.answered;
-        const correctCount = userStats.correct;
-        const accuracy = userStats.accuracy;
+  async finishPractice() {  // ← Add 'async'
+    const userStats = this.getCourseUserStats(this.currentCourseForTest.id, this.currentCourseQuestions);
+    const answeredCount = userStats.answered;
+    const correctCount = userStats.correct;
+    const accuracy = userStats.accuracy;
+    
+    const confirmFinish = confirm(`Finish practice session?\n\nAnswered: ${answeredCount}/${this.currentCourseQuestions.length}\nCorrect: ${correctCount}\nAccuracy: ${accuracy}%\n\nReturn to question bank?`);
+    if (confirmFinish) {
+        // ✅ ADD THIS LINE - Saves to nurseiq_attempts table
+        await this.saveAttemptToDatabase(correctCount, this.currentCourseQuestions.length);
         
-        const confirmFinish = confirm(`Finish practice session?\n\nAnswered: ${answeredCount}/${this.currentCourseQuestions.length}\nCorrect: ${correctCount}\nAccuracy: ${accuracy}%\n\nReturn to question bank?`);
-        if (confirmFinish) {
-            this.saveUserProgress();
-            this.loadQuestionBankCards();
-        }
+        this.saveUserProgress();
+        this.loadQuestionBankCards();
     }
+}
     
     scrollQuestions(direction) {
         const gridContainer = document.getElementById('questionGridContainer');
