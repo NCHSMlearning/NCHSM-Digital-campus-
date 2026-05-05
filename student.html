@@ -191,52 +191,57 @@
         </a>
     </li>
     
-    <!-- MY LEARNING HUB (DROPDOWN - Contains ALL learning modules) -->
-    <li role="none" class="has-dropdown">
-        <a href="#" class="dropdown-toggle" role="menuitem">
-            <i class="fas fa-graduation-cap"></i>
-            <span class="nav-text">My Learning Hub</span>
-            <i class="fas fa-chevron-down dropdown-arrow"></i>
-        </a>
-        <ul class="dropdown-submenu" style="display: none;">
-            <li role="none">
-                <a href="#" data-tab="hub-courses" role="menuitem">
-                    <i class="fas fa-book-open"></i> My Courses
-                </a>
-            </li>
-            <li role="none">
-                <a href="#" data-tab="hub-register" role="menuitem">
-                    <i class="fas fa-plus-circle"></i> Register Units
-                </a>
-            </li>
-            <li role="none">
-                <a href="#" data-tab="hub-online-learning" role="menuitem">
-                    <i class="fas fa-video"></i> Online Learning
-                </a>
-            </li>
-            <li role="none">
-                <a href="#" data-tab="hub-exam-card" role="menuitem">
-                    <i class="fas fa-id-card"></i> Exam Card
-                </a>
-            </li>
-            <li class="dropdown-divider"></li>
-            <li role="none">
-                <a href="#" data-tab="cats" role="menuitem">
-                    <i class="fas fa-chart-line"></i> Exams & Grades
-                </a>
-            </li>
-            <li role="none">
-                <a href="#" data-tab="resources" role="menuitem">
-                    <i class="fas fa-folder-open"></i> Resources
-                </a>
-            </li>
-            <li role="none">
-                <a href="#" data-tab="nurseiq" role="menuitem">
-                    <i class="fas fa-brain"></i> NurseIQ
-                </a>
-            </li>
-        </ul>
-    </li>
+   <!-- MY LEARNING HUB (DROPDOWN - Contains ALL learning modules) -->
+<li role="none" class="has-dropdown">
+    <a href="#" class="dropdown-toggle" role="menuitem">
+        <i class="fas fa-graduation-cap"></i>
+        <span class="nav-text">My Learning Hub</span>
+        <i class="fas fa-chevron-down dropdown-arrow"></i>
+    </a>
+    <ul class="dropdown-submenu" style="display: none;">
+        <li role="none">
+            <a href="#" data-tab="hub-courses" role="menuitem">
+                <i class="fas fa-book-open"></i> My Courses
+            </a>
+        </li>
+        <li role="none">
+            <a href="#" data-tab="hub-register" role="menuitem">
+                <i class="fas fa-plus-circle"></i> Register Units
+            </a>
+        </li>
+        <li role="none">
+            <a href="#" data-tab="hub-online-learning" role="menuitem">
+                <i class="fas fa-video"></i> Online Learning
+            </a>
+        </li>
+        <li role="none">
+            <a href="#" data-tab="hub-exam-card" role="menuitem">
+                <i class="fas fa-id-card"></i> Exam Card
+            </a>
+        </li>
+        <li class="dropdown-divider"></li>
+        <li role="none">
+            <a href="#" data-tab="cats" role="menuitem">
+                <i class="fas fa-chart-line"></i> Exams & Grades
+            </a>
+        </li>
+        <li role="none">
+            <a href="#" data-tab="academic-reports" role="menuitem">
+                <i class="fas fa-file-alt"></i> Academic Reports
+            </a>
+        </li>
+        <li role="none">
+            <a href="#" data-tab="resources" role="menuitem">
+                <i class="fas fa-folder-open"></i> Resources
+            </a>
+        </li>
+        <li role="none">
+            <a href="#" data-tab="nurseiq" role="menuitem">
+                <i class="fas fa-brain"></i> NurseIQ
+            </a>
+        </li>
+    </ul>
+</li>
     
     <!-- Attendance -->
     <li role="none">
@@ -849,6 +854,281 @@
                     </div>
                 </div>
             </section>
+           <!-- ==================== ACADEMIC REPORTS TAB ==================== -->
+<section id="academic-reports" class="tab-content" hidden>
+    <div class="reports-header">
+        <div class="header-content">
+            <h2><i class="fas fa-chart-line"></i> Academic Reports</h2>
+            <p class="subtitle">View your academic performance, transcripts, and progress reports</p>
+        </div>
+        <div class="header-actions">
+            <button id="download-transcript-pdf" class="btn-primary">
+                <i class="fas fa-download"></i> Download Full Transcript
+            </button>
+            <button id="print-report" class="btn-secondary">
+                <i class="fas fa-print"></i> Print Report
+            </button>
+        </div>
+    </div>
+
+    <!-- Report Type Tabs -->
+    <div class="report-tabs">
+        <button class="report-tab active" data-report="semester">
+            <i class="fas fa-calendar-alt"></i> Semester Report
+        </button>
+        <button class="report-tab" data-report="yearly">
+            <i class="fas fa-chart-bar"></i> Yearly Summary
+        </button>
+        <button class="report-tab" data-report="transcript">
+            <i class="fas fa-file-alt"></i> Full Transcript
+        </button>
+        <button class="report-tab" data-report="progress">
+            <i class="fas fa-tasks"></i> Course Progress
+        </button>
+    </div>
+
+    <!-- Semester Report Content -->
+    <div id="semester-report" class="report-content active">
+        <div class="report-filter">
+            <div class="filter-group">
+                <label><i class="fas fa-calendar"></i> Select Semester:</label>
+                <select id="semester-filter" class="modern-select">
+                    <option value="2024-2025">2024/2025 - Semester 2</option>
+                    <option value="2024-2025-1">2024/2025 - Semester 1</option>
+                    <option value="2023-2024">2023/2024 - Semester 2</option>
+                    <option value="2023-2024-1">2023/2024 - Semester 1</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label><i class="fas fa-chart-simple"></i> GPA Type:</label>
+                <select id="gpa-type" class="modern-select">
+                    <option value="semester">Semester GPA</option>
+                    <option value="cumulative">Cumulative GPA</option>
+                </select>
+            </div>
+            <button id="refresh-report" class="btn-refresh">
+                <i class="fas fa-sync-alt"></i> Load Report
+            </button>
+        </div>
+
+        <!-- GPA Summary Cards -->
+        <div class="gpa-summary">
+            <div class="gpa-card">
+                <div class="gpa-icon semester">
+                    <i class="fas fa-calendar-week"></i>
+                </div>
+                <div class="gpa-info">
+                    <span class="gpa-label">Semester GPA</span>
+                    <span class="gpa-value" id="semester-gpa">3.45</span>
+                    <span class="gpa-grade" id="semester-grade">B+</span>
+                </div>
+            </div>
+            <div class="gpa-card">
+                <div class="gpa-icon cumulative">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <div class="gpa-info">
+                    <span class="gpa-label">Cumulative GPA</span>
+                    <span class="gpa-value" id="cumulative-gpa">3.28</span>
+                    <span class="gpa-grade" id="cumulative-grade">B</span>
+                </div>
+            </div>
+            <div class="gpa-card">
+                <div class="gpa-icon credits">
+                    <i class="fas fa-star"></i>
+                </div>
+                <div class="gpa-info">
+                    <span class="gpa-label">Total Credits</span>
+                    <span class="gpa-value" id="total-credits-earned">87</span>
+                    <span class="gpa-grade">Attempted: 96</span>
+                </div>
+            </div>
+            <div class="gpa-card">
+                <div class="gpa-icon rank">
+                    <i class="fas fa-trophy"></i>
+                </div>
+                <div class="gpa-info">
+                    <span class="gpa-label">Class Rank</span>
+                    <span class="gpa-value" id="class-rank">15</span>
+                    <span class="gpa-grade">/ 120 students</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Course Grades Table -->
+        <div class="grades-section">
+            <h3><i class="fas fa-table-list"></i> Course Grades</h3>
+            <div class="table-container">
+                <table class="grades-table">
+                    <thead>
+                        <tr>
+                            <th>Course Code</th>
+                            <th>Course Name</th>
+                            <th>Credits</th>
+                            <th>CAT 1 (15%)</th>
+                            <th>CAT 2 (15%)</th>
+                            <th>Final (70%)</th>
+                            <th>Total</th>
+                            <th>Grade</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="grades-table-body">
+                        <tr class="loading-row">
+                            <td colspan="9"><div class="loading-spinner"></div> Loading grades...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Performance Chart -->
+        <div class="performance-section">
+            <h3><i class="fas fa-chart-pie"></i> Performance Analysis</h3>
+            <div class="chart-container">
+                <canvas id="grade-distribution-chart" width="400" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Yearly Summary Content -->
+    <div id="yearly-report" class="report-content" style="display: none;">
+        <div class="yearly-summary">
+            <div class="year-selector">
+                <select id="year-filter" class="modern-select">
+                    <option value="2024">2024 Academic Year</option>
+                    <option value="2023">2023 Academic Year</option>
+                    <option value="2022">2022 Academic Year</option>
+                </select>
+            </div>
+            
+            <div class="yearly-stats">
+                <div class="stat-card">
+                    <div class="stat-value" id="year-gpa">3.45</div>
+                    <div class="stat-label">Year GPA</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="year-credits">48</div>
+                    <div class="stat-label">Credits Earned</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="year-courses">12</div>
+                    <div class="stat-label">Courses Completed</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="year-awards">2</div>
+                    <div class="stat-label">Achievements</div>
+                </div>
+            </div>
+            
+            <div class="semester-breakdown">
+                <h4>Semester Breakdown</h4>
+                <div class="semester-bars">
+                    <div class="semester-item">
+                        <span class="semester-name">Semester 1</span>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 75%; background: #10b981;"></div>
+                        </div>
+                        <span class="semester-gpa">3.2 GPA</span>
+                    </div>
+                    <div class="semester-item">
+                        <span class="semester-name">Semester 2</span>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 85%; background: #3b82f6;"></div>
+                        </div>
+                        <span class="semester-gpa">3.7 GPA</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Full Transcript Content -->
+    <div id="transcript-report" class="report-content" style="display: none;">
+        <div class="transcript-header">
+            <div class="institution-info">
+                <h3>Nakuru College of Health Sciences and Management</h3>
+                <p>Academic Transcript - <span id="student-name-display">Student Name</span></p>
+                <p>Program: <span id="program-display">KRCHN</span> | Student ID: <span id="student-id-display">KRCHN/119/026</span></p>
+            </div>
+        </div>
+        
+        <div class="transcript-table-container">
+            <table class="transcript-table">
+                <thead>
+                    <tr>
+                        <th>Year/Semester</th>
+                        <th>Course Code</th>
+                        <th>Course Name</th>
+                        <th>Credits</th>
+                        <th>Grade</th>
+                        <th>Points</th>
+                    </tr>
+                </thead>
+                <tbody id="transcript-table-body">
+                    <tr class="loading-row"><td colspan="6">Loading transcript...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="transcript-summary">
+            <div class="summary-line"><strong>Total Credits Attempted:</strong> <span id="total-attempted">0</span></div>
+            <div class="summary-line"><strong>Total Credits Earned:</strong> <span id="total-earned">0</span></div>
+            <div class="summary-line"><strong>Cumulative GPA:</strong> <span id="transcript-cgpa">0.00</span></div>
+        </div>
+    </div>
+
+    <!-- Course Progress Content -->
+    <div id="progress-report" class="report-content" style="display: none;">
+        <div class="progress-summary">
+            <h3><i class="fas fa-chart-simple"></i> Course Completion Progress</h3>
+            <div class="overall-progress">
+                <div class="progress-circle">
+                    <svg viewBox="0 0 100 100">
+                        <circle cx="50" cy="50" r="45" fill="none" stroke="#e5e7eb" stroke-width="8"/>
+                        <circle cx="50" cy="50" r="45" fill="none" stroke="#4f46e5" stroke-width="8" stroke-dasharray="283" stroke-dashoffset="85" transform="rotate(-90 50 50)"/>
+                        <text x="50" y="55" text-anchor="middle" fill="#4f46e5" font-size="20" font-weight="bold">70%</text>
+                    </svg>
+                </div>
+                <div class="progress-details">
+                    <p>Overall Completion: <strong>70%</strong></p>
+                    <p>Completed Courses: <strong id="completed-courses-progress">18</strong>/<span id="total-courses-progress">26</span></p>
+                </div>
+            </div>
+            
+            <div class="course-progress-list" id="course-progress-list">
+                <div class="progress-item">
+                    <div class="progress-header">
+                        <span class="course-name">Anatomy & Physiology</span>
+                        <span class="progress-percent">85%</span>
+                    </div>
+                    <div class="progress-bar"><div class="progress-fill" style="width: 85%; background: #10b981;"></div></div>
+                </div>
+                <div class="progress-item">
+                    <div class="progress-header">
+                        <span class="course-name">Medical-Surgical Nursing</span>
+                        <span class="progress-percent">72%</span>
+                    </div>
+                    <div class="progress-bar"><div class="progress-fill" style="width: 72%; background: #3b82f6;"></div></div>
+                </div>
+                <div class="progress-item">
+                    <div class="progress-header">
+                        <span class="course-name">Community Health</span>
+                        <span class="progress-percent">68%</span>
+                    </div>
+                    <div class="progress-bar"><div class="progress-fill" style="width: 68%; background: #f59e0b;"></div></div>
+                </div>
+                <div class="progress-item">
+                    <div class="progress-header">
+                        <span class="course-name">Mental Health Nursing</span>
+                        <span class="progress-percent">91%</span>
+                    </div>
+                    <div class="progress-bar"><div class="progress-fill" style="width: 91%; background: #10b981;"></div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
 <!-- ==================== UNIFIED LEARNING HUB TAB ==================== -->
 <section id="learning-hub" class="tab-content" hidden>
     
