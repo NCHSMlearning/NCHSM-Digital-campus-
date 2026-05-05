@@ -2646,35 +2646,35 @@ const academicReports = document.getElementById('academic-reports'); //
             if (resources) resources.style.display = 'block';
             if (window.resourcesModule?.loadAllResources) window.resourcesModule.loadAllResources();
         }
-        else if (tabId === 'nurseiq') {
-            if (nurseiq) nurseiq.style.display = 'block';
-            if (window.nurseiqModule?.loadCourses) window.nurseiqModule.loadCourses();
-        }
-        else if (tabId === 'exam-card') {
-            if (examCard) examCard.style.display = 'block';
-            if (window.examCardStandalone?.loadExamCard) window.examCardStandalone.loadExamCard();
-        }
-           // ✅ ADD ACADEMIC REPORTS HERE
+       else if (tabId === 'nurseiq') {
+    if (nurseiq) nurseiq.style.display = 'block';
+    if (window.nurseiqModule?.loadCourses) window.nurseiqModule.loadCourses();
+}
+else if (tabId === 'exam-card') {
+    if (examCard) examCard.style.display = 'block';
+    if (window.examCardStandalone?.loadExamCard) window.examCardStandalone.loadExamCard();
+}
 else if (tabId === 'academic-reports') {
     if (academicReports) academicReports.style.display = 'block';
     if (window.academicReportsModule?.loadReports) {
         window.academicReportsModule.loadReports();
     }
-        else if (tabId === 'hub-courses') {
-            if (learningHub) learningHub.style.display = 'block';
-            if (hubCourses) hubCourses.style.display = 'block';
-            setTimeout(() => {
-                if (window.coursesModule) {
-                    callModuleMethod(window.coursesModule, ['loadCourses', 'init', 'display', 'render', 'show'], 'coursesModule');
-                } else {
-                    console.error('❌ coursesModule not loaded');
-                    const grid = document.getElementById('active-courses-grid');
-                    if (grid) {
-                        grid.innerHTML = '<div class="course-card"><i class="fas fa-book"></i><h3>My Courses</h3><p>Course content will appear here. Please refresh if empty.</p></div>';
-                    }
-                }
-            }, 100);
+}
+else if (tabId === 'hub-courses') {
+    if (learningHub) learningHub.style.display = 'block';
+    if (hubCourses) hubCourses.style.display = 'block';
+    setTimeout(() => {
+        if (window.coursesModule) {
+            callModuleMethod(window.coursesModule, ['loadCourses', 'init', 'display', 'render', 'show'], 'coursesModule');
+        } else {
+            console.error('❌ coursesModule not loaded');
+            const grid = document.getElementById('active-courses-grid');
+            if (grid) {
+                grid.innerHTML = '<div class="course-card"><i class="fas fa-book"></i><h3>My Courses</h3><p>Course content will appear here. Please refresh if empty.</p></div>';
+            }
         }
+    }, 100);
+}
         else if (tabId === 'hub-register') {
             if (learningHub) learningHub.style.display = 'block';
             if (hubRegister) hubRegister.style.display = 'block';
