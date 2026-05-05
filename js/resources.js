@@ -48,34 +48,46 @@ function getUserProfile() {
         return existingProfile;
     }
     
-    // Otherwise, try to fetch from the correct table
+    // Otherwise, try to fetch from the database using current session
     const supabase = getSupabaseClient();
     if (supabase) {
-        // Fetch asynchronously
-        supabase
-            .from('consolidated_user_profiles_table')
-            .select('program, intake_year, block, email')
-            .eq('email', 'matokakevin9008@gmail.com')
-            .single()
-            .then(({ data, error }) => {
-                if (data && !error) {
-                    console.log('✅ Profile loaded:', data);
-                    window.currentUserProfile = data;
-                    if (window.db) window.db.currentUserProfile = data;
-                    
-                    // Update UI display
-                    const blockDisplay = document.getElementById('current-user-block');
-                    if (blockDisplay) blockDisplay.textContent = data.block;
-                    
-                    // Reload resources with the new profile
-                    if (currentResources.length === 0) {
-                        loadAllResourcesForBlocks();
+        // Get current authenticated user
+        supabase.auth.getUser().then(({ data: { user }, error: userError }) => {
+            if (userError || !user) {
+                console.error('❌ No authenticated user found');
+                return;
+            }
+            
+            // Fetch profile using the user's email from auth session
+            supabase
+                .from('consolidated_user_profiles_table')
+                .select('program, intake_year, block')
+                .eq('email', user.email)
+                .single()
+                .then(({ data, error }) => {
+                    if (data && !error) {
+                        console.log('✅ Profile loaded from database');
+                        window.currentUserProfile = data;
+                        if (window.db) window.db.currentUserProfile = data;
+                        
+                        // Update UI display
+                        const blockDisplay = document.getElementById('current-user-block');
+                        if (blockDisplay) blockDisplay.textContent = data.block;
+                        
+                        // Reload resources with the new profile
+                        if (currentResources.length === 0) {
+                            loadAllResourcesForBlocks();
+                        }
+                    } else {
+                        console.error('❌ Failed to load profile:', error);
                     }
-                } else {
-                    console.error('❌ Failed to load profile:', error);
-                }
-            });
+                });
+        });
     }
+    
+    // Return default/fallback values while fetching
+    return existingProfile;
+}
     
 
 function getCurrentUserId() {
