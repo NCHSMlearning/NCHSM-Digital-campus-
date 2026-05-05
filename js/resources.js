@@ -52,14 +52,21 @@ async function getUserProfile() {
     
     const { data } = await supabase
         .from('consolidated_user_profiles_table')
-        .select('program, intake_year, block')
+        .select('program, intake_year, block, current_block')
         .eq('email', user.email)
         .single();
     
     if (data) {
-        window.currentUserProfile = data;
-        if (window.db) window.db.currentUserProfile = data;
-        return data;
+        // FIXED: Use 'block' not 'current_block'
+        const correctProfile = {
+            program: data.program,
+            intake_year: data.intake_year,
+            block: data.block  // This is "Block 4" not "Introductory"
+        };
+        
+        window.currentUserProfile = correctProfile;
+        if (window.db) window.db.currentUserProfile = correctProfile;
+        return correctProfile;
     }
     
     return {};
