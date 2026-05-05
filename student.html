@@ -2229,7 +2229,6 @@
 <script src="./js/student-tickets.js"></script>
 <script src="./js/nurseiq.js"></script>
 <script src="./js/exam-card.js"></script>
-<script src="./js/sidebar-dropdown.js"></script>
 <script>
 // ==================== LEARNING HUB MODULE HANDLER WITH AUTO-CLOSE ====================
 (function() {
@@ -2607,7 +2606,122 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
-
+<!-- ==================== SIDEBAR DROPDOWN FIX ==================== -->
+<script>
+// Sidebar Dropdown for My Learning Hub - WITH MOBILE CLOSE
+(function() {
+    'use strict';
+    
+    console.log('📂 Sidebar dropdown initializing with mobile close...');
+    
+    // Function to close sidebar on mobile
+    function closeMobileSidebar() {
+        if (window.innerWidth <= 768) {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('overlay');
+            if (sidebar) {
+                sidebar.classList.remove('active', 'open');
+            }
+            if (overlay) {
+                overlay.classList.remove('active');
+                overlay.style.display = 'none';
+            }
+            document.body.style.overflow = '';
+            document.body.classList.remove('menu-open');
+            console.log('📱 Mobile sidebar closed');
+        }
+    }
+    
+    // Function to show hub modules
+    function showHubModule(moduleId) {
+        closeMobileSidebar();
+        
+        const learningHub = document.getElementById('learning-hub');
+        if (learningHub) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.style.display = 'none');
+            learningHub.style.display = 'block';
+            
+            const modules = ['hub-courses', 'hub-register', 'hub-online-learning', 'hub-exam-card'];
+            modules.forEach(id => {
+                const mod = document.getElementById(id);
+                if (mod) mod.style.display = 'none';
+            });
+            
+            const selected = document.getElementById(moduleId);
+            if (selected) selected.style.display = 'block';
+        }
+        
+        localStorage.setItem('nchsm_current_module', moduleId);
+    }
+    
+    // Setup dropdown toggle
+    const dropdownParent = document.querySelector('.has-dropdown');
+    const dropdownToggle = document.querySelector('.has-dropdown > a');
+    const dropdownMenu = document.querySelector('.dropdown-submenu');
+    
+    if (dropdownToggle && dropdownMenu) {
+        const newToggle = dropdownToggle.cloneNode(true);
+        dropdownToggle.parentNode.replaceChild(newToggle, dropdownToggle);
+        
+        newToggle.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const isOpen = dropdownParent.classList.contains('open');
+            if (isOpen) {
+                dropdownParent.classList.remove('open');
+                dropdownMenu.style.display = 'none';
+            } else {
+                dropdownParent.classList.add('open');
+                dropdownMenu.style.display = 'block';
+            }
+        });
+    }
+    
+    // Setup dropdown items
+    document.querySelectorAll('.dropdown-submenu a[data-tab]').forEach(item => {
+        const newItem = item.cloneNode(true);
+        item.parentNode.replaceChild(newItem, item);
+        
+        newItem.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const tabId = this.getAttribute('data-tab');
+            
+            closeMobileSidebar();
+            
+            if (dropdownParent) {
+                dropdownParent.classList.remove('open');
+                if (dropdownMenu) dropdownMenu.style.display = 'none';
+            }
+            
+            if (tabId && tabId.startsWith('hub-')) {
+                showHubModule(tabId);
+            }
+        });
+    });
+    
+    // Close sidebar on overlay click
+    const overlay = document.getElementById('overlay');
+    if (overlay) {
+        overlay.addEventListener('click', closeMobileSidebar);
+    }
+    
+    // Close sidebar on escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && window.innerWidth <= 768) {
+            closeMobileSidebar();
+        }
+    });
+    
+    // Restore last module
+    const lastModule = localStorage.getItem('nchsm_current_module');
+    if (lastModule && lastModule.startsWith('hub-')) {
+        setTimeout(() => showHubModule(lastModule), 500);
+    }
+    
+    console.log('✅ Sidebar dropdown with mobile close initialized');
+})();
+</script>
 <!-- ==================== ROUTING & TAB PERSISTENCE (CLEAN URLs - NO HASH) ==================== -->
 <script>
 (function() {
