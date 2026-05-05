@@ -1,33 +1,41 @@
-// resources.js - Premium READ-ONLY High-Quality Resource Viewer with Block Filter & Refresh Button
+// resources.js - ULTRA-FAST Premium READ-ONLY Resource Viewer with Block Filter
 
 let pdfjsLib = null;
-let pdfjsLoaded = false;
 let currentPDFDoc = null;
 let currentPDFPage = 1;
 let totalPDFPages = 0;
 let pdfScale = 1.5;
-let isRendering = false;
-let pageRendering = false;
-let pageNumPending = null;
-let currentResource = null;
 
-// Global variables
+// Global variables with performance optimizations
 let currentResources = [];
 let filteredResources = [];
 let currentBlockFilter = 'all';
 let isLoading = false;
+let renderTimeout = null;
+let searchDebounceTimeout = null;
+
+// Cache system
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+let resourceCache = null;
+
+// Virtual scrolling
+let currentPage = 1;
+const ITEMS_PER_PAGE = 12;
+let totalFilteredCount = 0;
+
+// DOM Elements cache
+let cachedElements = {};
 
 // High-quality rendering settings
 const RENDER_SETTINGS = {
     defaultScale: 1.8,
     minScale: 0.8,
     maxScale: 4.0,
-    quality: 'high',
-    enableAnnotations: true,
-    enhanceText: true
+    quality: 'high'
 };
 
-// Helper functions
+// ==================== HELPER FUNCTIONS ====================
+
 function getSupabaseClient() {
     const client = window.db?.supabase;
     if (!client || typeof client.from !== 'function') {
@@ -48,45 +56,7 @@ function getCurrentUserId() {
     return window.db?.currentUserId || window.currentUserId;
 }
 
-// Initialize PDF.js with high-quality settings
-async function initializePDFJS() {
-    if (pdfjsLoaded) return true;
-    
-    return new Promise((resolve, reject) => {
-        if (typeof window.pdfjsLib !== 'undefined') {
-            console.log('✅ PDF.js already loaded');
-            pdfjsLib = window.pdfjsLib;
-            
-            if (pdfjsLib.GlobalWorkerOptions) {
-                pdfjsLib.GlobalWorkerOptions.workerSrc = 
-                    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-            }
-            
-            pdfjsLib.disableTextLayer = false;
-            pdfjsLib.disableRange = true;
-            
-            pdfjsLoaded = true;
-            resolve(true);
-            return;
-        }
-        
-        const script = document.createElement('script');
-        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
-        script.onload = () => {
-            pdfjsLib = window.pdfjsLib;
-            if (pdfjsLib.GlobalWorkerOptions) {
-                pdfjsLib.GlobalWorkerOptions.workerSrc = 
-                    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-            }
-            pdfjsLoaded = true;
-            resolve(true);
-        };
-        script.onerror = () => reject(new Error('Failed to load PDF viewer'));
-        document.head.appendChild(script);
-    });
-}
-
-// ==================== BLOCK FILTER FUNCTIONS ====================
+// ==================== BLOCK MAPPING ====================
 
 const BLOCK_MAPPING = {
     'introductory': ['Introductory', 'Intro', 'Foundation', 'Block 0'],
@@ -111,40 +81,67 @@ function getAllBlocks() {
     ];
 }
 
+// ==================== CACHE MANAGEMENT ====================
+
+function getCachedResources(program, intake) {
+    if (!resourceCache) return null;
+    if (resourceCache.program === program && 
+        resourceCache.intake === intake &&
+        (Date.now() - resourceCache.timestamp) < CACHE_DURATION) {
+        console.log('📦 Using cached resources');
+        return resourceCache.data;
+    }
+    return null;
+}
+
+function setCachedResources(program, intake, data) {
+    resourceCache = {
+        program: program,
+        intake: intake,
+        data: data,
+        timestamp: Date.now()
+    };
+}
+
+function clearCache() {
+    resourceCache = null;
+    console.log('🗑️ Cache cleared');
+}
+
+// ==================== UI CREATION (FAST) ====================
+
 function createBlockFilterUI() {
     const resourcesHeader = document.querySelector('#resources .resources-header');
     if (!resourcesHeader) return;
     if (document.getElementById('block-resource-filter')) return;
     
     const blockFilterHTML = `
-        <div class="block-filter-card premium-card">
-            <div class="filter-header">
-                <div class="filter-title">
-                    <i class="fas fa-layer-group"></i>
-                    <span>Filter by Block</span>
+        <div class="block-filter-card premium-card" style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border-radius: 16px; padding: 20px; margin-bottom: 25px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 15px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <i class="fas fa-layer-group" style="color: #a78bfa; font-size: 20px;"></i>
+                    <span style="color: white; font-weight: 600;">Filter by Block</span>
                 </div>
-                <div class="current-block-indicator">
-                    <i class="fas fa-user-graduate"></i>
-                    <span>Your Block: <strong id="current-user-block">Loading...</strong></span>
+                <div style="display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.05); padding: 8px 16px; border-radius: 40px;">
+                    <i class="fas fa-user-graduate" style="color: #a78bfa;"></i>
+                    <span style="color: white; font-size: 14px;">Your Block: <strong id="current-user-block" style="color: #c084fc;">Loading...</strong></span>
                 </div>
             </div>
             
-            <div class="filter-controls-group">
-                <div class="filter-select-wrapper">
-                    <select id="block-resource-filter" class="premium-select">
-                        ${getAllBlocks().map(block => `
-                            <option value="${block.value}">${block.label}</option>
-                        `).join('')}
+            <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 200px;">
+                    <select id="block-resource-filter" class="premium-select" style="width: 100%; padding: 12px 16px; border-radius: 12px; background: #0f0f23; color: white; border: 1px solid rgba(255,255,255,0.1);">
+                        ${getAllBlocks().map(block => `<option value="${block.value}">${block.label}</option>`).join('')}
                     </select>
                 </div>
                 
-                <button id="refresh-block-resources" class="refresh-block-btn" title="Refresh Resources for this Block">
+                <button id="refresh-block-resources" style="background: linear-gradient(135deg, #4C1D95 0%, #7c3aed 100%); border: none; padding: 12px 24px; border-radius: 12px; color: white; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: transform 0.2s;">
                     <i class="fas fa-sync-alt"></i>
                     <span>Refresh</span>
                 </button>
             </div>
             
-            <div class="filter-info">
+            <div style="margin-top: 12px; display: flex; align-items: center; gap: 8px; font-size: 12px; color: #a78bfa;">
                 <i class="fas fa-info-circle"></i>
                 <span>Select a block and click Refresh to load materials</span>
             </div>
@@ -158,37 +155,10 @@ function createBlockFilterUI() {
         resourcesHeader.insertAdjacentHTML('beforeend', blockFilterHTML);
     }
     
-    const blockFilter = document.getElementById('block-resource-filter');
-    const refreshBtn = document.getElementById('refresh-block-resources');
+    cacheElements();
+    attachEventListeners();
     
-    if (refreshBtn) {
-        refreshBtn.addEventListener('click', async () => {
-            if (isLoading) return;
-            
-            const selectedBlock = blockFilter.value;
-            const selectedLabel = blockFilter.options[blockFilter.selectedIndex]?.text || 'selected block';
-            
-            refreshBtn.disabled = true;
-            refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Loading...</span>';
-            
-            currentBlockFilter = selectedBlock;
-            await loadAllResourcesForBlocks();
-            
-            showToast(`📚 Loaded ${filteredResources.length} resources for ${selectedLabel}`, 'success');
-            
-            refreshBtn.disabled = false;
-            refreshBtn.innerHTML = '<i class="fas fa-sync-alt"></i><span>Refresh</span>';
-        });
-    }
-    
-    if (blockFilter) {
-        blockFilter.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                refreshBtn.click();
-            }
-        });
-    }
-    
+    // Auto-select user's block
     const userProfile = getUserProfile();
     const userBlock = userProfile?.block || 'Introductory';
     const blockDisplay = document.getElementById('current-user-block');
@@ -202,64 +172,131 @@ function createBlockFilterUI() {
         }
     }
     
-    if (userBlockValue !== 'all' && blockFilter) {
+    const blockFilter = document.getElementById('block-resource-filter');
+    if (blockFilter && userBlockValue !== 'all') {
         blockFilter.value = userBlockValue;
         currentBlockFilter = userBlockValue;
     }
 }
 
-// Load all resources from all blocks
-async function loadAllResourcesForBlocks() {
-    if (isLoading) return;
+function cacheElements() {
+    cachedElements = {
+        resourcesGrid: document.getElementById('resources-grid'),
+        resourceSearch: document.getElementById('resource-search'),
+        resourceFilter: document.getElementById('resource-filter'),
+        courseFilter: document.getElementById('course-filter'),
+        blockFilter: document.getElementById('block-resource-filter'),
+        refreshBtn: document.getElementById('refresh-block-resources')
+    };
+}
+
+function attachEventListeners() {
+    if (cachedElements.refreshBtn) {
+        cachedElements.refreshBtn.addEventListener('click', async () => {
+            if (isLoading) return;
+            await loadAllResourcesForBlocks();
+        });
+    }
     
-    console.log('📁 Loading read-only resources...');
+    if (cachedElements.resourceSearch) {
+        cachedElements.resourceSearch.addEventListener('input', () => {
+            clearTimeout(searchDebounceTimeout);
+            searchDebounceTimeout = setTimeout(() => filterResourcesByBlock(), 300);
+        });
+    }
+    
+    if (cachedElements.resourceFilter) {
+        cachedElements.resourceFilter.addEventListener('change', () => filterResourcesByBlock());
+    }
+    
+    if (cachedElements.courseFilter) {
+        cachedElements.courseFilter.addEventListener('change', () => filterResourcesByBlock());
+    }
+}
+
+// ==================== FAST RESOURCE LOADING ====================
+
+async function loadAllResourcesForBlocks() {
+    if (isLoading) {
+        console.log('⏳ Already loading, skipping...');
+        return;
+    }
     
     const userProfile = getUserProfile();
     const supabaseClient = getSupabaseClient();
     
-    if (!supabaseClient) {
-        const resourcesGrid = document.getElementById('resources-grid');
-        if (resourcesGrid) showError(resourcesGrid, 'Database connection error');
+    if (!supabaseClient || !cachedElements.resourcesGrid) {
+        if (cachedElements.resourcesGrid) showError('Database connection error');
         return;
     }
     
-    const resourcesGrid = document.getElementById('resources-grid');
-    if (!resourcesGrid) return;
+    const program = userProfile?.program;
+    const intakeYear = userProfile?.intake_year;
+
+    if (!program || !intakeYear) {
+        if (cachedElements.resourcesGrid) {
+            cachedElements.resourcesGrid.innerHTML = '<div class="error-state premium">Missing enrollment details</div>';
+        }
+        return;
+    }
+    
+    // Check cache first
+    const cached = getCachedResources(program, intakeYear);
+    if (cached) {
+        currentResources = cached;
+        populateCourseFilterFast();
+        await filterResourcesByBlock();
+        return;
+    }
     
     isLoading = true;
-    showLoading(resourcesGrid, 'Loading resources...');
-    currentResources = [];
-
+    showLoading('Loading resources...');
+    
     try {
-        const program = userProfile?.program;
-        const intakeYear = userProfile?.intake_year;
-
-        if (!program || !intakeYear) {
-            resourcesGrid.innerHTML = '<div class="error-state premium">Missing enrollment details</div>';
-            isLoading = false;
-            return;
-        }
-
+        // Optimized query with better performance
         const { data: resources, error } = await supabaseClient
             .from('resources')
             .select('id, title, file_path, file_url, program_type, block, intake, uploaded_by_name, created_at, description, file_type')
             .eq('program_type', program)
             .eq('intake', intakeYear)
-            .order('created_at', { ascending: false });
-
+            .order('created_at', { ascending: false })
+            .limit(200); // Limit for performance
+            
         if (error) throw error;
-
+        
         currentResources = resources || [];
-        populateCourseFilter();
+        setCachedResources(program, intakeYear, currentResources);
+        populateCourseFilterFast();
         await filterResourcesByBlock();
-
+        
     } catch (err) {
         console.error("Error loading resources:", err);
-        showError(resourcesGrid, `Error: ${err.message}`);
+        showError(`Error: ${err.message}`);
     } finally {
         isLoading = false;
     }
 }
+
+function populateCourseFilterFast() {
+    if (!cachedElements.courseFilter) return;
+    
+    const courses = [...new Set(currentResources.map(r => r.program_type).filter(Boolean))];
+    const currentValue = cachedElements.courseFilter.value;
+    
+    cachedElements.courseFilter.innerHTML = '<option value="all">All Courses</option>';
+    courses.forEach(course => {
+        const option = document.createElement('option');
+        option.value = course;
+        option.textContent = course;
+        cachedElements.courseFilter.appendChild(option);
+    });
+    
+    if (currentValue && courses.includes(currentValue)) {
+        cachedElements.courseFilter.value = currentValue;
+    }
+}
+
+// ==================== FAST FILTERING ====================
 
 async function filterResourcesByBlock() {
     if (!currentResources.length) {
@@ -267,11 +304,16 @@ async function filterResourcesByBlock() {
         return;
     }
     
-    let filtered = [...currentResources];
+    // Clear any pending render
+    if (renderTimeout) clearTimeout(renderTimeout);
     
+    let filtered = [...currentResources];
+    const blockFilterValue = cachedElements.blockFilter?.value || currentBlockFilter;
+    currentBlockFilter = blockFilterValue;
+    
+    // Apply block filter efficiently
     if (currentBlockFilter !== 'all') {
         const targetKeywords = BLOCK_MAPPING[currentBlockFilter] || [];
-        
         filtered = filtered.filter(resource => {
             const resourceBlock = (resource.block || '').toString().toLowerCase();
             return targetKeywords.some(keyword => 
@@ -280,7 +322,8 @@ async function filterResourcesByBlock() {
         });
     }
     
-    const searchTerm = document.getElementById('resource-search')?.value.toLowerCase() || '';
+    // Apply search filter
+    const searchTerm = cachedElements.resourceSearch?.value.toLowerCase() || '';
     if (searchTerm) {
         filtered = filtered.filter(r => 
             (r.title || '').toLowerCase().includes(searchTerm) ||
@@ -288,85 +331,425 @@ async function filterResourcesByBlock() {
         );
     }
     
-    const typeFilter = document.getElementById('resource-filter')?.value || 'all';
+    // Apply type filter
+    const typeFilter = cachedElements.resourceFilter?.value || 'all';
     if (typeFilter !== 'all') {
         filtered = filtered.filter(r => getFileType(r.file_path) === typeFilter);
     }
     
-    const courseFilter = document.getElementById('course-filter')?.value || 'all';
+    // Apply course filter
+    const courseFilter = cachedElements.courseFilter?.value || 'all';
     if (courseFilter !== 'all') {
         filtered = filtered.filter(r => r.program_type === courseFilter);
     }
     
     filteredResources = filtered;
-    renderResourcesGrid();
+    totalFilteredCount = filteredResources.length;
+    currentPage = 1;
+    
+    // Debounce rendering for better performance
+    renderTimeout = setTimeout(() => renderResourcesGrid(), 50);
     updateResourceCountDisplay();
 }
 
-function renderResourcesGrid() {
-    const resourcesGrid = document.getElementById('resources-grid');
-    if (!resourcesGrid) return;
+// ==================== VIRTUAL SCROLL RENDERING ====================
 
+function renderResourcesGrid() {
+    if (!cachedElements.resourcesGrid) return;
+    
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    const pageItems = filteredResources.slice(startIndex, endIndex);
+    const hasMore = endIndex < filteredResources.length;
+    
     if (filteredResources.length === 0) {
-        resourcesGrid.innerHTML = `
-            <div class="empty-state premium">
-                <i class="fas fa-folder-open"></i>
-                <h3>No Resources Found</h3>
-                <p>No resources match your current filters.</p>
-                <button onclick="document.getElementById('block-resource-filter').value='all'; document.getElementById('refresh-block-resources').click();" class="premium-btn">
+        cachedElements.resourcesGrid.innerHTML = `
+            <div style="text-align: center; padding: 60px 20px; background: rgba(255,255,255,0.02); border-radius: 20px;">
+                <i class="fas fa-folder-open" style="font-size: 48px; color: #a78bfa; margin-bottom: 20px; display: inline-block;"></i>
+                <h3 style="color: white; margin-bottom: 10px;">No Resources Found</h3>
+                <p style="color: rgba(255,255,255,0.6);">No resources match your current filters.</p>
+                <button onclick="window.resetFilters()" style="margin-top: 20px; background: linear-gradient(135deg, #4C1D95 0%, #7c3aed 100%); border: none; padding: 10px 20px; border-radius: 10px; color: white; cursor: pointer;">
                     <i class="fas fa-eye"></i> View All Blocks
                 </button>
             </div>
         `;
         return;
     }
+    
+    // Batch DOM operations using DocumentFragment
+    const fragment = document.createDocumentFragment();
+    const gridContainer = document.createElement('div');
+    gridContainer.style.display = 'grid';
+    gridContainer.style.gridTemplateColumns = 'repeat(auto-fill, minmax(320px, 1fr))';
+    gridContainer.style.gap = '20px';
+    
+    pageItems.forEach(resource => {
+        const card = createResourceCard(resource);
+        gridContainer.appendChild(card);
+    });
+    
+    fragment.appendChild(gridContainer);
+    
+    // Add load more button if needed
+    if (hasMore) {
+        const loadMoreDiv = document.createElement('div');
+        loadMoreDiv.style.gridColumn = '1 / -1';
+        loadMoreDiv.style.textAlign = 'center';
+        loadMoreDiv.style.marginTop = '20px';
+        loadMoreDiv.innerHTML = `
+            <button onclick="window.loadMoreResources()" style="background: rgba(255,255,255,0.1); border: none; padding: 12px 30px; border-radius: 40px; color: white; cursor: pointer; transition: all 0.3s;">
+                <i class="fas fa-arrow-down"></i> Load More (${filteredResources.length - endIndex} remaining)
+            </button>
+        `;
+        fragment.appendChild(loadMoreDiv);
+    }
+    
+    // Clear and update
+    cachedElements.resourcesGrid.innerHTML = '';
+    cachedElements.resourcesGrid.appendChild(fragment);
+}
 
-    resourcesGrid.innerHTML = filteredResources.map(resource => `
-        <div class="resource-card premium-card" data-id="${resource.id}">
-            <div class="resource-preview">
-                <div class="preview-icon ${getFileType(resource.file_path)}">
-                    <i class="${getFileIcon(resource.file_path)}"></i>
-                </div>
+function createResourceCard(resource) {
+    const card = document.createElement('div');
+    card.className = 'resource-card premium-card';
+    card.style.cssText = `
+        background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%);
+        border-radius: 16px;
+        padding: 20px;
+        backdrop-filter: blur(10px);
+        transition: transform 0.2s, box-shadow 0.2s;
+        cursor: pointer;
+        border: 1px solid rgba(255,255,255,0.1);
+    `;
+    card.onmouseenter = () => {
+        card.style.transform = 'translateY(-5px)';
+        card.style.boxShadow = '0 20px 40px rgba(0,0,0,0.3)';
+    };
+    card.onmouseleave = () => {
+        card.style.transform = 'translateY(0)';
+        card.style.boxShadow = 'none';
+    };
+    card.onclick = () => openResource(resource.id);
+    
+    const fileType = getFileType(resource.file_path);
+    const fileIcon = getFileIcon(resource.file_path);
+    const blockClass = getBlockTagClass(resource.block);
+    const blockIcon = getBlockIcon(resource.block);
+    
+    card.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
+            <div style="width: 50px; height: 50px; background: ${fileType === 'pdf' ? '#ef4444' : fileType === 'image' ? '#10b981' : '#3b82f6'}; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                <i class="${fileIcon}" style="font-size: 24px; color: white;"></i>
             </div>
-            <div class="resource-details">
-                <h3 class="resource-title">${escapeHtml(resource.title)}</h3>
-                <p class="resource-description">${escapeHtml(resource.description || 'No description available')}</p>
-                <div class="resource-meta">
-                    <span class="meta-tag">
-                        <i class="fas fa-calendar"></i> ${new Date(resource.created_at).toLocaleDateString()}
+            <div style="flex: 1;">
+                <h3 style="color: white; font-size: 16px; margin: 0 0 5px 0; font-weight: 600;">${escapeHtml(resource.title)}</h3>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <span style="background: ${getBlockColor(resource.block)}; padding: 4px 10px; border-radius: 20px; font-size: 11px; color: white; display: inline-flex; align-items: center; gap: 5px;">
+                        <i class="fas ${blockIcon}"></i> ${escapeHtml(resource.block || 'General')}
                     </span>
-                    <span class="meta-tag block-tag ${getBlockTagClass(resource.block)}">
-                        <i class="fas ${getBlockIcon(resource.block)}"></i> ${escapeHtml(resource.block || 'General')}
-                    </span>
-                    <span class="meta-tag read-only-badge">
+                    <span style="background: #4C1D95; padding: 4px 10px; border-radius: 20px; font-size: 11px; color: white; display: inline-flex; align-items: center; gap: 5px;">
                         <i class="fas fa-eye"></i> Read Only
                     </span>
                 </div>
             </div>
-            <div class="resource-actions">
-                <button class="action-btn view-btn" onclick="openResource(${resource.id})">
-                    <i class="fas fa-eye"></i> Read Now
-                </button>
-            </div>
         </div>
-    `).join('');
+        <p style="color: rgba(255,255,255,0.7); font-size: 13px; line-height: 1.5; margin: 0 0 15px 0;">${escapeHtml(resource.description || 'No description available')}</p>
+        <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1);">
+            <span style="color: rgba(255,255,255,0.5); font-size: 11px;">
+                <i class="fas fa-calendar"></i> ${new Date(resource.created_at).toLocaleDateString()}
+            </span>
+            <button style="background: linear-gradient(135deg, #4C1D95 0%, #7c3aed 100%); border: none; padding: 8px 16px; border-radius: 8px; color: white; font-size: 13px; cursor: pointer; transition: transform 0.2s;">
+                <i class="fas fa-eye"></i> Read Now
+            </button>
+        </div>
+    `;
+    
+    return card;
+}
+
+function getBlockColor(block) {
+    if (!block) return '#6b7280';
+    const b = block.toLowerCase();
+    if (b.includes('intro')) return '#f59e0b';
+    if (b.includes('block 1')) return '#3b82f6';
+    if (b.includes('block 2')) return '#10b981';
+    if (b.includes('block 3')) return '#8b5cf6';
+    if (b.includes('block 4')) return '#ec4899';
+    if (b.includes('block 5')) return '#06b6d4';
+    if (b.includes('final')) return '#ef4444';
+    return '#6b7280';
+}
+
+function loadMoreResources() {
+    currentPage++;
+    renderResourcesGrid();
+}
+
+function resetFilters() {
+    if (cachedElements.blockFilter) cachedElements.blockFilter.value = 'all';
+    if (cachedElements.resourceSearch) cachedElements.resourceSearch.value = '';
+    if (cachedElements.resourceFilter) cachedElements.resourceFilter.value = 'all';
+    if (cachedElements.courseFilter) cachedElements.courseFilter.value = 'all';
+    currentBlockFilter = 'all';
+    filterResourcesByBlock();
 }
 
 function updateResourceCountDisplay() {
-    const blockFilter = document.getElementById('block-resource-filter');
-    const refreshBtn = document.getElementById('refresh-block-resources');
-    
-    if (blockFilter && refreshBtn) {
-        const selectedBlock = blockFilter.value;
-        const selectedLabel = blockFilter.options[blockFilter.selectedIndex]?.text || '';
-        
-        if (currentBlockFilter !== 'all') {
-            refreshBtn.classList.add('active-filter');
-            refreshBtn.setAttribute('data-count', filteredResources.length);
-        } else {
-            refreshBtn.classList.remove('active-filter');
+    const refreshBtn = cachedElements.refreshBtn;
+    if (refreshBtn) {
+        const count = filteredResources.length;
+        refreshBtn.setAttribute('data-count', count);
+        if (count > 0 && currentBlockFilter !== 'all') {
+            refreshBtn.style.position = 'relative';
         }
     }
+}
+
+// ==================== READ-ONLY PDF VIEWER (OPTIMIZED) ====================
+
+async function initializePDFJS() {
+    if (typeof window.pdfjsLib !== 'undefined') {
+        pdfjsLib = window.pdfjsLib;
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        return true;
+    }
+    
+    return new Promise((resolve) => {
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+        script.onload = () => {
+            pdfjsLib = window.pdfjsLib;
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+            resolve(true);
+        };
+        document.head.appendChild(script);
+    });
+}
+
+async function openResource(resourceId) {
+    const resource = currentResources.find(r => r.id == resourceId);
+    if (!resource) {
+        showToast('Resource not found', 'error');
+        return;
+    }
+    
+    const fileType = getFileType(resource.file_path);
+    
+    if (fileType === 'pdf') {
+        await openReadOnlyPDF(resource);
+    } else if (fileType === 'image') {
+        openReadOnlyImage(resource);
+    } else if (fileType === 'video') {
+        openReadOnlyVideo(resource);
+    } else {
+        window.open(resource.file_url + '#toolbar=0', '_blank');
+    }
+}
+
+async function openReadOnlyPDF(resource) {
+    await initializePDFJS();
+    createReadOnlyPDFViewer(resource);
+    await loadHighQualityPDF(resource.file_url);
+}
+
+function createReadOnlyPDFViewer(resource) {
+    const existingModal = document.getElementById('readonly-pdf-modal');
+    if (existingModal) existingModal.remove();
+    
+    const modal = document.createElement('div');
+    modal.id = 'readonly-pdf-modal';
+    modal.style.cssText = `
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.95); display: flex; justify-content: center;
+        align-items: center; z-index: 10000; backdrop-filter: blur(8px);
+    `;
+    modal.innerHTML = `
+        <div style="width: 95%; height: 95%; background: #1a1a2e; border-radius: 20px; display: flex; flex-direction: column; overflow: hidden;">
+            <div style="padding: 16px 24px; background: linear-gradient(135deg, #16213e 0%, #1a1a2e 100%); border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 12px; color: white;">
+                    <i class="fas fa-file-pdf" style="font-size: 24px; color: #ef4444;"></i>
+                    <div>
+                        <h3 style="margin: 0; font-size: 1rem;">${escapeHtml(resource.title)}</h3>
+                        <span style="font-size: 11px; background: #4C1D95; padding: 4px 10px; border-radius: 20px;">Read Only Mode</span>
+                    </div>
+                </div>
+                <button id="close-readonly-pdf" style="background: rgba(255,255,255,0.1); border: none; width: 36px; height: 36px; border-radius: 8px; color: white; cursor: pointer;">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div style="flex: 1; overflow: auto; background: #2d2d3a; position: relative;">
+                <div id="pdf-loading" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; background: #2d2d3a;">
+                    <div style="width: 60px; height: 60px; border: 4px solid rgba(255,255,255,0.2); border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                    <p style="color: white; margin-top: 20px;">Loading high-quality document...</p>
+                </div>
+                <div id="pdf-viewer-area" style="display: none; justify-content: center; padding: 20px;">
+                    <canvas id="readonly-pdf-canvas" style="display: block; margin: 0 auto; box-shadow: 0 4px 20px rgba(0,0,0,0.3); background: white; border-radius: 4px;"></canvas>
+                </div>
+            </div>
+            
+            <div style="background: linear-gradient(135deg, #16213e 0%, #1a1a2e 100%); border-top: 1px solid rgba(255,255,255,0.1); padding: 12px 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <button id="pdf-prev-page" style="background: rgba(255,255,255,0.1); border: none; width: 40px; height: 40px; border-radius: 8px; color: white; cursor: pointer;">◀</button>
+                    <div style="display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.1); padding: 6px 12px; border-radius: 8px;">
+                        <input type="number" id="pdf-page-number" min="1" value="1" style="width: 50px; padding: 6px; border-radius: 6px; text-align: center;">
+                        <span style="color: white;">/</span>
+                        <span id="pdf-total-pages" style="color: white;">1</span>
+                    </div>
+                    <button id="pdf-next-page" style="background: rgba(255,255,255,0.1); border: none; width: 40px; height: 40px; border-radius: 8px; color: white; cursor: pointer;">▶</button>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <button id="pdf-zoom-out" style="background: rgba(255,255,255,0.1); border: none; width: 40px; height: 40px; border-radius: 8px; color: white; cursor: pointer;">-</button>
+                    <span id="pdf-zoom-percent" style="color: white; min-width: 60px; text-align: center;">150%</span>
+                    <button id="pdf-zoom-in" style="background: rgba(255,255,255,0.1); border: none; width: 40px; height: 40px; border-radius: 8px; color: white; cursor: pointer;">+</button>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px; background: rgba(76,29,149,0.3); padding: 8px 16px; border-radius: 40px;">
+                    <i class="fas fa-lock" style="color: #a78bfa;"></i>
+                    <span style="color: #a78bfa; font-size: 12px;">Protected - No Download</span>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Add animation
+    const style = document.createElement('style');
+    style.textContent = `@keyframes spin { to { transform: rotate(360deg); } }`;
+    document.head.appendChild(style);
+    
+    // Event listeners
+    document.getElementById('close-readonly-pdf').onclick = () => {
+        modal.remove();
+        if (currentPDFDoc) currentPDFDoc.destroy();
+    };
+    document.getElementById('pdf-prev-page').onclick = () => goToPDFPage(currentPDFPage - 1);
+    document.getElementById('pdf-next-page').onclick = () => goToPDFPage(currentPDFPage + 1);
+    document.getElementById('pdf-zoom-in').onclick = () => zoomPDF(1.2);
+    document.getElementById('pdf-zoom-out').onclick = () => zoomPDF(0.8);
+    document.getElementById('pdf-page-number').onchange = (e) => goToPDFPage(parseInt(e.target.value));
+    
+    modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+}
+
+async function loadHighQualityPDF(pdfUrl) {
+    try {
+        const loadingTask = pdfjsLib.getDocument({
+            url: pdfUrl,
+            cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/',
+            cMapPacked: true
+        });
+        
+        currentPDFDoc = await loadingTask.promise;
+        totalPDFPages = currentPDFDoc.numPages;
+        
+        document.getElementById('pdf-total-pages').textContent = totalPDFPages;
+        document.getElementById('pdf-page-number').max = totalPDFPages;
+        document.getElementById('pdf-loading').style.display = 'none';
+        document.getElementById('pdf-viewer-area').style.display = 'flex';
+        
+        pdfScale = 1.5;
+        await renderPDFPage(1);
+        
+    } catch (error) {
+        document.getElementById('pdf-loading').innerHTML = `<p style="color: red;">Failed to load: ${error.message}</p>`;
+    }
+}
+
+async function renderPDFPage(pageNum) {
+    if (!currentPDFDoc || pageNum < 1 || pageNum > totalPDFPages) return;
+    
+    const page = await currentPDFDoc.getPage(pageNum);
+    const canvas = document.getElementById('readonly-pdf-canvas');
+    const viewport = page.getViewport({ scale: pdfScale });
+    
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    canvas.style.width = viewport.width + 'px';
+    canvas.style.height = viewport.height + 'px';
+    
+    await page.render({
+        canvasContext: canvas.getContext('2d'),
+        viewport: viewport
+    }).promise;
+    
+    currentPDFPage = pageNum;
+    document.getElementById('pdf-page-number').value = pageNum;
+    document.getElementById('pdf-zoom-percent').textContent = Math.round(pdfScale * 100) + '%';
+}
+
+function goToPDFPage(pageNum) {
+    if (pageNum < 1) pageNum = 1;
+    if (pageNum > totalPDFPages) pageNum = totalPDFPages;
+    renderPDFPage(pageNum);
+}
+
+function zoomPDF(factor) {
+    pdfScale = Math.max(0.5, Math.min(pdfScale * factor, 4.0));
+    renderPDFPage(currentPDFPage);
+}
+
+// ==================== IMAGE/VIDEO VIEWERS ====================
+
+function openReadOnlyImage(resource) {
+    const modal = document.createElement('div');
+    modal.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.95); display: flex; justify-content: center; align-items: center; z-index: 10000;';
+    modal.innerHTML = `
+        <div style="max-width: 90vw; max-height: 90vh; background: #1a1a2e; border-radius: 20px; overflow: hidden;">
+            <div style="padding: 15px 20px; background: linear-gradient(135deg, #16213e 0%, #1a1a2e 100%); display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="color: white; margin: 0;">${escapeHtml(resource.title)}</h3>
+                <button onclick="this.closest('div').parentElement.remove()" style="background: rgba(255,255,255,0.1); border: none; width: 32px; height: 32px; border-radius: 8px; color: white; cursor: pointer;">✕</button>
+            </div>
+            <div style="padding: 20px; background: #2d2d3a;">
+                <img src="${resource.file_url}" style="max-width: calc(90vw - 40px); max-height: calc(70vh - 40px); border-radius: 12px;">
+            </div>
+            <div style="padding: 12px 20px; text-align: center; color: #a78bfa; font-size: 12px;">
+                <i class="fas fa-lock"></i> Protected Image - No Download
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+}
+
+function openReadOnlyVideo(resource) {
+    const modal = document.createElement('div');
+    modal.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.95); display: flex; justify-content: center; align-items: center; z-index: 10000;';
+    modal.innerHTML = `
+        <div style="max-width: 90vw; max-height: 90vh; background: #1a1a2e; border-radius: 20px; overflow: hidden;">
+            <div style="padding: 15px 20px; background: linear-gradient(135deg, #16213e 0%, #1a1a2e 100%); display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="color: white; margin: 0;">${escapeHtml(resource.title)}</h3>
+                <button onclick="this.closest('div').parentElement.remove()" style="background: rgba(255,255,255,0.1); border: none; width: 32px; height: 32px; border-radius: 8px; color: white; cursor: pointer;">✕</button>
+            </div>
+            <div style="padding: 20px; background: #2d2d3a;">
+                <video controls controlslist="nodownload" style="max-width: calc(90vw - 40px); max-height: calc(70vh - 40px); border-radius: 12px;">
+                    <source src="${resource.file_url}">
+                </video>
+            </div>
+            <div style="padding: 12px 20px; text-align: center; color: #a78bfa; font-size: 12px;">
+                <i class="fas fa-lock"></i> Protected Video - No Download
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+}
+
+// ==================== UTILITY FUNCTIONS ====================
+
+function getFileType(filePath) {
+    if (!filePath) return 'unknown';
+    const ext = filePath.split('.').pop().toLowerCase();
+    if (ext === 'pdf') return 'pdf';
+    if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(ext)) return 'image';
+    if (['mp4', 'avi', 'mov', 'wmv', 'webm'].includes(ext)) return 'video';
+    return 'file';
+}
+
+function getFileIcon(filePath) {
+    const type = getFileType(filePath);
+    const icons = { pdf: 'fa-file-pdf', image: 'fa-file-image', video: 'fa-file-video' };
+    return `fas ${icons[type] || 'fa-file-alt'}`;
 }
 
 function getBlockTagClass(block) {
@@ -395,870 +778,6 @@ function getBlockIcon(block) {
     return 'fa-layer-group';
 }
 
-function populateCourseFilter() {
-    const courseFilter = document.getElementById('course-filter');
-    if (!courseFilter) return;
-
-    const courses = [...new Set(currentResources.map(r => r.program_type).filter(Boolean))];
-    courseFilter.innerHTML = '<option value="all">All Courses</option>';
-    courses.forEach(course => {
-        const option = document.createElement('option');
-        option.value = course;
-        option.textContent = course;
-        courseFilter.appendChild(option);
-    });
-}
-
-// ==================== READ-ONLY HIGH-QUALITY VIEWER ====================
-
-async function openResource(resourceId) {
-    const resource = currentResources.find(r => r.id == resourceId);
-    if (!resource) {
-        showToast('Resource not found', 'error');
-        return;
-    }
-
-    currentResource = resource;
-    const fileType = getFileType(resource.file_path);
-    
-    if (fileType === 'pdf') {
-        await openReadOnlyPDF(resource);
-    } else if (fileType === 'image') {
-        openReadOnlyImage(resource);
-    } else if (fileType === 'video') {
-        openReadOnlyVideo(resource);
-    } else {
-        openReadOnlyDocument(resource);
-    }
-}
-
-async function openReadOnlyPDF(resource) {
-    try {
-        await initializePDFJS();
-        createReadOnlyPDFViewer(resource);
-        await loadHighQualityPDF(resource.file_url);
-    } catch (error) {
-        console.error('PDF error:', error);
-        showToast('Failed to load PDF: ' + error.message, 'error');
-    }
-}
-
-function createReadOnlyPDFViewer(resource) {
-    const existingModal = document.getElementById('readonly-pdf-modal');
-    if (existingModal) existingModal.remove();
-    
-    const modal = document.createElement('div');
-    modal.id = 'readonly-pdf-modal';
-    modal.className = 'readonly-pdf-modal';
-    modal.innerHTML = `
-        <div class="readonly-pdf-container">
-            <div class="readonly-pdf-header">
-                <div class="pdf-title-section">
-                    <i class="fas fa-file-pdf"></i>
-                    <div>
-                        <h3>${escapeHtml(resource.title)}</h3>
-                        <span class="readonly-status">Read Only Mode</span>
-                    </div>
-                </div>
-                <div class="pdf-header-actions">
-                    <button class="pdf-header-btn" id="fullscreen-btn" title="Fullscreen">
-                        <i class="fas fa-expand"></i>
-                    </button>
-                    <button class="pdf-header-btn" id="close-readonly-pdf" title="Close">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-            </div>
-            
-            <div class="readonly-pdf-body">
-                <div id="pdf-loading" class="pdf-loading-overlay">
-                    <div class="loading-spinner premium"></div>
-                    <p>Loading high-quality document...</p>
-                </div>
-                
-                <div id="pdf-error" class="pdf-error-overlay" style="display: none;">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <h3>Failed to Load Document</h3>
-                    <p id="pdf-error-message"></p>
-                    <button id="retry-pdf-btn" class="premium-btn">Retry</button>
-                </div>
-                
-                <div id="pdf-viewer-area" class="pdf-viewer-area" style="display: none;">
-                    <div class="pdf-canvas-wrapper" id="pdf-canvas-wrapper">
-                        <canvas id="readonly-pdf-canvas" class="readonly-pdf-canvas"></canvas>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="readonly-pdf-footer">
-                <div class="pdf-nav-controls">
-                    <button id="pdf-first-page" class="pdf-nav-btn" title="First Page">
-                        <i class="fas fa-fast-backward"></i>
-                    </button>
-                    <button id="pdf-prev-page" class="pdf-nav-btn" title="Previous Page">
-                        <i class="fas fa-chevron-left"></i>
-                    </button>
-                    
-                    <div class="pdf-page-indicator">
-                        <input type="number" id="pdf-page-number" min="1" value="1">
-                        <span>/</span>
-                        <span id="pdf-total-pages">1</span>
-                    </div>
-                    
-                    <button id="pdf-next-page" class="pdf-nav-btn" title="Next Page">
-                        <i class="fas fa-chevron-right"></i>
-                    </button>
-                    <button id="pdf-last-page" class="pdf-nav-btn" title="Last Page">
-                        <i class="fas fa-fast-forward"></i>
-                    </button>
-                </div>
-                
-                <div class="pdf-zoom-controls">
-                    <button id="pdf-zoom-out" class="pdf-zoom-btn" title="Zoom Out">
-                        <i class="fas fa-search-minus"></i>
-                    </button>
-                    <span id="pdf-zoom-percent" class="pdf-zoom-percent">150%</span>
-                    <button id="pdf-zoom-in" class="pdf-zoom-btn" title="Zoom In">
-                        <i class="fas fa-search-plus"></i>
-                    </button>
-                    <button id="pdf-fit-width" class="pdf-zoom-btn" title="Fit to Width">
-                        <i class="fas fa-expand-arrows-alt"></i>
-                    </button>
-                    <button id="pdf-actual-size" class="pdf-zoom-btn" title="Actual Size">
-                        <i class="fas fa-percent"></i>
-                    </button>
-                </div>
-                
-                <div class="readonly-warning">
-                    <i class="fas fa-lock"></i>
-                    <span>Protected Document - No Download Available</span>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    document.body.appendChild(modal);
-    addReadOnlyPDFStyles();
-    setupReadOnlyPDFEvents();
-    modal.style.display = 'flex';
-}
-
-function addReadOnlyPDFStyles() {
-    const styleId = 'readonly-pdf-styles';
-    if (document.getElementById(styleId)) return;
-    
-    const styles = `
-        .readonly-pdf-modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.95);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 10000;
-            backdrop-filter: blur(8px);
-        }
-        .readonly-pdf-container {
-            width: 95%;
-            height: 95%;
-            background: #1a1a2e;
-            border-radius: 20px;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
-        }
-        .readonly-pdf-header {
-            padding: 16px 24px;
-            background: linear-gradient(135deg, #16213e 0%, #1a1a2e 100%);
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .pdf-title-section {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            color: white;
-        }
-        .pdf-title-section i {
-            font-size: 24px;
-            color: #ef4444;
-        }
-        .pdf-title-section h3 {
-            margin: 0;
-            font-size: 1rem;
-            font-weight: 500;
-        }
-        .readonly-status {
-            font-size: 11px;
-            background: #4C1D95;
-            padding: 4px 10px;
-            border-radius: 20px;
-            margin-left: 10px;
-        }
-        .readonly-pdf-body {
-            flex: 1;
-            overflow: auto;
-            background: #2d2d3a;
-            position: relative;
-        }
-        .pdf-viewer-area {
-            width: 100%;
-            height: 100%;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            padding: 20px;
-        }
-        .pdf-canvas-wrapper {
-            display: flex;
-            justify-content: center;
-            background: #2d2d3a;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-        }
-        .readonly-pdf-canvas {
-            display: block;
-            margin: 0 auto;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-            background: white;
-            border-radius: 4px;
-        }
-        .readonly-pdf-footer {
-            background: linear-gradient(135deg, #16213e 0%, #1a1a2e 100%);
-            border-top: 1px solid rgba(255,255,255,0.1);
-            padding: 12px 24px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 15px;
-        }
-        .pdf-nav-controls, .pdf-zoom-controls {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .pdf-nav-btn, .pdf-zoom-btn {
-            background: rgba(255,255,255,0.1);
-            border: none;
-            color: white;
-            width: 40px;
-            height: 40px;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-size: 16px;
-        }
-        .pdf-nav-btn:hover, .pdf-zoom-btn:hover {
-            background: #4C1D95;
-            transform: translateY(-2px);
-        }
-        .pdf-page-indicator {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            background: rgba(255,255,255,0.1);
-            padding: 6px 12px;
-            border-radius: 8px;
-            color: white;
-        }
-        #pdf-page-number {
-            width: 50px;
-            padding: 6px;
-            border-radius: 6px;
-            border: none;
-            text-align: center;
-            font-size: 14px;
-            font-weight: 600;
-            background: white;
-        }
-        .pdf-zoom-percent {
-            color: white;
-            font-weight: 600;
-            min-width: 60px;
-            text-align: center;
-        }
-        .readonly-warning {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            background: rgba(76, 29, 149, 0.3);
-            padding: 8px 16px;
-            border-radius: 40px;
-            color: #a78bfa;
-            font-size: 12px;
-        }
-        .pdf-loading-overlay, .pdf-error-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            background: #2d2d3a;
-            z-index: 10;
-        }
-        .loading-spinner.premium {
-            width: 60px;
-            height: 60px;
-            border: 4px solid rgba(255,255,255,0.2);
-            border-top-color: #4C1D95;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        .read-only-badge {
-            background: #4C1D95 !important;
-            color: white !important;
-        }
-        @media (max-width: 768px) {
-            .readonly-pdf-container {
-                width: 98%;
-                height: 96%;
-            }
-            .pdf-nav-btn, .pdf-zoom-btn {
-                width: 36px;
-                height: 36px;
-            }
-            .readonly-pdf-footer {
-                padding: 10px 16px;
-            }
-        }
-        @media (max-width: 640px) {
-            .readonly-pdf-footer {
-                flex-direction: column;
-            }
-        }
-    `;
-    
-    const style = document.createElement('style');
-    style.id = styleId;
-    style.textContent = styles;
-    document.head.appendChild(style);
-}
-
-function setupReadOnlyPDFEvents() {
-    const modal = document.getElementById('readonly-pdf-modal');
-    const closeBtn = document.getElementById('close-readonly-pdf');
-    const fullscreenBtn = document.getElementById('fullscreen-btn');
-    
-    if (closeBtn) {
-        closeBtn.addEventListener('click', () => {
-            modal.style.display = 'none';
-            cleanupPDF();
-        });
-    }
-    
-    if (fullscreenBtn) {
-        fullscreenBtn.addEventListener('click', toggleFullscreen);
-    }
-    
-    if (modal) {
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                modal.style.display = 'none';
-                cleanupPDF();
-            }
-        });
-    }
-    
-    document.getElementById('pdf-first-page')?.addEventListener('click', () => goToPDFPage(1));
-    document.getElementById('pdf-prev-page')?.addEventListener('click', () => goToPDFPage(currentPDFPage - 1));
-    document.getElementById('pdf-next-page')?.addEventListener('click', () => goToPDFPage(currentPDFPage + 1));
-    document.getElementById('pdf-last-page')?.addEventListener('click', () => goToPDFPage(totalPDFPages));
-    
-    document.getElementById('pdf-zoom-in')?.addEventListener('click', () => zoomPDF(1.2));
-    document.getElementById('pdf-zoom-out')?.addEventListener('click', () => zoomPDF(0.8));
-    document.getElementById('pdf-fit-width')?.addEventListener('click', fitToWidth);
-    document.getElementById('pdf-actual-size')?.addEventListener('click', () => {
-        pdfScale = 1.0;
-        updateZoomDisplay();
-        renderPDFPage(currentPDFPage);
-    });
-    
-    const pageInput = document.getElementById('pdf-page-number');
-    pageInput?.addEventListener('change', () => {
-        const page = parseInt(pageInput.value);
-        if (page >= 1 && page <= totalPDFPages) {
-            goToPDFPage(page);
-        }
-    });
-    
-    document.addEventListener('keydown', handlePDFKeyboard);
-}
-
-async function loadHighQualityPDF(pdfUrl) {
-    try {
-        showPDFLoading();
-        
-        const loadingTask = pdfjsLib.getDocument({
-            url: pdfUrl,
-            cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/',
-            cMapPacked: true,
-            enableXfa: true,
-            verbosity: 0
-        });
-        
-        currentPDFDoc = await loadingTask.promise;
-        totalPDFPages = currentPDFDoc.numPages;
-        
-        document.getElementById('pdf-total-pages').textContent = totalPDFPages;
-        document.getElementById('pdf-page-number').max = totalPDFPages;
-        
-        hidePDFLoading();
-        showPDFViewer();
-        
-        pdfScale = 1.5;
-        await renderPDFPage(1);
-        
-    } catch (error) {
-        console.error('PDF loading error:', error);
-        showPDFError('Failed to load document: ' + error.message);
-    }
-}
-
-async function renderPDFPage(pageNum) {
-    if (!currentPDFDoc || pageNum < 1 || pageNum > totalPDFPages) return;
-    
-    if (pageRendering) {
-        pageNumPending = pageNum;
-        return;
-    }
-    
-    pageRendering = true;
-    
-    try {
-        const page = await currentPDFDoc.getPage(pageNum);
-        const canvas = document.getElementById('readonly-pdf-canvas');
-        if (!canvas) {
-            pageRendering = false;
-            return;
-        }
-        
-        const ctx = canvas.getContext('2d', { alpha: false });
-        const wrapper = document.getElementById('pdf-canvas-wrapper');
-        const viewport = page.getViewport({ scale: 1 });
-        const scale = pdfScale;
-        const scaledViewport = page.getViewport({ scale: scale });
-        
-        const pixelRatio = window.devicePixelRatio || 1;
-        canvas.width = scaledViewport.width * pixelRatio;
-        canvas.height = scaledViewport.height * pixelRatio;
-        canvas.style.width = scaledViewport.width + 'px';
-        canvas.style.height = scaledViewport.height + 'px';
-        
-        ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
-        
-        const renderContext = {
-            canvasContext: ctx,
-            viewport: scaledViewport,
-            enableWebGL: true,
-            renderInteractiveForms: true,
-            background: 'white'
-        };
-        
-        await page.render(renderContext).promise;
-        
-        currentPDFPage = pageNum;
-        document.getElementById('pdf-page-number').value = pageNum;
-        updateZoomDisplay();
-        updatePDFNavButtons();
-        
-    } catch (error) {
-        console.error('Render error:', error);
-        showPDFError('Failed to render page');
-    }
-    
-    pageRendering = false;
-    
-    if (pageNumPending !== null) {
-        renderPDFPage(pageNumPending);
-        pageNumPending = null;
-    }
-}
-
-function goToPDFPage(pageNum) {
-    if (pageNum < 1) pageNum = 1;
-    if (pageNum > totalPDFPages) pageNum = totalPDFPages;
-    renderPDFPage(pageNum);
-}
-
-function zoomPDF(factor) {
-    pdfScale *= factor;
-    pdfScale = Math.max(0.5, Math.min(pdfScale, 4.0));
-    updateZoomDisplay();
-    renderPDFPage(currentPDFPage);
-}
-
-function fitToWidth() {
-    const canvas = document.getElementById('readonly-pdf-canvas');
-    const wrapper = document.getElementById('pdf-canvas-wrapper');
-    if (!canvas || !wrapper || !currentPDFDoc) return;
-    
-    const containerWidth = wrapper.clientWidth - 40;
-    currentPDFDoc.getPage(currentPDFPage).then(page => {
-        const originalViewport = page.getViewport({ scale: 1 });
-        pdfScale = containerWidth / originalViewport.width;
-        pdfScale = Math.max(0.8, Math.min(pdfScale, 3.0));
-        updateZoomDisplay();
-        renderPDFPage(currentPDFPage);
-    });
-}
-
-function updateZoomDisplay() {
-    const percent = Math.round(pdfScale * 100);
-    const zoomDisplay = document.getElementById('pdf-zoom-percent');
-    if (zoomDisplay) zoomDisplay.textContent = percent + '%';
-}
-
-function updatePDFNavButtons() {
-    const firstBtn = document.getElementById('pdf-first-page');
-    const prevBtn = document.getElementById('pdf-prev-page');
-    const nextBtn = document.getElementById('pdf-next-page');
-    const lastBtn = document.getElementById('pdf-last-page');
-    
-    if (firstBtn) firstBtn.disabled = currentPDFPage <= 1;
-    if (prevBtn) prevBtn.disabled = currentPDFPage <= 1;
-    if (nextBtn) nextBtn.disabled = currentPDFPage >= totalPDFPages;
-    if (lastBtn) lastBtn.disabled = currentPDFPage >= totalPDFPages;
-}
-
-function showPDFLoading() {
-    const loading = document.getElementById('pdf-loading');
-    const error = document.getElementById('pdf-error');
-    const viewer = document.getElementById('pdf-viewer-area');
-    if (loading) loading.style.display = 'flex';
-    if (error) error.style.display = 'none';
-    if (viewer) viewer.style.display = 'none';
-}
-
-function hidePDFLoading() {
-    const loading = document.getElementById('pdf-loading');
-    if (loading) loading.style.display = 'none';
-}
-
-function showPDFViewer() {
-    const viewer = document.getElementById('pdf-viewer-area');
-    if (viewer) viewer.style.display = 'flex';
-}
-
-function showPDFError(message) {
-    const loading = document.getElementById('pdf-loading');
-    const error = document.getElementById('pdf-error');
-    const viewer = document.getElementById('pdf-viewer-area');
-    const errorMsg = document.getElementById('pdf-error-message');
-    
-    if (loading) loading.style.display = 'none';
-    if (error) error.style.display = 'flex';
-    if (viewer) viewer.style.display = 'none';
-    if (errorMsg) errorMsg.textContent = message;
-    
-    const retryBtn = document.getElementById('retry-pdf-btn');
-    if (retryBtn && currentResource) {
-        retryBtn.onclick = () => loadHighQualityPDF(currentResource.file_url);
-    }
-}
-
-function toggleFullscreen() {
-    const container = document.querySelector('.readonly-pdf-container');
-    if (!container) return;
-    
-    if (!document.fullscreenElement) {
-        container.requestFullscreen();
-        const fullscreenBtn = document.getElementById('fullscreen-btn');
-        if (fullscreenBtn) fullscreenBtn.innerHTML = '<i class="fas fa-compress"></i>';
-    } else {
-        document.exitFullscreen();
-        const fullscreenBtn = document.getElementById('fullscreen-btn');
-        if (fullscreenBtn) fullscreenBtn.innerHTML = '<i class="fas fa-expand"></i>';
-    }
-}
-
-function handlePDFKeyboard(e) {
-    const modal = document.getElementById('readonly-pdf-modal');
-    if (!modal || modal.style.display !== 'flex') return;
-    
-    switch(e.key) {
-        case 'ArrowLeft':
-            e.preventDefault();
-            goToPDFPage(currentPDFPage - 1);
-            break;
-        case 'ArrowRight':
-            e.preventDefault();
-            goToPDFPage(currentPDFPage + 1);
-            break;
-        case 'Escape':
-            e.preventDefault();
-            modal.style.display = 'none';
-            cleanupPDF();
-            break;
-        case '+':
-        case '=':
-            if (e.ctrlKey) {
-                e.preventDefault();
-                zoomPDF(1.2);
-            }
-            break;
-        case '-':
-            if (e.ctrlKey) {
-                e.preventDefault();
-                zoomPDF(0.8);
-            }
-            break;
-        case '0':
-            if (e.ctrlKey) {
-                e.preventDefault();
-                pdfScale = 1.0;
-                updateZoomDisplay();
-                renderPDFPage(currentPDFPage);
-            }
-            break;
-    }
-}
-
-function cleanupPDF() {
-    if (currentPDFDoc) {
-        currentPDFDoc.destroy();
-        currentPDFDoc = null;
-    }
-    currentPDFPage = 1;
-    totalPDFPages = 0;
-    pdfScale = 1.5;
-    pageRendering = false;
-    pageNumPending = null;
-    document.removeEventListener('keydown', handlePDFKeyboard);
-}
-
-// Image viewer
-function openReadOnlyImage(resource) {
-    const modal = document.createElement('div');
-    modal.className = 'image-modal-premium';
-    modal.innerHTML = `
-        <div class="image-modal-container">
-            <div class="image-modal-header">
-                <h3>${escapeHtml(resource.title)}</h3>
-                <button class="image-modal-close" onclick="this.closest('.image-modal-premium').remove()">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="image-modal-body">
-                <img src="${resource.file_url}" alt="${escapeHtml(resource.title)}">
-            </div>
-            <div class="image-modal-footer">
-                <div class="protected-notice">
-                    <i class="fas fa-lock"></i> Protected Image - No Download
-                </div>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(modal);
-    
-    // Add styles if not exist
-    if (!document.getElementById('image-modal-styles')) {
-        const style = document.createElement('style');
-        style.id = 'image-modal-styles';
-        style.textContent = `
-            .image-modal-premium {
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background: rgba(0,0,0,0.95);
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                z-index: 10000;
-            }
-            .image-modal-container {
-                max-width: 90vw;
-                max-height: 90vh;
-                background: #1a1a2e;
-                border-radius: 20px;
-                overflow: hidden;
-            }
-            .image-modal-header {
-                padding: 15px 20px;
-                background: linear-gradient(135deg, #16213e 0%, #1a1a2e 100%);
-                color: white;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-            }
-            .image-modal-header h3 {
-                margin: 0;
-                font-size: 1rem;
-            }
-            .image-modal-close {
-                background: rgba(255,255,255,0.1);
-                border: none;
-                color: white;
-                width: 32px;
-                height: 32px;
-                border-radius: 8px;
-                cursor: pointer;
-            }
-            .image-modal-body {
-                padding: 20px;
-                display: flex;
-                justify-content: center;
-                background: #2d2d3a;
-            }
-            .image-modal-body img {
-                max-width: calc(90vw - 40px);
-                max-height: calc(70vh - 40px);
-                object-fit: contain;
-                border-radius: 12px;
-            }
-            .image-modal-footer {
-                padding: 12px 20px;
-                background: linear-gradient(135deg, #16213e 0%, #1a1a2e 100%);
-                text-align: center;
-                color: #a78bfa;
-                font-size: 12px;
-            }
-        `;
-        document.head.appendChild(style);
-    }
-}
-
-// Video viewer
-function openReadOnlyVideo(resource) {
-    const modal = document.createElement('div');
-    modal.className = 'video-modal-premium';
-    modal.innerHTML = `
-        <div class="video-modal-container">
-            <div class="video-modal-header">
-                <h3>${escapeHtml(resource.title)}</h3>
-                <button class="video-modal-close" onclick="this.closest('.video-modal-premium').remove()">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="video-modal-body">
-                <video controls controlslist="nodownload noplaybackrate" disablepictureinpicture>
-                    <source src="${resource.file_url}" type="video/mp4">
-                    Your browser does not support video playback.
-                </video>
-            </div>
-            <div class="video-modal-footer">
-                <div class="protected-notice">
-                    <i class="fas fa-lock"></i> Protected Video - No Download
-                </div>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(modal);
-    
-    if (!document.getElementById('video-modal-styles')) {
-        const style = document.createElement('style');
-        style.id = 'video-modal-styles';
-        style.textContent = `
-            .video-modal-premium {
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background: rgba(0,0,0,0.95);
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                z-index: 10000;
-            }
-            .video-modal-container {
-                max-width: 90vw;
-                max-height: 90vh;
-                background: #1a1a2e;
-                border-radius: 20px;
-                overflow: hidden;
-            }
-            .video-modal-header {
-                padding: 15px 20px;
-                background: linear-gradient(135deg, #16213e 0%, #1a1a2e 100%);
-                color: white;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-            }
-            .video-modal-header h3 {
-                margin: 0;
-                font-size: 1rem;
-            }
-            .video-modal-close {
-                background: rgba(255,255,255,0.1);
-                border: none;
-                color: white;
-                width: 32px;
-                height: 32px;
-                border-radius: 8px;
-                cursor: pointer;
-            }
-            .video-modal-body {
-                padding: 20px;
-                background: #2d2d3a;
-            }
-            .video-modal-body video {
-                max-width: calc(90vw - 40px);
-                max-height: calc(70vh - 40px);
-                border-radius: 12px;
-            }
-            .video-modal-footer {
-                padding: 12px 20px;
-                background: linear-gradient(135deg, #16213e 0%, #1a1a2e 100%);
-                text-align: center;
-                color: #a78bfa;
-                font-size: 12px;
-            }
-            video::-internal-media-controls-download-button {
-                display: none;
-            }
-            video::-webkit-media-controls-enclosure {
-                overflow: hidden;
-            }
-        `;
-        document.head.appendChild(style);
-    }
-}
-
-function openReadOnlyDocument(resource) {
-    window.open(resource.file_url + '#toolbar=0', '_blank');
-}
-
-// Filter resources
-function filterResources() {
-    filterResourcesByBlock();
-}
-
-// Utility functions
-function getFileType(filePath) {
-    if (!filePath) return 'unknown';
-    const ext = filePath.split('.').pop().toLowerCase();
-    if (ext === 'pdf') return 'pdf';
-    if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(ext)) return 'image';
-    if (['mp4', 'avi', 'mov', 'wmv', 'webm'].includes(ext)) return 'video';
-    return 'file';
-}
-
-function getFileIcon(filePath) {
-    const type = getFileType(filePath);
-    switch(type) {
-        case 'pdf': return 'fas fa-file-pdf';
-        case 'image': return 'fas fa-file-image';
-        case 'video': return 'fas fa-file-video';
-        default: return 'fas fa-file-alt';
-    }
-}
-
 function escapeHtml(str) {
     if (!str) return '';
     const div = document.createElement('div');
@@ -1266,61 +785,52 @@ function escapeHtml(str) {
     return div.innerHTML;
 }
 
-function showLoading(element, message) {
-    if (element) {
-        element.innerHTML = `
-            <div class="loading-state-premium">
-                <div class="loading-spinner premium"></div>
-                <p>${message}</p>
+function showLoading(message) {
+    if (cachedElements.resourcesGrid) {
+        cachedElements.resourcesGrid.innerHTML = `
+            <div style="text-align: center; padding: 60px 20px;">
+                <div style="width: 60px; height: 60px; border: 4px solid rgba(255,255,255,0.2); border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto;"></div>
+                <p style="color: white; margin-top: 20px;">${message}</p>
             </div>
         `;
     }
 }
 
-function showError(element, message) {
-    if (element) {
-        element.innerHTML = `
-            <div class="error-state-premium">
-                <i class="fas fa-exclamation-triangle"></i>
-                <h3>Error</h3>
-                <p>${message}</p>
-                <button onclick="loadAllResourcesForBlocks()" class="premium-btn">Retry</button>
+function showError(message) {
+    if (cachedElements.resourcesGrid) {
+        cachedElements.resourcesGrid.innerHTML = `
+            <div style="text-align: center; padding: 60px 20px; background: rgba(255,255,255,0.02); border-radius: 20px;">
+                <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #ef4444; margin-bottom: 20px; display: inline-block;"></i>
+                <h3 style="color: white;">Error</h3>
+                <p style="color: rgba(255,255,255,0.6);">${message}</p>
+                <button onclick="window.loadAllResourcesForBlocks()" style="margin-top: 20px; background: linear-gradient(135deg, #4C1D95 0%, #7c3aed 100%); border: none; padding: 10px 20px; border-radius: 10px; color: white; cursor: pointer;">Retry</button>
             </div>
         `;
     }
 }
 
 function showToast(message, type = 'info') {
-    const toast = document.getElementById('toast');
-    if (toast) {
-        toast.textContent = message;
-        toast.style.display = 'block';
-        toast.style.backgroundColor = type === 'error' ? '#dc2626' : '#10b981';
-        setTimeout(() => {
-            toast.style.display = 'none';
-        }, 3000);
-    } else {
-        console.log(message);
-    }
+    const toast = document.createElement('div');
+    toast.textContent = message;
+    toast.style.cssText = `
+        position: fixed; bottom: 20px; right: 20px; background: ${type === 'error' ? '#dc2626' : '#10b981'};
+        color: white; padding: 12px 24px; border-radius: 12px; z-index: 10001;
+        animation: slideIn 0.3s ease; font-size: 14px; font-weight: 500;
+    `;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
 }
 
-// Initialize module
+// ==================== INITIALIZATION ====================
+
 function initializeResourcesModule() {
-    console.log('📁 Initializing Premium Resources Module...');
+    console.log('⚡ Initializing Ultra-Fast Resources Module...');
     createBlockFilterUI();
-    
-    const resourceSearch = document.getElementById('resource-search');
-    const resourceFilter = document.getElementById('resource-filter');
-    const courseFilter = document.getElementById('course-filter');
-    
-    if (resourceSearch) resourceSearch.addEventListener('input', filterResources);
-    if (resourceFilter) resourceFilter.addEventListener('change', filterResources);
-    if (courseFilter) courseFilter.addEventListener('change', filterResources);
     
     const resourcesTab = document.querySelector('.nav a[data-tab="resources"]');
     if (resourcesTab) {
         resourcesTab.addEventListener('click', () => {
-            if (getCurrentUserId()) {
+            if (getCurrentUserId() && !currentResources.length) {
                 loadAllResourcesForBlocks();
             }
         });
@@ -1330,12 +840,27 @@ function initializeResourcesModule() {
     if (currentTab === 'resources' && getCurrentUserId()) {
         loadAllResourcesForBlocks();
     }
+    
+    // Preload on idle time
+    if ('requestIdleCallback' in window) {
+        requestIdleCallback(() => {
+            if (getCurrentUserId()) loadAllResourcesForBlocks();
+        });
+    } else {
+        setTimeout(() => {
+            if (getCurrentUserId()) loadAllResourcesForBlocks();
+        }, 100);
+    }
 }
 
-// Global exports
+// Expose globals
+window.loadAllResourcesForBlocks = loadAllResourcesForBlocks;
 window.loadAllResources = loadAllResourcesForBlocks;
 window.openResource = openResource;
-window.filterResources = filterResources;
+window.filterResourcesByBlock = filterResourcesByBlock;
+window.resetFilters = resetFilters;
+window.loadMoreResources = loadMoreResources;
+window.clearCache = clearCache;
 window.initializeResourcesModule = initializeResourcesModule;
 
 // Auto-initialize
