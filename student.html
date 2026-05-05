@@ -2247,6 +2247,7 @@
     const resources = document.getElementById('resources');
     const nurseiq = document.getElementById('nurseiq');
     const learningHub = document.getElementById('learning-hub');
+    const examCard = document.getElementById('exam-card');
     
     // Get hub modules
     const hubCourses = document.getElementById('hub-courses');
@@ -2268,7 +2269,7 @@
     
     // Hide all sections function
     function hideAllSections() {
-        const sections = [dashboard, profile, calendar, attendance, messages, supportTickets, cats, resources, nurseiq, learningHub];
+        const sections = [dashboard, profile, calendar, attendance, messages, supportTickets, cats, resources, nurseiq, learningHub, examCard];
         sections.forEach(section => {
             if (section) section.style.display = 'none';
         });
@@ -2280,6 +2281,20 @@
         modules.forEach(module => {
             if (module) module.style.display = 'none';
         });
+    }
+    
+    // Helper function to call module method if exists
+    function callModuleMethod(module, methodNames, moduleName) {
+        if (!module) return false;
+        for (let method of methodNames) {
+            if (typeof module[method] === 'function') {
+                console.log(`✅ Calling ${moduleName}.${method}()`);
+                module[method]();
+                return true;
+            }
+        }
+        console.log(`⚠️ No matching method found for ${moduleName}. Available:`, Object.keys(module));
+        return false;
     }
     
     // Show content based on tab and close dropdown
@@ -2296,16 +2311,18 @@
         // Handle based on tab
         if (tabId === 'dashboard') {
             if (dashboard) dashboard.style.display = 'block';
+            if (window.dashboardModule?.refreshDashboard) window.dashboardModule.refreshDashboard();
         }
         else if (tabId === 'profile') {
             if (profile) profile.style.display = 'block';
+            if (window.profileModule?.loadProfile) window.profileModule.loadProfile();
         }
         else if (tabId === 'calendar') {
             if (calendar) calendar.style.display = 'block';
+            if (window.calendarModule?.loadCalendar) window.calendarModule.loadCalendar();
         }
         else if (tabId === 'attendance') {
             if (attendance) attendance.style.display = 'block';
-            // Trigger attendance load
             setTimeout(() => {
                 if (window.attendanceModule?.loadAttendanceHistory) {
                     window.attendanceModule.loadAttendanceHistory();
@@ -2314,26 +2331,40 @@
         }
         else if (tabId === 'messages') {
             if (messages) messages.style.display = 'block';
+            if (window.messagesModule?.loadMessages) window.messagesModule.loadMessages();
         }
         else if (tabId === 'support-tickets') {
             if (supportTickets) supportTickets.style.display = 'block';
+            if (window.ticketsModule?.loadTickets) window.ticketsModule.loadTickets();
         }
         else if (tabId === 'cats') {
             if (cats) cats.style.display = 'block';
+            if (window.examsModule?.loadExams) window.examsModule.loadExams();
         }
         else if (tabId === 'resources') {
             if (resources) resources.style.display = 'block';
+            if (window.resourcesModule?.loadAllResources) window.resourcesModule.loadAllResources();
         }
         else if (tabId === 'nurseiq') {
             if (nurseiq) nurseiq.style.display = 'block';
+            if (window.nurseiqModule?.loadCourses) window.nurseiqModule.loadCourses();
+        }
+        else if (tabId === 'exam-card') {
+            if (examCard) examCard.style.display = 'block';
+            if (window.examCardStandalone?.loadExamCard) window.examCardStandalone.loadExamCard();
         }
         else if (tabId === 'hub-courses') {
             if (learningHub) learningHub.style.display = 'block';
             if (hubCourses) hubCourses.style.display = 'block';
             setTimeout(() => {
                 if (window.coursesModule) {
-                    console.log('📚 Loading courses...');
-                    window.coursesModule.loadCourses();
+                    callModuleMethod(window.coursesModule, ['loadCourses', 'init', 'display', 'render', 'show'], 'coursesModule');
+                } else {
+                    console.error('❌ coursesModule not loaded');
+                    const grid = document.getElementById('active-courses-grid');
+                    if (grid) {
+                        grid.innerHTML = '<div class="course-card"><i class="fas fa-book"></i><h3>My Courses</h3><p>Course content will appear here. Please refresh if empty.</p></div>';
+                    }
                 }
             }, 100);
         }
@@ -2342,22 +2373,70 @@
             if (hubRegister) hubRegister.style.display = 'block';
             setTimeout(() => {
                 if (window.unitRegistrationModule) {
-                    console.log('📝 Loading unit registration...');
-                    window.unitRegistrationModule.loadUnits();
+                    callModuleMethod(window.unitRegistrationModule, ['loadUnits', 'init', 'load', 'displayUnits'], 'unitRegistrationModule');
+                } else {
+                    console.error('❌ unitRegistrationModule not loaded');
+                    const body = document.getElementById('availableUnitsBody');
+                    if (body) {
+                        body.innerHTML = '<tr><td colspan="7">Unit registration loading. Please refresh if empty.</td></tr>';
+                    }
                 }
             }, 100);
         }
         else if (tabId === 'hub-online-learning') {
             if (learningHub) learningHub.style.display = 'block';
             if (hubOnlineLearning) hubOnlineLearning.style.display = 'block';
+            // Populate online learning content
+            if (hubOnlineLearning) {
+                hubOnlineLearning.innerHTML = `
+                    <div class="online-learning-container" style="padding: 20px;">
+                        <h2><i class="fas fa-video"></i> Online Learning</h2>
+                        <div class="coming-soon-card" style="text-align: center; padding: 40px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 20px; color: white;">
+                            <i class="fas fa-chalkboard-teacher" style="font-size: 48px; margin-bottom: 20px;"></i>
+                            <h3>Virtual Classroom Coming Soon</h3>
+                            <p>Video lessons, interactive quizzes, and study materials are being prepared for you.</p>
+                            <div style="display: flex; gap: 20px; justify-content: center; margin-top: 30px; flex-wrap: wrap;">
+                                <div style="background: rgba(255,255,255,0.2); padding: 15px; border-radius: 12px; min-width: 150px;">
+                                    <i class="fas fa-play-circle" style="font-size: 24px;"></i>
+                                    <p>Recorded Lectures</p>
+                                </div>
+                                <div style="background: rgba(255,255,255,0.2); padding: 15px; border-radius: 12px; min-width: 150px;">
+                                    <i class="fas fa-question-circle" style="font-size: 24px;"></i>
+                                    <p>Interactive Quizzes</p>
+                                </div>
+                                <div style="background: rgba(255,255,255,0.2); padding: 15px; border-radius: 12px; min-width: 150px;">
+                                    <i class="fas fa-file-alt" style="font-size: 24px;"></i>
+                                    <p>Study Materials</p>
+                                </div>
+                            </div>
+                            <button class="btn-primary" onclick="alert('Coming soon! More features will be available in the next update.')" style="margin-top: 30px; background: white; color: #4f46e5; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer;">
+                                <i class="fas fa-bell"></i> Get Notified
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
         }
         else if (tabId === 'hub-exam-card') {
             if (learningHub) learningHub.style.display = 'block';
             if (hubExamCard) hubExamCard.style.display = 'block';
             setTimeout(() => {
                 if (window.examCardModule) {
-                    console.log('📇 Loading exam card...');
-                    window.examCardModule.loadExamCard();
+                    callModuleMethod(window.examCardModule, ['loadExamCard', 'init', 'load', 'displayExamCard'], 'examCardModule');
+                } else {
+                    console.error('❌ examCardModule not loaded');
+                    const content = document.getElementById('hub-exam-card-content');
+                    if (content) {
+                        content.innerHTML = `
+                            <div class="exam-card-placeholder" style="text-align: center; padding: 40px;">
+                                <i class="fas fa-id-card" style="font-size: 48px; color: #4f46e5;"></i>
+                                <h3>Exam Card</h3>
+                                <p>Your exam card will appear here once available.</p>
+                                <p class="small-text" style="color: #666;">Please ensure all fees are cleared and units are approved.</p>
+                                <button onclick="location.reload()" class="btn-primary">Refresh</button>
+                            </div>
+                        `;
+                    }
                 }
             }, 100);
         }
@@ -2374,7 +2453,6 @@
     const dropdownToggle = document.querySelector('.has-dropdown > a');
     
     if (dropdownToggle && dropdownMenu) {
-        // Remove existing listener
         const newToggle = dropdownToggle.cloneNode(true);
         dropdownToggle.parentNode.replaceChild(newToggle, dropdownToggle);
         
@@ -2407,7 +2485,7 @@
         });
     });
     
-    // Also close dropdown when clicking outside (optional)
+    // Also close dropdown when clicking outside
     document.addEventListener('click', function(e) {
         if (dropdownParent && !dropdownParent.contains(e.target)) {
             if (dropdownParent.classList.contains('open')) {
