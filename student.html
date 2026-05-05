@@ -2517,18 +2517,18 @@
     
     console.log('🎯 Learning Hub Module Handler Initializing...');
     
-    // Get all sections
     const dashboard = document.getElementById('dashboard');
-    const profile = document.getElementById('profile');
-    const calendar = document.getElementById('calendar');
-    const attendance = document.getElementById('attendance');
-    const messages = document.getElementById('messages');
-    const supportTickets = document.getElementById('support-tickets');
-    const cats = document.getElementById('cats');
-    const resources = document.getElementById('resources');
-    const nurseiq = document.getElementById('nurseiq');
-    const learningHub = document.getElementById('learning-hub');
-    const examCard = document.getElementById('exam-card');
+const profile = document.getElementById('profile');
+const calendar = document.getElementById('calendar');
+const attendance = document.getElementById('attendance');
+const messages = document.getElementById('messages');
+const supportTickets = document.getElementById('support-tickets');
+const cats = document.getElementById('cats');
+const resources = document.getElementById('resources');
+const nurseiq = document.getElementById('nurseiq');
+const learningHub = document.getElementById('learning-hub');
+const examCard = document.getElementById('exam-card');
+const academicReports = document.getElementById('academic-reports'); // 
     
     // Get hub modules
     const hubCourses = document.getElementById('hub-courses');
@@ -2654,6 +2654,12 @@
             if (examCard) examCard.style.display = 'block';
             if (window.examCardStandalone?.loadExamCard) window.examCardStandalone.loadExamCard();
         }
+           // ✅ ADD ACADEMIC REPORTS HERE
+else if (tabId === 'academic-reports') {
+    if (academicReports) academicReports.style.display = 'block';
+    if (window.academicReportsModule?.loadReports) {
+        window.academicReportsModule.loadReports();
+    }
         else if (tabId === 'hub-courses') {
             if (learningHub) learningHub.style.display = 'block';
             if (hubCourses) hubCourses.style.display = 'block';
