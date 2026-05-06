@@ -5243,3 +5243,93 @@ p {
 
 .status-badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; }
 .status-pass { background: rgba(16, 185, 129, 0.2); color: #34d
+/* ==================== ACADEMIC REPORTS VISIBILITY FIX ==================== */
+
+/* Force dark text on white background for all report content */
+#academic-reports,
+#academic-reports * {
+    color: #1f2937 !important;
+}
+
+/* Override for GPA cards to keep gradient backgrounds */
+#academic-reports .gpa-card .gpa-value,
+#academic-reports .gpa-card .gpa-label,
+#academic-reports .gpa-card .gpa-grade {
+    color: white !important;
+}
+
+/* Ensure tables have proper contrast */
+#academic-reports .grades-table,
+#academic-reports .transcript-table {
+    background: white !important;
+}
+
+#academic-reports .grades-table td,
+#academic-reports .transcript-table td {
+    color: #1f2937 !important;
+    background: white !important;
+}
+
+#academic-reports .grades-table th,
+#academic-reports .transcript-table th {
+    background: #4C1D95 !important;
+    color: white !important;
+}
+
+#academic-reports .grades-table tr:hover td,
+#academic-reports .transcript-table tr:hover td {
+    background: #f3f4f6 !important;
+}
+
+/* GPA cards styling - keep gradient */
+#academic-reports .gpa-card {
+    background: linear-gradient(135deg, #1e1b4b, #2d1b69) !important;
+    border: 1px solid rgba(139, 92, 246, 0.3) !important;
+}
+
+#academic-reports .gpa-card .gpa-value {
+    color: white !important;
+}
+
+/* Report tabs styling */
+#academic-reports .report-tab {
+    color: #6b7280 !important;
+    background: #f3f4f6 !important;
+}
+
+#academic-reports .report-tab.active {
+    background: #4C1D95 !important;
+    color: white !important;
+}
+
+/* Progress items */
+#academic-reports .progress-item {
+    background: white !important;
+    border: 1px solid #e5e7eb !important;
+    border-radius: 12px !important;
+    padding: 15px !important;
+    margin-bottom: 12px !important;
+}
+
+#academic-reports .progress-item .course-name {
+    color: #1f2937 !important;
+    font-weight: 600 !important;
+}
+
+#academic-reports .progress-item .progress-percent {
+    color: #4C1D95 !important;
+    font-weight: 600 !important;
+}
+
+/* Grade cells */
+#academic-reports .grade-cell .grade-letter {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-weight: 600;
+}
+
+/* Table text center alignment */
+#academic-reports .text-center {
+    text-align: center !important;
+}
