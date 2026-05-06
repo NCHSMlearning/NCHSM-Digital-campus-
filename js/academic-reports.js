@@ -1,10 +1,17 @@
-// js/academic-reports.js - LINKS WITH EXAMS MODULE
+// js/academic-reports.js - SMART FILTERING (KRCHN Blocks / TVET Semesters)
 (function() {
     'use strict';
     
     console.log('📊 Academic Reports Module Loading...');
     
-    // DOM Elements - Updated to match your HTML structure
+    // TVET Program Codes (same as exams.js)
+    const TVET_PROGRAMS = [
+        'DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME',
+        'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT',
+        'ACH', 'AAG', 'ASW', 'CCA', 'PTE'
+    ];
+    
+    // DOM Elements
     const elements = {
         semesterGpa: document.getElementById('semester-gpa'),
         semesterGrade: document.getElementById('semester-grade'),
@@ -26,16 +33,145 @@
         transcriptCgpa: document.getElementById('transcript-cgpa'),
         completedCoursesProgress: document.getElementById('completed-courses-progress'),
         totalCoursesProgress: document.getElementById('total-courses-progress'),
-        courseProgressList: document.getElementById('course-progress-list')
+        courseProgressList: document.getElementById('course-progress-list'),
+        filterSelect: document.getElementById('block-filter-select'),
+        programTypeIndicator: document.getElementById('program-type-indicator')
     };
     
     let gradeChart = null;
+    let currentFilter = 'all';
     let currentData = {
         grades: [],
         totalGpa: 0,
         completedCount: 0,
-        totalCredits: 0
+        totalCredits: 0,
+        programType: 'KRCHN', // 'KRCHN' or 'TVET'
+        blockTerm: null,
+        filterOptions: []
     };
+    
+    // Determine program type (same logic as exams.js)
+    function determineProgramType() {
+        const profile = window.currentUserProfile || {};
+        const programCode = (profile.program || profile.course || 'KRCHN').toUpperCase().trim();
+        
+        if (TVET_PROGRAMS.includes(programCode)) {
+            let level = 'CERTIFICATE';
+            if (programCode.startsWith('D')) level = 'DIPLOMA';
+            if (programCode.startsWith('A')) level = 'ARTISAN';
+            return { type: 'TVET', level: level, code: programCode };
+        }
+        
+        return { type: 'KRCHN', level: 'KRCHN', code: 'KRCHN' };
+    }
+    
+    // Get block/term from user profile
+    function getUserBlockTerm() {
+        const profile = window.currentUserProfile || {};
+        const programInfo = determineProgramType();
+        
+        if (programInfo.type === 'TVET') {
+            return profile.term || profile.block || 'Term 1';
+        } else {
+            return profile.block || 'Introductory Block';
+        }
+    }
+    
+    // Generate filter options based on program type
+    function generateFilterOptions() {
+        const programInfo = determineProgramType();
+        const userBlockTerm = getUserBlockTerm();
+        
+        if (programInfo.type === 'TVET') {
+            // TVET Semester-based options
+            return [
+                { value: 'all', label: '📚 All Semesters' },
+                { value: 'Term1', label: '📘 Term 1 / Semester 1' },
+                { value: 'Term2', label: '📗 Term 2 / Semester 2' },
+                { value: 'Term3', label: '📙 Term 3 / Semester 3' },
+                { value: 'Term4', label: '📕 Term 4 / Semester 4' },
+                { value: 'Term5', label: '📔 Term 5 / Semester 5' },
+                { value: 'Term6', label: '📓 Term 6 / Semester 6' }
+            ];
+        } else {
+            // KRCHN Block-based options
+            const blocks = [
+                { value: 'all', label: '📚 All Blocks' },
+                { value: 'Introductory Block', label: '🎓 Introductory Block' },
+                { value: 'Block 1', label: '📖 Block 1' },
+                { value: 'Block 2', label: '📗 Block 2' },
+                { value: 'Block 3', label: '📘 Block 3' },
+                { value: 'Block 4', label: '📙 Block 4' },
+                { value: 'Block 5', label: '📕 Block 5' },
+                { value: 'Final Block', label: '🏆 Final Block' }
+            ];
+            
+            // Mark current block
+            return blocks.map(block => ({
+                ...block,
+                isCurrent: block.value !== 'all' && block.value === userBlockTerm
+            }));
+        }
+    }
+    
+    // Populate filter dropdown
+    function populateFilterDropdown() {
+        if (!elements.filterSelect) {
+            // Create filter dropdown if it doesn't exist
+            createFilterDropdown();
+            return;
+        }
+        
+        const programInfo = determineProgramType();
+        const options = generateFilterOptions();
+        
+        // Update program type indicator
+        if (elements.programTypeIndicator) {
+            elements.programTypeIndicator.innerHTML = `
+                <span class="program-badge ${programInfo.type === 'TVET' ? 'tvet-badge' : 'krchn-badge'}">
+                    <i class="fas ${programInfo.type === 'TVET' ? 'fa-tools' : 'fa-graduation-cap'}"></i>
+                    ${programInfo.type === 'TVET' ? 'TVET Program' : 'KRCHN Nursing'}
+                    ${programInfo.type === 'TVET' ? ` - ${programInfo.level}` : ''}
+                </span>
+                <span class="current-block-badge">
+                    <i class="fas fa-location-dot"></i>
+                    Current: ${programInfo.type === 'TVET' ? getUserBlockTerm() : getUserBlockTerm()}
+                </span>
+            `;
+        }
+        
+        // Populate select options
+        elements.filterSelect.innerHTML = options.map(opt => 
+            `<option value="${opt.value}" ${opt.isCurrent ? 'selected' : ''}>${opt.label}</option>`
+        ).join('');
+        
+        // Set current filter to user's current block/term
+        const userBlockTerm = getUserBlockTerm();
+        if (userBlockTerm && options.some(opt => opt.value === userBlockTerm)) {
+            currentFilter = userBlockTerm;
+            if (elements.filterSelect) elements.filterSelect.value = userBlockTerm;
+        }
+        
+        console.log(`📋 Filter dropdown populated for ${programInfo.type} with ${options.length} options`);
+    }
+    
+    // Create filter dropdown if missing
+    function createFilterDropdown() {
+        const reportFilter = document.querySelector('.report-filter');
+        if (!reportFilter) return;
+        
+        const filterGroup = document.createElement('div');
+        filterGroup.className = 'filter-group';
+        filterGroup.innerHTML = `
+            <label><i class="fas fa-filter"></i> Filter by Block/Semester:</label>
+            <select id="block-filter-select" class="modern-select">
+                <option value="all">Loading...</option>
+            </select>
+        `;
+        
+        reportFilter.insertBefore(filterGroup, reportFilter.firstChild);
+        elements.filterSelect = document.getElementById('block-filter-select');
+    }
     
     // Helper functions
     function escapeHtml(str) {
@@ -63,55 +199,54 @@
         return points[grade] || 0;
     }
     
-    // Load student info from global profile
+    // Load student info
     function loadStudentInfo() {
-        console.log('📋 Loading student info...');
-        
         const profile = window.currentUserProfile || {};
         const studentName = profile.full_name || profile.name || 'Student Name';
         const program = profile.program || profile.department || 'KRCHN Nursing';
         const studentId = profile.student_id || profile.id || 'N/A';
         
-        if (elements.studentNameDisplay) {
-            elements.studentNameDisplay.textContent = studentName;
-        }
-        if (elements.programDisplay) {
-            elements.programDisplay.textContent = program;
-        }
-        if (elements.studentIdDisplay) {
-            elements.studentIdDisplay.textContent = studentId;
-        }
-        
-        console.log('✅ Student info loaded:', { studentName, program, studentId });
+        if (elements.studentNameDisplay) elements.studentNameDisplay.textContent = studentName;
+        if (elements.programDisplay) elements.programDisplay.textContent = program;
+        if (elements.studentIdDisplay) elements.studentIdDisplay.textContent = studentId;
     }
     
-    // Load grades from exams module data
+    // Load grades from exams module with block/semester filtering
     async function loadGradesFromExams() {
         console.log('📚 Loading grades from exams module...');
         
-        // Wait for exams module to be ready
+        // Wait for exams module
         if (window.examsModule) {
-            // If exams haven't loaded yet, wait
             if (!window.examsModule.allExams || window.examsModule.allExams.length === 0) {
-                console.log('⏳ Waiting for exams data...');
                 await new Promise(resolve => setTimeout(resolve, 1000));
             }
             
             const examsData = window.examsModule.allExams || [];
-            console.log(`Found ${examsData.length} exams in exams module`);
+            const programInfo = determineProgramType();
+            const userBlockTerm = getUserBlockTerm();
             
-            // Process only completed exams with released results
+            console.log(`Found ${examsData.length} exams, Program: ${programInfo.type}, Filter: ${currentFilter}`);
+            
+            // Filter exams by selected block/term
+            let filteredExams = examsData;
+            if (currentFilter !== 'all') {
+                filteredExams = examsData.filter(exam => {
+                    const examBlockTerm = exam.block_term || exam.block || exam.term;
+                    return examBlockTerm === currentFilter;
+                });
+            }
+            
+            // Process grades
             const processedGrades = [];
             let totalPercentageSum = 0;
             let gradedCount = 0;
             let totalCreditsEarned = 0;
             
-            examsData.forEach(exam => {
-                // Check if exam has a grade and is released
+            filteredExams.forEach(exam => {
                 if (exam.isCompleted && exam.isReleased && exam.totalPercentage !== null) {
                     const grade = calculateLetterGrade(exam.totalPercentage);
                     const gpa = calculateGPAFromLetter(grade);
-                    const credits = 3; // Default credits, adjust as needed
+                    const credits = 3;
                     
                     processedGrades.push({
                         courseCode: exam.unit_code || exam.course_code || exam.id?.substring(0, 8) || 'N/A',
@@ -124,13 +259,11 @@
                         grade: grade,
                         gpa: gpa,
                         status: exam.totalPercentage >= 60 ? 'PASS' : 'FAIL',
-                        semester: exam.block_term || 'Current',
+                        blockTerm: exam.block_term || 'General',
                         examDate: exam.exam_date
                     });
                     
-                    if (exam.totalPercentage >= 60) {
-                        totalCreditsEarned += credits;
-                    }
+                    if (exam.totalPercentage >= 60) totalCreditsEarned += credits;
                     totalPercentageSum += exam.totalPercentage;
                     gradedCount++;
                 }
@@ -146,38 +279,33 @@
                 totalGrade: overallGrade,
                 completedCount: gradedCount,
                 totalCredits: totalCreditsEarned,
-                averagePercentage: averagePercentage
+                averagePercentage: averagePercentage,
+                programType: programInfo.type,
+                currentFilter: currentFilter
             };
             
-            console.log(`✅ Processed ${processedGrades.length} graded exams, GPA: ${overallGpa}`);
+            console.log(`✅ Processed ${processedGrades.length} graded exams, GPA: ${overallGpa}, Filter: ${currentFilter}`);
             return processedGrades;
         }
         
-        console.warn('⚠️ Exams module not available, using fallback data');
-        return getFallbackData();
+        console.warn('⚠️ Exams module not available');
+        return [];
     }
     
-    // Fallback data if exams module not available
-    function getFallbackData() {
-        return [
-            { courseCode: 'ANAT101', courseName: 'Anatomy & Physiology I', credits: 3, cat1: 72, cat2: 78, final: 82, total: 79.2, grade: 'B+', status: 'PASS', semester: '2024/2025 - Semester 1' },
-            { courseCode: 'NURS102', courseName: 'Fundamentals of Nursing', credits: 4, cat1: 85, cat2: 88, final: 90, total: 88.0, grade: 'A', status: 'PASS', semester: '2024/2025 - Semester 1' },
-            { courseCode: 'PHAR103', courseName: 'Pharmacology', credits: 3, cat1: 68, cat2: 72, final: 75, total: 72.5, grade: 'B', status: 'PASS', semester: '2024/2025 - Semester 2' },
-            { courseCode: 'PATH104', courseName: 'Pathophysiology', credits: 3, cat1: 55, cat2: 60, final: 58, total: 57.8, grade: 'D', status: 'FAIL', semester: '2024/2025 - Semester 2' }
-        ];
-    }
-    
-    // Display grades in table
+    // Display grades table
     function displayGradesTable() {
-        if (!elements.gradesTableBody) {
-            console.warn('Grades table body not found');
-            return;
-        }
+        if (!elements.gradesTableBody) return;
         
         const grades = currentData.grades;
         
         if (!grades || grades.length === 0) {
-            elements.gradesTableBody.innerHTML = '<tr><td colspan="9" class="text-center">No grades available</td></tr>';
+            elements.gradesTableBody.innerHTML = `<tr><td colspan="9" class="text-center">
+                <div class="empty-state">
+                    <i class="fas fa-chart-line"></i>
+                    <p>No grades available for the selected ${currentData.programType === 'TVET' ? 'semester' : 'block'}.</p>
+                    <small>Try selecting a different filter option.</small>
+                </div>
+            </td></td>`;
             return;
         }
         
@@ -188,14 +316,14 @@
             
             html += `
                 <tr>
-                    <td>${escapeHtml(grade.courseCode)}</td>
-                    <td>${escapeHtml(grade.courseName)}</td>
+                    <td class="course-code">${escapeHtml(grade.courseCode)}</td>
+                    <td class="course-name">${escapeHtml(grade.courseName)}</td>
                     <td class="text-center">${grade.credits}</td>
                     <td class="text-center">${typeof grade.cat1 === 'number' ? grade.cat1 + '%' : grade.cat1}</td>
                     <td class="text-center">${typeof grade.cat2 === 'number' ? grade.cat2 + '%' : grade.cat2}</td>
                     <td class="text-center">${typeof grade.final === 'number' ? grade.final + '%' : grade.final}</td>
                     <td class="text-center"><strong>${grade.total}%</strong></td>
-                    <td class="text-center"><span class="grade-letter">${grade.grade}</span></td>
+                    <td class="text-center grade-cell"><span class="grade-letter">${grade.grade}</span></td>
                     <td class="text-center"><span style="color: ${statusColor}; font-weight: bold;">${statusIcon} ${grade.status}</span></td>
                 </tr>
             `;
@@ -204,34 +332,24 @@
         elements.gradesTableBody.innerHTML = html;
     }
     
-    // Update GPA summary cards
+    // Update GPA summary
     function updateGpaSummary() {
-        const semesterGpa = currentData.totalGpa;
-        const semesterGrade = currentData.totalGrade || calculateLetterGrade(currentData.averagePercentage);
-        const cumulativeGpa = semesterGpa;
-        const cumulativeGrade = semesterGrade;
-        
-        if (elements.semesterGpa) elements.semesterGpa.textContent = semesterGpa;
-        if (elements.semesterGrade) elements.semesterGrade.textContent = semesterGrade;
-        if (elements.cumulativeGpa) elements.cumulativeGpa.textContent = cumulativeGpa;
-        if (elements.cumulativeGrade) elements.cumulativeGrade.textContent = cumulativeGrade;
+        if (elements.semesterGpa) elements.semesterGpa.textContent = currentData.totalGpa;
+        if (elements.semesterGrade) elements.semesterGrade.textContent = currentData.totalGrade || '--';
+        if (elements.cumulativeGpa) elements.cumulativeGpa.textContent = currentData.totalGpa;
+        if (elements.cumulativeGrade) elements.cumulativeGrade.textContent = currentData.totalGrade || '--';
         if (elements.totalCreditsEarned) elements.totalCreditsEarned.textContent = currentData.totalCredits;
         if (elements.classRank) elements.classRank.textContent = 'N/A';
-    }
-    
-    // Update yearly summary
-    function updateYearlySummary() {
-        const yearGpa = currentData.totalGpa;
-        const yearCredits = currentData.totalCredits;
-        const yearCourses = currentData.grades.length;
         
-        if (elements.yearGpa) elements.yearGpa.textContent = yearGpa;
-        if (elements.yearCredits) elements.yearCredits.textContent = yearCredits;
-        if (elements.yearCourses) elements.yearCourses.textContent = yearCourses;
-        if (elements.yearAwards) elements.yearAwards.textContent = '0';
+        // Update filter info text
+        const filterInfo = document.getElementById('current-filter-info');
+        if (filterInfo) {
+            const filterDisplay = currentFilter === 'all' ? 'All' : currentFilter;
+            filterInfo.textContent = `${currentData.programType === 'TVET' ? 'Semester' : 'Block'}: ${filterDisplay}`;
+        }
     }
     
-    // Load transcript data
+    // Load transcript
     function loadTranscript() {
         if (!elements.transcriptTableBody) return;
         
@@ -253,7 +371,7 @@
             
             html += `
                 <tr>
-                    <td>${escapeHtml(grade.semester)}</td>
+                    <td>${escapeHtml(grade.blockTerm || 'Current')}</td>
                     <td>${escapeHtml(grade.courseCode)}</td>
                     <td>${escapeHtml(grade.courseName)}</td>
                     <td class="text-center">${grade.credits}</td>
@@ -296,10 +414,7 @@
             const isCompleted = percentage >= 60;
             if (isCompleted) completedCount++;
             
-            let barColor = '#10b981';
-            if (percentage < 60) barColor = '#ef4444';
-            else if (percentage < 75) barColor = '#f59e0b';
-            else barColor = '#10b981';
+            let barColor = percentage >= 75 ? '#10b981' : (percentage >= 60 ? '#f59e0b' : '#ef4444');
             
             html += `
                 <div class="progress-item">
@@ -322,29 +437,22 @@
         if (elements.totalCoursesProgress) elements.totalCoursesProgress.textContent = totalCourses;
     }
     
-    // Create grade distribution chart
+    // Create chart
     function createGradeChart() {
         const canvas = document.getElementById('grade-distribution-chart');
-        if (!canvas) {
-            console.warn('Grade chart canvas not found');
-            return;
-        }
+        if (!canvas) return;
         
         const grades = currentData.grades;
         const gradeCounts = { 'A': 0, 'B+': 0, 'B': 0, 'C+': 0, 'C': 0, 'D': 0, 'F': 0 };
         
         grades.forEach(grade => {
-            if (gradeCounts[grade.grade] !== undefined) {
-                gradeCounts[grade.grade]++;
-            }
+            if (gradeCounts[grade.grade] !== undefined) gradeCounts[grade.grade]++;
         });
         
         const labels = Object.keys(gradeCounts);
         const data = Object.values(gradeCounts);
         
-        if (gradeChart) {
-            gradeChart.destroy();
-        }
+        if (gradeChart) gradeChart.destroy();
         
         if (typeof Chart !== 'undefined') {
             gradeChart = new Chart(canvas, {
@@ -373,7 +481,36 @@
                     }
                 }
             });
-            console.log('✅ Grade chart created');
+        }
+    }
+    
+    // Setup event listeners
+    function setupEventListeners() {
+        // Filter change
+        if (elements.filterSelect) {
+            elements.filterSelect.addEventListener('change', (e) => {
+                currentFilter = e.target.value;
+                console.log(`Filter changed to: ${currentFilter}`);
+                loadAcademicReports();
+            });
+        }
+        
+        // Refresh button
+        const refreshBtn = document.getElementById('refresh-report');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', () => loadAcademicReports());
+        }
+        
+        // Download button
+        const downloadBtn = document.getElementById('download-transcript-pdf');
+        if (downloadBtn) {
+            downloadBtn.addEventListener('click', () => alert('PDF download coming soon!'));
+        }
+        
+        // Print button
+        const printBtn = document.getElementById('print-report');
+        if (printBtn) {
+            printBtn.addEventListener('click', () => window.print());
         }
     }
     
@@ -390,51 +527,14 @@
         tabs.forEach(tab => {
             tab.addEventListener('click', () => {
                 const reportType = tab.getAttribute('data-report');
-                
                 tabs.forEach(t => t.classList.remove('active'));
                 tab.classList.add('active');
-                
                 Object.values(contents).forEach(content => {
                     if (content) content.style.display = 'none';
                 });
-                
-                if (contents[reportType]) {
-                    contents[reportType].style.display = 'block';
-                }
+                if (contents[reportType]) contents[reportType].style.display = 'block';
             });
         });
-    }
-    
-    // Setup event listeners
-    function setupEventListeners() {
-        const refreshBtn = document.getElementById('refresh-report');
-        if (refreshBtn) {
-            refreshBtn.addEventListener('click', () => loadAcademicReports());
-        }
-        
-        const semesterFilter = document.getElementById('semester-filter');
-        if (semesterFilter) {
-            semesterFilter.addEventListener('change', () => loadAcademicReports());
-        }
-        
-        const gpaType = document.getElementById('gpa-type');
-        if (gpaType) {
-            gpaType.addEventListener('change', () => loadAcademicReports());
-        }
-        
-        const downloadBtn = document.getElementById('download-transcript-pdf');
-        if (downloadBtn) {
-            downloadBtn.addEventListener('click', () => {
-                alert('PDF download feature coming soon!');
-            });
-        }
-        
-        const printBtn = document.getElementById('print-report');
-        if (printBtn) {
-            printBtn.addEventListener('click', () => {
-                window.print();
-            });
-        }
     }
     
     // Main load function
@@ -442,68 +542,56 @@
         console.log('🚀 Loading Academic Reports...');
         
         try {
-            // Show loading state
             if (elements.gradesTableBody) {
                 elements.gradesTableBody.innerHTML = '<tr><td colspan="9"><div class="loading-spinner"></div> Loading grades...</td></tr>';
             }
             
-            // Load student info
             loadStudentInfo();
-            
-            // Load grades from exams module
+            populateFilterDropdown();
             await loadGradesFromExams();
             
-            // Update all displays
             displayGradesTable();
             updateGpaSummary();
-            updateYearlySummary();
             loadTranscript();
             loadCourseProgress();
             createGradeChart();
             
-            console.log('✅ Academic Reports loaded successfully');
-            console.log(`📊 Total grades: ${currentData.grades.length}, GPA: ${currentData.totalGpa}`);
+            console.log(`✅ Academic Reports loaded: ${currentData.grades.length} grades, Filter: ${currentFilter}`);
             
         } catch (error) {
-            console.error('❌ Error loading academic reports:', error);
+            console.error('❌ Error:', error);
             if (elements.gradesTableBody) {
                 elements.gradesTableBody.innerHTML = '<tr><td colspan="9" class="text-center error">Error loading grades. Please refresh.</td></tr>';
             }
         }
     }
     
-    // Initialize module
+    // Initialize
     function init() {
         console.log('🔧 Initializing Academic Reports Module...');
         
         setupReportTabs();
         setupEventListeners();
         
-        // Wait for exams module to be ready
         if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => {
-                setTimeout(loadAcademicReports, 500);
-            });
+            document.addEventListener('DOMContentLoaded', () => setTimeout(loadAcademicReports, 500));
         } else {
             setTimeout(loadAcademicReports, 500);
         }
         
-        // Also listen for exams module ready event
-        document.addEventListener('examsModuleReady', () => {
-            console.log('📢 Exams module ready event received');
-            loadAcademicReports();
-        });
+        document.addEventListener('examsModuleReady', () => loadAcademicReports());
+        document.addEventListener('appReady', () => setTimeout(loadAcademicReports, 500));
     }
     
-    // Expose module globally
+    // Expose module
     window.academicReportsModule = {
         init: init,
         loadReports: loadAcademicReports,
-        refresh: loadAcademicReports
+        refresh: loadAcademicReports,
+        setFilter: (filter) => { currentFilter = filter; loadAcademicReports(); }
     };
     
-    // Auto-initialize
     init();
     
-    console.log('✅ Academic Reports Module Ready - Linked with Exams Module');
+    console.log('✅ Academic Reports Module Ready - Smart filtering (KRCHN Blocks / TVET Semesters)');
 })();
