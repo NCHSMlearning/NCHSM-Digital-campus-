@@ -317,7 +317,6 @@
 
 <!-- TRANSCRIPT MODAL -->
 <div id="transcript-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); justify-content:center; align-items:center; z-index:1000;"><div style="background:white; padding:16px; border-radius:8px; max-width:350px; width:90%; position:relative; box-shadow:0 4px 20px rgba(0,0,0,0.15);"><button id="closeTranscriptBtn" style="position:absolute; top:8px; right:8px; background:none; border:none; font-size:1.2em; cursor:pointer; color:#6B7280; padding:4px; width:28px; height:28px; display:flex; align-items:center; justify-content:center; border-radius:50%;">×</button><div style="text-align:center; margin-bottom:15px; padding-bottom:8px; border-bottom:1px solid var(--color-primary, #4F46E5);"><h4 style="margin:0; color: var(--color-primary, #4F46E5); font-size:1.1em; font-weight:600;"><i class="fas fa-file-alt" style="margin-right:6px;"></i> Exam Transcript</h4><p id="transcript-exam-name" style="margin:5px 0 0; font-size:0.85em; color:#6B7280;"></p></div><table style="width:100%; border-collapse:collapse; font-size:0.9em; margin-bottom:10px;"><tr><td style="font-weight:600; padding:6px 0; width:50%;">CAT 1 (30):</td><td id="transcript-cat1" style="padding:6px 0; text-align:right;">-</td></tr><tr><td style="font-weight:600; padding:6px 0;">CAT 2 (30):</td><td id="transcript-cat2" style="padding:6px 0; text-align:right;">-</td></tr><tr><td style="font-weight:600; padding:6px 0;">Final (40):</td><td id="transcript-final" style="padding:6px 0; text-align:right;">-</td></tr><tr style="border-top:1px solid #e5e7eb;"><td style="font-weight:700; padding:8px 0;">Total Score:</td><td id="transcript-total" style="padding:8px 0; font-weight:700; text-align:right;">-</td></tr><tr><td style="font-weight:700; padding:6px 0;">Status:</td><td id="transcript-status" style="padding:6px 0; font-weight:700; text-align:right;">-</td></tr></table><div style="margin-top:10px; padding:8px; background:#f0f9ff; border-radius:4px; font-size:0.8em; color:#0369a1; border-left:3px solid #0ea5e9;"><i class="fas fa-info-circle" style="margin-right:5px;"></i>Provisional - subject to moderation</div><div style="margin-top:15px; text-align:center;"><button id="closeTranscriptModalBtn" style="padding:8px 20px; background:var(--color-primary, #4F46E5); color:white; border:none; border-radius:6px; cursor:pointer; font-size:0.9em; font-weight:500; width:100%;">Close Transcript</button></div></div></div>
-
 <!-- SCRIPTS -->
 <script src="./js/database.js"></script>
 <script src="./js/utils.js"></script>
@@ -337,8 +336,8 @@
 <script src="./js/exam-card.js"></script>
 <script src="./js/academic-reports.js"></script>
 
+<!-- ==================== MAIN HANDLER ==================== -->
 <script>
-// ==================== MAIN HANDLER ====================
 (function() {
     'use strict';
     
@@ -375,6 +374,20 @@
         }
     }
     
+    function closeMobileSidebar() {
+        if (window.innerWidth <= 768) {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('overlay');
+            if (sidebar) sidebar.classList.remove('active', 'open');
+            if (overlay) {
+                overlay.classList.remove('active');
+                overlay.style.display = 'none';
+            }
+            document.body.style.overflow = '';
+            document.body.classList.remove('menu-open');
+        }
+    }
+    
     function hideAllSections() {
         const sections = [dashboard, profile, calendar, attendance, messages, supportTickets, cats, resources, nurseiq, learningHub, examCard, academicReports];
         sections.forEach(section => {
@@ -389,141 +402,97 @@
         });
     }
     
-    function callModuleMethod(module, methodNames, moduleName) {
-        if (!module) return false;
-        for (let method of methodNames) {
-            if (typeof module[method] === 'function') {
-                console.log(`✅ Calling ${moduleName}.${method}()`);
-                module[method]();
-                return true;
+    function showHubModule(moduleId) {
+        console.log('📂 Showing hub module:', moduleId);
+        closeMobileSidebar();
+        
+        if (learningHub) {
+            hideAllSections();
+            learningHub.style.display = 'block';
+            learningHub.classList.add('active');
+            
+            hideAllHubModules();
+            
+            const selected = document.getElementById(moduleId);
+            if (selected) {
+                selected.style.display = 'block';
             }
         }
-        console.log(`⚠️ No matching method found for ${moduleName}. Available:`, Object.keys(module));
-        return false;
-    }
-    
-    function showContent(tabId) {
-        console.log('📂 Showing:', tabId);
         
-        // Close mobile sidebar
-        if (window.innerWidth <= 768) {
-            const sidebar = document.getElementById('sidebar');
-            const overlay = document.getElementById('overlay');
-            const mobileToggle = document.getElementById('mobile-menu-toggle');
-            if (sidebar) sidebar.classList.remove('active', 'open');
-            if (overlay) {
-                overlay.classList.remove('active');
-                overlay.style.display = 'none';
-            }
-            if (mobileToggle) mobileToggle.classList.toggle('active');
-            document.body.style.overflow = '';
-            document.body.classList.remove('menu-open');
-        }
-        
-        closeDropdown();
-        hideAllSections();
-        hideAllHubModules();
-        
-        // MAIN TABS
-        if (tabId === 'dashboard') {
-            if (dashboard) dashboard.style.display = 'block';
-            if (window.dashboardModule?.refreshDashboard) window.dashboardModule.refreshDashboard();
-        }
-        else if (tabId === 'profile') {
-            if (profile) profile.style.display = 'block';
-            if (window.profileModule?.loadProfile) window.profileModule.loadProfile();
-        }
-        else if (tabId === 'calendar') {
-            if (calendar) calendar.style.display = 'block';
-            if (window.calendarModule?.loadCalendar) window.calendarModule.loadCalendar();
-        }
-        else if (tabId === 'attendance') {
-            if (attendance) attendance.style.display = 'block';
-            setTimeout(() => {
-                if (window.attendanceModule?.loadAttendanceHistory) {
-                    window.attendanceModule.loadAttendanceHistory();
-                }
-            }, 100);
-        }
-        else if (tabId === 'messages') {
-            if (messages) messages.style.display = 'block';
-            if (window.messagesModule?.loadMessages) window.messagesModule.loadMessages();
-        }
-        else if (tabId === 'support-tickets') {
-            if (supportTickets) supportTickets.style.display = 'block';
-            if (window.ticketsModule?.loadTickets) window.ticketsModule.loadTickets();
-        }
-        else if (tabId === 'cats') {
-            if (cats) cats.style.display = 'block';
-            if (window.examsModule?.loadExams) window.examsModule.loadExams();
-        }
-        else if (tabId === 'resources') {
-            if (resources) resources.style.display = 'block';
-            if (window.resourcesModule?.loadAllResources) window.resourcesModule.loadAllResources();
-        }
-        else if (tabId === 'nurseiq') {
-            if (nurseiq) nurseiq.style.display = 'block';
-            if (window.nurseiqModule?.loadCourses) window.nurseiqModule.loadCourses();
-        }
-        else if (tabId === 'exam-card') {
-            if (examCard) examCard.style.display = 'block';
-            if (window.examCardStandalone?.loadExamCard) window.examCardStandalone.loadExamCard();
-        }
-        else if (tabId === 'academic-reports') {
-            if (academicReports) academicReports.style.display = 'block';
-            if (window.academicReportsModule?.loadReports) {
-                window.academicReportsModule.loadReports();
-            } else {
-                console.log('📊 Academic Reports module loading...');
-                // Fallback to populate data
-                setTimeout(() => {
-                    if (window.academicReportsModule?.loadReports) {
-                        window.academicReportsModule.loadReports();
-                    }
-                }, 100);
-            }
-        }
-        else if (tabId === 'hub-courses') {
-            if (learningHub) learningHub.style.display = 'block';
-            if (hubCourses) hubCourses.style.display = 'block';
-            setTimeout(() => {
-                if (window.coursesModule) {
-                    callModuleMethod(window.coursesModule, ['loadCourses', 'init', 'display', 'render', 'show'], 'coursesModule');
-                }
-            }, 100);
-        }
-        else if (tabId === 'hub-register') {
-            if (learningHub) learningHub.style.display = 'block';
-            if (hubRegister) hubRegister.style.display = 'block';
-            setTimeout(() => {
-                if (window.unitRegistrationModule) {
-                    callModuleMethod(window.unitRegistrationModule, ['loadUnits', 'init', 'load', 'displayUnits'], 'unitRegistrationModule');
-                }
-            }, 100);
-        }
-        else if (tabId === 'hub-online-learning') {
-            if (learningHub) learningHub.style.display = 'block';
-            if (hubOnlineLearning) hubOnlineLearning.style.display = 'block';
-            if (hubOnlineLearning) {
-                hubOnlineLearning.innerHTML = '<div class="online-learning-container" style="padding: 20px; text-align: center;"><i class="fas fa-video" style="font-size: 48px; color: #4f46e5;"></i><h2>Online Learning</h2><p>Video lessons, quizzes, and study materials coming soon...</p></div>';
-            }
-        }
-        else if (tabId === 'hub-exam-card') {
-            if (learningHub) learningHub.style.display = 'block';
-            if (hubExamCard) hubExamCard.style.display = 'block';
-            setTimeout(() => {
-                if (window.examCardModule) {
-                    callModuleMethod(window.examCardModule, ['loadExamCard', 'init', 'load', 'displayExamCard'], 'examCardModule');
-                }
-            }, 100);
-        }
-        
-        // Update active class
+        // Update active states
         document.querySelectorAll('.nav a, .dropdown-submenu a').forEach(link => {
             link.classList.remove('active');
         });
-        const activeLink = document.querySelector(`a[data-tab="${tabId}"]`);
+        const activeLink = document.querySelector(`a[data-tab="${moduleId}"]`);
         if (activeLink) activeLink.classList.add('active');
+        
+        const hubLink = document.querySelector('.nav a[data-tab="learning-hub"]');
+        if (hubLink) hubLink.classList.add('active');
+        
+        localStorage.setItem('nchsm_current_tab', 'learning-hub');
+        localStorage.setItem('nchsm_current_module', moduleId);
+        
+        // Load module data
+        if (moduleId === 'hub-courses' && window.coursesModule?.loadCourses) {
+            setTimeout(() => window.coursesModule.loadCourses(), 100);
+        } else if (moduleId === 'hub-register' && window.unitRegistrationModule?.loadUnits) {
+            setTimeout(() => window.unitRegistrationModule.loadUnits(), 100);
+        } else if (moduleId === 'hub-online-learning') {
+            const container = document.getElementById('hub-online-learning');
+            if (container && container.innerHTML.trim() === '') {
+                container.innerHTML = '<div class="online-learning-container" style="padding: 20px; text-align: center;"><i class="fas fa-video" style="font-size: 48px; color: #4f46e5;"></i><h2>Online Learning</h2><p>Video lessons, quizzes, and study materials coming soon...</p></div>';
+            }
+        } else if (moduleId === 'hub-exam-card' && window.examCardModule?.loadExamCard) {
+            setTimeout(() => window.examCardModule.loadExamCard(), 100);
+        }
+    }
+    
+    function showRegularTab(tabId) {
+        console.log('📂 Showing regular tab:', tabId);
+        closeMobileSidebar();
+        
+        const target = document.getElementById(tabId);
+        if (!target) return;
+        
+        hideAllSections();
+        target.style.display = 'block';
+        target.classList.add('active');
+        
+        // Update active states
+        document.querySelectorAll('.nav a, .dropdown-submenu a').forEach(link => {
+            link.classList.remove('active');
+            if (link.getAttribute('data-tab') === tabId) {
+                link.classList.add('active');
+            }
+        });
+        
+        localStorage.setItem('nchsm_current_tab', tabId);
+        
+        // Load module data
+        setTimeout(() => {
+            if (tabId === 'profile' && window.profileModule?.loadProfile) window.profileModule.loadProfile();
+            else if (tabId === 'dashboard' && window.dashboardModule?.refreshDashboard) window.dashboardModule.refreshDashboard();
+            else if (tabId === 'attendance' && window.attendanceModule?.loadAttendanceHistory) window.attendanceModule.loadAttendanceHistory();
+            else if (tabId === 'cats' && window.examsModule?.loadExams) window.examsModule.loadExams();
+            else if (tabId === 'resources' && window.resourcesModule?.loadAllResources) window.resourcesModule.loadAllResources();
+            else if (tabId === 'nurseiq' && window.nurseiqModule?.loadCourses) window.nurseiqModule.loadCourses();
+            else if (tabId === 'academic-reports' && window.academicReportsModule?.loadReports) window.academicReportsModule.loadReports();
+            else if (tabId === 'calendar' && window.calendarModule?.loadCalendar) window.calendarModule.loadCalendar();
+            else if (tabId === 'messages' && window.messagesModule?.loadMessages) window.messagesModule.loadMessages();
+            else if (tabId === 'support-tickets' && window.ticketsModule?.loadTickets) window.ticketsModule.loadTickets();
+            else if (tabId === 'exam-card' && window.examCardStandalone?.loadExamCard) window.examCardStandalone.loadExamCard();
+        }, 100);
+    }
+    
+    function showContent(tabId) {
+        console.log('🎯 showContent:', tabId);
+        closeDropdown();
+        
+        if (tabId && tabId.startsWith('hub-')) {
+            showHubModule(tabId);
+        } else {
+            showRegularTab(tabId);
+        }
     }
     
     // Setup dropdown toggle
@@ -545,7 +514,7 @@
         });
     }
     
-    // Setup menu clicks
+    // Setup all menu clicks
     document.querySelectorAll('.nav a[data-tab], .dropdown-submenu a[data-tab]').forEach(item => {
         const newItem = item.cloneNode(true);
         item.parentNode.replaceChild(newItem, item);
@@ -565,9 +534,118 @@
         }
     });
     
-    // Set default
-    showContent('dashboard');
+    // Close sidebar on overlay click
+    const overlay = document.getElementById('overlay');
+    if (overlay) {
+        overlay.addEventListener('click', closeMobileSidebar);
+    }
+    
+    // Close sidebar on escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && window.innerWidth <= 768) {
+            closeMobileSidebar();
+        }
+    });
+    
+    // Restore last viewed state
+    const lastModule = localStorage.getItem('nchsm_current_module');
+    const lastTab = localStorage.getItem('nchsm_current_tab');
+    
+    if (lastModule && lastModule.startsWith('hub-')) {
+        setTimeout(() => showHubModule(lastModule), 500);
+    } else if (lastTab && lastTab !== 'dashboard') {
+        setTimeout(() => showRegularTab(lastTab), 500);
+    } else {
+        showRegularTab('dashboard');
+    }
+    
     console.log('✅ Main Handler Ready!');
+})();
+</script>
+
+<!-- ==================== ROUTING (CLEAN URLs) ==================== -->
+<script>
+(function() {
+    'use strict';
+    
+    console.log('🔧 Initializing clean URL routing...');
+    
+    const VALID_TABS = ['dashboard', 'profile', 'calendar', 'cats', 'support-tickets', 'learning-hub', 'attendance', 'resources', 'messages', 'nurseiq', 'exam-card', 'academic-reports'];
+    const BASE_PATH = '/student';
+    
+    function getCurrentTabFromURL() {
+        let path = window.location.pathname;
+        if (path === BASE_PATH || path === BASE_PATH + '/') return 'dashboard';
+        if (path.startsWith(BASE_PATH + '/')) path = path.substring(BASE_PATH.length + 1);
+        path = path.replace(/\/$/, '');
+        if (path && VALID_TABS.includes(path)) return path;
+        return 'dashboard';
+    }
+    
+    function updateURL(tabName) {
+        const newPath = tabName === 'dashboard' ? BASE_PATH : `${BASE_PATH}/${tabName}`;
+        if (window.location.pathname !== newPath) {
+            window.history.pushState({ tab: tabName }, '', newPath);
+        }
+    }
+    
+    window.showTab = function(tabName) {
+        const target = document.getElementById(tabName);
+        if (!target) return false;
+        
+        document.querySelectorAll('.tab-content').forEach(tab => {
+            tab.style.display = 'none';
+            tab.classList.remove('active');
+        });
+        
+        target.style.display = 'block';
+        target.classList.add('active');
+        
+        document.querySelectorAll('[data-tab]').forEach(link => {
+            link.classList.toggle('active', link.getAttribute('data-tab') === tabName);
+        });
+        
+        if (tabName !== 'dashboard') {
+            localStorage.setItem('nchsm_current_tab', tabName);
+        } else {
+            localStorage.removeItem('nchsm_current_tab');
+        }
+        
+        updateURL(tabName);
+        
+        // Refresh module data
+        setTimeout(() => {
+            if (tabName === 'profile' && window.profileModule) window.profileModule.loadProfile();
+            else if (tabName === 'dashboard' && window.dashboardModule?.refreshDashboard) window.dashboardModule.refreshDashboard(true);
+            else if (tabName === 'attendance' && window.attendanceModule?.loadAttendanceHistory) window.attendanceModule.loadAttendanceHistory();
+            else if (tabName === 'nurseiq' && window.nurseiqModule?.loadCourses) window.nurseiqModule.loadCourses();
+            else if (tabName === 'academic-reports' && window.academicReportsModule?.loadReports) window.academicReportsModule.loadReports();
+        }, 100);
+        
+        return true;
+    };
+    
+    function setup() {
+        window.addEventListener('popstate', () => {
+            const tab = getCurrentTabFromURL();
+            if (tab && VALID_TABS.includes(tab)) window.showTab(tab);
+        });
+        
+        const urlTab = getCurrentTabFromURL();
+        const savedTab = localStorage.getItem('nchsm_current_tab');
+        let tabToShow = urlTab;
+        if (tabToShow === 'dashboard' && savedTab && savedTab !== 'dashboard') tabToShow = savedTab;
+        
+        if (tabToShow !== 'dashboard') {
+            setTimeout(() => window.showTab(tabToShow), 100);
+        }
+    }
+    
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', setup);
+    } else {
+        setup();
+    }
 })();
 </script>
 
@@ -662,470 +740,8 @@ async function initializeApp() {
 document.addEventListener('DOMContentLoaded', function() {
     console.log('📱 DOM ready, starting app initialization...');
     document.querySelectorAll('.tab-content').forEach(tab => tab.style.removeProperty('display'));
-    if (typeof initializeApp === 'function') initializeApp();
-    else {
-        console.error('❌ initializeApp function NOT FOUND!');
-        setTimeout(() => {
-            const loadingScreen = document.getElementById('loading-screen');
-            if (loadingScreen) loadingScreen.style.display = 'none';
-            const appContent = document.getElementById('app-content');
-            if (appContent) appContent.style.display = 'block';
-            const dashboard = document.getElementById('dashboard');
-            if (dashboard) dashboard.classList.add('active');
-        }, 1000);
-    }
+    initializeApp();
 });
 </script>
-
-<!-- ==================== COMPLETE DROPDOWN & NAVIGATION FIX ==================== -->
-<script>
-(function() {
-    'use strict';
-    
-    console.log('🔧 COMPLETE DROPDOWN FIX INITIALIZING...');
-    
-    // Function to close mobile sidebar
-    function closeMobileSidebar() {
-        if (window.innerWidth <= 768) {
-            const sidebar = document.getElementById('sidebar');
-            const overlay = document.getElementById('overlay');
-            if (sidebar) {
-                sidebar.classList.remove('active', 'open');
-            }
-            if (overlay) {
-                overlay.classList.remove('active');
-                overlay.style.display = 'none';
-            }
-            document.body.style.overflow = '';
-            document.body.classList.remove('menu-open');
-            console.log('📱 Mobile sidebar closed');
-        }
-    }
-    
-    // Function to show hub modules (called from dropdown)
-    function showHubModule(moduleId) {
-        console.log('📂 showHubModule called with:', moduleId);
-        closeMobileSidebar();
-        
-        const learningHub = document.getElementById('learning-hub');
-        if (learningHub) {
-            // Hide all tab contents
-            document.querySelectorAll('.tab-content').forEach(tab => {
-                tab.style.display = 'none';
-                tab.classList.remove('active');
-            });
-            
-            // Show learning hub
-            learningHub.style.display = 'block';
-            learningHub.classList.add('active');
-            
-            // Hide all hub modules
-            const modules = ['hub-courses', 'hub-register', 'hub-online-learning', 'hub-exam-card'];
-            modules.forEach(id => {
-                const mod = document.getElementById(id);
-                if (mod) mod.style.display = 'none';
-            });
-            
-            // Show selected module
-            const selected = document.getElementById(moduleId);
-            if (selected) {
-                selected.style.display = 'block';
-                console.log('✅ Showing module:', moduleId);
-            } else {
-                console.error('Module not found:', moduleId);
-            }
-        } else {
-            console.error('Learning hub not found!');
-        }
-        
-        // Update active states
-        document.querySelectorAll('.nav a, .dropdown-submenu a').forEach(link => {
-            link.classList.remove('active');
-            if (link.getAttribute('data-tab') === moduleId) {
-                link.classList.add('active');
-            }
-        });
-        
-        // Highlight parent hub link
-        const hubLink = document.querySelector('.nav a[data-tab="learning-hub"]');
-        if (hubLink) hubLink.classList.add('active');
-        
-        // Save state
-        localStorage.setItem('nchsm_current_tab', 'learning-hub');
-        localStorage.setItem('nchsm_current_module', moduleId);
-        
-        // Load module-specific data
-        if (moduleId === 'hub-courses' && window.coursesModule) {
-            setTimeout(() => {
-                if (window.coursesModule.loadCourses) window.coursesModule.loadCourses();
-                else if (window.coursesModule.init) window.coursesModule.init();
-            }, 100);
-        } else if (moduleId === 'hub-register' && window.unitRegistrationModule) {
-            setTimeout(() => {
-                if (window.unitRegistrationModule.loadUnits) window.unitRegistrationModule.loadUnits();
-                else if (window.unitRegistrationModule.init) window.unitRegistrationModule.init();
-            }, 100);
-        } else if (moduleId === 'hub-exam-card' && window.examCardModule) {
-            setTimeout(() => {
-                if (window.examCardModule.loadExamCard) window.examCardModule.loadExamCard();
-                else if (window.examCardModule.init) window.examCardModule.init();
-            }, 100);
-        }
-    }
-    
-    // Setup dropdown toggle
-    const dropdownParent = document.querySelector('.has-dropdown');
-    const dropdownToggle = document.querySelector('.has-dropdown > a');
-    const dropdownMenu = document.querySelector('.dropdown-submenu');
-    
-    if (dropdownToggle && dropdownMenu) {
-        // Remove old listener and add new one
-        const newToggle = dropdownToggle.cloneNode(true);
-        dropdownToggle.parentNode.replaceChild(newToggle, dropdownToggle);
-        
-        newToggle.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('🖱️ Dropdown toggle clicked');
-            const isOpen = dropdownParent.classList.contains('open');
-            if (isOpen) {
-                dropdownParent.classList.remove('open');
-                dropdownMenu.style.display = 'none';
-                console.log('📂 Dropdown closed');
-            } else {
-                // Close any other open dropdowns
-                document.querySelectorAll('.has-dropdown.open').forEach(drop => {
-                    drop.classList.remove('open');
-                    const menu = drop.querySelector('.dropdown-submenu');
-                    if (menu) menu.style.display = 'none';
-                });
-                dropdownParent.classList.add('open');
-                dropdownMenu.style.display = 'block';
-                console.log('📂 Dropdown opened');
-            }
-        });
-        console.log('✅ Dropdown toggle fixed');
-    }
-    
-    // Fix ALL dropdown menu items
-    const dropdownItems = document.querySelectorAll('.dropdown-submenu a[data-tab]');
-    console.log(`Found ${dropdownItems.length} dropdown items to fix`);
-    
-    dropdownItems.forEach(item => {
-        const tabId = item.getAttribute('data-tab');
-        const itemText = item.textContent.trim();
-        
-        // Clone to remove old listeners
-        const newItem = item.cloneNode(true);
-        item.parentNode.replaceChild(newItem, item);
-        
-        newItem.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            console.log(`🖱️ Dropdown item clicked: "${itemText}" -> ${tabId}`);
-            
-            // Close mobile sidebar first
-            closeMobileSidebar();
-            
-            // Close dropdown menu
-            if (dropdownParent) {
-                dropdownParent.classList.remove('open');
-                if (dropdownMenu) dropdownMenu.style.display = 'none';
-            }
-            
-            // Navigate based on tab type
-            if (tabId && tabId.startsWith('hub-')) {
-                // Hub modules (My Courses, Register Units, Online Learning, Exam Card)
-                showHubModule(tabId);
-            } else {
-                // Regular tabs - use the main showTab function if available
-                if (typeof window.showTab === 'function') {
-                    window.showTab(tabId);
-                } else {
-                    // Fallback manual navigation
-                    document.querySelectorAll('.tab-content').forEach(tab => {
-                        tab.style.display = 'none';
-                        tab.classList.remove('active');
-                    });
-                    const target = document.getElementById(tabId);
-                    if (target) {
-                        target.style.display = 'block';
-                        target.classList.add('active');
-                    }
-                    localStorage.setItem('nchsm_current_tab', tabId);
-                }
-            }
-        });
-        
-        console.log(`✅ Fixed: ${itemText}`);
-    });
-    
-    // Fix main sidebar "My Learning Hub" link
-    const mainHubLink = document.querySelector('.nav a[data-tab="learning-hub"]');
-    if (mainHubLink) {
-        const newLink = mainHubLink.cloneNode(true);
-        mainHubLink.parentNode.replaceChild(newLink, mainHubLink);
-        
-        newLink.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('🖱️ Main Learning Hub clicked');
-            
-            // On mobile, go directly to courses and close sidebar
-            if (window.innerWidth <= 768) {
-                showHubModule('hub-courses');
-            } else {
-                // On desktop, just toggle the dropdown
-                const isOpen = dropdownParent.classList.contains('open');
-                if (isOpen) {
-                    dropdownParent.classList.remove('open');
-                    if (dropdownMenu) dropdownMenu.style.display = 'none';
-                } else {
-                    dropdownParent.classList.add('open');
-                    if (dropdownMenu) dropdownMenu.style.display = 'block';
-                }
-            }
-        });
-        console.log('✅ Main Learning Hub link fixed');
-    }
-    
-    // Close dropdown when clicking outside
-    document.addEventListener('click', function(e) {
-        if (dropdownParent && !dropdownParent.contains(e.target)) {
-            if (dropdownParent.classList.contains('open')) {
-                dropdownParent.classList.remove('open');
-                if (dropdownMenu) dropdownMenu.style.display = 'none';
-            }
-        }
-    });
-    
-    // Close sidebar on overlay click
-    const overlay = document.getElementById('overlay');
-    if (overlay) {
-        overlay.addEventListener('click', closeMobileSidebar);
-    }
-    
-    // Close sidebar on escape key
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape' && window.innerWidth <= 768) {
-            closeMobileSidebar();
-        }
-    });
-    
-    // Restore last viewed module on page load
-    const lastModule = localStorage.getItem('nchsm_current_module');
-    if (lastModule && lastModule.startsWith('hub-')) {
-        console.log(`Restoring last module: ${lastModule}`);
-        setTimeout(() => showHubModule(lastModule), 500);
-    }
-    
-    console.log('✅ COMPLETE DROPDOWN FIX APPLIED!');
-    console.log('📋 All dropdown items should now work:');
-    console.log('   - My Courses → hub-courses ✅');
-    console.log('   - Register Units → hub-register ✅');
-    console.log('   - Online Learning → hub-online-learning ✅');
-    console.log('   - Exam Card → hub-exam-card ✅');
-    console.log('   - Exams & Grades → cats ✅');
-    console.log('   - Academic Reports → academic-reports ✅');
-    console.log('   - Resources → resources ✅');
-    console.log('   - NurseIQ → nurseiq ✅');
-    
-    // Expose functions globally
-    window.showHubModule = showHubModule;
-    window.closeMobileSidebar = closeMobileSidebar;
-    
-})();
-</script>
-
-<!-- ==================== ROUTING & TAB PERSISTENCE (CLEAN URLs) ==================== -->
-<script>
-(function() {
-    'use strict';
-    
-    console.log('🔧 Initializing clean URL routing...');
-    
-    const VALID_TABS = ['dashboard', 'profile', 'calendar', 'cats', 'support-tickets', 'learning-hub', 'attendance', 'resources', 'messages', 'nurseiq', 'exam-card', 'academic-reports'];
-    const BASE_PATH = '/student';
-    
-    function getCurrentTabFromURL() {
-        let path = window.location.pathname;
-        if (path.startsWith(BASE_PATH)) path = path.substring(BASE_PATH.length);
-        path = path.replace(/^\/+|\/+$/g, '');
-        if (path && VALID_TABS.includes(path)) return path;
-        return 'dashboard';
-    }
-    
-    function updateURL(tabName) {
-        const newPath = tabName === 'dashboard' ? BASE_PATH : `${BASE_PATH}/${tabName}`;
-        if (window.location.pathname !== newPath) {
-            window.history.pushState({ tab: tabName }, '', newPath);
-        }
-    }
-    
-    function saveCurrentTab(tabName) {
-        if (tabName && tabName !== 'dashboard') {
-            localStorage.setItem('nchsm_current_tab', tabName);
-        } else if (tabName === 'dashboard') {
-            localStorage.removeItem('nchsm_current_tab');
-        }
-        updateURL(tabName);
-    }
-    
-    window.showTab = function(tabName) {
-        console.log('📍 showTab called:', tabName);
-        const target = document.getElementById(tabName);
-        if (!target) return false;
-        
-        document.querySelectorAll('.tab-content').forEach(tab => {
-            tab.style.display = 'none';
-            tab.classList.remove('active');
-        });
-        
-        target.style.display = 'block';
-        target.classList.add('active');
-        
-        document.querySelectorAll('[data-tab]').forEach(link => {
-            link.classList.toggle('active', link.getAttribute('data-tab') === tabName);
-        });
-        
-        saveCurrentTab(tabName);
-        
-        // Refresh module data
-        setTimeout(() => {
-            if (tabName === 'profile' && window.profileModule) window.profileModule.loadProfile();
-            else if (tabName === 'dashboard' && window.dashboardModule?.refreshDashboard) window.dashboardModule.refreshDashboard(true);
-            else if (tabName === 'attendance' && window.attendanceModule?.loadAttendanceHistory) window.attendanceModule.loadAttendanceHistory();
-            else if (tabName === 'nurseiq' && window.nurseiqModule?.loadCourses) window.nurseiqModule.loadCourses();
-            else if (tabName === 'academic-reports' && window.academicReportsModule?.loadReports) window.academicReportsModule.loadReports();
-        }, 100);
-        
-        return true;
-    };
-    
-    function handleTabClick(e) {
-        e.preventDefault();
-        const tab = this.getAttribute('data-tab');
-        if (tab && VALID_TABS.includes(tab)) {
-            window.showTab(tab);
-        }
-    }
-    
-    function handlePopState() {
-        const tab = getCurrentTabFromURL();
-        if (tab && VALID_TABS.includes(tab)) {
-            window.showTab(tab);
-        }
-    }
-    
-    function setup() {
-        document.querySelectorAll('[data-tab]').forEach(link => {
-            link.removeEventListener('click', handleTabClick);
-            link.addEventListener('click', handleTabClick);
-        });
-        window.addEventListener('popstate', handlePopState);
-        
-        const urlTab = getCurrentTabFromURL();
-        const savedTab = localStorage.getItem('nchsm_current_tab');
-        let tabToShow = urlTab;
-        if (tabToShow === 'dashboard' && savedTab && savedTab !== 'dashboard') {
-            tabToShow = savedTab;
-        }
-        
-        if (tabToShow !== 'dashboard') {
-            const checkInterval = setInterval(() => {
-                if (document.getElementById(tabToShow)) {
-                    clearInterval(checkInterval);
-                    window.showTab(tabToShow);
-                }
-            }, 100);
-            setTimeout(() => clearInterval(checkInterval), 3000);
-        } else {
-            const dashboard = document.getElementById('dashboard');
-            if (dashboard && !dashboard.classList.contains('active')) {
-                window.showTab('dashboard');
-            }
-        }
-    }
-    
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', setup);
-    } else {
-        setup();
-    }
-    
-    document.addEventListener('appReady', () => {
-        const urlTab = getCurrentTabFromURL();
-        if (urlTab !== 'dashboard' && document.getElementById(urlTab)) {
-            window.showTab(urlTab);
-        }
-    });
-})();
-</script>
-<script>
-(function() {
-    'use strict';
-    const VALID_TABS = ['dashboard', 'profile', 'calendar', 'cats', 'support-tickets', 'learning-hub', 'attendance', 'resources', 'messages', 'nurseiq', 'exam-card', 'academic-reports'];
-    const BASE_PATH = '/student';
-    
-    function getCurrentTabFromURL() {
-        let path = window.location.pathname;
-        if (path.startsWith(BASE_PATH)) path = path.substring(BASE_PATH.length);
-        path = path.replace(/^\/+|\/+$/g, '');
-        if (path && VALID_TABS.includes(path)) return path;
-        return 'dashboard';
-    }
-    
-    function updateURL(tabName) {
-        const newPath = tabName === 'dashboard' ? BASE_PATH : `${BASE_PATH}/${tabName}`;
-        if (window.location.pathname !== newPath) window.history.pushState({ tab: tabName }, '', newPath);
-    }
-    
-    function saveCurrentTab(tabName) {
-        if (tabName && tabName !== 'dashboard') localStorage.setItem('nchsm_current_tab', tabName);
-        else if (tabName === 'dashboard') localStorage.removeItem('nchsm_current_tab');
-        updateURL(tabName);
-    }
-    
-    window.showTab = function(tabName) {
-        const target = document.getElementById(tabName);
-        if (!target) return false;
-        document.querySelectorAll('.tab-content').forEach(tab => { tab.style.display = 'none'; tab.classList.remove('active'); });
-        target.style.display = 'block';
-        target.classList.add('active');
-        document.querySelectorAll('[data-tab]').forEach(link => { link.classList.toggle('active', link.getAttribute('data-tab') === tabName); });
-        saveCurrentTab(tabName);
-        setTimeout(() => {
-            if (tabName === 'profile' && window.profileModule) window.profileModule.loadProfile();
-            else if (tabName === 'dashboard' && window.dashboardModule?.refreshDashboard) window.dashboardModule.refreshDashboard(true);
-            else if (tabName === 'attendance' && window.attendanceModule?.loadAttendanceHistory) window.attendanceModule.loadAttendanceHistory();
-            else if (tabName === 'nurseiq' && window.nurseiqModule?.loadCourses) window.nurseiqModule.loadCourses();
-            else if (tabName === 'academic-reports' && window.academicReportsModule?.loadReports) window.academicReportsModule.loadReports();
-        }, 100);
-        return true;
-    };
-    
-    function handleTabClick(e) { e.preventDefault(); const tab = this.getAttribute('data-tab'); if (tab && VALID_TABS.includes(tab)) window.showTab(tab); }
-    function handlePopState() { const tab = getCurrentTabFromURL(); if (tab && VALID_TABS.includes(tab)) window.showTab(tab); }
-    
-    function setup() {
-        document.querySelectorAll('[data-tab]').forEach(link => { link.removeEventListener('click', handleTabClick); link.addEventListener('click', handleTabClick); });
-        window.addEventListener('popstate', handlePopState);
-        const urlTab = getCurrentTabFromURL();
-        const savedTab = localStorage.getItem('nchsm_current_tab');
-        let tabToShow = urlTab;
-        if (tabToShow === 'dashboard' && savedTab && savedTab !== 'dashboard') tabToShow = savedTab;
-        if (tabToShow !== 'dashboard') {
-            const checkInterval = setInterval(() => { if (document.getElementById(tabToShow)) { clearInterval(checkInterval); window.showTab(tabToShow); } }, 100);
-            setTimeout(() => clearInterval(checkInterval), 3000);
-        } else { const dashboard = document.getElementById('dashboard'); if (dashboard && !dashboard.classList.contains('active')) window.showTab('dashboard'); }
-    }
-    
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setup);
-    else setup();
-    
-    document.addEventListener('appReady', () => { const urlTab = getCurrentTabFromURL(); if (urlTab !== 'dashboard' && document.getElementById(urlTab)) window.showTab(urlTab); });
-})();
-</script>
-
 </body>
 </html>
