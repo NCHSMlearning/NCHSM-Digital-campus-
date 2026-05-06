@@ -394,12 +394,12 @@
                 <div id="transcript-report" class="report-content" style="display: none;"><div class="transcript-header"><div class="institution-info"><h3>Nakuru College of Health Sciences and Management</h3><p>Academic Transcript - <span id="student-name-display">Student Name</span></p><p>Program: <span id="program-display">KRCHN</span> | Student ID: <span id="student-id-display">KRCHN/119/026</span></p></div></div><div class="transcript-table-container"><table class="transcript-table"><thead><tr><th>Year/Semester</th><th>Course Code</th><th>Course Name</th><th>Credits</th><th>Grade</th><th>Points</th></tr></thead><tbody id="transcript-table-body"><tr><td colspan="6">Loading transcript...</td></tr></tbody></table></div><div class="transcript-summary"><div class="summary-line"><strong>Total Credits Attempted:</strong> <span id="total-attempted">0</span></div><div class="summary-line"><strong>Total Credits Earned:</strong> <span id="total-earned">0</span></div><div class="summary-line"><strong>Cumulative GPA:</strong> <span id="transcript-cgpa">0.00</span></div></div></div>
                 <div id="progress-report" class="report-content" style="display: none;"><div class="progress-summary"><h3><i class="fas fa-chart-simple"></i> Course Completion Progress</h3><div class="overall-progress"><div class="progress-circle"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="none" stroke="#e5e7eb" stroke-width="8"/><circle cx="50" cy="50" r="45" fill="none" stroke="#4f46e5" stroke-width="8" stroke-dasharray="283" stroke-dashoffset="85" transform="rotate(-90 50 50)"/><text x="50" y="55" text-anchor="middle" fill="#4f46e5" font-size="20" font-weight="bold">70%</text></svg></div><div class="progress-details"><p>Overall Completion: <strong>70%</strong></p><p>Completed Courses: <strong id="completed-courses-progress">18</strong>/<span id="total-courses-progress">26</span></p></div></div><div class="course-progress-list" id="course-progress-list"></div></div></div>
             </section>
-            <!-- ATTENDANCE TAB -->
+            <!-- ATTENDANCE TAB - MATCHES attendance.js -->
 <section id="attendance" class="tab-content" hidden>
     <div class="attendance-header">
         <div class="header-content">
             <h2><i class="fas fa-calendar-check"></i> Daily Attendance Check-in</h2>
-            <p class="subtitle">Mark your attendance with GPS verification</p>
+            <p class="subtitle">Mark your attendance with GPS verification (max 50 meters)</p>
         </div>
         <div class="attendance-stats">
             <div class="stat-card">
@@ -433,12 +433,13 @@
         
         <div class="card-body">
             <div class="check-in-controls">
+                <!-- Session Type Selector (must have id="session-type") -->
                 <div class="control-group">
-                    <label for="session-type-attendance">
+                    <label for="session-type">
                         <i class="fas fa-graduation-cap"></i> Session Type
                     </label>
                     <div class="select-wrapper">
-                        <select id="session-type-attendance" class="modern-select">
+                        <select id="session-type" class="modern-select">
                             <option value="">Select session type...</option>
                             <option value="clinical">Clinical Session</option>
                             <option value="class">Classroom Session</option>
@@ -449,6 +450,7 @@
                     </div>
                 </div>
 
+                <!-- Target Selector (must have id="attendance-target") -->
                 <div class="control-group" id="target-control-group" style="display: none;">
                     <label for="attendance-target" id="target-label">
                         <i class="fas fa-bullseye"></i>
@@ -462,6 +464,7 @@
                     </div>
                 </div>
 
+                <!-- Location Display -->
                 <div class="control-group location-display">
                     <label>
                         <i class="fas fa-location-dot"></i> Your Location
@@ -474,10 +477,15 @@
                         <div class="location-accuracy" id="accuracy-status">
                             <span class="accuracy-dot"></span>
                             Accuracy: <span id="accuracy-value">--</span> meters
+                            <span id="accuracy-warning" style="display: none; color: #f59e0b;">⚠️</span>
                         </div>
                     </div>
                 </div>
 
+                <!-- Distance Status (dynamic) -->
+                <div id="distance-status" style="display: none; margin-top: 10px; padding: 8px; border-radius: 8px;"></div>
+
+                <!-- Check-in Button -->
                 <div class="check-in-action">
                     <button id="check-in-button" class="btn-checkin" disabled>
                         <i class="fas fa-fingerprint"></i>
@@ -490,7 +498,7 @@
                         <ul>
                             <li id="req-session"><i class="fas fa-times req-icon"></i> Select session type</li>
                             <li id="req-target"><i class="fas fa-times req-icon"></i> Select target</li>
-                            <li id="req-location"><i class="fas fa-times req-icon"></i> GPS location acquired</li>
+                            <li id="req-location"><i class="fas fa-times req-icon"></i> GPS location acquired (≤30m accuracy)</li>
                         </ul>
                     </div>
                 </div>
@@ -498,7 +506,8 @@
                 <div class="status-messages">
                     <div class="info-message" id="geo-message">
                         <i class="fas fa-lightbulb"></i>
-                        <p>Select a <strong>Session Type</strong> and then a specific <strong>Department or Course</strong> to check in at your current GPS location and time.</p>
+                        <p>Select a <strong>Session Type</strong> and then a specific <strong>Course / Department</strong>. <br>
+                        You must be within <strong>50 meters</strong> of the campus and have GPS accuracy ≤30m.</p>
                     </div>
                     
                     <div class="error-message" id="error-message" style="display: none;">
@@ -534,6 +543,9 @@
             </div>
         </div>
         
+        <!-- History Stats Summary (added by JS) -->
+        <div id="history-stats"></div>
+
         <div class="table-container">
             <table class="attendance-table">
                 <thead>
@@ -543,7 +555,7 @@
                         <th><i class="fas fa-bullseye"></i> Target</th>
                         <th><i class="fas fa-check-circle"></i> Status</th>
                         <th><i class="fas fa-map-marker-alt"></i> Location</th>
-                        <th><i class="fas fa-info-circle"></i> Details</th>
+                        <th><i class="fas fa-chart-line"></i> Accuracy/Distance</th>
                     </tr>
                 </thead>
                 <tbody id="geo-attendance-history">
@@ -560,7 +572,6 @@
         </div>
     </div>
 </section>
-                        
 
             <!-- RESOURCES TAB -->
             <section id="resources" class="tab-content" hidden>
