@@ -1,4 +1,4 @@
-// js/ui.js - COMPLETE WORKING VERSION WITH ALL DROPDOWN ITEMS FIXED
+// js/ui.js - COMPLETE WORKING VERSION WITH FIXED LAST LOGIN
 class UIModule {
     constructor() {
         console.log('🚀 Initializing UIModule...');
@@ -121,7 +121,6 @@ class UIModule {
         await this.loadInitialUserData();
         await this.delay(800);
         await this.hideLoadingScreen();
-        await this.loadLastLogin();
         console.log('✅ UIModule fully initialized');
     }
     
@@ -233,7 +232,6 @@ class UIModule {
             selectedTab.classList.add('active');
         } else {
             console.error(`❌ Tab element not found: ${tabId}`);
-            // Fallback to dashboard if tab not found
             const dashboard = document.getElementById('dashboard');
             if (dashboard) {
                 dashboard.style.display = 'block';
@@ -259,13 +257,6 @@ class UIModule {
         }
         
         setTimeout(() => this.loadTabModule(tabId), 100);
-        
-        if (tabId === 'dashboard') {
-            setTimeout(() => {
-                this.updateLastLogin(window.currentUserId);
-                this.updateProfilePhoto();
-            }, 500);
-        }
     }
     
     navigateToTab(tabId) {
@@ -314,7 +305,7 @@ class UIModule {
     }
     
     // ============================================
-    // EVENT LISTENERS - WITH FIXED DROPDOWN
+    // EVENT LISTENERS
     // ============================================
     
     setupEventListeners() {
@@ -340,10 +331,10 @@ class UIModule {
             });
         }
         
-        // ========== FIXED DROPDOWN TOGGLE FOR "MY LEARNING HUB" ==========
+        // Dropdown toggle setup
         this.setupDropdownToggle();
         
-        // ========== SIDEBAR NAVIGATION LINKS ==========
+        // Sidebar navigation links
         const allNavLinks = document.querySelectorAll('.nav a[data-tab], .dropdown-submenu a[data-tab], .footer-links a[data-tab]');
         console.log(`🔗 Found ${allNavLinks.length} navigation links`);
         
@@ -360,8 +351,6 @@ class UIModule {
                     console.log(`🖱️ Link clicked: ${tabId}`);
                     if (this.isMenuOpen()) this.closeMenu();
                     this.navigateToTab(tabId);
-                } else {
-                    console.warn(`⚠️ Invalid tab: ${tabId}`);
                 }
             });
         });
@@ -441,38 +430,32 @@ class UIModule {
     }
     
     // ============================================
-    // DROPDOWN TOGGLE SETUP - FIXED
+    // DROPDOWN TOGGLE SETUP
     // ============================================
     
     setupDropdownToggle() {
-        // Find dropdown elements
         const dropdownParent = document.querySelector('.has-dropdown');
         const dropdownToggle = document.querySelector('.has-dropdown > a');
         const dropdownMenu = document.querySelector('.dropdown-submenu');
         
         if (!dropdownToggle || !dropdownMenu) {
-            console.warn('⚠️ Dropdown elements not found - check HTML structure');
+            console.warn('⚠️ Dropdown elements not found');
             return;
         }
         
         console.log('✅ Found dropdown elements, setting up toggle...');
         
-        // Remove existing listeners by cloning
         const newToggle = dropdownToggle.cloneNode(true);
         dropdownToggle.parentNode.replaceChild(newToggle, dropdownToggle);
         
-        // Add click handler
         newToggle.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            
-            console.log('🖱️ Dropdown toggle clicked');
             
             const parent = newToggle.closest('.has-dropdown');
             if (parent) {
                 const isOpen = parent.classList.contains('open');
                 
-                // Close all other dropdowns
                 document.querySelectorAll('.has-dropdown.open').forEach(drop => {
                     if (drop !== parent) {
                         drop.classList.remove('open');
@@ -481,28 +464,22 @@ class UIModule {
                     }
                 });
                 
-                // Toggle this dropdown
                 if (isOpen) {
                     parent.classList.remove('open');
                     dropdownMenu.style.display = 'none';
-                    console.log('📂 Dropdown closed');
                 } else {
                     parent.classList.add('open');
                     dropdownMenu.style.display = 'block';
-                    console.log('📂 Dropdown opened');
                 }
             }
         });
         
-        // Also handle clicking on dropdown menu items
         const menuItems = dropdownMenu.querySelectorAll('a[data-tab]');
         menuItems.forEach(item => {
             const newItem = item.cloneNode(true);
             item.parentNode.replaceChild(newItem, item);
             
-            newItem.addEventListener('click', (e) => {
-                console.log('🖱️ Dropdown item clicked:', newItem.getAttribute('data-tab'));
-                // Close dropdown on mobile after selection
+            newItem.addEventListener('click', () => {
                 if (window.innerWidth <= 768) {
                     if (dropdownParent) dropdownParent.classList.remove('open');
                     if (dropdownMenu) dropdownMenu.style.display = 'none';
@@ -571,7 +548,7 @@ class UIModule {
     }
     
     // ============================================
-    // LOAD TAB MODULE - FIXED WITH ALL HUB MODULES
+    // LOAD TAB MODULE
     // ============================================
     
     loadTabModule(tabId) {
@@ -593,7 +570,6 @@ class UIModule {
                     if (window.unitRegistrationModule?.loadUnits) window.unitRegistrationModule.loadUnits();
                     break;
                 case 'hub-online-learning':
-                    // Online learning content - create if empty
                     const onlineContainer = document.getElementById('hub-online-learning');
                     if (onlineContainer && (!onlineContainer.innerHTML || onlineContainer.innerHTML.trim() === '')) {
                         onlineContainer.innerHTML = `
@@ -664,7 +640,6 @@ class UIModule {
         this.showToast('Refreshing dashboard...', 'info', 1500);
         if (window.dashboardModule?.refreshDashboard) window.dashboardModule.refreshDashboard();
         if (this.currentTab === 'exam-card' && typeof initExamCard === 'function') initExamCard();
-        this.loadLastLogin();
         this.updateProfilePhoto();
     }
     
@@ -688,48 +663,45 @@ class UIModule {
     }
     
     async loadInitialUserData() {
-    await this.delay(1000);
-    const userId = window.currentUserId;
-    const userProfile = window.currentUserProfile;
-    
-    if (userId && this.supabase) {
-        try {
-            const dbUserData = await this.loadUserFromDatabase(userId);
-            if (dbUserData) {
-                window.currentUserProfile = dbUserData;
-                this.updateAllUserInfo(dbUserData);
-                // REMOVED: await this.updateLastLogin(userId); - DON'T update on every load
-                await this.loadLastLogin(); // Just load existing last login
-                await this.updateProfilePhoto(dbUserData);
-            } else if (userProfile) {
-                this.updateAllUserInfo(userProfile);
-                // REMOVED: await this.updateLastLogin(userId);
-                await this.loadLastLogin();
-                await this.updateProfilePhoto(userProfile);
-            } else {
-                this.updateDefaultUserInfo();
+        await this.delay(1000);
+        const userId = window.currentUserId;
+        const userProfile = window.currentUserProfile;
+        
+        if (userId && this.supabase) {
+            try {
+                const dbUserData = await this.loadUserFromDatabase(userId);
+                if (dbUserData) {
+                    window.currentUserProfile = dbUserData;
+                    this.updateAllUserInfo(dbUserData);
+                    // Just load last login, don't update
+                    await this.loadLastLogin();
+                    await this.updateProfilePhoto(dbUserData);
+                } else if (userProfile) {
+                    this.updateAllUserInfo(userProfile);
+                    await this.loadLastLogin();
+                    await this.updateProfilePhoto(userProfile);
+                } else {
+                    this.updateDefaultUserInfo();
+                }
+            } catch (dbError) {
+                if (userProfile) {
+                    this.updateAllUserInfo(userProfile);
+                    await this.loadLastLogin();
+                    await this.updateProfilePhoto(userProfile);
+                } else {
+                    this.updateDefaultUserInfo();
+                }
             }
-        } catch (dbError) {
-            if (userProfile) {
-                this.updateAllUserInfo(userProfile);
-                // REMOVED: await this.updateLastLogin(userId);
+        } else if (userProfile) {
+            this.updateAllUserInfo(userProfile);
+            if (userId) {
                 await this.loadLastLogin();
-                await this.updateProfilePhoto(userProfile);
-            } else {
-                this.updateDefaultUserInfo();
             }
+            await this.updateProfilePhoto(userProfile);
+        } else {
+            this.updateDefaultUserInfo();
         }
-    } else if (userProfile) {
-        this.updateAllUserInfo(userProfile);
-        if (userId) {
-            // REMOVED: await this.updateLastLogin(userId);
-            await this.loadLastLogin();
-        }
-        await this.updateProfilePhoto(userProfile);
-    } else {
-        this.updateDefaultUserInfo();
     }
-}
     
     async loadUserFromDatabase(userId) {
         if (!this.supabase) return null;
@@ -834,149 +806,125 @@ class UIModule {
             this.headerProfilePhoto.src = 'https://ui-avatars.com/api/?name=User&background=4C1D95&color=fff&size=100&bold=true';
         }
     }
- // ==================== FIXED LAST LOGIN METHODS ====================
-
-async loadLastLogin() {
-    try {
-        const userId = window.currentUserId;
-        if (!userId || !this.supabase) return;
-        
-        console.log('📅 Loading last login for user:', userId);
-        
-        const { data, error } = await this.supabase
-            .from('consolidated_user_profiles_table')
-            .select('last_login, current_login, login_count')
-            .eq('user_id', userId)
-            .single();
-        
-        if (error) {
-            console.warn('Error loading last login:', error);
-            if (this.headerLastLogin) this.headerLastLogin.textContent = 'Not available';
-            return;
-        }
-        
-        if (this.headerLastLogin) {
-            if (data && data.last_login) {
-                const lastLoginDate = new Date(data.last_login);
-                const formattedDate = this.formatRelativeTime(lastLoginDate);
-                this.headerLastLogin.textContent = formattedDate;
-                this.headerLastLogin.title = `Last login: ${lastLoginDate.toLocaleString()}`;
-                console.log('✅ Last login loaded:', formattedDate);
-            } else {
-                this.headerLastLogin.textContent = 'First time login';
+    
+    // ==================== FIXED LAST LOGIN METHODS ====================
+    
+    async loadLastLogin() {
+        try {
+            const userId = window.currentUserId;
+            if (!userId || !this.supabase) return;
+            
+            console.log('📅 Loading last login for user:', userId);
+            
+            const { data, error } = await this.supabase
+                .from('consolidated_user_profiles_table')
+                .select('last_login, login_count')
+                .eq('user_id', userId)
+                .single();
+            
+            if (error) {
+                console.warn('Error loading last login:', error);
+                if (this.headerLastLogin) this.headerLastLogin.textContent = 'Not available';
+                return;
             }
+            
+            if (this.headerLastLogin) {
+                if (data && data.last_login) {
+                    const lastLoginDate = new Date(data.last_login);
+                    // Show actual time (e.g., "7:00 PM")
+                    const timeString = lastLoginDate.toLocaleTimeString('en-US', { 
+                        hour: 'numeric', 
+                        minute: '2-digit',
+                        hour12: true 
+                    });
+                    this.headerLastLogin.textContent = timeString;
+                    this.headerLastLogin.title = `Last login: ${lastLoginDate.toLocaleString()}`;
+                    console.log('✅ Last login time loaded:', timeString);
+                } else {
+                    this.headerLastLogin.textContent = 'First login';
+                }
+            }
+            
+        } catch (error) {
+            console.error('Failed to load last login:', error);
+            if (this.headerLastLogin) this.headerLastLogin.textContent = 'Error';
         }
-        
-        // Store login count for display
-        if (data && data.login_count !== undefined) {
-            console.log(`📊 Login count: ${data.login_count}`);
-        }
-        
-    } catch (error) {
-        console.error('Failed to load last login:', error);
-        if (this.headerLastLogin) this.headerLastLogin.textContent = 'Not available';
     }
-}
-
-// Format relative time (e.g., "3 hours ago", "Yesterday", "Just now")
-formatRelativeTime(date) {
-    const now = new Date();
-    const diffMs = now - date;
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
     
-    // Today
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`;
-    if (diffHours < 24) return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
-    
-    // Yesterday
-    if (diffDays === 1) return 'Yesterday';
-    
-    // This week
-    if (diffDays < 7) return `${diffDays} days ago`;
-    
-    // Older - show actual date
-    const options = { month: 'short', day: 'numeric', year: 'numeric' };
-    return date.toLocaleDateString('en-US', options);
-}
-
-async updateLastLogin(userId) {
-    try {
-        if (!userId || !this.supabase) return false;
-        
-        console.log('🔄 Updating last login for user:', userId);
-        
-        // Get current timestamp
-        const now = new Date().toISOString();
-        
-        // First, get current login count
-        const { data: currentData, error: fetchError } = await this.supabase
-            .from('consolidated_user_profiles_table')
-            .select('login_count, last_login')
-            .eq('user_id', userId)
-            .single();
-        
-        if (fetchError) {
-            console.warn('Could not fetch current login data:', fetchError);
-        }
-        
-        const currentCount = currentData?.login_count || 0;
-        const newCount = currentCount + 1;
-        
-        // Update last_login and login_count
-        const { error: updateError } = await this.supabase
-            .from('consolidated_user_profiles_table')
-            .update({ 
-                last_login: now,
-                login_count: newCount,
-                updated_at: now
-            })
-            .eq('user_id', userId);
-        
-        if (updateError) {
-            console.error('Failed to update last login:', updateError);
-            return false;
-        }
-        
-        console.log(`✅ Last login updated to: ${new Date(now).toLocaleString()}`);
-        console.log(`📊 Total logins: ${newCount}`);
-        
-        // Refresh the display
-        await this.loadLastLogin();
-        return true;
-        
-    } catch (error) {
-        console.error('Error updating last login:', error);
-        return false;
-    }
-}
- // Add this method RIGHT AFTER the updateLastLogin method
-async recordNewLogin(userId) {
-    try {
-        if (!userId || !this.supabase) return false;
-        
-        // Check if this is a new session (not just page refresh)
-        const sessionKey = `nchsm_session_${userId}`;
-        const lastSession = sessionStorage.getItem(sessionKey);
-        const today = new Date().toDateString();
-        
-        if (lastSession !== today) {
-            // New session today - update last login
-            sessionStorage.setItem(sessionKey, today);
-            console.log('🆕 New session detected - updating last login');
-            return await this.updateLastLogin(userId);
-        } else {
-            console.log('📅 Existing session - skipping last login update');
+    async updateLastLogin(userId) {
+        try {
+            if (!userId || !this.supabase) return false;
+            
+            console.log('🔄 Updating last login for user:', userId);
+            
+            const now = new Date().toISOString();
+            
+            const { data: currentData, error: fetchError } = await this.supabase
+                .from('consolidated_user_profiles_table')
+                .select('login_count')
+                .eq('user_id', userId)
+                .single();
+            
+            if (fetchError) {
+                console.warn('Could not fetch current login data:', fetchError);
+            }
+            
+            const currentCount = currentData?.login_count || 0;
+            const newCount = currentCount + 1;
+            
+            const { error: updateError } = await this.supabase
+                .from('consolidated_user_profiles_table')
+                .update({ 
+                    last_login: now,
+                    login_count: newCount,
+                    updated_at: now
+                })
+                .eq('user_id', userId);
+            
+            if (updateError) {
+                console.error('Failed to update last login:', updateError);
+                return false;
+            }
+            
+            console.log(`✅ Last login updated to: ${new Date(now).toLocaleTimeString()}`);
+            console.log(`📊 Total logins: ${newCount}`);
+            
             await this.loadLastLogin();
             return true;
+            
+        } catch (error) {
+            console.error('Error updating last login:', error);
+            return false;
         }
-    } catch (error) {
-        console.error('Error recording login:', error);
-        return false;
     }
-}   
+    
+    async recordNewLogin(userId) {
+        try {
+            if (!userId || !this.supabase) return false;
+            
+            // Use localStorage to track last update (persists across page refreshes)
+            const lastUpdateKey = `nchsm_last_update_${userId}`;
+            const lastUpdateDate = localStorage.getItem(lastUpdateKey);
+            const today = new Date().toDateString();
+            
+            console.log(`📅 Last update recorded: ${lastUpdateDate}, Today: ${today}`);
+            
+            // Only update if never updated OR it's a new day
+            if (lastUpdateDate !== today) {
+                console.log('🆕 New day - updating last login...');
+                localStorage.setItem(lastUpdateKey, today);
+                return await this.updateLastLogin(userId);
+            } else {
+                console.log('📅 Already updated today - just loading saved time');
+                await this.loadLastLogin();
+                return true;
+            }
+        } catch (error) {
+            console.error('Error recording login:', error);
+            return false;
+        }
+    }
+    
     async logout() {
         if (typeof Swal !== 'undefined') {
             const result = await Swal.fire({
@@ -1113,5 +1061,4 @@ document.addEventListener('DOMContentLoaded', () => { if (!window.ui) window.ui 
 document.addEventListener('appReady', (e) => { if (window.ui && e.detail?.userProfile) window.ui.updateAllUserInfo(e.detail.userProfile); });
 document.addEventListener('profilePhotoUpdated', (e) => { if (window.ui && e.detail?.photoUrl) window.ui.updateProfilePhoto(); });
 
-console.log('✅ UI Module loaded successfully with all dropdown items fixed!');
-console.log('📋 Valid tabs include:', window.ui?.validTabs);
+console.log('✅ UI Module loaded successfully with fixed last login!');
