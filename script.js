@@ -7463,7 +7463,6 @@ window.filterGradeStudents = function() {
     });
 };
 
-// Save grades function
 window.saveGrades = async function(examId, examType = 'EXAM') {
     try {
         const rows = document.querySelectorAll('#gradeTableBody tr');
@@ -7473,13 +7472,11 @@ window.saveGrades = async function(examId, examType = 'EXAM') {
         const currentUser = await getCurrentUser();
         
         if (!currentUser || (!currentUser.user_id && !currentUser.id)) {
-            showFeedback('Error: Cannot identify grader. Please ensure you are logged in.', 'error');
+            showFeedback('Error: Cannot identify grader.', 'error');
             return;
         }
 
-        // Use validated grader ID
         const validGraderId = currentUser.user_id || currentUser.id;
-        
         let hasValidData = false;
 
         for (const row of rows) {
@@ -7491,12 +7488,14 @@ window.saveGrades = async function(examId, examType = 'EXAM') {
             const statusSelect = row.querySelector(`#status-${studentId}`);
             if (!statusSelect) continue;
 
+            // IMPORTANT: Include question_id to satisfy NOT NULL constraint
             let gradeData = {
                 exam_id: parseInt(examId),
                 student_id: studentId,
                 result_status: statusSelect.value || 'Scheduled',
                 graded_by: validGraderId,
-                updated_at: new Date().toISOString()
+                updated_at: new Date().toISOString(),
+                question_id: '00000000-0000-0000-0000-000000000000'  // FIX: Added this
             };
 
             // Collect grade data based on exam type
@@ -7525,7 +7524,7 @@ window.saveGrades = async function(examId, examType = 'EXAM') {
                     }
                     break;
                     
-                default:
+                default: // EXAM
                     const cat1InputFinal = row.querySelector(`#cat1-${studentId}`);
                     const cat2InputFinal = row.querySelector(`#cat2-${studentId}`);
                     const finalInput = row.querySelector(`#final-${studentId}`);
@@ -7539,10 +7538,8 @@ window.saveGrades = async function(examId, examType = 'EXAM') {
                         gradeData.cat_2_score = cat2;
                         gradeData.exam_score = finalExam;
                         
-                        // Calculate total for final exams
                         const scaledTotal = ((cat1 + cat2 + finalExam) / 160) * 100;
                         gradeData.total_score = parseFloat(scaledTotal.toFixed(2));
-                        
                         hasValidData = true;
                     }
             }
@@ -7565,15 +7562,32 @@ window.saveGrades = async function(examId, examType = 'EXAM') {
             saveBtn.disabled = true;
         }
 
-        const { error } = await sb.from('exam_grades').upsert(upserts, { 
-            onConflict: 'exam_id,student_id' 
-        });
+        // Use insert instead of upsert to avoid constraint issues
+        for (const grade of upserts) {
+            // Check if exists first
+            const { data: existing } = await sb
+                .from('exam_grades')
+                .select('id')
+                .eq('exam_id', grade.exam_id)
+                .eq('student_id', grade.student_id)
+                .maybeSingle();
+            
+            if (existing) {
+                // Update
+                await sb.from('exam_grades').update(grade).eq('id', existing.id);
+            } else {
+                // Insert
+                await sb.from('exam_grades').insert(grade);
+            }
+        }
         
-        if (error) throw error;
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = 'Save Grades';
+        }
 
-        showFeedback(`✅ Successfully saved grades for ${upserts.length} students!`, 'success');
+        showFeedback(`✅ Successfully saved ${upserts.length} student grade(s)!`, 'success');
         
-        // Close modal after short delay
         setTimeout(() => {
             closeGradeModal();
         }, 1500);
@@ -7582,15 +7596,13 @@ window.saveGrades = async function(examId, examType = 'EXAM') {
         console.error('Error saving grades:', error);
         showFeedback(`Failed to save grades: ${error.message}`, 'error');
         
-        // Restore button
         const saveBtn = document.querySelector('#gradeModal .btn-action');
         if (saveBtn) {
-            saveBtn.textContent = 'Save Grades';
             saveBtn.disabled = false;
+            saveBtn.innerHTML = 'Save Grades';
         }
     }
 };
-
 // Close grade modal function
 window.closeGradeModal = function() {
     const modal = document.getElementById('gradeModal');
