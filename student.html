@@ -659,7 +659,7 @@
 })();
 </script>
 
-<!-- INITIALIZATION SCRIPT -->
+<!-- ==================== INITIALIZATION SCRIPT ==================== -->
 <script>
 window.app = { config: null, supabase: null, db: null, user: null, isInitialized: false };
 
@@ -698,6 +698,13 @@ async function initializeApp() {
         await window.db.loadUserProfile();
         
         console.log('✅ User authenticated');
+        
+        // ========== RECORD LAST LOGIN (ONLY ONCE PER DAY) ==========
+        if (window.db.currentUserId && window.ui && window.ui.recordNewLogin) {
+            await window.ui.recordNewLogin(window.db.currentUserId);
+            console.log('✅ Last login recorded for this session');
+        }
+        // ========== END LAST LOGIN RECORDING ==========
         
         // Hide loading screen
         const loadingScreen = document.getElementById('loading-screen');
@@ -753,6 +760,5 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeApp();
 });
 </script>
-
 </body>
 </html>
