@@ -7441,7 +7441,206 @@ window.downloadTimetableTemplate = function() {
 };
 
 console.log('✅ Timetable upload functions loaded');
+// =====================================================
+// FIX: Make grade functions globally accessible
+// =====================================================
 
+// Filter students in grade modal
+window.filterGradeStudents = function() {
+    const searchTerm = document.getElementById('gradeSearch')?.value?.toLowerCase() || '';
+    const rows = document.querySelectorAll('#gradeTableBody tr');
+    
+    rows.forEach(row => {
+        const name = row.getAttribute('data-name') || '';
+        const email = row.getAttribute('data-email') || '';
+        const id = row.getAttribute('data-id') || '';
+        
+        if (name.includes(searchTerm) || email.includes(searchTerm) || id.includes(searchTerm)) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+};
+
+// Save grades function
+window.saveGrades = async function(examId, examType = 'EXAM') {
+    try {
+        const rows = document.querySelectorAll('#gradeTableBody tr');
+        const upserts = [];
+
+        // Get current user
+        const currentUser = await getCurrentUser();
+        
+        if (!currentUser || (!currentUser.user_id && !currentUser.id)) {
+            showFeedback('Error: Cannot identify grader. Please ensure you are logged in.', 'error');
+            return;
+        }
+
+        // Use validated grader ID
+        const validGraderId = currentUser.user_id || currentUser.id;
+        
+        let hasValidData = false;
+
+        for (const row of rows) {
+            if (row.style.display === 'none') continue;
+            
+            const studentId = row.getAttribute('data-id');
+            if (!studentId) continue;
+
+            const statusSelect = row.querySelector(`#status-${studentId}`);
+            if (!statusSelect) continue;
+
+            let gradeData = {
+                exam_id: parseInt(examId),
+                student_id: studentId,
+                result_status: statusSelect.value || 'Scheduled',
+                graded_by: validGraderId,
+                updated_at: new Date().toISOString()
+            };
+
+            // Collect grade data based on exam type
+            switch(examType) {
+                case 'CAT_1':
+                    const cat1Input = row.querySelector(`#cat1-${studentId}`);
+                    if (cat1Input && cat1Input.value.trim()) {
+                        gradeData.cat_1_score = Math.min(parseFloat(cat1Input.value) || 0, 30);
+                        hasValidData = true;
+                    }
+                    break;
+                    
+                case 'CAT_2':
+                    const cat2Input = row.querySelector(`#cat2-${studentId}`);
+                    if (cat2Input && cat2Input.value.trim()) {
+                        gradeData.cat_2_score = Math.min(parseFloat(cat2Input.value) || 0, 30);
+                        hasValidData = true;
+                    }
+                    break;
+                    
+                case 'CAT':
+                    const catInput = row.querySelector(`#cat-${studentId}`);
+                    if (catInput && catInput.value.trim()) {
+                        gradeData.cat_1_score = Math.min(parseFloat(catInput.value) || 0, 30);
+                        hasValidData = true;
+                    }
+                    break;
+                    
+                default:
+                    const cat1InputFinal = row.querySelector(`#cat1-${studentId}`);
+                    const cat2InputFinal = row.querySelector(`#cat2-${studentId}`);
+                    const finalInput = row.querySelector(`#final-${studentId}`);
+                    
+                    let cat1 = cat1InputFinal ? Math.min(parseFloat(cat1InputFinal.value) || 0, 30) : 0;
+                    let cat2 = cat2InputFinal ? Math.min(parseFloat(cat2InputFinal.value) || 0, 30) : 0;
+                    let finalExam = finalInput ? Math.min(parseFloat(finalInput.value) || 0, 100) : 0;
+                    
+                    if (cat1InputFinal?.value.trim() || cat2InputFinal?.value.trim() || finalInput?.value.trim()) {
+                        gradeData.cat_1_score = cat1;
+                        gradeData.cat_2_score = cat2;
+                        gradeData.exam_score = finalExam;
+                        
+                        // Calculate total for final exams
+                        const scaledTotal = ((cat1 + cat2 + finalExam) / 160) * 100;
+                        gradeData.total_score = parseFloat(scaledTotal.toFixed(2));
+                        
+                        hasValidData = true;
+                    }
+            }
+
+            if (Object.keys(gradeData).length > 5) {
+                upserts.push(gradeData);
+            }
+        }
+
+        if (!hasValidData) {
+            showFeedback('No grade data entered to save.', 'warning');
+            return;
+        }
+
+        // Show loading state
+        const saveBtn = document.querySelector('#gradeModal .btn-action');
+        if (saveBtn) {
+            const originalText = saveBtn.textContent;
+            saveBtn.innerHTML = '<div class="loading-spinner" style="width:20px;height:20px;"></div> Saving...';
+            saveBtn.disabled = true;
+        }
+
+        const { error } = await sb.from('exam_grades').upsert(upserts, { 
+            onConflict: 'exam_id,student_id' 
+        });
+        
+        if (error) throw error;
+
+        showFeedback(`✅ Successfully saved grades for ${upserts.length} students!`, 'success');
+        
+        // Close modal after short delay
+        setTimeout(() => {
+            closeGradeModal();
+        }, 1500);
+        
+    } catch (error) {
+        console.error('Error saving grades:', error);
+        showFeedback(`Failed to save grades: ${error.message}`, 'error');
+        
+        // Restore button
+        const saveBtn = document.querySelector('#gradeModal .btn-action');
+        if (saveBtn) {
+            saveBtn.textContent = 'Save Grades';
+            saveBtn.disabled = false;
+        }
+    }
+};
+
+// Close grade modal function
+window.closeGradeModal = function() {
+    const modal = document.getElementById('gradeModal');
+    if (modal) {
+        modal.remove();
+    }
+};
+
+// Update grade total function
+window.updateGradeTotal = function(studentId) {
+    const cat1Input = document.querySelector(`#cat1-${studentId}`);
+    const cat2Input = document.querySelector(`#cat2-${studentId}`);
+    const finalInput = document.querySelector(`#final-${studentId}`);
+    const totalInput = document.querySelector(`#total-${studentId}`);
+    
+    if (!cat1Input || !cat2Input || !finalInput || !totalInput) return;
+
+    let cat1 = Math.min(parseFloat(cat1Input.value) || 0, 30);
+    let cat2 = Math.min(parseFloat(cat2Input.value) || 0, 30);
+    let finalExam = Math.min(parseFloat(finalInput.value) || 0, 100);
+
+    const rawTotal = cat1 + cat2 + finalExam;
+    const scaledTotal = (rawTotal / 160) * 100;
+    
+    totalInput.value = scaledTotal.toFixed(2);
+    
+    // Add visual feedback
+    totalInput.classList.remove('high-score', 'medium-score', 'low-score');
+    if (scaledTotal >= 70) {
+        totalInput.classList.add('high-score');
+    } else if (scaledTotal >= 50) {
+        totalInput.classList.add('medium-score');
+    } else {
+        totalInput.classList.add('low-score');
+    }
+};
+
+// Also ensure the grade modal's filter is wired up properly
+document.addEventListener('DOMContentLoaded', function() {
+    // Delegate filter event for dynamically created grade search
+    document.addEventListener('input', function(e) {
+        if (e.target && e.target.id === 'gradeSearch') {
+            if (typeof window.filterGradeStudents === 'function') {
+                window.filterGradeStudents();
+            }
+        }
+    });
+});
+
+console.log('✅ Grade functions registered globally');
 // =====================================================
 // INITIALIZE THE APPLICATION - ONLY ONE EVENT LISTENER
 // =====================================================
