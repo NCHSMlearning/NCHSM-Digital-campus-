@@ -633,6 +633,51 @@
 <script src="./js/messages.js"></script>
 <script src="./js/student-tickets.js"></script>
 <script src="./js/nurseiq.js"></script>
+    <script src="./js/nurseiq.js"></script>
+<!-- AUTO-LOAD NURSEIQ CONTENT -->
+<script>
+(function() {
+    // Function to trigger NurseIQ load
+    function loadNurseIQ() {
+        if (typeof window.loadQuestionBankCards === 'function') {
+            console.log('🩺 Loading NurseIQ content...');
+            window.loadQuestionBankCards();
+        } else if (window.nurseiqModule && typeof window.nurseiqModule.loadQuestionBankCards === 'function') {
+            window.nurseiqModule.loadQuestionBankCards();
+        } else {
+            // Try clicking the button
+            const btn = document.getElementById('loadCourseCatalogBtn');
+            if (btn) btn.click();
+        }
+    }
+    
+    // Load when page is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(loadNurseIQ, 1000);
+        });
+    } else {
+        setTimeout(loadNurseIQ, 1000);
+    }
+    
+    // Also load when NurseIQ tab is clicked
+    const nurseiqLink = document.querySelector('[data-tab="nurseiq"]');
+    if (nurseiqLink) {
+        nurseiqLink.addEventListener('click', function() {
+            setTimeout(loadNurseIQ, 500);
+        });
+    }
+    
+    // Also when dashboard card is clicked
+    const nurseiqCard = document.querySelector('.stat-card[data-tab="nurseiq"]');
+    if (nurseiqCard) {
+        nurseiqCard.addEventListener('click', function() {
+            setTimeout(loadNurseIQ, 800);
+        });
+    }
+})();
+</script>
+<script src="./js/exam-card.js"></script>
 <script src="./js/exam-card.js"></script>
 <script src="./js/academic-reports.js"></script>
 
