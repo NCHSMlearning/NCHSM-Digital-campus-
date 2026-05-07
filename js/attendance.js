@@ -89,53 +89,62 @@
     // ============================================
     // LOAD APPROVED UNITS (CLASSROOM SESSIONS)
     // ============================================
-    
-    async function loadApprovedUnits() {
-        try {
-            const supabaseClient = window.db?.supabase;
-            if (!supabaseClient || !attendanceUserId) {
-                console.log('No supabase client or user ID');
-                return [];
-            }
-            
-            console.log('📚 Loading approved units for classroom sessions...');
-            
-            const { data, error } = await supabaseClient
-                .from('student_unit_registrations')
-                .select(`
-                    id,
-                    unit_code,
-                    unit_name,
-                    block,
-                    term,
-                    status,
-                    approval_date,
-                    course_id
-                `)
-                .eq('student_id', attendanceUserId)
-                .eq('status', 'approved')
-                .order('unit_code', { ascending: true });
-            
-            if (error) {
-                console.error('Error loading approved units:', error);
-                return [];
-            }
-            
-            approvedUnits = data || [];
-            console.log(`✅ Loaded ${approvedUnits.length} approved units for classroom sessions`);
-            
-            approvedUnits.forEach(unit => {
-                console.log(`  📖 ${unit.unit_code}: ${unit.unit_name} [Block: ${unit.block || unit.term}]`);
-            });
-            
-            return approvedUnits;
-            
-        } catch (error) {
+  async function loadApprovedUnits() {
+    try {
+        const supabaseClient = window.db?.supabase;
+        if (!supabaseClient || !attendanceUserId) {
+            console.log('No supabase client or user ID');
+            return [];
+        }
+        
+        console.log('📚 Loading approved units for classroom sessions...');
+        console.log('Student ID:', attendanceUserId);
+        
+        const { data, error } = await supabaseClient
+            .from('student_unit_registrations')
+            .select('*')
+            .eq('student_id', attendanceUserId)
+            .eq('status', 'approved')
+            .order('submitted_date', { ascending: false });
+        
+        if (error) {
             console.error('Error loading approved units:', error);
             return [];
         }
+        
+        console.log('Raw approved units data:', data);
+        
+        // Map the data - handles both possible column naming conventions
+        approvedUnits = (data || []).map(unit => ({
+            id: unit.id,
+            unit_code: unit.unit_code || unit.UnitCode || 'N/A',
+            unit_name: unit.unit_name || unit.UnitName || unit.course_name || 'Unknown',
+            block: unit.block || unit.Block || unit.term || 'N/A',
+            term: unit.term || unit.Term || unit.block,
+            status: unit.status,
+            approval_date: unit.approval_date,
+            reg_type: unit.reg_type,
+            course_id: unit.course_id
+        }));
+        
+        console.log(`✅ Loaded ${approvedUnits.length} approved units for classroom sessions`);
+        
+        approvedUnits.forEach(unit => {
+            console.log(`  📖 ${unit.unit_code}: ${unit.unit_name} [Block: ${unit.block}]`);
+        });
+        
+        // Dispatch event for other modules
+        document.dispatchEvent(new CustomEvent('approvedUnitsLoaded', {
+            detail: { units: approvedUnits, count: approvedUnits.length }
+        }));
+        
+        return approvedUnits;
+        
+    } catch (error) {
+        console.error('Error loading approved units:', error);
+        return [];
     }
-    
+}
     // ============================================
     // LOAD CLINICAL LOCATIONS (CLINICAL SESSIONS)
     // ============================================
@@ -640,13 +649,25 @@
             };
             
             // Add unit info for class sessions
-            if (sessionTypeSelect.value === 'class') {
-                const selectedUnit = approvedUnits.find(u => u.id === selectedTarget.id || `unit_${u.id}` === selectedTarget.id);
-                if (selectedUnit) {
-                    checkInData.unit_code = selectedUnit.unit_code;
-                    checkInData.unit_name = selectedUnit.unit_name;
-                }
-            }
+           // Add unit info for class sessions
+if (sessionTypeSelect.value === 'class') {
+    // Handle both ID formats
+    let targetId = selectedTarget.id;
+    if (targetId && targetId.startsWith('unit_')) {
+        targetId = targetId.replace('unit_', '');
+    }
+    
+    const selectedUnit = approvedUnits.find(u => u.id == targetId);
+    if (selectedUnit) {
+        checkInData.unit_code = selectedUnit.unit_code;
+        checkInData.unit_name = selectedUnit.unit_name;
+        checkInData.block = selectedUnit.block;
+        checkInData.reg_type = selectedUnit.reg_type;
+    } else {
+        console.warn('Selected unit not found in approved units:', targetId);
+        console.log('Available approved units:', approvedUnits);
+    }
+}
             
             const { error } = await supabaseClient
                 .from('geo_attendance_logs')
