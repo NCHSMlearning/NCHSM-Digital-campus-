@@ -1,8 +1,8 @@
-// attendance.js - COMPLETE WORKING VERSION
+// attendance.js - HANDLES BOTH CLASSROOM (approved units) & CLINICAL (clinical_names)
 (function() {
     'use strict';
     
-    console.log('✅ attendance.js - FINAL WORKING VERSION');
+    console.log('✅ attendance.js - Classroom: approved units | Clinical: clinical_names');
     
     // ============================================
     // CONFIGURATION
@@ -12,7 +12,7 @@
     const PENDING_DISTANCE = 200;        // 200 meters - Needs review
     const MIN_GPS_ACCURACY = 100;        // Acceptable GPS accuracy
     
-    // Campus coordinates
+    // Campus coordinates (fallback)
     const CAMPUS_COORDINATES = {
         latitude: -0.2610284,
         longitude: 36.0116283,
@@ -20,8 +20,8 @@
     };
     
     // Store data
-    let activeCourses = [];
-    let clinicalLocations = [];
+    let approvedUnits = [];               // From student_unit_registrations (Classroom)
+    let clinicalLocations = [];           // From clinical_names (Clinical sessions)
     let attendanceUserId = null;
     let attendanceUserProfile = null;
     let currentLocation = null;
@@ -54,26 +54,20 @@
                 .maybeSingle();
             
             if (error && error.code !== 'PGRST116') {
-                return { allowed: true, message: 'Continuing with check-in' };
+                return { allowed: true, message: 'Continuing' };
             }
             
             if (existingLink) {
                 if (existingLink.user_id !== userId) {
-                    return { 
-                        allowed: false, 
-                        message: `❌ This device is already linked to another user account.` 
-                    };
+                    return { allowed: false, message: '❌ This device is linked to another user account.' };
                 }
                 if (!existingLink.is_active) {
-                    return { 
-                        allowed: false, 
-                        message: `❌ Your device has been deactivated.` 
-                    };
+                    return { allowed: false, message: '❌ Your device has been deactivated.' };
                 }
                 return { allowed: true, message: 'Device verified' };
             }
             
-            const { error: insertError } = await supabaseClient
+            await supabaseClient
                 .from('user_device_links')
                 .insert({
                     user_id: userId,
@@ -83,25 +77,70 @@
                     is_active: true
                 });
             
-            if (insertError) {
-                console.error('Failed to link device:', insertError);
-            } else {
-                console.log('✅ Device linked to user:', userId);
-            }
-            
-            return { allowed: true, message: 'Device linked successfully' };
+            console.log('✅ Device linked to user:', userId);
+            return { allowed: true, message: 'Device linked' };
             
         } catch (error) {
             console.error('Device validation error:', error);
-            return { allowed: true, message: 'Continuing with check-in' };
+            return { allowed: true, message: 'Continuing' };
         }
     }
     
     // ============================================
-    // LOAD ACTIVE COURSES
+    // LOAD APPROVED UNITS (CLASSROOM SESSIONS)
     // ============================================
     
-    async function loadActiveCourses() {
+    async function loadApprovedUnits() {
+        try {
+            const supabaseClient = window.db?.supabase;
+            if (!supabaseClient || !attendanceUserId) {
+                console.log('No supabase client or user ID');
+                return [];
+            }
+            
+            console.log('📚 Loading approved units for classroom sessions...');
+            
+            const { data, error } = await supabaseClient
+                .from('student_unit_registrations')
+                .select(`
+                    id,
+                    unit_code,
+                    unit_name,
+                    block,
+                    term,
+                    status,
+                    approval_date,
+                    course_id
+                `)
+                .eq('student_id', attendanceUserId)
+                .eq('status', 'approved')
+                .order('unit_code', { ascending: true });
+            
+            if (error) {
+                console.error('Error loading approved units:', error);
+                return [];
+            }
+            
+            approvedUnits = data || [];
+            console.log(`✅ Loaded ${approvedUnits.length} approved units for classroom sessions`);
+            
+            approvedUnits.forEach(unit => {
+                console.log(`  📖 ${unit.unit_code}: ${unit.unit_name} [Block: ${unit.block || unit.term}]`);
+            });
+            
+            return approvedUnits;
+            
+        } catch (error) {
+            console.error('Error loading approved units:', error);
+            return [];
+        }
+    }
+    
+    // ============================================
+    // LOAD CLINICAL LOCATIONS (CLINICAL SESSIONS)
+    // ============================================
+    
+    async function loadClinicalLocations() {
         try {
             const supabaseClient = window.db?.supabase;
             if (!supabaseClient || !attendanceUserProfile) {
@@ -111,96 +150,13 @@
             
             const program = attendanceUserProfile?.program;
             const intakeYear = attendanceUserProfile?.intake_year;
-            const userBlock = attendanceUserProfile?.block;
-            
-            console.log(`📚 Loading ACTIVE courses for: ${program}, ${intakeYear}, User Block: ${userBlock}`);
-            
-            // Get ALL active courses first (no block filter initially)
-            let query = supabaseClient
-                .from('courses')
-                .select('id, course_name, unit_code, description, block, intake_year, target_program, status, latitude, longitude, radius_m')
-                .eq('status', 'Active');
-            
-            // Filter by program if available
-            if (program) {
-                query = query.eq('target_program', program);
-            }
-            
-            // Filter by intake year if available
-            if (intakeYear) {
-                query = query.eq('intake_year', intakeYear);
-            }
-            
-            const { data, error } = await query.order('course_name');
-            
-            if (error) {
-                console.error('Error loading courses:', error);
-                return [];
-            }
-            
-            console.log(`📚 Total active courses found: ${data?.length || 0}`);
-            
-            if (!data || data.length === 0) {
-                console.log('⚠️ No active courses found');
-                return [];
-            }
-            
-            // Filter courses by block - match user's block or show all if no match
-            let filteredCourses = data;
-            
-            if (userBlock && userBlock !== 'N/A' && userBlock !== '') {
-                // Try to match exact block
-                const exactMatches = data.filter(c => c.block === userBlock);
-                
-                if (exactMatches.length > 0) {
-                    filteredCourses = exactMatches;
-                    console.log(`✅ Found ${exactMatches.length} courses matching block "${userBlock}"`);
-                } else {
-                    // No exact block match, show courses with null block or relevant blocks
-                    console.log(`⚠️ No exact block match for "${userBlock}", showing relevant courses`);
-                    filteredCourses = data.filter(c => 
-                        c.block === null || 
-                        c.block === '' || 
-                        c.block === userBlock ||
-                        (userBlock === 'Introductory' && c.block === 'Introductory') ||
-                        (userBlock === 'Block A' && c.block === 'A') ||
-                        (userBlock === 'Block 4' && c.block === 'Block 4')
-                    );
-                    console.log(`📚 Showing ${filteredCourses.length} courses (no exact block match)`);
-                }
-            }
-            
-            // Log found courses
-            filteredCourses.forEach(course => {
-                console.log(`  📖 ${course.unit_code || course.course_name}: ${course.course_name} [Block: ${course.block || 'General'}]`);
-            });
-            
-            return filteredCourses;
-            
-        } catch (error) {
-            console.error('Error loading active courses:', error);
-            return [];
-        }
-    }
-    
-    // ============================================
-    // LOAD CLINICAL LOCATIONS
-    // ============================================
-    
-    async function loadClinicalLocations() {
-        try {
-            const supabaseClient = window.db?.supabase;
-            if (!supabaseClient || !attendanceUserProfile) {
-                return [];
-            }
-            
-            const program = attendanceUserProfile?.program;
-            const intakeYear = attendanceUserProfile?.intake_year;
             const block = attendanceUserProfile?.block;
+            
+            console.log(`🏥 Loading clinical locations for: ${program}, ${intakeYear}, ${block}`);
             
             let query = supabaseClient
                 .from('clinical_names')
-                .select('id, clinical_area_name, latitude, longitude, program, intake_year, block_term');
+                .select('id, clinical_area_name, latitude, longitude, program, intake_year, block_term, address');
             
             if (program) {
                 query = query.eq('program', program);
@@ -228,10 +184,16 @@
                 longitude: parseFloat(loc.longitude) || CAMPUS_COORDINATES.longitude,
                 program: loc.program,
                 intakeYear: loc.intake_year,
-                block: loc.block_term
+                block: loc.block_term,
+                address: loc.address
             }));
             
-            console.log(`🏥 Loaded ${clinicalLocations.length} clinical locations`);
+            console.log(`✅ Loaded ${clinicalLocations.length} clinical locations`);
+            
+            clinicalLocations.forEach(loc => {
+                console.log(`  🏥 ${loc.name} [${loc.latitude}, ${loc.longitude}]`);
+            });
+            
             return clinicalLocations;
             
         } catch (error) {
@@ -316,7 +278,7 @@
         
         const accuracyMsg = currentLocation.accuracy <= MIN_GPS_ACCURACY ? 
             `✅ GPS: ±${currentLocation.accuracy.toFixed(0)}m` : 
-            `⚠️ GPS: ±${currentLocation.accuracy.toFixed(0)}m (needs ≤${MIN_GPS_ACCURACY}m)`;
+            `⚠️ GPS: ±${currentLocation.accuracy.toFixed(0)}m`;
         updateGPSStatus('success', accuracyMsg);
     }
     
@@ -394,13 +356,24 @@
         
         try {
             if (sessionType === 'clinical') {
+                // CLINICAL SESSIONS - Load from clinical_names table
                 if (clinicalLocations.length === 0) {
                     await loadClinicalLocations();
                 }
                 
                 if (clinicalLocations.length === 0) {
-                    targetSelect.innerHTML = '<option value="">No clinical locations available</option>';
+                    targetSelect.innerHTML = '<option value="">🏥 No clinical locations available for your program</option>';
                     targetSelect.disabled = false;
+                    
+                    const helpText = document.createElement('div');
+                    helpText.className = 'help-text mt-2';
+                    helpText.style.fontSize = '12px';
+                    helpText.style.color = '#f59e0b';
+                    helpText.innerHTML = '<i class="fas fa-info-circle"></i> No clinical locations assigned. Please contact administrator.';
+                    
+                    const existingHelp = targetSelect.parentElement.querySelector('.help-text');
+                    if (existingHelp) existingHelp.remove();
+                    targetSelect.parentElement.appendChild(helpText);
                     return;
                 }
                 
@@ -408,47 +381,67 @@
                 clinicalLocations.forEach(loc => {
                     const opt = document.createElement('option');
                     opt.value = `${loc.id}|${loc.name}|clinical|${loc.latitude}|${loc.longitude}|100`;
-                    opt.textContent = loc.name;
+                    opt.textContent = `${loc.name} ${loc.block ? `[${loc.block}]` : ''}`;
                     targetSelect.appendChild(opt);
                 });
                 
+                const countIndicator = document.createElement('div');
+                countIndicator.className = 'location-count-indicator mt-1';
+                countIndicator.style.fontSize = '11px';
+                countIndicator.style.color = '#3b82f6';
+                countIndicator.innerHTML = `<i class="fas fa-building"></i> ${clinicalLocations.length} clinical location(s) available`;
+                
+                const existingIndicator = targetSelect.parentElement.querySelector('.location-count-indicator');
+                if (existingIndicator) existingIndicator.remove();
+                targetSelect.parentElement.appendChild(countIndicator);
+                
+                console.log(`🏥 Displaying ${clinicalLocations.length} clinical locations in dropdown`);
+                
             } else if (sessionType === 'class') {
-                if (activeCourses.length === 0) {
-                    await loadActiveCourses();
+                // CLASSROOM SESSIONS - Load from approved units
+                if (approvedUnits.length === 0) {
+                    await loadApprovedUnits();
                 }
                 
-                if (activeCourses.length === 0) {
-                    targetSelect.innerHTML = '<option value="">⚠️ No active courses available</option>';
+                if (approvedUnits.length === 0) {
+                    targetSelect.innerHTML = '<option value="">📚 No approved units found. Please register for units first.</option>';
                     targetSelect.disabled = false;
+                    
+                    const helpText = document.createElement('div');
+                    helpText.className = 'help-text mt-2';
+                    helpText.style.fontSize = '12px';
+                    helpText.style.color = '#f59e0b';
+                    helpText.innerHTML = '<i class="fas fa-info-circle"></i> You need to register for units in the Learning Hub first.';
+                    
+                    const existingHelp = targetSelect.parentElement.querySelector('.help-text');
+                    if (existingHelp) existingHelp.remove();
+                    targetSelect.parentElement.appendChild(helpText);
                     return;
                 }
                 
-                targetSelect.innerHTML = '<option value="">📚 Select course...</option>';
-                activeCourses.forEach(course => {
-                    const displayCode = course.unit_code || '';
-                    const displayName = course.course_name;
-                    let displayText = displayCode ? `${displayCode} - ${displayName}` : displayName;
-                    if (course.block) displayText += ` [${course.block}]`;
-                    
-                    const targetLat = course.latitude || CAMPUS_COORDINATES.latitude;
-                    const targetLon = course.longitude || CAMPUS_COORDINATES.longitude;
-                    
+                targetSelect.innerHTML = '<option value="">📚 Select approved course...</option>';
+                approvedUnits.forEach(unit => {
                     const opt = document.createElement('option');
-                    opt.value = `course_${course.id}|${displayText}|class|${targetLat}|${targetLon}|${VERIFIED_DISTANCE}`;
+                    let displayText = unit.unit_code ? `${unit.unit_code} - ${unit.unit_name}` : unit.unit_name;
+                    if (unit.block) displayText += ` [Block: ${unit.block}]`;
+                    if (unit.term) displayText += ` [Term: ${unit.term}]`;
+                    
+                    opt.value = `unit_${unit.id}|${displayText}|class|${CAMPUS_COORDINATES.latitude}|${CAMPUS_COORDINATES.longitude}|${VERIFIED_DISTANCE}`;
                     opt.textContent = displayText;
                     targetSelect.appendChild(opt);
                 });
                 
-                // Show count
                 const countIndicator = document.createElement('div');
                 countIndicator.className = 'course-count-indicator mt-1';
                 countIndicator.style.fontSize = '11px';
                 countIndicator.style.color = '#10b981';
-                countIndicator.innerHTML = `<i class="fas fa-book-open"></i> ${activeCourses.length} active course(s) available`;
+                countIndicator.innerHTML = `<i class="fas fa-check-circle"></i> ${approvedUnits.length} approved course(s) available`;
                 
                 const existingIndicator = targetSelect.parentElement.querySelector('.course-count-indicator');
                 if (existingIndicator) existingIndicator.remove();
                 targetSelect.parentElement.appendChild(countIndicator);
+                
+                console.log(`📚 Displaying ${approvedUnits.length} approved units in dropdown`);
             }
         } catch (error) {
             console.error('Error populating targets:', error);
@@ -469,7 +462,7 @@
                     longitude: parseFloat(parts[4]) || CAMPUS_COORDINATES.longitude,
                     radius: parseInt(parts[5]) || VERIFIED_DISTANCE
                 };
-                console.log('Selected target:', selectedTarget.name);
+                console.log('Selected target:', selectedTarget.name, `(${selectedTarget.type})`);
             } else {
                 selectedTarget = null;
             }
@@ -569,7 +562,7 @@
             if (!hasLocation) {
                 btnSubtext.textContent = '📍 Waiting for GPS...';
             } else if (!hasSession || !hasTarget) {
-                btnSubtext.textContent = '📝 Select session type and course';
+                btnSubtext.textContent = '📝 Select session type and target';
             } else {
                 btnSubtext.textContent = '✅ Ready to check in';
             }
@@ -641,8 +634,19 @@
                 block: attendanceUserProfile?.block,
                 intake_year: attendanceUserProfile?.intake_year,
                 attendance_status: attendanceStatus,
-                is_remote: distance > VERIFIED_DISTANCE
+                is_remote: distance > VERIFIED_DISTANCE,
+                target_latitude: selectedTarget.latitude,
+                target_longitude: selectedTarget.longitude
             };
+            
+            // Add unit info for class sessions
+            if (sessionTypeSelect.value === 'class') {
+                const selectedUnit = approvedUnits.find(u => u.id === selectedTarget.id || `unit_${u.id}` === selectedTarget.id);
+                if (selectedUnit) {
+                    checkInData.unit_code = selectedUnit.unit_code;
+                    checkInData.unit_name = selectedUnit.unit_name;
+                }
+            }
             
             const { error } = await supabaseClient
                 .from('geo_attendance_logs')
@@ -654,11 +658,11 @@
             let resultMsg = '';
             
             if (isVerified) {
-                resultMsg = `✅ Check-in successful!\nCourse: ${selectedTarget.name}\nDistance: ${distanceDisplay}\nStatus: VERIFIED`;
+                resultMsg = `✅ Check-in successful!\n📍 ${selectedTarget.name}\n📏 Distance: ${distanceDisplay}\n✅ Status: VERIFIED`;
             } else if (attendanceStatus === 'Pending') {
-                resultMsg = `⚠️ Check-in recorded!\nCourse: ${selectedTarget.name}\nDistance: ${distanceDisplay}\nStatus: PENDING REVIEW`;
+                resultMsg = `⚠️ Check-in recorded!\n📍 ${selectedTarget.name}\n📏 Distance: ${distanceDisplay}\n⏳ Status: PENDING REVIEW`;
             } else {
-                resultMsg = `📝 Check-in recorded - ABSENT!\nCourse: ${selectedTarget.name}\nDistance: ${distanceDisplay}\nStatus: ABSENT (Too far)`;
+                resultMsg = `📝 Check-in recorded - ABSENT!\n📍 ${selectedTarget.name}\n📏 Distance: ${distanceDisplay}\n❌ Status: ABSENT (Too far)`;
             }
             
             alert(resultMsg);
@@ -712,7 +716,7 @@
         const tableBody = document.getElementById('geo-attendance-history');
         if (!tableBody || !attendanceUserId) return;
         
-        tableBody.innerHTML = '<tr><td colspan="7"><div class="loading-spinner"></div> Loading...</td></tr>';
+        tableBody.innerHTML = '<tr><td colspan="7"><div class="loading-spinner"></div> Loading...<\/td><\/tr>';
         
         try {
             const supabaseClient = window.db?.supabase;
@@ -743,7 +747,7 @@
             tableBody.innerHTML = '';
             
             if (!logs || logs.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="7" class="text-center">No check-in history found</td></tr>';
+                tableBody.innerHTML = '<tr><td colspan="7" class="text-center">No check-in history found<\/td><\/tr>';
                 return;
             }
             
@@ -770,7 +774,7 @@
             });
         } catch (error) {
             console.error('Error loading history:', error);
-            tableBody.innerHTML = '<tr><td colspan="7" style="color:red;">Error loading history</td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="7" style="color:red;">Error loading history<\/td><\/tr>';
         }
     }
     
@@ -820,7 +824,7 @@
             console.log('📅 Intake Year:', attendanceUserProfile.intake_year);
             
             await Promise.all([
-                loadActiveCourses(),
+                loadApprovedUnits(),
                 loadClinicalLocations()
             ]);
             
@@ -893,7 +897,8 @@
         }
         #gps-status { transition: all 0.3s ease; padding: 8px 12px; border-radius: 8px; margin-bottom: 15px; }
         #distance-status { margin-top: 10px; padding: 10px; border-radius: 8px; font-size: 13px; }
-        .course-count-indicator { margin-top: 8px; font-size: 12px; }
+        .course-count-indicator, .location-count-indicator { margin-top: 8px; font-size: 12px; }
+        .btn-checkin.ready { background: linear-gradient(135deg, #10b981, #059669); }
     `;
     document.head.appendChild(style);
     
