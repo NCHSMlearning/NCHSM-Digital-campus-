@@ -35,50 +35,93 @@
     // INITIALIZATION
     // ============================================
     
-    async function loadApprovedUnits() {
-        try {
-            const supabaseClient = window.db?.supabase;
-            if (!supabaseClient || !attendanceUserId) {
-                console.log('No supabase client or user ID');
-                return [];
-            }
-            
-            console.log('📚 Loading approved units...');
-            
-            let studentId = attendanceUserId;
-            if (attendanceUserProfile) {
-                studentId = attendanceUserProfile.user_id || attendanceUserProfile.id || attendanceUserId;
-            }
-            
-            const { data, error } = await supabaseClient
-                .from('student_unit_registrations')
-                .select('*')
-                .eq('student_id', studentId)
-                .eq('status', 'approved')
-                .order('unit_code', { ascending: true });
-            
-            if (error) {
-                console.error('Error loading approved units:', error);
-                return [];
-            }
-            
-            approvedUnits = (data || []).map(unit => ({
-                id: unit.id,
-                unit_code: unit.unit_code,
-                unit_name: unit.unit_name,
-                block: unit.block,
-                status: unit.status,
-                approval_date: unit.approval_date
-            }));
-            
-            console.log(`✅ Loaded ${approvedUnits.length} approved units`);
-            return approvedUnits;
-            
-        } catch (error) {
-            console.error('Error loading approved units:', error);
+   async function loadApprovedUnits() {
+    try {
+        const supabaseClient = window.db?.supabase;
+        
+        // Get user ID from multiple possible sources
+        let studentId = null;
+        let userProgram = null;
+        let userBlock = null;
+        
+        // Get user profile
+        if (attendanceUserProfile) {
+            userProgram = attendanceUserProfile.program;
+            userBlock = attendanceUserProfile.block;
+            studentId = attendanceUserProfile.id || attendanceUserProfile.user_id;
+        } else if (window.db?.currentUserProfile) {
+            userProgram = window.db.currentUserProfile.program;
+            userBlock = window.db.currentUserProfile.block;
+            studentId = window.db.currentUserProfile.id || window.db.currentUserProfile.user_id;
+        } else if (window.unitRegistrationModule?.userProfile) {
+            userProgram = window.unitRegistrationModule.userProfile.program;
+            userBlock = window.unitRegistrationModule.userProfile.block;
+        }
+        
+        console.log('📚 Loading courses for:', { program: userProgram, block: userBlock });
+        
+        if (!supabaseClient) {
+            console.error('❌ Supabase client not available');
             return [];
         }
+        
+        // QUERY FROM COURSES TABLE - NOT student_unit_registrations
+        let query = supabaseClient
+            .from('courses')
+            .select('*')
+            .eq('status', 'Active')
+            .eq('target_program', userProgram);
+        
+        // Filter by block if available
+        if (userBlock) {
+            query = query.eq('block', userBlock);
+        }
+        
+        // Also get courses that match your specific units
+        const { data, error } = await query.order('unit_code', { ascending: true });
+        
+        if (error) {
+            console.error('Error loading courses:', error);
+            return [];
+        }
+        
+        console.log(`✅ Found ${data?.length || 0} courses from courses table`);
+        
+        // Filter for Block 4 specific courses (your units)
+        const block4Courses = (data || []).filter(course => 
+            course.block === 'Block 4' || 
+            course.block === userBlock ||
+            course.unit_code?.includes('30') // Your units have 301-306
+        );
+        
+        // Map courses to approved units format
+        approvedUnits = block4Courses.map(course => ({
+            id: course.id,
+            unit_code: course.unit_code,
+            unit_name: course.name,
+            block: course.block,
+            status: course.status,
+            credits: 3,
+            course_id: course.id
+        }));
+        
+        console.log(`✅ Loaded ${approvedUnits.length} approved units from courses table:`);
+        approvedUnits.forEach((unit, i) => {
+            console.log(`   ${i+1}. ${unit.unit_code} - ${unit.unit_name} [${unit.block}]`);
+        });
+        
+        // Dispatch event for other modules
+        document.dispatchEvent(new CustomEvent('approvedUnitsLoaded', {
+            detail: { units: approvedUnits, count: approvedUnits.length }
+        }));
+        
+        return approvedUnits;
+        
+    } catch (error) {
+        console.error('Error loading approved units:', error);
+        return [];
     }
+}
     
     async function loadClinicalLocations() {
         try {
