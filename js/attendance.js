@@ -89,7 +89,7 @@
     // ============================================
     // LOAD APPROVED UNITS (CLASSROOM SESSIONS)
     // ============================================
-  async function loadApprovedUnits() {
+async function loadApprovedUnits() {
     try {
         const supabaseClient = window.db?.supabase;
         if (!supabaseClient || !attendanceUserId) {
@@ -100,12 +100,24 @@
         console.log('📚 Loading approved units for classroom sessions...');
         console.log('Student ID:', attendanceUserId);
         
+        // CRITICAL: Get student ID the SAME way courses.js does
+        // courses.js uses: studentId = this.userProfile?.user_id || this.userProfile?.id
+        let studentId = attendanceUserId;
+        
+        // If attendanceUserId doesn't work, try to get from profile
+        if (attendanceUserProfile) {
+            studentId = attendanceUserProfile.user_id || attendanceUserProfile.id || attendanceUserId;
+        }
+        
+        console.log('Using student ID for query:', studentId);
+        
+        // Load approved units - EXACT same query as courses.js
         const { data, error } = await supabaseClient
             .from('student_unit_registrations')
             .select('*')
-            .eq('student_id', attendanceUserId)
+            .eq('student_id', studentId)
             .eq('status', 'approved')
-            .order('submitted_date', { ascending: false });
+            .order('unit_code', { ascending: true });
         
         if (error) {
             console.error('Error loading approved units:', error);
@@ -113,25 +125,68 @@
         }
         
         console.log('Raw approved units data:', data);
+        console.log(`Found ${data?.length || 0} approved units`);
         
-        // Map the data - handles both possible column naming conventions
+        if (!data || data.length === 0) {
+            console.log('⚠️ No approved units found. Trying alternative field names...');
+            
+            // Try with user_id instead
+            const { data: altData, error: altError } = await supabaseClient
+                .from('student_unit_registrations')
+                .select('*')
+                .eq('user_id', studentId)
+                .eq('status', 'approved')
+                .order('unit_code', { ascending: true });
+            
+            if (!altError && altData && altData.length > 0) {
+                console.log(`✅ Found ${altData.length} units using user_id field`);
+                data = altData;
+            } else {
+                console.log('Still no units found. Check console for details.');
+                return [];
+            }
+        }
+        
+        // Map the data - keep ALL original fields
         approvedUnits = (data || []).map(unit => ({
             id: unit.id,
-            unit_code: unit.unit_code || unit.UnitCode || 'N/A',
-            unit_name: unit.unit_name || unit.UnitName || unit.course_name || 'Unknown',
-            block: unit.block || unit.Block || unit.term || 'N/A',
-            term: unit.term || unit.Term || unit.block,
+            unit_code: unit.unit_code,
+            unit_name: unit.unit_name,
+            block: unit.block,
+            term: unit.term,
             status: unit.status,
             approval_date: unit.approval_date,
             reg_type: unit.reg_type,
-            course_id: unit.course_id
+            credits: unit.credits || 3,
+            course_id: unit.course_id,
+            // Keep original data for debugging
+            _raw: unit
         }));
         
         console.log(`✅ Loaded ${approvedUnits.length} approved units for classroom sessions`);
         
-        approvedUnits.forEach(unit => {
-            console.log(`  📖 ${unit.unit_code}: ${unit.unit_name} [Block: ${unit.block}]`);
+        // Log each unit for verification
+        approvedUnits.forEach((unit, index) => {
+            console.log(`  ${index + 1}. 📖 ${unit.unit_code}: ${unit.unit_name} [Block: ${unit.block}]`);
         });
+        
+        // Also try to get from coursesModule as fallback
+        if (approvedUnits.length === 0 && window.coursesModule && window.coursesModule.getActiveCourseCount() > 0) {
+            console.log('🔄 Fallback: Loading from coursesModule');
+            const coursesModuleUnits = window.coursesModule.getAllCourses();
+            if (coursesModuleUnits && coursesModuleUnits.length > 0) {
+                approvedUnits = coursesModuleUnits.map(unit => ({
+                    id: unit.id,
+                    unit_code: unit.unit_code,
+                    unit_name: unit.unit_name,
+                    block: unit.block,
+                    status: unit.status,
+                    approval_date: unit.approval_date,
+                    reg_type: unit.reg_type
+                }));
+                console.log(`✅ Loaded ${approvedUnits.length} units from coursesModule fallback`);
+            }
+        }
         
         // Dispatch event for other modules
         document.dispatchEvent(new CustomEvent('approvedUnitsLoaded', {
