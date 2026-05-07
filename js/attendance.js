@@ -14,8 +14,8 @@
     
     // Campus coordinates (fallback)
     const CAMPUS_COORDINATES = {
-        latitude: -0.2610284,
-        longitude: 36.0116283,
+        latitude: -0.2714611,
+        longitude: 36.0519956,
         name: "NCHSM Main Campus"
     };
     
