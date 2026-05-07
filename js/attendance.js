@@ -637,128 +637,140 @@ async function loadApprovedUnits() {
     // CHECK-IN FUNCTION
     // ============================================
     
-    async function attendanceGeoCheckIn() {
-        const button = document.getElementById('check-in-button');
-        const sessionTypeSelect = document.getElementById('session-type');
-        const targetSelect = document.getElementById('attendance-target');
+   async function attendanceGeoCheckIn() {
+    const button = document.getElementById('check-in-button');
+    const sessionTypeSelect = document.getElementById('session-type');
+    const targetSelect = document.getElementById('attendance-target');
+    
+    if (!button || !sessionTypeSelect || !targetSelect) return;
+    
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+    
+    try {
+        if (!sessionTypeSelect.value) throw new Error('Select session type');
+        if (!targetSelect.value) throw new Error('Select target');
+        if (!currentLocation) throw new Error('Location not available');
+        if (!selectedTarget) throw new Error('Target info missing');
         
-        if (!button || !sessionTypeSelect || !targetSelect) return;
+        const deviceId = getDeviceId();
+        const deviceValidation = await validateDeviceForUser(attendanceUserId, deviceId);
+        if (!deviceValidation.allowed) throw new Error(deviceValidation.message);
         
-        button.disabled = true;
-        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+        // Calculate distance based on target type
+        const distance = calculateDistance(
+            currentLocation.latitude,
+            currentLocation.longitude,
+            selectedTarget.latitude,
+            selectedTarget.longitude
+        );
         
-        try {
-            if (!sessionTypeSelect.value) throw new Error('Select session type');
-            if (!targetSelect.value) throw new Error('Select target');
-            if (!currentLocation) throw new Error('Location not available');
-            if (!selectedTarget) throw new Error('Target info missing');
-            
-            const deviceId = getDeviceId();
-            const deviceValidation = await validateDeviceForUser(attendanceUserId, deviceId);
-            if (!deviceValidation.allowed) throw new Error(deviceValidation.message);
-            
-            const distance = calculateDistance(
-                currentLocation.latitude,
-                currentLocation.longitude,
-                selectedTarget.latitude,
-                selectedTarget.longitude
-            );
-            
-            let isVerified = false;
-            let attendanceStatus = 'Present';
-            
-            if (distance <= VERIFIED_DISTANCE) {
-                isVerified = true;
-                attendanceStatus = 'Present';
-            } else if (distance <= PENDING_DISTANCE) {
-                isVerified = false;
-                attendanceStatus = 'Pending';
-            } else {
-                isVerified = false;
-                attendanceStatus = 'Absent';
+        console.log(`📍 Distance to ${selectedTarget.type}: ${distance.toFixed(2)} meters`);
+        console.log(`   Your location: ${currentLocation.latitude}, ${currentLocation.longitude}`);
+        console.log(`   Target location: ${selectedTarget.latitude}, ${selectedTarget.longitude}`);
+        
+        let isVerified = false;
+        let attendanceStatus = 'Present';
+        
+        if (distance <= VERIFIED_DISTANCE) {
+            isVerified = true;
+            attendanceStatus = 'Present';
+            console.log('✅ Within range - AUTO VERIFIED');
+        } else if (distance <= PENDING_DISTANCE) {
+            isVerified = false;
+            attendanceStatus = 'Pending';
+            console.log('⚠️ Near location - PENDING REVIEW');
+        } else {
+            isVerified = false;
+            attendanceStatus = 'Absent';
+            console.log('❌ Too far - ABSENT');
+        }
+        
+        const supabaseClient = window.db?.supabase;
+        if (!supabaseClient) throw new Error('Database error');
+        
+        // Build check-in data - NO reg_type field
+        const checkInData = {
+            student_id: attendanceUserId,
+            check_in_time: new Date().toISOString(),
+            session_type: sessionTypeSelect.value,
+            target_id: selectedTarget.id,
+            target_name: selectedTarget.name,
+            latitude: currentLocation.latitude,
+            longitude: currentLocation.longitude,
+            accuracy_m: currentLocation.accuracy,
+            distance_meters: distance,
+            is_verified: isVerified,
+            device_id: deviceId,
+            student_name: attendanceUserProfile?.full_name || 'Unknown',
+            program: attendanceUserProfile?.program,
+            block: attendanceUserProfile?.block,
+            intake_year: attendanceUserProfile?.intake_year,
+            attendance_status: attendanceStatus,
+            is_remote: distance > VERIFIED_DISTANCE,
+            target_latitude: selectedTarget.latitude,
+            target_longitude: selectedTarget.longitude
+        };
+        
+        // Add unit info for class sessions ONLY
+        if (sessionTypeSelect.value === 'class') {
+            let targetId = selectedTarget.id;
+            if (targetId && targetId.startsWith('unit_')) {
+                targetId = targetId.replace('unit_', '');
             }
             
-            const supabaseClient = window.db?.supabase;
-            if (!supabaseClient) throw new Error('Database error');
-            
-            const checkInData = {
-                student_id: attendanceUserId,
-                check_in_time: new Date().toISOString(),
-                session_type: sessionTypeSelect.value,
-                target_id: selectedTarget.id,
-                target_name: selectedTarget.name,
-                latitude: currentLocation.latitude,
-                longitude: currentLocation.longitude,
-                accuracy_m: currentLocation.accuracy,
-                distance_meters: distance,
-                is_verified: isVerified,
-                device_id: deviceId,
-                student_name: attendanceUserProfile?.full_name || 'Unknown',
-                program: attendanceUserProfile?.program,
-                block: attendanceUserProfile?.block,
-                intake_year: attendanceUserProfile?.intake_year,
-                attendance_status: attendanceStatus,
-                is_remote: distance > VERIFIED_DISTANCE,
-                target_latitude: selectedTarget.latitude,
-                target_longitude: selectedTarget.longitude
-            };
-            
-            // Add unit info for class sessions
-           // Add unit info for class sessions
-if (sessionTypeSelect.value === 'class') {
-    // Handle both ID formats
-    let targetId = selectedTarget.id;
-    if (targetId && targetId.startsWith('unit_')) {
-        targetId = targetId.replace('unit_', '');
-    }
-    
-    const selectedUnit = approvedUnits.find(u => u.id == targetId);
-    if (selectedUnit) {
-        checkInData.unit_code = selectedUnit.unit_code;
-        checkInData.unit_name = selectedUnit.unit_name;
-        checkInData.block = selectedUnit.block;
-        checkInData.reg_type = selectedUnit.reg_type;
-    } else {
-        console.warn('Selected unit not found in approved units:', targetId);
-        console.log('Available approved units:', approvedUnits);
+            const selectedUnit = approvedUnits.find(u => u.id == targetId);
+            if (selectedUnit) {
+                checkInData.unit_code = selectedUnit.unit_code;
+                checkInData.unit_name = selectedUnit.unit_name;
+                checkInData.block = selectedUnit.block;
+                // DO NOT add reg_type - it doesn't exist in the table
+                console.log(`📚 Check-in for unit: ${selectedUnit.unit_code} - ${selectedUnit.unit_name}`);
+            } else {
+                console.warn('Selected unit not found in approved units:', targetId);
+            }
+        } else if (sessionTypeSelect.value === 'clinical') {
+            console.log(`🏥 Check-in for clinical location: ${selectedTarget.name}`);
+        }
+        
+        console.log('Sending check-in data:', checkInData);
+        
+        const { error } = await supabaseClient
+            .from('geo_attendance_logs')
+            .insert([checkInData]);
+        
+        if (error) throw error;
+        
+        const distanceDisplay = distance >= 1000 ? `${(distance/1000).toFixed(2)} km` : `${distance.toFixed(0)} m`;
+        let resultMsg = '';
+        
+        if (isVerified) {
+            resultMsg = `✅ Check-in successful!\n📍 ${selectedTarget.name}\n📏 Distance: ${distanceDisplay}\n✅ Status: VERIFIED`;
+        } else if (attendanceStatus === 'Pending') {
+            resultMsg = `⚠️ Check-in recorded!\n📍 ${selectedTarget.name}\n📏 Distance: ${distanceDisplay}\n⏳ Status: PENDING REVIEW (Lecturer will verify)`;
+        } else {
+            resultMsg = `❌ Check-in FAILED - Too far!\n📍 ${selectedTarget.name}\n📏 Distance: ${distanceDisplay}\n❌ Status: ABSENT (Must be within ${VERIFIED_DISTANCE}m)`;
+        }
+        
+        alert(resultMsg);
+        
+        await loadTodayAttendanceCount();
+        await loadGeoAttendanceHistory('today');
+        
+        // Reset form
+        sessionTypeSelect.value = '';
+        targetSelect.value = '';
+        selectedTarget = null;
+        handleSessionTypeChange();
+        
+    } catch (error) {
+        console.error('Check-in error:', error);
+        alert(`❌ Check-in failed: ${error.message}`);
+    } finally {
+        button.disabled = false;
+        button.innerHTML = '<i class="fas fa-fingerprint"></i> Check In Now';
     }
 }
-            
-            const { error } = await supabaseClient
-                .from('geo_attendance_logs')
-                .insert([checkInData]);
-            
-            if (error) throw error;
-            
-            const distanceDisplay = distance >= 1000 ? `${(distance/1000).toFixed(2)} km` : `${distance.toFixed(0)} m`;
-            let resultMsg = '';
-            
-            if (isVerified) {
-                resultMsg = `✅ Check-in successful!\n📍 ${selectedTarget.name}\n📏 Distance: ${distanceDisplay}\n✅ Status: VERIFIED`;
-            } else if (attendanceStatus === 'Pending') {
-                resultMsg = `⚠️ Check-in recorded!\n📍 ${selectedTarget.name}\n📏 Distance: ${distanceDisplay}\n⏳ Status: PENDING REVIEW`;
-            } else {
-                resultMsg = `📝 Check-in recorded - ABSENT!\n📍 ${selectedTarget.name}\n📏 Distance: ${distanceDisplay}\n❌ Status: ABSENT (Too far)`;
-            }
-            
-            alert(resultMsg);
-            
-            await loadTodayAttendanceCount();
-            await loadGeoAttendanceHistory('today');
-            
-            sessionTypeSelect.value = '';
-            targetSelect.value = '';
-            selectedTarget = null;
-            handleSessionTypeChange();
-            
-        } catch (error) {
-            console.error('Check-in error:', error);
-            alert(`❌ Check-in failed: ${error.message}`);
-        } finally {
-            button.disabled = false;
-            button.innerHTML = '<i class="fas fa-fingerprint"></i> Check In Now';
-        }
-    }
     
     // ============================================
     // LOAD HISTORY
