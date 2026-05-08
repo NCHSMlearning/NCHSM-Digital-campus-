@@ -1,4 +1,4 @@
-// js/exam-card.js - Complete Production Module (No Demo Data)
+// js/exam-card.js - Fixed to work with your existing table structure
 
 (function() {
     'use strict';
@@ -14,7 +14,6 @@
             this.userId = null;
             this.isLoading = false;
             
-            // Cache elements after DOM ready
             if (document.readyState === 'loading') {
                 document.addEventListener('DOMContentLoaded', () => this.cacheElements());
             } else {
@@ -22,8 +21,6 @@
             }
             
             this.setupEventListeners();
-            
-            // Initial load attempt
             setTimeout(() => this.tryLoadIfLoggedIn(), 500);
         }
         
@@ -40,13 +37,11 @@
         }
         
         setupEventListeners() {
-            // App ready event
             document.addEventListener('appReady', () => {
                 console.log('📇 appReady received');
                 this.tryLoadIfLoggedIn();
             });
             
-            // Profile loaded event
             document.addEventListener('profileLoaded', (e) => {
                 if (e.detail?.profile) {
                     this.userProfile = e.detail.profile;
@@ -55,29 +50,21 @@
                 }
             });
             
-            // Tab click - reload when exam card tab is opened
+            // Listen for unit registration changes
+            document.addEventListener('unitRegistrationReady', () => {
+                console.log('📇 Unit registration updated, reloading exam card');
+                this.loadExamCard();
+            });
+            
             document.querySelectorAll('[data-tab="hub-exam-card"]').forEach(link => {
                 link.addEventListener('click', () => {
                     console.log('📇 Exam card tab clicked');
                     setTimeout(() => this.loadExamCard(), 100);
                 });
             });
-            
-            // Listen for unit registration changes
-            document.addEventListener('unitsUpdated', () => {
-                console.log('📇 Units updated, reloading exam card');
-                this.loadExamCard();
-            });
         }
         
         tryLoadIfLoggedIn() {
-            // Check if already have profile
-            if (this.userProfile && this.userId) {
-                this.loadExamCard();
-                return;
-            }
-            
-            // Try to get profile from various sources
             const profile = this.getUserProfileFromSources();
             if (profile) {
                 this.userProfile = profile;
@@ -130,13 +117,11 @@
         }
         
         async loadExamCard() {
-            // Prevent multiple simultaneous loads
             if (this.isLoading) {
                 console.log('📇 Already loading, skipping');
                 return;
             }
             
-            // Ensure we have user profile
             if (!this.userProfile || !this.userId) {
                 const profile = this.getUserProfileFromSources();
                 if (profile) {
@@ -152,7 +137,6 @@
             this.showLoading();
             
             try {
-                // Load approved units from database
                 const success = await this.loadApprovedUnitsFromDB();
                 
                 if (success) {
@@ -171,7 +155,6 @@
         }
         
         async loadApprovedUnitsFromDB() {
-            // Get Supabase instance
             const supabase = window.db?.supabase || window.supabase;
             
             if (!supabase) {
@@ -180,28 +163,30 @@
             }
             
             try {
-                // Query approved unit registrations
-                let query = supabase
-                    .from('student_unit_registrations')
-                    .select(`
-                        id,
-                        unit_code,
-                        unit_name,
-                        credits,
-                        block,
-                        reg_type,
-                        status,
-                        approved_at
-                    `)
-                    .eq('student_id', this.userId)
-                    .eq('status', 'approved');
+                // First, get the student's ID from the users table if needed
+                let studentId = this.userId;
                 
-                // Filter by current block if available
-                if (this.userBlock && this.userBlock !== 'Unknown') {
-                    query = query.eq('block', this.userBlock);
+                // Try to find by student_id field first (from users table)
+                let { data: userData, error: userError } = await supabase
+                    .from('users')
+                    .select('id')
+                    .eq('student_id', this.userProfile?.student_id)
+                    .maybeSingle();
+                
+                if (userError) {
+                    console.log('📇 User lookup error:', userError);
                 }
                 
-                const { data, error } = await query.order('unit_code', { ascending: true });
+                const actualUserId = userData?.id || studentId;
+                
+                console.log('📇 Looking for approved units with student_id:', actualUserId);
+                
+                // Query approved unit registrations - using the same fields as unit-registration.js
+                const { data, error } = await supabase
+                    .from('student_unit_registrations')
+                    .select('*')
+                    .eq('student_id', actualUserId)
+                    .eq('status', 'approved');
                 
                 if (error) {
                     console.error('📇 Database error:', error);
@@ -211,9 +196,9 @@
                 this.approvedUnits = data || [];
                 console.log('📇 Loaded', this.approvedUnits.length, 'approved units');
                 
-                // Also update dashboard counts from database
-                if (this.approvedUnits.length === 0) {
-                    console.log('📇 No approved units found for student');
+                // Log the first unit to see its structure
+                if (this.approvedUnits.length > 0) {
+                    console.log('📇 Sample approved unit:', this.approvedUnits[0]);
                 }
                 
                 return true;
@@ -274,7 +259,7 @@
                             <div class="student-info-grid">
                                 <div class="info-row">
                                     <div class="info-field"><label>Student Name:</label><span class="field-value">${this.escapeHtml(student?.full_name || 'Not Available')}</span></div>
-                                    <div class="info-field"><label>Student ID:</label><span class="field-value">${this.escapeHtml(student?.student_id || student?.user_id?.substring(0, 8) || 'N/A')}</span></div>
+                                    <div class="info-field"><label>Student ID:</label><span class="field-value">${this.escapeHtml(student?.student_id || 'N/A')}</span></div>
                                 </div>
                                 <div class="info-row">
                                     <div class="info-field"><label>Program:</label><span class="field-value">${this.escapeHtml(student?.program || 'KRCHN')}</span></div>
@@ -404,7 +389,6 @@
             
             this.examCardContent.innerHTML = html;
             
-            // Attach print button event
             const printBtn = document.getElementById('print-exam-card-btn');
             if (printBtn && isEligible) {
                 const newBtn = printBtn.cloneNode(true);
@@ -415,7 +399,6 @@
                 });
             }
             
-            // Attach register button event if present
             const registerBtn = this.examCardContent.querySelector('.btn-register');
             if (registerBtn) {
                 registerBtn.addEventListener('click', () => {
@@ -446,7 +429,6 @@
             if (!printContent) return;
             
             const printWindow = window.open('', '_blank');
-            const styles = document.querySelector('link[href*="main.css"]')?.href || '';
             
             printWindow.document.write(`
                 <!DOCTYPE html>
@@ -456,7 +438,6 @@
                     <meta charset="UTF-8">
                     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
                     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-                    ${styles ? `<link rel="stylesheet" href="${styles}">` : ''}
                     <style>
                         * { margin: 0; padding: 0; box-sizing: border-box; }
                         body { font-family: 'Inter', sans-serif; background: white; padding: 20px; }
@@ -495,7 +476,7 @@
                         .print-action { text-align: center; margin-top: 15px; }
                         .btn-print { background: #4C1D95; color: white; border: none; padding: 10px 24px; border-radius: 6px; cursor: pointer; }
                         .btn-print:disabled { opacity: 0.5; cursor: not-allowed; }
-                        @media print { .print-action { display: none; } body { padding: 0; } .btn-print { display: none; } }
+                        @media print { .print-action { display: none; } body { padding: 0; } }
                     </style>
                 </head>
                 <body>${printContent.outerHTML}<script>window.onload=function(){setTimeout(function(){window.print();window.close();},300)};<\/script></body>
@@ -557,11 +538,10 @@
         }
     }
     
-    // Create and expose module globally
     window.examCardModule = new ExamCardModule();
     window.loadExamCard = () => window.examCardModule?.loadExamCard();
     window.printExamCard = () => window.examCardModule?.printExamCard();
     window.refreshExamCard = () => window.examCardModule?.refresh();
     
-    console.log('✅ Exam Card module ready (production mode - no demo data)');
+    console.log('✅ Exam Card module ready');
 })();
