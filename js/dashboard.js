@@ -1,4 +1,4 @@
-// dashboard.js - COMPLETE FINAL VERSION with Current Block Support
+// dashboard.js - COMPLETE FINAL VERSION
 class DashboardModule {
     constructor(supabaseClient) {
         console.log('🚀 Initializing DashboardModule...');
@@ -37,7 +37,6 @@ class DashboardModule {
             newResources: document.getElementById('dashboard-new-resources'),
             dashboardExamStatus: document.getElementById('dashboard-exam-status'),
             dashboardApprovedUnits: document.getElementById('dashboard-approved-units'),
-            // New Current Block elements
             dashboardCurrentBlockValue: document.getElementById('dashboard-current-block-value'),
             dashboardProgramName: document.getElementById('dashboard-program-name'),
             dashboardIntakeYear: document.getElementById('dashboard-intake-year'),
@@ -49,7 +48,6 @@ class DashboardModule {
             headerRefresh: document.getElementById('header-refresh')
         };
         
-        // Debug: Log which elements were found
         const foundCount = Object.keys(this.elements).filter(key => this.elements[key]).length;
         console.log(`🔍 Elements found: ${foundCount}/${Object.keys(this.elements).length}`);
     }
@@ -71,6 +69,7 @@ class DashboardModule {
                     const isEligible = e.detail.count > 0;
                     this.elements.dashboardExamStatus.textContent = isEligible ? 'ELIGIBLE' : 'NOT ELIGIBLE';
                     this.elements.dashboardExamStatus.style.color = isEligible ? '#059669' : '#dc2626';
+                    this.elements.dashboardExamStatus.classList.add(isEligible ? 'eligible' : 'not-eligible');
                 }
             }
         });
@@ -152,7 +151,6 @@ class DashboardModule {
         await this.loadAllMetrics();
         this.startAutoRefresh();
         
-        // Run diagnostic after load
         setTimeout(() => this.runDiagnostic(), 1000);
         
         return true;
@@ -214,10 +212,13 @@ class DashboardModule {
             this.elements.activeCourses.innerText = this.metrics.courses;
         }
         
-        // Update exam card
+        // Update exam card with colors
         if (this.elements.dashboardExamStatus) {
-            this.elements.dashboardExamStatus.innerText = this.metrics.examCard.eligible ? 'ELIGIBLE' : 'NOT ELIGIBLE';
-            this.elements.dashboardExamStatus.style.color = this.metrics.examCard.eligible ? '#059669' : '#dc2626';
+            const isEligible = this.metrics.examCard.eligible;
+            this.elements.dashboardExamStatus.innerText = isEligible ? 'ELIGIBLE' : 'NOT ELIGIBLE';
+            this.elements.dashboardExamStatus.style.color = isEligible ? '#059669' : '#dc2626';
+            this.elements.dashboardExamStatus.style.fontWeight = 'bold';
+            this.elements.dashboardExamStatus.style.fontSize = '1.1rem';
         }
         if (this.elements.dashboardApprovedUnits) {
             this.elements.dashboardApprovedUnits.innerText = this.metrics.examCard.approved;
@@ -497,4 +498,4 @@ window.DashboardModule = DashboardModule;
 window.initDashboardModule = initDashboardModule;
 window.refreshDashboard = () => dashboardModule?.refreshAll();
 
-console.log('✅ Dashboard module ready - COMPLETE FINAL VERSION with Current Block support');
+console.log('✅ Dashboard module ready - COMPLETE FINAL VERSION');
