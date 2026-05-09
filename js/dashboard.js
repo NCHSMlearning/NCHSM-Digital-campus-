@@ -1,4 +1,4 @@
-// dashboard.js - Complete Working Dashboard Module
+// dashboard.js - COMPLETE FINAL VERSION WITH CLICKABLE CARDS
 class DashboardModule {
     constructor(supabaseClient) {
         console.log('🚀 Initializing DashboardModule...');
@@ -56,13 +56,165 @@ class DashboardModule {
         });
         document.addEventListener('attendanceCheckedIn', () => this.loadAttendanceMetrics());
         
+        // Listen for approved units loaded from attendance module
+        document.addEventListener('approvedUnitsLoaded', (e) => {
+            if (e.detail && e.detail.count !== undefined) {
+                console.log(`📚 Approved units event received: ${e.detail.count} units`);
+                if (this.elements.dashboardApprovedUnits) {
+                    this.elements.dashboardApprovedUnits.textContent = e.detail.count;
+                }
+                if (this.elements.dashboardExamStatus) {
+                    const isEligible = e.detail.count > 0;
+                    this.elements.dashboardExamStatus.textContent = isEligible ? 'ELIGIBLE' : 'NOT ELIGIBLE';
+                    this.elements.dashboardExamStatus.style.color = isEligible ? '#059669' : '#dc2626';
+                }
+            }
+        });
+        
         // Refresh button
         if (this.elements.headerRefresh) {
             this.elements.headerRefresh.addEventListener('click', () => this.refreshAll());
         }
         
-        // Card click handlers
+        // Card click handlers - MAKE CARDS CLICKABLE
         this.addCardClickHandlers();
+    }
+    
+    addCardClickHandlers() {
+        // Map card data-tab to actual tab IDs
+        const tabMapping = {
+            'attendance': 'attendance',
+            'cats': 'cats',
+            'hub-courses': 'hub-courses',
+            'courses': 'hub-courses',
+            'resources': 'resources',
+            'nurseiq': 'nurseiq',
+            'hub-exam-card': 'hub-exam-card',
+            'exam-card': 'hub-exam-card'
+        };
+        
+        // Get all stat cards
+        const cards = document.querySelectorAll('.stat-card');
+        console.log(`🎯 Setting up ${cards.length} clickable cards`);
+        
+        cards.forEach(card => {
+            // Remove any existing listeners
+            const newCard = card.cloneNode(true);
+            card.parentNode.replaceChild(newCard, card);
+            
+            // Get the tab to navigate to
+            let tabToOpen = newCard.getAttribute('data-tab');
+            
+            // Special handling for NurseIQ card
+            if (newCard.classList.contains('nurseiq-card')) {
+                tabToOpen = 'nurseiq';
+            }
+            
+            // Special handling for Exam Card
+            if (newCard.classList.contains('examcard-card')) {
+                tabToOpen = 'hub-exam-card';
+            }
+            
+            // Map to correct tab ID
+            const finalTab = tabMapping[tabToOpen] || tabToOpen;
+            
+            // Add click event
+            newCard.addEventListener('click', (e) => {
+                // Don't trigger if clicking on interactive elements
+                if (e.target.closest('button') || e.target.closest('a')) {
+                    return;
+                }
+                
+                console.log(`🖱️ Card clicked: ${tabToOpen} -> navigating to: ${finalTab}`);
+                
+                // Add visual feedback
+                newCard.style.transform = 'scale(0.98)';
+                setTimeout(() => {
+                    newCard.style.transform = '';
+                }, 150);
+                
+                // Navigate to the tab
+                if (typeof window.showTab === 'function') {
+                    window.showTab(finalTab);
+                } else {
+                    // Fallback navigation
+                    this.switchToTab(finalTab);
+                }
+            });
+            
+            // Add hover effects
+            newCard.style.cursor = 'pointer';
+            newCard.style.transition = 'all 0.2s ease';
+        });
+        
+        console.log('✅ All cards are now clickable!');
+    }
+    
+    switchToTab(tabName) {
+        console.log(`🔄 Switching to tab: ${tabName}`);
+        
+        // Hide all tab contents
+        document.querySelectorAll('.tab-content').forEach(tab => {
+            tab.style.display = 'none';
+            tab.classList.remove('active');
+        });
+        
+        // Show selected tab
+        const targetTab = document.getElementById(tabName);
+        if (targetTab) {
+            targetTab.style.display = 'block';
+            targetTab.classList.add('active');
+        }
+        
+        // Update active state in navigation
+        document.querySelectorAll('.nav a, .dropdown-submenu a').forEach(link => {
+            link.classList.remove('active');
+            if (link.getAttribute('data-tab') === tabName) {
+                link.classList.add('active');
+            }
+        });
+        
+        // Special handling for Learning Hub modules
+        if (tabName === 'hub-courses' || tabName === 'hub-register' || 
+            tabName === 'hub-online-learning' || tabName === 'hub-exam-card') {
+            
+            const learningHub = document.getElementById('learning-hub');
+            if (learningHub) {
+                learningHub.style.display = 'block';
+                learningHub.classList.add('active');
+            }
+            
+            // Hide all hub modules
+            const modules = ['hub-courses', 'hub-register', 'hub-online-learning', 'hub-exam-card'];
+            modules.forEach(id => {
+                const mod = document.getElementById(id);
+                if (mod) mod.style.display = 'none';
+            });
+            
+            // Show selected module
+            const selected = document.getElementById(tabName);
+            if (selected) selected.style.display = 'block';
+        }
+        
+        // Save current tab
+        localStorage.setItem('nchsm_current_tab', tabName);
+        
+        // Load module-specific data
+        setTimeout(() => {
+            if (tabName === 'attendance' && window.loadAttendanceData) {
+                window.loadAttendanceData();
+            } else if (tabName === 'hub-courses' && window.coursesModule?.loadCourses) {
+                window.coursesModule.loadCourses();
+            } else if (tabName === 'hub-exam-card' && window.examCardModule?.loadExamCard) {
+                window.examCardModule.loadExamCard();
+            } else if (tabName === 'nurseiq' && window.nurseiqModule?.loadCourses) {
+                window.nurseiqModule.loadCourses();
+            } else if (tabName === 'resources' && window.resourcesModule?.loadAllResources) {
+                window.resourcesModule.loadAllResources();
+            } else if (tabName === 'cats' && window.examsModule?.loadExams) {
+                window.examsModule.loadExams();
+            }
+        }, 100);
     }
     
     async initialize(userId, userProfile) {
@@ -91,6 +243,11 @@ class DashboardModule {
         
         // Start auto-refresh every 2 minutes
         this.startAutoRefresh();
+        
+        // Re-attach card click handlers after content loads
+        setTimeout(() => {
+            this.addCardClickHandlers();
+        }, 500);
         
         return true;
     }
@@ -149,7 +306,6 @@ class DashboardModule {
         
         try {
             // Get ALL resources for this student's program AND block
-            // NO time filter - show everything!
             const { data: resources, error } = await this.sb
                 .from('resources')
                 .select('id')
@@ -161,7 +317,6 @@ class DashboardModule {
                 this.metrics.resources = resources?.length || 0;
                 if (this.elements.newResources) {
                     this.elements.newResources.textContent = this.metrics.resources;
-                    // Add title attribute to show it's total resources
                     this.elements.newResources.title = `Total resources available: ${this.metrics.resources}`;
                 }
                 console.log(`✅ Resources loaded: ${this.metrics.resources} total`);
@@ -180,15 +335,12 @@ class DashboardModule {
                     if (this.elements.newResources) {
                         this.elements.newResources.textContent = this.metrics.resources;
                     }
-                    console.log(`✅ General resources loaded: ${this.metrics.resources}`);
                 }
             }
             
         } catch (error) {
             console.error('Resources error:', error);
-            if (this.elements.newResources) {
-                this.elements.newResources.textContent = '0';
-            }
+            if (this.elements.newResources) this.elements.newResources.textContent = '0';
         }
     }
     
@@ -203,7 +355,7 @@ class DashboardModule {
                 .eq('user_id', this.userId)
                 .single();
             
-            // Get approved units
+            // Get approved units from registrations
             const { data: registrations } = await this.sb
                 .from('student_unit_registrations')
                 .select('id')
@@ -213,11 +365,7 @@ class DashboardModule {
             const approved = registrations?.length || 0;
             const semester = student?.block || 'Current Semester';
             
-            this.metrics.examCard = { 
-                approved, 
-                eligible: approved > 0,
-                semester: semester
-            };
+            this.metrics.examCard = { approved, eligible: approved > 0, semester };
             this.updateExamCardUI();
             
         } catch (error) {
@@ -259,17 +407,6 @@ class DashboardModule {
                 this.updateNurseIQMetric(metrics);
                 return;
             }
-        }
-        
-        // Try from nurseiq module directly
-        if (window.nurseiqModule) {
-            let progress = 0, accuracy = 0, questions = 0;
-            if (window.nurseiqModule.getProgress) progress = window.nurseiqModule.getProgress();
-            if (window.nurseiqModule.getAccuracy) accuracy = window.nurseiqModule.getAccuracy();
-            if (window.nurseiqModule.getTotalQuestions) questions = window.nurseiqModule.getTotalQuestions();
-            
-            this.updateNurseIQMetric({ progress, accuracy, totalAnswered: questions });
-            return;
         }
         
         // Default values
@@ -333,24 +470,12 @@ class DashboardModule {
         }
     }
     
-    addCardClickHandlers() {
-        const cards = document.querySelectorAll('.stat-card');
-        cards.forEach(card => {
-            card.addEventListener('click', (e) => {
-                if (e.target.closest('button, a')) return;
-                const tab = card.getAttribute('data-tab');
-                if (tab && typeof window.showTab === 'function') {
-                    window.showTab(tab);
-                }
-            });
-        });
-    }
-    
     startLiveClock() {
-        if (this.elements.headerTime) {
+        const headerTime = document.getElementById('header-time');
+        if (headerTime) {
             const updateTime = () => {
                 const now = new Date();
-                this.elements.headerTime.textContent = now.toLocaleTimeString('en-US', { 
+                headerTime.textContent = now.toLocaleTimeString('en-US', { 
                     hour: '2-digit', 
                     minute: '2-digit',
                     hour12: true 
@@ -396,3 +521,5 @@ function initDashboardModule(supabaseClient) {
 window.DashboardModule = DashboardModule;
 window.initDashboardModule = initDashboardModule;
 window.refreshDashboard = () => dashboardModule?.refreshAll();
+
+console.log('✅ Dashboard module loaded - Cards are clickable!');
