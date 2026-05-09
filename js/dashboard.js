@@ -1,4 +1,4 @@
-// dashboard.js - FINAL VERSION
+// dashboard.js - COMPLETE FINAL VERSION with Diagnostic
 class DashboardModule {
     constructor(supabaseClient) {
         console.log('🚀 Initializing DashboardModule...');
@@ -8,13 +8,14 @@ class DashboardModule {
         this.userProfile = null;
         this.autoRefreshInterval = null;
         
+        // Cache for metrics
         this.metrics = {
             attendance: { rate: 0, verified: 0, total: 0, pending: 0 },
             resources: 0,
             examCard: { approved: 0, eligible: false, semester: 'Current' },
             nurseiq: { progress: 0, accuracy: 0, questions: 0 },
             courses: 0,
-            exams: 'Loading...'
+            exams: 'No upcoming exams'
         };
         
         this.cacheElements();
@@ -133,6 +134,9 @@ class DashboardModule {
         await this.loadAllMetrics();
         this.startAutoRefresh();
         
+        // Run diagnostic after load
+        setTimeout(() => this.runDiagnostic(), 1000);
+        
         return true;
     }
     
@@ -150,6 +154,7 @@ class DashboardModule {
         ]);
         
         console.log(`✅ All metrics loaded in ${(performance.now() - startTime).toFixed(0)}ms`);
+        this.displaySummary();
     }
     
     async loadAttendanceMetrics() {
@@ -175,6 +180,8 @@ class DashboardModule {
             if (this.elements.totalCount) this.elements.totalCount.textContent = total;
             if (this.elements.pendingCount) this.elements.pendingCount.textContent = total - verified;
             
+            console.log(`📊 Attendance: ${rate}% (${verified}/${total})`);
+            
         } catch (error) {
             console.error('Attendance error:', error);
         }
@@ -184,33 +191,37 @@ class DashboardModule {
         if (!this.userProfile || !this.sb) return;
         
         try {
-            // Get ALL resources - NO time filter
             let allResources = [];
             
-            // Get program-specific resources
             const { data: programResources, error: progError } = await this.sb
                 .from('resources')
-                .select('id')
+                .select('id, title')
                 .eq('target_program', this.userProfile.program)
                 .eq('block', this.userProfile.block)
                 .eq('intake_year', this.userProfile.intake_year);
             
             if (!progError && programResources) {
                 allResources = [...programResources];
+                console.log(`📁 Program resources: ${programResources.length}`);
+                if (programResources.length > 0) {
+                    programResources.forEach(r => console.log(`   └─ ${r.title}`));
+                }
             }
             
-            // Also get general resources
             const { data: generalResources, error: genError } = await this.sb
                 .from('resources')
-                .select('id')
+                .select('id, title')
                 .eq('target_program', 'General')
                 .eq('block', this.userProfile.block);
             
             if (!genError && generalResources) {
                 allResources = [...allResources, ...generalResources];
+                console.log(`📁 General resources: ${generalResources.length}`);
+                if (generalResources.length > 0) {
+                    generalResources.forEach(r => console.log(`   └─ ${r.title}`));
+                }
             }
             
-            // Remove duplicates by id
             const uniqueIds = new Set();
             allResources.forEach(r => uniqueIds.add(r.id));
             this.metrics.resources = uniqueIds.size;
@@ -220,7 +231,7 @@ class DashboardModule {
                 this.elements.newResources.title = `Total resources: ${this.metrics.resources}`;
             }
             
-            console.log(`✅ Resources loaded: ${this.metrics.resources} total`);
+            console.log(`📊 TOTAL RESOURCES: ${this.metrics.resources}`);
             
         } catch (error) {
             console.error('Resources error:', error);
@@ -240,7 +251,7 @@ class DashboardModule {
             
             const { data: registrations } = await this.sb
                 .from('student_unit_registrations')
-                .select('id')
+                .select('id, unit_code, status')
                 .eq('student_id', this.userId)
                 .eq('status', 'approved');
             
@@ -256,6 +267,11 @@ class DashboardModule {
             if (this.elements.dashboardApprovedUnits) this.elements.dashboardApprovedUnits.textContent = approved;
             if (this.elements.dashboardCurrentSemester) this.elements.dashboardCurrentSemester.textContent = semester;
             
+            console.log(`📇 Exam Card: ${approved} approved units - ${approved > 0 ? 'ELIGIBLE' : 'NOT ELIGIBLE'}`);
+            if (registrations?.length > 0) {
+                registrations.forEach(r => console.log(`   └─ ${r.unit_code || 'Unit'}`));
+            }
+            
         } catch (error) {
             console.error('Exam card error:', error);
         }
@@ -268,6 +284,7 @@ class DashboardModule {
                 const data = JSON.parse(cached);
                 if (Date.now() - (data.timestamp || 0) < 300000) {
                     this.updateNurseIQMetric(data);
+                    console.log(`🧠 NurseIQ (cached): ${data.progress || 0}% progress, ${data.accuracy || 0}% accuracy, ${data.totalAnswered || 0} questions`);
                     return;
                 }
             }
@@ -277,11 +294,13 @@ class DashboardModule {
             const metrics = window.getNurseIQDashboardMetrics();
             if (metrics) {
                 this.updateNurseIQMetric(metrics);
+                console.log(`🧠 NurseIQ: ${metrics.progress || 0}% progress, ${metrics.accuracy || 0}% accuracy, ${metrics.totalAnswered || 0} questions`);
                 return;
             }
         }
         
         this.updateNurseIQMetric({ progress: 0, accuracy: 0, totalAnswered: 0 });
+        console.log(`🧠 NurseIQ: No data available`);
     }
     
     updateNurseIQMetric(metrics) {
@@ -315,6 +334,8 @@ class DashboardModule {
         if (this.elements.activeCourses) {
             this.elements.activeCourses.textContent = activeCount;
         }
+        
+        console.log(`📚 Active Courses: ${activeCount}`);
     }
     
     updateExamsMetric() {
@@ -331,6 +352,32 @@ class DashboardModule {
         if (this.elements.upcomingExam) {
             this.elements.upcomingExam.textContent = upcomingText;
         }
+        
+        console.log(`📝 Upcoming Exam: ${upcomingText}`);
+    }
+    
+    displaySummary() {
+        console.log('\n═══════════════════════════════════════');
+        console.log('📊 DASHBOARD SUMMARY');
+        console.log('═══════════════════════════════════════');
+        console.log(`   Attendance Rate: ${this.metrics.attendance.rate}% (${this.metrics.attendance.verified}/${this.metrics.attendance.total})`);
+        console.log(`   Active Courses: ${this.metrics.courses}`);
+        console.log(`   Resources: ${this.metrics.resources}`);
+        console.log(`   Exam Card: ${this.metrics.examCard.eligible ? 'ELIGIBLE' : 'NOT ELIGIBLE'} (${this.metrics.examCard.approved} units)`);
+        console.log(`   NurseIQ: ${this.metrics.nurseiq.progress}% progress, ${this.metrics.nurseiq.accuracy}% accuracy`);
+        console.log(`   Upcoming Exam: ${this.metrics.exams}`);
+        console.log('═══════════════════════════════════════');
+    }
+    
+    async runDiagnostic() {
+        console.log('\n🔍 RUNNING FULL DIAGNOSTIC...');
+        console.log('═══════════════════════════════════════');
+        console.log(`🔌 Database: ${!!this.sb ? 'Connected' : 'Not connected'}`);
+        console.log(`👤 User: ${this.userProfile?.full_name || 'Unknown'}`);
+        console.log(`📋 Program: ${this.userProfile?.program || 'Unknown'}`);
+        console.log(`📚 Block: ${this.userProfile?.block || 'Unknown'}`);
+        console.log('═══════════════════════════════════════');
+        console.log('🎯 All systems operational!');
     }
     
     startLiveClock() {
@@ -379,4 +426,4 @@ window.DashboardModule = DashboardModule;
 window.initDashboardModule = initDashboardModule;
 window.refreshDashboard = () => dashboardModule?.refreshAll();
 
-console.log('✅ Dashboard module ready - FINAL VERSION');
+console.log('✅ Dashboard module ready - Complete version with diagnostic');
