@@ -1,4 +1,4 @@
-// dashboard.js - COMPLETE FINAL VERSION
+// dashboard.js - PERMANENT FIX - Auto updates without console
 class DashboardModule {
     constructor(supabaseClient) {
         console.log('🚀 Initializing DashboardModule...');
@@ -8,7 +8,6 @@ class DashboardModule {
         this.userProfile = null;
         this.autoRefreshInterval = null;
         
-        // Cache for metrics
         this.metrics = {
             attendance: { rate: 0, verified: 0, total: 0, pending: 0 },
             resources: 0,
@@ -53,12 +52,24 @@ class DashboardModule {
     }
     
     setupEventListeners() {
-        document.addEventListener('coursesModuleReady', () => this.updateCoursesMetric());
-        document.addEventListener('examsModuleReady', () => this.updateExamsMetric());
-        document.addEventListener('nurseiqMetricsUpdated', (e) => {
-            if (e.detail) this.updateNurseIQMetric(e.detail);
+        document.addEventListener('coursesModuleReady', () => {
+            this.updateCoursesMetric();
+            this.updateUIFromMetrics();
         });
-        document.addEventListener('attendanceCheckedIn', () => this.loadAttendanceMetrics());
+        document.addEventListener('examsModuleReady', () => {
+            this.updateExamsMetric();
+            this.updateUIFromMetrics();
+        });
+        document.addEventListener('nurseiqMetricsUpdated', (e) => {
+            if (e.detail) {
+                this.updateNurseIQMetric(e.detail);
+                this.updateUIFromMetrics();
+            }
+        });
+        document.addEventListener('attendanceCheckedIn', () => {
+            this.loadAttendanceMetrics();
+            this.updateUIFromMetrics();
+        });
         
         document.addEventListener('approvedUnitsLoaded', (e) => {
             if (e.detail && e.detail.count !== undefined) {
@@ -69,7 +80,6 @@ class DashboardModule {
                     const isEligible = e.detail.count > 0;
                     this.elements.dashboardExamStatus.textContent = isEligible ? 'ELIGIBLE' : 'NOT ELIGIBLE';
                     this.elements.dashboardExamStatus.style.color = isEligible ? '#059669' : '#dc2626';
-                    this.elements.dashboardExamStatus.classList.add(isEligible ? 'eligible' : 'not-eligible');
                 }
             }
         });
@@ -138,7 +148,7 @@ class DashboardModule {
             this.elements.welcomeHeader.textContent = `${greeting}, ${userProfile.full_name || 'Student'}!`;
         }
         
-        // Update Current Block card with profile data
+        // Update Current Block card immediately from profile
         this.updateCurrentBlockInfo();
         
         // Force dashboard to show
@@ -150,6 +160,9 @@ class DashboardModule {
         
         await this.loadAllMetrics();
         this.startAutoRefresh();
+        
+        // Final UI update after everything
+        this.updateUIFromMetrics();
         
         setTimeout(() => this.runDiagnostic(), 1000);
         
@@ -183,7 +196,7 @@ class DashboardModule {
             this.updateExamsMetric()
         ]);
         
-        // Force UI update after loading
+        // CRITICAL: Update UI after loading
         this.updateUIFromMetrics();
         
         console.log(`✅ All metrics loaded in ${(performance.now() - startTime).toFixed(0)}ms`);
@@ -227,7 +240,7 @@ class DashboardModule {
         // Update Current Block info from profile
         if (this.userProfile) {
             if (this.elements.dashboardCurrentBlockValue) {
-                this.elements.dashboardCurrentBlockValue.innerText = this.userProfile.block || this.userProfile.current_block || 'Introductory';
+                this.elements.dashboardCurrentBlockValue.innerText = this.userProfile.block || 'Introductory';
             }
             if (this.elements.dashboardProgramName) {
                 this.elements.dashboardProgramName.innerText = this.userProfile.program || 'KRCHN';
@@ -344,9 +357,6 @@ class DashboardModule {
             this.metrics.examCard = { approved, eligible: approved > 0, semester: this.userProfile?.block || 'Current' };
             
             console.log(`📇 Exam Card: ${approved} approved units - ${approved > 0 ? 'ELIGIBLE' : 'NOT ELIGIBLE'}`);
-            if (registrations?.length > 0) {
-                registrations.slice(0, 5).forEach(r => console.log(`   └─ ${r.unit_code || 'Unit'}`));
-            }
             
         } catch (error) {
             console.error('Exam card error:', error);
@@ -479,7 +489,6 @@ class DashboardModule {
     }
 }
 
-// Initialize dashboard module globally
 let dashboardModule = null;
 
 function initDashboardModule(supabaseClient) {
@@ -493,9 +502,8 @@ function initDashboardModule(supabaseClient) {
     return dashboardModule;
 }
 
-// Expose globally
 window.DashboardModule = DashboardModule;
 window.initDashboardModule = initDashboardModule;
 window.refreshDashboard = () => dashboardModule?.refreshAll();
 
-console.log('✅ Dashboard module ready - COMPLETE FINAL VERSION');
+console.log('✅ Dashboard module ready - PERMANENT FIX VERSION');
