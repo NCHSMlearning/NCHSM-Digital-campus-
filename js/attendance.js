@@ -1,4 +1,4 @@
-// enhanced-attendance.js - Complete Student Check-in System
+// enhanced-attendance.js - Complete Student Check-in System (FIXED)
 (function() {
     'use strict';
     
@@ -11,6 +11,9 @@
     const VERIFIED_DISTANCE = 100;       // 100m - Auto verified
     const PENDING_DISTANCE = 200;        // 200m - Needs review
     const MIN_GPS_ACCURACY = 50;         // 50m - Good accuracy
+    
+    // FIX: Allow check-in from ANY distance, just with appropriate status
+    const ALLOW_CHECKIN_ANY_DISTANCE = true;  // Changed to true
     
     // NCHSM Campus Coordinates (Nakuru)
     const CAMPUS_COORDINATES = {
@@ -362,8 +365,8 @@
             statusText = 'TOO FAR';
             bgColor = '#fee2e2';
             borderColor = '#ef4444';
-            willBeStatus = 'Absent';
-            feedbackMessage = `⚠️ You're too far! Distance: ${distanceDisplay}. Please move to the correct location.`;
+            willBeStatus = 'Absent (Distance Exceeded)';
+            feedbackMessage = `⚠️ You're too far! Distance: ${distanceDisplay}. Check-in will be recorded as ABSENT.`;
             playBeepSound('error');
         }
         
@@ -402,6 +405,7 @@
                     <div style="display: flex; justify-content: space-between; margin-top: 5px; font-size: 11px;">
                         <span style="color: #10b981;">✅ ${VERIFIED_DISTANCE}m (Auto)</span>
                         <span style="color: #f59e0b;">⚠️ ${PENDING_DISTANCE}m (Pending)</span>
+                        <span style="color: #ef4444;">❌ Any (Absent)</span>
                     </div>
                 </div>
                 
@@ -539,9 +543,12 @@
         const hasLocation = currentLocation !== null;
         const isAccurate = currentLocation ? currentLocation.accuracy <= MIN_GPS_ACCURACY : false;
         
+        // FIX: Allow check-in from ANY distance if ALLOW_CHECKIN_ANY_DISTANCE is true
+        // Only require basic prerequisites (session type, target, and location)
         let canCheckIn = hasSession && hasTarget && hasLocation;
         
-        if (canCheckIn && selectedTarget) {
+        // If not allowing any distance, check distance limits
+        if (!ALLOW_CHECKIN_ANY_DISTANCE && canCheckIn && selectedTarget) {
             const distance = calculateDistance(
                 currentLocation.latitude,
                 currentLocation.longitude,
@@ -553,12 +560,15 @@
         
         checkInButton.disabled = !canCheckIn;
         
+        // Update button styling and tooltip
         if (!canCheckIn) {
             if (!hasLocation) {
                 checkInButton.title = 'Waiting for GPS signal...';
+                checkInButton.style.opacity = '0.6';
             } else if (!hasSession || !hasTarget) {
                 checkInButton.title = 'Please select session type and target';
-            } else if (selectedTarget) {
+                checkInButton.style.opacity = '0.6';
+            } else if (!ALLOW_CHECKIN_ANY_DISTANCE && selectedTarget) {
                 const distance = calculateDistance(
                     currentLocation.latitude,
                     currentLocation.longitude,
@@ -567,8 +577,12 @@
                 );
                 if (distance > PENDING_DISTANCE) {
                     checkInButton.title = `You are ${distance.toFixed(0)}m away. Must be within ${PENDING_DISTANCE}m`;
+                    checkInButton.style.opacity = '0.6';
                 }
             }
+        } else {
+            checkInButton.title = 'Click to check in';
+            checkInButton.style.opacity = '1';
         }
     }
     
@@ -628,7 +642,7 @@
             selectedTarget.longitude
         );
         
-        // Show confirmation
+        // Show confirmation modal (always show, regardless of distance)
         const confirmed = await showConfirmationModal(distance);
         if (!confirmed) return;
         
@@ -639,6 +653,7 @@
             let isVerified = false;
             let attendanceStatus = 'Present';
             
+            // Determine status based on distance
             if (distance <= VERIFIED_DISTANCE) {
                 isVerified = true;
                 attendanceStatus = 'Present';
@@ -646,8 +661,13 @@
                 isVerified = false;
                 attendanceStatus = 'Pending';
             } else {
-                isVerified = false;
+                // FIX: Still allow check-in but mark as 'Absent' or 'Remote'
+                // Option 1: Mark as 'Absent'
                 attendanceStatus = 'Absent';
+                isVerified = false;
+                
+                // Option 2: Alternatively, you can use a custom status like 'Remote'
+                // attendanceStatus = 'Remote';
             }
             
             const supabaseClient = window.db?.supabase;
@@ -693,28 +713,37 @@
             
             const distanceDisplay = distance >= 1000 ? `${(distance/1000).toFixed(2)} km` : `${distance.toFixed(0)} m`;
             
-            if (isVerified) {
+            // Different messages based on status
+            if (attendanceStatus === 'Present') {
                 showToast(`✅ Check-in successful! Verified at ${selectedTarget.name}`, 'success');
                 speakFeedback(`Check-in successful! You are verified for ${selectedTarget.name}`);
                 playBeepSound('success');
             } else if (attendanceStatus === 'Pending') {
                 showToast(`⚠️ Check-in recorded! Pending review by lecturer`, 'warning');
-                speakFeedback(`Check-in recorded. Pending review`);
+                speakFeedback(`Check-in recorded. Pending review due to distance of ${distanceDisplay}`);
+                playBeepSound('warning');
+            } else if (attendanceStatus === 'Absent') {
+                showToast(`📝 Check-in recorded from ${distanceDisplay} away. Marked as ABSENT.`, 'info');
+                speakFeedback(`Check-in recorded from ${distanceDisplay} away. You will be marked absent. Please contact your lecturer.`);
+                playBeepSound('error');
             } else {
-                showToast(`❌ Check-in failed - Too far from location`, 'error');
-                speakFeedback(`Check-in failed. You are too far.`);
+                showToast(`📝 Check-in recorded from ${distanceDisplay} away.`, 'info');
+                speakFeedback(`Check-in recorded at ${distanceDisplay} from target.`);
             }
             
             await loadTodayAttendanceCount();
             await loadGeoAttendanceHistory('today');
             await loadAttendanceStreak();
             
-            // Reset form
-            sessionTypeSelect.value = '';
-            targetSelect.value = '';
-            selectedTarget = null;
-            handleSessionTypeChange();
-            document.getElementById('distance-status').style.display = 'none';
+            // Reset form (optional - comment out if you want to keep selections)
+            // sessionTypeSelect.value = '';
+            // targetSelect.value = '';
+            // selectedTarget = null;
+            // handleSessionTypeChange();
+            // document.getElementById('distance-status').style.display = 'none';
+            
+            // FIX: Instead of resetting, just update the button state
+            updateCheckInButton();
             
         } catch (error) {
             console.error('Check-in error:', error);
@@ -731,19 +760,23 @@
             let statusIcon = '';
             let statusColor = '';
             let statusMessage = '';
+            let warningText = '';
             
             if (distance <= VERIFIED_DISTANCE) {
                 statusIcon = '✅';
                 statusColor = '#10b981';
-                statusMessage = 'Will be AUTO-VERIFIED';
+                statusMessage = 'Will be AUTO-VERIFIED (Present)';
+                warningText = '';
             } else if (distance <= PENDING_DISTANCE) {
                 statusIcon = '⚠️';
                 statusColor = '#f59e0b';
                 statusMessage = 'Will be PENDING REVIEW';
+                warningText = '⚠️ Your check-in will require lecturer approval.';
             } else {
                 statusIcon = '❌';
                 statusColor = '#ef4444';
                 statusMessage = 'Will be marked ABSENT';
+                warningText = '⚠️ WARNING: You are far from the location! This check-in will be marked as ABSENT.';
             }
             
             const modalHTML = `
@@ -754,6 +787,7 @@
                             <h3 style="margin:0;">Confirm Check-in</h3>
                         </div>
                         <div style="padding:20px;">
+                            ${warningText ? `<div style="background:#fee2e2;border-left:4px solid #ef4444;padding:10px;margin-bottom:15px;border-radius:8px;color:#991b1b;">${warningText}</div>` : ''}
                             <div style="display:flex;flex-direction:column;gap:12px;">
                                 <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #e5e7eb;">
                                     <span><i class="fas fa-bullseye"></i> Target:</span>
@@ -775,7 +809,7 @@
                         </div>
                         <div style="padding:20px;display:flex;gap:10px;justify-content:flex-end;border-top:1px solid #e5e7eb;">
                             <button id="cancelCheckin" style="padding:10px 20px;border:none;border-radius:8px;cursor:pointer;background:#f3f4f6;color:#374151;">Cancel</button>
-                            <button id="confirmCheckin" style="padding:10px 20px;border:none;border-radius:8px;cursor:pointer;background:#10b981;color:white;">Confirm Check-in</button>
+                            <button id="confirmCheckin" style="padding:10px 20px;border:none;border-radius:8px;cursor:pointer;background:${statusColor};color:white;">Confirm Check-in</button>
                         </div>
                     </div>
                 </div>
@@ -860,9 +894,9 @@
             gap: 10px;
             z-index: 10001;
             transition: transform 0.3s ease;
-            border-left: 4px solid ${type === 'success' ? '#10b981' : (type === 'warning' ? '#f59e0b' : '#ef4444')};
+            border-left: 4px solid ${type === 'success' ? '#10b981' : (type === 'warning' ? '#f59e0b' : type === 'error' ? '#ef4444' : '#3b82f6')};
         `;
-        const icon = type === 'success' ? '✅' : (type === 'warning' ? '⚠️' : '❌');
+        const icon = type === 'success' ? '✅' : (type === 'warning' ? '⚠️' : (type === 'error' ? '❌' : 'ℹ️'));
         toast.innerHTML = `${icon} ${message}`;
         document.body.appendChild(toast);
         
@@ -1026,7 +1060,7 @@
                         <td style="padding: 12px; color: ${statusColor}; font-weight: 600;">${statusIcon} ${status}</td>
                         <td style="padding: 12px;">📍 ${distanceDisplay}</td>
                         <td style="padding: 12px;">🎯 ±${log.accuracy_m?.toFixed(0) || 'N/A'}m</td>
-                    </tr>
+                    </td>
                 `;
             });
         } catch (error) {
