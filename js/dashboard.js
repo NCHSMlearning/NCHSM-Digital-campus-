@@ -1,4 +1,4 @@
-// dashboard.js - COMPLETE FINAL VERSION WITH CLICKABLE CARDS
+// dashboard.js - FINAL VERSION
 class DashboardModule {
     constructor(supabaseClient) {
         console.log('🚀 Initializing DashboardModule...');
@@ -8,7 +8,6 @@ class DashboardModule {
         this.userProfile = null;
         this.autoRefreshInterval = null;
         
-        // Cache for metrics
         this.metrics = {
             attendance: { rate: 0, verified: 0, total: 0, pending: 0 },
             resources: 0,
@@ -48,7 +47,6 @@ class DashboardModule {
     }
     
     setupEventListeners() {
-        // Listen for module ready events
         document.addEventListener('coursesModuleReady', () => this.updateCoursesMetric());
         document.addEventListener('examsModuleReady', () => this.updateExamsMetric());
         document.addEventListener('nurseiqMetricsUpdated', (e) => {
@@ -56,10 +54,8 @@ class DashboardModule {
         });
         document.addEventListener('attendanceCheckedIn', () => this.loadAttendanceMetrics());
         
-        // Listen for approved units loaded from attendance module
         document.addEventListener('approvedUnitsLoaded', (e) => {
             if (e.detail && e.detail.count !== undefined) {
-                console.log(`📚 Approved units event received: ${e.detail.count} units`);
                 if (this.elements.dashboardApprovedUnits) {
                     this.elements.dashboardApprovedUnits.textContent = e.detail.count;
                 }
@@ -71,150 +67,47 @@ class DashboardModule {
             }
         });
         
-        // Refresh button
         if (this.elements.headerRefresh) {
             this.elements.headerRefresh.addEventListener('click', () => this.refreshAll());
         }
         
-        // Card click handlers - MAKE CARDS CLICKABLE
         this.addCardClickHandlers();
     }
     
     addCardClickHandlers() {
-        // Map card data-tab to actual tab IDs
         const tabMapping = {
             'attendance': 'attendance',
             'cats': 'cats',
             'hub-courses': 'hub-courses',
-            'courses': 'hub-courses',
             'resources': 'resources',
             'nurseiq': 'nurseiq',
-            'hub-exam-card': 'hub-exam-card',
-            'exam-card': 'hub-exam-card'
+            'hub-exam-card': 'hub-exam-card'
         };
         
-        // Get all stat cards
         const cards = document.querySelectorAll('.stat-card');
-        console.log(`🎯 Setting up ${cards.length} clickable cards`);
         
         cards.forEach(card => {
-            // Remove any existing listeners
             const newCard = card.cloneNode(true);
             card.parentNode.replaceChild(newCard, card);
             
-            // Get the tab to navigate to
             let tabToOpen = newCard.getAttribute('data-tab');
+            if (newCard.classList.contains('nurseiq-card')) tabToOpen = 'nurseiq';
+            if (newCard.classList.contains('examcard-card')) tabToOpen = 'hub-exam-card';
             
-            // Special handling for NurseIQ card
-            if (newCard.classList.contains('nurseiq-card')) {
-                tabToOpen = 'nurseiq';
-            }
-            
-            // Special handling for Exam Card
-            if (newCard.classList.contains('examcard-card')) {
-                tabToOpen = 'hub-exam-card';
-            }
-            
-            // Map to correct tab ID
             const finalTab = tabMapping[tabToOpen] || tabToOpen;
             
-            // Add click event
             newCard.addEventListener('click', (e) => {
-                // Don't trigger if clicking on interactive elements
-                if (e.target.closest('button') || e.target.closest('a')) {
-                    return;
-                }
-                
-                console.log(`🖱️ Card clicked: ${tabToOpen} -> navigating to: ${finalTab}`);
-                
-                // Add visual feedback
-                newCard.style.transform = 'scale(0.98)';
-                setTimeout(() => {
-                    newCard.style.transform = '';
-                }, 150);
-                
-                // Navigate to the tab
+                if (e.target.closest('button') || e.target.closest('a')) return;
                 if (typeof window.showTab === 'function') {
                     window.showTab(finalTab);
-                } else {
-                    // Fallback navigation
-                    this.switchToTab(finalTab);
                 }
             });
             
-            // Add hover effects
             newCard.style.cursor = 'pointer';
             newCard.style.transition = 'all 0.2s ease';
         });
         
-        console.log('✅ All cards are now clickable!');
-    }
-    
-    switchToTab(tabName) {
-        console.log(`🔄 Switching to tab: ${tabName}`);
-        
-        // Hide all tab contents
-        document.querySelectorAll('.tab-content').forEach(tab => {
-            tab.style.display = 'none';
-            tab.classList.remove('active');
-        });
-        
-        // Show selected tab
-        const targetTab = document.getElementById(tabName);
-        if (targetTab) {
-            targetTab.style.display = 'block';
-            targetTab.classList.add('active');
-        }
-        
-        // Update active state in navigation
-        document.querySelectorAll('.nav a, .dropdown-submenu a').forEach(link => {
-            link.classList.remove('active');
-            if (link.getAttribute('data-tab') === tabName) {
-                link.classList.add('active');
-            }
-        });
-        
-        // Special handling for Learning Hub modules
-        if (tabName === 'hub-courses' || tabName === 'hub-register' || 
-            tabName === 'hub-online-learning' || tabName === 'hub-exam-card') {
-            
-            const learningHub = document.getElementById('learning-hub');
-            if (learningHub) {
-                learningHub.style.display = 'block';
-                learningHub.classList.add('active');
-            }
-            
-            // Hide all hub modules
-            const modules = ['hub-courses', 'hub-register', 'hub-online-learning', 'hub-exam-card'];
-            modules.forEach(id => {
-                const mod = document.getElementById(id);
-                if (mod) mod.style.display = 'none';
-            });
-            
-            // Show selected module
-            const selected = document.getElementById(tabName);
-            if (selected) selected.style.display = 'block';
-        }
-        
-        // Save current tab
-        localStorage.setItem('nchsm_current_tab', tabName);
-        
-        // Load module-specific data
-        setTimeout(() => {
-            if (tabName === 'attendance' && window.loadAttendanceData) {
-                window.loadAttendanceData();
-            } else if (tabName === 'hub-courses' && window.coursesModule?.loadCourses) {
-                window.coursesModule.loadCourses();
-            } else if (tabName === 'hub-exam-card' && window.examCardModule?.loadExamCard) {
-                window.examCardModule.loadExamCard();
-            } else if (tabName === 'nurseiq' && window.nurseiqModule?.loadCourses) {
-                window.nurseiqModule.loadCourses();
-            } else if (tabName === 'resources' && window.resourcesModule?.loadAllResources) {
-                window.resourcesModule.loadAllResources();
-            } else if (tabName === 'cats' && window.examsModule?.loadExams) {
-                window.examsModule.loadExams();
-            }
-        }, 100);
+        console.log('✅ All cards clickable');
     }
     
     async initialize(userId, userProfile) {
@@ -225,7 +118,6 @@ class DashboardModule {
         
         if (!userId || !userProfile) return false;
         
-        // Update user info
         if (this.elements.headerUserName && userProfile.full_name) {
             this.elements.headerUserName.textContent = userProfile.full_name;
         }
@@ -238,16 +130,8 @@ class DashboardModule {
             this.elements.welcomeHeader.textContent = `${greeting}, ${userProfile.full_name || 'Student'}!`;
         }
         
-        // Load all metrics in parallel
         await this.loadAllMetrics();
-        
-        // Start auto-refresh every 2 minutes
         this.startAutoRefresh();
-        
-        // Re-attach card click handlers after content loads
-        setTimeout(() => {
-            this.addCardClickHandlers();
-        }, 500);
         
         return true;
     }
@@ -256,7 +140,6 @@ class DashboardModule {
         console.log('📊 Loading all dashboard metrics...');
         const startTime = performance.now();
         
-        // Run all in parallel
         await Promise.allSettled([
             this.loadAttendanceMetrics(),
             this.loadResourcesMetrics(),
@@ -286,57 +169,58 @@ class DashboardModule {
             const rate = total > 0 ? Math.round((verified / total) * 100) : 0;
             
             this.metrics.attendance = { rate, verified, total, pending: total - verified };
-            this.updateAttendanceUI();
+            
+            if (this.elements.attendanceRate) this.elements.attendanceRate.textContent = `${rate}%`;
+            if (this.elements.verifiedCount) this.elements.verifiedCount.textContent = verified;
+            if (this.elements.totalCount) this.elements.totalCount.textContent = total;
+            if (this.elements.pendingCount) this.elements.pendingCount.textContent = total - verified;
             
         } catch (error) {
             console.error('Attendance error:', error);
         }
     }
     
-    updateAttendanceUI() {
-        const a = this.metrics.attendance;
-        if (this.elements.attendanceRate) this.elements.attendanceRate.textContent = `${a.rate}%`;
-        if (this.elements.verifiedCount) this.elements.verifiedCount.textContent = a.verified;
-        if (this.elements.totalCount) this.elements.totalCount.textContent = a.total;
-        if (this.elements.pendingCount) this.elements.pendingCount.textContent = a.pending;
-    }
-    
     async loadResourcesMetrics() {
         if (!this.userProfile || !this.sb) return;
         
         try {
-            // Get ALL resources for this student's program AND block
-            const { data: resources, error } = await this.sb
+            // Get ALL resources - NO time filter
+            let allResources = [];
+            
+            // Get program-specific resources
+            const { data: programResources, error: progError } = await this.sb
                 .from('resources')
                 .select('id')
                 .eq('target_program', this.userProfile.program)
                 .eq('block', this.userProfile.block)
                 .eq('intake_year', this.userProfile.intake_year);
             
-            if (!error) {
-                this.metrics.resources = resources?.length || 0;
-                if (this.elements.newResources) {
-                    this.elements.newResources.textContent = this.metrics.resources;
-                    this.elements.newResources.title = `Total resources available: ${this.metrics.resources}`;
-                }
-                console.log(`✅ Resources loaded: ${this.metrics.resources} total`);
+            if (!progError && programResources) {
+                allResources = [...programResources];
             }
             
-            // Also try to get general resources if no program-specific ones
-            if (this.metrics.resources === 0) {
-                const { data: generalResources } = await this.sb
-                    .from('resources')
-                    .select('id')
-                    .eq('target_program', 'General')
-                    .eq('block', this.userProfile.block);
-                
-                if (generalResources && generalResources.length > 0) {
-                    this.metrics.resources = generalResources.length;
-                    if (this.elements.newResources) {
-                        this.elements.newResources.textContent = this.metrics.resources;
-                    }
-                }
+            // Also get general resources
+            const { data: generalResources, error: genError } = await this.sb
+                .from('resources')
+                .select('id')
+                .eq('target_program', 'General')
+                .eq('block', this.userProfile.block);
+            
+            if (!genError && generalResources) {
+                allResources = [...allResources, ...generalResources];
             }
+            
+            // Remove duplicates by id
+            const uniqueIds = new Set();
+            allResources.forEach(r => uniqueIds.add(r.id));
+            this.metrics.resources = uniqueIds.size;
+            
+            if (this.elements.newResources) {
+                this.elements.newResources.textContent = this.metrics.resources;
+                this.elements.newResources.title = `Total resources: ${this.metrics.resources}`;
+            }
+            
+            console.log(`✅ Resources loaded: ${this.metrics.resources} total`);
             
         } catch (error) {
             console.error('Resources error:', error);
@@ -348,14 +232,12 @@ class DashboardModule {
         if (!this.userId || !this.sb) return;
         
         try {
-            // Get student block
             const { data: student } = await this.sb
                 .from('consolidated_user_profiles_table')
                 .select('block')
                 .eq('user_id', this.userId)
                 .single();
             
-            // Get approved units from registrations
             const { data: registrations } = await this.sb
                 .from('student_unit_registrations')
                 .select('id')
@@ -366,29 +248,20 @@ class DashboardModule {
             const semester = student?.block || 'Current Semester';
             
             this.metrics.examCard = { approved, eligible: approved > 0, semester };
-            this.updateExamCardUI();
+            
+            if (this.elements.dashboardExamStatus) {
+                this.elements.dashboardExamStatus.textContent = approved > 0 ? 'ELIGIBLE' : 'NOT ELIGIBLE';
+                this.elements.dashboardExamStatus.style.color = approved > 0 ? '#059669' : '#dc2626';
+            }
+            if (this.elements.dashboardApprovedUnits) this.elements.dashboardApprovedUnits.textContent = approved;
+            if (this.elements.dashboardCurrentSemester) this.elements.dashboardCurrentSemester.textContent = semester;
             
         } catch (error) {
             console.error('Exam card error:', error);
         }
     }
     
-    updateExamCardUI() {
-        const e = this.metrics.examCard;
-        if (this.elements.dashboardExamStatus) {
-            this.elements.dashboardExamStatus.textContent = e.eligible ? 'ELIGIBLE' : 'NOT ELIGIBLE';
-            this.elements.dashboardExamStatus.style.color = e.eligible ? '#059669' : '#dc2626';
-        }
-        if (this.elements.dashboardApprovedUnits) {
-            this.elements.dashboardApprovedUnits.textContent = e.approved;
-        }
-        if (this.elements.dashboardCurrentSemester) {
-            this.elements.dashboardCurrentSemester.textContent = e.semester;
-        }
-    }
-    
     async loadNurseIQMetrics() {
-        // Try to get from localStorage first (fastest)
         try {
             const cached = localStorage.getItem('nurseiq_dashboard_metrics');
             if (cached) {
@@ -400,7 +273,6 @@ class DashboardModule {
             }
         } catch (e) {}
         
-        // Try from global function
         if (typeof window.getNurseIQDashboardMetrics === 'function') {
             const metrics = window.getNurseIQDashboardMetrics();
             if (metrics) {
@@ -409,26 +281,20 @@ class DashboardModule {
             }
         }
         
-        // Default values
         this.updateNurseIQMetric({ progress: 0, accuracy: 0, totalAnswered: 0 });
     }
     
     updateNurseIQMetric(metrics) {
         if (!metrics) return;
-        this.metrics.nurseiq = {
-            progress: metrics.progress || 0,
-            accuracy: metrics.accuracy || 0,
-            questions: metrics.totalAnswered || 0
-        };
         
         if (this.elements.nurseiqProgress) {
-            this.elements.nurseiqProgress.textContent = `${this.metrics.nurseiq.progress}%`;
+            this.elements.nurseiqProgress.textContent = `${metrics.progress || 0}%`;
         }
         if (this.elements.nurseiqAccuracy) {
-            this.elements.nurseiqAccuracy.textContent = `${this.metrics.nurseiq.accuracy}%`;
+            this.elements.nurseiqAccuracy.textContent = `${metrics.accuracy || 0}%`;
         }
         if (this.elements.nurseiqQuestions) {
-            this.elements.nurseiqQuestions.textContent = this.metrics.nurseiq.questions;
+            this.elements.nurseiqQuestions.textContent = metrics.totalAnswered || 0;
         }
     }
     
@@ -459,9 +325,6 @@ class DashboardModule {
             if (metrics && metrics.upcomingExam) {
                 upcomingText = metrics.upcomingExam;
             }
-        } else if (window.examsModule && window.examsModule.getUpcomingExam) {
-            const exam = window.examsModule.getUpcomingExam();
-            if (exam) upcomingText = exam.name || 'Upcoming exam';
         }
         
         this.metrics.exams = upcomingText;
@@ -474,8 +337,7 @@ class DashboardModule {
         const headerTime = document.getElementById('header-time');
         if (headerTime) {
             const updateTime = () => {
-                const now = new Date();
-                headerTime.textContent = now.toLocaleTimeString('en-US', { 
+                headerTime.textContent = new Date().toLocaleTimeString('en-US', { 
                     hour: '2-digit', 
                     minute: '2-digit',
                     hour12: true 
@@ -494,7 +356,7 @@ class DashboardModule {
                 console.log('🔄 Auto-refreshing dashboard...');
                 this.loadAllMetrics();
             }
-        }, 120000); // Refresh every 2 minutes
+        }, 120000);
     }
     
     async refreshAll() {
@@ -503,23 +365,18 @@ class DashboardModule {
     }
 }
 
-// Initialize dashboard module globally
 let dashboardModule = null;
 
 function initDashboardModule(supabaseClient) {
     const client = supabaseClient || window.sb || window.db?.supabase;
-    if (!client) {
-        console.error('❌ No Supabase client for dashboard');
-        return null;
-    }
+    if (!client) return null;
     
     dashboardModule = new DashboardModule(client);
     return dashboardModule;
 }
 
-// Expose globally
 window.DashboardModule = DashboardModule;
 window.initDashboardModule = initDashboardModule;
 window.refreshDashboard = () => dashboardModule?.refreshAll();
 
-console.log('✅ Dashboard module loaded - Cards are clickable!');
+console.log('✅ Dashboard module ready - FINAL VERSION');
