@@ -35,15 +35,14 @@
         
         cacheElements() {
             this.activeCoursesGrid = document.getElementById('active-courses-grid');
-            this.activeCountEl = document.getElementById('active-courses-count');
-            this.completedCountEl = document.getElementById('completed-courses-count');
-            this.totalCreditsEl = document.getElementById('total-credits');
             this.completedTable = document.getElementById('completed-courses-table');
             this.programIndicator = document.getElementById('courses-program-indicator');
             this.refreshBtn = document.getElementById('refresh-courses-btn');
             this.viewAllBtn = document.getElementById('view-all-courses');
             this.viewActiveBtn = document.getElementById('view-active-only');
             this.viewCompletedBtn = document.getElementById('view-completed-only');
+            
+            console.log('✅ Courses module elements cached');
         }
         
         setupLoginListeners() {
@@ -195,7 +194,7 @@
                     throw new Error('Database connection or student ID not available');
                 }
                 
-                // Get ALL approved units (no block filter)
+                // Get ALL approved units
                 let query = supabase
                     .from('student_unit_registrations')
                     .select('*')
@@ -211,11 +210,11 @@
                 
                 console.log(`✅ Found ${this.approvedUnits.length} approved units`);
                 
-                // Display the approved units
-                this.displayActiveCourses();
-                
-                // Update all stats
+                // Update stats FIRST (uses direct DOM access)
                 this.updateStats();
+                
+                // Then display the courses
+                this.displayActiveCourses();
                 
                 this.loaded = true;
                 this.dispatchModuleReadyEvent();
@@ -231,30 +230,38 @@
             }
         }
         
-        // NEW: Update statistics (Active Courses, Completed, Credits Earned)
+        // FIXED: Direct DOM access for stats
         updateStats() {
             console.log('📊 Updating course module statistics...');
             
             // Calculate total credits
             let totalCredits = 0;
             for (const unit of this.approvedUnits) {
-                // If credits field exists, use it; otherwise default to 3
                 totalCredits += unit.credits || 3;
             }
             
-            // Update Active Courses count
-            if (this.activeCountEl) {
-                this.activeCountEl.textContent = this.approvedUnits.length;
+            // DIRECT DOM ACCESS - This works every time
+            const activeCountElement = document.getElementById('active-courses-count');
+            const completedCountElement = document.getElementById('completed-courses-count');
+            const totalCreditsElement = document.getElementById('total-credits');
+            const activeCountTextElement = document.getElementById('active-count');
+            
+            if (activeCountElement) {
+                activeCountElement.innerText = this.approvedUnits.length;
+                console.log(`   Updated active count to: ${this.approvedUnits.length}`);
             }
             
-            // Update Completed Courses count (0 for now - will implement later)
-            if (this.completedCountEl) {
-                this.completedCountEl.textContent = '0';
+            if (completedCountElement) {
+                completedCountElement.innerText = '0';
             }
             
-            // Update Total Credits Earned
-            if (this.totalCreditsEl) {
-                this.totalCreditsEl.textContent = totalCredits;
+            if (totalCreditsElement) {
+                totalCreditsElement.innerText = totalCredits;
+                console.log(`   Updated credits to: ${totalCredits}`);
+            }
+            
+            if (activeCountTextElement) {
+                activeCountTextElement.innerText = this.approvedUnits.length + ' courses';
             }
             
             console.log(`📊 Stats updated: ${this.approvedUnits.length} active courses, ${totalCredits} credits`);
@@ -334,7 +341,6 @@
         }
         
         showCompletedCourses() {
-            // For now, just show message since no completed courses
             if (this.activeCoursesGrid) {
                 this.activeCoursesGrid.innerHTML = `
                     <div class="empty-state">
@@ -363,16 +369,11 @@
             if (this.programIndicator) {
                 const badgeClass = this.isTVETStudent ? 'badge-tvet' : 'badge-krchn';
                 const icon = this.isTVETStudent ? 'fa-tools' : 'fa-graduation-cap';
-                const blockTermText = this.isTVETStudent ? `Term: ${this.userTerm}` : `Block: ${this.userBlock}`;
                 
                 this.programIndicator.innerHTML = `
                     <span class="badge ${badgeClass}">
                         <i class="fas ${icon}"></i>
                         ${this.programCode} Program
-                        <span class="ms-2">${blockTermText}</span>
-                        <small class="ms-2 opacity-75">
-                            (${this.approvedUnits.length} approved units)
-                        </small>
                     </span>
                 `;
             }
