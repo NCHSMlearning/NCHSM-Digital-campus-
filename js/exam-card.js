@@ -168,7 +168,7 @@
                 
                 // Try to find by student_id field first (from users table)
                 let { data: userData, error: userError } = await supabase
-                    .from('users')
+                    .from('consolidated_user_profiles_table')
                     .select('id')
                     .eq('student_id', this.userProfile?.student_id)
                     .maybeSingle();
