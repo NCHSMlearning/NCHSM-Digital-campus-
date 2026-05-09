@@ -1,4 +1,4 @@
-// dashboard.js - PERMANENT FIX - Auto updates without console
+// dashboard.js - COMPLETE WORKING VERSION
 class DashboardModule {
     constructor(supabaseClient) {
         console.log('🚀 Initializing DashboardModule...');
@@ -148,10 +148,8 @@ class DashboardModule {
             this.elements.welcomeHeader.textContent = `${greeting}, ${userProfile.full_name || 'Student'}!`;
         }
         
-        // Update Current Block card immediately from profile
         this.updateCurrentBlockInfo();
         
-        // Force dashboard to show
         const dashboard = document.getElementById('dashboard');
         if (dashboard) {
             dashboard.style.display = 'block';
@@ -160,8 +158,6 @@ class DashboardModule {
         
         await this.loadAllMetrics();
         this.startAutoRefresh();
-        
-        // Final UI update after everything
         this.updateUIFromMetrics();
         
         setTimeout(() => this.runDiagnostic(), 1000);
@@ -172,15 +168,14 @@ class DashboardModule {
     updateCurrentBlockInfo() {
         if (!this.userProfile) return;
         
-        if (this.elements.dashboardCurrentBlockValue) {
-            this.elements.dashboardCurrentBlockValue.innerText = this.userProfile.block || this.userProfile.current_block || 'Introductory';
-        }
-        if (this.elements.dashboardProgramName) {
-            this.elements.dashboardProgramName.innerText = this.userProfile.program || 'KRCHN';
-        }
-        if (this.elements.dashboardIntakeYear) {
-            this.elements.dashboardIntakeYear.innerText = this.userProfile.intake_year || new Date().getFullYear();
-        }
+        const blockEl = document.getElementById('dashboard-current-block-value');
+        if (blockEl) blockEl.innerText = this.userProfile.block || this.userProfile.current_block || 'Introductory';
+        
+        const programEl = document.getElementById('dashboard-program-name');
+        if (programEl) programEl.innerText = this.userProfile.program || 'KRCHN';
+        
+        const intakeEl = document.getElementById('dashboard-intake-year');
+        if (intakeEl) intakeEl.innerText = this.userProfile.intake_year || new Date().getFullYear();
     }
     
     async loadAllMetrics() {
@@ -196,7 +191,6 @@ class DashboardModule {
             this.updateExamsMetric()
         ]);
         
-        // CRITICAL: Update UI after loading
         this.updateUIFromMetrics();
         
         console.log(`✅ All metrics loaded in ${(performance.now() - startTime).toFixed(0)}ms`);
@@ -206,69 +200,65 @@ class DashboardModule {
     updateUIFromMetrics() {
         console.log('🎨 Updating UI from metrics...');
         
-        // Update attendance UI
-        if (this.elements.attendanceRate) {
-            this.elements.attendanceRate.innerText = this.metrics.attendance.rate + '%';
-        }
-        if (this.elements.verifiedCount) {
-            this.elements.verifiedCount.innerText = this.metrics.attendance.verified;
-        }
-        if (this.elements.totalCount) {
-            this.elements.totalCount.innerText = this.metrics.attendance.total;
-        }
-        if (this.elements.pendingCount) {
-            this.elements.pendingCount.innerText = this.metrics.attendance.pending;
-        }
+        const m = this.metrics;
+        
+        // Update attendance - DIRECT DOM access
+        const rateEl = document.getElementById('dashboard-attendance-rate');
+        if (rateEl) rateEl.innerText = m.attendance.rate + '%';
+        
+        const verifiedEl = document.getElementById('dashboard-verified-count');
+        if (verifiedEl) verifiedEl.innerText = m.attendance.verified;
+        
+        const totalEl = document.getElementById('dashboard-total-count');
+        if (totalEl) totalEl.innerText = m.attendance.total;
+        
+        const pendingEl = document.getElementById('dashboard-pending-count');
+        if (pendingEl) pendingEl.innerText = m.attendance.pending;
         
         // Update courses
-        if (this.elements.activeCourses) {
-            this.elements.activeCourses.innerText = this.metrics.courses;
-        }
+        const coursesEl = document.getElementById('dashboard-active-courses');
+        if (coursesEl) coursesEl.innerText = m.courses;
         
         // Update exam card with colors
-        if (this.elements.dashboardExamStatus) {
-            const isEligible = this.metrics.examCard.eligible;
-            this.elements.dashboardExamStatus.innerText = isEligible ? 'ELIGIBLE' : 'NOT ELIGIBLE';
-            this.elements.dashboardExamStatus.style.color = isEligible ? '#059669' : '#dc2626';
-            this.elements.dashboardExamStatus.style.fontWeight = 'bold';
-            this.elements.dashboardExamStatus.style.fontSize = '1.1rem';
-        }
-        if (this.elements.dashboardApprovedUnits) {
-            this.elements.dashboardApprovedUnits.innerText = this.metrics.examCard.approved;
+        const examStatusEl = document.getElementById('dashboard-exam-status');
+        if (examStatusEl) {
+            examStatusEl.innerText = m.examCard.eligible ? 'ELIGIBLE' : 'NOT ELIGIBLE';
+            examStatusEl.style.color = m.examCard.eligible ? '#059669' : '#dc2626';
+            examStatusEl.style.fontWeight = 'bold';
+            examStatusEl.style.fontSize = '1.1rem';
         }
         
-        // Update Current Block info from profile
-        if (this.userProfile) {
-            if (this.elements.dashboardCurrentBlockValue) {
-                this.elements.dashboardCurrentBlockValue.innerText = this.userProfile.block || 'Introductory';
-            }
-            if (this.elements.dashboardProgramName) {
-                this.elements.dashboardProgramName.innerText = this.userProfile.program || 'KRCHN';
-            }
-            if (this.elements.dashboardIntakeYear) {
-                this.elements.dashboardIntakeYear.innerText = this.userProfile.intake_year || new Date().getFullYear();
-            }
-        }
+        const approvedEl = document.getElementById('dashboard-approved-units');
+        if (approvedEl) approvedEl.innerText = m.examCard.approved;
         
         // Update NurseIQ
-        if (this.elements.nurseiqProgress) {
-            this.elements.nurseiqProgress.innerText = this.metrics.nurseiq.progress + '%';
-        }
-        if (this.elements.nurseiqAccuracy) {
-            this.elements.nurseiqAccuracy.innerText = this.metrics.nurseiq.accuracy + '%';
-        }
-        if (this.elements.nurseiqQuestions) {
-            this.elements.nurseiqQuestions.innerText = this.metrics.nurseiq.questions;
-        }
+        const nurseiqEl = document.getElementById('dashboard-nurseiq-progress');
+        if (nurseiqEl) nurseiqEl.innerText = m.nurseiq.progress + '%';
+        
+        const accuracyEl = document.getElementById('dashboard-nurseiq-accuracy');
+        if (accuracyEl) accuracyEl.innerText = m.nurseiq.accuracy + '%';
+        
+        const questionsEl = document.getElementById('dashboard-nurseiq-questions');
+        if (questionsEl) questionsEl.innerText = m.nurseiq.questions;
         
         // Update resources
-        if (this.elements.newResources) {
-            this.elements.newResources.innerText = this.metrics.resources;
-        }
+        const resourcesEl = document.getElementById('dashboard-new-resources');
+        if (resourcesEl) resourcesEl.innerText = m.resources;
         
         // Update upcoming exam
-        if (this.elements.upcomingExam) {
-            this.elements.upcomingExam.innerText = this.metrics.exams;
+        const upcomingEl = document.getElementById('dashboard-upcoming-exam');
+        if (upcomingEl) upcomingEl.innerText = m.exams;
+        
+        // Update current block from profile
+        if (this.userProfile) {
+            const blockEl = document.getElementById('dashboard-current-block-value');
+            if (blockEl) blockEl.innerText = this.userProfile.block || 'Introductory';
+            
+            const programEl = document.getElementById('dashboard-program-name');
+            if (programEl) programEl.innerText = this.userProfile.program || 'KRCHN';
+            
+            const intakeEl = document.getElementById('dashboard-intake-year');
+            if (intakeEl) intakeEl.innerText = this.userProfile.intake_year || new Date().getFullYear();
         }
         
         console.log('✅ UI update complete');
@@ -281,8 +271,7 @@ class DashboardModule {
             const { data: logs, error } = await this.sb
                 .from('geo_attendance_logs')
                 .select('is_verified')
-                .eq('student_id', this.userId)
-                .limit(500);
+                .eq('student_id', this.userId);
             
             if (error) throw error;
             
@@ -307,10 +296,9 @@ class DashboardModule {
             
             const { data: programResources, error: progError } = await this.sb
                 .from('resources')
-                .select('id, title')
+                .select('id')
                 .eq('target_program', this.userProfile.program)
-                .eq('block', this.userProfile.block)
-                .eq('intake_year', this.userProfile.intake_year);
+                .eq('block', this.userProfile.block);
             
             if (!progError && programResources) {
                 allResources = [...programResources];
@@ -319,7 +307,7 @@ class DashboardModule {
             
             const { data: generalResources, error: genError } = await this.sb
                 .from('resources')
-                .select('id, title')
+                .select('id')
                 .eq('target_program', 'General')
                 .eq('block', this.userProfile.block);
             
@@ -344,17 +332,16 @@ class DashboardModule {
         if (!this.userId || !this.sb) return;
         
         try {
-            const { data: registrations, error: regError } = await this.sb
+            const { data: registrations, error } = await this.sb
                 .from('student_unit_registrations')
-                .select('id, unit_code, status')
+                .select('id')
                 .eq('student_id', this.userId)
                 .eq('status', 'approved');
             
-            if (regError) throw regError;
+            if (error) throw error;
             
             const approved = registrations?.length || 0;
-            
-            this.metrics.examCard = { approved, eligible: approved > 0, semester: this.userProfile?.block || 'Current' };
+            this.metrics.examCard = { approved, eligible: approved > 0 };
             
             console.log(`📇 Exam Card: ${approved} approved units - ${approved > 0 ? 'ELIGIBLE' : 'NOT ELIGIBLE'}`);
             
@@ -397,24 +384,27 @@ class DashboardModule {
         };
     }
     
-    updateCoursesMetric() {
-        let activeCount = 0;
+    async updateCoursesMetric() {
+        if (!this.userId || !this.sb) return;
         
-        if (window.coursesModule) {
-            if (window.coursesModule.getActiveCourseCount) {
-                activeCount = window.coursesModule.getActiveCourseCount();
-            } else if (window.coursesModule.courses) {
-                activeCount = window.coursesModule.courses.filter(c => 
-                    !c.status || !c.status.includes('Completed')
-                ).length;
-            }
+        try {
+            const { data: registrations, error } = await this.sb
+                .from('student_unit_registrations')
+                .select('id')
+                .eq('student_id', this.userId)
+                .eq('status', 'approved');
+            
+            const count = registrations?.length || 0;
+            this.metrics.courses = count;
+            
+            console.log(`📚 Active Courses: ${count}`);
+            
+        } catch (error) {
+            console.error('Courses error:', error);
         }
-        
-        this.metrics.courses = activeCount;
-        console.log(`📚 Active Courses: ${activeCount}`);
     }
     
-    updateExamsMetric() {
+    async updateExamsMetric() {
         let upcomingText = 'No upcoming exams';
         
         if (typeof window.getExamsDashboardMetrics === 'function') {
@@ -506,4 +496,4 @@ window.DashboardModule = DashboardModule;
 window.initDashboardModule = initDashboardModule;
 window.refreshDashboard = () => dashboardModule?.refreshAll();
 
-console.log('✅ Dashboard module ready - PERMANENT FIX VERSION');
+console.log('✅ Dashboard module ready - COMPLETE WORKING VERSION');
