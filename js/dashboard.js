@@ -1,4 +1,4 @@
-// dashboard.js - COMPLETE FINAL VERSION
+// dashboard.js - COMPLETE FINAL VERSION with Current Block Support
 class DashboardModule {
     constructor(supabaseClient) {
         console.log('🚀 Initializing DashboardModule...');
@@ -37,7 +37,10 @@ class DashboardModule {
             newResources: document.getElementById('dashboard-new-resources'),
             dashboardExamStatus: document.getElementById('dashboard-exam-status'),
             dashboardApprovedUnits: document.getElementById('dashboard-approved-units'),
-            dashboardCurrentSemester: document.getElementById('dashboard-current-semester'),
+            // New Current Block elements
+            dashboardCurrentBlockValue: document.getElementById('dashboard-current-block-value'),
+            dashboardProgramName: document.getElementById('dashboard-program-name'),
+            dashboardIntakeYear: document.getElementById('dashboard-intake-year'),
             nurseiqProgress: document.getElementById('dashboard-nurseiq-progress'),
             nurseiqAccuracy: document.getElementById('dashboard-nurseiq-accuracy'),
             nurseiqQuestions: document.getElementById('dashboard-nurseiq-questions'),
@@ -47,14 +50,8 @@ class DashboardModule {
         };
         
         // Debug: Log which elements were found
-        console.log('🔍 Elements found:');
-        Object.keys(this.elements).forEach(key => {
-            if (this.elements[key]) {
-                console.log(`   ✅ ${key}`);
-            } else {
-                console.warn(`   ❌ ${key} - element not found`);
-            }
-        });
+        const foundCount = Object.keys(this.elements).filter(key => this.elements[key]).length;
+        console.log(`🔍 Elements found: ${foundCount}/${Object.keys(this.elements).length}`);
     }
     
     setupEventListeners() {
@@ -92,7 +89,8 @@ class DashboardModule {
             'hub-courses': 'hub-courses',
             'resources': 'resources',
             'nurseiq': 'nurseiq',
-            'hub-exam-card': 'hub-exam-card'
+            'hub-exam-card': 'hub-exam-card',
+            'profile': 'profile'
         };
         
         const cards = document.querySelectorAll('.stat-card');
@@ -141,6 +139,9 @@ class DashboardModule {
             this.elements.welcomeHeader.textContent = `${greeting}, ${userProfile.full_name || 'Student'}!`;
         }
         
+        // Update Current Block card with profile data
+        this.updateCurrentBlockInfo();
+        
         // Force dashboard to show
         const dashboard = document.getElementById('dashboard');
         if (dashboard) {
@@ -155,6 +156,20 @@ class DashboardModule {
         setTimeout(() => this.runDiagnostic(), 1000);
         
         return true;
+    }
+    
+    updateCurrentBlockInfo() {
+        if (!this.userProfile) return;
+        
+        if (this.elements.dashboardCurrentBlockValue) {
+            this.elements.dashboardCurrentBlockValue.innerText = this.userProfile.block || this.userProfile.current_block || 'Introductory';
+        }
+        if (this.elements.dashboardProgramName) {
+            this.elements.dashboardProgramName.innerText = this.userProfile.program || 'KRCHN';
+        }
+        if (this.elements.dashboardIntakeYear) {
+            this.elements.dashboardIntakeYear.innerText = this.userProfile.intake_year || new Date().getFullYear();
+        }
     }
     
     async loadAllMetrics() {
@@ -207,8 +222,18 @@ class DashboardModule {
         if (this.elements.dashboardApprovedUnits) {
             this.elements.dashboardApprovedUnits.innerText = this.metrics.examCard.approved;
         }
-        if (this.elements.dashboardCurrentSemester) {
-            this.elements.dashboardCurrentSemester.innerText = this.metrics.examCard.semester;
+        
+        // Update Current Block info from profile
+        if (this.userProfile) {
+            if (this.elements.dashboardCurrentBlockValue) {
+                this.elements.dashboardCurrentBlockValue.innerText = this.userProfile.block || this.userProfile.current_block || 'Introductory';
+            }
+            if (this.elements.dashboardProgramName) {
+                this.elements.dashboardProgramName.innerText = this.userProfile.program || 'KRCHN';
+            }
+            if (this.elements.dashboardIntakeYear) {
+                this.elements.dashboardIntakeYear.innerText = this.userProfile.intake_year || new Date().getFullYear();
+            }
         }
         
         // Update NurseIQ
@@ -276,9 +301,6 @@ class DashboardModule {
             if (!progError && programResources) {
                 allResources = [...programResources];
                 console.log(`📁 Program resources: ${programResources.length}`);
-                if (programResources.length > 0) {
-                    programResources.forEach(r => console.log(`   └─ ${r.title}`));
-                }
             }
             
             const { data: generalResources, error: genError } = await this.sb
@@ -290,9 +312,6 @@ class DashboardModule {
             if (!genError && generalResources) {
                 allResources = [...allResources, ...generalResources];
                 console.log(`📁 General resources: ${generalResources.length}`);
-                if (generalResources.length > 0) {
-                    generalResources.forEach(r => console.log(`   └─ ${r.title}`));
-                }
             }
             
             const uniqueIds = new Set();
@@ -311,12 +330,6 @@ class DashboardModule {
         if (!this.userId || !this.sb) return;
         
         try {
-            const { data: student } = await this.sb
-                .from('consolidated_user_profiles_table')
-                .select('block')
-                .eq('user_id', this.userId)
-                .single();
-            
             const { data: registrations, error: regError } = await this.sb
                 .from('student_unit_registrations')
                 .select('id, unit_code, status')
@@ -326,13 +339,12 @@ class DashboardModule {
             if (regError) throw regError;
             
             const approved = registrations?.length || 0;
-            const semester = student?.block || 'Current Semester';
             
-            this.metrics.examCard = { approved, eligible: approved > 0, semester };
+            this.metrics.examCard = { approved, eligible: approved > 0, semester: this.userProfile?.block || 'Current' };
             
             console.log(`📇 Exam Card: ${approved} approved units - ${approved > 0 ? 'ELIGIBLE' : 'NOT ELIGIBLE'}`);
             if (registrations?.length > 0) {
-                registrations.forEach(r => console.log(`   └─ ${r.unit_code || 'Unit'}`));
+                registrations.slice(0, 5).forEach(r => console.log(`   └─ ${r.unit_code || 'Unit'}`));
             }
             
         } catch (error) {
@@ -347,7 +359,7 @@ class DashboardModule {
                 const data = JSON.parse(cached);
                 if (Date.now() - (data.timestamp || 0) < 300000) {
                     this.updateNurseIQMetric(data);
-                    console.log(`🧠 NurseIQ (cached): ${data.progress || 0}% progress, ${data.accuracy || 0}% accuracy, ${data.totalAnswered || 0} questions`);
+                    console.log(`🧠 NurseIQ (cached): ${data.progress || 0}% progress`);
                     return;
                 }
             }
@@ -357,13 +369,12 @@ class DashboardModule {
             const metrics = window.getNurseIQDashboardMetrics();
             if (metrics) {
                 this.updateNurseIQMetric(metrics);
-                console.log(`🧠 NurseIQ: ${metrics.progress || 0}% progress, ${metrics.accuracy || 0}% accuracy, ${metrics.totalAnswered || 0} questions`);
+                console.log(`🧠 NurseIQ: ${metrics.progress || 0}% progress`);
                 return;
             }
         }
         
         this.updateNurseIQMetric({ progress: 0, accuracy: 0, totalAnswered: 0 });
-        console.log(`🧠 NurseIQ: No data available`);
     }
     
     updateNurseIQMetric(metrics) {
@@ -416,6 +427,10 @@ class DashboardModule {
         console.log(`   Exam Card: ${this.metrics.examCard.eligible ? 'ELIGIBLE' : 'NOT ELIGIBLE'} (${this.metrics.examCard.approved} units)`);
         console.log(`   NurseIQ: ${this.metrics.nurseiq.progress}% progress, ${this.metrics.nurseiq.accuracy}% accuracy`);
         console.log(`   Upcoming Exam: ${this.metrics.exams}`);
+        if (this.userProfile) {
+            console.log(`   Current Block: ${this.userProfile.block || 'Introductory'}`);
+            console.log(`   Program: ${this.userProfile.program || 'KRCHN'}`);
+        }
         console.log('═══════════════════════════════════════');
     }
     
@@ -426,6 +441,7 @@ class DashboardModule {
         console.log(`👤 User: ${this.userProfile?.full_name || 'Unknown'}`);
         console.log(`📋 Program: ${this.userProfile?.program || 'Unknown'}`);
         console.log(`📚 Block: ${this.userProfile?.block || 'Unknown'}`);
+        console.log(`📅 Intake: ${this.userProfile?.intake_year || 'Unknown'}`);
         console.log('═══════════════════════════════════════');
         console.log('🎯 All systems operational!');
     }
@@ -481,4 +497,4 @@ window.DashboardModule = DashboardModule;
 window.initDashboardModule = initDashboardModule;
 window.refreshDashboard = () => dashboardModule?.refreshAll();
 
-console.log('✅ Dashboard module ready - COMPLETE FINAL VERSION');
+console.log('✅ Dashboard module ready - COMPLETE FINAL VERSION with Current Block support');
