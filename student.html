@@ -905,6 +905,77 @@
         initializeApp();
     });
     </script>
+<!-- FORCE UI UPDATE - FIXES DASHBOARD DISPLAY -->
+<script>
+(function forceUIUpdate() {
+    let attempts = 0;
+    const maxAttempts = 30;
+    
+    function updateUI() {
+        attempts++;
+        
+        if (window.dashboardModule && window.dashboardModule.metrics) {
+            const m = window.dashboardModule.metrics;
+            
+            // Check if UI already has data
+            const rateEl = document.getElementById('dashboard-attendance-rate');
+            if (rateEl && rateEl.innerText === '--%') {
+                console.log('🔄 Updating dashboard UI...');
+                
+                // Update attendance
+                document.getElementById('dashboard-attendance-rate').innerText = m.attendance.rate + '%';
+                document.getElementById('dashboard-verified-count').innerText = m.attendance.verified;
+                document.getElementById('dashboard-total-count').innerText = m.attendance.total;
+                document.getElementById('dashboard-pending-count').innerText = m.attendance.pending;
+                
+                // Update courses
+                document.getElementById('dashboard-active-courses').innerText = m.courses;
+                
+                // Update exam card
+                document.getElementById('dashboard-exam-status').innerText = m.examCard.eligible ? 'ELIGIBLE' : 'NOT ELIGIBLE';
+                document.getElementById('dashboard-exam-status').style.color = m.examCard.eligible ? '#059669' : '#dc2626';
+                document.getElementById('dashboard-approved-units').innerText = m.examCard.approved;
+                
+                // Update NurseIQ
+                document.getElementById('dashboard-nurseiq-progress').innerText = m.nurseiq.progress + '%';
+                document.getElementById('dashboard-nurseiq-accuracy').innerText = m.nurseiq.accuracy + '%';
+                document.getElementById('dashboard-nurseiq-questions').innerText = m.nurseiq.questions;
+                
+                // Update upcoming exam
+                document.getElementById('dashboard-upcoming-exam').innerText = m.exams || 'No upcoming exams';
+                
+                // Update current block from profile
+                if (window.currentUserProfile) {
+                    document.getElementById('dashboard-current-block-value').innerText = window.currentUserProfile.block || 'Block 4';
+                    document.getElementById('dashboard-program-name').innerText = window.currentUserProfile.program || 'KRCHN';
+                    document.getElementById('dashboard-intake-year').innerText = window.currentUserProfile.intake_year || '2024';
+                }
+                
+                console.log('✅ Dashboard UI updated!');
+                return true;
+            }
+        }
+        
+        if (attempts < maxAttempts) {
+            setTimeout(updateUI, 200);
+        } else {
+            console.log('⚠️ Could not update dashboard UI after 30 attempts');
+        }
+        return false;
+    }
+    
+    // Start after page loads
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(updateUI, 500);
+        });
+    } else {
+        setTimeout(updateUI, 500);
+    }
+})();
+</script>
 
+</body>
+</html>
 </body>
 </html>
