@@ -1,4 +1,4 @@
-// js/exam-card.js - Fixed to work with your existing table structure
+// js/exam-card.js - COMPLETELY FIXED
 
 (function() {
     'use strict';
@@ -163,25 +163,27 @@
             }
             
             try {
-                // First, get the student's ID from the users table if needed
-                let studentId = this.userId;
+                // Get the actual user ID from consolidated_user_profiles_table
+                let actualUserId = this.userId;
+                let studentIdValue = this.userProfile?.student_id;
                 
-                // Try to find by student_id field first (from users table)
-                let { data: userData, error: userError } = await supabase
-                    .from('consolidated_user_profiles_table')
-                    .select('id')
-                    .eq('student_id', this.userProfile?.student_id)
-                    .maybeSingle();
-                
-                if (userError) {
-                    console.log('📇 User lookup error:', userError);
+                // If we have a student_id, try to look up by that
+                if (studentIdValue) {
+                    const { data: userData, error: userError } = await supabase
+                        .from('consolidated_user_profiles_table')
+                        .select('user_id')
+                        .eq('student_id', studentIdValue)
+                        .maybeSingle();
+                    
+                    if (!userError && userData?.user_id) {
+                        actualUserId = userData.user_id;
+                        console.log('📇 Found user by student_id:', actualUserId);
+                    }
                 }
-                
-                const actualUserId = userData?.id || studentId;
                 
                 console.log('📇 Looking for approved units with student_id:', actualUserId);
                 
-                // Query approved unit registrations - using the same fields as unit-registration.js
+                // Query approved unit registrations
                 const { data, error } = await supabase
                     .from('student_unit_registrations')
                     .select('*')
@@ -215,10 +217,16 @@
             
             if (this.dashboardExamStatus) {
                 this.dashboardExamStatus.textContent = isEligible ? 'ELIGIBLE' : 'NOT ELIGIBLE';
+                this.dashboardExamStatus.style.color = isEligible ? '#059669' : '#dc2626';
             }
             if (this.dashboardApprovedUnits) {
                 this.dashboardApprovedUnits.textContent = approvedCount;
             }
+            
+            // Also dispatch event for dashboard
+            document.dispatchEvent(new CustomEvent('approvedUnitsLoaded', {
+                detail: { units: this.approvedUnits, count: approvedCount }
+            }));
         }
         
         displayExamCard() {
@@ -245,7 +253,7 @@
                             <div class="header-text">
                                 <h2>NAKURU COLLEGE OF HEALTH SCIENCES AND MANAGEMENT</h2>
                                 <p class="exam-title">EXAMINATION CARD</p>
-                                <p class="exam-period">${examPeriod}</p>
+                                <p class="exam-period">${this.escapeHtml(examPeriod)}</p>
                             </div>
                             <div class="badge-area">
                                 <span class="block-badge">${this.escapeHtml(currentBlock)}</span>
@@ -302,8 +310,8 @@
                 `;
                 
                 approvedUnits.forEach((unit, index) => {
-                    const unitName = this.escapeHtml(unit.unit_name || '');
-                    const unitCode = this.escapeHtml(unit.unit_code || '');
+                    const unitName = this.escapeHtml(unit.unit_name || unit.name || '');
+                    const unitCode = this.escapeHtml(unit.unit_code || unit.code || '');
                     const credits = unit.credits || 3;
                     
                     html += `
@@ -543,5 +551,5 @@
     window.printExamCard = () => window.examCardModule?.printExamCard();
     window.refreshExamCard = () => window.examCardModule?.refresh();
     
-    console.log('✅ Exam Card module ready');
+    console.log('✅ Exam Card module ready - Fixed with consolidated_user_profiles_table');
 })();
