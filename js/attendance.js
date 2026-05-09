@@ -1,4 +1,4 @@
-// enhanced-attendance.js - Complete Student Check-in System (NO VOICE)
+// enhanced-attendance.js - Complete Student Check-in System (Auto-load History)
 (function() {
     'use strict';
     
@@ -31,6 +31,7 @@
     let locationWatchId = null;
     let selectedTarget = null;
     let liveTrackingInterval = null;
+    let historyLoaded = false; // Track if history has been loaded
     
     // ============================================
     // INITIALIZATION
@@ -892,7 +893,7 @@
     }
     
     // ============================================
-    // LOAD HISTORY
+    // LOAD HISTORY - FIXED TO AUTO-LOAD
     // ============================================
     
     async function loadTodayAttendanceCount() {
@@ -921,9 +922,15 @@
     
     async function loadGeoAttendanceHistory(filter = 'today') {
         const tableBody = document.getElementById('geo-attendance-history');
-        if (!tableBody || !attendanceUserId) return;
+        if (!tableBody || !attendanceUserId) {
+            console.log('History table or user ID not ready yet');
+            return;
+        }
         
-        tableBody.innerHTML = '<tr><td colspan="6"><div class="loading-spinner"></div> Loading...</td></tr>';
+        console.log('Loading attendance history with filter:', filter);
+        
+        // Show loading state
+        tableBody.innerHTML = '<tr><td colspan="6"><div class="loading-spinner"></div> Loading attendance history...</td></tr>';
         
         try {
             const supabaseClient = window.db?.supabase;
@@ -940,12 +947,15 @@
             if (filter === 'today') {
                 const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
                 query = query.gte('check_in_time', today.toISOString());
+                console.log('Filtering for today:', today.toISOString());
             } else if (filter === 'week') {
                 const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
                 query = query.gte('check_in_time', weekAgo.toISOString());
+                console.log('Filtering for last week');
             } else if (filter === 'month') {
                 const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
                 query = query.gte('check_in_time', monthAgo.toISOString());
+                console.log('Filtering for last month');
             }
             
             const { data: logs, error } = await query;
@@ -954,9 +964,12 @@
             tableBody.innerHTML = '';
             
             if (!logs || logs.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="6" class="text-center">No check-in history found</td</tr>';
+                tableBody.innerHTML = '<tr><td colspan="6" class="text-center" style="text-align:center;padding:20px;">📭 No check-in history found</td></tr>';
+                console.log('No history records found');
                 return;
             }
+            
+            console.log(`Found ${logs.length} history records`);
             
             logs.forEach(log => {
                 const time = new Date(log.check_in_time);
@@ -979,9 +992,12 @@
                     </tr>
                 `;
             });
+            
+            historyLoaded = true;
+            
         } catch (error) {
             console.error('Error loading history:', error);
-            tableBody.innerHTML = '<tr><td colspan="6" style="color:red;">Error loading history</td</tr>';
+            tableBody.innerHTML = '<tr><td colspan="6" style="color:red;text-align:center;padding:20px;">❌ Error loading history: ' + error.message + '</td></tr>';
         }
     }
     
@@ -996,20 +1012,31 @@
             
             if (!attendanceUserProfile || !attendanceUserId) {
                 console.log('Waiting for user data...');
+                // Retry after 1 second if not ready
+                setTimeout(() => {
+                    if (!attendanceUserProfile || !attendanceUserId) {
+                        console.log('Retrying to load user data...');
+                        loadAttendanceData();
+                    }
+                }, 1000);
                 return;
             }
             
             console.log('👤 User:', attendanceUserProfile.full_name);
             console.log('📋 Program:', attendanceUserProfile.program);
+            console.log('🆔 User ID:', attendanceUserId);
             
             await Promise.all([
                 loadApprovedUnits(),
                 loadClinicalLocations()
             ]);
             
+            // Auto-load all data without requiring check-in
             await loadTodayAttendanceCount();
-            await loadGeoAttendanceHistory('today');
+            await loadGeoAttendanceHistory('today'); // This will now auto-load
             await loadAttendanceStreak();
+            
+            console.log('✅ All attendance data loaded successfully');
             
         } catch (error) {
             console.error('Error loading attendance data:', error);
@@ -1035,6 +1062,16 @@
         if (selectedTab) selectedTab.style.display = 'block';
         const activeNav = document.querySelector(`.nav a[data-tab="${tabName}"]`);
         if (activeNav) activeNav.classList.add('active');
+        
+        // Auto-load history when attendance tab is opened
+        if (tabName === 'attendance' && attendanceUserId && !historyLoaded) {
+            console.log('Attendance tab opened, loading history...');
+            loadGeoAttendanceHistory(document.getElementById('history-filter')?.value || 'today');
+        } else if (tabName === 'attendance' && attendanceUserId) {
+            // Refresh history even if already loaded (to show latest)
+            console.log('Attendance tab opened, refreshing history...');
+            loadGeoAttendanceHistory(document.getElementById('history-filter')?.value || 'today');
+        }
     }
     
     function isOnAttendanceTab() {
@@ -1063,7 +1100,15 @@
             attendanceTab.addEventListener('click', async (e) => {
                 e.preventDefault();
                 switchToTab('attendance');
-                await loadAttendanceData();
+                if (!attendanceUserId) {
+                    await loadAttendanceData();
+                } else {
+                    // Refresh history when tab is clicked
+                    const currentFilter = historyFilter?.value || 'today';
+                    await loadGeoAttendanceHistory(currentFilter);
+                    await loadTodayAttendanceCount();
+                    await loadAttendanceStreak();
+                }
                 startLocationMonitoring();
             });
         }
@@ -1080,11 +1125,17 @@
         }
         
         if (historyFilter) {
-            historyFilter.addEventListener('change', () => loadGeoAttendanceHistory(historyFilter.value));
+            historyFilter.addEventListener('change', () => {
+                loadGeoAttendanceHistory(historyFilter.value);
+            });
         }
         
         if (refreshHistoryBtn) {
-            refreshHistoryBtn.addEventListener('click', () => loadGeoAttendanceHistory(historyFilter?.value || 'today'));
+            refreshHistoryBtn.addEventListener('click', () => {
+                const currentFilter = historyFilter?.value || 'today';
+                showToast('Refreshing history...', 'info');
+                loadGeoAttendanceHistory(currentFilter);
+            });
         }
         
         updateTimeDisplay();
@@ -1093,8 +1144,16 @@
         
         startLocationMonitoring();
         
+        // Auto-load data when page loads
+        loadAttendanceData();
+        
+        // If attendance tab is active on load, load history immediately
         if (isOnAttendanceTab()) {
-            loadAttendanceData();
+            setTimeout(() => {
+                if (attendanceUserId) {
+                    loadGeoAttendanceHistory('today');
+                }
+            }, 500);
         }
     }
     
@@ -1119,6 +1178,20 @@
         .fulfilled { color: #10b981; }
         .progress-container {
             margin-top: 10px;
+        }
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #e5e7eb;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
     `;
     document.head.appendChild(style);
