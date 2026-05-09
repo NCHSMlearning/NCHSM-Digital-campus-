@@ -836,7 +836,20 @@
             
             if (typeof initUI === 'function') initUI();
             if (typeof initProfileModule === 'function') setTimeout(() => initProfileModule(), 100);
-            if (typeof initDashboardModule === 'function') setTimeout(() => initDashboardModule(window.db.supabase), 200);
+           if (typeof initDashboardModule === 'function') {
+    setTimeout(() => {
+        window.dashboardModule = initDashboardModule(window.db.supabase);
+        if (window.dashboardModule && window.currentUserId && window.currentUserProfile) {
+            window.dashboardModule.initialize(window.currentUserId, window.currentUserProfile);
+        }
+        // Force dashboard visible
+        const dash = document.getElementById('dashboard');
+        if (dash) {
+            dash.style.display = 'block';
+            dash.classList.add('active');
+        }
+    }, 200);
+}
             
             window.app.isInitialized = true;
             window.app.supabase = window.db.supabase;
