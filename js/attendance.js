@@ -1,4 +1,4 @@
-// enhanced-attendance.js - Complete Student Check-in System (FIXED)
+// enhanced-attendance.js - Complete Student Check-in System (NO VOICE)
 (function() {
     'use strict';
     
@@ -12,8 +12,8 @@
     const PENDING_DISTANCE = 200;        // 200m - Needs review
     const MIN_GPS_ACCURACY = 50;         // 50m - Good accuracy
     
-    // FIX: Allow check-in from ANY distance, just with appropriate status
-    const ALLOW_CHECKIN_ANY_DISTANCE = true;  // Changed to true
+    // Allow check-in from ANY distance
+    const ALLOW_CHECKIN_ANY_DISTANCE = true;
     
     // NCHSM Campus Coordinates (Nakuru)
     const CAMPUS_COORDINATES = {
@@ -30,8 +30,6 @@
     let currentLocation = null;
     let locationWatchId = null;
     let selectedTarget = null;
-    let audioEnabled = true;
-    let audioContext = null;
     let liveTrackingInterval = null;
     
     // ============================================
@@ -351,7 +349,6 @@
             borderColor = '#10b981';
             willBeStatus = 'Present (Auto-Verified)';
             feedbackMessage = `🎉 Perfect! You're at the correct location. Distance: ${distanceDisplay}`;
-            playBeepSound('success');
         } else if (distance <= PENDING_DISTANCE) {
             statusIcon = '⚠️';
             statusText = 'PENDING REVIEW';
@@ -359,7 +356,6 @@
             borderColor = '#f59e0b';
             willBeStatus = 'Pending (Lecturer Review)';
             feedbackMessage = `📍 You're near the location. Distance: ${distanceDisplay}. Move closer for auto-verification.`;
-            playBeepSound('warning');
         } else {
             statusIcon = '❌';
             statusText = 'TOO FAR';
@@ -367,7 +363,6 @@
             borderColor = '#ef4444';
             willBeStatus = 'Absent (Distance Exceeded)';
             feedbackMessage = `⚠️ You're too far! Distance: ${distanceDisplay}. Check-in will be recorded as ABSENT.`;
-            playBeepSound('error');
         }
         
         const sessionType = document.getElementById('session-type')?.value;
@@ -497,7 +492,6 @@
                     radius: parseInt(parts[5]) || VERIFIED_DISTANCE
                 };
                 updateLiveDistanceMeter();
-                speakFeedback(`Selected ${selectedTarget.name}`);
             } else {
                 selectedTarget = null;
                 document.getElementById('distance-status').style.display = 'none';
@@ -543,8 +537,7 @@
         const hasLocation = currentLocation !== null;
         const isAccurate = currentLocation ? currentLocation.accuracy <= MIN_GPS_ACCURACY : false;
         
-        // FIX: Allow check-in from ANY distance if ALLOW_CHECKIN_ANY_DISTANCE is true
-        // Only require basic prerequisites (session type, target, and location)
+        // Allow check-in from ANY distance
         let canCheckIn = hasSession && hasTarget && hasLocation;
         
         // If not allowing any distance, check distance limits
@@ -568,17 +561,6 @@
             } else if (!hasSession || !hasTarget) {
                 checkInButton.title = 'Please select session type and target';
                 checkInButton.style.opacity = '0.6';
-            } else if (!ALLOW_CHECKIN_ANY_DISTANCE && selectedTarget) {
-                const distance = calculateDistance(
-                    currentLocation.latitude,
-                    currentLocation.longitude,
-                    selectedTarget.latitude,
-                    selectedTarget.longitude
-                );
-                if (distance > PENDING_DISTANCE) {
-                    checkInButton.title = `You are ${distance.toFixed(0)}m away. Must be within ${PENDING_DISTANCE}m`;
-                    checkInButton.style.opacity = '0.6';
-                }
             }
         } else {
             checkInButton.title = 'Click to check in';
@@ -642,7 +624,7 @@
             selectedTarget.longitude
         );
         
-        // Show confirmation modal (always show, regardless of distance)
+        // Show confirmation modal
         const confirmed = await showConfirmationModal(distance);
         if (!confirmed) return;
         
@@ -661,13 +643,8 @@
                 isVerified = false;
                 attendanceStatus = 'Pending';
             } else {
-                // FIX: Still allow check-in but mark as 'Absent' or 'Remote'
-                // Option 1: Mark as 'Absent'
                 attendanceStatus = 'Absent';
                 isVerified = false;
-                
-                // Option 2: Alternatively, you can use a custom status like 'Remote'
-                // attendanceStatus = 'Remote';
             }
             
             const supabaseClient = window.db?.supabase;
@@ -716,33 +693,17 @@
             // Different messages based on status
             if (attendanceStatus === 'Present') {
                 showToast(`✅ Check-in successful! Verified at ${selectedTarget.name}`, 'success');
-                speakFeedback(`Check-in successful! You are verified for ${selectedTarget.name}`);
-                playBeepSound('success');
             } else if (attendanceStatus === 'Pending') {
                 showToast(`⚠️ Check-in recorded! Pending review by lecturer`, 'warning');
-                speakFeedback(`Check-in recorded. Pending review due to distance of ${distanceDisplay}`);
-                playBeepSound('warning');
             } else if (attendanceStatus === 'Absent') {
                 showToast(`📝 Check-in recorded from ${distanceDisplay} away. Marked as ABSENT.`, 'info');
-                speakFeedback(`Check-in recorded from ${distanceDisplay} away. You will be marked absent. Please contact your lecturer.`);
-                playBeepSound('error');
-            } else {
-                showToast(`📝 Check-in recorded from ${distanceDisplay} away.`, 'info');
-                speakFeedback(`Check-in recorded at ${distanceDisplay} from target.`);
             }
             
             await loadTodayAttendanceCount();
             await loadGeoAttendanceHistory('today');
             await loadAttendanceStreak();
             
-            // Reset form (optional - comment out if you want to keep selections)
-            // sessionTypeSelect.value = '';
-            // targetSelect.value = '';
-            // selectedTarget = null;
-            // handleSessionTypeChange();
-            // document.getElementById('distance-status').style.display = 'none';
-            
-            // FIX: Instead of resetting, just update the button state
+            // Update button state
             updateCheckInButton();
             
         } catch (error) {
@@ -830,53 +791,8 @@
     }
     
     // ============================================
-    // AUDIO FEEDBACK
+    // TOAST NOTIFICATIONS
     // ============================================
-    
-    function speakFeedback(message) {
-        if (!audioEnabled) return;
-        if ('speechSynthesis' in window) {
-            window.speechSynthesis.cancel();
-            const utterance = new SpeechSynthesisUtterance(message);
-            utterance.rate = 0.9;
-            utterance.pitch = 1.1;
-            utterance.volume = 0.8;
-            window.speechSynthesis.speak(utterance);
-        }
-    }
-    
-    function playBeepSound(type) {
-        if (!audioEnabled) return;
-        try {
-            if (!audioContext) {
-                audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            }
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-            oscillator.type = 'sine';
-            
-            if (type === 'success') {
-                oscillator.frequency.value = 880;
-                gainNode.gain.value = 0.3;
-                oscillator.start();
-                setTimeout(() => oscillator.stop(), 200);
-            } else if (type === 'warning') {
-                oscillator.frequency.value = 660;
-                gainNode.gain.value = 0.2;
-                oscillator.start();
-                setTimeout(() => oscillator.stop(), 150);
-            } else if (type === 'error') {
-                oscillator.frequency.value = 440;
-                gainNode.gain.value = 0.2;
-                oscillator.start();
-                setTimeout(() => oscillator.stop(), 100);
-            }
-        } catch (e) {
-            console.log('Audio not supported');
-        }
-    }
     
     function showToast(message, type = 'info') {
         const toast = document.createElement('div');
@@ -1038,7 +954,7 @@
             tableBody.innerHTML = '';
             
             if (!logs || logs.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="6" class="text-center">No check-in history found</td></tr>';
+                tableBody.innerHTML = '<tr><td colspan="6" class="text-center">No check-in history found</td</tr>';
                 return;
             }
             
@@ -1060,12 +976,12 @@
                         <td style="padding: 12px; color: ${statusColor}; font-weight: 600;">${statusIcon} ${status}</td>
                         <td style="padding: 12px;">📍 ${distanceDisplay}</td>
                         <td style="padding: 12px;">🎯 ±${log.accuracy_m?.toFixed(0) || 'N/A'}m</td>
-                    </td>
+                    </tr>
                 `;
             });
         } catch (error) {
             console.error('Error loading history:', error);
-            tableBody.innerHTML = '<tr><td colspan="6" style="color:red;">Error loading history</td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="6" style="color:red;">Error loading history</td</tr>';
         }
     }
     
@@ -1141,22 +1057,6 @@
             const streakContainer = document.createElement('div');
             streakContainer.id = 'attendance-streak-container';
             attendanceStats.insertAdjacentElement('afterend', streakContainer);
-        }
-        
-        // Add voice toggle button
-        const checkInAction = document.querySelector('.check-in-action');
-        if (checkInAction && !document.querySelector('.voice-toggle-btn')) {
-            const voiceBtn = document.createElement('button');
-            voiceBtn.id = 'toggleVoiceBtn';
-            voiceBtn.className = 'btn-voice';
-            voiceBtn.style.cssText = 'margin-top:10px;background:#f3f4f6;border:1px solid #e5e7eb;padding:8px 12px;border-radius:20px;cursor:pointer;width:100%;';
-            voiceBtn.innerHTML = '<i class="fas fa-volume-up"></i> Voice Feedback ON';
-            voiceBtn.onclick = () => {
-                audioEnabled = !audioEnabled;
-                voiceBtn.innerHTML = `<i class="fas fa-volume-${audioEnabled ? 'up' : 'mute'}"></i> Voice Feedback ${audioEnabled ? 'ON' : 'OFF'}`;
-                speakFeedback(`Voice feedback ${audioEnabled ? 'enabled' : 'disabled'}`);
-            };
-            checkInAction.appendChild(voiceBtn);
         }
         
         if (attendanceTab) {
