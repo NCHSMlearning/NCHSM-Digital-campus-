@@ -108,6 +108,30 @@ function getCurrentUserId() {
     return window.db?.currentUserId || window.currentUserId;
 }
 
+// ==================== UPDATE DASHBOARD ====================
+function updateDashboardResourceCount() {
+    const totalResources = currentResources.length;
+    const dashboardResourcesEl = document.getElementById('dashboard-new-resources');
+    if (dashboardResourcesEl) {
+        dashboardResourcesEl.innerText = totalResources;
+        console.log(`📊 Dashboard resources updated: ${totalResources}`);
+    }
+    
+    // Also update dashboard module metrics if available
+    if (window.dashboardModule && window.dashboardModule.metrics) {
+        window.dashboardModule.metrics.resources = totalResources;
+        if (window.dashboardModule.updateUIFromMetrics) {
+            window.dashboardModule.updateUIFromMetrics();
+        }
+    }
+    
+    // Dispatch event for other modules
+    const event = new CustomEvent('resourcesUpdated', {
+        detail: { count: totalResources, resources: currentResources }
+    });
+    document.dispatchEvent(event);
+}
+
 // ==================== PDF.JS INITIALIZATION ====================
 async function initializePDFJS() {
     if (pdfjsLoaded) return true;
@@ -291,6 +315,9 @@ async function loadAllResourcesForBlocks() {
         populateCourseFilter();
         await filterResourcesByBlock();
         
+        // Update dashboard with resource count
+        updateDashboardResourceCount();
+        
     } catch (err) {
         console.error("Error loading resources:", err);
         showError(resourcesGrid, `Error: ${err.message}`);
@@ -334,6 +361,9 @@ async function filterResourcesByBlock() {
     filteredResources = filtered;
     renderResourcesGrid();
     updateResourceCountDisplay();
+    
+    // Update dashboard with filtered count (optional - use total count instead)
+    updateDashboardResourceCount();
 }
 
 function renderResourcesGrid() {
@@ -664,7 +694,7 @@ function showPDFViewer() { const viewer = document.getElementById('pdf-viewer-ar
 function showPDFError(message) { const loading = document.getElementById('pdf-loading'); const error = document.getElementById('pdf-error'); const viewer = document.getElementById('pdf-viewer-area'); const errorMsg = document.getElementById('pdf-error-message'); if (loading) loading.style.display = 'none'; if (error) error.style.display = 'flex'; if (viewer) viewer.style.display = 'none'; if (errorMsg) errorMsg.textContent = message; const retryBtn = document.getElementById('retry-pdf-btn'); if (retryBtn && currentResource) retryBtn.onclick = () => loadHighQualityPDF(currentResource.file_url); }
 function toggleFullscreen() { const container = document.querySelector('.readonly-pdf-container'); if (!container) return; if (!document.fullscreenElement) { container.requestFullscreen(); const fullscreenBtn = document.getElementById('fullscreen-btn'); if (fullscreenBtn) fullscreenBtn.innerHTML = '<i class="fas fa-compress"></i>'; } else { document.exitFullscreen(); const fullscreenBtn = document.getElementById('fullscreen-btn'); if (fullscreenBtn) fullscreenBtn.innerHTML = '<i class="fas fa-expand"></i>'; } }
 function handlePDFKeyboard(e) { const modal = document.getElementById('readonly-pdf-modal'); if (!modal || modal.style.display !== 'flex') return; switch(e.key) { case 'ArrowLeft': e.preventDefault(); goToPDFPage(currentPDFPage - 1); break; case 'ArrowRight': e.preventDefault(); goToPDFPage(currentPDFPage + 1); break; case 'Escape': e.preventDefault(); modal.style.display = 'none'; cleanupPDF(); break; case '+': case '=': if (e.ctrlKey) { e.preventDefault(); zoomPDF(1.2); } break; case '-': if (e.ctrlKey) { e.preventDefault(); zoomPDF(0.8); } break; case '0': if (e.ctrlKey) { e.preventDefault(); pdfScale = 1.0; updateZoomDisplay(); renderPDFPage(currentPDFPage); } break; } }
-function cleanupPDF() { if (currentPDFDoc) { currentPDFDoc.destroy(); currentPDFDoc = null; } currentPDFPage = 1; totalPDFPages = 0; pdfScale = 1.5; pageRendering = false; pageNumPending = null; document.removeEventListener('keydown', handlePDFKeyboard); }
+function cleanupPDF() { if (currentPDFDoc) { currentPDFDoc.destroy(); currentPDFDoc = null; } currentPDFPage = 1; totalPDFPages = 0; pdfScale = 1.5; pageRendering = false; pageNumPending = null; document.removeEventListener('keypress', handlePDFKeyboard); }
 
 // ==================== IMAGE/VIDEO VIEWER ====================
 function openReadOnlyImage(resource) {
