@@ -1,4 +1,4 @@
-// database.js - Complete database operations with GitHub Secrets
+// database.js - Complete database operations with Login/Logout Tracking
 class Database {
     constructor() {
         this.supabase = null;
@@ -259,6 +259,10 @@ class Database {
             console.log('✅ User authenticated:', this.currentUserId);
             
             await this.loadUserProfile();
+            
+            // ✅ Record login time after successful authentication
+            await this.recordLoginTime();
+            
             return true;
             
         } catch (error) {
@@ -357,6 +361,105 @@ class Database {
         }
     }
     
+    // ✅ NEW: Record login time
+    async recordLoginTime() {
+        if (!this.currentUserId) {
+            console.warn('No user ID to record login time');
+            return;
+        }
+        
+        try {
+            // Get current login count
+            const { data: profile } = await this.supabase
+                .from('consolidated_user_profiles_table')
+                .select('login_count')
+                .eq('user_id', this.currentUserId)
+                .single();
+            
+            const newCount = (profile?.login_count || 0) + 1;
+            const now = new Date().toLocaleString('en-US', { timeZone: 'Africa/Nairobi' });
+            const nowISO = new Date().toISOString();
+            
+            // Update with new login time
+            const { error } = await this.supabase
+                .from('consolidated_user_profiles_table')
+                .update({
+                    last_login: nowISO,
+                    login_count: newCount,
+                    last_activity: nowISO,
+                    updated_at: nowISO
+                })
+                .eq('user_id', this.currentUserId);
+            
+            if (error) {
+                console.error("Failed to record login time:", error);
+            } else {
+                console.log(`✅ Login time recorded at ${now} (${newCount} total logins)`);
+            }
+            
+        } catch (error) {
+            console.error("Login recording error:", error);
+        }
+    }
+    
+    // ✅ NEW: Record logout time
+    async recordLogoutTime() {
+        if (!this.currentUserId) {
+            console.warn('No user ID to record logout time');
+            return;
+        }
+        
+        try {
+            const now = new Date().toLocaleString('en-US', { timeZone: 'Africa/Nairobi' });
+            const nowISO = new Date().toISOString();
+            
+            const { error } = await this.supabase
+                .from('consolidated_user_profiles_table')
+                .update({
+                    last_activity: nowISO,
+                    last_logout: nowISO,
+                    updated_at: nowISO
+                })
+                .eq('user_id', this.currentUserId);
+            
+            if (error) {
+                console.error("Failed to record logout time:", error);
+            } else {
+                console.log(`✅ Logout time recorded at ${now}`);
+            }
+            
+        } catch (error) {
+            console.error("Logout recording error:", error);
+        }
+    }
+    
+    // ✅ UPDATED: Logout with tracking
+    async logout() {
+        try {
+            // Record logout time before signing out
+            await this.recordLogoutTime();
+            
+            // Close all realtime channels
+            this.supabase.realtime.channels.forEach(channel => this.supabase.removeChannel(channel));
+            
+            // Sign out
+            await this.supabase.auth.signOut();
+            
+            // Clear local data
+            this.currentUserId = null;
+            this.currentUserProfile = null;
+            this.clearCache();
+            
+            // Redirect to login page
+            window.location.href = "login.html";
+            
+        } catch (error) {
+            console.error("Logout error:", error);
+            // Force redirect even if there's an error
+            window.location.href = "login.html";
+        }
+    }
+    
     // Load profile data (called when profile tab is activated)
     async loadProfileData() {
         console.log('🔄 Database.loadProfileData() called');
@@ -370,17 +473,6 @@ class Database {
         } else if (this.currentUserId && this.supabase) {
             console.log('🎯 Loading profile directly...');
             await this.loadUserProfile();
-        }
-    }
-    
-    async logout() {
-        try {
-            this.supabase.realtime.channels.forEach(channel => this.supabase.removeChannel(channel));
-            await this.supabase.auth.signOut();
-            window.location.href = "login.html";
-        } catch (error) {
-            console.error("Logout error:", error);
-            window.location.href = "login.html";
         }
     }
     
@@ -398,6 +490,13 @@ class Database {
             const totalLogs = logs?.length || 0;
             const verifiedCount = logs?.filter(l => l.is_verified === true).length || 0;
             const attendanceRate = totalLogs > 0 ? Math.round((verifiedCount / totalLogs) * 100) : 0;
+            
+            // Get last login info
+            const { data: profile } = await this.supabase
+                .from('consolidated_user_profiles_table')
+                .select('last_login, last_logout, last_activity, login_count')
+                .eq('user_id', userId)
+                .single();
             
             // Courses count
             const courses = await this.getCourses();
@@ -423,7 +522,11 @@ class Database {
                 },
                 courses: coursesCount,
                 upcomingExam: upcomingExams[0],
-                newResources: newResourcesCount
+                newResources: newResourcesCount,
+                lastLogin: profile?.last_login || null,
+                lastLogout: profile?.last_logout || null,
+                lastActivity: profile?.last_activity || null,
+                loginCount: profile?.login_count || 0
             };
             
         } catch (error) {
@@ -700,6 +803,10 @@ class Database {
             });
             
             if (error) throw error;
+            
+            // Update last activity
+            await this.updateLastActivity();
+            
             return { success: true, verified: isVerified };
             
         } catch (error) {
@@ -797,6 +904,10 @@ class Database {
                 });
             
             if (error) throw error;
+            
+            // Update last activity
+            await this.updateLastActivity();
+            
             return { success: true };
             
         } catch (error) {
@@ -944,6 +1055,26 @@ class Database {
         console.log('🧹 Cache cleared');
     }
     
+    // ✅ NEW: Update last activity timestamp
+    async updateLastActivity() {
+        if (!this.currentUserId) return;
+        
+        try {
+            const { error } = await this.supabase
+                .from('consolidated_user_profiles_table')
+                .update({
+                    last_activity: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                })
+                .eq('user_id', this.currentUserId);
+            
+            if (error) console.error("Failed to update last activity:", error);
+            
+        } catch (error) {
+            console.error("Last activity update error:", error);
+        }
+    }
+    
     async updateProfile(updates) {
         try {
             const { error } = await this.supabase
@@ -963,6 +1094,9 @@ class Database {
             if (window.currentUser) {
                 window.currentUser = { ...window.currentUser, ...updates };
             }
+            
+            // Update last activity
+            await this.updateLastActivity();
             
             return { success: true };
             
@@ -1006,6 +1140,9 @@ class Database {
             if (this.currentUserProfile) {
                 this.currentUserProfile.passport_url = publicUrl;
             }
+            
+            // Update last activity
+            await this.updateLastActivity();
             
             return { success: true, filePath: publicUrl };
             
