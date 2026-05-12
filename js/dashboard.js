@@ -1,4 +1,4 @@
-// dashboard.js - COMPLETE WORKING VERSION
+// dashboard.js - COMPLETE WORKING VERSION WITH LAST LOGIN (KENYA TIME)
 class DashboardModule {
     constructor(supabaseClient) {
         console.log('🚀 Initializing DashboardModule...');
@@ -14,7 +14,8 @@ class DashboardModule {
             examCard: { approved: 0, eligible: false, semester: 'Current' },
             nurseiq: { progress: 0, accuracy: 0, questions: 0 },
             courses: 0,
-            exams: 'No upcoming exams'
+            exams: 'No upcoming exams',
+            lastLogin: { time: null, formatted: 'Never', loginCount: 0 }
         };
         
         this.cacheElements();
@@ -44,7 +45,9 @@ class DashboardModule {
             nurseiqQuestions: document.getElementById('dashboard-nurseiq-questions'),
             headerUserName: document.getElementById('header-user-name'),
             headerProfilePhoto: document.getElementById('header-profile-photo'),
-            headerRefresh: document.getElementById('header-refresh')
+            headerRefresh: document.getElementById('header-refresh'),
+            lastLoginTime: document.getElementById('dashboard-last-login'),
+            lastLoginCount: document.getElementById('dashboard-login-count')
         };
         
         const foundCount = Object.keys(this.elements).filter(key => this.elements[key]).length;
@@ -188,7 +191,8 @@ class DashboardModule {
             this.loadExamCardMetrics(),
             this.loadNurseIQMetrics(),
             this.updateCoursesMetric(),
-            this.updateExamsMetric()
+            this.updateExamsMetric(),
+            this.loadLastLoginInfo()
         ]);
         
         this.updateUIFromMetrics();
@@ -197,12 +201,111 @@ class DashboardModule {
         this.displaySummary();
     }
     
+    async loadLastLoginInfo() {
+        if (!this.userId || !this.sb) return;
+        
+        try {
+            const { data, error } = await this.sb
+                .from('consolidated_user_profiles_table')
+                .select('last_login, login_count')
+                .eq('user_id', this.userId)
+                .single();
+            
+            if (error) throw error;
+            
+            if (data && data.last_login) {
+                const kenyaTime = this.convertToKenyaTime(data.last_login);
+                const relativeTime = this.getRelativeTime(data.last_login);
+                
+                this.metrics.lastLogin = {
+                    time: data.last_login,
+                    formatted: kenyaTime,
+                    relative: relativeTime,
+                    loginCount: data.login_count || 0
+                };
+                
+                console.log(`👤 Last login: ${kenyaTime} (${relativeTime})`);
+                console.log(`📊 Total logins: ${data.login_count || 0}`);
+            } else {
+                this.metrics.lastLogin = {
+                    time: null,
+                    formatted: 'First login ever',
+                    relative: 'First login',
+                    loginCount: 0
+                };
+            }
+            
+        } catch (error) {
+            console.error('Failed to load last login:', error);
+            this.metrics.lastLogin = {
+                time: null,
+                formatted: 'Not available',
+                relative: 'Unknown',
+                loginCount: 0
+            };
+        }
+    }
+    
+    convertToKenyaTime(utcTimestamp) {
+        if (!utcTimestamp) return 'Never';
+        
+        try {
+            const utcDate = new Date(utcTimestamp);
+            
+            if (isNaN(utcDate.getTime())) {
+                return 'Invalid date';
+            }
+            
+            const kenyaTime = utcDate.toLocaleString('en-KE', {
+                timeZone: 'Africa/Nairobi',
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true
+            });
+            
+            return kenyaTime;
+            
+        } catch (error) {
+            console.error('Time conversion error:', error);
+            return new Date(utcTimestamp).toLocaleString();
+        }
+    }
+    
+    getRelativeTime(utcTimestamp) {
+        if (!utcTimestamp) return 'Never';
+        
+        const now = new Date();
+        const utcDate = new Date(utcTimestamp);
+        
+        if (isNaN(utcDate.getTime())) return 'Invalid date';
+        
+        const kenyaDate = new Date(utcDate.getTime() + (3 * 60 * 60 * 1000));
+        const kenyaNow = new Date(now.getTime() + (3 * 60 * 60 * 1000));
+        
+        const diffMs = kenyaNow - kenyaDate;
+        const diffMins = Math.floor(diffMs / (1000 * 60));
+        const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        
+        if (diffMins < 1) return 'Just now';
+        if (diffMins < 60) return `${diffMins} minute${diffMins === 1 ? '' : 's'} ago`;
+        if (diffHours < 24) return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
+        if (diffDays < 7) return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
+        if (diffDays < 30) return `${Math.floor(diffDays / 7)} week${Math.floor(diffDays / 7) === 1 ? '' : 's'} ago`;
+        if (diffDays < 365) return `${Math.floor(diffDays / 30)} month${Math.floor(diffDays / 30) === 1 ? '' : 's'} ago`;
+        
+        return `${Math.floor(diffDays / 365)} year${Math.floor(diffDays / 365) === 1 ? '' : 's'} ago`;
+    }
+    
     updateUIFromMetrics() {
         console.log('🎨 Updating UI from metrics...');
         
         const m = this.metrics;
         
-        // Update attendance - DIRECT DOM access
         const rateEl = document.getElementById('dashboard-attendance-rate');
         if (rateEl) rateEl.innerText = m.attendance.rate + '%';
         
@@ -215,11 +318,9 @@ class DashboardModule {
         const pendingEl = document.getElementById('dashboard-pending-count');
         if (pendingEl) pendingEl.innerText = m.attendance.pending;
         
-        // Update courses
         const coursesEl = document.getElementById('dashboard-active-courses');
         if (coursesEl) coursesEl.innerText = m.courses;
         
-        // Update exam card with colors
         const examStatusEl = document.getElementById('dashboard-exam-status');
         if (examStatusEl) {
             examStatusEl.innerText = m.examCard.eligible ? 'ELIGIBLE' : 'NOT ELIGIBLE';
@@ -231,7 +332,6 @@ class DashboardModule {
         const approvedEl = document.getElementById('dashboard-approved-units');
         if (approvedEl) approvedEl.innerText = m.examCard.approved;
         
-        // Update NurseIQ
         const nurseiqEl = document.getElementById('dashboard-nurseiq-progress');
         if (nurseiqEl) nurseiqEl.innerText = m.nurseiq.progress + '%';
         
@@ -241,15 +341,22 @@ class DashboardModule {
         const questionsEl = document.getElementById('dashboard-nurseiq-questions');
         if (questionsEl) questionsEl.innerText = m.nurseiq.questions;
         
-        // Update resources
         const resourcesEl = document.getElementById('dashboard-new-resources');
         if (resourcesEl) resourcesEl.innerText = m.resources;
         
-        // Update upcoming exam
         const upcomingEl = document.getElementById('dashboard-upcoming-exam');
         if (upcomingEl) upcomingEl.innerText = m.exams;
         
-        // Update current block from profile
+        if (this.elements.lastLoginTime) {
+            this.elements.lastLoginTime.innerHTML = `
+                <div class="last-login-container">
+                    <div class="last-login-datetime">${m.lastLogin.formatted}</div>
+                    <div class="last-login-relative">${m.lastLogin.relative}</div>
+                    <div class="last-login-count">🔐 ${m.lastLogin.loginCount} total logins</div>
+                </div>
+            `;
+        }
+        
         if (this.userProfile) {
             const blockEl = document.getElementById('dashboard-current-block-value');
             if (blockEl) blockEl.innerText = this.userProfile.block || 'Introductory';
@@ -428,6 +535,7 @@ class DashboardModule {
         console.log(`   Exam Card: ${this.metrics.examCard.eligible ? 'ELIGIBLE' : 'NOT ELIGIBLE'} (${this.metrics.examCard.approved} units)`);
         console.log(`   NurseIQ: ${this.metrics.nurseiq.progress}% progress, ${this.metrics.nurseiq.accuracy}% accuracy`);
         console.log(`   Upcoming Exam: ${this.metrics.exams}`);
+        console.log(`   Last Login: ${this.metrics.lastLogin.formatted} (${this.metrics.lastLogin.loginCount} logins)`);
         if (this.userProfile) {
             console.log(`   Current Block: ${this.userProfile.block || 'Introductory'}`);
             console.log(`   Program: ${this.userProfile.program || 'KRCHN'}`);
@@ -443,6 +551,7 @@ class DashboardModule {
         console.log(`📋 Program: ${this.userProfile?.program || 'Unknown'}`);
         console.log(`📚 Block: ${this.userProfile?.block || 'Unknown'}`);
         console.log(`📅 Intake: ${this.userProfile?.intake_year || 'Unknown'}`);
+        console.log(`🕐 Last Login: ${this.metrics.lastLogin.formatted}`);
         console.log('═══════════════════════════════════════');
         console.log('🎯 All systems operational!');
     }
@@ -451,11 +560,14 @@ class DashboardModule {
         const headerTime = document.getElementById('header-time');
         if (headerTime) {
             const updateTime = () => {
-                headerTime.textContent = new Date().toLocaleTimeString('en-US', { 
-                    hour: '2-digit', 
+                const now = new Date();
+                const kenyaTime = now.toLocaleString('en-KE', {
+                    timeZone: 'Africa/Nairobi',
+                    hour: '2-digit',
                     minute: '2-digit',
-                    hour12: true 
+                    hour12: true
                 });
+                headerTime.textContent = kenyaTime;
             };
             updateTime();
             setInterval(updateTime, 60000);
@@ -496,4 +608,4 @@ window.DashboardModule = DashboardModule;
 window.initDashboardModule = initDashboardModule;
 window.refreshDashboard = () => dashboardModule?.refreshAll();
 
-console.log('✅ Dashboard module ready - COMPLETE WORKING VERSION');
+console.log('✅ Dashboard module ready - COMPLETE WORKING VERSION WITH LAST LOGIN');
