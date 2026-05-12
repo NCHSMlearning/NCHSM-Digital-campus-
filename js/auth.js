@@ -1,4 +1,4 @@
-// js/auth.js
+// js/auth.js - UPDATED VERSION with logout tracking
 class AuthModule {
     constructor(supabase) {
         this.supabase = supabase;
@@ -27,6 +27,9 @@ class AuthModule {
             
             // Load user profile
             await this.loadProfile();
+            
+            // Record login time when user authenticates
+            await this.recordLoginTime();
             
             return true;
             
@@ -57,14 +60,64 @@ class AuthModule {
         }
     }
     
+    // NEW: Record login time
+    async recordLoginTime() {
+        try {
+            const { error } = await this.supabase
+                .from('consolidated_user_profiles_table')
+                .update({
+                    last_login: new Date(),  // Records current time (Kenya time if server is set correctly)
+                    login_count: this.supabase.rpc('increment_login_count', { user_id: this.currentUserId }),
+                    updated_at: new Date()
+                })
+                .eq('user_id', this.currentUserId);
+            
+            if (error) console.error("Failed to record login time:", error);
+            else console.log("✅ Login time recorded");
+            
+        } catch (error) {
+            console.error("Login recording error:", error);
+        }
+    }
+    
+    // UPDATED: Record logout time and activity
     async logout() {
         try {
+            // Record logout time before signing out
+            await this.recordLogoutTime();
+            
+            // Close all realtime channels
             this.supabase.realtime.channels.forEach(channel => this.supabase.removeChannel(channel));
+            
+            // Sign out
             await this.supabase.auth.signOut();
+            
+            // Redirect to login page
             window.location.href = "login.html";
+            
         } catch (error) {
             console.error("Logout error:", error);
             window.location.href = "login.html";
+        }
+    }
+    
+    // NEW: Record logout time
+    async recordLogoutTime() {
+        try {
+            const { error } = await this.supabase
+                .from('consolidated_user_profiles_table')
+                .update({
+                    last_activity: new Date(),  // Track last activity
+                    last_logout: new Date(),    // Track logout time (requires adding column)
+                    updated_at: new Date()
+                })
+                .eq('user_id', this.currentUserId);
+            
+            if (error) console.error("Failed to record logout time:", error);
+            else console.log("✅ Logout time recorded");
+            
+        } catch (error) {
+            console.error("Logout recording error:", error);
         }
     }
     
