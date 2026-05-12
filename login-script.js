@@ -325,27 +325,107 @@ window.NCHSMLogin = {
     },
     
     // ============================================
-    // COMPLETE LOGIN - WITH LOGIN SUCCESS EMAIL
+    // LOGIN TRACKING (Non-blocking - Safe)
+    // ============================================
+    updateLastLogin: async function(userId, email) {
+        try {
+            console.log('📝 Updating last login for:', email);
+            
+            const now = new Date().toISOString();
+            
+            // Get current login count first
+            const { data: profile, error: fetchError } = await this.supabase
+                .from('consolidated_user_profiles_table')
+                .select('login_count')
+                .eq('user_id', userId)
+                .maybeSingle();
+            
+            if (fetchError) {
+                console.error('Failed to fetch login count:', fetchError);
+                return false;
+            }
+            
+            const newCount = (profile?.login_count || 0) + 1;
+            
+            // Update last login
+            const { error: updateError } = await this.supabase
+                .from('consolidated_user_profiles_table')
+                .update({
+                    last_login: now,
+                    login_count: newCount,
+                    last_activity: now,
+                    updated_at: now
+                })
+                .eq('user_id', userId);
+            
+            if (updateError) {
+                console.error('Failed to update last login:', updateError);
+                return false;
+            }
+            
+            // Format time for display (Kenya time)
+            const kenyaTime = new Date(now).toLocaleString('en-KE', { 
+                timeZone: 'Africa/Nairobi',
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true
+            });
+            
+            console.log(`✅ Last login updated: ${kenyaTime}`);
+            console.log(`📊 Total logins: ${newCount}`);
+            return true;
+            
+        } catch (error) {
+            console.error('Last login update error:', error);
+            return false;
+        }
+    },
+    
+    // ============================================
+    // COMPLETE LOGIN - WITH LOGIN TRACKING (Non-blocking)
     // ============================================
     completeLogin: async function(profileData) {
         console.log('🎉 Completing login for:', profileData.email);
         
         try {
+            // Update last login (NON-BLOCKING - don't await)
+            // This ensures login continues even if tracking fails
+            this.updateLastLogin(profileData.user_id, profileData.email)
+                .then(result => {
+                    if (result) {
+                        console.log('✅ Login time recorded successfully');
+                    } else {
+                        console.warn('⚠️ Login time recording skipped (non-critical)');
+                    }
+                })
+                .catch(err => {
+                    console.warn('Non-critical: Login update failed', err);
+                });
+            
+            // Store profile in localStorage
             localStorage.setItem('currentUserProfile', JSON.stringify(profileData));
             
+            // Store session
             const { data: { session } } = await this.supabase.auth.getSession();
             if (session) {
                 localStorage.setItem('supabase_session', JSON.stringify(session));
             }
             
+            // Send email notification (non-blocking)
             this.sendLoginSuccessEmail(profileData.email, profileData.full_name || profileData.email)
                 .then(() => console.log('✅ Login success email initiated'))
                 .catch(err => console.warn('⚠️ Email sending failed (non-critical):', err));
             
+            // Redirect to dashboard
             this.redirectToDashboard(profileData);
             
         } catch (error) {
             console.error('❌ Complete login error:', error);
+            // Still redirect even if there's an error
             this.redirectToDashboard(profileData);
         }
     },
@@ -391,34 +471,35 @@ window.NCHSMLogin = {
         });
     },
     
-   // ============================================
-// REDIRECT TO DASHBOARD - WITH CLEAN URLS
-// ============================================
-redirectToDashboard: function(profileData) {
-    console.log('🚀 Redirecting to dashboard...');
+    // ============================================
+    // REDIRECT TO DASHBOARD - WITH CLEAN URLS
+    // ============================================
+    redirectToDashboard: function(profileData) {
+        console.log('🚀 Redirecting to dashboard...');
+        
+        const redirects = {
+            'student': '/student',
+            'lecturer': '/lecturer',
+            'admin': '/admin',
+            'superadmin': '/superadmin',
+            'hod': '/hod-tracker',
+            'staff': '/staff'
+        };
+        
+        const role = profileData.role?.toLowerCase() || 'student';
+        const redirectUrl = redirects[role] || '/student';
+        
+        console.log(`🎯 Role: ${role}, Redirecting to: ${redirectUrl}`);
+        
+        // Smooth transition
+        document.body.style.opacity = '0';
+        document.body.style.transition = 'opacity 0.3s ease';
+        
+        setTimeout(() => {
+            window.location.href = redirectUrl;
+        }, 300);
+    },
     
-    const redirects = {
-        'student': '/student',           // Clean URL - no .html
-        'lecturer': '/lecturer',
-        'admin': '/admin',
-        'superadmin': '/superadmin',
-        'hod': '/hod-tracker',
-        'staff': '/staff'
-    };
-    
-    const role = profileData.role?.toLowerCase() || 'student';
-    const redirectUrl = redirects[role] || '/student';
-    
-    console.log(`🎯 Role: ${role}, Redirecting to: ${redirectUrl}`);
-    
-    // Smooth transition
-    document.body.style.opacity = '0';
-    document.body.style.transition = 'opacity 0.3s ease';
-    
-    setTimeout(() => {
-        window.location.href = redirectUrl;
-    }, 300);
-},
     // ============================================
     // MODAL MANAGEMENT
     // ============================================
