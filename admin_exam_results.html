@@ -706,8 +706,7 @@
         selectedStudentIds.clear();
         document.getElementById('releaseModal').style.display = 'flex';
     };
-    
-   window.loadReleasePreview = async function() {
+  window.loadReleasePreview = async function() {
     const examId = document.getElementById('releaseExamFilter').value;
     if (!examId) { 
         document.getElementById('releasePreview').style.display = 'none'; 
@@ -718,11 +717,11 @@
     
     console.log('Loading preview for exam ID:', examId);
     
-    // Get ALL grades for this exam
+    // IMPORTANT: Select the INTEGER 'id' column, not the UUID
     const { data: results, error } = await sb
         .from('exam_grades')
-        .select('id, student_id, marks, total_score, result_status')
-        .eq('exam_id', parseInt(examId))  // exam_id is integer
+        .select('id, student_id, marks, total_score, result_status')  // 'id' is INTEGER
+        .eq('exam_id', parseInt(examId))
         .eq('question_id', '00000000-0000-0000-0000-000000000000');
     
     if (error) { 
@@ -749,7 +748,7 @@
     let previewHtml = '';
     
     results.forEach(r => {
-        const isReleased = releasedSet.has(r.id);
+        const isReleased = releasedSet.has(r.id);  // r.id is INTEGER
         const canRelease = !isReleased && (r.result_status === 'PASS' || r.result_status === 'FAIL');
         if (canRelease) notReleasedCount++;
         const student = profileMap[r.student_id];
@@ -789,39 +788,47 @@
         selectAllStudents(selectAllBox.checked);
     };
     
-    window.updateSelectedCount = function() {
-        const checkboxes = document.querySelectorAll('#releasePreviewBody .student-checkbox:checked');
-        const count = checkboxes.length;
-        document.getElementById('selectedCount').innerHTML = `${count} selected`;
-        document.getElementById('confirmReleaseBtn').disabled = (count === 0);
-        
-        // Update selectedStudentIds set
-        selectedStudentIds.clear();
-        checkboxes.forEach(cb => {
-            selectedStudentIds.add(cb.getAttribute('data-id'));
-        });
-    };
+   window.updateSelectedCount = function() {
+    const checkboxes = document.querySelectorAll('#releasePreviewBody .student-checkbox:checked');
+    const count = checkboxes.length;
+    document.getElementById('selectedCount').innerHTML = `${count} selected`;
+    document.getElementById('confirmReleaseBtn').disabled = (count === 0);
     
-  window.confirmReleaseResults = async function() {
+    // Update selectedStudentIds set with INTEGER IDs
+    selectedStudentIds.clear();
+    checkboxes.forEach(cb => {
+        const idValue = cb.getAttribute('data-id');
+        selectedStudentIds.add(idValue);  // This is now the INTEGER as string
+    });
+};
+    
+ window.confirmReleaseResults = async function() {
     if (selectedStudentIds.size === 0) {
         alert('Please select at least one student to release results.');
         return;
     }
     
-    const examId = document.getElementById('releaseExamFilter').value;
-    if (!examId) { alert('Please select an exam'); return; }
+    const examIdValue = document.getElementById('releaseExamFilter').value;
+    if (!examIdValue) { alert('Please select an exam'); return; }
+    
+    const examIdInt = parseInt(examIdValue);
+    if (isNaN(examIdInt)) {
+        alert('Invalid exam ID');
+        return;
+    }
     
     if (!confirm(`Release results for ${selectedStudentIds.size} selected student(s)?`)) return;
     
     try {
         const releaseRecords = [];
         for (const gradeId of selectedStudentIds) {
-            const result = currentReleaseResults.find(r => r.id == gradeId);
+            // gradeId is now the INTEGER from exam_grades.id
+            const result = currentReleaseResults.find(r => r.id == parseInt(gradeId));
             if (result) {
                 releaseRecords.push({
-                    result_id: gradeId,  // This is a UUID, keep as string
+                    result_id: parseInt(gradeId),  // INTEGER
                     student_id: result.student_id,
-                    exam_id: parseInt(examId),  // exam_id is integer, parse it
+                    exam_id: examIdInt,
                     released_at: new Date().toISOString(),
                     released_by: 'admin'
                 });
