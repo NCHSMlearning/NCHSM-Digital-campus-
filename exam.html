@@ -907,46 +907,118 @@ function submitExam() {
 }
 
 async function saveAllAnswers() {
-    const entries = questions.map(q => ({
-        student_id: studentId,
-        exam_id: EXAM_ID,
-        question_id: q.id,
-        selected_answer: answers[q.id] || null,
-        marks: answers[q.id] === q.correct_answer ? (q.marks || 1) : 0,
-        graded_at: new Date().toISOString()
-    }));
+    console.log('💾 Saving all answers...');
     
-    for (const entry of entries) {
-        await sb.from('exam_grades').upsert(entry, { onConflict: ['student_id', 'exam_id', 'question_id'] });
+    // Get all questions to know correct answers and marks
+    const { data: questions_data } = await sb
+        .from('exam_questions')
+        .select('id, correct_answer, marks')
+        .eq('exam_id', EXAM_ID);
+    
+    const questionsMap = {};
+    questions_data?.forEach(q => {
+        questionsMap[q.id] = q;
+    });
+    
+    for (const [questionId, selectedAnswer] of Object.entries(answers)) {
+        const question = questionsMap[questionId];
+        const isCorrect = selectedAnswer === question?.correct_answer;
+        const marksEarned = isCorrect ? (question?.marks || 1) : 0;
+        
+        const { error } = await sb
+            .from('exam_grades')
+            .upsert({
+                student_id: studentId,
+                exam_id: EXAM_ID,
+                question_id: questionId,
+                selected_answer: selectedAnswer,
+                marks: marksEarned,
+                graded_at: new Date().toISOString()
+            }, { onConflict: ['student_id', 'exam_id', 'question_id'] });
+        
+        if (error) {
+            console.error('Error saving answer:', error);
+        } else {
+            console.log(`✅ Saved answer for Q${questionId}: ${selectedAnswer} (${isCorrect ? 'Correct +' + marksEarned : 'Wrong +0'})`);
+        }
     }
+    
+    console.log('✅ All answers saved!');
 }
 
 async function calculateGrade() {
-    const { data: answers_data } = await sb.from('exam_grades')
-        .select('marks')
+    console.log('📊 Calculating grade for exam:', EXAM_ID);
+    
+    // Get all answers for this student (excluding the final grade record)
+    const { data: answers_data, error } = await sb
+        .from('exam_grades')
+        .select('question_id, selected_answer, marks')
         .eq('student_id', studentId)
         .eq('exam_id', EXAM_ID)
         .neq('question_id', '00000000-0000-0000-0000-000000000000');
     
-    const totalMarks = answers_data?.reduce((s, a) => s + (a.marks || 0), 0) || 0;
-    const totalPossible = questions.length;
-    const percentage = (totalMarks / totalPossible) * 100;
-    const resultStatus = percentage >= 60 ? 'PASS' : 'FAIL';
+    if (error) {
+        console.error('Error fetching answers:', error);
+        return;
+    }
     
-    const { error } = await sb.from('exam_grades').upsert({
-        student_id: studentId,
-        exam_id: EXAM_ID,
-        question_id: '00000000-0000-0000-0000-000000000000',
-        total_score: percentage,
-        marks: totalMarks,
-        result_status: resultStatus,
-        graded_at: new Date().toISOString()
+    console.log('Answers found:', answers_data?.length || 0);
+    
+    // Calculate total marks from the answers that are already saved with marks
+    let totalMarks = 0;
+    let totalPossible = 0;
+    
+    // Also fetch questions to get correct answers and max marks per question
+    const { data: questions_data } = await sb
+        .from('exam_questions')
+        .select('id, correct_answer, marks')
+        .eq('exam_id', EXAM_ID);
+    
+    const questionsMap = {};
+    questions_data?.forEach(q => {
+        questionsMap[q.id] = q;
+        totalPossible += q.marks || 1;
     });
     
-    if (error) {
-        console.error('Error saving final grade:', error);
+    // Calculate earned marks by comparing with correct answers
+    for (const answer of answers_data || []) {
+        const question = questionsMap[answer.question_id];
+        if (question) {
+            // If marks are already set in the answer, use them
+            if (answer.marks > 0) {
+                totalMarks += answer.marks;
+            } 
+            // Otherwise, calculate based on correctness
+            else if (answer.selected_answer === question.correct_answer) {
+                totalMarks += question.marks || 1;
+            }
+        }
+    }
+    
+    const percentage = totalPossible > 0 ? (totalMarks / totalPossible) * 100 : 0;
+    const resultStatus = percentage >= 60 ? 'PASS' : 'FAIL';
+    
+    console.log(`📊 Grade Calculated: ${totalMarks}/${totalPossible} = ${percentage.toFixed(1)}% (${resultStatus})`);
+    
+    // Save the final grade
+    const { error: upsertError } = await sb
+        .from('exam_grades')
+        .upsert({
+            student_id: studentId,
+            exam_id: EXAM_ID,
+            question_id: '00000000-0000-0000-0000-000000000000',
+            total_score: percentage,
+            marks: totalMarks,
+            result_status: resultStatus,
+            graded_at: new Date().toISOString()
+        });
+    
+    if (upsertError) {
+        console.error('Error saving final grade:', upsertError);
     } else {
-        console.log(`✅ Final grade saved: ${percentage}% (${resultStatus})`);
+        console.log(`✅ Final grade saved: ${percentage.toFixed(1)}% (${resultStatus})`);
+        // Notify dashboard
+        notifyDashboardCompletion();
     }
 }
 
