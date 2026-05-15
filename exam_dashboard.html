@@ -368,19 +368,6 @@ h1 {
     font-weight: 500;
 }
 
-.btn-close-exam {
-    background: rgba(220, 38, 38, 0.9);
-    color: white;
-    padding: 8px 18px;
-    border-radius: 10px;
-    font-size: 0.8rem;
-    border: none;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    font-weight: 500;
-    display: none;
-}
-
 .exam-iframe {
     flex: 1;
     width: 100%;
@@ -489,7 +476,6 @@ h1 {
     100% { background-position: -200% 0; }
 }
 
-/* Auto-refresh indicator */
 .auto-refresh-indicator {
     position: fixed;
     bottom: 20px;
@@ -515,6 +501,16 @@ h1 {
     font-size: 0.7rem;
     margin-left: 10px;
     animation: pulse 0.5s ease;
+}
+
+.debug-info {
+    background: #FEF3C7;
+    border-left: 4px solid #F59E0B;
+    padding: 10px;
+    margin: 10px 0;
+    font-size: 0.75rem;
+    border-radius: 8px;
+    display: none;
 }
 
 @keyframes pulse {
@@ -594,15 +590,62 @@ let resultUpdateChannel = null;
 
 function getExamLink(exam) { return exam.exam_link || exam.online_link || null; }
 
+// Improved filter function with better logging
 function filterExamsByStudent(exams) {
-    if (!studentProfile) return [];
-    return exams.filter(exam => {
-        if (!getExamLink(exam)) return false;
-        if (exam.program_type && exam.program_type !== 'General' && exam.program_type !== studentProfile.program) return false;
-        if (exam.block_term && exam.block_term !== 'General' && exam.block_term !== studentProfile.block) return false;
-        if (exam.intake_year && exam.intake_year !== 'General' && exam.intake_year != studentProfile.intake_year) return false;
-        return true;
+    if (!studentProfile) {
+        console.log('No student profile available for filtering');
+        return [];
+    }
+    
+    console.log('Student Profile for filtering:', {
+        program: studentProfile.program,
+        block: studentProfile.block,
+        intake_year: studentProfile.intake_year
     });
+    
+    const filtered = exams.filter(exam => {
+        const hasLink = getExamLink(exam);
+        if (!hasLink) return false;
+        
+        // Check program match
+        let programMatch = true;
+        if (exam.program_type && exam.program_type !== 'General') {
+            programMatch = exam.program_type === studentProfile.program;
+        }
+        
+        // Check block match
+        let blockMatch = true;
+        if (exam.block_term && exam.block_term !== 'General') {
+            blockMatch = exam.block_term === studentProfile.block;
+        }
+        
+        // Check intake year match
+        let intakeMatch = true;
+        if (exam.intake_year && exam.intake_year !== 'General') {
+            intakeMatch = exam.intake_year == studentProfile.intake_year;
+        }
+        
+        const isMatch = programMatch && blockMatch && intakeMatch;
+        
+        if (!isMatch) {
+            console.log(`Exam "${exam.exam_name}" filtered out:`, {
+                examProgram: exam.program_type,
+                studentProgram: studentProfile.program,
+                programMatch,
+                examBlock: exam.block_term,
+                studentBlock: studentProfile.block,
+                blockMatch,
+                examIntake: exam.intake_year,
+                studentIntake: studentProfile.intake_year,
+                intakeMatch
+            });
+        }
+        
+        return isMatch;
+    });
+    
+    console.log(`Filtered ${filtered.length} exams out of ${exams.length} total`);
+    return filtered;
 }
 
 async function loadExamContent(examId, examName) {
@@ -645,7 +688,6 @@ function autoCloseExam() {
     }, 2000);
 }
 
-// Listen for exam completion from iframe
 window.addEventListener('message', function(event) {
     if (event.data === 'exam_completed' || event.data?.type === 'exam_completed') {
         showToast('✅ Exam submitted successfully!', 'success');
@@ -653,9 +695,6 @@ window.addEventListener('message', function(event) {
     }
 });
 
-// ============ AUTO-UPDATE FEATURES ============
-
-// 1. Auto-refresh when tab becomes visible again
 document.addEventListener('visibilitychange', function() {
     if (!document.hidden && !isLoading && currentUserId && 
         document.getElementById('examContainer').style.display !== 'flex') {
@@ -665,7 +704,6 @@ document.addEventListener('visibilitychange', function() {
     }
 });
 
-// 2. Periodic background refresh (every 30 seconds)
 function startAutoRefresh() {
     if (autoRefreshInterval) clearInterval(autoRefreshInterval);
     autoRefreshInterval = setInterval(() => {
@@ -675,10 +713,9 @@ function startAutoRefresh() {
             updateRefreshIndicator(`✓ Checking for updates at ${new Date().toLocaleTimeString()}`);
             setTimeout(() => updateRefreshIndicator('Auto-refresh active'), 2000);
         }
-    }, 30000); // Check every 30 seconds
+    }, 30000);
 }
 
-// 3. Real-time subscription for result releases
 async function setupRealtimeSubscription() {
     if (resultUpdateChannel) {
         sb.removeChannel(resultUpdateChannel);
@@ -704,28 +741,6 @@ async function setupRealtimeSubscription() {
         .subscribe();
 }
 
-// 4. Also listen for grade updates
-async function setupGradeSubscription() {
-    const gradeChannel = sb
-        .channel('student-grades')
-        .on(
-            'postgres_changes',
-            {
-                event: 'UPDATE',
-                schema: 'public',
-                table: 'exam_grades',
-                filter: `student_id=eq.${currentUserId}`
-            },
-            (payload) => {
-                if (payload.new && (payload.new.result_status === 'PASS' || payload.new.result_status === 'FAIL')) {
-                    showToast('📊 Your exam has been graded!', 'success');
-                    loadExams(false);
-                }
-            }
-        )
-        .subscribe();
-}
-
 function updateRefreshIndicator(message) {
     const indicator = document.getElementById('autoRefreshIndicator');
     if (indicator) {
@@ -739,39 +754,106 @@ function updateRefreshIndicator(message) {
     }
 }
 
-// Main function to load exams
 async function loadExams(showLoading = true) {
     if (isLoading) return;
     isLoading = true;
     if (showLoading) document.getElementById('examList').innerHTML = '<div class="exam-card loading-skeleton" style="height: 200px;"></div>';
     
+    // Get user ID from localStorage
     currentUserId = localStorage.getItem('currentUserId');
+    console.log('Current User ID:', currentUserId);
+    
     if (!currentUserId || currentUserId === 'null') {
+        console.log('No user ID found, redirecting to login');
         window.location.href = 'exam_login.html';
         return;
     }
     
     try {
-        const { data: profile } = await sb.from('consolidated_user_profiles_table').select('*').eq('user_id', currentUserId).single();
-        if (profile) {
-            studentProfile = profile;
-            // Setup realtime subscriptions after getting user ID
-            setupRealtimeSubscription();
-            setupGradeSubscription();
+        // Try to fetch profile from consolidated_user_profiles_table
+        let { data: profile, error: profileError } = await sb
+            .from('consolidated_user_profiles_table')
+            .select('*')
+            .eq('user_id', currentUserId)
+            .single();
+        
+        if (profileError) {
+            console.error('Profile fetch error:', profileError);
+            
+            // Try alternative table name
+            const { data: altProfile, error: altError } = await sb
+                .from('user_profiles')
+                .select('*')
+                .eq('user_id', currentUserId)
+                .single();
+            
+            if (altError) {
+                console.error('Alternative profile fetch also failed:', altError);
+                showToast('Could not load student profile. Please contact admin.', 'warning');
+                document.getElementById('userInfo').innerHTML = `
+                    <strong>⚠️ Profile Error</strong><br>
+                    Please contact administrator to set up your profile.
+                    <button onclick="logout()" style="margin-top:10px; padding:5px 10px;">Go Back</button>
+                `;
+                document.getElementById('examList').innerHTML = '<div class="exam-card">⚠️ Unable to load your profile. Please contact the administrator.</div>';
+                isLoading = false;
+                return;
+            }
+            profile = altProfile;
         }
+        
+        if (!profile) {
+            console.error('No profile found for user:', currentUserId);
+            document.getElementById('userInfo').innerHTML = `
+                <strong>⚠️ Profile Not Found</strong><br>
+                Your student profile has not been set up yet.
+                <button onclick="logout()" style="margin-top:10px; padding:5px 10px;">Go Back</button>
+            `;
+            document.getElementById('examList').innerHTML = '<div class="exam-card">⚠️ Your student profile is not complete. Please contact the administrator.</div>';
+            isLoading = false;
+            return;
+        }
+        
+        studentProfile = profile;
+        console.log('Student Profile loaded:', studentProfile);
+        
+        // Setup realtime subscriptions
+        setupRealtimeSubscription();
         
         const studentIdDisplay = profile?.student_id ? `<span class="student-id-badge">ID: ${profile.student_id}</span>` : '';
         
+        // Display user info with actual data
         document.getElementById('userInfo').innerHTML = `
-            <strong>👤 ${studentProfile?.full_name || 'Student'}</strong><br>
-            📚 ${studentProfile?.program || 'N/A'} | Block ${studentProfile?.block || 'N/A'} | Intake: ${studentProfile?.intake_year || 'N/A'}
+            <strong>👤 ${studentProfile?.full_name || studentProfile?.name || 'Student'}</strong><br>
+            📚 ${studentProfile?.program || 'Not Assigned'} | Block ${studentProfile?.block || 'Not Assigned'} | Intake: ${studentProfile?.intake_year || 'Not Assigned'}
             <br>${studentIdDisplay}
+            ${(!studentProfile?.program || !studentProfile?.block) ? '<br><small style="color:#F59E0B;">⚠️ Profile incomplete - contact admin</small>' : ''}
         `;
         
-        const { data: exams } = await sb.from('exams').select('*').not('online_link', 'is', null);
+        // Fetch all exams
+        let { data: exams, error: examsError } = await sb
+            .from('exams')
+            .select('*')
+            .not('online_link', 'is', null);
+        
+        if (examsError) {
+            console.error('Exams fetch error:', examsError);
+            document.getElementById('examList').innerHTML = '<div class="exam-card">⚠️ Error loading exams. Please refresh.</div>';
+            isLoading = false;
+            return;
+        }
+        
+        console.log('Total exams fetched:', exams?.length || 0);
+        
         const filteredExams = filterExamsByStudent(exams || []);
         
-        const { data: grades } = await sb.from('exam_grades').select('*').eq('student_id', currentUserId).eq('question_id', '00000000-0000-0000-0000-000000000000');
+        // Fetch grades and released results
+        const { data: grades } = await sb
+            .from('exam_grades')
+            .select('*')
+            .eq('student_id', currentUserId)
+            .eq('question_id', '00000000-0000-0000-0000-000000000000');
+        
         const { data: released } = await sb.from('released_exam_results').select('result_id');
         const releasedSet = new Set(released?.map(r => r.result_id) || []);
         
@@ -779,7 +861,16 @@ async function loadExams(showLoading = true) {
         container.innerHTML = '';
         
         if (!filteredExams.length) {
-            container.innerHTML = '<div class="exam-card">📭 No exams available for your Program, Block, or Intake Year.</div>';
+            let message = '<div class="exam-card">📭 No exams available for your Program, Block, or Intake Year.</div>';
+            message += '<div class="debug-info" style="display:block;">';
+            message += '<strong>Debug Info:</strong><br>';
+            message += `Your Profile: Program="${studentProfile?.program}", Block="${studentProfile?.block}", Intake="${studentProfile?.intake_year}"<br>`;
+            message += `Total Exams in System: ${exams?.length || 0}<br>`;
+            message += `Exams that matched your criteria: 0<br>`;
+            message += '<small>Contact admin if you believe this is an error.</small>';
+            message += '</div>';
+            container.innerHTML = message;
+            isLoading = false;
             return;
         }
         
@@ -836,7 +927,7 @@ async function loadExams(showLoading = true) {
         lastCheckTime = Date.now();
         
     } catch(err) { 
-        console.error(err); 
+        console.error('Unexpected error in loadExams:', err); 
         document.getElementById('examList').innerHTML = '<div class="exam-card">⚠️ Error loading exams. Please refresh.</div>'; 
     }
     isLoading = false;
@@ -886,13 +977,11 @@ function showToast(msg, type) {
     setTimeout(() => toast.remove(), 5000);
 }
 
-// Initialize
 window.addEventListener('DOMContentLoaded', () => {
     loadExams();
     startAutoRefresh();
 });
 
-// Expose functions globally
 window.startExam = startExam;
 window.manualRefresh = manualRefresh;
 window.closeModal = closeModal;
