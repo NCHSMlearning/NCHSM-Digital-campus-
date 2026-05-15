@@ -718,11 +718,11 @@
     
     console.log('Loading preview for exam ID:', examId);
     
-    // Get ALL grades for this exam with the specific question_id
+    // Get ALL grades for this exam
     const { data: results, error } = await sb
         .from('exam_grades')
         .select('id, student_id, marks, total_score, result_status')
-        .eq('exam_id', parseInt(examId))
+        .eq('exam_id', parseInt(examId))  // exam_id is integer
         .eq('question_id', '00000000-0000-0000-0000-000000000000');
     
     if (error) { 
@@ -750,7 +750,6 @@
     
     results.forEach(r => {
         const isReleased = releasedSet.has(r.id);
-        // Only show PASS or FAIL results that are not released
         const canRelease = !isReleased && (r.result_status === 'PASS' || r.result_status === 'FAIL');
         if (canRelease) notReleasedCount++;
         const student = profileMap[r.student_id];
@@ -803,50 +802,54 @@
         });
     };
     
-    window.confirmReleaseResults = async function() {
-        if (selectedStudentIds.size === 0) {
-            alert('Please select at least one student to release results.');
+  window.confirmReleaseResults = async function() {
+    if (selectedStudentIds.size === 0) {
+        alert('Please select at least one student to release results.');
+        return;
+    }
+    
+    const examId = document.getElementById('releaseExamFilter').value;
+    if (!examId) { alert('Please select an exam'); return; }
+    
+    if (!confirm(`Release results for ${selectedStudentIds.size} selected student(s)?`)) return;
+    
+    try {
+        const releaseRecords = [];
+        for (const gradeId of selectedStudentIds) {
+            const result = currentReleaseResults.find(r => r.id == gradeId);
+            if (result) {
+                releaseRecords.push({
+                    result_id: gradeId,  // This is a UUID, keep as string
+                    student_id: result.student_id,
+                    exam_id: parseInt(examId),  // exam_id is integer, parse it
+                    released_at: new Date().toISOString(),
+                    released_by: 'admin'
+                });
+            }
+        }
+        
+        if (releaseRecords.length === 0) {
+            alert('No valid results to release');
             return;
         }
         
-        const examId = document.getElementById('releaseExamFilter').value;
-        if (!examId) { alert('Please select an exam'); return; }
+        console.log('Releasing records:', releaseRecords);
         
-        if (!confirm(`Release results for ${selectedStudentIds.size} selected student(s)?`)) return;
-        
-        try {
-            const releaseRecords = [];
-            for (const gradeId of selectedStudentIds) {
-                const result = currentReleaseResults.find(r => r.id == gradeId);
-                if (result) {
-                    releaseRecords.push({
-                        result_id: gradeId,
-                        student_id: result.student_id,
-                        exam_id: parseInt(examId),
-                        released_at: new Date().toISOString(),
-                        released_by: 'admin'
-                    });
-                }
-            }
-            
-            if (releaseRecords.length === 0) {
-                alert('No valid results to release');
-                return;
-            }
-            
-            const { error } = await sb.from('released_exam_results').insert(releaseRecords);
-            if (error) { 
-                alert('Error: ' + error.message); 
-            } else { 
-                alert(`Released ${releaseRecords.length} results!`); 
-                closeReleaseModal(); 
-                loadStudentsWithResults();
-                loadAllExams();
-            }
-        } catch (err) { 
-            alert('Error: ' + err.message); 
+        const { error } = await sb.from('released_exam_results').insert(releaseRecords);
+        if (error) { 
+            alert('Error: ' + error.message); 
+            console.error('Release error:', error);
+        } else { 
+            alert(`Released ${releaseRecords.length} results!`); 
+            closeReleaseModal(); 
+            loadStudentsWithResults();
+            loadAllExams();
         }
-    };
+    } catch (err) { 
+        alert('Error: ' + err.message); 
+        console.error('Release error:', err);
+    }
+};
     
     window.loadAllStudents = async function() {
         const loadingDiv = document.getElementById('allStudentsLoading');
