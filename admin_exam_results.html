@@ -707,57 +707,69 @@
         document.getElementById('releaseModal').style.display = 'flex';
     };
     
-    window.loadReleasePreview = async function() {
-        const examId = document.getElementById('releaseExamFilter').value;
-        if (!examId) { document.getElementById('releasePreview').style.display = 'none'; return; }
-        document.getElementById('releasePreview').style.display = 'block';
-        selectedStudentIds.clear();
-        
-        // Get ALL grades for this exam
-        const { data: results, error } = await sb
-            .from('exam_grades')
-            .select('id, student_id, marks, total_score, result_status')
-            .eq('exam_id', parseInt(examId))
-            .eq('question_id', '00000000-0000-0000-0000-000000000000');
-        
-        if (error) { console.error(error); return; }
-        
-        if (!results || results.length === 0) { 
-            document.getElementById('releasePreviewBody').innerHTML = '<tr><td colspan="7">No results found for this exam</td></tr>'; 
-            return; 
-        }
-        
-        currentReleaseResults = results;
-        
-        const studentIds = results.map(r => r.student_id);
-        const { data: profiles } = await sb.from('consolidated_user_profiles_table').select('user_id, full_name, student_id').in('user_id', studentIds);
-        const profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p]));
-        const { data: released } = await sb.from('released_exam_results').select('result_id');
-        const releasedSet = new Set(released?.map(r => r.result_id) || []);
-        
-        let notReleasedCount = 0;
-        let previewHtml = '';
-        results.forEach(r => {
-            const isReleased = releasedSet.has(r.id);
-            const canRelease = !isReleased && (r.result_status === 'PASS' || r.result_status === 'FAIL');
-            if (canRelease) notReleasedCount++;
-            const student = profileMap[r.student_id];
-            previewHtml += `<tr>
-                <td><input type="checkbox" class="student-checkbox" data-id="${r.id}" data-student-id="${r.student_id}" ${!canRelease ? 'disabled' : ''} onchange="updateSelectedCount()"></td>
-                <td><span class="student-id-badge">${student?.student_id || 'N/A'}</span></td>
-                <td><strong>${student?.full_name || 'Unknown'}</strong></td>
-                <td>${r.marks || 0}</td>
-                <td>${parseFloat(r.total_score || 0).toFixed(1)}%</td>
-                <td><span class="${r.result_status==='PASS'?'status-pass':(r.result_status==='FAIL'?'status-fail':'status-pending')}">${r.result_status || 'PENDING'}</span></td>
-                <td>${isReleased ? '✅ Released' : (canRelease ? '🔒 Pending' : '⏳ Not Graded')}</td>
-            </tr>`;
-        });
-        document.getElementById('releasePreviewBody').innerHTML = previewHtml;
-        document.getElementById('releaseSummary').innerHTML = `<strong>Pending Release: ${notReleasedCount}</strong>`;
-        updateSelectedCount();
-        document.getElementById('selectAllCheckbox').checked = false;
-    };
+   window.loadReleasePreview = async function() {
+    const examId = document.getElementById('releaseExamFilter').value;
+    if (!examId) { 
+        document.getElementById('releasePreview').style.display = 'none'; 
+        return; 
+    }
+    document.getElementById('releasePreview').style.display = 'block';
+    selectedStudentIds.clear();
     
+    console.log('Loading preview for exam ID:', examId);
+    
+    // Get ALL grades for this exam with the specific question_id
+    const { data: results, error } = await sb
+        .from('exam_grades')
+        .select('id, student_id, marks, total_score, result_status')
+        .eq('exam_id', parseInt(examId))
+        .eq('question_id', '00000000-0000-0000-0000-000000000000');
+    
+    if (error) { 
+        console.error('Error fetching results:', error);
+        return; 
+    }
+    
+    console.log('Results found:', results);
+    
+    if (!results || results.length === 0) { 
+        document.getElementById('releasePreviewBody').innerHTML = '<tr><td colspan="7">No results found for this exam</td></tr>'; 
+        return; 
+    }
+    
+    currentReleaseResults = results;
+    
+    const studentIds = results.map(r => r.student_id);
+    const { data: profiles } = await sb.from('consolidated_user_profiles_table').select('user_id, full_name, student_id').in('user_id', studentIds);
+    const profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p]));
+    const { data: released } = await sb.from('released_exam_results').select('result_id');
+    const releasedSet = new Set(released?.map(r => r.result_id) || []);
+    
+    let notReleasedCount = 0;
+    let previewHtml = '';
+    
+    results.forEach(r => {
+        const isReleased = releasedSet.has(r.id);
+        // Only show PASS or FAIL results that are not released
+        const canRelease = !isReleased && (r.result_status === 'PASS' || r.result_status === 'FAIL');
+        if (canRelease) notReleasedCount++;
+        const student = profileMap[r.student_id];
+        previewHtml += `<tr>
+            <td><input type="checkbox" class="student-checkbox" data-id="${r.id}" data-student-id="${r.student_id}" ${!canRelease ? 'disabled' : ''} onchange="updateSelectedCount()"></td>
+            <td><span class="student-id-badge">${student?.student_id || 'N/A'}</span></td>
+            <td><strong>${student?.full_name || 'Unknown'}</strong></td>
+            <td>${r.marks || 0}</td>
+            <td>${parseFloat(r.total_score || 0).toFixed(1)}%</td>
+            <td><span class="${r.result_status==='PASS'?'status-pass':(r.result_status==='FAIL'?'status-fail':'status-pending')}">${r.result_status || 'PENDING'}</span></td>
+            <td>${isReleased ? '✅ Released' : (canRelease ? '🔒 Pending Release' : '⏳ Not Graded')}</td>
+        </tr>`;
+    });
+    
+    document.getElementById('releasePreviewBody').innerHTML = previewHtml;
+    document.getElementById('releaseSummary').innerHTML = `<strong>Pending Release: ${notReleasedCount}</strong>`;
+    updateSelectedCount();
+    document.getElementById('selectAllCheckbox').checked = false;
+};
     window.selectAllStudents = function(select) {
         const checkboxes = document.querySelectorAll('#releasePreviewBody .student-checkbox:not(:disabled)');
         checkboxes.forEach(cb => {
