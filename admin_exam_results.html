@@ -717,10 +717,9 @@
     
     console.log('Loading preview for exam ID:', examId);
     
-    // IMPORTANT: Select the INTEGER 'id' column, not the UUID
     const { data: results, error } = await sb
         .from('exam_grades')
-        .select('id, student_id, marks, total_score, result_status')  // 'id' is INTEGER
+        .select('id, student_id, marks, total_score, result_status')
         .eq('exam_id', parseInt(examId))
         .eq('question_id', '00000000-0000-0000-0000-000000000000');
     
@@ -730,6 +729,7 @@
     }
     
     console.log('Results found:', results);
+    console.log('Result IDs (should be integers):', results.map(r => ({ id: r.id, type: typeof r.id })));
     
     if (!results || results.length === 0) { 
         document.getElementById('releasePreviewBody').innerHTML = '<tr><td colspan="7">No results found for this exam</td></tr>'; 
@@ -748,7 +748,7 @@
     let previewHtml = '';
     
     results.forEach(r => {
-        const isReleased = releasedSet.has(r.id);  // r.id is INTEGER
+        const isReleased = releasedSet.has(r.id);
         const canRelease = !isReleased && (r.result_status === 'PASS' || r.result_status === 'FAIL');
         if (canRelease) notReleasedCount++;
         const student = profileMap[r.student_id];
@@ -765,8 +765,8 @@
     
     document.getElementById('releasePreviewBody').innerHTML = previewHtml;
     document.getElementById('releaseSummary').innerHTML = `<strong>Pending Release: ${notReleasedCount}</strong>`;
-    updateSelectedCount();
     document.getElementById('selectAllCheckbox').checked = false;
+    updateSelectedCount();
 };
     window.selectAllStudents = function(select) {
         const checkboxes = document.querySelectorAll('#releasePreviewBody .student-checkbox:not(:disabled)');
@@ -794,15 +794,20 @@
     document.getElementById('selectedCount').innerHTML = `${count} selected`;
     document.getElementById('confirmReleaseBtn').disabled = (count === 0);
     
-    // Update selectedStudentIds set with INTEGER IDs
+    // Clear and update selectedStudentIds
     selectedStudentIds.clear();
     checkboxes.forEach(cb => {
         const idValue = cb.getAttribute('data-id');
-        selectedStudentIds.add(idValue);  // This is now the INTEGER as string
+        console.log('Checkbox selected with data-id:', idValue, 'type:', typeof idValue);
+        selectedStudentIds.add(idValue);
     });
+    console.log('Updated selectedStudentIds:', Array.from(selectedStudentIds));
 };
     
- window.confirmReleaseResults = async function() {
+window.confirmReleaseResults = async function() {
+    console.log('selectedStudentIds:', Array.from(selectedStudentIds));
+    console.log('currentReleaseResults:', currentReleaseResults);
+    
     if (selectedStudentIds.size === 0) {
         alert('Please select at least one student to release results.');
         return;
@@ -822,11 +827,14 @@
     try {
         const releaseRecords = [];
         for (const gradeId of selectedStudentIds) {
-            // gradeId is now the INTEGER from exam_grades.id
-            const result = currentReleaseResults.find(r => r.id == parseInt(gradeId));
+            // Convert to number for comparison
+            const gradeIdNum = parseInt(gradeId);
+            const result = currentReleaseResults.find(r => r.id === gradeIdNum);
+            console.log(`Looking for gradeId: ${gradeIdNum}, found:`, result);
+            
             if (result) {
                 releaseRecords.push({
-                    result_id: parseInt(gradeId),  // INTEGER
+                    result_id: gradeIdNum,
                     student_id: result.student_id,
                     exam_id: examIdInt,
                     released_at: new Date().toISOString(),
@@ -835,12 +843,12 @@
             }
         }
         
+        console.log('Release records to insert:', releaseRecords);
+        
         if (releaseRecords.length === 0) {
-            alert('No valid results to release');
+            alert('No valid results to release - IDs do not match');
             return;
         }
-        
-        console.log('Releasing records:', releaseRecords);
         
         const { error } = await sb.from('released_exam_results').insert(releaseRecords);
         if (error) { 
