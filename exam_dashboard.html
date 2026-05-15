@@ -7,526 +7,73 @@
 <link rel="icon" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
-body {
-    font-family: 'Poppins', sans-serif;
-    background: linear-gradient(135deg, #f5f7fa 0%, #e4e8f0 100%);
-    min-height: 100vh;
-}
-
-body::before {
-    content: '';
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: radial-gradient(circle at 20% 50%, rgba(11, 42, 74, 0.03) 0%, transparent 50%);
-    pointer-events: none;
-    z-index: 0;
-}
-
-header {
-    text-align: center;
-    padding: 25px 20px;
-    background: linear-gradient(135deg, #0A3D62 0%, #073450 100%);
-    color: white;
-    position: relative;
-    overflow: hidden;
-}
-
-header::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(circle, rgba(253,185,19,0.1) 0%, transparent 70%);
-    animation: rotate 20s linear infinite;
-}
-
-@keyframes rotate {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-}
-
-.logo {
-    width: 70px;
-    margin-bottom: 10px;
-    border-radius: 50%;
-    border: 3px solid #FDB913;
-    padding: 5px;
-    background: white;
-    position: relative;
-    z-index: 1;
-    transition: transform 0.3s ease;
-}
-
-.logo:hover {
-    transform: scale(1.05);
-}
-
-h1 {
-    font-size: 1.8rem;
-    letter-spacing: -0.5px;
-    font-weight: 700;
-    position: relative;
-    z-index: 1;
-}
-
-.header-subtitle {
-    font-size: 0.85rem;
-    opacity: 0.9;
-    position: relative;
-    z-index: 1;
-}
-
-.exam-list {
-    max-width: 1400px;
-    margin: 30px auto;
-    padding: 0 25px;
-    position: relative;
-    z-index: 1;
-}
-
-.user-info-bar {
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(10px);
-    border-radius: 20px;
-    padding: 20px 28px;
-    margin-bottom: 30px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 15px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
-    border: 1px solid rgba(253, 185, 19, 0.2);
-    transition: all 0.3s ease;
-}
-
-.user-info-bar:hover {
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
-    transform: translateY(-2px);
-}
-
-.user-details h3 {
-    color: #0A3D62;
-    font-size: 1.1rem;
-    font-weight: 700;
-}
-
-.user-details p {
-    color: #64748B;
-    font-size: 0.85rem;
-    margin-top: 4px;
-}
-
-.user-details .student-id-badge {
-    display: inline-block;
-    background: #FDB913;
-    color: #0A3D62;
-    padding: 2px 10px;
-    border-radius: 20px;
-    font-size: 0.7rem;
-    font-weight: 600;
-    margin-top: 6px;
-}
-
-.action-buttons {
-    display: flex;
-    gap: 12px;
-}
-
-.refresh-btn, .logout-btn {
-    padding: 10px 22px;
-    border-radius: 12px;
-    font-weight: 600;
-    font-size: 0.85rem;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    cursor: pointer;
-    border: none;
-    font-family: inherit;
-}
-
-.refresh-btn {
-    background: linear-gradient(135deg, #8B5CF6, #7C3AED);
-    color: white;
-    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
-}
-
-.refresh-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
-}
-
-.logout-btn {
-    background: linear-gradient(135deg, #EF4444, #DC2626);
-    color: white;
-    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
-}
-
-.logout-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
-}
-
-.exam-card {
-    background: white;
-    border-radius: 24px;
-    padding: 24px;
-    margin-bottom: 24px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    border: 1px solid rgba(0, 0, 0, 0.05);
-    position: relative;
-    overflow: hidden;
-}
-
-.exam-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 4px;
-    background: linear-gradient(90deg, #0A3D62, #FDB913, #0A3D62);
-    transform: scaleX(0);
-    transition: transform 0.5s ease;
-}
-
-.exam-card:hover::before {
-    transform: scaleX(1);
-}
-
-.exam-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-}
-
-.exam-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-bottom: 12px;
-}
-
-.exam-title {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: #0A3D62;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-
-.exam-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 16px;
-    font-size: 0.8rem;
-    color: #64748B;
-    margin: 12px 0;
-}
-
-.badge {
-    display: inline-block;
-    padding: 5px 14px;
-    border-radius: 30px;
-    font-size: 0.7rem;
-    font-weight: 600;
-}
-
-.badge-upcoming {
-    background: linear-gradient(135deg, #DBEAFE, #BFDBFE);
-    color: #1E40AF;
-}
-
-.badge-completed {
-    background: linear-gradient(135deg, #D1FAE5, #A7F3D0);
-    color: #065F46;
-}
-
-.badge-pending {
-    background: linear-gradient(135deg, #FEF3C7, #FDE68A);
-    color: #92400E;
-}
-
-.grade-info {
-    margin-top: 16px;
-    padding: 16px 20px;
-    border-radius: 16px;
-    font-size: 0.9rem;
-    transition: all 0.3s ease;
-}
-
-.grade-pass {
-    background: linear-gradient(135deg, #D1FAE5, #A7F3D0);
-    border-left: 4px solid #38A169;
-}
-
-.grade-fail {
-    background: linear-gradient(135deg, #FEE2E2, #FECACA);
-    border-left: 4px solid #DC2626;
-}
-
-.grade-not-released {
-    background: #F1F5F9;
-    border-left: 4px solid #64748B;
-    opacity: 0.8;
-}
-
-.score-large {
-    font-size: 1.8rem;
-    font-weight: 800;
-    margin-right: 12px;
-    color: #0A3D62;
-}
-
-.exam-actions {
-    display: flex;
-    gap: 12px;
-    margin-top: 18px;
-    flex-wrap: wrap;
-}
-
-.btn-start, .btn-details {
-    padding: 10px 24px;
-    border-radius: 12px;
-    font-weight: 600;
-    font-size: 0.85rem;
-    transition: all 0.3s ease;
-    cursor: pointer;
-    border: none;
-    font-family: inherit;
-}
-
-.btn-start {
-    background: linear-gradient(135deg, #38A169, #2F855A);
-    color: white;
-    box-shadow: 0 4px 12px rgba(56, 161, 105, 0.3);
-}
-
-.btn-start:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(56, 161, 105, 0.4);
-}
-
-.btn-details {
-    background: linear-gradient(135deg, #3B82F6, #2563EB);
-    color: white;
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-}
-
-.btn-details:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
-}
-
-.exam-container {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: white;
-    z-index: 2000;
-    flex-direction: column;
-    animation: fadeIn 0.3s ease;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-
-.exam-header-bar {
-    background: linear-gradient(135deg, #0A3D62, #073450);
-    color: white;
-    padding: 16px 24px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 10px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-}
-
-.exam-header-bar h3 {
-    margin: 0;
-    font-size: 1rem;
-    font-weight: 500;
-}
-
-.btn-close-exam {
-    background: rgba(220, 38, 38, 0.9);
-    color: white;
-    padding: 8px 18px;
-    border-radius: 10px;
-    font-size: 0.8rem;
-    border: none;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    font-weight: 500;
-    display: none;
-}
-
-.exam-iframe {
-    flex: 1;
-    width: 100%;
-    border: none;
-    background: white;
-}
-
-.modal {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(8px);
-    z-index: 3000;
-    align-items: center;
-    justify-content: center;
-}
-
-.modal-content {
-    background: white;
-    padding: 32px;
-    border-radius: 28px;
-    max-width: 550px;
-    max-height: 80vh;
-    overflow-y: auto;
-    width: 90%;
-    animation: modalSlideIn 0.3s ease;
-    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
-}
-
-@keyframes modalSlideIn {
-    from {
-        opacity: 0;
-        transform: translateY(-30px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.close-modal {
-    float: right;
-    font-size: 28px;
-    cursor: pointer;
-    color: #64748B;
-    transition: color 0.2s;
-}
-
-.close-modal:hover {
-    color: #DC2626;
-}
-
-.toast {
-    position: fixed;
-    bottom: 24px;
-    right: 24px;
-    padding: 14px 24px;
-    border-radius: 16px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-    z-index: 10000;
-    animation: slideInRight 0.3s ease;
-    font-size: 0.85rem;
-    font-weight: 500;
-    backdrop-filter: blur(10px);
-}
-
-.toast-success {
-    background: linear-gradient(135deg, #10B981, #059669);
-    color: white;
-}
-
-.toast-info {
-    background: linear-gradient(135deg, #3B82F6, #2563EB);
-    color: white;
-}
-
-.toast-warning {
-    background: linear-gradient(135deg, #F59E0B, #D97706);
-    color: white;
-}
-
-@keyframes slideInRight {
-    from {
-        transform: translateX(100%);
-        opacity: 0;
-    }
-    to {
-        transform: translateX(0);
-        opacity: 1;
-    }
-}
-
-.loading-skeleton {
-    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-    background-size: 200% 100%;
-    animation: loading 1.5s infinite;
-    border-radius: 12px;
-}
-
-@keyframes loading {
-    0% { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
-}
-
-/* Auto-update indicator */
-.auto-update-badge {
-    position: fixed;
-    bottom: 20px;
-    left: 20px;
-    background: rgba(0,0,0,0.75);
-    color: #10B981;
-    padding: 6px 14px;
-    border-radius: 30px;
-    font-size: 0.7rem;
-    font-family: monospace;
-    z-index: 9999;
-    backdrop-filter: blur(5px);
-    pointer-events: none;
-    animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-    0%, 100% { opacity: 0.7; }
-    50% { opacity: 1; }
-}
-
-@media (max-width: 768px) {
-    .exam-title { font-size: 1rem; }
-    .exam-meta { gap: 10px; }
-    .btn-start, .btn-details { padding: 8px 16px; font-size: 0.75rem; }
-    .user-info-bar { padding: 15px 20px; }
-    .exam-card { padding: 18px; }
-    h1 { font-size: 1.3rem; }
-    .logo { width: 50px; }
-    .auto-update-badge { font-size: 0.6rem; bottom: 10px; left: 10px; }
-}
-
-@media (max-width: 480px) {
-    .exam-list { padding: 0 15px; }
-    .user-details h3 { font-size: 0.9rem; }
-    .exam-title { font-size: 0.9rem; }
-}
+/* YOUR ORIGINAL STYLES - keeping them exactly the same */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Poppins', sans-serif; background: linear-gradient(135deg, #f5f7fa 0%, #e4e8f0 100%); min-height: 100vh; }
+body::before { content: ''; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: radial-gradient(circle at 20% 50%, rgba(11, 42, 74, 0.03) 0%, transparent 50%); pointer-events: none; z-index: 0; }
+header { text-align: center; padding: 25px 20px; background: linear-gradient(135deg, #0A3D62 0%, #073450 100%); color: white; position: relative; overflow: hidden; }
+header::before { content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: radial-gradient(circle, rgba(253,185,19,0.1) 0%, transparent 70%); animation: rotate 20s linear infinite; }
+@keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.logo { width: 70px; margin-bottom: 10px; border-radius: 50%; border: 3px solid #FDB913; padding: 5px; background: white; position: relative; z-index: 1; transition: transform 0.3s ease; }
+.logo:hover { transform: scale(1.05); }
+h1 { font-size: 1.8rem; letter-spacing: -0.5px; font-weight: 700; position: relative; z-index: 1; }
+.header-subtitle { font-size: 0.85rem; opacity: 0.9; position: relative; z-index: 1; }
+.exam-list { max-width: 1400px; margin: 30px auto; padding: 0 25px; position: relative; z-index: 1; }
+.user-info-bar { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-radius: 20px; padding: 20px 28px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08); border: 1px solid rgba(253, 185, 19, 0.2); transition: all 0.3s ease; }
+.user-info-bar:hover { box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12); transform: translateY(-2px); }
+.user-details h3 { color: #0A3D62; font-size: 1.1rem; font-weight: 700; }
+.user-details p { color: #64748B; font-size: 0.85rem; margin-top: 4px; }
+.user-details .student-id-badge { display: inline-block; background: #FDB913; color: #0A3D62; padding: 2px 10px; border-radius: 20px; font-size: 0.7rem; font-weight: 600; margin-top: 6px; }
+.action-buttons { display: flex; gap: 12px; }
+.refresh-btn, .logout-btn { padding: 10px 22px; border-radius: 12px; font-weight: 600; font-size: 0.85rem; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; border: none; font-family: inherit; }
+.refresh-btn { background: linear-gradient(135deg, #8B5CF6, #7C3AED); color: white; box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3); }
+.refresh-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4); }
+.logout-btn { background: linear-gradient(135deg, #EF4444, #DC2626); color: white; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3); }
+.logout-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4); }
+.exam-card { background: white; border-radius: 24px; padding: 24px; margin-bottom: 24px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); border: 1px solid rgba(0, 0, 0, 0.05); position: relative; overflow: hidden; }
+.exam-card::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: linear-gradient(90deg, #0A3D62, #FDB913, #0A3D62); transform: scaleX(0); transition: transform 0.5s ease; }
+.exam-card:hover::before { transform: scaleX(1); }
+.exam-card:hover { transform: translateY(-5px); box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1); }
+.exam-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
+.exam-title { font-size: 1.25rem; font-weight: 700; color: #0A3D62; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.exam-meta { display: flex; flex-wrap: wrap; gap: 16px; font-size: 0.8rem; color: #64748B; margin: 12px 0; }
+.badge { display: inline-block; padding: 5px 14px; border-radius: 30px; font-size: 0.7rem; font-weight: 600; }
+.badge-upcoming { background: linear-gradient(135deg, #DBEAFE, #BFDBFE); color: #1E40AF; }
+.badge-completed { background: linear-gradient(135deg, #D1FAE5, #A7F3D0); color: #065F46; }
+.badge-pending { background: linear-gradient(135deg, #FEF3C7, #FDE68A); color: #92400E; }
+.grade-info { margin-top: 16px; padding: 16px 20px; border-radius: 16px; font-size: 0.9rem; transition: all 0.3s ease; }
+.grade-pass { background: linear-gradient(135deg, #D1FAE5, #A7F3D0); border-left: 4px solid #38A169; }
+.grade-fail { background: linear-gradient(135deg, #FEE2E2, #FECACA); border-left: 4px solid #DC2626; }
+.grade-not-released { background: #F1F5F9; border-left: 4px solid #64748B; opacity: 0.8; }
+.score-large { font-size: 1.8rem; font-weight: 800; margin-right: 12px; color: #0A3D62; }
+.exam-actions { display: flex; gap: 12px; margin-top: 18px; flex-wrap: wrap; }
+.btn-start, .btn-details { padding: 10px 24px; border-radius: 12px; font-weight: 600; font-size: 0.85rem; transition: all 0.3s ease; cursor: pointer; border: none; font-family: inherit; }
+.btn-start { background: linear-gradient(135deg, #38A169, #2F855A); color: white; box-shadow: 0 4px 12px rgba(56, 161, 105, 0.3); }
+.btn-start:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(56, 161, 105, 0.4); }
+.btn-details { background: linear-gradient(135deg, #3B82F6, #2563EB); color: white; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); }
+.btn-details:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4); }
+.exam-container { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 2000; flex-direction: column; animation: fadeIn 0.3s ease; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.exam-header-bar { background: linear-gradient(135deg, #0A3D62, #073450); color: white; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); }
+.exam-header-bar h3 { margin: 0; font-size: 1rem; font-weight: 500; }
+.btn-close-exam { background: rgba(220, 38, 38, 0.9); color: white; padding: 8px 18px; border-radius: 10px; font-size: 0.8rem; border: none; cursor: pointer; transition: all 0.3s ease; font-weight: 500; display: none; }
+.exam-iframe { flex: 1; width: 100%; border: none; background: white; }
+.modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(8px); z-index: 3000; align-items: center; justify-content: center; }
+.modal-content { background: white; padding: 32px; border-radius: 28px; max-width: 550px; max-height: 80vh; overflow-y: auto; width: 90%; animation: modalSlideIn 0.3s ease; box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25); }
+@keyframes modalSlideIn { from { opacity: 0; transform: translateY(-30px); } to { opacity: 1; transform: translateY(0); } }
+.close-modal { float: right; font-size: 28px; cursor: pointer; color: #64748B; transition: color 0.2s; }
+.close-modal:hover { color: #DC2626; }
+.toast { position: fixed; bottom: 24px; right: 24px; padding: 14px 24px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15); z-index: 10000; animation: slideInRight 0.3s ease; font-size: 0.85rem; font-weight: 500; backdrop-filter: blur(10px); }
+.toast-success { background: linear-gradient(135deg, #10B981, #059669); color: white; }
+.toast-info { background: linear-gradient(135deg, #3B82F6, #2563EB); color: white; }
+.toast-warning { background: linear-gradient(135deg, #F59E0B, #D97706); color: white; }
+@keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+.loading-skeleton { background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: loading 1.5s infinite; border-radius: 12px; }
+@keyframes loading { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+.auto-update-badge { position: fixed; bottom: 20px; left: 20px; background: rgba(0,0,0,0.75); color: #10B981; padding: 6px 14px; border-radius: 30px; font-size: 0.7rem; font-family: monospace; z-index: 9999; backdrop-filter: blur(5px); pointer-events: none; animation: pulse 2s infinite; }
+@keyframes pulse { 0%, 100% { opacity: 0.7; } 50% { opacity: 1; } }
+@media (max-width: 768px) { .exam-title { font-size: 1rem; } .exam-meta { gap: 10px; } .btn-start, .btn-details { padding: 8px 16px; font-size: 0.75rem; } .user-info-bar { padding: 15px 20px; } .exam-card { padding: 18px; } h1 { font-size: 1.3rem; } .logo { width: 50px; } .auto-update-badge { font-size: 0.6rem; bottom: 10px; left: 10px; } }
+@media (max-width: 480px) { .exam-list { padding: 0 15px; } .user-details h3 { font-size: 0.9rem; } .exam-title { font-size: 0.9rem; } }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -542,7 +89,7 @@ h1 {
     <div class="user-info-bar" id="userInfoBar">
         <div class="user-details" id="userInfo">Loading profile...</div>
         <div class="action-buttons">
-            <button class="refresh-btn" onclick="refreshExams()">🔄 Refresh Now</button>
+            <button class="refresh-btn" onclick="manualRefresh()">🔄 Refresh Now</button>
             <button class="logout-btn" onclick="logout()">🚪 Logout</button>
         </div>
     </div>
@@ -568,9 +115,8 @@ h1 {
 </div>
 
 <script>
-// YOUR ORIGINAL WORKING SUPABASE CONFIGURATION (unchanged)
 const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let currentUserId = null;
@@ -584,9 +130,13 @@ let lastRefreshTime = Date.now();
 function getExamLink(exam) { return exam.exam_link || exam.online_link || null; }
 
 function filterExamsByStudent(exams) {
-    if (!studentProfile) return [];
+    if (!studentProfile) return exams; // Show all exams if no profile
+    
     return exams.filter(exam => {
         if (!getExamLink(exam)) return false;
+        // If exam has no restrictions, show it
+        if (!exam.program_type && !exam.block_term && !exam.intake_year) return true;
+        // If exam has restrictions, check matches (or 'General')
         if (exam.program_type && exam.program_type !== 'General' && exam.program_type !== studentProfile.program) return false;
         if (exam.block_term && exam.block_term !== 'General' && exam.block_term !== studentProfile.block) return false;
         if (exam.intake_year && exam.intake_year !== 'General' && exam.intake_year != studentProfile.intake_year) return false;
@@ -596,7 +146,14 @@ function filterExamsByStudent(exams) {
 
 async function loadExamContent(examId, examName) {
     try {
-        const { data: exam } = await sb.from('exams').select('online_link, exam_link').eq('id', examId).single();
+        const { data: exam, error } = await sb
+            .from('exams')
+            .select('online_link, exam_link')
+            .eq('id', examId)
+            .single();
+            
+        if (error) throw error;
+        
         let link = exam?.exam_link || exam?.online_link;
         if (!link) { showToast('No exam link', 'warning'); return; }
         link = link.replace('{user_id}', currentUserId);
@@ -613,6 +170,7 @@ async function loadExamContent(examId, examName) {
         
         showToast('Exam loaded. Good luck!', 'success');
     } catch(err) {
+        console.error(err);
         showToast('Error loading exam', 'warning');
     }
 }
@@ -629,12 +187,11 @@ function autoCloseExam() {
         document.getElementById('examContainer').style.display = 'none';
         document.querySelector('header').style.display = 'block';
         document.querySelector('.exam-list').style.display = 'block';
-        refreshExams();
+        manualRefresh();
         showToast('Exam closed. Waiting for admin to release results.', 'info');
     }, 2000);
 }
 
-// Listen for exam completion from iframe - AUTO CLOSE
 window.addEventListener('message', function(event) {
     if (event.data === 'exam_completed' || event.data?.type === 'exam_completed') {
         showToast('✅ Exam completed! Redirecting...', 'success');
@@ -642,9 +199,7 @@ window.addEventListener('message', function(event) {
     }
 });
 
-// ============ NEW AUTO-UPDATE FEATURES ============
-
-// 1. Auto-refresh when user returns to the page (tab becomes visible)
+// Auto-refresh when tab becomes visible
 document.addEventListener('visibilitychange', function() {
     if (!document.hidden && !isLoading && currentUserId && 
         document.getElementById('examContainer').style.display !== 'flex') {
@@ -654,7 +209,6 @@ document.addEventListener('visibilitychange', function() {
     }
 });
 
-// 2. Periodic background refresh (every 30 seconds)
 function startAutoRefresh() {
     if (autoRefreshInterval) clearInterval(autoRefreshInterval);
     autoRefreshInterval = setInterval(() => {
@@ -664,35 +218,7 @@ function startAutoRefresh() {
             updateAutoUpdateStatus(`🔄 Checking for updates ${new Date().toLocaleTimeString()}`);
             setTimeout(() => updateAutoUpdateStatus('✅ Auto-update active | Checking every 30s'), 2000);
         }
-    }, 30000); // Check every 30 seconds
-}
-
-// 3. Real-time subscription for result releases (instant notifications)
-let realtimeChannel = null;
-
-function setupRealtimeSubscription() {
-    if (realtimeChannel) {
-        sb.removeChannel(realtimeChannel);
-    }
-    
-    realtimeChannel = sb
-        .channel('student-results-auto')
-        .on(
-            'postgres_changes',
-            {
-                event: 'INSERT',
-                schema: 'public',
-                table: 'released_exam_results',
-                filter: `student_id=eq.${currentUserId}`
-            },
-            (payload) => {
-                showToast('🎉 RESULTS RELEASED! Your exam results are now available!', 'success');
-                updateAutoUpdateStatus('✨ New results released! Refreshing...');
-                loadExams(false);
-                setTimeout(() => updateAutoUpdateStatus('✅ Auto-update active | Checking every 30s'), 3000);
-            }
-        )
-        .subscribe();
+    }, 30000);
 }
 
 function updateAutoUpdateStatus(message) {
@@ -702,7 +228,6 @@ function updateAutoUpdateStatus(message) {
     }
 }
 
-// YOUR ORIGINAL loadExams function (preserved but with auto-update awareness)
 async function loadExams(showLoading = true) {
     if (isLoading) return;
     isLoading = true;
@@ -715,51 +240,100 @@ async function loadExams(showLoading = true) {
     }
     
     try {
-        const { data: profile } = await sb.from('consolidated_user_profiles_table').select('*').eq('user_id', currentUserId).single();
-        if (profile) {
-            studentProfile = profile;
-            // Setup realtime subscription when we have the student ID
-            setupRealtimeSubscription();
+        // First, try to get the session to verify auth
+        const { data: session } = await sb.auth.getSession();
+        if (!session.session) {
+            console.log('No active session, but continuing with stored user ID');
         }
         
-        const studentIdDisplay = profile?.student_id ? `<span class="student-id-badge">ID: ${profile.student_id}</span>` : '';
+        // Fetch student profile using user_id
+        const { data: profile, error: profileError } = await sb
+            .from('consolidated_user_profiles_table')
+            .select('*')
+            .eq('user_id', currentUserId)
+            .maybeSingle(); // Use maybeSingle to avoid 406 error if no rows
+        
+        if (profileError) {
+            console.error('Profile fetch error:', profileError);
+        }
+        
+        if (profile) {
+            studentProfile = profile;
+        } else {
+            // Try to find profile by email if user_id didn't work
+            const userEmail = localStorage.getItem('studentEmail');
+            if (userEmail) {
+                const { data: profileByEmail } = await sb
+                    .from('consolidated_user_profiles_table')
+                    .select('*')
+                    .eq('email', userEmail)
+                    .maybeSingle();
+                
+                if (profileByEmail) {
+                    studentProfile = profileByEmail;
+                    // Update localStorage with correct user_id
+                    localStorage.setItem('currentUserId', studentProfile.user_id);
+                    currentUserId = studentProfile.user_id;
+                }
+            }
+        }
+        
+        const studentIdDisplay = studentProfile?.student_id ? `<span class="student-id-badge">ID: ${studentProfile.student_id}</span>` : '';
         
         document.getElementById('userInfo').innerHTML = `
-            <strong>👤 ${studentProfile?.full_name || 'Student'}</strong><br>
-            📚 ${studentProfile?.program || 'N/A'} | Block ${studentProfile?.block || 'N/A'} | Intake: ${studentProfile?.intake_year || 'N/A'}
+            <strong>👤 ${studentProfile?.full_name || (studentProfile?.name) || 'Student'}</strong><br>
+            📚 ${studentProfile?.program || 'Not Assigned'} | Block ${studentProfile?.block || 'Not Assigned'} | Intake: ${studentProfile?.intake_year || 'Not Assigned'}
             <br>${studentIdDisplay}
+            ${!studentProfile ? '<br><small style="color:#F59E0B;">⚠️ Profile incomplete - some exams may not show</small>' : ''}
         `;
         
-        const { data: exams } = await sb.from('exams').select('*').not('online_link', 'is', null);
+        // Fetch all exams
+        const { data: exams, error: examsError } = await sb
+            .from('exams')
+            .select('*')
+            .not('online_link', 'is', null);
+        
+        if (examsError) throw examsError;
+        
         const filteredExams = filterExamsByStudent(exams || []);
         
-        const { data: grades } = await sb.from('exam_grades').select('*').eq('student_id', currentUserId).eq('question_id', '00000000-0000-0000-0000-000000000000');
-        const { data: released } = await sb.from('released_exam_results').select('result_id');
+        // Fetch grades
+        const { data: grades, error: gradesError } = await sb
+            .from('exam_grades')
+            .select('*')
+            .eq('student_id', currentUserId)
+            .eq('question_id', '00000000-0000-0000-0000-000000000000');
+        
+        if (gradesError) console.error('Grades fetch error:', gradesError);
+        
+        // Fetch released results
+        const { data: released, error: releasedError } = await sb
+            .from('released_exam_results')
+            .select('result_id');
+        
+        if (releasedError) console.error('Released fetch error:', releasedError);
+        
         const releasedSet = new Set(released?.map(r => r.result_id) || []);
         
         const container = document.getElementById('examList');
         container.innerHTML = '';
         
         if (!filteredExams.length) {
-            container.innerHTML = '<div class="exam-card">📭 No exams available for your Program, Block, or Intake Year.</div>';
+            let message = '<div class="exam-card">📭 No exams available.';
+            if (!studentProfile) {
+                message += '<br><small>Your student profile is not set up. Please contact the administrator.</small>';
+            } else if (!studentProfile.program || !studentProfile.block) {
+                message += '<br><small>Your profile is missing Program or Block information. Please contact the administrator.</small>';
+            }
+            message += '</div>';
+            container.innerHTML = message;
             return;
         }
-        
-        // Check for newly released results
-        let newResultsFound = false;
         
         for (const exam of filteredExams) {
             const grade = grades?.find(g => g.exam_id === exam.id);
             const hasGrade = grade && (grade.marks !== null || grade.total_score > 0);
             const isReleased = grade ? releasedSet.has(grade.id) : false;
-            
-            // Detect if this is a new result since last refresh
-            if (hasGrade && isReleased && grade.graded_at) {
-                const gradeTime = new Date(grade.graded_at).getTime();
-                if (gradeTime > lastRefreshTime - 5000) { // Within last 5 seconds
-                    newResultsFound = true;
-                }
-            }
             
             let statusBadge = !hasGrade ? '<span class="badge badge-upcoming">📝 Not Started</span>' : 
                               (isReleased ? '<span class="badge badge-completed">✅ Released</span>' : '<span class="badge badge-pending">🔒 Pending</span>');
@@ -788,27 +362,31 @@ async function loadExams(showLoading = true) {
                     ${gradeHtml}
                     <div class="exam-actions">
                         ${!hasGrade ? `<button class="btn-start" onclick="startExam(${exam.id}, '${exam.exam_name.replace(/'/g, "\\'")}')">▶ Start Exam</button>` : 
-                          (isReleased ? `<button class="btn-details" onclick="viewResult(${exam.id})">📋 View Results</button>` : '')}
+                          (isReleased ? `<button class="btn-details" onclick="viewResult(${exam.id})">📋 View Results</button>` : 
+                          `<button class="btn-details" style="background:#94A3B8; cursor:not-allowed;" disabled>⏳ Awaiting Release</button>`)}
                     </div>
                 </div>
             `;
         }
         
-        if (newResultsFound) {
-            showToast('🎉 New exam results are now available!', 'success');
-        }
-        
         lastRefreshTime = Date.now();
         
     } catch(err) { 
-        console.error(err); 
+        console.error('Error in loadExams:', err); 
         document.getElementById('examList').innerHTML = '<div class="exam-card">⚠️ Error loading exams. Please refresh.</div>'; 
     }
     isLoading = false;
 }
 
 async function viewResult(examId) {
-    const { data: grade } = await sb.from('exam_grades').select('*').eq('student_id', currentUserId).eq('exam_id', examId).eq('question_id', '00000000-0000-0000-0000-000000000000').single();
+    const { data: grade } = await sb
+        .from('exam_grades')
+        .select('*')
+        .eq('student_id', currentUserId)
+        .eq('exam_id', examId)
+        .eq('question_id', '00000000-0000-0000-0000-000000000000')
+        .single();
+    
     const percent = parseFloat(grade?.total_score || 0);
     const studentIdDisplay = studentProfile?.student_id ? `<p><strong>Student ID:</strong> ${studentProfile.student_id}</p>` : '';
     
@@ -825,7 +403,7 @@ async function viewResult(examId) {
     document.getElementById('resultsModal').style.display = 'flex';
 }
 
-function refreshExams() { 
+function manualRefresh() { 
     updateAutoUpdateStatus('🔄 Manual refresh...');
     loadExams(false);
     setTimeout(() => updateAutoUpdateStatus('✅ Auto-update active | Checking every 30s'), 2000);
@@ -836,9 +414,17 @@ function closeModal() { document.getElementById('resultsModal').style.display = 
 function logout() { 
     if (autoCloseTimeout) clearTimeout(autoCloseTimeout);
     if (autoRefreshInterval) clearInterval(autoRefreshInterval);
-    if (realtimeChannel) sb.removeChannel(realtimeChannel);
-    localStorage.clear(); 
-    window.location.href = 'exam_login.html'; 
+    
+    // Sign out from Supabase Auth
+    sb.auth.signOut().then(() => {
+        localStorage.clear();
+        sessionStorage.clear();
+        window.location.href = 'exam_login.html';
+    }).catch(() => {
+        localStorage.clear();
+        sessionStorage.clear();
+        window.location.href = 'exam_login.html';
+    });
 }
 
 function showToast(msg, type) {
@@ -849,15 +435,14 @@ function showToast(msg, type) {
     setTimeout(() => toast.remove(), 5000);
 }
 
-// Initialize - load exams and start auto-refresh
+// Initialize
 window.addEventListener('DOMContentLoaded', () => {
     loadExams();
     startAutoRefresh();
 });
 
-// Expose functions globally
 window.startExam = startExam;
-window.refreshExams = refreshExams;
+window.manualRefresh = manualRefresh;
 window.closeModal = closeModal;
 window.logout = logout;
 window.viewResult = viewResult;
