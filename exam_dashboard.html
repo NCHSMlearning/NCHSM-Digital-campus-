@@ -489,6 +489,7 @@ h1 {
     100% { background-position: -200% 0; }
 }
 
+/* Auto-update indicator */
 .auto-update-badge {
     position: fixed;
     bottom: 20px;
@@ -541,7 +542,7 @@ h1 {
     <div class="user-info-bar" id="userInfoBar">
         <div class="user-details" id="userInfo">Loading profile...</div>
         <div class="action-buttons">
-            <button class="refresh-btn" onclick="manualRefresh()">🔄 Refresh Now</button>
+            <button class="refresh-btn" onclick="refreshExams()">🔄 Refresh Now</button>
             <button class="logout-btn" onclick="logout()">🚪 Logout</button>
         </div>
     </div>
@@ -567,6 +568,7 @@ h1 {
 </div>
 
 <script>
+// YOUR ORIGINAL WORKING SUPABASE CONFIGURATION (unchanged)
 const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -577,8 +579,7 @@ let currentExamId = null;
 let isLoading = false;
 let autoCloseTimeout = null;
 let autoRefreshInterval = null;
-let lastGradeCheck = null;
-let realtimeChannel = null;
+let lastRefreshTime = Date.now();
 
 function getExamLink(exam) { return exam.exam_link || exam.online_link || null; }
 
@@ -628,27 +629,28 @@ function autoCloseExam() {
         document.getElementById('examContainer').style.display = 'none';
         document.querySelector('header').style.display = 'block';
         document.querySelector('.exam-list').style.display = 'block';
-        manualRefresh();
-        showToast('✅ Exam submitted! Waiting for admin to release results.', 'success');
+        refreshExams();
+        showToast('Exam closed. Waiting for admin to release results.', 'info');
     }, 2000);
 }
 
+// Listen for exam completion from iframe - AUTO CLOSE
 window.addEventListener('message', function(event) {
     if (event.data === 'exam_completed' || event.data?.type === 'exam_completed') {
-        showToast('✅ Exam submitted! Redirecting...', 'success');
+        showToast('✅ Exam completed! Redirecting...', 'success');
         autoCloseExam();
     }
 });
 
-// ============ AUTO-UPDATE FEATURES ============
+// ============ NEW AUTO-UPDATE FEATURES ============
 
-// 1. Auto-refresh when tab becomes visible (user returns to page)
+// 1. Auto-refresh when user returns to the page (tab becomes visible)
 document.addEventListener('visibilitychange', function() {
     if (!document.hidden && !isLoading && currentUserId && 
         document.getElementById('examContainer').style.display !== 'flex') {
-        updateStatusBadge('🔄 Tab active - refreshing...');
+        updateAutoUpdateStatus('🔄 Tab active - refreshing...');
         loadExams(false);
-        setTimeout(() => updateStatusBadge('✅ Auto-update active'), 2000);
+        setTimeout(() => updateAutoUpdateStatus('✅ Auto-update active | Checking every 30s'), 2000);
     }
 });
 
@@ -659,20 +661,22 @@ function startAutoRefresh() {
         if (!document.hidden && !isLoading && currentUserId && 
             document.getElementById('examContainer').style.display !== 'flex') {
             loadExams(false);
-            updateStatusBadge(`🔄 Checking for updates ${new Date().toLocaleTimeString()}`);
-            setTimeout(() => updateStatusBadge('✅ Auto-update active'), 2000);
+            updateAutoUpdateStatus(`🔄 Checking for updates ${new Date().toLocaleTimeString()}`);
+            setTimeout(() => updateAutoUpdateStatus('✅ Auto-update active | Checking every 30s'), 2000);
         }
     }, 30000); // Check every 30 seconds
 }
 
-// 3. REAL-TIME Supabase subscription for result releases
-async function setupRealtimeSubscription() {
+// 3. Real-time subscription for result releases (instant notifications)
+let realtimeChannel = null;
+
+function setupRealtimeSubscription() {
     if (realtimeChannel) {
         sb.removeChannel(realtimeChannel);
     }
     
     realtimeChannel = sb
-        .channel('student-results-realtime')
+        .channel('student-results-auto')
         .on(
             'postgres_changes',
             {
@@ -682,41 +686,23 @@ async function setupRealtimeSubscription() {
                 filter: `student_id=eq.${currentUserId}`
             },
             (payload) => {
-                showToast('🎉 NEW RESULTS RELEASED! Click refresh to view.', 'success');
-                updateStatusBadge('✨ Admin released results! Refreshing...');
+                showToast('🎉 RESULTS RELEASED! Your exam results are now available!', 'success');
+                updateAutoUpdateStatus('✨ New results released! Refreshing...');
                 loadExams(false);
-                setTimeout(() => updateStatusBadge('✅ Auto-update active'), 3000);
+                setTimeout(() => updateAutoUpdateStatus('✅ Auto-update active | Checking every 30s'), 3000);
             }
         )
-        .on(
-            'postgres_changes',
-            {
-                event: 'UPDATE',
-                schema: 'public',
-                table: 'exam_grades',
-                filter: `student_id=eq.${currentUserId}`
-            },
-            (payload) => {
-                if (payload.new && (payload.new.result_status === 'PASS' || payload.new.result_status === 'FAIL')) {
-                    showToast('📊 Your exam has been graded!', 'info');
-                    loadExams(false);
-                }
-            }
-        )
-        .subscribe((status) => {
-            console.log('Realtime subscription status:', status);
-        });
+        .subscribe();
 }
 
-function updateStatusBadge(message) {
+function updateAutoUpdateStatus(message) {
     const badge = document.getElementById('autoUpdateStatus');
     if (badge) {
         badge.innerHTML = `🔔 ${message}`;
-        badge.style.animation = 'none';
-        setTimeout(() => badge.style.animation = 'pulse 2s infinite', 100);
     }
 }
 
+// YOUR ORIGINAL loadExams function (preserved but with auto-update awareness)
 async function loadExams(showLoading = true) {
     if (isLoading) return;
     isLoading = true;
@@ -732,7 +718,7 @@ async function loadExams(showLoading = true) {
         const { data: profile } = await sb.from('consolidated_user_profiles_table').select('*').eq('user_id', currentUserId).single();
         if (profile) {
             studentProfile = profile;
-            // Setup realtime subscription after getting student ID
+            // Setup realtime subscription when we have the student ID
             setupRealtimeSubscription();
         }
         
@@ -759,6 +745,7 @@ async function loadExams(showLoading = true) {
             return;
         }
         
+        // Check for newly released results
         let newResultsFound = false;
         
         for (const exam of filteredExams) {
@@ -766,16 +753,16 @@ async function loadExams(showLoading = true) {
             const hasGrade = grade && (grade.marks !== null || grade.total_score > 0);
             const isReleased = grade ? releasedSet.has(grade.id) : false;
             
-            // Check if this is a new result (within last 5 seconds)
-            if (hasGrade && isReleased && lastGradeCheck) {
-                const gradeDate = new Date(grade.graded_at);
-                if (gradeDate > lastGradeCheck) {
+            // Detect if this is a new result since last refresh
+            if (hasGrade && isReleased && grade.graded_at) {
+                const gradeTime = new Date(grade.graded_at).getTime();
+                if (gradeTime > lastRefreshTime - 5000) { // Within last 5 seconds
                     newResultsFound = true;
                 }
             }
             
             let statusBadge = !hasGrade ? '<span class="badge badge-upcoming">📝 Not Started</span>' : 
-                              (isReleased ? '<span class="badge badge-completed">✅ Results Released</span>' : '<span class="badge badge-pending">⏳ Pending Release</span>');
+                              (isReleased ? '<span class="badge badge-completed">✅ Released</span>' : '<span class="badge badge-pending">🔒 Pending</span>');
             
             let gradeHtml = '';
             if (hasGrade && isReleased) {
@@ -785,7 +772,7 @@ async function loadExams(showLoading = true) {
                     <div>Score: ${grade.marks || 0} marks</div>
                 </div>`;
             } else if (hasGrade && !isReleased) {
-                gradeHtml = `<div class="grade-info grade-not-released">🔒 Exam submitted. Waiting for admin to release results.</div>`;
+                gradeHtml = `<div class="grade-info grade-not-released">🔒 Results pending release from instructor</div>`;
             }
             
             container.innerHTML += `
@@ -801,8 +788,7 @@ async function loadExams(showLoading = true) {
                     ${gradeHtml}
                     <div class="exam-actions">
                         ${!hasGrade ? `<button class="btn-start" onclick="startExam(${exam.id}, '${exam.exam_name.replace(/'/g, "\\'")}')">▶ Start Exam</button>` : 
-                          (isReleased ? `<button class="btn-details" onclick="viewResult(${exam.id})">📋 View Results</button>` : 
-                          `<button class="btn-details" style="background:#94A3B8; cursor:not-allowed;" disabled>⏳ Awaiting Release</button>`)}
+                          (isReleased ? `<button class="btn-details" onclick="viewResult(${exam.id})">📋 View Results</button>` : '')}
                     </div>
                 </div>
             `;
@@ -812,7 +798,7 @@ async function loadExams(showLoading = true) {
             showToast('🎉 New exam results are now available!', 'success');
         }
         
-        lastGradeCheck = new Date();
+        lastRefreshTime = Date.now();
         
     } catch(err) { 
         console.error(err); 
@@ -833,17 +819,16 @@ async function viewResult(examId) {
             <p><strong>Score:</strong> ${grade?.marks || 0} marks</p>
             <p><strong>Percentage:</strong> ${percent}%</p>
             ${studentIdDisplay}
-            <p><strong>Release Date:</strong> ${new Date().toLocaleDateString()}</p>
         </div>
-        <p style="color:#64748B; font-size:0.85rem;">Results officially released by exam administrator.</p>
+        <p style="color:#64748B; font-size:0.85rem;">Results have been saved to your academic record.</p>
     `;
     document.getElementById('resultsModal').style.display = 'flex';
 }
 
-function manualRefresh() { 
-    updateStatusBadge('🔄 Manual refresh...');
+function refreshExams() { 
+    updateAutoUpdateStatus('🔄 Manual refresh...');
     loadExams(false);
-    setTimeout(() => updateStatusBadge('✅ Auto-update active'), 2000);
+    setTimeout(() => updateAutoUpdateStatus('✅ Auto-update active | Checking every 30s'), 2000);
 }
 
 function closeModal() { document.getElementById('resultsModal').style.display = 'none'; }
@@ -864,14 +849,15 @@ function showToast(msg, type) {
     setTimeout(() => toast.remove(), 5000);
 }
 
-// Initialize everything
+// Initialize - load exams and start auto-refresh
 window.addEventListener('DOMContentLoaded', () => {
     loadExams();
     startAutoRefresh();
 });
 
+// Expose functions globally
 window.startExam = startExam;
-window.manualRefresh = manualRefresh;
+window.refreshExams = refreshExams;
 window.closeModal = closeModal;
 window.logout = logout;
 window.viewResult = viewResult;
