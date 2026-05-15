@@ -482,16 +482,36 @@ let noFaceAlertSent = false;
 // ========== LOAD FACE API MODELS ==========
 async function loadFaceModels() {
     try {
-        // Load required models from CDN
         await faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/model');
         await faceapi.nets.faceLandmark68Net.loadFromUri('https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/model');
         faceModelsLoaded = true;
         console.log('✅ Face detection models loaded');
         return true;
     } catch (err) {
-        console.warn('Face models failed to load, using fallback detection:', err);
+        console.warn('Face models failed to load:', err);
         faceModelsLoaded = false;
         return false;
+    }
+}
+
+// ========== NOTIFY DASHBOARD - THE FIX! ==========
+function notifyDashboardCompletion() {
+    try {
+        // Send message to parent window (the dashboard)
+        if (window.parent && window.parent !== window) {
+            window.parent.postMessage({ 
+                type: 'exam_completed',
+                exam_id: EXAM_ID,
+                student_id: studentId,
+                student_name: studentFullName,
+                timestamp: new Date().toISOString()
+            }, '*');
+            console.log('✅ Dashboard notified of exam completion');
+        } else {
+            console.log('Not in iframe, dashboard notification skipped');
+        }
+    } catch(e) {
+        console.log('Cannot notify dashboard:', e);
     }
 }
 
@@ -500,7 +520,7 @@ async function sendProctoringEvent(eventType, details) {
     try {
         const eventData = {
             exam_id: EXAM_ID,
-            student_id: studentId,  // ← This connects to admin dashboard
+            student_id: studentId,
             student_reg_number: studentRegNumber,
             student_name: studentFullName,
             event_type: eventType,
@@ -510,11 +530,9 @@ async function sendProctoringEvent(eventType, details) {
             timestamp: new Date().toISOString()
         };
         
-        // Insert into proctoring logs
         const { error } = await sb.from('exam_proctoring_logs').insert(eventData);
         if (error) console.error('Insert error:', error);
         
-        // For critical events, also add to admin_notifications
         if (eventType === 'multiple_faces_detected') {
             await sb.from('admin_notifications').insert({
                 notification_type: eventType,
@@ -529,7 +547,6 @@ async function sendProctoringEvent(eventType, details) {
             });
         }
         
-        // Update connection status
         const statusEl = document.getElementById('admin-connection-status');
         if (statusEl) {
             statusEl.innerHTML = '✅ Connected to admin';
@@ -542,11 +559,6 @@ async function sendProctoringEvent(eventType, details) {
         console.log(`📤 [${studentRegNumber}] ${eventType} sent to admin`);
     } catch (err) {
         console.error('Failed to send event:', err);
-        const statusEl = document.getElementById('admin-connection-status');
-        if (statusEl) {
-            statusEl.innerHTML = '⚠️ Connection issue';
-            statusEl.style.color = '#D97706';
-        }
     }
 }
 
@@ -565,24 +577,20 @@ async function startPreciseFaceDetection() {
     faceDetectionInterval = setInterval(async () => {
         if (!videoStream || video.readyState !== 4) return;
         
-        // Set canvas size to match video
         if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
         }
         
-        // Draw current frame
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         
         let faceCount = 0;
         
         if (faceModelsLoaded) {
-            // Use face-api.js for precise detection
             try {
                 const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions());
                 faceCount = detections.length;
                 
-                // Draw rectangles around detected faces
                 if (detections.length > 0) {
                     const resized = faceapi.resizeResults(detections, { width: canvas.width, height: canvas.height });
                     resized.forEach(detection => {
@@ -597,11 +605,9 @@ async function startPreciseFaceDetection() {
                 faceCount = -1;
             }
         } else {
-            // Fallback: motion detection
-            faceCount = -1; // Unknown
+            faceCount = -1;
         }
         
-        // Update UI based on face count
         const now = Date.now();
         
         if (faceCount === 0) {
@@ -643,20 +649,12 @@ async function startPreciseFaceDetection() {
                 showWarningMessage(`⚠️ ${faceCount} faces detected! This is a violation.`);
                 await sendProctoringEvent('multiple_faces_detected', `${faceCount} faces detected in frame`);
                 
-                // Auto-submit after 3 violations
                 if (consecutiveMultipleFaces >= 10) {
                     terminateExam('Multiple faces detected repeatedly - exam auto-submitted');
                 }
             }
         }
-        else if (faceCount === -1) {
-            // Fallback mode - use motion detection
-            statusDiv.textContent = '📹 Monitoring (basic mode)';
-            statusDiv.style.background = 'rgba(245,158,11,0.9)';
-            overlay.classList.add('face-status-warning');
-        }
         
-        // Update badge color
         const badge = document.getElementById('cameraStatusBadge');
         if (faceCount === 1) {
             badge.textContent = 'Active';
@@ -669,7 +667,7 @@ async function startPreciseFaceDetection() {
             badge.className = 'camera-status-badge danger';
         }
         
-    }, 1500); // Check every 1.5 seconds for smooth performance
+    }, 1500);
 }
 
 function showWarningMessage(message) {
@@ -706,7 +704,6 @@ async function startCamera() {
             setTimeout(resolve, 2000);
         });
         
-        // Load face detection models and start detection
         await loadFaceModels();
         await startPreciseFaceDetection();
         
@@ -762,7 +759,6 @@ async function initExam() {
         startTimer(duration * 60);
         setupSecurity();
         
-        // Show camera permission modal
         const modal = document.getElementById('camera-permission-modal');
         const allowBtn = document.getElementById('allow-camera-btn');
         allowBtn.onclick = async () => {
@@ -910,17 +906,6 @@ function submitExam() {
     document.getElementById('submission-modal').style.display = 'flex';
 }
 
-async function executeSubmission() {
-    clearInterval(timerInterval);
-    if (faceDetectionInterval) clearInterval(faceDetectionInterval);
-    if (videoStream) videoStream.getTracks().forEach(t => t.stop());
-    
-    await sendProctoringEvent('exam_submitted', `Exam submitted`);
-    await saveAllAnswers();
-    await calculateGrade();
-    showSuccessScreen();
-}
-
 async function saveAllAnswers() {
     const entries = questions.map(q => ({
         student_id: studentId,
@@ -944,10 +929,11 @@ async function calculateGrade() {
         .neq('question_id', '00000000-0000-0000-0000-000000000000');
     
     const totalMarks = answers_data?.reduce((s, a) => s + (a.marks || 0), 0) || 0;
-    const percentage = (totalMarks / questions.length) * 100;
+    const totalPossible = questions.length;
+    const percentage = (totalMarks / totalPossible) * 100;
     const resultStatus = percentage >= 60 ? 'PASS' : 'FAIL';
     
-    await sb.from('exam_grades').upsert({
+    const { error } = await sb.from('exam_grades').upsert({
         student_id: studentId,
         exam_id: EXAM_ID,
         question_id: '00000000-0000-0000-0000-000000000000',
@@ -956,6 +942,35 @@ async function calculateGrade() {
         result_status: resultStatus,
         graded_at: new Date().toISOString()
     });
+    
+    if (error) {
+        console.error('Error saving final grade:', error);
+    } else {
+        console.log(`✅ Final grade saved: ${percentage}% (${resultStatus})`);
+    }
+}
+
+// ========== THE FIXED SUBMISSION FUNCTION ==========
+async function executeSubmission() {
+    // Stop timers and cameras
+    clearInterval(timerInterval);
+    if (faceDetectionInterval) clearInterval(faceDetectionInterval);
+    if (videoStream) videoStream.getTracks().forEach(t => t.stop());
+    
+    // Send proctoring event
+    await sendProctoringEvent('exam_submitted', `Exam submitted`);
+    
+    // Save all answers
+    await saveAllAnswers();
+    
+    // Calculate and save final grade
+    await calculateGrade();
+    
+    // 🔥 NOTIFY DASHBOARD - THIS IS THE KEY FIX!
+    notifyDashboardCompletion();
+    
+    // Show success screen
+    showSuccessScreen();
 }
 
 function showSuccessScreen() {
