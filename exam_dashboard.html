@@ -1,10 +1,9 @@
-does this update automat8ically after somene has submiteed or left the pagew 
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>NCHSM Student Exam Portal</title>
+<title>NCHSM Student Exam Portal - Auto Update</title>
 <link rel="icon" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -20,7 +19,6 @@ body {
     min-height: 100vh;
 }
 
-/* Animated Background */
 body::before {
     content: '';
     position: fixed;
@@ -33,7 +31,6 @@ body::before {
     z-index: 0;
 }
 
-/* Header - Modern Glassmorphism */
 header {
     text-align: center;
     padding: 25px 20px;
@@ -90,7 +87,6 @@ h1 {
     z-index: 1;
 }
 
-/* Main Container */
 .exam-list {
     max-width: 1400px;
     margin: 30px auto;
@@ -99,7 +95,6 @@ h1 {
     z-index: 1;
 }
 
-/* User Info Bar - Modern Card */
 .user-info-bar {
     background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(10px);
@@ -149,7 +144,6 @@ h1 {
     gap: 12px;
 }
 
-/* Modern Buttons */
 .refresh-btn, .logout-btn {
     padding: 10px 22px;
     border-radius: 12px;
@@ -183,7 +177,6 @@ h1 {
     box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
 }
 
-/* Exam Cards - Modern Design */
 .exam-card {
     background: white;
     border-radius: 24px;
@@ -268,7 +261,6 @@ h1 {
     color: #92400E;
 }
 
-/* Grade Info */
 .grade-info {
     margin-top: 16px;
     padding: 16px 20px;
@@ -300,7 +292,6 @@ h1 {
     color: #0A3D62;
 }
 
-/* Action Buttons */
 .exam-actions {
     display: flex;
     gap: 12px;
@@ -341,7 +332,6 @@ h1 {
     box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
 }
 
-/* Exam Container - Full Screen */
 .exam-container {
     display: none;
     position: fixed;
@@ -378,7 +368,6 @@ h1 {
     font-weight: 500;
 }
 
-/* Modern Close Button - Hidden by default, only for emergency */
 .btn-close-exam {
     background: rgba(220, 38, 38, 0.9);
     color: white;
@@ -389,12 +378,7 @@ h1 {
     cursor: pointer;
     transition: all 0.3s ease;
     font-weight: 500;
-    display: none; /* Hidden - auto-close handles submission */
-}
-
-.btn-close-exam:hover {
-    background: #DC2626;
-    transform: scale(1.02);
+    display: none;
 }
 
 .exam-iframe {
@@ -404,7 +388,6 @@ h1 {
     background: white;
 }
 
-/* Modal */
 .modal {
     display: none;
     position: fixed;
@@ -454,7 +437,6 @@ h1 {
     color: #DC2626;
 }
 
-/* Toast Notifications */
 .toast {
     position: fixed;
     bottom: 24px;
@@ -495,7 +477,6 @@ h1 {
     }
 }
 
-/* Loading Animation */
 .loading-skeleton {
     background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
     background-size: 200% 100%;
@@ -508,7 +489,27 @@ h1 {
     100% { background-position: -200% 0; }
 }
 
-/* Responsive */
+.auto-update-badge {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    background: rgba(0,0,0,0.75);
+    color: #10B981;
+    padding: 6px 14px;
+    border-radius: 30px;
+    font-size: 0.7rem;
+    font-family: monospace;
+    z-index: 9999;
+    backdrop-filter: blur(5px);
+    pointer-events: none;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 0.7; }
+    50% { opacity: 1; }
+}
+
 @media (max-width: 768px) {
     .exam-title { font-size: 1rem; }
     .exam-meta { gap: 10px; }
@@ -517,6 +518,7 @@ h1 {
     .exam-card { padding: 18px; }
     h1 { font-size: 1.3rem; }
     .logo { width: 50px; }
+    .auto-update-badge { font-size: 0.6rem; bottom: 10px; left: 10px; }
 }
 
 @media (max-width: 480px) {
@@ -532,25 +534,23 @@ h1 {
 <header>
     <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" class="logo" alt="Logo">
     <h1>📚 NCHSM Exam Portal</h1>
-    <div class="header-subtitle">Secure • Proctored • Excellence</div>
+    <div class="header-subtitle">Secure • Proctored • Excellence • Auto-Updating</div>
 </header>
 
 <div class="exam-list">
     <div class="user-info-bar" id="userInfoBar">
         <div class="user-details" id="userInfo">Loading profile...</div>
         <div class="action-buttons">
-            <button class="refresh-btn" onclick="refreshExams()">🔄 Refresh</button>
+            <button class="refresh-btn" onclick="manualRefresh()">🔄 Refresh Now</button>
             <button class="logout-btn" onclick="logout()">🚪 Logout</button>
         </div>
     </div>
     <div id="examList">Loading exams...</div>
 </div>
 
-<!-- Exam Container - No visible close button -->
 <div id="examContainer" class="exam-container">
     <div class="exam-header-bar">
         <h3 id="examTitle">Taking Exam...</h3>
-        <!-- Close button hidden - auto-close on submission -->
     </div>
     <iframe id="examIframe" class="exam-iframe" src="about:blank"></iframe>
 </div>
@@ -562,9 +562,13 @@ h1 {
     </div>
 </div>
 
+<div class="auto-update-badge" id="autoUpdateStatus">
+    🔄 Auto-update active | Checking every 30s
+</div>
+
 <script>
 const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let currentUserId = null;
@@ -572,10 +576,12 @@ let studentProfile = null;
 let currentExamId = null;
 let isLoading = false;
 let autoCloseTimeout = null;
+let autoRefreshInterval = null;
+let lastGradeCheck = null;
+let realtimeChannel = null;
 
 function getExamLink(exam) { return exam.exam_link || exam.online_link || null; }
 
-// Filter exams based on student profile
 function filterExamsByStudent(exams) {
     if (!studentProfile) return [];
     return exams.filter(exam => {
@@ -587,7 +593,6 @@ function filterExamsByStudent(exams) {
     });
 }
 
-// Load exam content in iframe
 async function loadExamContent(examId, examName) {
     try {
         const { data: exam } = await sb.from('exams').select('online_link, exam_link').eq('id', examId).single();
@@ -616,7 +621,6 @@ function startExam(examId, examName) {
     loadExamContent(examId, examName);
 }
 
-// Auto-close exam when completed - NO visible close button needed
 function autoCloseExam() {
     if (autoCloseTimeout) clearTimeout(autoCloseTimeout);
     autoCloseTimeout = setTimeout(() => {
@@ -624,20 +628,95 @@ function autoCloseExam() {
         document.getElementById('examContainer').style.display = 'none';
         document.querySelector('header').style.display = 'block';
         document.querySelector('.exam-list').style.display = 'block';
-        refreshExams();
-        showToast('Exam closed. Progress saved.', 'info');
+        manualRefresh();
+        showToast('✅ Exam submitted! Waiting for admin to release results.', 'success');
     }, 2000);
 }
 
-// Listen for exam completion from iframe - AUTO CLOSE
 window.addEventListener('message', function(event) {
     if (event.data === 'exam_completed' || event.data?.type === 'exam_completed') {
-        showToast('✅ Exam completed! Redirecting...', 'success');
+        showToast('✅ Exam submitted! Redirecting...', 'success');
         autoCloseExam();
     }
 });
 
-// Load exams from database
+// ============ AUTO-UPDATE FEATURES ============
+
+// 1. Auto-refresh when tab becomes visible (user returns to page)
+document.addEventListener('visibilitychange', function() {
+    if (!document.hidden && !isLoading && currentUserId && 
+        document.getElementById('examContainer').style.display !== 'flex') {
+        updateStatusBadge('🔄 Tab active - refreshing...');
+        loadExams(false);
+        setTimeout(() => updateStatusBadge('✅ Auto-update active'), 2000);
+    }
+});
+
+// 2. Periodic background refresh (every 30 seconds)
+function startAutoRefresh() {
+    if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+    autoRefreshInterval = setInterval(() => {
+        if (!document.hidden && !isLoading && currentUserId && 
+            document.getElementById('examContainer').style.display !== 'flex') {
+            loadExams(false);
+            updateStatusBadge(`🔄 Checking for updates ${new Date().toLocaleTimeString()}`);
+            setTimeout(() => updateStatusBadge('✅ Auto-update active'), 2000);
+        }
+    }, 30000); // Check every 30 seconds
+}
+
+// 3. REAL-TIME Supabase subscription for result releases
+async function setupRealtimeSubscription() {
+    if (realtimeChannel) {
+        sb.removeChannel(realtimeChannel);
+    }
+    
+    realtimeChannel = sb
+        .channel('student-results-realtime')
+        .on(
+            'postgres_changes',
+            {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'released_exam_results',
+                filter: `student_id=eq.${currentUserId}`
+            },
+            (payload) => {
+                showToast('🎉 NEW RESULTS RELEASED! Click refresh to view.', 'success');
+                updateStatusBadge('✨ Admin released results! Refreshing...');
+                loadExams(false);
+                setTimeout(() => updateStatusBadge('✅ Auto-update active'), 3000);
+            }
+        )
+        .on(
+            'postgres_changes',
+            {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'exam_grades',
+                filter: `student_id=eq.${currentUserId}`
+            },
+            (payload) => {
+                if (payload.new && (payload.new.result_status === 'PASS' || payload.new.result_status === 'FAIL')) {
+                    showToast('📊 Your exam has been graded!', 'info');
+                    loadExams(false);
+                }
+            }
+        )
+        .subscribe((status) => {
+            console.log('Realtime subscription status:', status);
+        });
+}
+
+function updateStatusBadge(message) {
+    const badge = document.getElementById('autoUpdateStatus');
+    if (badge) {
+        badge.innerHTML = `🔔 ${message}`;
+        badge.style.animation = 'none';
+        setTimeout(() => badge.style.animation = 'pulse 2s infinite', 100);
+    }
+}
+
 async function loadExams(showLoading = true) {
     if (isLoading) return;
     isLoading = true;
@@ -651,9 +730,12 @@ async function loadExams(showLoading = true) {
     
     try {
         const { data: profile } = await sb.from('consolidated_user_profiles_table').select('*').eq('user_id', currentUserId).single();
-        if (profile) studentProfile = profile;
+        if (profile) {
+            studentProfile = profile;
+            // Setup realtime subscription after getting student ID
+            setupRealtimeSubscription();
+        }
         
-        // Get student ID for display
         const studentIdDisplay = profile?.student_id ? `<span class="student-id-badge">ID: ${profile.student_id}</span>` : '';
         
         document.getElementById('userInfo').innerHTML = `
@@ -677,13 +759,23 @@ async function loadExams(showLoading = true) {
             return;
         }
         
+        let newResultsFound = false;
+        
         for (const exam of filteredExams) {
             const grade = grades?.find(g => g.exam_id === exam.id);
             const hasGrade = grade && (grade.marks !== null || grade.total_score > 0);
             const isReleased = grade ? releasedSet.has(grade.id) : false;
             
+            // Check if this is a new result (within last 5 seconds)
+            if (hasGrade && isReleased && lastGradeCheck) {
+                const gradeDate = new Date(grade.graded_at);
+                if (gradeDate > lastGradeCheck) {
+                    newResultsFound = true;
+                }
+            }
+            
             let statusBadge = !hasGrade ? '<span class="badge badge-upcoming">📝 Not Started</span>' : 
-                              (isReleased ? '<span class="badge badge-completed">✅ Released</span>' : '<span class="badge badge-pending">🔒 Pending</span>');
+                              (isReleased ? '<span class="badge badge-completed">✅ Results Released</span>' : '<span class="badge badge-pending">⏳ Pending Release</span>');
             
             let gradeHtml = '';
             if (hasGrade && isReleased) {
@@ -693,7 +785,7 @@ async function loadExams(showLoading = true) {
                     <div>Score: ${grade.marks || 0} marks</div>
                 </div>`;
             } else if (hasGrade && !isReleased) {
-                gradeHtml = `<div class="grade-info grade-not-released">🔒 Results pending release from instructor</div>`;
+                gradeHtml = `<div class="grade-info grade-not-released">🔒 Exam submitted. Waiting for admin to release results.</div>`;
             }
             
             container.innerHTML += `
@@ -709,11 +801,19 @@ async function loadExams(showLoading = true) {
                     ${gradeHtml}
                     <div class="exam-actions">
                         ${!hasGrade ? `<button class="btn-start" onclick="startExam(${exam.id}, '${exam.exam_name.replace(/'/g, "\\'")}')">▶ Start Exam</button>` : 
-                          (isReleased ? `<button class="btn-details" onclick="viewResult(${exam.id})">📋 View Results</button>` : '')}
+                          (isReleased ? `<button class="btn-details" onclick="viewResult(${exam.id})">📋 View Results</button>` : 
+                          `<button class="btn-details" style="background:#94A3B8; cursor:not-allowed;" disabled>⏳ Awaiting Release</button>`)}
                     </div>
                 </div>
             `;
         }
+        
+        if (newResultsFound) {
+            showToast('🎉 New exam results are now available!', 'success');
+        }
+        
+        lastGradeCheck = new Date();
+        
     } catch(err) { 
         console.error(err); 
         document.getElementById('examList').innerHTML = '<div class="exam-card">⚠️ Error loading exams. Please refresh.</div>'; 
@@ -733,16 +833,25 @@ async function viewResult(examId) {
             <p><strong>Score:</strong> ${grade?.marks || 0} marks</p>
             <p><strong>Percentage:</strong> ${percent}%</p>
             ${studentIdDisplay}
+            <p><strong>Release Date:</strong> ${new Date().toLocaleDateString()}</p>
         </div>
-        <p style="color:#64748B; font-size:0.85rem;">Results have been saved to your academic record.</p>
+        <p style="color:#64748B; font-size:0.85rem;">Results officially released by exam administrator.</p>
     `;
     document.getElementById('resultsModal').style.display = 'flex';
 }
 
-function refreshExams() { loadExams(false); }
+function manualRefresh() { 
+    updateStatusBadge('🔄 Manual refresh...');
+    loadExams(false);
+    setTimeout(() => updateStatusBadge('✅ Auto-update active'), 2000);
+}
+
 function closeModal() { document.getElementById('resultsModal').style.display = 'none'; }
+
 function logout() { 
     if (autoCloseTimeout) clearTimeout(autoCloseTimeout);
+    if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+    if (realtimeChannel) sb.removeChannel(realtimeChannel);
     localStorage.clear(); 
     window.location.href = 'exam_login.html'; 
 }
@@ -752,14 +861,17 @@ function showToast(msg, type) {
     toast.className = `toast toast-${type}`;
     toast.innerHTML = msg;
     document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 4000);
+    setTimeout(() => toast.remove(), 5000);
 }
 
-window.addEventListener('DOMContentLoaded', () => loadExams());
+// Initialize everything
+window.addEventListener('DOMContentLoaded', () => {
+    loadExams();
+    startAutoRefresh();
+});
 
-// Expose functions globally
 window.startExam = startExam;
-window.refreshExams = refreshExams;
+window.manualRefresh = manualRefresh;
 window.closeModal = closeModal;
 window.logout = logout;
 window.viewResult = viewResult;
