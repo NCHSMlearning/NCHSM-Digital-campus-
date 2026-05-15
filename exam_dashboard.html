@@ -7,7 +7,6 @@
 <link rel="icon" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-/* YOUR ORIGINAL STYLES - keeping them exactly the same */
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: 'Poppins', sans-serif; background: linear-gradient(135deg, #f5f7fa 0%, #e4e8f0 100%); min-height: 100vh; }
 body::before { content: ''; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: radial-gradient(circle at 20% 50%, rgba(11, 42, 74, 0.03) 0%, transparent 50%); pointer-events: none; z-index: 0; }
@@ -47,16 +46,16 @@ h1 { font-size: 1.8rem; letter-spacing: -0.5px; font-weight: 700; position: rela
 .grade-not-released { background: #F1F5F9; border-left: 4px solid #64748B; opacity: 0.8; }
 .score-large { font-size: 1.8rem; font-weight: 800; margin-right: 12px; color: #0A3D62; }
 .exam-actions { display: flex; gap: 12px; margin-top: 18px; flex-wrap: wrap; }
-.btn-start, .btn-details { padding: 10px 24px; border-radius: 12px; font-weight: 600; font-size: 0.85rem; transition: all 0.3s ease; cursor: pointer; border: none; font-family: inherit; }
+.btn-start, .btn-details, .btn-pending { padding: 10px 24px; border-radius: 12px; font-weight: 600; font-size: 0.85rem; transition: all 0.3s ease; cursor: pointer; border: none; font-family: inherit; }
 .btn-start { background: linear-gradient(135deg, #38A169, #2F855A); color: white; box-shadow: 0 4px 12px rgba(56, 161, 105, 0.3); }
 .btn-start:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(56, 161, 105, 0.4); }
 .btn-details { background: linear-gradient(135deg, #3B82F6, #2563EB); color: white; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); }
 .btn-details:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4); }
+.btn-pending { background: #94A3B8; color: white; cursor: not-allowed; opacity: 0.7; }
 .exam-container { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 2000; flex-direction: column; animation: fadeIn 0.3s ease; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 .exam-header-bar { background: linear-gradient(135deg, #0A3D62, #073450); color: white; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); }
 .exam-header-bar h3 { margin: 0; font-size: 1rem; font-weight: 500; }
-.btn-close-exam { background: rgba(220, 38, 38, 0.9); color: white; padding: 8px 18px; border-radius: 10px; font-size: 0.8rem; border: none; cursor: pointer; transition: all 0.3s ease; font-weight: 500; display: none; }
 .exam-iframe { flex: 1; width: 100%; border: none; background: white; }
 .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(8px); z-index: 3000; align-items: center; justify-content: center; }
 .modal-content { background: white; padding: 32px; border-radius: 28px; max-width: 550px; max-height: 80vh; overflow-y: auto; width: 90%; animation: modalSlideIn 0.3s ease; box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25); }
@@ -72,7 +71,7 @@ h1 { font-size: 1.8rem; letter-spacing: -0.5px; font-weight: 700; position: rela
 @keyframes loading { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 .auto-update-badge { position: fixed; bottom: 20px; left: 20px; background: rgba(0,0,0,0.75); color: #10B981; padding: 6px 14px; border-radius: 30px; font-size: 0.7rem; font-family: monospace; z-index: 9999; backdrop-filter: blur(5px); pointer-events: none; animation: pulse 2s infinite; }
 @keyframes pulse { 0%, 100% { opacity: 0.7; } 50% { opacity: 1; } }
-@media (max-width: 768px) { .exam-title { font-size: 1rem; } .exam-meta { gap: 10px; } .btn-start, .btn-details { padding: 8px 16px; font-size: 0.75rem; } .user-info-bar { padding: 15px 20px; } .exam-card { padding: 18px; } h1 { font-size: 1.3rem; } .logo { width: 50px; } .auto-update-badge { font-size: 0.6rem; bottom: 10px; left: 10px; } }
+@media (max-width: 768px) { .exam-title { font-size: 1rem; } .exam-meta { gap: 10px; } .btn-start, .btn-details, .btn-pending { padding: 8px 16px; font-size: 0.75rem; } .user-info-bar { padding: 15px 20px; } .exam-card { padding: 18px; } h1 { font-size: 1.3rem; } .logo { width: 50px; } .auto-update-badge { font-size: 0.6rem; bottom: 10px; left: 10px; } }
 @media (max-width: 480px) { .exam-list { padding: 0 15px; } .user-details h3 { font-size: 0.9rem; } .exam-title { font-size: 0.9rem; } }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -125,27 +124,101 @@ let currentExamId = null;
 let isLoading = false;
 let autoCloseTimeout = null;
 let autoRefreshInterval = null;
-let lastRefreshTime = Date.now();
 
 function getExamLink(exam) { return exam.exam_link || exam.online_link || null; }
 
 function filterExamsByStudent(exams) {
-    if (!studentProfile) return exams; // Show all exams if no profile
+    if (!studentProfile) return exams;
     
     return exams.filter(exam => {
         if (!getExamLink(exam)) return false;
-        // If exam has no restrictions, show it
         if (!exam.program_type && !exam.block_term && !exam.intake_year) return true;
-        // If exam has restrictions, check matches (or 'General')
-        if (exam.program_type && exam.program_type !== 'General' && exam.program_type !== studentProfile.program) return false;
-        if (exam.block_term && exam.block_term !== 'General' && exam.block_term !== studentProfile.block) return false;
-        if (exam.intake_year && exam.intake_year !== 'General' && exam.intake_year != studentProfile.intake_year) return false;
-        return true;
+        
+        let programMatch = true;
+        if (exam.program_type && exam.program_type !== 'General') {
+            programMatch = exam.program_type === studentProfile.program;
+        }
+        
+        let blockMatch = true;
+        if (exam.block_term && exam.block_term !== 'General') {
+            blockMatch = exam.block_term === studentProfile.block;
+        }
+        
+        let intakeMatch = true;
+        if (exam.intake_year && exam.intake_year !== 'General') {
+            intakeMatch = exam.intake_year == studentProfile.intake_year;
+        }
+        
+        return programMatch && blockMatch && intakeMatch;
     });
+}
+
+async function saveExamResult(examId, scoreData) {
+    try {
+        // Check if result already exists
+        const { data: existing } = await sb
+            .from('exam_grades')
+            .select('id')
+            .eq('student_id', currentUserId)
+            .eq('exam_id', examId)
+            .eq('question_id', '00000000-0000-0000-0000-000000000000');
+        
+        if (existing && existing.length > 0) {
+            console.log('Exam result already exists, updating...');
+            // Update existing
+            const { error } = await sb
+                .from('exam_grades')
+                .update({
+                    marks: scoreData.marks || scoreData.score || 0,
+                    total_score: scoreData.percentage || scoreData.total_score || 0,
+                    result_status: scoreData.status || 'PENDING',
+                    graded_at: new Date().toISOString()
+                })
+                .eq('student_id', currentUserId)
+                .eq('exam_id', examId)
+                .eq('question_id', '00000000-0000-0000-0000-000000000000');
+            
+            if (error) throw error;
+        } else {
+            // Insert new result
+            const { error } = await sb
+                .from('exam_grades')
+                .insert([{
+                    student_id: currentUserId,
+                    exam_id: examId,
+                    question_id: '00000000-0000-0000-0000-000000000000',
+                    marks: scoreData.marks || scoreData.score || 0,
+                    total_score: scoreData.percentage || scoreData.total_score || 0,
+                    result_status: 'PENDING',
+                    graded_at: new Date().toISOString()
+                }]);
+            
+            if (error) throw error;
+        }
+        
+        console.log('Exam result saved successfully');
+        return true;
+    } catch (error) {
+        console.error('Error saving exam result:', error);
+        return false;
+    }
 }
 
 async function loadExamContent(examId, examName) {
     try {
+        // First check if exam already taken
+        const { data: existingGrade } = await sb
+            .from('exam_grades')
+            .select('id')
+            .eq('student_id', currentUserId)
+            .eq('exam_id', examId)
+            .eq('question_id', '00000000-0000-0000-0000-000000000000');
+        
+        if (existingGrade && existingGrade.length > 0) {
+            showToast('You have already taken this exam!', 'warning');
+            return;
+        }
+        
         const { data: exam, error } = await sb
             .from('exams')
             .select('online_link, exam_link')
@@ -180,32 +253,48 @@ function startExam(examId, examName) {
     loadExamContent(examId, examName);
 }
 
-function autoCloseExam() {
-    if (autoCloseTimeout) clearTimeout(autoCloseTimeout);
-    autoCloseTimeout = setTimeout(() => {
-        document.getElementById('examIframe').src = 'about:blank';
-        document.getElementById('examContainer').style.display = 'none';
-        document.querySelector('header').style.display = 'block';
-        document.querySelector('.exam-list').style.display = 'block';
-        manualRefresh();
-        showToast('Exam closed. Waiting for admin to release results.', 'info');
-    }, 2000);
-}
-
-window.addEventListener('message', function(event) {
+// Handle exam submission from iframe
+window.addEventListener('message', async function(event) {
+    // Check if it's an exam completion message
     if (event.data === 'exam_completed' || event.data?.type === 'exam_completed') {
-        showToast('✅ Exam completed! Redirecting...', 'success');
-        autoCloseExam();
+        showToast('✅ Exam submitted! Saving results...', 'success');
+        
+        // Extract score data if provided
+        let scoreData = {
+            marks: event.data?.score || event.data?.marks || 0,
+            percentage: event.data?.percentage || event.data?.total_score || 0,
+            status: 'PENDING'
+        };
+        
+        // Save the exam result to database
+        if (currentExamId) {
+            const saved = await saveExamResult(currentExamId, scoreData);
+            if (saved) {
+                showToast('✅ Exam results saved! Awaiting admin review.', 'success');
+            } else {
+                showToast('⚠️ Results saved but grade submission had issues.', 'warning');
+            }
+        }
+        
+        // Auto close the exam container
+        if (autoCloseTimeout) clearTimeout(autoCloseTimeout);
+        autoCloseTimeout = setTimeout(() => {
+            document.getElementById('examIframe').src = 'about:blank';
+            document.getElementById('examContainer').style.display = 'none';
+            document.querySelector('header').style.display = 'block';
+            document.querySelector('.exam-list').style.display = 'block';
+            manualRefresh();
+            showToast('Exam closed. Results pending admin release.', 'info');
+        }, 2000);
     }
 });
 
-// Auto-refresh when tab becomes visible
 document.addEventListener('visibilitychange', function() {
     if (!document.hidden && !isLoading && currentUserId && 
         document.getElementById('examContainer').style.display !== 'flex') {
         updateAutoUpdateStatus('🔄 Tab active - refreshing...');
         loadExams(false);
-        setTimeout(() => updateAutoUpdateStatus('✅ Auto-update active | Checking every 30s'), 2000);
+        setTimeout(() => updateAutoUpdateStatus('✅ Auto-update active'), 2000);
     }
 });
 
@@ -215,17 +304,13 @@ function startAutoRefresh() {
         if (!document.hidden && !isLoading && currentUserId && 
             document.getElementById('examContainer').style.display !== 'flex') {
             loadExams(false);
-            updateAutoUpdateStatus(`🔄 Checking for updates ${new Date().toLocaleTimeString()}`);
-            setTimeout(() => updateAutoUpdateStatus('✅ Auto-update active | Checking every 30s'), 2000);
         }
     }, 30000);
 }
 
 function updateAutoUpdateStatus(message) {
     const badge = document.getElementById('autoUpdateStatus');
-    if (badge) {
-        badge.innerHTML = `🔔 ${message}`;
-    }
+    if (badge) badge.innerHTML = `🔔 ${message}`;
 }
 
 async function loadExams(showLoading = true) {
@@ -234,60 +319,37 @@ async function loadExams(showLoading = true) {
     if (showLoading) document.getElementById('examList').innerHTML = '<div class="exam-card loading-skeleton" style="height: 200px;"></div>';
     
     currentUserId = localStorage.getItem('currentUserId');
+    
     if (!currentUserId || currentUserId === 'null') {
         window.location.href = 'exam_login.html';
         return;
     }
     
     try {
-        // First, try to get the session to verify auth
-        const { data: session } = await sb.auth.getSession();
-        if (!session.session) {
-            console.log('No active session, but continuing with stored user ID');
-        }
-        
-        // Fetch student profile using user_id
+        // Fetch profile
         const { data: profile, error: profileError } = await sb
             .from('consolidated_user_profiles_table')
             .select('*')
-            .eq('user_id', currentUserId)
-            .maybeSingle(); // Use maybeSingle to avoid 406 error if no rows
+            .eq('user_id', currentUserId);
         
-        if (profileError) {
-            console.error('Profile fetch error:', profileError);
+        if (profile && profile.length > 0) {
+            studentProfile = profile[0];
         }
         
-        if (profile) {
-            studentProfile = profile;
-        } else {
-            // Try to find profile by email if user_id didn't work
-            const userEmail = localStorage.getItem('studentEmail');
-            if (userEmail) {
-                const { data: profileByEmail } = await sb
-                    .from('consolidated_user_profiles_table')
-                    .select('*')
-                    .eq('email', userEmail)
-                    .maybeSingle();
-                
-                if (profileByEmail) {
-                    studentProfile = profileByEmail;
-                    // Update localStorage with correct user_id
-                    localStorage.setItem('currentUserId', studentProfile.user_id);
-                    currentUserId = studentProfile.user_id;
-                }
-            }
-        }
-        
+        // Display user info
         const studentIdDisplay = studentProfile?.student_id ? `<span class="student-id-badge">ID: ${studentProfile.student_id}</span>` : '';
+        const programDisplay = studentProfile?.program || 'Not Assigned';
+        const blockDisplay = studentProfile?.block || 'Not Assigned';
+        const intakeDisplay = studentProfile?.intake_year || 'Not Assigned';
+        const nameDisplay = studentProfile?.full_name || studentProfile?.name || 'Student';
         
         document.getElementById('userInfo').innerHTML = `
-            <strong>👤 ${studentProfile?.full_name || (studentProfile?.name) || 'Student'}</strong><br>
-            📚 ${studentProfile?.program || 'Not Assigned'} | Block ${studentProfile?.block || 'Not Assigned'} | Intake: ${studentProfile?.intake_year || 'Not Assigned'}
+            <strong>👤 ${nameDisplay}</strong><br>
+            📚 ${programDisplay} | Block ${blockDisplay} | Intake: ${intakeDisplay}
             <br>${studentIdDisplay}
-            ${!studentProfile ? '<br><small style="color:#F59E0B;">⚠️ Profile incomplete - some exams may not show</small>' : ''}
         `;
         
-        // Fetch all exams
+        // Fetch exams
         const { data: exams, error: examsError } = await sb
             .from('exams')
             .select('*')
@@ -297,46 +359,46 @@ async function loadExams(showLoading = true) {
         
         const filteredExams = filterExamsByStudent(exams || []);
         
-        // Fetch grades
-        const { data: grades, error: gradesError } = await sb
+        // Fetch grades (submitted exams)
+        const { data: grades } = await sb
             .from('exam_grades')
             .select('*')
             .eq('student_id', currentUserId)
             .eq('question_id', '00000000-0000-0000-0000-000000000000');
         
-        if (gradesError) console.error('Grades fetch error:', gradesError);
-        
         // Fetch released results
-        const { data: released, error: releasedError } = await sb
-            .from('released_exam_results')
-            .select('result_id');
-        
-        if (releasedError) console.error('Released fetch error:', releasedError);
-        
+        const { data: released } = await sb.from('released_exam_results').select('result_id');
         const releasedSet = new Set(released?.map(r => r.result_id) || []);
         
         const container = document.getElementById('examList');
         container.innerHTML = '';
         
         if (!filteredExams.length) {
-            let message = '<div class="exam-card">📭 No exams available.';
-            if (!studentProfile) {
-                message += '<br><small>Your student profile is not set up. Please contact the administrator.</small>';
-            } else if (!studentProfile.program || !studentProfile.block) {
-                message += '<br><small>Your profile is missing Program or Block information. Please contact the administrator.</small>';
-            }
-            message += '</div>';
-            container.innerHTML = message;
+            container.innerHTML = '<div class="exam-card">📭 No exams available for your Program, Block, or Intake Year.</div>';
+            isLoading = false;
             return;
         }
         
         for (const exam of filteredExams) {
             const grade = grades?.find(g => g.exam_id === exam.id);
-            const hasGrade = grade && (grade.marks !== null || grade.total_score > 0);
+            const hasGrade = grade && (grade.marks !== null || grade.total_score !== null);
             const isReleased = grade ? releasedSet.has(grade.id) : false;
             
-            let statusBadge = !hasGrade ? '<span class="badge badge-upcoming">📝 Not Started</span>' : 
-                              (isReleased ? '<span class="badge badge-completed">✅ Released</span>' : '<span class="badge badge-pending">🔒 Pending</span>');
+            let statusBadge, actionButton;
+            
+            if (!hasGrade) {
+                // Not taken yet - Show Start button
+                statusBadge = '<span class="badge badge-upcoming">📝 Not Started</span>';
+                actionButton = `<button class="btn-start" onclick="startExam(${exam.id}, '${exam.exam_name.replace(/'/g, "\\'")}')">▶ Start Exam</button>`;
+            } else if (isReleased) {
+                // Taken and released - Show Results
+                statusBadge = '<span class="badge badge-completed">✅ Results Released</span>';
+                actionButton = `<button class="btn-details" onclick="viewResult(${exam.id})">📋 View Results</button>`;
+            } else {
+                // Taken but not released yet - Show Pending
+                statusBadge = '<span class="badge badge-pending">⏳ Pending Release</span>';
+                actionButton = `<button class="btn-pending" disabled>⏳ Awaiting Admin Release</button>`;
+            }
             
             let gradeHtml = '';
             if (hasGrade && isReleased) {
@@ -346,7 +408,9 @@ async function loadExams(showLoading = true) {
                     <div>Score: ${grade.marks || 0} marks</div>
                 </div>`;
             } else if (hasGrade && !isReleased) {
-                gradeHtml = `<div class="grade-info grade-not-released">🔒 Results pending release from instructor</div>`;
+                gradeHtml = `<div class="grade-info grade-not-released">
+                    🔒 Exam submitted. Waiting for admin to release results.
+                </div>`;
             }
             
             container.innerHTML += `
@@ -361,15 +425,11 @@ async function loadExams(showLoading = true) {
                     </div>
                     ${gradeHtml}
                     <div class="exam-actions">
-                        ${!hasGrade ? `<button class="btn-start" onclick="startExam(${exam.id}, '${exam.exam_name.replace(/'/g, "\\'")}')">▶ Start Exam</button>` : 
-                          (isReleased ? `<button class="btn-details" onclick="viewResult(${exam.id})">📋 View Results</button>` : 
-                          `<button class="btn-details" style="background:#94A3B8; cursor:not-allowed;" disabled>⏳ Awaiting Release</button>`)}
+                        ${actionButton}
                     </div>
                 </div>
             `;
         }
-        
-        lastRefreshTime = Date.now();
         
     } catch(err) { 
         console.error('Error in loadExams:', err); 
@@ -398,7 +458,7 @@ async function viewResult(examId) {
             <p><strong>Percentage:</strong> ${percent}%</p>
             ${studentIdDisplay}
         </div>
-        <p style="color:#64748B; font-size:0.85rem;">Results have been saved to your academic record.</p>
+        <p style="color:#64748B; font-size:0.85rem;">Results officially released by exam administrator.</p>
     `;
     document.getElementById('resultsModal').style.display = 'flex';
 }
@@ -406,7 +466,7 @@ async function viewResult(examId) {
 function manualRefresh() { 
     updateAutoUpdateStatus('🔄 Manual refresh...');
     loadExams(false);
-    setTimeout(() => updateAutoUpdateStatus('✅ Auto-update active | Checking every 30s'), 2000);
+    setTimeout(() => updateAutoUpdateStatus('✅ Auto-update active'), 2000);
 }
 
 function closeModal() { document.getElementById('resultsModal').style.display = 'none'; }
@@ -414,8 +474,6 @@ function closeModal() { document.getElementById('resultsModal').style.display = 
 function logout() { 
     if (autoCloseTimeout) clearTimeout(autoCloseTimeout);
     if (autoRefreshInterval) clearInterval(autoRefreshInterval);
-    
-    // Sign out from Supabase Auth
     sb.auth.signOut().then(() => {
         localStorage.clear();
         sessionStorage.clear();
@@ -435,7 +493,6 @@ function showToast(msg, type) {
     setTimeout(() => toast.remove(), 5000);
 }
 
-// Initialize
 window.addEventListener('DOMContentLoaded', () => {
     loadExams();
     startAutoRefresh();
