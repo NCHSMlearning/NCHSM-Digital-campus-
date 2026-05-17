@@ -28,7 +28,55 @@ h1 { text-align: center; color: #073450; margin-bottom: 20px; font-size: 1.8rem;
     display: none;
 }
 
-/* ADDED: Fullscreen overlay and warning */
+/* FULLSCREEN EXIT WARNING - Blocks entire screen */
+#fullscreen-exit-warning {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.98);
+    z-index: 30000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    text-align: center;
+    color: white;
+    backdrop-filter: blur(5px);
+}
+
+#fullscreen-exit-warning h1 {
+    font-size: 3rem;
+    color: #FF6B35;
+    margin-bottom: 20px;
+}
+
+#fullscreen-exit-warning .warning-icon {
+    font-size: 5rem;
+    margin-bottom: 20px;
+    animation: pulse 1s infinite;
+}
+
+#fullscreen-exit-warning .countdown-timer {
+    font-size: 4rem;
+    font-weight: bold;
+    color: #FF6B35;
+    margin: 20px 0;
+}
+
+#fullscreen-exit-warning .warning-message {
+    font-size: 1.2rem;
+    margin-bottom: 20px;
+    max-width: 80%;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+}
+
+/* Fullscreen overlay for initial entry */
 #fullscreen-overlay {
     position: fixed;
     top: 0;
@@ -65,26 +113,6 @@ h1 { text-align: center; color: #073450; margin-bottom: 20px; font-size: 1.8rem;
     border-radius: 10px;
     cursor: pointer;
     font-weight: 600;
-}
-
-#fullscreen-warning {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    background: #FF6B35;
-    color: white;
-    text-align: center;
-    padding: 12px;
-    z-index: 10001;
-    display: none;
-    font-weight: 600;
-    animation: slideDown 0.3s ease;
-}
-
-@keyframes slideDown {
-    from { transform: translateY(-100%); }
-    to { transform: translateY(0); }
 }
 
 .page-wrapper {
@@ -380,7 +408,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .success-screen {
     text-align: center;
-    padding: 30px 20px;
+    padding: 40px 20px;
     background: linear-gradient(135deg, #D1FAE5 0%, #F0FDF4 100%);
     border-radius: 16px;
     border: 3px solid #38A169;
@@ -403,17 +431,22 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 </head>
 <body>
 
-<!-- ADDED: Fullscreen overlay -->
+<!-- FULLSCREEN EXIT WARNING - Blocks entire screen -->
+<div id="fullscreen-exit-warning">
+    <div class="warning-icon">🚨</div>
+    <h1>VIOLATION DETECTED!</h1>
+    <div class="warning-message">You attempted to exit fullscreen mode. This is a security violation.</div>
+    <div class="warning-message">Your exam will be automatically submitted in:</div>
+    <div class="countdown-timer" id="exit-countdown">5</div>
+    <div class="warning-message">Your answers have been saved. Results will be released by the administrator.</div>
+</div>
+
+<!-- Fullscreen overlay for initial entry -->
 <div id="fullscreen-overlay">
     <h2>🔒 Fullscreen Mode Required</h2>
     <p>This exam must be taken in fullscreen mode to ensure academic integrity.</p>
     <p>Please click the button below to enter fullscreen mode.</p>
     <button id="enter-fullscreen-btn">Enter Fullscreen Mode</button>
-</div>
-
-<!-- ADDED: Fullscreen warning bar -->
-<div id="fullscreen-warning">
-    ⚠️ Please enter fullscreen mode! Press F11 or click the fullscreen button.
 </div>
 
 <!-- Exam not available banner -->
@@ -565,101 +598,21 @@ const EXAM_ID = new URLSearchParams(window.location.search).get('exam_id');
 let questions = [], currentIndex = 0, duration = 0, timerInterval;
 let answers = {}, hasAnsweredAtLeastOne = false, examType = 'EXAM';
 let examReleased = false;
-let isFullscreenRequired = true; // ADDED for fullscreen tracking
-
-// ========== ADDED: FULLSCREEN FUNCTIONS ==========
-async function enterFullscreen() {
-    try {
-        const docEl = document.documentElement;
-        if (docEl.requestFullscreen) {
-            await docEl.requestFullscreen();
-        } else if (docEl.webkitRequestFullscreen) {
-            await docEl.webkitRequestFullscreen();
-        } else if (docEl.msRequestFullscreen) {
-            await docEl.msRequestFullscreen();
-        }
-        
-        // Hide overlays
-        document.getElementById('fullscreen-overlay').style.display = 'none';
-        document.getElementById('fullscreen-warning').style.display = 'none';
-        
-        console.log('✅ Fullscreen mode activated');
-        return true;
-    } catch (err) {
-        console.warn('Fullscreen failed:', err);
-        return false;
-    }
-}
-
-function setupFullscreenMonitoring() {
-    // Check fullscreen status periodically
-    setInterval(() => {
-        if (!examReleased) return;
-        
-        const isFullscreen = !!document.fullscreenElement || !!document.webkitFullscreenElement;
-        
-        if (!isFullscreen && isFullscreenRequired) {
-            // Show warning
-            const warningBar = document.getElementById('fullscreen-warning');
-            warningBar.style.display = 'block';
-            
-            // Log violation
-            sendProctoringEvent('fullscreen_exit', 'Student exited fullscreen mode');
-            
-            // Hide warning after 5 seconds
-            setTimeout(() => {
-                if (warningBar.style.display === 'block') {
-                    warningBar.style.display = 'none';
-                }
-            }, 5000);
-        } else {
-            document.getElementById('fullscreen-warning').style.display = 'none';
-        }
-    }, 3000);
-    
-    // Listen for fullscreen change events
-    document.addEventListener('fullscreenchange', () => {
-        const isFullscreen = !!document.fullscreenElement || !!document.webkitFullscreenElement;
-        if (isFullscreen) {
-            document.getElementById('fullscreen-warning').style.display = 'none';
-            document.getElementById('fullscreen-overlay').style.display = 'none';
-            console.log('✅ Fullscreen restored');
-        }
-    });
-    document.addEventListener('webkitfullscreenchange', () => {
-        const isFullscreen = !!document.fullscreenElement || !!document.webkitFullscreenElement;
-        if (isFullscreen) {
-            document.getElementById('fullscreen-warning').style.display = 'none';
-            document.getElementById('fullscreen-overlay').style.display = 'none';
-        }
-    });
-    
-    // Block F11 and Esc from breaking fullscreen
-    window.addEventListener('keydown', (e) => {
-        if (e.key === 'F11') {
-            e.preventDefault();
-            enterFullscreen();
-        }
-        if (e.key === 'Escape' && (document.fullscreenElement || document.webkitFullscreenElement)) {
-            e.preventDefault();
-            sendProctoringEvent('escape_pressed', 'Student pressed Escape in fullscreen');
-            // Re-enter fullscreen
-            setTimeout(() => enterFullscreen(), 100);
-        }
-    });
-}
+let fullscreenExitWarningActive = false;
+let autoSubmitTriggered = false;
 
 // ========== CHECK IF EXAM IS RELEASED BY ADMIN ==========
 async function checkExamReleased() {
     try {
         const { data: exam, error } = await sb
             .from('exams')
-            .select('status, release_date, end_date')
+            .select('status, release_date, end_date, exam_name, exam_type, duration_minutes')
             .eq('id', EXAM_ID)
             .single();
         
         if (error) throw error;
         
+        examDataCache = exam;
         const now = new Date();
         const releaseDate = exam.release_date ? new Date(exam.release_date) : null;
         const endDate = exam.end_date ? new Date(exam.end_date) : null;
@@ -685,10 +638,118 @@ async function checkExamReleased() {
             return false;
         }
         
+        duration = exam.duration_minutes || 30;
+        examType = exam.exam_type || 'EXAM';
+        document.getElementById('exam-title').textContent = exam.exam_name || 'Examination';
+        
         return true;
     } catch (err) {
         console.error('Error checking exam release:', err);
         return true;
+    }
+}
+
+// ========== AUTO-SUBMIT ON FULLSCREEN EXIT ==========
+async function autoSubmitOnViolation(reason) {
+    if (autoSubmitTriggered) return;
+    autoSubmitTriggered = true;
+    
+    console.log(`🔴 AUTO-SUBMITTING EXAM! Reason: ${reason}`);
+    
+    // Stop all monitoring
+    if (timerInterval) clearInterval(timerInterval);
+    if (faceDetectionInterval) clearInterval(faceDetectionInterval);
+    if (videoStream) videoStream.getTracks().forEach(t => t.stop());
+    
+    // Save all answers
+    await saveAllAnswersAndSubmit();
+    
+    // Log violation
+    await sendProctoringEvent('auto_submit_violation', reason);
+    
+    // Show success screen (without marks)
+    showSuccessScreen(true);
+}
+
+// ========== FULLSCREEN EXIT DETECTION WITH BLOCKING OVERLAY ==========
+function setupFullscreenExitDetection() {
+    let countdownInterval = null;
+    
+    // Function to show fullscreen exit warning with countdown
+    function showFullscreenExitWarning() {
+        if (fullscreenExitWarningActive || autoSubmitTriggered) return;
+        fullscreenExitWarningActive = true;
+        
+        const warningOverlay = document.getElementById('fullscreen-exit-warning');
+        const countdownEl = document.getElementById('exit-countdown');
+        let countdown = 5;
+        countdownEl.textContent = countdown;
+        warningOverlay.style.display = 'flex';
+        
+        // Log the violation
+        sendProctoringEvent('fullscreen_exit_attempt', 'Student attempted to exit fullscreen mode');
+        
+        // Start countdown
+        countdownInterval = setInterval(() => {
+            countdown--;
+            countdownEl.textContent = countdown;
+            
+            if (countdown <= 0) {
+                clearInterval(countdownInterval);
+                // Auto-submit the exam
+                autoSubmitOnViolation('Fullscreen mode exited - Security violation');
+            }
+        }, 1000);
+    }
+    
+    // Monitor fullscreen change
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('msfullscreenchange', handleFullscreenChange);
+    
+    function handleFullscreenChange() {
+        const isFullscreen = !!document.fullscreenElement || !!document.webkitFullscreenElement;
+        
+        if (!isFullscreen && examReleased && !autoSubmitTriggered) {
+            console.log('🚨 Fullscreen exited! Showing warning...');
+            showFullscreenExitWarning();
+        } else if (isFullscreen && fullscreenExitWarningActive) {
+            // User re-entered fullscreen, hide warning
+            if (countdownInterval) clearInterval(countdownInterval);
+            document.getElementById('fullscreen-exit-warning').style.display = 'none';
+            fullscreenExitWarningActive = false;
+            console.log('✅ Fullscreen restored, warning dismissed');
+        }
+    }
+    
+    // Also detect Escape key
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && (document.fullscreenElement || document.webkitFullscreenElement)) {
+            e.preventDefault();
+            console.log('🚨 Escape pressed in fullscreen');
+            showFullscreenExitWarning();
+        }
+    });
+}
+
+// ========== INITIAL FULLSCREEN ENTRY ==========
+async function enterFullscreen() {
+    try {
+        const docEl = document.documentElement;
+        if (docEl.requestFullscreen) {
+            await docEl.requestFullscreen();
+        } else if (docEl.webkitRequestFullscreen) {
+            await docEl.webkitRequestFullscreen();
+        } else if (docEl.msRequestFullscreen) {
+            await docEl.msRequestFullscreen();
+        }
+        
+        document.getElementById('fullscreen-overlay').style.display = 'none';
+        console.log('✅ Fullscreen mode activated');
+        return true;
+    } catch (err) {
+        console.warn('Fullscreen failed:', err);
+        return false;
     }
 }
 
@@ -697,6 +758,7 @@ let videoStream = null, faceDetectionInterval = null;
 let faceModelsLoaded = false;
 let multipleFaceAlertSent = false;
 let noFaceAlertSent = false;
+let examDataCache = null;
 
 // ========== LOAD FACE API MODELS ==========
 async function loadFaceModels() {
@@ -713,8 +775,8 @@ async function loadFaceModels() {
     }
 }
 
-// ========== NOTIFY DASHBOARD WITH RESULTS ==========
-function notifyDashboardCompletion(scoreData = null) {
+// ========== NOTIFY DASHBOARD ==========
+function notifyDashboardCompletion() {
     try {
         if (window.parent && window.parent !== window) {
             window.parent.postMessage({ 
@@ -723,10 +785,6 @@ function notifyDashboardCompletion(scoreData = null) {
                 student_id: studentId,
                 student_name: studentFullName,
                 student_reg: studentRegNumber,
-                score: scoreData?.earnedMarks || 0,
-                total_score: scoreData?.totalMarks || 0,
-                percentage: scoreData?.percentage || 0,
-                result: scoreData?.resultStatus || 'COMPLETED',
                 timestamp: new Date().toISOString()
             }, '*');
             console.log('✅ Dashboard notified');
@@ -751,8 +809,7 @@ async function sendProctoringEvent(eventType, details) {
             timestamp: new Date().toISOString()
         };
         
-        const { error } = await sb.from('exam_proctoring_logs').insert(eventData);
-        if (error) console.error('Insert error:', error);
+        await sb.from('exam_proctoring_logs').insert(eventData);
         
         if (eventType === 'multiple_faces_detected') {
             await sb.from('admin_notifications').insert({
@@ -871,7 +928,7 @@ async function startPreciseFaceDetection() {
                 await sendProctoringEvent('multiple_faces_detected', `${faceCount} faces detected in frame`);
                 
                 if (consecutiveMultipleFaces >= 10) {
-                    terminateExam('Multiple faces detected repeatedly - exam auto-submitted');
+                    autoSubmitOnViolation('Multiple faces detected repeatedly');
                 }
             }
         }
@@ -945,13 +1002,6 @@ async function startCamera() {
     }
 }
 
-function terminateExam(reason) {
-    if (faceDetectionInterval) clearInterval(faceDetectionInterval);
-    if (videoStream) videoStream.getTracks().forEach(t => t.stop());
-    sendProctoringEvent('exam_terminated', reason);
-    executeSubmission();
-}
-
 // ========== CORE EXAM FUNCTIONS ==========
 async function initExam() {
     try {
@@ -960,15 +1010,6 @@ async function initExam() {
         // Check if exam is released by admin
         const isReleased = await checkExamReleased();
         if (!isReleased) return;
-        
-        const { data: examData } = await sb.from('exams')
-            .select('exam_name, exam_type, duration_minutes')
-            .eq('id', EXAM_ID)
-            .single();
-        
-        duration = examData.duration_minutes || 30;
-        examType = examData.exam_type || 'EXAM';
-        document.getElementById('exam-title').textContent = examData.exam_name || 'Examination';
         
         const { data: qData } = await sb.from('exam_questions')
             .select('*')
@@ -983,7 +1024,7 @@ async function initExam() {
         renderQuestion();
         startTimer(duration * 60);
         setupSecurity();
-        setupFullscreenMonitoring(); // ADDED: Start fullscreen monitoring
+        setupFullscreenExitDetection(); // Critical: detects fullscreen exit
         
         const modal = document.getElementById('camera-permission-modal');
         const allowBtn = document.getElementById('allow-camera-btn');
@@ -991,7 +1032,7 @@ async function initExam() {
             modal.style.display = 'none';
             await startCamera();
             
-            // ADDED: Show fullscreen overlay after camera
+            // Show fullscreen overlay after camera
             const fullscreenOverlay = document.getElementById('fullscreen-overlay');
             fullscreenOverlay.style.display = 'flex';
             
@@ -1112,7 +1153,7 @@ function startTimer(seconds) {
         timerEl.innerText = `⏱️ Time: ${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
         if (seconds-- <= 0) {
             clearInterval(timerInterval);
-            executeSubmission();
+            autoSubmitOnViolation('Time expired');
         }
     }
     updateTimer();
@@ -1127,7 +1168,7 @@ function setupSecurity() {
         e.returnValue = 'Exam in progress.';
     });
     document.addEventListener('visibilitychange', () => {
-        if (document.hidden) {
+        if (document.hidden && examReleased && !autoSubmitTriggered) {
             sendProctoringEvent('tab_switched', 'Student switched tabs');
             showWarningMessage('⚠️ Tab switching detected!');
         }
@@ -1141,7 +1182,7 @@ function submitExam() {
     document.getElementById('submission-modal').style.display = 'flex';
 }
 
-async function saveAllAnswers() {
+async function saveAllAnswersAndSubmit() {
     console.log('💾 Saving all answers...');
     
     const { data: questions_data } = await sb
@@ -1175,47 +1216,7 @@ async function saveAllAnswers() {
             }, { onConflict: ['student_id', 'exam_id', 'question_id'] });
     }
     
-    console.log('✅ All answers saved!');
-    return { totalEarned, totalPossible };
-}
-
-async function calculateGrade() {
-    console.log('📊 Calculating grade for exam:', EXAM_ID);
-    
-    const { data: answers_data } = await sb
-        .from('exam_grades')
-        .select('question_id, selected_answer, marks')
-        .eq('student_id', studentId)
-        .eq('exam_id', EXAM_ID)
-        .neq('question_id', '00000000-0000-0000-0000-000000000000');
-    
-    let totalMarks = 0;
-    let totalPossible = 0;
-    
-    const { data: questions_data } = await sb
-        .from('exam_questions')
-        .select('id, correct_answer, marks')
-        .eq('exam_id', EXAM_ID);
-    
-    const questionsMap = {};
-    questions_data?.forEach(q => {
-        questionsMap[q.id] = q;
-        totalPossible += q.marks || 1;
-    });
-    
-    for (const answer of answers_data || []) {
-        const question = questionsMap[answer.question_id];
-        if (question) {
-            if (answer.marks > 0) {
-                totalMarks += answer.marks;
-            } 
-            else if (answer.selected_answer === question.correct_answer) {
-                totalMarks += question.marks || 1;
-            }
-        }
-    }
-    
-    const percentage = totalPossible > 0 ? (totalMarks / totalPossible) * 100 : 0;
+    const percentage = totalPossible > 0 ? (totalEarned / totalPossible) * 100 : 0;
     const resultStatus = percentage >= 60 ? 'PASS' : 'FAIL';
     
     await sb.from('exam_grades')
@@ -1224,43 +1225,27 @@ async function calculateGrade() {
             exam_id: EXAM_ID,
             question_id: '00000000-0000-0000-0000-000000000000',
             total_score: percentage,
-            marks: totalMarks,
+            marks: totalEarned,
             result_status: resultStatus,
             graded_at: new Date().toISOString()
         });
     
-    notifyDashboardCompletion({ earnedMarks: totalMarks, totalMarks: totalPossible, percentage: percentage, resultStatus: resultStatus });
-    
-    return { earnedMarks: totalMarks, totalMarks: totalPossible, percentage, resultStatus };
+    notifyDashboardCompletion();
+    console.log('✅ All answers saved and results stored (hidden from student)');
 }
 
-async function executeSubmission() {
-    clearInterval(timerInterval);
-    if (faceDetectionInterval) clearInterval(faceDetectionInterval);
-    if (videoStream) videoStream.getTracks().forEach(t => t.stop());
-    
-    await sendProctoringEvent('exam_submitted', `Exam submitted`);
-    await saveAllAnswers();
-    const results = await calculateGrade();
-    showSuccessScreen(results);
-}
-
-function showSuccessScreen(results) {
+// SHOW SUCCESS SCREEN WITHOUT MARKS (Admin releases results later)
+function showSuccessScreen(isAutoSubmit = false) {
     const container = document.getElementById('exam-container');
     container.innerHTML = `
         <div class="success-screen">
-            <div class="success-icon">✅</div>
-            <h2>Exam Submitted!</h2>
-            ${results ? `
-            <div style="margin: 15px 0; padding: 15px; background: white; border-radius: 10px;">
-                <p><strong>Your Score:</strong> ${results.earnedMarks}/${results.totalMarks}</p>
-                <p><strong>Percentage:</strong> ${results.percentage.toFixed(1)}%</p>
-                <p><strong>Result:</strong> <span style="color: ${results.resultStatus === 'PASS' ? '#38A169' : '#DC2626'}">${results.resultStatus}</span></p>
-            </div>
-            ` : ''}
+            <div class="success-icon">${isAutoSubmit ? '⚠️' : '✅'}</div>
+            <h2>${isAutoSubmit ? 'Exam Auto-Submitted' : 'Exam Submitted Successfully'}</h2>
+            <p>Your exam has been recorded successfully.</p>
+            <p style="margin-top: 10px; font-size: 0.9rem;">Results will be released by the administrator.</p>
             <p style="font-size:0.8rem; margin-top:8px;">${studentFullName} (${studentRegNumber})</p>
-            <div class="redirect-countdown">Redirecting in <span id="countdown-number">5</span>s</div>
-            <a href="exam_dashboard.html" class="dashboard-link">Dashboard</a>
+            <div class="redirect-countdown">Redirecting to dashboard in <span id="countdown-number">5</span>s</div>
+            <a href="exam_dashboard.html" class="dashboard-link">Go to Dashboard</a>
         </div>
     `;
     
@@ -1278,6 +1263,20 @@ function showSuccessScreen(results) {
     document.getElementById('nav-buttons').style.display = 'none';
     document.getElementById('progress').style.display = 'none';
     document.getElementById('timer').style.display = 'none';
+}
+
+// Manual submission
+async function executeSubmission() {
+    if (autoSubmitTriggered) return;
+    autoSubmitTriggered = true;
+    
+    clearInterval(timerInterval);
+    if (faceDetectionInterval) clearInterval(faceDetectionInterval);
+    if (videoStream) videoStream.getTracks().forEach(t => t.stop());
+    
+    await sendProctoringEvent('exam_submitted', 'Exam submitted by student');
+    await saveAllAnswersAndSubmit();
+    showSuccessScreen(false);
 }
 
 // Event listeners
