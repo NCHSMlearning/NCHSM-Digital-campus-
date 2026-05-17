@@ -13,7 +13,7 @@ body, .exam-main, .question, .options, .options li, label { user-select: none; }
 
 h1 { text-align: center; color: #073450; margin-bottom: 20px; font-size: 1.8rem; }
 
-/* Exam not available banner - ADDED */
+/* Exam not available banner */
 #exam-not-available {
     position: fixed;
     top: 0;
@@ -26,6 +26,65 @@ h1 { text-align: center; color: #073450; margin-bottom: 20px; font-size: 1.8rem;
     z-index: 10000;
     font-weight: 600;
     display: none;
+}
+
+/* ADDED: Fullscreen overlay and warning */
+#fullscreen-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.95);
+    z-index: 20000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    text-align: center;
+    color: white;
+}
+
+#fullscreen-overlay h2 {
+    font-size: 2rem;
+    margin-bottom: 20px;
+    color: #FF6B35;
+}
+
+#fullscreen-overlay p {
+    margin-bottom: 30px;
+    font-size: 1.1rem;
+}
+
+#fullscreen-overlay button {
+    padding: 15px 40px;
+    font-size: 1.2rem;
+    background: #38A169;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+#fullscreen-warning {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: #FF6B35;
+    color: white;
+    text-align: center;
+    padding: 12px;
+    z-index: 10001;
+    display: none;
+    font-weight: 600;
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from { transform: translateY(-100%); }
+    to { transform: translateY(0); }
 }
 
 .page-wrapper {
@@ -344,7 +403,20 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 </head>
 <body>
 
-<!-- ADDED: Exam not available banner -->
+<!-- ADDED: Fullscreen overlay -->
+<div id="fullscreen-overlay">
+    <h2>🔒 Fullscreen Mode Required</h2>
+    <p>This exam must be taken in fullscreen mode to ensure academic integrity.</p>
+    <p>Please click the button below to enter fullscreen mode.</p>
+    <button id="enter-fullscreen-btn">Enter Fullscreen Mode</button>
+</div>
+
+<!-- ADDED: Fullscreen warning bar -->
+<div id="fullscreen-warning">
+    ⚠️ Please enter fullscreen mode! Press F11 or click the fullscreen button.
+</div>
+
+<!-- Exam not available banner -->
 <div id="exam-not-available">
     ⚠️ This exam has not been released by the administrator yet. Please wait for the admin to release the exam.
 </div>
@@ -492,9 +564,92 @@ async function getStudentDetails() {
 const EXAM_ID = new URLSearchParams(window.location.search).get('exam_id');
 let questions = [], currentIndex = 0, duration = 0, timerInterval;
 let answers = {}, hasAnsweredAtLeastOne = false, examType = 'EXAM';
-let examReleased = false; // ADDED: Track if exam is released
+let examReleased = false;
+let isFullscreenRequired = true; // ADDED for fullscreen tracking
 
-// ========== ADDED: CHECK IF EXAM IS RELEASED BY ADMIN ==========
+// ========== ADDED: FULLSCREEN FUNCTIONS ==========
+async function enterFullscreen() {
+    try {
+        const docEl = document.documentElement;
+        if (docEl.requestFullscreen) {
+            await docEl.requestFullscreen();
+        } else if (docEl.webkitRequestFullscreen) {
+            await docEl.webkitRequestFullscreen();
+        } else if (docEl.msRequestFullscreen) {
+            await docEl.msRequestFullscreen();
+        }
+        
+        // Hide overlays
+        document.getElementById('fullscreen-overlay').style.display = 'none';
+        document.getElementById('fullscreen-warning').style.display = 'none';
+        
+        console.log('✅ Fullscreen mode activated');
+        return true;
+    } catch (err) {
+        console.warn('Fullscreen failed:', err);
+        return false;
+    }
+}
+
+function setupFullscreenMonitoring() {
+    // Check fullscreen status periodically
+    setInterval(() => {
+        if (!examReleased) return;
+        
+        const isFullscreen = !!document.fullscreenElement || !!document.webkitFullscreenElement;
+        
+        if (!isFullscreen && isFullscreenRequired) {
+            // Show warning
+            const warningBar = document.getElementById('fullscreen-warning');
+            warningBar.style.display = 'block';
+            
+            // Log violation
+            sendProctoringEvent('fullscreen_exit', 'Student exited fullscreen mode');
+            
+            // Hide warning after 5 seconds
+            setTimeout(() => {
+                if (warningBar.style.display === 'block') {
+                    warningBar.style.display = 'none';
+                }
+            }, 5000);
+        } else {
+            document.getElementById('fullscreen-warning').style.display = 'none';
+        }
+    }, 3000);
+    
+    // Listen for fullscreen change events
+    document.addEventListener('fullscreenchange', () => {
+        const isFullscreen = !!document.fullscreenElement || !!document.webkitFullscreenElement;
+        if (isFullscreen) {
+            document.getElementById('fullscreen-warning').style.display = 'none';
+            document.getElementById('fullscreen-overlay').style.display = 'none';
+            console.log('✅ Fullscreen restored');
+        }
+    });
+    document.addEventListener('webkitfullscreenchange', () => {
+        const isFullscreen = !!document.fullscreenElement || !!document.webkitFullscreenElement;
+        if (isFullscreen) {
+            document.getElementById('fullscreen-warning').style.display = 'none';
+            document.getElementById('fullscreen-overlay').style.display = 'none';
+        }
+    });
+    
+    // Block F11 and Esc from breaking fullscreen
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'F11') {
+            e.preventDefault();
+            enterFullscreen();
+        }
+        if (e.key === 'Escape' && (document.fullscreenElement || document.webkitFullscreenElement)) {
+            e.preventDefault();
+            sendProctoringEvent('escape_pressed', 'Student pressed Escape in fullscreen');
+            // Re-enter fullscreen
+            setTimeout(() => enterFullscreen(), 100);
+        }
+    });
+}
+
+// ========== CHECK IF EXAM IS RELEASED BY ADMIN ==========
 async function checkExamReleased() {
     try {
         const { data: exam, error } = await sb
@@ -509,7 +664,6 @@ async function checkExamReleased() {
         const releaseDate = exam.release_date ? new Date(exam.release_date) : null;
         const endDate = exam.end_date ? new Date(exam.end_date) : null;
         
-        // Check if exam is released (status = 'released' OR 'active')
         const isReleased = exam.status === 'released' || exam.status === 'active';
         const isWithinDateRange = (!releaseDate || now >= releaseDate) && (!endDate || now <= endDate);
         
@@ -534,7 +688,6 @@ async function checkExamReleased() {
         return true;
     } catch (err) {
         console.error('Error checking exam release:', err);
-        // If error, allow exam to proceed (fallback)
         return true;
     }
 }
@@ -560,10 +713,9 @@ async function loadFaceModels() {
     }
 }
 
-// ========== IMPROVED: NOTIFY DASHBOARD WITH RESULTS ==========
+// ========== NOTIFY DASHBOARD WITH RESULTS ==========
 function notifyDashboardCompletion(scoreData = null) {
     try {
-        // Send message to parent window (the dashboard)
         if (window.parent && window.parent !== window) {
             window.parent.postMessage({ 
                 type: 'exam_completed',
@@ -577,9 +729,7 @@ function notifyDashboardCompletion(scoreData = null) {
                 result: scoreData?.resultStatus || 'COMPLETED',
                 timestamp: new Date().toISOString()
             }, '*');
-            console.log('✅ Dashboard notified of exam completion with results');
-        } else {
-            console.log('Not in iframe, dashboard notification skipped');
+            console.log('✅ Dashboard notified');
         }
     } catch(e) {
         console.log('Cannot notify dashboard:', e);
@@ -807,7 +957,7 @@ async function initExam() {
     try {
         await getStudentDetails();
         
-        // ADDED: Check if exam is released by admin FIRST
+        // Check if exam is released by admin
         const isReleased = await checkExamReleased();
         if (!isReleased) return;
         
@@ -833,12 +983,22 @@ async function initExam() {
         renderQuestion();
         startTimer(duration * 60);
         setupSecurity();
+        setupFullscreenMonitoring(); // ADDED: Start fullscreen monitoring
         
         const modal = document.getElementById('camera-permission-modal');
         const allowBtn = document.getElementById('allow-camera-btn');
         allowBtn.onclick = async () => {
             modal.style.display = 'none';
             await startCamera();
+            
+            // ADDED: Show fullscreen overlay after camera
+            const fullscreenOverlay = document.getElementById('fullscreen-overlay');
+            fullscreenOverlay.style.display = 'flex';
+            
+            document.getElementById('enter-fullscreen-btn').onclick = async () => {
+                await enterFullscreen();
+                fullscreenOverlay.style.display = 'none';
+            };
         };
         modal.style.display = 'flex';
         
@@ -984,7 +1144,6 @@ function submitExam() {
 async function saveAllAnswers() {
     console.log('💾 Saving all answers...');
     
-    // Get all questions to know correct answers and marks
     const { data: questions_data } = await sb
         .from('exam_questions')
         .select('id, correct_answer, marks')
@@ -1005,8 +1164,7 @@ async function saveAllAnswers() {
         const marksEarned = isCorrect ? (question?.marks || 1) : 0;
         totalEarned += marksEarned;
         
-        const { error } = await sb
-            .from('exam_grades')
+        await sb.from('exam_grades')
             .upsert({
                 student_id: studentId,
                 exam_id: EXAM_ID,
@@ -1015,12 +1173,6 @@ async function saveAllAnswers() {
                 marks: marksEarned,
                 graded_at: new Date().toISOString()
             }, { onConflict: ['student_id', 'exam_id', 'question_id'] });
-        
-        if (error) {
-            console.error('Error saving answer:', error);
-        } else {
-            console.log(`✅ Saved answer for Q${questionId}: ${selectedAnswer} (${isCorrect ? 'Correct +' + marksEarned : 'Wrong +0'})`);
-        }
     }
     
     console.log('✅ All answers saved!');
@@ -1030,26 +1182,16 @@ async function saveAllAnswers() {
 async function calculateGrade() {
     console.log('📊 Calculating grade for exam:', EXAM_ID);
     
-    // Get all answers for this student (excluding the final grade record)
-    const { data: answers_data, error } = await sb
+    const { data: answers_data } = await sb
         .from('exam_grades')
         .select('question_id, selected_answer, marks')
         .eq('student_id', studentId)
         .eq('exam_id', EXAM_ID)
         .neq('question_id', '00000000-0000-0000-0000-000000000000');
     
-    if (error) {
-        console.error('Error fetching answers:', error);
-        return;
-    }
-    
-    console.log('Answers found:', answers_data?.length || 0);
-    
-    // Calculate total marks from the answers that are already saved with marks
     let totalMarks = 0;
     let totalPossible = 0;
     
-    // Also fetch questions to get correct answers and max marks per question
     const { data: questions_data } = await sb
         .from('exam_questions')
         .select('id, correct_answer, marks')
@@ -1061,15 +1203,12 @@ async function calculateGrade() {
         totalPossible += q.marks || 1;
     });
     
-    // Calculate earned marks by comparing with correct answers
     for (const answer of answers_data || []) {
         const question = questionsMap[answer.question_id];
         if (question) {
-            // If marks are already set in the answer, use them
             if (answer.marks > 0) {
                 totalMarks += answer.marks;
             } 
-            // Otherwise, calculate based on correctness
             else if (answer.selected_answer === question.correct_answer) {
                 totalMarks += question.marks || 1;
             }
@@ -1079,11 +1218,7 @@ async function calculateGrade() {
     const percentage = totalPossible > 0 ? (totalMarks / totalPossible) * 100 : 0;
     const resultStatus = percentage >= 60 ? 'PASS' : 'FAIL';
     
-    console.log(`📊 Grade Calculated: ${totalMarks}/${totalPossible} = ${percentage.toFixed(1)}% (${resultStatus})`);
-    
-    // Save the final grade
-    const { error: upsertError } = await sb
-        .from('exam_grades')
+    await sb.from('exam_grades')
         .upsert({
             student_id: studentId,
             exam_id: EXAM_ID,
@@ -1094,34 +1229,19 @@ async function calculateGrade() {
             graded_at: new Date().toISOString()
         });
     
-    if (upsertError) {
-        console.error('Error saving final grade:', upsertError);
-    } else {
-        console.log(`✅ Final grade saved: ${percentage.toFixed(1)}% (${resultStatus})`);
-        // IMPROVED: Notify dashboard with results
-        notifyDashboardCompletion({ earnedMarks: totalMarks, totalMarks: totalPossible, percentage: percentage, resultStatus: resultStatus });
-    }
+    notifyDashboardCompletion({ earnedMarks: totalMarks, totalMarks: totalPossible, percentage: percentage, resultStatus: resultStatus });
     
     return { earnedMarks: totalMarks, totalMarks: totalPossible, percentage, resultStatus };
 }
 
-// ========== THE FIXED SUBMISSION FUNCTION ==========
 async function executeSubmission() {
-    // Stop timers and cameras
     clearInterval(timerInterval);
     if (faceDetectionInterval) clearInterval(faceDetectionInterval);
     if (videoStream) videoStream.getTracks().forEach(t => t.stop());
     
-    // Send proctoring event
     await sendProctoringEvent('exam_submitted', `Exam submitted`);
-    
-    // Save all answers
     await saveAllAnswers();
-    
-    // Calculate and save final grade
     const results = await calculateGrade();
-    
-    // IMPROVED: Show success screen with results
     showSuccessScreen(results);
 }
 
