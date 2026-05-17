@@ -542,7 +542,7 @@ class DashboardModule {
             const { data: exams, error } = await this.sb
                 .from('exams_with_courses')
                 .select('*')
-                .eq('status', 'published')
+                .in('status', ['published', 'Upcoming', 'InProgress'])  // ← KEY CHANGE
                 .gte('exam_date', today)
                 .order('exam_date', { ascending: true })
                 .limit(10);
