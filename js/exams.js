@@ -374,173 +374,220 @@
             }
         }
         
-        processExamsData(exams, grades) {
-            const gradeMap = new Map();
-            grades.forEach(grade => {
-                gradeMap.set(String(grade.exam_id), grade);
+      processExamsData(exams, grades) {
+    const gradeMap = new Map();
+    grades.forEach(grade => {
+        gradeMap.set(String(grade.exam_id), grade);
+    });
+    
+    // STEP 1: Group exams by a common key (e.g., exam_name + intake_year)
+    const examGroups = new Map();
+    
+    exams.forEach(exam => {
+        // Create a group key - combine name and intake year
+        const groupKey = `${exam.exam_name || exam.title || 'Untitled'}_${exam.intake_year}`;
+        
+        if (!examGroups.has(groupKey)) {
+            examGroups.set(groupKey, {
+                id: exam.id,
+                exam_name: exam.exam_name || exam.title || 'Untitled Exam',
+                exam_type: exam.exam_type,
+                intake_year: exam.intake_year,
+                program_type: exam.program_type,
+                block_term: exam.block_term,
+                exam_date: exam.exam_date,
+                exam_link: exam.exam_link || exam.online_link,
+                course: exam.course,
+                // Collect unique course details
+                course_levels: new Set(),
+                blocks: new Set(),
+                programs: new Set(),
+                // Store the first grade found
+                grade: null
             });
-            
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            
-            this.allExams = exams.map(exam => {
-                const grade = gradeMap.get(String(exam.id));
-                const gradeId = grade?.id;
-                const isReleased = gradeId ? this.releasedResults.has(gradeId) : false;
-                
-                const cat1Score = grade?.cat_1_score ?? grade?.cat_score ?? null;
-                const cat2Score = grade?.cat_2_score ?? null;
-                const finalScore = grade?.exam_score ?? null;
-                const totalPercentage = grade?.total_score ? parseFloat(grade.total_score) : null;
-                
-                const examType = (exam.exam_type || '').toUpperCase();
-                const isCatExam = examType.includes('CAT');
-                const isFinalExam = examType === 'EXAM' || examType === 'FINAL';
-                
-                const examDate = exam.exam_date ? new Date(exam.exam_date) : null;
-                const isDatePassed = examDate ? examDate < today : false;
-                const hasGrade = grade && totalPercentage !== null;
-                
-                let isCompleted = false;
-                let gradeText = 'Not Started';
-                let gradeClass = 'pending';
-                let gradePoint = 0;
-                let displayPercentage = null;
-                let completionReason = '';
-                
-                if (hasGrade && isReleased) {
-                    isCompleted = true;
-                    displayPercentage = totalPercentage;
-                    completionReason = 'graded';
-                    
-                    if (totalPercentage >= 85) {
-                        gradeText = 'Distinction';
-                        gradeClass = 'distinction';
-                        gradePoint = 5.0;
-                    } else if (totalPercentage >= 75) {
-                        gradeText = 'Credit';
-                        gradeClass = 'credit';
-                        gradePoint = 4.0;
-                    } else if (totalPercentage >= 60) {
-                        gradeText = 'Pass';
-                        gradeClass = 'pass';
-                        gradePoint = 3.0;
-                    } else {
-                        gradeText = 'Fail';
-                        gradeClass = 'fail';
-                        gradePoint = 0.0;
-                    }
-                } else if (hasGrade && !isReleased) {
-                    if (isDatePassed) {
-                        isCompleted = true;
-                        gradeText = 'Pending Release';
-                        gradeClass = 'pending';
-                        completionReason = 'date_passed';
-                        displayPercentage = totalPercentage;
-                    } else {
-                        isCompleted = false;
-                        gradeText = 'Pending Release';
-                        gradeClass = 'pending';
-                    }
-                } else if (!hasGrade && isDatePassed) {
-                    isCompleted = true;
-                    gradeText = 'Missed';
-                    gradeClass = 'missed';
-                    completionReason = 'missed';
-                } else {
-                    isCompleted = false;
-                    gradeText = 'Not Started';
-                    gradeClass = 'pending';
-                }
-                
-                // Check if exam has a valid link
-                const examLink = exam.exam_link || exam.online_link;
-                const hasValidLink = examLink && examLink.trim() !== '' && (examLink.startsWith('http') || examLink.includes('docs.google.com'));
-                
-                // Determine action button state
-                let actionState = 'not_available';
-                let actionMessage = 'Not Available';
-                
-                if (exam.isCompleted) {
-                    actionMessage = 'Completed';
-                    actionState = 'completed';
-                } else if (gradeText === 'Pending Release') {
-                    actionMessage = 'Pending Release';
-                    actionState = 'pending_release';
-                } else if (gradeText === 'Missed') {
-                    actionMessage = 'Missed';
-                    actionState = 'missed';
-                } else if (!hasValidLink) {
-                    actionMessage = 'No Link Available';
-                    actionState = 'no_link';
-                } else if (hasValidLink && !exam.isCompleted && gradeText !== 'Pending Release' && gradeText !== 'Missed') {
-                    actionMessage = 'Start Exam';
-                    actionState = 'start';
-                }
-                
-                const canTakeExam = (actionState === 'start');
-                
-                // Format display values
-                let cat1Display = '--';
-                let cat2Display = '--';
-                let finalDisplay = '--';
-                
-                if (isCatExam && cat1Score !== null) {
-                    cat1Display = `${cat1Score}%`;
-                }
-                if (isCatExam && cat2Score !== null) {
-                    cat2Display = `${cat2Score}%`;
-                }
-                if (isFinalExam) {
-                    if (cat1Score !== null) cat1Display = `${cat1Score}%`;
-                    if (cat2Score !== null) cat2Display = `${cat2Score}%`;
-                    if (finalScore !== null) finalDisplay = `${finalScore}%`;
-                }
-                
-                if (isReleased && displayPercentage !== null) {
-                    cat1Display = displayPercentage.toFixed(1) + '%';
-                }
-                
-                return {
-                    ...exam,
-                    id: exam.id,
-                    exam_name: exam.exam_name || exam.title || 'Untitled Exam',
-                    exam_type: exam.exam_type || (isCatExam ? 'CAT' : 'EXAM'),
-                    isCatExam,
-                    isFinalExam,
-                    isCompleted,
-                    isReleased,
-                    hasGrade,
-                    isDatePassed,
-                    completionReason,
-                    totalPercentage: displayPercentage,
-                    gradeText,
-                    gradeClass,
-                    gradePoint,
-                    hasValidLink,
-                    canTakeExam,
-                    actionState,
-                    actionMessage,
-                    examLink: examLink,
-                    cat1Score: cat1Score,
-                    cat2Score: cat2Score,
-                    finalScore: finalScore,
-                    cat1Display: cat1Display,
-                    cat2Display: cat2Display,
-                    finalDisplay: finalDisplay,
-                    examDate: exam.exam_date,
-                    formattedExamDate: exam.exam_date ? new Date(exam.exam_date).toLocaleDateString() : 'TBA',
-                    formattedGradedDate: grade?.graded_at ? new Date(grade.graded_at).toLocaleDateString() : '--',
-                    programBadgeClass: exam.program_type === 'TVET' ? 'badge-tvet' : 'badge-krchn',
-                    programIcon: exam.program_type === 'TVET' ? 'fa-tools' : 'fa-graduation-cap',
-                    programDisplay: exam.program_type === 'TVET' ? 'TVET Program' : 'KRCHN Program'
-                };
-            });
-            
-            const currentCount = this.allExams.filter(e => !e.isCompleted).length;
-            const completedCount = this.allExams.filter(e => e.isCompleted).length;
-            console.log(`✅ Processed ${this.allExams.length} exams: ${currentCount} current, ${completedCount} completed`);
         }
+        
+        const group = examGroups.get(groupKey);
+        
+        // Collect unique course details
+        if (exam.course) group.course_levels.add(exam.course);
+        if (exam.block_term) group.blocks.add(exam.block_term);
+        if (exam.program_type) group.programs.add(exam.program_type === 'TVET' ? 'TVET Program' : 'KRCHN Program');
+        
+        // Store grade if available
+        const grade = gradeMap.get(String(exam.id));
+        if (grade && !group.grade) group.grade = grade;
+    });
+    
+    // STEP 2: Convert groups to exam objects
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    this.allExams = Array.from(examGroups.values()).map(group => {
+        const grade = group.grade;
+        const gradeId = grade?.id;
+        const isReleased = gradeId ? this.releasedResults.has(gradeId) : false;
+        
+        // COMBINE course details into ONE string
+        const combinedCourse = Array.from(group.course_levels).join(' · ') || 'General';
+        const combinedBlock = Array.from(group.blocks).join(' · ') || 'General';
+        const combinedProgram = Array.from(group.programs).join(' · ') || 'KRCHN Program';
+        
+        const cat1Score = grade?.cat_1_score ?? grade?.cat_score ?? null;
+        const cat2Score = grade?.cat_2_score ?? null;
+        const finalScore = grade?.exam_score ?? null;
+        const totalPercentage = grade?.total_score ? parseFloat(grade.total_score) : null;
+        
+        const examType = (group.exam_type || '').toUpperCase();
+        const isCatExam = examType.includes('CAT');
+        const isFinalExam = examType === 'EXAM' || examType === 'FINAL';
+        
+        const examDate = group.exam_date ? new Date(group.exam_date) : null;
+        const isDatePassed = examDate ? examDate < today : false;
+        const hasGrade = grade && totalPercentage !== null;
+        
+        let isCompleted = false;
+        let gradeText = 'Not Started';
+        let gradeClass = 'pending';
+        let gradePoint = 0;
+        let displayPercentage = null;
+        let completionReason = '';
+        
+        if (hasGrade && isReleased) {
+            isCompleted = true;
+            displayPercentage = totalPercentage;
+            completionReason = 'graded';
+            
+            if (totalPercentage >= 85) {
+                gradeText = 'Distinction';
+                gradeClass = 'distinction';
+                gradePoint = 5.0;
+            } else if (totalPercentage >= 75) {
+                gradeText = 'Credit';
+                gradeClass = 'credit';
+                gradePoint = 4.0;
+            } else if (totalPercentage >= 60) {
+                gradeText = 'Pass';
+                gradeClass = 'pass';
+                gradePoint = 3.0;
+            } else {
+                gradeText = 'Fail';
+                gradeClass = 'fail';
+                gradePoint = 0.0;
+            }
+        } else if (hasGrade && !isReleased) {
+            if (isDatePassed) {
+                isCompleted = true;
+                gradeText = 'Pending Release';
+                gradeClass = 'pending';
+                completionReason = 'date_passed';
+                displayPercentage = totalPercentage;
+            } else {
+                isCompleted = false;
+                gradeText = 'Pending Release';
+                gradeClass = 'pending';
+            }
+        } else if (!hasGrade && isDatePassed) {
+            isCompleted = true;
+            gradeText = 'Missed';
+            gradeClass = 'missed';
+            completionReason = 'missed';
+        } else {
+            isCompleted = false;
+            gradeText = 'Not Started';
+            gradeClass = 'pending';
+        }
+        
+        // Check if exam has a valid link
+        const examLink = group.exam_link;
+        const hasValidLink = examLink && examLink.trim() !== '' && (examLink.startsWith('http') || examLink.includes('docs.google.com'));
+        
+        let actionState = 'not_available';
+        let actionMessage = 'Not Available';
+        
+        if (isCompleted) {
+            actionMessage = 'Completed';
+            actionState = 'completed';
+        } else if (gradeText === 'Pending Release') {
+            actionMessage = 'Pending Release';
+            actionState = 'pending_release';
+        } else if (gradeText === 'Missed') {
+            actionMessage = 'Missed';
+            actionState = 'missed';
+        } else if (!hasValidLink) {
+            actionMessage = 'No Link Available';
+            actionState = 'no_link';
+        } else if (hasValidLink && !isCompleted && gradeText !== 'Pending Release' && gradeText !== 'Missed') {
+            actionMessage = 'Start Exam';
+            actionState = 'start';
+        }
+        
+        const canTakeExam = (actionState === 'start');
+        
+        // Format display values
+        let cat1Display = '--';
+        let cat2Display = '--';
+        let finalDisplay = '--';
+        
+        if (isCatExam && cat1Score !== null) {
+            cat1Display = `${cat1Score}%`;
+        }
+        if (isCatExam && cat2Score !== null) {
+            cat2Display = `${cat2Score}%`;
+        }
+        if (isFinalExam) {
+            if (cat1Score !== null) cat1Display = `${cat1Score}%`;
+            if (cat2Score !== null) cat2Display = `${cat2Score}%`;
+            if (finalScore !== null) finalDisplay = `${finalScore}%`;
+        }
+        
+        if (isReleased && displayPercentage !== null) {
+            cat1Display = displayPercentage.toFixed(1) + '%';
+        }
+        
+        return {
+            ...group,
+            id: group.id,
+            exam_name: group.exam_name,
+            exam_type: group.exam_type || (isCatExam ? 'CAT' : 'EXAM'),
+            isCatExam,
+            isFinalExam,
+            isCompleted,
+            isReleased,
+            hasGrade,
+            isDatePassed,
+            completionReason,
+            totalPercentage: displayPercentage,
+            gradeText,
+            gradeClass,
+            gradePoint,
+            hasValidLink,
+            canTakeExam,
+            actionState,
+            actionMessage,
+            examLink: examLink,
+            cat1Score: cat1Score,
+            cat2Score: cat2Score,
+            finalScore: finalScore,
+            cat1Display: cat1Display,
+            cat2Display: cat2Display,
+            finalDisplay: finalDisplay,
+            examDate: group.exam_date,
+            formattedExamDate: group.exam_date ? new Date(group.exam_date).toLocaleDateString() : 'TBA',
+            formattedGradedDate: grade?.graded_at ? new Date(grade.graded_at).toLocaleDateString() : '--',
+            programBadgeClass: group.program_type === 'TVET' ? 'badge-tvet' : 'badge-krchn',
+            programIcon: group.program_type === 'TVET' ? 'fa-tools' : 'fa-graduation-cap',
+            programDisplay: combinedProgram,
+            // This is KEY - combined course details for the assessment cell
+            course: combinedCourse,
+            block_term: combinedBlock
+        };
+    });
+    
+    const currentCount = this.allExams.filter(e => !e.isCompleted).length;
+    const completedCount = this.allExams.filter(e => e.isCompleted).length;
+    console.log(`✅ Processed ${this.allExams.length} exams: ${currentCount} current, ${completedCount} completed`);
+}
         
         displayTables() {
             this.displayCurrentTable();
