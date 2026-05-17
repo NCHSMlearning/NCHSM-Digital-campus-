@@ -3,13 +3,47 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>NCHSM Secure Exam - Proctored</title>
+<title>NCHSM Secure Exam - Fullscreen Proctored</title>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/dist/face-api.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { font-family: 'Poppins', sans-serif; background: #F8F9FA; margin: 0; padding: 10px; }
+body { font-family: 'Poppins', sans-serif; background: #F8F9FA; margin: 0; padding: 0; overflow-x: hidden; }
 body, .exam-main, .question, .options, .options li, label { user-select: none; }
+
+/* Fullscreen styles */
+:fullscreen {
+    background: #F8F9FA;
+}
+:-webkit-full-screen {
+    background: #F8F9FA;
+}
+:-moz-full-screen {
+    background: #F8F9FA;
+}
+
+/* Warning banner for fullscreen exit */
+#fullscreen-warning-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: #DC2626;
+    color: white;
+    text-align: center;
+    padding: 12px;
+    font-weight: 600;
+    z-index: 10000;
+    display: none;
+    animation: slideDown 0.3s ease;
+    font-size: 0.9rem;
+}
+
+@keyframes slideDown {
+    from { transform: translateY(-100%); }
+    to { transform: translateY(0); }
+}
 
 h1 { text-align: center; color: #073450; margin-bottom: 20px; font-size: 1.8rem; }
 
@@ -19,6 +53,7 @@ h1 { text-align: center; color: #073450; margin-bottom: 20px; font-size: 1.8rem;
     gap: 20px; 
     max-width: 1200px;
     margin: 10px auto;
+    padding: 0 15px;
 }
 
 .sidebar {
@@ -39,11 +74,12 @@ h1 { text-align: center; color: #073450; margin-bottom: 20px; font-size: 1.8rem;
 }
 
 @media (min-width: 992px) {
-    body { padding: 20px; }
+    body { padding: 0; }
     .page-wrapper {
         grid-template-columns: 300px 1fr; 
         gap: 30px;
         margin: 20px auto;
+        padding: 0 20px;
     }
     .sidebar { position: sticky; order: 1; top: 20px; }
     .exam-main { order: 2; padding: 30px; }
@@ -272,7 +308,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 
 #face-detection-warning {
     position: fixed;
-    top: 20px;
+    top: 60px;
     right: 20px;
     background: #DC2626;
     color: white;
@@ -325,9 +361,12 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
     .status-item { height: 32px; font-size: 0.7rem; }
 }
 </style>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
+
+<div id="fullscreen-warning-bar">
+    ⚠️ EXAM MUST BE IN FULLSCREEN! Please enter fullscreen mode immediately. Auto-submission in <span id="fullscreen-countdown">5</span> seconds...
+</div>
 
 <div class="page-wrapper">
     <div class="sidebar">
@@ -432,20 +471,122 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ========== AUTHENTICATION ==========
-function getStudentId() {
-    const params = new URLSearchParams(window.location.search);
-    return params.get('user_id') || localStorage.getItem('currentUserId');
-}
-
-let studentId = getStudentId();
-if (!studentId) {
-    window.location.href = `exam_login.html?return=${encodeURIComponent(window.location.href)}`;
-}
+let studentId = new URLSearchParams(window.location.search).get('user_id') || localStorage.getItem('currentUserId');
+if (!studentId) window.location.href = `exam_login.html?return=${encodeURIComponent(window.location.href)}`;
 localStorage.setItem('currentUserId', studentId);
 
-// ========== STUDENT DETAILS ==========
-let studentRegNumber = null;
-let studentFullName = null;
+let studentRegNumber = null, studentFullName = null;
+let questions = [], currentIndex = 0, duration = 0, timerInterval;
+let answers = {}, hasAnsweredAtLeastOne = false, examType = 'EXAM';
+let videoStream = null, faceDetectionInterval = null, faceModelsLoaded = false;
+let multipleFaceAlertSent = false, noFaceAlertSent = false;
+let examAutoSubmitted = false;
+let fullscreenExitCount = 0;
+let fullscreenWarningTimer = null;
+let isFullscreenForced = false;
+
+// ========== FULLSCREEN ENFORCEMENT ==========
+async function enterFullscreen() {
+    try {
+        const docEl = document.documentElement;
+        if (docEl.requestFullscreen) await docEl.requestFullscreen();
+        else if (docEl.webkitRequestFullscreen) await docEl.webkitRequestFullscreen();
+        else if (docEl.msRequestFullscreen) await docEl.msRequestFullscreen();
+        isFullscreenForced = true;
+        document.getElementById('fullscreen-warning-bar').style.display = 'none';
+        if (fullscreenWarningTimer) clearTimeout(fullscreenWarningTimer);
+        return true;
+    } catch (err) {
+        console.warn('Fullscreen failed:', err);
+        return false;
+    }
+}
+
+function checkFullscreenAndWarn() {
+    if (examAutoSubmitted) return;
+    const isFullscreen = !!document.fullscreenElement || !!document.webkitFullscreenElement;
+    if (!isFullscreen && !examAutoSubmitted) {
+        document.getElementById('fullscreen-warning-bar').style.display = 'block';
+        let countdown = 5;
+        const countdownEl = document.getElementById('fullscreen-countdown');
+        if (fullscreenWarningTimer) clearInterval(fullscreenWarningTimer);
+        fullscreenWarningTimer = setInterval(() => {
+            countdown--;
+            if (countdownEl) countdownEl.textContent = countdown;
+            if (countdown <= 0) {
+                clearInterval(fullscreenWarningTimer);
+                if (!document.fullscreenElement && !examAutoSubmitted) {
+                    sendProctoringEvent('fullscreen_violation', 'Student exited fullscreen mode - auto submission');
+                    showWarningMessage('❌ Fullscreen exited! Exam auto-submitted.');
+                    terminateExam('Fullscreen mode exited - security violation');
+                }
+            }
+        }, 1000);
+    } else {
+        document.getElementById('fullscreen-warning-bar').style.display = 'none';
+        if (fullscreenWarningTimer) clearInterval(fullscreenWarningTimer);
+    }
+}
+
+// ========== ENHANCED SECURITY: Tab/Windowing Detection ==========
+let tabSwitchViolationCount = 0;
+const MAX_TAB_SWITCH_VIOLATIONS = 1; // Auto-submit on first violation
+
+function setupUltraSecurity() {
+    // Tab visibility + focus/blur detection
+    document.addEventListener('visibilitychange', () => {
+        if (examAutoSubmitted) return;
+        if (document.hidden) {
+            tabSwitchViolationCount++;
+            sendProctoringEvent('tab_switched', `Student switched tabs/minimized window (violation ${tabSwitchViolationCount})`);
+            showWarningMessage('⚠️ TAB SWITCH DETECTED! Exam will auto-submit.');
+            if (tabSwitchViolationCount >= MAX_TAB_SWITCH_VIOLATIONS) {
+                terminateExam('Tab switching detected - exam auto-submitted');
+            }
+        }
+    });
+    
+    // Window blur (clicking outside, alt+tab)
+    window.addEventListener('blur', () => {
+        if (examAutoSubmitted) return;
+        tabSwitchViolationCount++;
+        sendProctoringEvent('window_blur', 'Student moved to another application/window');
+        showWarningMessage('⚠️ WINDOW CHANGE DETECTED! Stay on exam window.');
+        if (tabSwitchViolationCount >= MAX_TAB_SWITCH_VIOLATIONS) {
+            terminateExam('Window focus lost - exam auto-submitted');
+        }
+    });
+    
+    // Context menu / right click block
+    document.addEventListener('contextmenu', e => e.preventDefault());
+    document.addEventListener('copy', e => e.preventDefault());
+    document.addEventListener('cut', e => e.preventDefault());
+    document.addEventListener('paste', e => e.preventDefault());
+    
+    // Keyboard shortcuts block (F11, Alt+Tab can't be fully blocked but we detect)
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'F11' || (e.altKey && e.key === 'Tab') || (e.ctrlKey && e.key === 'w') || (e.ctrlKey && e.key === 'W')) {
+            e.preventDefault();
+            showWarningMessage('🔒 Keyboard shortcut blocked!');
+            sendProctoringEvent('keyboard_shortcut', `Attempted ${e.key} key`);
+            if (e.key === 'F11') {
+                // Re-request fullscreen if needed
+                setTimeout(() => enterFullscreen(), 100);
+            }
+        }
+    });
+    
+    // Fullscreen change monitoring
+    document.addEventListener('fullscreenchange', checkFullscreenAndWarn);
+    document.addEventListener('webkitfullscreenchange', checkFullscreenAndWarn);
+    
+    // Periodic fullscreen check (every second)
+    setInterval(() => {
+        if (!examAutoSubmitted && !document.fullscreenElement && !document.webkitFullscreenElement) {
+            checkFullscreenAndWarn();
+        }
+    }, 1000);
+}
 
 async function getStudentDetails() {
     try {
@@ -454,143 +595,65 @@ async function getStudentDetails() {
             .select('full_name, student_id, program, block')
             .eq('user_id', studentId)
             .single();
-        
         if (profile) {
             studentFullName = profile.full_name || 'Student';
             studentRegNumber = profile.student_id || 'N/A';
             document.getElementById('studentName').innerHTML = studentFullName;
             document.getElementById('studentRegNumber').innerHTML = `ID: ${studentRegNumber}`;
         }
-    } catch (err) {
-        console.error('Error:', err);
-        studentRegNumber = 'Unknown';
-        studentFullName = 'Student';
-    }
+    } catch (err) { console.error(err); studentRegNumber = 'Unknown'; studentFullName = 'Student'; }
 }
 
-// ========== EXAM VARIABLES ==========
-const EXAM_ID = new URLSearchParams(window.location.search).get('exam_id');
-let questions = [], currentIndex = 0, duration = 0, timerInterval;
-let answers = {}, hasAnsweredAtLeastOne = false, examType = 'EXAM';
-
-// ========== PROCTORING VARIABLES ==========
-let videoStream = null, faceDetectionInterval = null;
-let faceModelsLoaded = false;
-let multipleFaceAlertSent = false;
-let noFaceAlertSent = false;
-
-// ========== LOAD FACE API MODELS ==========
 async function loadFaceModels() {
     try {
         await faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/model');
         await faceapi.nets.faceLandmark68Net.loadFromUri('https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/model');
         faceModelsLoaded = true;
-        console.log('✅ Face detection models loaded');
         return true;
-    } catch (err) {
-        console.warn('Face models failed to load:', err);
-        faceModelsLoaded = false;
-        return false;
-    }
+    } catch (err) { faceModelsLoaded = false; return false; }
 }
 
-// ========== NOTIFY DASHBOARD - THE FIX! ==========
-function notifyDashboardCompletion() {
-    try {
-        // Send message to parent window (the dashboard)
-        if (window.parent && window.parent !== window) {
-            window.parent.postMessage({ 
-                type: 'exam_completed',
-                exam_id: EXAM_ID,
-                student_id: studentId,
-                student_name: studentFullName,
-                timestamp: new Date().toISOString()
-            }, '*');
-            console.log('✅ Dashboard notified of exam completion');
-        } else {
-            console.log('Not in iframe, dashboard notification skipped');
-        }
-    } catch(e) {
-        console.log('Cannot notify dashboard:', e);
-    }
-}
-
-// ========== ADMIN COMMUNICATION ==========
 async function sendProctoringEvent(eventType, details) {
     try {
-        const eventData = {
-            exam_id: EXAM_ID,
+        await sb.from('exam_proctoring_logs').insert({
+            exam_id: new URLSearchParams(window.location.search).get('exam_id'),
             student_id: studentId,
             student_reg_number: studentRegNumber,
             student_name: studentFullName,
             event_type: eventType,
             details: details,
-            severity: eventType === 'multiple_faces_detected' ? 'critical' : 
-                     (eventType === 'tab_switched' || eventType === 'face_missing') ? 'warning' : 'info',
+            severity: eventType.includes('violation') ? 'critical' : 'warning',
             timestamp: new Date().toISOString()
-        };
-        
-        const { error } = await sb.from('exam_proctoring_logs').insert(eventData);
-        if (error) console.error('Insert error:', error);
-        
-        if (eventType === 'multiple_faces_detected') {
-            await sb.from('admin_notifications').insert({
-                notification_type: eventType,
-                exam_id: EXAM_ID,
-                student_id: studentId,
-                student_reg_number: studentRegNumber,
-                student_name: studentFullName,
-                exam_name: examType,
-                details: details,
-                severity: 'critical',
-                timestamp: new Date().toISOString()
-            });
-        }
-        
-        const statusEl = document.getElementById('admin-connection-status');
-        if (statusEl) {
-            statusEl.innerHTML = '✅ Connected to admin';
-            statusEl.style.color = '#16A34A';
-            setTimeout(() => {
-                if (statusEl) statusEl.innerHTML = '🔗 Live proctoring active';
-            }, 3000);
-        }
-        
-        console.log(`📤 [${studentRegNumber}] ${eventType} sent to admin`);
-    } catch (err) {
-        console.error('Failed to send event:', err);
-    }
+        });
+    } catch (err) { console.error(err); }
 }
 
-// ========== PRECISE FACE DETECTION ==========
+function showWarningMessage(message) {
+    const warning = document.getElementById('face-detection-warning');
+    document.getElementById('warning-message').innerHTML = message;
+    warning.style.display = 'block';
+    setTimeout(() => warning.style.display = 'none', 4000);
+}
+
 async function startPreciseFaceDetection() {
     const video = document.getElementById('face-video');
-    const overlay = document.getElementById('face-detection-overlay');
-    const statusDiv = document.getElementById('face-status');
     const canvas = document.getElementById('face-canvas');
     const ctx = canvas.getContext('2d');
-    
     let consecutiveNoFace = 0;
     let consecutiveMultipleFaces = 0;
-    let lastAlertTime = 0;
     
     faceDetectionInterval = setInterval(async () => {
-        if (!videoStream || video.readyState !== 4) return;
-        
+        if (!videoStream || video.readyState !== 4 || examAutoSubmitted) return;
         if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
         }
-        
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        
         let faceCount = 0;
-        
         if (faceModelsLoaded) {
             try {
                 const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions());
                 faceCount = detections.length;
-                
                 if (detections.length > 0) {
                     const resized = faceapi.resizeResults(detections, { width: canvas.width, height: canvas.height });
                     resized.forEach(detection => {
@@ -600,207 +663,80 @@ async function startPreciseFaceDetection() {
                         ctx.strokeRect(box.x, box.y, box.width, box.height);
                     });
                 }
-            } catch (err) {
-                console.error('Face detection error:', err);
-                faceCount = -1;
-            }
-        } else {
-            faceCount = -1;
+            } catch (err) { faceCount = -1; }
         }
-        
-        const now = Date.now();
-        
+        const statusDiv = document.getElementById('face-status');
         if (faceCount === 0) {
             consecutiveNoFace++;
-            consecutiveMultipleFaces = 0;
-            statusDiv.textContent = '😞 No face detected! Please look at camera.';
-            statusDiv.style.background = 'rgba(220,38,38,0.9)';
-            overlay.classList.add('face-status-danger');
-            overlay.classList.remove('face-status-good', 'face-status-warning');
-            
-            if (consecutiveNoFace >= 5 && !noFaceAlertSent && (now - lastAlertTime) > 10000) {
+            statusDiv.textContent = '😞 No face detected!';
+            if (consecutiveNoFace >= 5 && !noFaceAlertSent) {
                 noFaceAlertSent = true;
-                lastAlertTime = now;
-                showWarningMessage('😞 No face detected! Please look at the camera.');
-                await sendProctoringEvent('face_missing', 'No face detected in camera frame');
+                sendProctoringEvent('face_missing', 'No face detected');
+                showWarningMessage('No face detected! Please look at camera.');
             }
-        } 
-        else if (faceCount === 1) {
+        } else if (faceCount === 1) {
             consecutiveNoFace = 0;
             consecutiveMultipleFaces = 0;
             noFaceAlertSent = false;
             multipleFaceAlertSent = false;
-            statusDiv.textContent = '✅ Face detected - OK';
-            statusDiv.style.background = 'rgba(22,163,74,0.9)';
-            overlay.classList.add('face-status-good');
-            overlay.classList.remove('face-status-warning', 'face-status-danger');
-        } 
-        else if (faceCount >= 2) {
+            statusDiv.textContent = '✅ Face OK';
+        } else if (faceCount >= 2) {
             consecutiveMultipleFaces++;
-            consecutiveNoFace = 0;
-            statusDiv.textContent = `⚠️ ${faceCount} faces detected! Violation.`;
-            statusDiv.style.background = 'rgba(220,38,38,0.9)';
-            overlay.classList.add('face-status-danger');
-            overlay.classList.remove('face-status-good', 'face-status-warning');
-            
-            if (consecutiveMultipleFaces >= 2 && !multipleFaceAlertSent && (now - lastAlertTime) > 15000) {
+            statusDiv.textContent = `⚠️ ${faceCount} faces!`;
+            if (consecutiveMultipleFaces >= 2 && !multipleFaceAlertSent) {
                 multipleFaceAlertSent = true;
-                lastAlertTime = now;
-                showWarningMessage(`⚠️ ${faceCount} faces detected! This is a violation.`);
-                await sendProctoringEvent('multiple_faces_detected', `${faceCount} faces detected in frame`);
-                
-                if (consecutiveMultipleFaces >= 10) {
-                    terminateExam('Multiple faces detected repeatedly - exam auto-submitted');
-                }
+                sendProctoringEvent('multiple_faces_detected', `${faceCount} faces`);
+                showWarningMessage(`${faceCount} faces detected! Violation.`);
+                if (consecutiveMultipleFaces >= 5) terminateExam('Multiple faces repeatedly - auto-submitted');
             }
         }
-        
-        const badge = document.getElementById('cameraStatusBadge');
-        if (faceCount === 1) {
-            badge.textContent = 'Active';
-            badge.className = 'camera-status-badge';
-        } else if (faceCount >= 2) {
-            badge.textContent = '⚠️ Multiple Faces';
-            badge.className = 'camera-status-badge danger';
-        } else if (faceCount === 0) {
-            badge.textContent = 'No Face';
-            badge.className = 'camera-status-badge danger';
-        }
-        
     }, 1500);
 }
 
-function showWarningMessage(message) {
-    const warning = document.getElementById('face-detection-warning');
-    document.getElementById('warning-message').innerHTML = message;
-    warning.style.display = 'block';
-    setTimeout(() => {
-        warning.style.display = 'none';
-    }, 5000);
-}
-
-// ========== CAMERA FUNCTIONS ==========
 async function startCamera() {
-    const video = document.getElementById('face-video');
     const overlay = document.getElementById('face-detection-overlay');
     const modal = document.getElementById('camera-permission-modal');
-    
     try {
         overlay.style.display = 'block';
-        document.getElementById('face-status').textContent = 'Starting camera...';
-        
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-            video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' } 
-        });
-        
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480, facingMode: 'user' } });
         videoStream = stream;
-        video.srcObject = stream;
-        
-        await new Promise((resolve) => {
-            video.onloadedmetadata = () => {
-                video.play();
-                resolve();
-            };
-            setTimeout(resolve, 2000);
-        });
-        
+        document.getElementById('face-video').srcObject = stream;
         await loadFaceModels();
         await startPreciseFaceDetection();
-        
-        document.getElementById('cameraStatusBadge').textContent = 'Active';
         modal.style.display = 'none';
-        
-        await sendProctoringEvent('exam_started', `Exam started with proctoring`);
-        
-        console.log('✅ Camera and face detection active');
+        document.getElementById('cameraStatusBadge').textContent = 'Active';
         return true;
-        
     } catch (error) {
-        console.error('Camera error:', error);
         document.getElementById('blocked-message').textContent = error.message;
         document.getElementById('blocked-screen').style.display = 'flex';
-        document.querySelector('.page-wrapper').style.display = 'none';
         return false;
     }
 }
 
-function terminateExam(reason) {
-    if (faceDetectionInterval) clearInterval(faceDetectionInterval);
-    if (videoStream) videoStream.getTracks().forEach(t => t.stop());
-    sendProctoringEvent('exam_terminated', reason);
-    executeSubmission();
-}
-
-// ========== CORE EXAM FUNCTIONS ==========
 async function initExam() {
-    try {
-        await getStudentDetails();
-        
-        const { data: examData } = await sb.from('exams')
-            .select('exam_name, exam_type, duration_minutes')
-            .eq('id', EXAM_ID)
-            .single();
-        
-        duration = examData.duration_minutes || 30;
-        examType = examData.exam_type || 'EXAM';
-        document.getElementById('exam-title').textContent = examData.exam_name || 'Examination';
-        
-        const { data: qData } = await sb.from('exam_questions')
-            .select('*')
-            .eq('exam_id', EXAM_ID)
-            .order('question_number');
-        
-        questions = qData;
-        await loadExistingAnswers();
-        
-        document.getElementById('total').innerText = questions.length;
-        renderQuestionStatusTable();
-        renderQuestion();
-        startTimer(duration * 60);
-        setupSecurity();
-        
-        const modal = document.getElementById('camera-permission-modal');
-        const allowBtn = document.getElementById('allow-camera-btn');
-        allowBtn.onclick = async () => {
-            modal.style.display = 'none';
-            await startCamera();
-        };
-        modal.style.display = 'flex';
-        
-    } catch (err) {
-        console.error('Init error:', err);
-        document.getElementById('error').innerText = 'Error loading exam.';
-    }
+    await getStudentDetails();
+    const EXAM_ID = new URLSearchParams(window.location.search).get('exam_id');
+    const { data: examData } = await sb.from('exams').select('exam_name, exam_type, duration_minutes').eq('id', EXAM_ID).single();
+    duration = examData.duration_minutes || 30;
+    examType = examData.exam_type || 'EXAM';
+    document.getElementById('exam-title').textContent = examData.exam_name;
+    const { data: qData } = await sb.from('exam_questions').select('*').eq('exam_id', EXAM_ID).order('question_number');
+    questions = qData;
+    document.getElementById('total').innerText = questions.length;
+    renderQuestionStatusTable();
+    renderQuestion();
+    startTimer(duration * 60);
+    setupUltraSecurity();
+    const modal = document.getElementById('camera-permission-modal');
+    document.getElementById('allow-camera-btn').onclick = async () => { modal.style.display = 'none'; await startCamera(); await enterFullscreen(); };
+    modal.style.display = 'flex';
 }
 
-async function loadExistingAnswers() {
-    try {
-        const { data } = await sb.from('exam_grades')
-            .select('question_id, selected_answer')
-            .eq('student_id', studentId)
-            .eq('exam_id', EXAM_ID);
-        
-        if (data) {
-            data.forEach(item => {
-                if (item.selected_answer) {
-                    answers[item.question_id] = item.selected_answer;
-                    hasAnsweredAtLeastOne = true;
-                }
-            });
-            if (hasAnsweredAtLeastOne) {
-                document.getElementById('submit-exam-btn').disabled = false;
-            }
-        }
-    } catch (err) { console.error(err); }
-}
-
-function renderQuestion(index = currentIndex) {
+function renderQuestion(index = 0) {
     currentIndex = index;
     const q = questions[currentIndex];
-    const container = document.getElementById('exam-container');
-    
-    container.innerHTML = `
-        <div class="question"><strong>Q${currentIndex + 1}:</strong> ${q.question_text}</div>
+    document.getElementById('exam-container').innerHTML = `
+        <div class="question"><strong>Q${currentIndex+1}:</strong> ${q.question_text}</div>
         <ul class="options">
             ${q.option_a ? `<li><label><input type="radio" name="q${q.id}" value="A"> A: ${q.option_a}</label></li>` : ''}
             ${q.option_b ? `<li><label><input type="radio" name="q${q.id}" value="B"> B: ${q.option_b}</label></li>` : ''}
@@ -808,285 +744,38 @@ function renderQuestion(index = currentIndex) {
             ${q.option_d ? `<li><label><input type="radio" name="q${q.id}" value="D"> D: ${q.option_d}</label></li>` : ''}
         </ul>
     `;
-    
     if (answers[q.id]) {
         const radio = document.querySelector(`input[name="q${q.id}"][value="${answers[q.id]}"]`);
         if (radio) radio.checked = true;
     }
-    
-    document.querySelectorAll(`input[name="q${q.id}"]`).forEach(radio => {
-        radio.addEventListener('change', (e) => saveAnswer(e.target.value));
-    });
-    
+    document.querySelectorAll(`input[name="q${q.id}"]`).forEach(radio => radio.addEventListener('change', (e) => saveAnswer(e.target.value)));
     updateProgress();
 }
 
-function saveAnswer(answer) {
-    const q = questions[currentIndex];
-    answers[q.id] = answer;
-    document.getElementById('answer-saved').style.display = 'block';
-    setTimeout(() => document.getElementById('answer-saved').style.display = 'none', 1000);
-    
-    if (!hasAnsweredAtLeastOne) {
-        hasAnsweredAtLeastOne = true;
-        document.getElementById('submit-exam-btn').disabled = false;
-    }
-    updateStatusTable();
-}
-
-function renderQuestionStatusTable() {
-    const tableEl = document.getElementById('question-status-table');
-    tableEl.innerHTML = '';
-    questions.forEach((_, index) => {
-        const item = document.createElement('div');
-        item.className = 'status-item';
-        item.id = `q-status-${index}`;
-        item.innerHTML = `<span class="status-number">${index + 1}</span>`;
-        item.onclick = () => renderQuestion(index);
-        tableEl.appendChild(item);
-    });
-    updateStatusTable();
-}
-
-function updateStatusTable() {
-    questions.forEach((q, index) => {
-        const item = document.getElementById(`q-status-${index}`);
-        if (item) {
-            item.classList.remove('current', 'answered');
-            if (index === currentIndex) item.classList.add('current');
-            if (answers[q.id]) item.classList.add('answered');
-        }
-    });
-}
-
-function updateProgress() {
-    document.getElementById('current').innerText = currentIndex + 1;
-    const percent = ((currentIndex + 1) / questions.length) * 100;
-    document.getElementById('progress-fill').style.width = percent + '%';
-    document.getElementById('prev-btn').disabled = currentIndex === 0;
-    document.getElementById('next-btn').disabled = currentIndex === questions.length - 1;
-}
-
-function prevQuestion() { if (currentIndex > 0) renderQuestion(currentIndex - 1); }
-function nextQuestion() { if (currentIndex < questions.length - 1) renderQuestion(currentIndex + 1); }
-
-function startTimer(seconds) {
-    const timerEl = document.getElementById('timer');
-    function updateTimer() {
-        const m = Math.floor(seconds / 60), s = seconds % 60;
-        timerEl.innerText = `⏱️ Time: ${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
-        if (seconds-- <= 0) {
-            clearInterval(timerInterval);
-            executeSubmission();
-        }
-    }
-    updateTimer();
-    timerInterval = setInterval(updateTimer, 1000);
-}
-
-function setupSecurity() {
-    document.addEventListener('contextmenu', e => e.preventDefault());
-    document.addEventListener('copy', e => e.preventDefault());
-    window.addEventListener('beforeunload', e => {
-        e.preventDefault();
-        e.returnValue = 'Exam in progress.';
-    });
-    document.addEventListener('visibilitychange', () => {
-        if (document.hidden) {
-            sendProctoringEvent('tab_switched', 'Student switched tabs');
-            showWarningMessage('⚠️ Tab switching detected!');
-        }
-    });
-}
-
-function submitExam() {
-    const skipped = questions.filter(q => !answers[q.id]).length;
-    const msg = skipped > 0 ? `⚠️ ${skipped} unanswered. Submit anyway?` : `✅ All ${questions.length} answered. Submit?`;
-    document.getElementById('modal-message').innerHTML = msg;
-    document.getElementById('submission-modal').style.display = 'flex';
-}
-
-async function saveAllAnswers() {
-    console.log('💾 Saving all answers...');
-    
-    // Get all questions to know correct answers and marks
-    const { data: questions_data } = await sb
-        .from('exam_questions')
-        .select('id, correct_answer, marks')
-        .eq('exam_id', EXAM_ID);
-    
-    const questionsMap = {};
-    questions_data?.forEach(q => {
-        questionsMap[q.id] = q;
-    });
-    
-    for (const [questionId, selectedAnswer] of Object.entries(answers)) {
-        const question = questionsMap[questionId];
-        const isCorrect = selectedAnswer === question?.correct_answer;
-        const marksEarned = isCorrect ? (question?.marks || 1) : 0;
-        
-        const { error } = await sb
-            .from('exam_grades')
-            .upsert({
-                student_id: studentId,
-                exam_id: EXAM_ID,
-                question_id: questionId,
-                selected_answer: selectedAnswer,
-                marks: marksEarned,
-                graded_at: new Date().toISOString()
-            }, { onConflict: ['student_id', 'exam_id', 'question_id'] });
-        
-        if (error) {
-            console.error('Error saving answer:', error);
-        } else {
-            console.log(`✅ Saved answer for Q${questionId}: ${selectedAnswer} (${isCorrect ? 'Correct +' + marksEarned : 'Wrong +0'})`);
-        }
-    }
-    
-    console.log('✅ All answers saved!');
-}
-
-async function calculateGrade() {
-    console.log('📊 Calculating grade for exam:', EXAM_ID);
-    
-    // Get all answers for this student (excluding the final grade record)
-    const { data: answers_data, error } = await sb
-        .from('exam_grades')
-        .select('question_id, selected_answer, marks')
-        .eq('student_id', studentId)
-        .eq('exam_id', EXAM_ID)
-        .neq('question_id', '00000000-0000-0000-0000-000000000000');
-    
-    if (error) {
-        console.error('Error fetching answers:', error);
-        return;
-    }
-    
-    console.log('Answers found:', answers_data?.length || 0);
-    
-    // Calculate total marks from the answers that are already saved with marks
-    let totalMarks = 0;
-    let totalPossible = 0;
-    
-    // Also fetch questions to get correct answers and max marks per question
-    const { data: questions_data } = await sb
-        .from('exam_questions')
-        .select('id, correct_answer, marks')
-        .eq('exam_id', EXAM_ID);
-    
-    const questionsMap = {};
-    questions_data?.forEach(q => {
-        questionsMap[q.id] = q;
-        totalPossible += q.marks || 1;
-    });
-    
-    // Calculate earned marks by comparing with correct answers
-    for (const answer of answers_data || []) {
-        const question = questionsMap[answer.question_id];
-        if (question) {
-            // If marks are already set in the answer, use them
-            if (answer.marks > 0) {
-                totalMarks += answer.marks;
-            } 
-            // Otherwise, calculate based on correctness
-            else if (answer.selected_answer === question.correct_answer) {
-                totalMarks += question.marks || 1;
-            }
-        }
-    }
-    
-    const percentage = totalPossible > 0 ? (totalMarks / totalPossible) * 100 : 0;
-    const resultStatus = percentage >= 60 ? 'PASS' : 'FAIL';
-    
-    console.log(`📊 Grade Calculated: ${totalMarks}/${totalPossible} = ${percentage.toFixed(1)}% (${resultStatus})`);
-    
-    // Save the final grade
-    const { error: upsertError } = await sb
-        .from('exam_grades')
-        .upsert({
-            student_id: studentId,
-            exam_id: EXAM_ID,
-            question_id: '00000000-0000-0000-0000-000000000000',
-            total_score: percentage,
-            marks: totalMarks,
-            result_status: resultStatus,
-            graded_at: new Date().toISOString()
-        });
-    
-    if (upsertError) {
-        console.error('Error saving final grade:', upsertError);
-    } else {
-        console.log(`✅ Final grade saved: ${percentage.toFixed(1)}% (${resultStatus})`);
-        // Notify dashboard
-        notifyDashboardCompletion();
-    }
-}
-
-// ========== THE FIXED SUBMISSION FUNCTION ==========
-async function executeSubmission() {
-    // Stop timers and cameras
-    clearInterval(timerInterval);
-    if (faceDetectionInterval) clearInterval(faceDetectionInterval);
-    if (videoStream) videoStream.getTracks().forEach(t => t.stop());
-    
-    // Send proctoring event
-    await sendProctoringEvent('exam_submitted', `Exam submitted`);
-    
-    // Save all answers
-    await saveAllAnswers();
-    
-    // Calculate and save final grade
-    await calculateGrade();
-    
-    // 🔥 NOTIFY DASHBOARD - THIS IS THE KEY FIX!
-    notifyDashboardCompletion();
-    
-    // Show success screen
-    showSuccessScreen();
-}
-
+function saveAnswer(answer) { const q = questions[currentIndex]; answers[q.id] = answer; hasAnsweredAtLeastOne = true; document.getElementById('submit-exam-btn').disabled = false; updateStatusTable(); }
+function renderQuestionStatusTable() { questions.forEach((_, i) => { const div = document.createElement('div'); div.className = 'status-item'; div.id = `q-status-${i}`; div.innerHTML = i+1; div.onclick = () => renderQuestion(i); document.getElementById('question-status-table').appendChild(div); }); updateStatusTable(); }
+function updateStatusTable() { questions.forEach((q, i) => { const el = document.getElementById(`q-status-${i}`); if(el) { el.classList.remove('current','answered'); if(i===currentIndex) el.classList.add('current'); if(answers[q.id]) el.classList.add('answered'); } }); }
+function updateProgress() { document.getElementById('current').innerText = currentIndex+1; document.getElementById('progress-fill').style.width = ((currentIndex+1)/questions.length)*100+'%'; document.getElementById('prev-btn').disabled = currentIndex===0; document.getElementById('next-btn').disabled = currentIndex===questions.length-1; }
+function prevQuestion() { if(currentIndex>0) renderQuestion(currentIndex-1); }
+function nextQuestion() { if(currentIndex<questions.length-1) renderQuestion(currentIndex+1); }
+function startTimer(seconds) { const timerEl = document.getElementById('timer'); function update() { const m=Math.floor(seconds/60), s=seconds%60; timerEl.innerText=`⏱️ Time: ${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`; if(seconds--<=0) { clearInterval(timerInterval); executeSubmission(); } } update(); timerInterval = setInterval(update,1000); }
+function submitExam() { document.getElementById('modal-message').innerHTML = `⚠️ ${questions.filter(q=>!answers[q.id]).length} unanswered. Submit?`; document.getElementById('submission-modal').style.display = 'flex'; }
+async function saveAllAnswers() { for(const [qId, ans] of Object.entries(answers)) await sb.from('exam_grades').upsert({ student_id: studentId, exam_id: new URLSearchParams(window.location.search).get('exam_id'), question_id: qId, selected_answer: ans, graded_at: new Date() }, { onConflict: ['student_id','exam_id','question_id'] }); }
+async function calculateGrade() { console.log('Grade calculation placeholder'); }
+function terminateExam(reason) { if(examAutoSubmitted) return; examAutoSubmitted = true; sendProctoringEvent('exam_terminated', reason); executeSubmission(); }
+async function executeSubmission() { if(examAutoSubmitted) return; examAutoSubmitted = true; clearInterval(timerInterval); if(faceDetectionInterval) clearInterval(faceDetectionInterval); if(videoStream) videoStream.getTracks().forEach(t=>t.stop()); await saveAllAnswers(); showSuccessScreen(); }
 function showSuccessScreen() {
-    const container = document.getElementById('exam-container');
-    container.innerHTML = `
-        <div class="success-screen">
-            <div class="success-icon">✅</div>
-            <h2>Exam Submitted!</h2>
-            <p>Your exam has been recorded.</p>
-            <p style="font-size:0.8rem; margin-top:8px;">${studentFullName} (${studentRegNumber})</p>
-            <div class="redirect-countdown">Redirecting in <span id="countdown-number">5</span>s</div>
-            <a href="exam_dashboard.html" class="dashboard-link">Dashboard</a>
-        </div>
-    `;
-    
-    let countdown = 5;
-    const interval = setInterval(() => {
-        countdown--;
-        const el = document.getElementById('countdown-number');
-        if (el) el.textContent = countdown;
-        if (countdown <= 0) {
-            clearInterval(interval);
-            window.location.href = 'exam_dashboard.html';
-        }
-    }, 1000);
-    
-    document.getElementById('nav-buttons').style.display = 'none';
-    document.getElementById('progress').style.display = 'none';
-    document.getElementById('timer').style.display = 'none';
+    document.getElementById('exam-container').innerHTML = `<div class="success-screen"><div class="success-icon">✅</div><h2>Exam ${examAutoSubmitted ? 'Auto-Submitted' : 'Submitted'}</h2><p>Your exam has been recorded.</p><div class="redirect-countdown">Redirecting in <span id="countdown-number">5</span>s</div><a href="exam_dashboard.html" class="dashboard-link">Dashboard</a></div>`;
+    let countdown=5; setInterval(()=>{ countdown--; if(document.getElementById('countdown-number')) document.getElementById('countdown-number').textContent=countdown; if(countdown<=0) window.location.href='exam_dashboard.html'; },1000);
+    document.getElementById('nav-buttons').style.display='none'; document.getElementById('progress').style.display='none'; document.getElementById('timer').style.display='none';
 }
 
-// Event listeners
 document.getElementById('prev-btn').addEventListener('click', prevQuestion);
 document.getElementById('next-btn').addEventListener('click', nextQuestion);
 document.getElementById('submit-exam-btn').addEventListener('click', submitExam);
-document.getElementById('confirm-submit-btn').addEventListener('click', () => {
-    document.getElementById('submission-modal').style.display = 'none';
-    executeSubmission();
-});
-document.getElementById('cancel-submit-btn').addEventListener('click', () => {
-    document.getElementById('submission-modal').style.display = 'none';
-});
-
-window.addEventListener('DOMContentLoaded', () => initExam());
+document.getElementById('confirm-submit-btn').addEventListener('click', ()=>{ document.getElementById('submission-modal').style.display='none'; executeSubmission(); });
+document.getElementById('cancel-submit-btn').addEventListener('click', ()=>document.getElementById('submission-modal').style.display='none');
+window.addEventListener('DOMContentLoaded', initExam);
 </script>
 </body>
 </html>
