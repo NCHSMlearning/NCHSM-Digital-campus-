@@ -34,8 +34,41 @@ body, .exam-main, .question, .options, .options li, label { user-select: none; }
 
 #violation-warning-bar {
     background: #FF6B35;
-    top: 50px;
+    top: 60px;
     z-index: 10001;
+}
+
+#fullscreen-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.95);
+    z-index: 20000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    text-align: center;
+    color: white;
+}
+
+#fullscreen-overlay h2 {
+    font-size: 2rem;
+    margin-bottom: 20px;
+    color: #FF6B35;
+}
+
+#fullscreen-overlay button {
+    margin-top: 30px;
+    padding: 15px 30px;
+    font-size: 1.2rem;
+    background: #38A169;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
 }
 
 @keyframes slideDown {
@@ -309,12 +342,20 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 </head>
 <body>
 
+<div id="fullscreen-overlay">
+    <h2>🔒 Fullscreen Required</h2>
+    <p>This exam must be taken in fullscreen mode to ensure academic integrity.</p>
+    <p style="margin-top: 10px; font-size: 14px;">Please click the button below to enter fullscreen mode.</p>
+    <button id="enter-fullscreen-btn">Enter Fullscreen Mode</button>
+</div>
+
 <div id="fullscreen-warning-bar">
-    ⚠️ FULLSCREEN REQUIRED! Enter fullscreen NOW. Auto-submitting in <span id="fullscreen-countdown">5</span> seconds...
+    ⚠️ FULLSCREEN EXITED! Please re-enter fullscreen within <span id="fullscreen-countdown">10</span> seconds or exam will auto-submit.
 </div>
 
 <div id="violation-warning-bar">
-    🚨 VIOLATION DETECTED! Exam will auto-submit in <span id="violation-countdown">3</span> seconds...
+    🚨 VIOLATION DETECTED! Exam will auto-submit in <span id="violation-countdown">5</span> seconds...
+    <button id="cancel-auto-submit" style="background: white; color: black; border: none; margin-left: 10px; padding: 5px 10px; border-radius: 5px; cursor: pointer;">Cancel</button>
 </div>
 
 <div class="page-wrapper">
@@ -394,6 +435,9 @@ let answers = {};
 let examAutoSubmitted = false;
 let violationCount = 0;
 let autoSubmitTimer = null;
+let fullscreenExitTimer = null;
+let isFullscreenRequired = true;
+let fullscreenWarningActive = false;
 
 // Get Student Details
 async function getStudentDetails() {
@@ -412,19 +456,16 @@ async function getStudentDetails() {
     } catch (err) { console.error(err); }
 }
 
-// ========== CRITICAL: AUTO-SUBMIT FUNCTION ==========
-async function forceAutoSubmit(reason) {
+// ========== AUTO-SUBMIT FUNCTION ==========
+async function forceAutoSubmit(reason, isViolation = true) {
     if (examAutoSubmitted) return;
     examAutoSubmitted = true;
     
     console.log(`🔴 AUTO-SUBMITTING EXAM! Reason: ${reason}`);
     
-    // Show violation banner
-    const violationBar = document.getElementById('violation-warning-bar');
-    violationBar.style.display = 'block';
-    document.getElementById('violation-countdown').textContent = '0';
-    
-    // Stop all monitoring
+    // Clear all timers
+    if (autoSubmitTimer) clearTimeout(autoSubmitTimer);
+    if (fullscreenExitTimer) clearTimeout(fullscreenExitTimer);
     if (timerInterval) clearInterval(timerInterval);
     if (window.faceDetectionInterval) clearInterval(window.faceDetectionInterval);
     if (window.videoStream) window.videoStream.getTracks().forEach(t => t.stop());
@@ -450,7 +491,7 @@ async function forceAutoSubmit(reason) {
             student_id: studentId,
             student_reg_number: studentRegNumber,
             student_name: studentFullName,
-            event_type: 'auto_submit_violation',
+            event_type: isViolation ? 'auto_submit_violation' : 'auto_submit',
             details: reason,
             severity: 'critical',
             timestamp: new Date().toISOString()
@@ -462,7 +503,7 @@ async function forceAutoSubmit(reason) {
     container.innerHTML = `
         <div class="success-screen">
             <div class="success-icon">⚠️</div>
-            <h2>Exam Auto-Submitted</h2>
+            <h2>Exam ${isViolation ? 'Auto-Submitted' : 'Submitted'}</h2>
             <p><strong>Reason:</strong> ${reason}</p>
             <p>Your answers have been saved.</p>
             <div class="redirect-countdown">Redirecting in <span id="countdown-number">5</span> seconds...</div>
@@ -485,7 +526,7 @@ async function forceAutoSubmit(reason) {
     }, 1000);
 }
 
-// ========== SHOW WARNING WITH AUTO-SUBMIT COUNTDOWN ==========
+// ========== SHOW WARNING WITH CANCEL OPTION ==========
 function showViolationWarning(violationType) {
     if (examAutoSubmitted) return;
     
@@ -496,7 +537,7 @@ function showViolationWarning(violationType) {
     const countdownSpan = document.getElementById('violation-countdown');
     
     violationBar.style.display = 'block';
-    let countdown = 3;
+    let countdown = 5;
     countdownSpan.textContent = countdown;
     
     // Log violation
@@ -517,105 +558,189 @@ function showViolationWarning(violationType) {
     
     // Start countdown to auto-submit
     const timer = setInterval(() => {
+        if (examAutoSubmitted) {
+            clearInterval(timer);
+            return;
+        }
         countdown--;
         countdownSpan.textContent = countdown;
         if (countdown <= 0) {
             clearInterval(timer);
             violationBar.style.display = 'none';
-            forceAutoSubmit(`${violationType} - Security violation detected`);
+            forceAutoSubmit(`${violationType} - Security violation detected`, true);
         }
     }, 1000);
     
     autoSubmitTimer = setTimeout(() => {
         clearInterval(timer);
-    }, 3000);
+    }, 5000);
 }
 
-// ========== FULLSCREEN ENFORCEMENT ==========
+// Cancel auto-submit
+document.getElementById('cancel-auto-submit')?.addEventListener('click', () => {
+    if (autoSubmitTimer) {
+        clearTimeout(autoSubmitTimer);
+        autoSubmitTimer = null;
+    }
+    document.getElementById('violation-warning-bar').style.display = 'none';
+    console.log('✅ Auto-submit cancelled by user');
+});
+
+// ========== FULLSCREEN FUNCTIONS (FIXED) ==========
 async function enterFullscreen() {
     try {
         const docEl = document.documentElement;
-        if (docEl.requestFullscreen) await docEl.requestFullscreen();
-        else if (docEl.webkitRequestFullscreen) await docEl.webkitRequestFullscreen();
+        if (docEl.requestFullscreen) {
+            await docEl.requestFullscreen();
+        } else if (docEl.webkitRequestFullscreen) {
+            await docEl.webkitRequestFullscreen();
+        } else if (docEl.msRequestFullscreen) {
+            await docEl.msRequestFullscreen();
+        }
+        
+        // Hide overlay and warnings
+        document.getElementById('fullscreen-overlay').style.display = 'none';
         document.getElementById('fullscreen-warning-bar').style.display = 'none';
+        
+        // Clear fullscreen exit timer
+        if (fullscreenExitTimer) {
+            clearTimeout(fullscreenExitTimer);
+            fullscreenExitTimer = null;
+        }
+        fullscreenWarningActive = false;
+        
         return true;
-    } catch (err) { return false; }
+    } catch (err) {
+        console.warn('Fullscreen failed:', err);
+        return false;
+    }
 }
 
-let fullscreenExitCount = 0;
-let fullscreenCheckInterval = null;
+function exitFullscreen() {
+    if (document.exitFullscreen) {
+        document.exitFullscreen();
+    } else if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+    }
+}
 
 function startFullscreenMonitoring() {
-    fullscreenCheckInterval = setInterval(() => {
-        if (examAutoSubmitted) return;
-        
+    let fullscreenExitTime = null;
+    let warningTimer = null;
+    
+    // Listen for fullscreen change events
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('msfullscreenchange', handleFullscreenChange);
+    
+    function handleFullscreenChange() {
         const isFullscreen = !!document.fullscreenElement || !!document.webkitFullscreenElement;
         
-        if (!isFullscreen) {
-            fullscreenExitCount++;
-            console.log(`🚨 Fullscreen exit detected! Count: ${fullscreenExitCount}`);
+        if (examAutoSubmitted) return;
+        
+        if (!isFullscreen && isFullscreenRequired) {
+            console.log('🚨 Fullscreen exited!');
+            fullscreenExitTime = Date.now();
             
+            // Show warning bar
             const warningBar = document.getElementById('fullscreen-warning-bar');
             warningBar.style.display = 'block';
-            let countdown = 5;
+            let countdown = 10;
             const countdownSpan = document.getElementById('fullscreen-countdown');
+            countdownSpan.textContent = countdown;
             
-            const countdownTimer = setInterval(() => {
+            // Clear previous timer
+            if (warningTimer) clearInterval(warningTimer);
+            if (fullscreenExitTimer) clearTimeout(fullscreenExitTimer);
+            
+            // Start countdown
+            warningTimer = setInterval(() => {
+                if (examAutoSubmitted) {
+                    clearInterval(warningTimer);
+                    return;
+                }
                 countdown--;
                 countdownSpan.textContent = countdown;
                 if (countdown <= 0) {
-                    clearInterval(countdownTimer);
+                    clearInterval(warningTimer);
                     warningBar.style.display = 'none';
-                    forceAutoSubmit('Exited fullscreen mode');
+                    forceAutoSubmit('Exited fullscreen mode and did not return', true);
                 }
             }, 1000);
             
-            // Try to re-enter fullscreen
-            enterFullscreen();
-        } else {
+            // Set timer to auto-submit if not re-entered
+            fullscreenExitTimer = setTimeout(() => {
+                if (!document.fullscreenElement && !document.webkitFullscreenElement && !examAutoSubmitted) {
+                    forceAutoSubmit('Exited fullscreen mode', true);
+                }
+                fullscreenExitTimer = null;
+            }, 10000);
+            
+        } else if (isFullscreen) {
+            console.log('✅ Fullscreen mode active');
+            // Clear warnings and timers
             document.getElementById('fullscreen-warning-bar').style.display = 'none';
+            if (warningTimer) clearInterval(warningTimer);
+            if (fullscreenExitTimer) {
+                clearTimeout(fullscreenExitTimer);
+                fullscreenExitTimer = null;
+            }
+            fullscreenWarningActive = false;
         }
-    }, 500);
+    }
 }
 
-// ========== TAB SWITCH DETECTION (CRITICAL FIX) ==========
+// ========== TAB SWITCH DETECTION ==========
 function setupTabSwitchDetection() {
-    let tabSwitchDetected = false;
+    let lastHiddenTime = null;
     
-    // Visibility change - tab switching
     document.addEventListener('visibilitychange', () => {
         if (examAutoSubmitted) return;
         
         if (document.hidden) {
+            lastHiddenTime = Date.now();
             console.log('🚨 TAB SWITCH DETECTED! Document hidden');
-            if (!tabSwitchDetected) {
-                tabSwitchDetected = true;
-                showViolationWarning('TAB_SWITCH_DETECTED');
-            }
-        } else {
-            tabSwitchDetected = false;
+            showViolationWarning('TAB_SWITCH_DETECTED');
         }
     });
     
-    // Window blur - clicking outside or Alt+Tab
     window.addEventListener('blur', () => {
         if (examAutoSubmitted) return;
         console.log('🚨 WINDOW BLUR DETECTED!');
         showViolationWarning('WINDOW_BLUR_DETECTED');
     });
     
+    window.addEventListener('focus', () => {
+        console.log('Window focused again');
+    });
+    
     // Block keyboard shortcuts
     window.addEventListener('keydown', (e) => {
-        if (e.altKey || (e.ctrlKey && e.key === 'w') || e.key === 'F11') {
+        if (e.altKey && e.key === 'Tab') {
             e.preventDefault();
-            console.log('🚨 KEYBOARD SHORTCUT BLOCKED:', e.key);
-            showViolationWarning('KEYBOARD_SHORTCUT_ATTEMPT');
+            console.log('🚨 ALT+TAB BLOCKED');
+            showViolationWarning('ALT_TAB_ATTEMPT');
+        }
+        if ((e.ctrlKey && e.key === 'w') || (e.ctrlKey && e.key === 'W')) {
+            e.preventDefault();
+            showViolationWarning('CTRL_W_ATTEMPT');
+        }
+        if (e.key === 'F11') {
+            e.preventDefault();
+            // Don't treat F11 as violation, just re-enter fullscreen
+            enterFullscreen();
+        }
+        if (e.key === 'Escape' && (document.fullscreenElement || document.webkitFullscreenElement)) {
+            e.preventDefault();
+            showViolationWarning('ESCAPE_FULLSCREEN_ATTEMPT');
         }
     });
     
-    // Block right-click
+    // Block right-click and copy
     document.addEventListener('contextmenu', e => e.preventDefault());
     document.addEventListener('copy', e => e.preventDefault());
+    document.addEventListener('cut', e => e.preventDefault());
+    document.addEventListener('paste', e => e.preventDefault());
 }
 
 // ========== EXAM FUNCTIONS ==========
@@ -654,7 +779,15 @@ async function initExam() {
     document.getElementById('allow-camera-btn').onclick = async () => {
         document.getElementById('camera-permission-modal').style.display = 'none';
         await startCamera();
-        await enterFullscreen();
+        
+        // Show fullscreen overlay after camera is ready
+        const fullscreenOverlay = document.getElementById('fullscreen-overlay');
+        fullscreenOverlay.style.display = 'flex';
+        
+        document.getElementById('enter-fullscreen-btn').onclick = async () => {
+            await enterFullscreen();
+            fullscreenOverlay.style.display = 'none';
+        };
     };
 }
 
@@ -736,7 +869,7 @@ function startTimer(seconds) {
         timerEl.innerText = `⏱️ Time: ${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
         if (seconds-- <= 0) {
             clearInterval(timerInterval);
-            forceAutoSubmit('Time expired');
+            forceAutoSubmit('Time expired', false);
         }
     }
     update();
@@ -753,9 +886,9 @@ async function startCamera() {
         document.getElementById('cameraStatusBadge').textContent = 'Active';
         document.getElementById('cameraStatusBadge').className = 'camera-status-badge';
         
-        // Simple face detection mock (can be expanded)
+        // Simple face detection
         setInterval(() => {
-            if (!examAutoSubmitted) {
+            if (!examAutoSubmitted && document.getElementById('face-status')) {
                 document.getElementById('face-status').textContent = '✅ Monitoring active';
             }
         }, 2000);
