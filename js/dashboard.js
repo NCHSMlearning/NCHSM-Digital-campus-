@@ -577,10 +577,11 @@ class DashboardModule {
                 }
                 
                 // Check intake year match
-                let intakeMatch = true;
-                if (exam.intake_year && exam.intake_year !== this.userProfile.intake_year) {
-                    intakeMatch = false;
-                }
+              // Check intake year match (type-insensitive)
+let intakeMatch = true;
+if (exam.intake_year && exam.intake_year != this.userProfile.intake_year) {
+    intakeMatch = false;
+}
                 
                 const isMatch = programMatch && blockMatch && intakeMatch;
                 if (!isMatch) {
