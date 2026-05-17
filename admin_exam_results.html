@@ -874,67 +874,6 @@ window.confirmReleaseResults = async function() {
     }
 };
     
-window.confirmReleaseResults = async function() {
-    console.log('selectedStudentIds:', Array.from(selectedStudentIds));
-    console.log('currentReleaseResults:', currentReleaseResults);
-    
-    if (selectedStudentIds.size === 0) {
-        alert('Please select at least one student to release results.');
-        return;
-    }
-    
-    const examIdValue = document.getElementById('releaseExamFilter').value;
-    if (!examIdValue) { alert('Please select an exam'); return; }
-    
-    const examIdInt = parseInt(examIdValue);
-    if (isNaN(examIdInt)) {
-        alert('Invalid exam ID');
-        return;
-    }
-    
-    if (!confirm(`Release results for ${selectedStudentIds.size} selected student(s)?`)) return;
-    
-    try {
-        const releaseRecords = [];
-        for (const gradeId of selectedStudentIds) {
-            // Convert to number for comparison
-            const gradeIdNum = parseInt(gradeId);
-            const result = currentReleaseResults.find(r => r.id === gradeIdNum);
-            console.log(`Looking for gradeId: ${gradeIdNum}, found:`, result);
-            
-            if (result) {
-                releaseRecords.push({
-                    result_id: gradeIdNum,
-                    student_id: result.student_id,
-                    exam_id: examIdInt,
-                    released_at: new Date().toISOString(),
-                    released_by: 'admin'
-                });
-            }
-        }
-        
-        console.log('Release records to insert:', releaseRecords);
-        
-        if (releaseRecords.length === 0) {
-            alert('No valid results to release - IDs do not match');
-            return;
-        }
-        
-        const { error } = await sb.from('released_exam_results').insert(releaseRecords);
-        if (error) { 
-            alert('Error: ' + error.message); 
-            console.error('Release error:', error);
-        } else { 
-            alert(`Released ${releaseRecords.length} results!`); 
-            closeReleaseModal(); 
-            loadStudentsWithResults();
-            loadAllExams();
-        }
-    } catch (err) { 
-        alert('Error: ' + err.message); 
-        console.error('Release error:', err);
-    }
-};
     
     window.loadAllStudents = async function() {
         const loadingDiv = document.getElementById('allStudentsLoading');
