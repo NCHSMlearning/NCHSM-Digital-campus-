@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>NCHSM Secure Exam - Admin Released Proctored Exam</title>
+<title>NCHSM Secure Exam - Proctored</title>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/dist/face-api.min.js"></script>
 <style>
@@ -12,20 +12,6 @@ body { font-family: 'Poppins', sans-serif; background: #F8F9FA; margin: 0; paddi
 body, .exam-main, .question, .options, .options li, label { user-select: none; }
 
 h1 { text-align: center; color: #073450; margin-bottom: 20px; font-size: 1.8rem; }
-
-/* Exam not available banner */
-#exam-not-available {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    background: #DC2626;
-    color: white;
-    text-align: center;
-    padding: 15px;
-    z-index: 10000;
-    font-weight: 600;
-}
 
 .page-wrapper {
     display: grid;
@@ -338,34 +324,10 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
     .camera-title { font-size: 0.8rem; }
     .status-item { height: 32px; font-size: 0.7rem; }
 }
-
-/* Fullscreen warning */
-#fullscreen-warning {
-    position: fixed;
-    bottom: 20px;
-    left: 20px;
-    right: 20px;
-    background: #FF6B35;
-    color: white;
-    padding: 10px;
-    text-align: center;
-    border-radius: 8px;
-    z-index: 10000;
-    display: none;
-    font-size: 0.8rem;
-}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-
-<div id="exam-not-available" style="display: none;">
-    ⚠️ This exam has not been released by the administrator yet. Please wait for the admin to release the exam.
-</div>
-
-<div id="fullscreen-warning">
-    🔒 Please enter fullscreen mode to continue the exam. Press F11 or use the browser menu.
-</div>
 
 <div class="page-wrapper">
     <div class="sidebar">
@@ -510,53 +472,6 @@ async function getStudentDetails() {
 const EXAM_ID = new URLSearchParams(window.location.search).get('exam_id');
 let questions = [], currentIndex = 0, duration = 0, timerInterval;
 let answers = {}, hasAnsweredAtLeastOne = false, examType = 'EXAM';
-let examReleased = false;
-let examDataCache = null;
-
-// ========== CHECK IF EXAM IS RELEASED BY ADMIN ==========
-async function checkExamReleased() {
-    try {
-        const { data: exam, error } = await sb
-            .from('exams')
-            .select('status, release_date, end_date, exam_name, exam_type, duration_minutes')
-            .eq('id', EXAM_ID)
-            .single();
-        
-        if (error) throw error;
-        
-        examDataCache = exam;
-        const now = new Date();
-        const releaseDate = exam.release_date ? new Date(exam.release_date) : null;
-        const endDate = exam.end_date ? new Date(exam.end_date) : null;
-        
-        // Check if exam is released (status = 'released' OR 'active')
-        const isReleased = exam.status === 'released' || exam.status === 'active';
-        const isWithinDateRange = (!releaseDate || now >= releaseDate) && (!endDate || now <= endDate);
-        
-        examReleased = isReleased && isWithinDateRange;
-        
-        if (!examReleased) {
-            const warningDiv = document.getElementById('exam-not-available');
-            warningDiv.style.display = 'block';
-            document.querySelector('.page-wrapper').style.opacity = '0.5';
-            document.getElementById('exam-container').innerHTML = `
-                <div style="text-align: center; padding: 50px;">
-                    <div style="font-size: 3rem;">🔒</div>
-                    <h2>Exam Not Available</h2>
-                    <p>This exam has not been released by the administrator yet.</p>
-                    <p style="margin-top: 10px; font-size: 0.9rem;">Release Date: ${releaseDate ? releaseDate.toLocaleString() : 'Not scheduled'}</p>
-                    <button onclick="window.location.href='exam_dashboard.html'" style="margin-top: 20px; padding: 10px 20px; background: #0A3D62; color: white; border: none; border-radius: 8px; cursor: pointer;">Go to Dashboard</button>
-                </div>
-            `;
-            return false;
-        }
-        
-        return true;
-    } catch (err) {
-        console.error('Error checking exam release:', err);
-        return false;
-    }
-}
 
 // ========== PROCTORING VARIABLES ==========
 let videoStream = null, faceDetectionInterval = null;
@@ -579,43 +494,22 @@ async function loadFaceModels() {
     }
 }
 
-// ========== NOTIFY DASHBOARD WITH COMPLETE RESULTS ==========
-async function notifyDashboardWithResults(scoreData) {
+// ========== NOTIFY DASHBOARD - THE FIX! ==========
+function notifyDashboardCompletion() {
     try {
         // Send message to parent window (the dashboard)
         if (window.parent && window.parent !== window) {
             window.parent.postMessage({ 
                 type: 'exam_completed',
                 exam_id: EXAM_ID,
-                exam_name: examDataCache?.exam_name || 'Exam',
                 student_id: studentId,
                 student_name: studentFullName,
-                student_reg: studentRegNumber,
-                score: scoreData.earnedMarks,
-                total_score: scoreData.totalMarks,
-                percentage: scoreData.percentage,
-                result: scoreData.resultStatus,
-                correct_answers: scoreData.correctAnswers,
-                completed_at: new Date().toISOString()
+                timestamp: new Date().toISOString()
             }, '*');
-            console.log('✅ Dashboard notified of exam completion with results');
+            console.log('✅ Dashboard notified of exam completion');
+        } else {
+            console.log('Not in iframe, dashboard notification skipped');
         }
-        
-        // Also insert into student_results table for dashboard to read
-        await sb.from('student_exam_results').upsert({
-            student_id: studentId,
-            student_name: studentFullName,
-            student_reg: studentRegNumber,
-            exam_id: EXAM_ID,
-            exam_name: examDataCache?.exam_name || 'Exam',
-            score: scoreData.earnedMarks,
-            total_score: scoreData.totalMarks,
-            percentage: scoreData.percentage,
-            result: scoreData.resultStatus,
-            completed_at: new Date().toISOString(),
-            violations_count: multipleFaceAlertSent ? 1 : 0
-        }, { onConflict: ['student_id', 'exam_id'] });
-        
     } catch(e) {
         console.log('Cannot notify dashboard:', e);
     }
@@ -785,27 +679,6 @@ function showWarningMessage(message) {
     }, 5000);
 }
 
-// ========== FULLSCREEN DETECTION ==========
-function setupFullscreenDetection() {
-    const fullscreenWarning = document.getElementById('fullscreen-warning');
-    
-    function checkFullscreen() {
-        const isFullscreen = !!document.fullscreenElement || !!document.webkitFullscreenElement;
-        if (!isFullscreen && examReleased && document.querySelector('.page-wrapper').style.opacity !== '0.5') {
-            fullscreenWarning.style.display = 'block';
-            sendProctoringEvent('fullscreen_exit', 'Student exited fullscreen mode');
-        } else {
-            fullscreenWarning.style.display = 'none';
-        }
-    }
-    
-    document.addEventListener('fullscreenchange', checkFullscreen);
-    document.addEventListener('webkitfullscreenchange', checkFullscreen);
-    
-    // Check every 3 seconds
-    setInterval(checkFullscreen, 3000);
-}
-
 // ========== CAMERA FUNCTIONS ==========
 async function startCamera() {
     const video = document.getElementById('face-video');
@@ -863,10 +736,6 @@ async function initExam() {
     try {
         await getStudentDetails();
         
-        // Check if exam is released by admin FIRST
-        const isReleased = await checkExamReleased();
-        if (!isReleased) return;
-        
         const { data: examData } = await sb.from('exams')
             .select('exam_name, exam_type, duration_minutes')
             .eq('id', EXAM_ID)
@@ -889,7 +758,6 @@ async function initExam() {
         renderQuestion();
         startTimer(duration * 60);
         setupSecurity();
-        setupFullscreenDetection();
         
         const modal = document.getElementById('camera-permission-modal');
         const allowBtn = document.getElementById('allow-camera-btn');
@@ -1024,7 +892,7 @@ function setupSecurity() {
         e.returnValue = 'Exam in progress.';
     });
     document.addEventListener('visibilitychange', () => {
-        if (document.hidden && examReleased) {
+        if (document.hidden) {
             sendProctoringEvent('tab_switched', 'Student switched tabs');
             showWarningMessage('⚠️ Tab switching detected!');
         }
@@ -1038,8 +906,8 @@ function submitExam() {
     document.getElementById('submission-modal').style.display = 'flex';
 }
 
-async function saveAllAnswersAndCalculate() {
-    console.log('💾 Saving all answers and calculating results...');
+async function saveAllAnswers() {
+    console.log('💾 Saving all answers...');
     
     // Get all questions to know correct answers and marks
     const { data: questions_data } = await sb
@@ -1048,22 +916,14 @@ async function saveAllAnswersAndCalculate() {
         .eq('exam_id', EXAM_ID);
     
     const questionsMap = {};
-    let totalPossible = 0;
     questions_data?.forEach(q => {
         questionsMap[q.id] = q;
-        totalPossible += q.marks || 1;
     });
-    
-    let totalEarned = 0;
-    let correctCount = 0;
     
     for (const [questionId, selectedAnswer] of Object.entries(answers)) {
         const question = questionsMap[questionId];
         const isCorrect = selectedAnswer === question?.correct_answer;
         const marksEarned = isCorrect ? (question?.marks || 1) : 0;
-        
-        if (isCorrect) correctCount++;
-        totalEarned += marksEarned;
         
         const { error } = await sb
             .from('exam_grades')
@@ -1076,35 +936,93 @@ async function saveAllAnswersAndCalculate() {
                 graded_at: new Date().toISOString()
             }, { onConflict: ['student_id', 'exam_id', 'question_id'] });
         
-        if (error) console.error('Error saving answer:', error);
+        if (error) {
+            console.error('Error saving answer:', error);
+        } else {
+            console.log(`✅ Saved answer for Q${questionId}: ${selectedAnswer} (${isCorrect ? 'Correct +' + marksEarned : 'Wrong +0'})`);
+        }
     }
     
-    const percentage = totalPossible > 0 ? (totalEarned / totalPossible) * 100 : 0;
-    const resultStatus = percentage >= 60 ? 'PASS' : 'FAIL';
-    
-    console.log(`📊 Results: ${totalEarned}/${totalPossible} = ${percentage.toFixed(1)}% (${resultStatus})`);
-    
-    // Save final grade
-    await sb.from('exam_grades').upsert({
-        student_id: studentId,
-        exam_id: EXAM_ID,
-        question_id: '00000000-0000-0000-0000-000000000000',
-        total_score: percentage,
-        marks: totalEarned,
-        result_status: resultStatus,
-        graded_at: new Date().toISOString()
-    });
-    
-    return {
-        earnedMarks: totalEarned,
-        totalMarks: totalPossible,
-        percentage: percentage,
-        resultStatus: resultStatus,
-        correctAnswers: correctCount
-    };
+    console.log('✅ All answers saved!');
 }
 
-// ========== SUBMISSION FUNCTION WITH DASHBOARD NOTIFICATION ==========
+async function calculateGrade() {
+    console.log('📊 Calculating grade for exam:', EXAM_ID);
+    
+    // Get all answers for this student (excluding the final grade record)
+    const { data: answers_data, error } = await sb
+        .from('exam_grades')
+        .select('question_id, selected_answer, marks')
+        .eq('student_id', studentId)
+        .eq('exam_id', EXAM_ID)
+        .neq('question_id', '00000000-0000-0000-0000-000000000000');
+    
+    if (error) {
+        console.error('Error fetching answers:', error);
+        return;
+    }
+    
+    console.log('Answers found:', answers_data?.length || 0);
+    
+    // Calculate total marks from the answers that are already saved with marks
+    let totalMarks = 0;
+    let totalPossible = 0;
+    
+    // Also fetch questions to get correct answers and max marks per question
+    const { data: questions_data } = await sb
+        .from('exam_questions')
+        .select('id, correct_answer, marks')
+        .eq('exam_id', EXAM_ID);
+    
+    const questionsMap = {};
+    questions_data?.forEach(q => {
+        questionsMap[q.id] = q;
+        totalPossible += q.marks || 1;
+    });
+    
+    // Calculate earned marks by comparing with correct answers
+    for (const answer of answers_data || []) {
+        const question = questionsMap[answer.question_id];
+        if (question) {
+            // If marks are already set in the answer, use them
+            if (answer.marks > 0) {
+                totalMarks += answer.marks;
+            } 
+            // Otherwise, calculate based on correctness
+            else if (answer.selected_answer === question.correct_answer) {
+                totalMarks += question.marks || 1;
+            }
+        }
+    }
+    
+    const percentage = totalPossible > 0 ? (totalMarks / totalPossible) * 100 : 0;
+    const resultStatus = percentage >= 60 ? 'PASS' : 'FAIL';
+    
+    console.log(`📊 Grade Calculated: ${totalMarks}/${totalPossible} = ${percentage.toFixed(1)}% (${resultStatus})`);
+    
+    // Save the final grade
+    const { error: upsertError } = await sb
+        .from('exam_grades')
+        .upsert({
+            student_id: studentId,
+            exam_id: EXAM_ID,
+            question_id: '00000000-0000-0000-0000-000000000000',
+            total_score: percentage,
+            marks: totalMarks,
+            result_status: resultStatus,
+            graded_at: new Date().toISOString()
+        });
+    
+    if (upsertError) {
+        console.error('Error saving final grade:', upsertError);
+    } else {
+        console.log(`✅ Final grade saved: ${percentage.toFixed(1)}% (${resultStatus})`);
+        // Notify dashboard
+        notifyDashboardCompletion();
+    }
+}
+
+// ========== THE FIXED SUBMISSION FUNCTION ==========
 async function executeSubmission() {
     // Stop timers and cameras
     clearInterval(timerInterval);
@@ -1114,31 +1032,29 @@ async function executeSubmission() {
     // Send proctoring event
     await sendProctoringEvent('exam_submitted', `Exam submitted`);
     
-    // Save all answers and calculate results
-    const results = await saveAllAnswersAndCalculate();
+    // Save all answers
+    await saveAllAnswers();
     
-    // NOTIFY DASHBOARD WITH COMPLETE RESULTS
-    await notifyDashboardWithResults(results);
+    // Calculate and save final grade
+    await calculateGrade();
     
-    // Show success screen with results
-    showSuccessScreen(results);
+    // 🔥 NOTIFY DASHBOARD - THIS IS THE KEY FIX!
+    notifyDashboardCompletion();
+    
+    // Show success screen
+    showSuccessScreen();
 }
 
-function showSuccessScreen(results) {
+function showSuccessScreen() {
     const container = document.getElementById('exam-container');
     container.innerHTML = `
         <div class="success-screen">
             <div class="success-icon">✅</div>
             <h2>Exam Submitted!</h2>
-            <div style="margin: 15px 0; padding: 15px; background: white; border-radius: 10px;">
-                <p><strong>Your Score:</strong> ${results.earnedMarks}/${results.totalMarks}</p>
-                <p><strong>Percentage:</strong> ${results.percentage.toFixed(1)}%</p>
-                <p><strong>Result:</strong> <span style="color: ${results.resultStatus === 'PASS' ? '#38A169' : '#DC2626'}">${results.resultStatus}</span></p>
-                <p><strong>Correct Answers:</strong> ${results.correctAnswers}/${questions.length}</p>
-            </div>
+            <p>Your exam has been recorded.</p>
             <p style="font-size:0.8rem; margin-top:8px;">${studentFullName} (${studentRegNumber})</p>
-            <div class="redirect-countdown">Redirecting to dashboard in <span id="countdown-number">5</span>s</div>
-            <a href="exam_dashboard.html" class="dashboard-link">Go to Dashboard</a>
+            <div class="redirect-countdown">Redirecting in <span id="countdown-number">5</span>s</div>
+            <a href="exam_dashboard.html" class="dashboard-link">Dashboard</a>
         </div>
     `;
     
