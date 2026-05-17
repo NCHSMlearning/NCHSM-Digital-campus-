@@ -1,0 +1,35 @@
+{
+  "name": "nchsm-secure-exam",
+  "version": "1.0.0",
+  "description": "NCHSM Secure Exam Proctoring Application",
+  "main": "index.js",
+  "scripts": {
+    "build:android": "npx cap copy android && npx cap sync android && cd android && ./gradlew assembleRelease",
+    "build:windows": "npx cap copy electron && npx cap sync electron && cd electron && npm run build",
+    "build:all": "npm run build:android && npm run build:windows",
+    "open:android": "npx cap open android",
+    "open:electron": "npx cap open electron",
+    "sync": "npx cap sync",
+    "copy": "npx cap copy"
+  },
+  "dependencies": {
+    "@capacitor/android": "^5.7.0",
+    "@capacitor/app": "^5.0.7",
+    "@capacitor/core": "^5.7.0",
+    "@capacitor/electron": "^5.1.0",
+    "@capacitor/keyboard": "^5.0.7",
+    "@capacitor/screen-orientation": "^5.0.7",
+    "@capacitor/splash-screen": "^5.0.7",
+    "@capacitor/status-bar": "^5.0.7"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^5.7.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/your-repo-name.git"
+  },
+  "keywords": ["exam", "proctoring", "secure", "android", "windows"],
+  "author": "NCHSM",
+  "license": "MIT"
+}
