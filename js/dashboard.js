@@ -1,4 +1,4 @@
-// dashboard.js - COMPLETE WORKING VERSION WITH LAST LOGIN (KENYA TIME)
+// dashboard.js - COMPLETE WORKING VERSION WITH EXAMS FROM exams_with_courses
 class DashboardModule {
     constructor(supabaseClient) {
         console.log('🚀 Initializing DashboardModule...');
@@ -15,6 +15,7 @@ class DashboardModule {
             nurseiq: { progress: 0, accuracy: 0, questions: 0 },
             courses: 0,
             exams: 'No upcoming exams',
+            upcomingExamDetails: null,
             lastLogin: { time: null, formatted: 'Never', loginCount: 0 }
         };
         
@@ -59,8 +60,12 @@ class DashboardModule {
             this.updateCoursesMetric();
             this.updateUIFromMetrics();
         });
-        document.addEventListener('examsModuleReady', () => {
-            this.updateExamsMetric();
+        document.addEventListener('examsModuleReady', (e) => {
+            if (e.detail) {
+                this.updateExamsMetricWithDetails(e.detail);
+            } else {
+                this.updateExamsMetric();
+            }
             this.updateUIFromMetrics();
         });
         document.addEventListener('nurseiqMetricsUpdated', (e) => {
@@ -191,7 +196,7 @@ class DashboardModule {
             this.loadExamCardMetrics(),
             this.loadNurseIQMetrics(),
             this.updateCoursesMetric(),
-            this.updateExamsMetric(),
+            this.updateExamsMetric(),  // This now queries exams_with_courses
             this.loadLastLoginInfo()
         ]);
         
@@ -513,16 +518,146 @@ class DashboardModule {
     
     async updateExamsMetric() {
         let upcomingText = 'No upcoming exams';
+        let examDetails = null;
         
-        if (typeof window.getExamsDashboardMetrics === 'function') {
-            const metrics = window.getExamsDashboardMetrics();
-            if (metrics && metrics.upcomingExam) {
-                upcomingText = metrics.upcomingExam;
+        try {
+            console.log('🔍 Fetching upcoming exams from exams_with_courses...');
+            
+            if (!this.userProfile) {
+                console.log('No user profile yet, skipping exam fetch');
+                this.metrics.exams = upcomingText;
+                return;
             }
+            
+            console.log('Student profile for exam filter:', {
+                program: this.userProfile.program,
+                block: this.userProfile.block,
+                intake: this.userProfile.intake_year
+            });
+            
+            // Get today's date in YYYY-MM-DD format
+            const today = new Date().toISOString().split('T')[0];
+            
+            // Query exams_with_courses table
+            const { data: exams, error } = await this.sb
+                .from('exams_with_courses')
+                .select('*')
+                .eq('status', 'published')
+                .gte('exam_date', today)
+                .order('exam_date', { ascending: true })
+                .limit(10);
+            
+            if (error) {
+                console.error('Exams query error:', error);
+                this.metrics.exams = upcomingText;
+                return;
+            }
+            
+            console.log('All upcoming exams found:', exams?.length || 0);
+            console.log('Exams data:', exams);
+            
+            if (!exams || exams.length === 0) {
+                console.log('No upcoming exams in database');
+                this.metrics.exams = upcomingText;
+                return;
+            }
+            
+            // Filter exams that match student's program and block
+            const matchingExams = exams.filter(exam => {
+                // Check program match
+                let programMatch = true;
+                if (exam.program_type && exam.program_type !== 'General') {
+                    programMatch = exam.program_type === this.userProfile.program;
+                }
+                
+                // Check block match
+                let blockMatch = true;
+                if (exam.block_term && exam.block_term !== 'General') {
+                    blockMatch = exam.block_term === this.userProfile.block;
+                }
+                
+                // Check intake year match
+                let intakeMatch = true;
+                if (exam.intake_year && exam.intake_year !== this.userProfile.intake_year) {
+                    intakeMatch = false;
+                }
+                
+                const isMatch = programMatch && blockMatch && intakeMatch;
+                if (!isMatch) {
+                    console.log(`Exam ${exam.exam_name} filtered out:`, {
+                        examProgram: exam.program_type,
+                        studentProgram: this.userProfile.program,
+                        examBlock: exam.block_term,
+                        studentBlock: this.userProfile.block,
+                        examIntake: exam.intake_year,
+                        studentIntake: this.userProfile.intake_year
+                    });
+                }
+                
+                return isMatch;
+            });
+            
+            console.log('Matching exams for student:', matchingExams.length);
+            
+            if (matchingExams && matchingExams.length > 0) {
+                const upcomingExam = matchingExams[0];
+                
+                // Format the date
+                const examDate = new Date(upcomingExam.exam_date);
+                const options = { weekday: 'short', month: 'short', day: 'numeric' };
+                const formattedDate = examDate.toLocaleDateString('en-KE', options);
+                
+                // Format the time if available
+                let timeString = '';
+                if (upcomingExam.exam_start_time) {
+                    const timeParts = upcomingExam.exam_start_time.split(':');
+                    const examTime = new Date();
+                    examTime.setHours(parseInt(timeParts[0]), parseInt(timeParts[1]));
+                    timeString = examTime.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' });
+                }
+                
+                upcomingText = timeString 
+                    ? `${upcomingExam.exam_name} - ${formattedDate} at ${timeString}`
+                    : `${upcomingExam.exam_name} - ${formattedDate}`;
+                
+                examDetails = {
+                    id: upcomingExam.id,
+                    name: upcomingExam.exam_name,
+                    date: upcomingExam.exam_date,
+                    time: upcomingExam.exam_start_time,
+                    formatted: upcomingText
+                };
+                
+                console.log(`📝 Upcoming exam found: ${upcomingText}`);
+            } else {
+                console.log('No matching exams found for this student\'s program/block');
+            }
+            
+        } catch (error) {
+            console.error('Error updating exams metric:', error);
         }
         
         this.metrics.exams = upcomingText;
-        console.log(`📝 Upcoming Exam: ${upcomingText}`);
+        this.metrics.upcomingExamDetails = examDetails;
+        
+        // Update UI element
+        if (this.elements.upcomingExam) {
+            this.elements.upcomingExam.textContent = upcomingText;
+        }
+    }
+    
+    // Alternative method to update with pre-fetched details
+    updateExamsMetricWithDetails(details) {
+        if (details && details.upcomingExam) {
+            this.metrics.exams = details.upcomingExam;
+            this.metrics.upcomingExamDetails = details;
+            
+            if (this.elements.upcomingExam) {
+                this.elements.upcomingExam.textContent = details.upcomingExam;
+            }
+        } else {
+            this.updateExamsMetric();
+        }
     }
     
     displaySummary() {
@@ -535,6 +670,9 @@ class DashboardModule {
         console.log(`   Exam Card: ${this.metrics.examCard.eligible ? 'ELIGIBLE' : 'NOT ELIGIBLE'} (${this.metrics.examCard.approved} units)`);
         console.log(`   NurseIQ: ${this.metrics.nurseiq.progress}% progress, ${this.metrics.nurseiq.accuracy}% accuracy`);
         console.log(`   Upcoming Exam: ${this.metrics.exams}`);
+        if (this.metrics.upcomingExamDetails) {
+            console.log(`   Exam Details:`, this.metrics.upcomingExamDetails);
+        }
         console.log(`   Last Login: ${this.metrics.lastLogin.formatted} (${this.metrics.lastLogin.loginCount} logins)`);
         if (this.userProfile) {
             console.log(`   Current Block: ${this.userProfile.block || 'Introductory'}`);
@@ -551,6 +689,7 @@ class DashboardModule {
         console.log(`📋 Program: ${this.userProfile?.program || 'Unknown'}`);
         console.log(`📚 Block: ${this.userProfile?.block || 'Unknown'}`);
         console.log(`📅 Intake: ${this.userProfile?.intake_year || 'Unknown'}`);
+        console.log(`📝 Upcoming Exam: ${this.metrics.exams}`);
         console.log(`🕐 Last Login: ${this.metrics.lastLogin.formatted}`);
         console.log('═══════════════════════════════════════');
         console.log('🎯 All systems operational!');
@@ -604,8 +743,16 @@ function initDashboardModule(supabaseClient) {
     return dashboardModule;
 }
 
+// Global function to get upcoming exam metrics (for other modules)
+window.getExamsDashboardMetrics = async function() {
+    if (dashboardModule && dashboardModule.metrics.upcomingExamDetails) {
+        return dashboardModule.metrics.upcomingExamDetails;
+    }
+    return { upcomingExam: 'No upcoming exams' };
+};
+
 window.DashboardModule = DashboardModule;
 window.initDashboardModule = initDashboardModule;
 window.refreshDashboard = () => dashboardModule?.refreshAll();
 
-console.log('✅ Dashboard module ready - COMPLETE WORKING VERSION WITH LAST LOGIN');
+console.log('✅ Dashboard module ready - QUERIES exams_with_courses table');
