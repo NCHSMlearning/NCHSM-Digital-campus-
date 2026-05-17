@@ -747,12 +747,13 @@
     let notReleasedCount = 0;
     let previewHtml = '';
     
-    results.forEach(r => {
-        const isReleased = releasedSet.has(r.id);
-        const canRelease = !isReleased && (r.result_status === 'PASS' || r.result_status === 'FAIL');
-        if (canRelease) notReleasedCount++;
-        const student = profileMap[r.student_id];
-        previewHtml += `<tr>
+results.forEach(r => {
+    const isReleased = releasedSet.has(r.id);
+    const canRelease = !isReleased && (r.result_status === 'PASS' || r.result_status === 'FAIL');
+    if (canRelease) notReleasedCount++;
+    const student = profileMap[r.student_id];
+    previewHtml += `
+        <tr>
             <td><input type="checkbox" class="student-checkbox" data-id="${r.id}" data-student-id="${r.student_id}" ${!canRelease ? 'disabled' : ''} onchange="updateSelectedCount()"></td>
             <td><span class="student-id-badge">${student?.student_id || 'N/A'}</span></td>
             <td><strong>${student?.full_name || 'Unknown'}</strong></td>
@@ -760,8 +761,9 @@
             <td>${parseFloat(r.total_score || 0).toFixed(1)}%</td>
             <td><span class="${r.result_status==='PASS'?'status-pass':(r.result_status==='FAIL'?'status-fail':'status-pending')}">${r.result_status || 'PENDING'}</span></td>
             <td>${isReleased ? '✅ Released' : (canRelease ? '🔒 Pending Release' : '⏳ Not Graded')}</td>
-        </tr>`;
-    });
+        </tr>
+    `;
+});
     
     document.getElementById('releasePreviewBody').innerHTML = previewHtml;
     document.getElementById('releaseSummary').innerHTML = `<strong>Pending Release: ${notReleasedCount}</strong>`;
@@ -788,7 +790,7 @@
         selectAllStudents(selectAllBox.checked);
     };
     
-   window.updateSelectedCount = function() {
+  window.updateSelectedCount = function() {
     const checkboxes = document.querySelectorAll('#releasePreviewBody .student-checkbox:checked');
     const count = checkboxes.length;
     document.getElementById('selectedCount').innerHTML = `${count} selected`;
@@ -799,9 +801,77 @@
     checkboxes.forEach(cb => {
         const idValue = cb.getAttribute('data-id');
         console.log('Checkbox selected with data-id:', idValue, 'type:', typeof idValue);
+        // Keep as string - DO NOT convert to number!
         selectedStudentIds.add(idValue);
     });
     console.log('Updated selectedStudentIds:', Array.from(selectedStudentIds));
+};
+
+window.confirmReleaseResults = async function() {
+    console.log('selectedStudentIds:', Array.from(selectedStudentIds));
+    console.log('currentReleaseResults:', currentReleaseResults);
+    
+    if (selectedStudentIds.size === 0) {
+        alert('Please select at least one student to release results.');
+        return;
+    }
+    
+    const examIdValue = document.getElementById('releaseExamFilter').value;
+    if (!examIdValue) { alert('Please select an exam'); return; }
+    
+    const examIdInt = parseInt(examIdValue);
+    if (isNaN(examIdInt)) {
+        alert('Invalid exam ID');
+        return;
+    }
+    
+    if (!confirm(`Release results for ${selectedStudentIds.size} selected student(s)?`)) return;
+    
+    try {
+        const releaseRecords = [];
+        for (const gradeId of selectedStudentIds) {
+            // Keep as string for comparison - DO NOT convert to number!
+            console.log(`Looking for gradeId: ${gradeId} (type: ${typeof gradeId})`);
+            
+            // Find the result - compare as strings
+            const result = currentReleaseResults.find(r => String(r.id) === String(gradeId));
+            console.log(`Found result:`, result);
+            
+            if (result) {
+                releaseRecords.push({
+                    result_id: result.id,  // Keep original ID type
+                    student_id: result.student_id,
+                    exam_id: examIdInt,
+                    released_at: new Date().toISOString(),
+                    released_by: 'admin'
+                });
+            } else {
+                console.warn(`No result found for gradeId: ${gradeId}`);
+            }
+        }
+        
+        console.log('Release records to insert:', releaseRecords);
+        
+        if (releaseRecords.length === 0) {
+            alert('No valid results to release - IDs do not match');
+            return;
+        }
+        
+        const { error, data } = await sb.from('released_exam_results').insert(releaseRecords);
+        
+        if (error) { 
+            alert('Error: ' + error.message); 
+            console.error('Release error:', error);
+        } else { 
+            alert(`✅ Released ${releaseRecords.length} result(s)!`); 
+            closeReleaseModal(); 
+            loadStudentsWithResults();
+            loadAllExams();
+        }
+    } catch (err) { 
+        alert('Error: ' + err.message); 
+        console.error('Release error:', err);
+    }
 };
     
 window.confirmReleaseResults = async function() {
