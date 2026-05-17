@@ -555,6 +555,7 @@ let examDataCache = null;
 let autoSubmitTriggered = false;
 let fullscreenWarningActive = false;
 let countdownInterval = null;
+let fullscreenMonitoringActive = false;
 
 // ========== CHECK IF EXAM IS RELEASED BY ADMIN ==========
 async function checkExamReleased() {
@@ -629,6 +630,8 @@ async function autoSubmitOnViolation(reason) {
 // ========== SHOW FULLSCREEN EXIT WARNING ==========
 function showFullscreenExitWarning() {
     if (fullscreenWarningActive || autoSubmitTriggered) return;
+    if (!examReleased) return;
+    
     fullscreenWarningActive = true;
     
     const warningOverlay = document.getElementById('fullscreen-exit-warning');
@@ -655,6 +658,9 @@ function showFullscreenExitWarning() {
 
 // ========== FULLSCREEN EXIT DETECTION ==========
 function setupFullscreenExitDetection() {
+    if (fullscreenMonitoringActive) return;
+    fullscreenMonitoringActive = true;
+    
     // Monitor fullscreen change events
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
@@ -662,6 +668,8 @@ function setupFullscreenExitDetection() {
     
     function handleFullscreenChange() {
         const isFullscreen = !!document.fullscreenElement || !!document.webkitFullscreenElement;
+        
+        console.log('Fullscreen change detected. Is fullscreen:', isFullscreen);
         
         if (!isFullscreen && examReleased && !autoSubmitTriggered && !fullscreenWarningActive) {
             console.log('🚨 Fullscreen exited! Showing warning...');
@@ -683,17 +691,6 @@ function setupFullscreenExitDetection() {
             showFullscreenExitWarning();
         }
     });
-    
-    // Detect F11 (fullscreen toggle)
-    window.addEventListener('keydown', (e) => {
-        if (e.key === 'F11') {
-            e.preventDefault();
-            // If not in fullscreen, enter it
-            if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-                enterFullscreen();
-            }
-        }
-    });
 }
 
 // ========== ENTER FULLSCREEN AUTOMATICALLY ==========
@@ -708,6 +705,12 @@ async function enterFullscreen() {
             await docEl.msRequestFullscreen();
         }
         console.log('✅ Fullscreen mode activated automatically');
+        
+        // Wait a moment for fullscreen to stabilize, then start monitoring
+        setTimeout(() => {
+            setupFullscreenExitDetection();
+        }, 1000);
+        
         return true;
     } catch (err) {
         console.warn('Fullscreen failed:', err);
@@ -953,12 +956,11 @@ async function startCamera() {
         
         console.log('✅ Camera and face detection active');
         
-        // AFTER CAMERA IS APPROVED, AUTO OPEN FULLSCREEN
-        console.log('🖥️ Automatically opening fullscreen mode...');
-        await enterFullscreen();
-        
-        // Start monitoring fullscreen exit
-        setupFullscreenExitDetection();
+        // AFTER CAMERA IS APPROVED, WAIT 1 SECOND THEN OPEN FULLSCREEN
+        console.log('🖥️ Automatically opening fullscreen mode in 1 second...');
+        setTimeout(async () => {
+            await enterFullscreen();
+        }, 1000);
         
         return true;
         
