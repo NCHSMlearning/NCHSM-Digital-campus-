@@ -54,28 +54,6 @@ h1 { text-align: center; color: #073450; margin-bottom: 20px; font-size: 1.8rem;
     50% { transform: scale(1.2); }
 }
 
-/* ADDED: Fullscreen button */
-#fullscreen-btn {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    background: #0A3D62;
-    color: white;
-    border: none;
-    border-radius: 50%;
-    width: 50px;
-    height: 50px;
-    font-size: 24px;
-    cursor: pointer;
-    z-index: 9999;
-    display: none;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-}
-
-#fullscreen-btn:hover {
-    background: #073450;
-}
-
 .page-wrapper {
     display: grid;
     grid-template-columns: 1fr; 
@@ -402,9 +380,6 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
     <p>Your answers have been saved.</p>
 </div>
 
-<!-- ADDED: Fullscreen button -->
-<button id="fullscreen-btn" title="Enter Fullscreen">⛶</button>
-
 <div class="page-wrapper">
     <div class="sidebar">
         <div class="student-info-card" id="studentInfoCard">
@@ -560,7 +535,7 @@ let fullscreenWarningActive = false;
 let countdownInterval = null;
 let examStarted = false;
 
-// ========== ADDED: Fullscreen Functions ==========
+// ========== ADDED: Auto Fullscreen Function ==========
 async function enterFullscreen() {
     try {
         const docEl = document.documentElement;
@@ -571,8 +546,7 @@ async function enterFullscreen() {
         } else if (docEl.msRequestFullscreen) {
             await docEl.msRequestFullscreen();
         }
-        document.getElementById('fullscreen-btn').style.display = 'none';
-        console.log('✅ Fullscreen mode activated');
+        console.log('✅ Fullscreen mode activated automatically');
         return true;
     } catch (err) {
         console.warn('Fullscreen failed:', err);
@@ -868,9 +842,13 @@ async function startCamera() {
         
         console.log('✅ Camera and face detection active');
         
-        // ADDED: Show fullscreen button and setup monitoring
-        document.getElementById('fullscreen-btn').style.display = 'flex';
-        setupFullscreenMonitoring();
+        // FIXED: Auto open fullscreen after camera is accepted
+        console.log('🖥️ Auto-opening fullscreen mode...');
+        setTimeout(() => {
+            enterFullscreen();
+            examStarted = true;
+            setupFullscreenMonitoring();
+        }, 500);
         
         return true;
         
@@ -923,14 +901,8 @@ async function initExam() {
         allowBtn.onclick = async () => {
             modal.style.display = 'none';
             await startCamera();
-            examStarted = true;
         };
         modal.style.display = 'flex';
-        
-        // ADDED: Fullscreen button click handler
-        document.getElementById('fullscreen-btn').onclick = () => {
-            enterFullscreen();
-        };
         
     } catch (err) {
         console.error('Init error:', err);
