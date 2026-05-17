@@ -698,25 +698,66 @@
         renderPagination('exams', exams.length);
     }
     
-    // ========== RELEASE FUNCTIONS WITH CHECKBOXES ==========
-    window.openReleaseModal = async function() {
-        const { data: exams } = await sb.from('exams').select('id,exam_name');
-        document.getElementById('releaseExamFilter').innerHTML = '<option value="">-- Select Exam --</option>' + (exams?.map(e => `<option value="${e.id}">${e.exam_name}</option>`).join('') || '');
+  // ========== RELEASE FUNCTIONS WITH CHECKBOXES ==========
+window.openReleaseModal = async function() {
+    console.log('Opening release modal...');
+    
+    try {
+        // Load all exams
+        const { data: exams, error } = await sb
+            .from('exams')
+            .select('id, exam_name')
+            .order('id', { ascending: false });
+        
+        if (error) {
+            console.error('Error loading exams:', error);
+            alert('Error loading exams: ' + error.message);
+            return;
+        }
+        
+        console.log('Exams loaded:', exams.length);
+        console.log('Exam 65 present:', exams.some(e => e.id === 65));
+        
+        // Build dropdown options
+        let options = '<option value="">-- Select Exam --</option>';
+        exams.forEach(exam => {
+            options += `<option value="${exam.id}">${exam.exam_name} (ID: ${exam.id})</option>`;
+        });
+        
+        // Update dropdown
+        const selectEl = document.getElementById('releaseExamFilter');
+        if (selectEl) {
+            selectEl.innerHTML = options;
+            console.log('Dropdown updated with', exams.length, 'exams');
+        } else {
+            console.error('releaseExamFilter element not found!');
+            return;
+        }
+        
+        // Reset state
         document.getElementById('releasePreview').style.display = 'none';
         selectedStudentIds.clear();
         document.getElementById('releaseModal').style.display = 'flex';
-    };
-  window.loadReleasePreview = async function() {
+        
+    } catch (err) {
+        console.error('Error:', err);
+        alert('Error: ' + err.message);
+    }
+};
+
+window.loadReleasePreview = async function() {
     const examId = document.getElementById('releaseExamFilter').value;
+    console.log('Loading preview for exam ID:', examId);
+    
     if (!examId) { 
         document.getElementById('releasePreview').style.display = 'none'; 
         return; 
     }
+    
     document.getElementById('releasePreview').style.display = 'block';
     selectedStudentIds.clear();
     
-    console.log('Loading preview for exam ID:', examId);
-    
+    // Get grades for this exam
     const { data: results, error } = await sb
         .from('exam_grades')
         .select('id, student_id, marks, total_score, result_status')
@@ -725,99 +766,114 @@
     
     if (error) { 
         console.error('Error fetching results:', error);
+        document.getElementById('releasePreviewBody').innerHTML = `<tr><td colspan="7">Error: ${error.message}</td></tr>`;
         return; 
     }
     
     console.log('Results found:', results);
-    console.log('Result IDs (should be integers):', results.map(r => ({ id: r.id, type: typeof r.id })));
     
-    if (!results || results.length === 0) { 
-        document.getElementById('releasePreviewBody').innerHTML = '<tr><td colspan="7">No results found for this exam</td></tr>'; 
+    // Filter to only PASS/FAIL
+    const eligibleResults = results.filter(r => r.result_status === 'PASS' || r.result_status === 'FAIL');
+    console.log('Eligible results (PASS/FAIL):', eligibleResults);
+    
+    if (!eligibleResults || eligibleResults.length === 0) { 
+        document.getElementById('releasePreviewBody').innerHTML = `<tr><td colspan="7">No PASS/FAIL results found for this exam</td></tr>`;
+        document.getElementById('releaseSummary').innerHTML = '<strong>No results available for release</strong>';
         return; 
     }
     
-    currentReleaseResults = results;
+    currentReleaseResults = eligibleResults;
     
-    const studentIds = results.map(r => r.student_id);
-    const { data: profiles } = await sb.from('consolidated_user_profiles_table').select('user_id, full_name, student_id').in('user_id', studentIds);
+    // Get student profiles
+    const studentIds = eligibleResults.map(r => r.student_id);
+    const { data: profiles } = await sb
+        .from('consolidated_user_profiles_table')
+        .select('user_id, full_name, student_id')
+        .in('user_id', studentIds);
     const profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p]));
+    
+    // Get already released results
     const { data: released } = await sb.from('released_exam_results').select('result_id');
-    const releasedSet = new Set(released?.map(r => r.result_id) || []);
+    const releasedSet = new Set(released?.map(r => String(r.result_id)) || []);
     
     let notReleasedCount = 0;
     let previewHtml = '';
     
-results.forEach(r => {
-    const isReleased = releasedSet.has(r.id);
-    const canRelease = !isReleased && (r.result_status === 'PASS' || r.result_status === 'FAIL');
-    if (canRelease) notReleasedCount++;
-    const student = profileMap[r.student_id];
-    previewHtml += `
-        <tr>
-            <td><input type="checkbox" class="student-checkbox" data-id="${r.id}" data-student-id="${r.student_id}" ${!canRelease ? 'disabled' : ''} onchange="updateSelectedCount()"></td>
-            <td><span class="student-id-badge">${student?.student_id || 'N/A'}</span></td>
-            <td><strong>${student?.full_name || 'Unknown'}</strong></td>
-            <td>${r.marks || 0}</td>
-            <td>${parseFloat(r.total_score || 0).toFixed(1)}%</td>
-            <td><span class="${r.result_status==='PASS'?'status-pass':(r.result_status==='FAIL'?'status-fail':'status-pending')}">${r.result_status || 'PENDING'}</span></td>
-            <td>${isReleased ? '✅ Released' : (canRelease ? '🔒 Pending Release' : '⏳ Not Graded')}</td>
-        </tr>
-    `;
-});
+    eligibleResults.forEach(r => {
+        const isReleased = releasedSet.has(String(r.id));
+        const canRelease = !isReleased;
+        if (canRelease) notReleasedCount++;
+        const student = profileMap[r.student_id];
+        
+        previewHtml += `
+            <tr>
+                <td><input type="checkbox" class="student-checkbox" data-id="${r.id}" data-student-id="${r.student_id}" ${!canRelease ? 'disabled' : ''} onchange="updateSelectedCount()"></td>
+                <td><span class="student-id-badge">${student?.student_id || 'N/A'}</span></td>
+                <td><strong>${student?.full_name || 'Unknown'}</strong></td>
+                <td>${r.marks || 0}</td>
+                <td>${parseFloat(r.total_score || 0).toFixed(1)}%</td>
+                <td><span class="${r.result_status==='PASS'?'status-pass':'status-fail'}">${r.result_status}</span></td>
+                <td>${isReleased ? '✅ Released' : '🔒 Pending Release'}</td>
+            </tr>
+        `;
+    });
     
     document.getElementById('releasePreviewBody').innerHTML = previewHtml;
-    document.getElementById('releaseSummary').innerHTML = `<strong>Pending Release: ${notReleasedCount}</strong>`;
+    document.getElementById('releaseSummary').innerHTML = `<strong>Students with results: ${eligibleResults.length} | Pending Release: ${notReleasedCount}</strong>`;
     document.getElementById('selectAllCheckbox').checked = false;
     updateSelectedCount();
 };
-    window.selectAllStudents = function(select) {
-        const checkboxes = document.querySelectorAll('#releasePreviewBody .student-checkbox:not(:disabled)');
-        checkboxes.forEach(cb => {
-            cb.checked = select;
-            if (select) {
-                selectedStudentIds.add(cb.getAttribute('data-id'));
-            } else {
-                selectedStudentIds.delete(cb.getAttribute('data-id'));
-            }
-        });
-        updateSelectedCount();
-        const selectAllBox = document.getElementById('selectAllCheckbox');
-        if (selectAllBox) selectAllBox.checked = select;
-    };
-    
-    window.toggleSelectAll = function() {
-        const selectAllBox = document.getElementById('selectAllCheckbox');
-        selectAllStudents(selectAllBox.checked);
-    };
-    
-  window.updateSelectedCount = function() {
+
+window.selectAllStudents = function(select) {
+    const checkboxes = document.querySelectorAll('#releasePreviewBody .student-checkbox:not(:disabled)');
+    checkboxes.forEach(cb => {
+        cb.checked = select;
+        const idValue = cb.getAttribute('data-id');
+        if (select) {
+            selectedStudentIds.add(idValue);
+        } else {
+            selectedStudentIds.delete(idValue);
+        }
+    });
+    updateSelectedCount();
+    const selectAllBox = document.getElementById('selectAllCheckbox');
+    if (selectAllBox) selectAllBox.checked = select;
+};
+
+window.toggleSelectAll = function() {
+    const selectAllBox = document.getElementById('selectAllCheckbox');
+    selectAllStudents(selectAllBox.checked);
+};
+
+window.updateSelectedCount = function() {
     const checkboxes = document.querySelectorAll('#releasePreviewBody .student-checkbox:checked');
     const count = checkboxes.length;
     document.getElementById('selectedCount').innerHTML = `${count} selected`;
     document.getElementById('confirmReleaseBtn').disabled = (count === 0);
     
-    // Clear and update selectedStudentIds
     selectedStudentIds.clear();
     checkboxes.forEach(cb => {
         const idValue = cb.getAttribute('data-id');
-        console.log('Checkbox selected with data-id:', idValue, 'type:', typeof idValue);
-        // Keep as string - DO NOT convert to number!
+        console.log('Selected:', idValue);
         selectedStudentIds.add(idValue);
     });
-    console.log('Updated selectedStudentIds:', Array.from(selectedStudentIds));
 };
 
 window.confirmReleaseResults = async function() {
-    console.log('selectedStudentIds:', Array.from(selectedStudentIds));
-    console.log('currentReleaseResults:', currentReleaseResults);
+    const selectedIds = Array.from(selectedStudentIds);
+    console.log('Selected IDs:', selectedIds);
+    console.log('Current results:', currentReleaseResults);
     
-    if (selectedStudentIds.size === 0) {
+    if (selectedIds.length === 0) {
         alert('Please select at least one student to release results.');
         return;
     }
     
     const examIdValue = document.getElementById('releaseExamFilter').value;
-    if (!examIdValue) { alert('Please select an exam'); return; }
+    if (!examIdValue) { 
+        alert('Please select an exam'); 
+        return; 
+    }
     
     const examIdInt = parseInt(examIdValue);
     if (isNaN(examIdInt)) {
@@ -825,39 +881,31 @@ window.confirmReleaseResults = async function() {
         return;
     }
     
-    if (!confirm(`Release results for ${selectedStudentIds.size} selected student(s)?`)) return;
+    if (!confirm(`Release results for ${selectedIds.length} selected student(s)?`)) return;
     
     try {
         const releaseRecords = [];
-        for (const gradeId of selectedStudentIds) {
-            // Keep as string for comparison - DO NOT convert to number!
-            console.log(`Looking for gradeId: ${gradeId} (type: ${typeof gradeId})`);
-            
-            // Find the result - compare as strings
+        for (const gradeId of selectedIds) {
             const result = currentReleaseResults.find(r => String(r.id) === String(gradeId));
-            console.log(`Found result:`, result);
-            
             if (result) {
                 releaseRecords.push({
-                    result_id: result.id,  // Keep original ID type
+                    result_id: result.id,
                     student_id: result.student_id,
                     exam_id: examIdInt,
                     released_at: new Date().toISOString(),
                     released_by: 'admin'
                 });
-            } else {
-                console.warn(`No result found for gradeId: ${gradeId}`);
             }
         }
         
-        console.log('Release records to insert:', releaseRecords);
+        console.log('Release records:', releaseRecords);
         
         if (releaseRecords.length === 0) {
-            alert('No valid results to release - IDs do not match');
+            alert('No valid results to release');
             return;
         }
         
-        const { error, data } = await sb.from('released_exam_results').insert(releaseRecords);
+        const { error } = await sb.from('released_exam_results').insert(releaseRecords);
         
         if (error) { 
             alert('Error: ' + error.message); 
