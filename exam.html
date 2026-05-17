@@ -555,7 +555,7 @@ let examDataCache = null;
 let autoSubmitTriggered = false;
 let fullscreenWarningActive = false;
 let countdownInterval = null;
-let fullscreenMonitoringActive = false;
+let isFullscreenActive = false;
 
 // ========== CHECK IF EXAM IS RELEASED BY ADMIN ==========
 async function checkExamReleased() {
@@ -656,44 +656,7 @@ function showFullscreenExitWarning() {
     }, 1000);
 }
 
-// ========== FULLSCREEN EXIT DETECTION ==========
-function setupFullscreenExitDetection() {
-    if (fullscreenMonitoringActive) return;
-    fullscreenMonitoringActive = true;
-    
-    // Monitor fullscreen change events
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
-    document.addEventListener('msfullscreenchange', handleFullscreenChange);
-    
-    function handleFullscreenChange() {
-        const isFullscreen = !!document.fullscreenElement || !!document.webkitFullscreenElement;
-        
-        console.log('Fullscreen change detected. Is fullscreen:', isFullscreen);
-        
-        if (!isFullscreen && examReleased && !autoSubmitTriggered && !fullscreenWarningActive) {
-            console.log('🚨 Fullscreen exited! Showing warning...');
-            showFullscreenExitWarning();
-        } else if (isFullscreen && fullscreenWarningActive) {
-            // User re-entered fullscreen, hide warning
-            if (countdownInterval) clearInterval(countdownInterval);
-            document.getElementById('fullscreen-exit-warning').style.display = 'none';
-            fullscreenWarningActive = false;
-            console.log('✅ Fullscreen restored, warning dismissed');
-        }
-    }
-    
-    // Detect Escape key (attempt to exit fullscreen)
-    window.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && (document.fullscreenElement || document.webkitFullscreenElement)) {
-            e.preventDefault();
-            console.log('🚨 Escape pressed in fullscreen');
-            showFullscreenExitWarning();
-        }
-    });
-}
-
-// ========== ENTER FULLSCREEN AUTOMATICALLY ==========
+// ========== ENTER FULLSCREEN ==========
 async function enterFullscreen() {
     try {
         const docEl = document.documentElement;
@@ -701,16 +664,9 @@ async function enterFullscreen() {
             await docEl.requestFullscreen();
         } else if (docEl.webkitRequestFullscreen) {
             await docEl.webkitRequestFullscreen();
-        } else if (docEl.msRequestFullscreen) {
-            await docEl.msRequestFullscreen();
         }
-        console.log('✅ Fullscreen mode activated automatically');
-        
-        // Wait a moment for fullscreen to stabilize, then start monitoring
-        setTimeout(() => {
-            setupFullscreenExitDetection();
-        }, 1000);
-        
+        isFullscreenActive = true;
+        console.log('✅ Fullscreen mode activated');
         return true;
     } catch (err) {
         console.warn('Fullscreen failed:', err);
@@ -798,7 +754,7 @@ async function sendProctoringEvent(eventType, details) {
             }, 3000);
         }
         
-        console.log(`📤 [${studentRegNumber}] ${eventType} sent to admin`);
+        console.log(`📤 [${studentRegNumber}] ${eventType}`);
     } catch (err) {
         console.error('Failed to send event:', err);
     }
@@ -956,11 +912,8 @@ async function startCamera() {
         
         console.log('✅ Camera and face detection active');
         
-        // AFTER CAMERA IS APPROVED, WAIT 1 SECOND THEN OPEN FULLSCREEN
-        console.log('🖥️ Automatically opening fullscreen mode in 1 second...');
-        setTimeout(async () => {
-            await enterFullscreen();
-        }, 1000);
+        // Open fullscreen
+        await enterFullscreen();
         
         return true;
         
@@ -971,6 +924,36 @@ async function startCamera() {
         document.querySelector('.page-wrapper').style.display = 'none';
         return false;
     }
+}
+
+// ========== SETUP FULLSCREEN MONITORING ==========
+function setupFullscreenMonitoring() {
+    // Monitor fullscreen change
+    document.addEventListener('fullscreenchange', function() {
+        const isNowFullscreen = !!document.fullscreenElement || !!document.webkitFullscreenElement;
+        
+        if (!isNowFullscreen && isFullscreenActive && !autoSubmitTriggered && !fullscreenWarningActive) {
+            console.log('Fullscreen exited - showing warning');
+            showFullscreenExitWarning();
+        } else if (isNowFullscreen && fullscreenWarningActive) {
+            // User came back to fullscreen
+            if (countdownInterval) clearInterval(countdownInterval);
+            document.getElementById('fullscreen-exit-warning').style.display = 'none';
+            fullscreenWarningActive = false;
+            console.log('Fullscreen restored, warning dismissed');
+        }
+        
+        isFullscreenActive = isNowFullscreen;
+    });
+    
+    // Block Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && (document.fullscreenElement || document.webkitFullscreenElement)) {
+            e.preventDefault();
+            console.log('Escape blocked');
+            showFullscreenExitWarning();
+        }
+    });
 }
 
 // ========== CORE EXAM FUNCTIONS ==========
@@ -996,12 +979,14 @@ async function initExam() {
         startTimer(duration * 60);
         setupSecurity();
         
+        // Setup fullscreen monitoring (but don't activate until fullscreen is entered)
+        setupFullscreenMonitoring();
+        
         // Show camera permission modal FIRST
         const modal = document.getElementById('camera-permission-modal');
         const allowBtn = document.getElementById('allow-camera-btn');
         allowBtn.onclick = async () => {
             modal.style.display = 'none';
-            // Start camera - this will automatically trigger fullscreen after camera is approved
             await startCamera();
         };
         modal.style.display = 'flex';
@@ -1127,11 +1112,15 @@ function setupSecurity() {
     document.addEventListener('contextmenu', e => e.preventDefault());
     document.addEventListener('copy', e => e.preventDefault());
     window.addEventListener('beforeunload', e => {
-        e.preventDefault();
-        e.returnValue = 'Exam in progress.';
+        if (!autoSubmitTriggered) {
+            e.preventDefault();
+            e.returnValue = 'Exam in progress.';
+        }
     });
+    
+    // Tab switching detection - only warn, don't auto-submit
     document.addEventListener('visibilitychange', () => {
-        if (document.hidden && examReleased && !autoSubmitTriggered) {
+        if (document.hidden && examReleased && !autoSubmitTriggered && isFullscreenActive) {
             sendProctoringEvent('tab_switched', 'Student switched tabs');
             showWarningMessage('⚠️ Tab switching detected!');
         }
@@ -1194,7 +1183,7 @@ async function saveAllAnswersAndSubmit() {
         });
     
     notifyDashboardCompletion();
-    console.log('✅ All answers saved and results stored (hidden from student)');
+    console.log('✅ All answers saved');
 }
 
 // SHOW SUCCESS SCREEN WITHOUT MARKS
