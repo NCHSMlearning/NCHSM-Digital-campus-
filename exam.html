@@ -13,6 +13,21 @@ body, .exam-main, .question, .options, .options li, label { user-select: none; }
 
 h1 { text-align: center; color: #073450; margin-bottom: 20px; font-size: 1.8rem; }
 
+/* Exam not available banner - ADDED */
+#exam-not-available {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: #DC2626;
+    color: white;
+    text-align: center;
+    padding: 15px;
+    z-index: 10000;
+    font-weight: 600;
+    display: none;
+}
+
 .page-wrapper {
     display: grid;
     grid-template-columns: 1fr; 
@@ -329,6 +344,11 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 </head>
 <body>
 
+<!-- ADDED: Exam not available banner -->
+<div id="exam-not-available">
+    ⚠️ This exam has not been released by the administrator yet. Please wait for the admin to release the exam.
+</div>
+
 <div class="page-wrapper">
     <div class="sidebar">
         <div class="student-info-card" id="studentInfoCard">
@@ -472,6 +492,52 @@ async function getStudentDetails() {
 const EXAM_ID = new URLSearchParams(window.location.search).get('exam_id');
 let questions = [], currentIndex = 0, duration = 0, timerInterval;
 let answers = {}, hasAnsweredAtLeastOne = false, examType = 'EXAM';
+let examReleased = false; // ADDED: Track if exam is released
+
+// ========== ADDED: CHECK IF EXAM IS RELEASED BY ADMIN ==========
+async function checkExamReleased() {
+    try {
+        const { data: exam, error } = await sb
+            .from('exams')
+            .select('status, release_date, end_date')
+            .eq('id', EXAM_ID)
+            .single();
+        
+        if (error) throw error;
+        
+        const now = new Date();
+        const releaseDate = exam.release_date ? new Date(exam.release_date) : null;
+        const endDate = exam.end_date ? new Date(exam.end_date) : null;
+        
+        // Check if exam is released (status = 'released' OR 'active')
+        const isReleased = exam.status === 'released' || exam.status === 'active';
+        const isWithinDateRange = (!releaseDate || now >= releaseDate) && (!endDate || now <= endDate);
+        
+        examReleased = isReleased && isWithinDateRange;
+        
+        if (!examReleased) {
+            const warningDiv = document.getElementById('exam-not-available');
+            warningDiv.style.display = 'block';
+            document.querySelector('.page-wrapper').style.opacity = '0.5';
+            document.getElementById('exam-container').innerHTML = `
+                <div style="text-align: center; padding: 50px;">
+                    <div style="font-size: 3rem;">🔒</div>
+                    <h2>Exam Not Available</h2>
+                    <p>This exam has not been released by the administrator yet.</p>
+                    <p style="margin-top: 10px; font-size: 0.9rem;">Please check back later.</p>
+                    <button onclick="window.location.href='exam_dashboard.html'" style="margin-top: 20px; padding: 10px 20px; background: #0A3D62; color: white; border: none; border-radius: 8px; cursor: pointer;">Go to Dashboard</button>
+                </div>
+            `;
+            return false;
+        }
+        
+        return true;
+    } catch (err) {
+        console.error('Error checking exam release:', err);
+        // If error, allow exam to proceed (fallback)
+        return true;
+    }
+}
 
 // ========== PROCTORING VARIABLES ==========
 let videoStream = null, faceDetectionInterval = null;
@@ -494,8 +560,8 @@ async function loadFaceModels() {
     }
 }
 
-// ========== NOTIFY DASHBOARD - THE FIX! ==========
-function notifyDashboardCompletion() {
+// ========== IMPROVED: NOTIFY DASHBOARD WITH RESULTS ==========
+function notifyDashboardCompletion(scoreData = null) {
     try {
         // Send message to parent window (the dashboard)
         if (window.parent && window.parent !== window) {
@@ -504,9 +570,14 @@ function notifyDashboardCompletion() {
                 exam_id: EXAM_ID,
                 student_id: studentId,
                 student_name: studentFullName,
+                student_reg: studentRegNumber,
+                score: scoreData?.earnedMarks || 0,
+                total_score: scoreData?.totalMarks || 0,
+                percentage: scoreData?.percentage || 0,
+                result: scoreData?.resultStatus || 'COMPLETED',
                 timestamp: new Date().toISOString()
             }, '*');
-            console.log('✅ Dashboard notified of exam completion');
+            console.log('✅ Dashboard notified of exam completion with results');
         } else {
             console.log('Not in iframe, dashboard notification skipped');
         }
@@ -736,6 +807,10 @@ async function initExam() {
     try {
         await getStudentDetails();
         
+        // ADDED: Check if exam is released by admin FIRST
+        const isReleased = await checkExamReleased();
+        if (!isReleased) return;
+        
         const { data: examData } = await sb.from('exams')
             .select('exam_name, exam_type, duration_minutes')
             .eq('id', EXAM_ID)
@@ -916,14 +991,19 @@ async function saveAllAnswers() {
         .eq('exam_id', EXAM_ID);
     
     const questionsMap = {};
+    let totalPossible = 0;
+    let totalEarned = 0;
+    
     questions_data?.forEach(q => {
         questionsMap[q.id] = q;
+        totalPossible += q.marks || 1;
     });
     
     for (const [questionId, selectedAnswer] of Object.entries(answers)) {
         const question = questionsMap[questionId];
         const isCorrect = selectedAnswer === question?.correct_answer;
         const marksEarned = isCorrect ? (question?.marks || 1) : 0;
+        totalEarned += marksEarned;
         
         const { error } = await sb
             .from('exam_grades')
@@ -944,6 +1024,7 @@ async function saveAllAnswers() {
     }
     
     console.log('✅ All answers saved!');
+    return { totalEarned, totalPossible };
 }
 
 async function calculateGrade() {
@@ -1017,9 +1098,11 @@ async function calculateGrade() {
         console.error('Error saving final grade:', upsertError);
     } else {
         console.log(`✅ Final grade saved: ${percentage.toFixed(1)}% (${resultStatus})`);
-        // Notify dashboard
-        notifyDashboardCompletion();
+        // IMPROVED: Notify dashboard with results
+        notifyDashboardCompletion({ earnedMarks: totalMarks, totalMarks: totalPossible, percentage: percentage, resultStatus: resultStatus });
     }
+    
+    return { earnedMarks: totalMarks, totalMarks: totalPossible, percentage, resultStatus };
 }
 
 // ========== THE FIXED SUBMISSION FUNCTION ==========
@@ -1036,22 +1119,25 @@ async function executeSubmission() {
     await saveAllAnswers();
     
     // Calculate and save final grade
-    await calculateGrade();
+    const results = await calculateGrade();
     
-    // 🔥 NOTIFY DASHBOARD - THIS IS THE KEY FIX!
-    notifyDashboardCompletion();
-    
-    // Show success screen
-    showSuccessScreen();
+    // IMPROVED: Show success screen with results
+    showSuccessScreen(results);
 }
 
-function showSuccessScreen() {
+function showSuccessScreen(results) {
     const container = document.getElementById('exam-container');
     container.innerHTML = `
         <div class="success-screen">
             <div class="success-icon">✅</div>
             <h2>Exam Submitted!</h2>
-            <p>Your exam has been recorded.</p>
+            ${results ? `
+            <div style="margin: 15px 0; padding: 15px; background: white; border-radius: 10px;">
+                <p><strong>Your Score:</strong> ${results.earnedMarks}/${results.totalMarks}</p>
+                <p><strong>Percentage:</strong> ${results.percentage.toFixed(1)}%</p>
+                <p><strong>Result:</strong> <span style="color: ${results.resultStatus === 'PASS' ? '#38A169' : '#DC2626'}">${results.resultStatus}</span></p>
+            </div>
+            ` : ''}
             <p style="font-size:0.8rem; margin-top:8px;">${studentFullName} (${studentRegNumber})</p>
             <div class="redirect-countdown">Redirecting in <span id="countdown-number">5</span>s</div>
             <a href="exam_dashboard.html" class="dashboard-link">Dashboard</a>
