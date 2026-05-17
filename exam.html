@@ -76,45 +76,6 @@ h1 { text-align: center; color: #073450; margin-bottom: 20px; font-size: 1.8rem;
     50% { transform: scale(1.2); }
 }
 
-/* Fullscreen overlay for initial entry */
-#fullscreen-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.95);
-    z-index: 20000;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-    text-align: center;
-    color: white;
-}
-
-#fullscreen-overlay h2 {
-    font-size: 2rem;
-    margin-bottom: 20px;
-    color: #FF6B35;
-}
-
-#fullscreen-overlay p {
-    margin-bottom: 30px;
-    font-size: 1.1rem;
-}
-
-#fullscreen-overlay button {
-    padding: 15px 40px;
-    font-size: 1.2rem;
-    background: #38A169;
-    color: white;
-    border: none;
-    border-radius: 10px;
-    cursor: pointer;
-    font-weight: 600;
-}
-
 .page-wrapper {
     display: grid;
     grid-template-columns: 1fr; 
@@ -435,18 +396,10 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 <div id="fullscreen-exit-warning">
     <div class="warning-icon">🚨</div>
     <h1>VIOLATION DETECTED!</h1>
-    <div class="warning-message">You attempted to exit fullscreen mode. This is a security violation.</div>
-    <div class="warning-message">Your exam will be automatically submitted in:</div>
+    <div class="warning-message">You attempted to exit or minimize fullscreen mode.</div>
+    <div class="warning-message">This is a security violation. Your exam will be automatically submitted in:</div>
     <div class="countdown-timer" id="exit-countdown">5</div>
     <div class="warning-message">Your answers have been saved. Results will be released by the administrator.</div>
-</div>
-
-<!-- Fullscreen overlay for initial entry -->
-<div id="fullscreen-overlay">
-    <h2>🔒 Fullscreen Mode Required</h2>
-    <p>This exam must be taken in fullscreen mode to ensure academic integrity.</p>
-    <p>Please click the button below to enter fullscreen mode.</p>
-    <button id="enter-fullscreen-btn">Enter Fullscreen Mode</button>
 </div>
 
 <!-- Exam not available banner -->
@@ -598,8 +551,10 @@ const EXAM_ID = new URLSearchParams(window.location.search).get('exam_id');
 let questions = [], currentIndex = 0, duration = 0, timerInterval;
 let answers = {}, hasAnsweredAtLeastOne = false, examType = 'EXAM';
 let examReleased = false;
-let fullscreenExitWarningActive = false;
+let examDataCache = null;
 let autoSubmitTriggered = false;
+let fullscreenWarningActive = false;
+let countdownInterval = null;
 
 // ========== CHECK IF EXAM IS RELEASED BY ADMIN ==========
 async function checkExamReleased() {
@@ -649,7 +604,7 @@ async function checkExamReleased() {
     }
 }
 
-// ========== AUTO-SUBMIT ON FULLSCREEN EXIT ==========
+// ========== AUTO-SUBMIT FUNCTION ==========
 async function autoSubmitOnViolation(reason) {
     if (autoSubmitTriggered) return;
     autoSubmitTriggered = true;
@@ -671,38 +626,36 @@ async function autoSubmitOnViolation(reason) {
     showSuccessScreen(true);
 }
 
-// ========== FULLSCREEN EXIT DETECTION WITH BLOCKING OVERLAY ==========
-function setupFullscreenExitDetection() {
-    let countdownInterval = null;
+// ========== SHOW FULLSCREEN EXIT WARNING ==========
+function showFullscreenExitWarning() {
+    if (fullscreenWarningActive || autoSubmitTriggered) return;
+    fullscreenWarningActive = true;
     
-    // Function to show fullscreen exit warning with countdown
-    function showFullscreenExitWarning() {
-        if (fullscreenExitWarningActive || autoSubmitTriggered) return;
-        fullscreenExitWarningActive = true;
-        
-        const warningOverlay = document.getElementById('fullscreen-exit-warning');
-        const countdownEl = document.getElementById('exit-countdown');
-        let countdown = 5;
+    const warningOverlay = document.getElementById('fullscreen-exit-warning');
+    const countdownEl = document.getElementById('exit-countdown');
+    let countdown = 5;
+    countdownEl.textContent = countdown;
+    warningOverlay.style.display = 'flex';
+    
+    // Log the violation
+    sendProctoringEvent('fullscreen_exit_attempt', 'Student attempted to exit or minimize fullscreen mode');
+    
+    // Start countdown
+    countdownInterval = setInterval(() => {
+        countdown--;
         countdownEl.textContent = countdown;
-        warningOverlay.style.display = 'flex';
         
-        // Log the violation
-        sendProctoringEvent('fullscreen_exit_attempt', 'Student attempted to exit fullscreen mode');
-        
-        // Start countdown
-        countdownInterval = setInterval(() => {
-            countdown--;
-            countdownEl.textContent = countdown;
-            
-            if (countdown <= 0) {
-                clearInterval(countdownInterval);
-                // Auto-submit the exam
-                autoSubmitOnViolation('Fullscreen mode exited - Security violation');
-            }
-        }, 1000);
-    }
-    
-    // Monitor fullscreen change
+        if (countdown <= 0) {
+            clearInterval(countdownInterval);
+            // Auto-submit the exam
+            autoSubmitOnViolation('Fullscreen mode exited/minimized - Security violation');
+        }
+    }, 1000);
+}
+
+// ========== FULLSCREEN EXIT DETECTION ==========
+function setupFullscreenExitDetection() {
+    // Monitor fullscreen change events
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
     document.addEventListener('msfullscreenchange', handleFullscreenChange);
@@ -710,19 +663,19 @@ function setupFullscreenExitDetection() {
     function handleFullscreenChange() {
         const isFullscreen = !!document.fullscreenElement || !!document.webkitFullscreenElement;
         
-        if (!isFullscreen && examReleased && !autoSubmitTriggered) {
+        if (!isFullscreen && examReleased && !autoSubmitTriggered && !fullscreenWarningActive) {
             console.log('🚨 Fullscreen exited! Showing warning...');
             showFullscreenExitWarning();
-        } else if (isFullscreen && fullscreenExitWarningActive) {
+        } else if (isFullscreen && fullscreenWarningActive) {
             // User re-entered fullscreen, hide warning
             if (countdownInterval) clearInterval(countdownInterval);
             document.getElementById('fullscreen-exit-warning').style.display = 'none';
-            fullscreenExitWarningActive = false;
+            fullscreenWarningActive = false;
             console.log('✅ Fullscreen restored, warning dismissed');
         }
     }
     
-    // Also detect Escape key
+    // Detect Escape key (attempt to exit fullscreen)
     window.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && (document.fullscreenElement || document.webkitFullscreenElement)) {
             e.preventDefault();
@@ -730,9 +683,20 @@ function setupFullscreenExitDetection() {
             showFullscreenExitWarning();
         }
     });
+    
+    // Detect F11 (fullscreen toggle)
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'F11') {
+            e.preventDefault();
+            // If not in fullscreen, enter it
+            if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+                enterFullscreen();
+            }
+        }
+    });
 }
 
-// ========== INITIAL FULLSCREEN ENTRY ==========
+// ========== ENTER FULLSCREEN AUTOMATICALLY ==========
 async function enterFullscreen() {
     try {
         const docEl = document.documentElement;
@@ -743,9 +707,7 @@ async function enterFullscreen() {
         } else if (docEl.msRequestFullscreen) {
             await docEl.msRequestFullscreen();
         }
-        
-        document.getElementById('fullscreen-overlay').style.display = 'none';
-        console.log('✅ Fullscreen mode activated');
+        console.log('✅ Fullscreen mode activated automatically');
         return true;
     } catch (err) {
         console.warn('Fullscreen failed:', err);
@@ -758,7 +720,6 @@ let videoStream = null, faceDetectionInterval = null;
 let faceModelsLoaded = false;
 let multipleFaceAlertSent = false;
 let noFaceAlertSent = false;
-let examDataCache = null;
 
 // ========== LOAD FACE API MODELS ==========
 async function loadFaceModels() {
@@ -991,6 +952,14 @@ async function startCamera() {
         await sendProctoringEvent('exam_started', `Exam started with proctoring`);
         
         console.log('✅ Camera and face detection active');
+        
+        // AFTER CAMERA IS APPROVED, AUTO OPEN FULLSCREEN
+        console.log('🖥️ Automatically opening fullscreen mode...');
+        await enterFullscreen();
+        
+        // Start monitoring fullscreen exit
+        setupFullscreenExitDetection();
+        
         return true;
         
     } catch (error) {
@@ -1024,22 +993,14 @@ async function initExam() {
         renderQuestion();
         startTimer(duration * 60);
         setupSecurity();
-        setupFullscreenExitDetection(); // Critical: detects fullscreen exit
         
+        // Show camera permission modal FIRST
         const modal = document.getElementById('camera-permission-modal');
         const allowBtn = document.getElementById('allow-camera-btn');
         allowBtn.onclick = async () => {
             modal.style.display = 'none';
+            // Start camera - this will automatically trigger fullscreen after camera is approved
             await startCamera();
-            
-            // Show fullscreen overlay after camera
-            const fullscreenOverlay = document.getElementById('fullscreen-overlay');
-            fullscreenOverlay.style.display = 'flex';
-            
-            document.getElementById('enter-fullscreen-btn').onclick = async () => {
-                await enterFullscreen();
-                fullscreenOverlay.style.display = 'none';
-            };
         };
         modal.style.display = 'flex';
         
@@ -1234,7 +1195,7 @@ async function saveAllAnswersAndSubmit() {
     console.log('✅ All answers saved and results stored (hidden from student)');
 }
 
-// SHOW SUCCESS SCREEN WITHOUT MARKS (Admin releases results later)
+// SHOW SUCCESS SCREEN WITHOUT MARKS
 function showSuccessScreen(isAutoSubmit = false) {
     const container = document.getElementById('exam-container');
     container.innerHTML = `
