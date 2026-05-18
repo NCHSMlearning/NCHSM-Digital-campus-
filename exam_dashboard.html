@@ -366,10 +366,6 @@ async function loadExams(showLoading = true) {
             .eq('student_id', currentUserId)
             .eq('question_id', '00000000-0000-0000-0000-000000000000');
         
-        // Fetch released results
-        const { data: released } = await sb.from('released_exam_results').select('result_id');
-        const releasedSet = new Set(released?.map(r => r.result_id) || []);
-        
         const container = document.getElementById('examList');
         container.innerHTML = '';
         
@@ -382,7 +378,6 @@ async function loadExams(showLoading = true) {
         for (const exam of filteredExams) {
             const grade = grades?.find(g => g.exam_id === exam.id);
             const hasGrade = grade && (grade.marks !== null || grade.total_score !== null);
-            const isReleased = grade ? releasedSet.has(grade.id) : false;
             
             let statusBadge, actionButton;
             
@@ -390,27 +385,31 @@ async function loadExams(showLoading = true) {
                 // Not taken yet - Show Start button
                 statusBadge = '<span class="badge badge-upcoming">📝 Not Started</span>';
                 actionButton = `<button class="btn-start" onclick="startExam(${exam.id}, '${exam.exam_name.replace(/'/g, "\\'")}')">▶ Start Exam</button>`;
-            } else if (isReleased) {
-                // Taken and released - Show Results
-                statusBadge = '<span class="badge badge-completed">✅ Results Released</span>';
+            } else if (grade && (grade.result_status === 'PASS' || grade.result_status === 'FAIL')) {
+                // Grade exists and has a final status - Show Results
+                statusBadge = '<span class="badge badge-completed">✅ Completed</span>';
                 actionButton = `<button class="btn-details" onclick="viewResult(${exam.id})">📋 View Results</button>`;
+            } else if (grade && grade.result_status === 'Scheduled') {
+                // Scheduled but not started - Show Start button (allow retake)
+                statusBadge = '<span class="badge badge-upcoming">📝 Not Started</span>';
+                actionButton = `<button class="btn-start" onclick="startExam(${exam.id}, '${exam.exam_name.replace(/'/g, "\\'")}')">▶ Start Exam</button>`;
             } else {
-                // Taken but not released yet - Show Pending
-                statusBadge = '<span class="badge badge-pending">⏳ Pending Release</span>';
-                actionButton = `<button class="btn-pending" disabled>⏳ Awaiting Admin Release</button>`;
+                // Taken but no final grade yet - Show Pending
+                statusBadge = '<span class="badge badge-pending">⏳ Pending Grading</span>';
+                actionButton = `<button class="btn-pending" disabled>⏳ Awaiting Results</button>`;
             }
             
             let gradeHtml = '';
-            if (hasGrade && isReleased) {
+            if (hasGrade && (grade.result_status === 'PASS' || grade.result_status === 'FAIL')) {
                 const percent = parseFloat(grade.total_score || 0);
-                gradeHtml = `<div class="grade-info ${percent >= 60 ? 'grade-pass' : 'grade-fail'}">
-                    <span class="score-large">${percent}%</span> <strong>${percent >= 60 ? 'PASS ✓' : 'FAIL ✗'}</strong>
-                    <div>Score: ${grade.marks || 0} marks</div>
+                const passMark = exam.pass_mark || 60;
+                gradeHtml = `<div class="grade-info ${percent >= passMark ? 'grade-pass' : 'grade-fail'}">
+                    <span class="score-large">${percent}%</span> <strong>${percent >= passMark ? 'PASS ✓' : 'FAIL ✗'}</strong>
+                    <div>Score: ${grade.marks || 0} / ${exam.total_marks || 100} marks</div>
                 </div>`;
-            } else if (hasGrade && !isReleased) {
-                gradeHtml = `<div class="grade-info grade-not-released">
-                    🔒 Exam submitted. Waiting for admin to release results.
-                </div>`;
+            } else if (hasGrade && grade.result_status === 'Scheduled') {
+                // No grade HTML for scheduled exams
+                gradeHtml = '';
             }
             
             container.innerHTML += `
@@ -422,6 +421,7 @@ async function loadExams(showLoading = true) {
                         <span>📋 ${exam.exam_type || 'EXAM'}</span>
                         <span>⏱️ ${exam.duration_minutes || 30} minutes</span>
                         <span>📊 ${exam.total_marks || 'N/A'} marks</span>
+                        <span>🎯 Pass: ${exam.pass_mark || 60}%</span>
                     </div>
                     ${gradeHtml}
                     <div class="exam-actions">
