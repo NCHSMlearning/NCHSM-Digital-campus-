@@ -476,8 +476,16 @@ async function initExam() {
 
 async function loadExistingAnswers() {
     try {
-        const { data } = await sb.from('exam_grades').select('question_id, selected_answer').eq('student_id', studentId).eq('exam_id', EXAM_ID).neq('question_id', '00000000-0000-0000-0000-000000000000');
-        if (data) { data.forEach(item => { if (item.selected_answer) { answers[item.question_id] = item.selected_answer; hasAnsweredAtLeastOne = true; } }); if (hasAnsweredAtLeastOne) document.getElementById('submit-exam-btn').disabled = false; }
+        const { data } = await sb.from('exam_grades').select('question_id, selected_answer').eq('student_id', studentId).eq('exam_id', EXAM_ID);
+        if (data) { 
+            data.forEach(item => { 
+                if (item.selected_answer && item.question_id !== '00000000-0000-0000-0000-000000000000') { 
+                    answers[item.question_id] = item.selected_answer; 
+                    hasAnsweredAtLeastOne = true; 
+                } 
+            }); 
+            if (hasAnsweredAtLeastOne) document.getElementById('submit-exam-btn').disabled = false; 
+        }
     } catch (err) { console.error(err); }
 }
 
@@ -498,47 +506,82 @@ function startTimer(seconds) { const timerEl = document.getElementById('timer');
 function setupSecurity() { document.addEventListener('contextmenu', e => e.preventDefault()); document.addEventListener('copy', e => e.preventDefault()); window.addEventListener('beforeunload', e => { e.preventDefault(); e.returnValue = 'Exam in progress.'; }); document.addEventListener('visibilitychange', () => { if (document.hidden) { sendProctoringEvent('tab_switched', 'Student switched tabs'); showWarningMessage('⚠️ Tab switching detected!'); } }); }
 function submitExam() { const skipped = questions.filter(q => !answers[q.id]).length; const msg = skipped > 0 ? `⚠️ ${skipped} unanswered. Submit anyway?` : `✅ All ${questions.length} answered. Submit?`; document.getElementById('modal-message').innerHTML = msg; document.getElementById('submission-modal').style.display = 'flex'; }
 
-// ========== PERMANENT FIX: SAVE ONLY ONE SUMMARY RECORD ==========
+// ========== FIXED: PROPER GRADE CALCULATION ==========
 async function saveExamAndCalculateGrade() {
-    console.log('💾 Saving exam & calculating final grade (single summary record)...');
-    // Clean slate: delete any previous records for this student/exam
-    await sb.from('exam_grades').delete().eq('student_id', studentId).eq('exam_id', EXAM_ID);
-    // fetch questions with correct answers & marks
+    console.log('💾 Calculating and saving exam grade...');
+    
+    // Delete any existing summary record for this student/exam
+    await sb.from('exam_grades').delete().eq('student_id', studentId).eq('exam_id', EXAM_ID).eq('question_id', '00000000-0000-0000-0000-000000000000');
+    
+    // Get questions with correct answers and marks
     const { data: questions_data } = await sb.from('exam_questions').select('id, correct_answer, marks').eq('exam_id', EXAM_ID);
-    const questionsMap = {};
-    let totalEarned = 0, totalPossible = 0;
-    questions_data?.forEach(q => { questionsMap[q.id] = q; totalPossible += q.marks || 1; });
-    // calculate grade
-    for (const [qid, selected] of Object.entries(answers)) {
-        const q = questionsMap[qid];
-        if (q) { const isCorrect = selected === q.correct_answer; totalEarned += isCorrect ? (q.marks || 1) : 0; }
+    
+    let totalEarned = 0;
+    let totalPossible = 0;
+    
+    // Calculate grade from student's answers
+    for (const q of questions_data || []) {
+        totalPossible += q.marks || 1;
+        const studentAnswer = answers[q.id];
+        const isCorrect = studentAnswer === q.correct_answer;
+        if (isCorrect) {
+            totalEarned += q.marks || 1;
+        }
     }
+    
+    // Calculate percentage
     const percentage = totalPossible > 0 ? (totalEarned / totalPossible) * 100 : 0;
     const resultStatus = percentage >= 60 ? 'PASS' : 'FAIL';
-    console.log(`📊 ${totalEarned}/${totalPossible} = ${percentage.toFixed(1)}% (${resultStatus})`);
-    // insert ONE summary row with placeholder question_id
+    
+    console.log(`📊 Results: ${totalEarned}/${totalPossible} = ${percentage.toFixed(2)}% (${resultStatus})`);
+    
+    // Save SINGLE summary record with the calculated grade
     const { error: saveErr } = await sb.from('exam_grades').insert({
-        student_id: studentId, exam_id: EXAM_ID, question_id: '00000000-0000-0000-0000-000000000000',
-        marks: totalEarned, total_score: percentage, result_status: resultStatus, graded_at: new Date().toISOString()
+        student_id: studentId,
+        exam_id: EXAM_ID,
+        question_id: '00000000-0000-0000-0000-000000000000',
+        marks: totalEarned,
+        total_score: percentage,
+        result_status: resultStatus,
+        graded_at: new Date().toISOString()
     });
-    if (saveErr) { console.error('Save error:', saveErr); throw saveErr; }
-    console.log('✅ Grade summary saved (single record)');
-    // auto-release if exam is published
+    
+    if (saveErr) {
+        console.error('Save error:', saveErr);
+        throw saveErr;
+    }
+    
+    console.log(`✅ Grade saved: ${resultStatus} - ${percentage.toFixed(2)}%`);
+    
+    // Auto-release if exam is published
     const { data: exam } = await sb.from('exams').select('status').eq('id', EXAM_ID).single();
     if (exam?.status === 'published') {
         const { data: summary } = await sb.from('exam_grades').select('id').eq('student_id', studentId).eq('exam_id', EXAM_ID).eq('question_id', '00000000-0000-0000-0000-000000000000').single();
-        if (summary) { await sb.from('released_exam_results').upsert({ result_id: summary.id, student_id: studentId, exam_id: EXAM_ID, released_at: new Date().toISOString(), released_by: 'auto' }, { onConflict: 'result_id' }); console.log('✅ Auto-released (exam published)'); }
+        if (summary) {
+            await sb.from('released_exam_results').upsert({
+                result_id: summary.id,
+                student_id: studentId,
+                exam_id: EXAM_ID,
+                released_at: new Date().toISOString(),
+                released_by: 'auto'
+            }, { onConflict: 'result_id' });
+            console.log('✅ Auto-released (exam published)');
+        }
     }
+    
     return { totalEarned, totalPossible, percentage, resultStatus };
 }
 
 async function executeSubmission() {
     if (isSubmitting) { console.log('⚠️ Already submitting...'); return; }
     isSubmitting = true;
+    
     console.log('📝 Finalizing exam submission...');
+    
     clearInterval(timerInterval);
     if (faceDetectionInterval) clearInterval(faceDetectionInterval);
     if (videoStream) videoStream.getTracks().forEach(t => t.stop());
+    
     await sendProctoringEvent('exam_submitted', 'Exam submitted');
     await saveExamAndCalculateGrade();
     notifyDashboardCompletion();
