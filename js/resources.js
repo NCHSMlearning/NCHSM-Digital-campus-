@@ -1,5 +1,5 @@
-// resources.js - Premium READ-ONLY High-Quality Resource Viewer with Block Filter & Refresh Button
-// Self-contained version - creates its own Supabase client
+// resources.js - Premium READ-ONLY High-Quality Resource Viewer with Past Papers Support
+// Supports: Learning Materials & Past Papers with type filtering
 
 let pdfjsLib = null;
 let pdfjsLoaded = false;
@@ -16,6 +16,7 @@ let currentResource = null;
 let currentResources = [];
 let filteredResources = [];
 let currentBlockFilter = 'all';
+let currentResourceType = 'all'; // 'all', 'material', 'pastpaper'
 let isLoading = false;
 let supabaseClient = null;
 
@@ -23,14 +24,12 @@ let supabaseClient = null;
 function initSupabaseClient() {
     if (supabaseClient) return supabaseClient;
     
-    // Try to get from existing window.db
     if (window.db?.supabase && typeof window.db.supabase.from === 'function') {
         console.log('✅ Using existing Supabase client from window.db');
         supabaseClient = window.db.supabase;
         return supabaseClient;
     }
     
-    // Try to get from window.supabase
     if (window.supabase && typeof window.supabase.from === 'function') {
         console.log('✅ Using existing Supabase client from window.supabase');
         supabaseClient = window.supabase;
@@ -39,7 +38,6 @@ function initSupabaseClient() {
         return supabaseClient;
     }
     
-    // Try to create from config
     if (window.APP_CONFIG?.SUPABASE_URL && window.APP_CONFIG?.SUPABASE_ANON_KEY) {
         try {
             const { createClient } = window.supabaseJs || window.supabase || {};
@@ -69,7 +67,6 @@ function getSupabaseClient() {
 
 // ==================== USER PROFILE ====================
 async function getUserProfile() {
-    // Check if already cached
     if (window.currentUserProfile?.program) {
         return window.currentUserProfile;
     }
@@ -104,20 +101,14 @@ async function getUserProfile() {
     return {};
 }
 
-function getCurrentUserId() {
-    return window.db?.currentUserId || window.currentUserId;
-}
-
 // ==================== UPDATE DASHBOARD ====================
 function updateDashboardResourceCount() {
     const totalResources = currentResources.length;
     const dashboardResourcesEl = document.getElementById('dashboard-new-resources');
     if (dashboardResourcesEl) {
         dashboardResourcesEl.innerText = totalResources;
-        console.log(`📊 Dashboard resources updated: ${totalResources}`);
     }
     
-    // Also update dashboard module metrics if available
     if (window.dashboardModule && window.dashboardModule.metrics) {
         window.dashboardModule.metrics.resources = totalResources;
         if (window.dashboardModule.updateUIFromMetrics) {
@@ -125,7 +116,6 @@ function updateDashboardResourceCount() {
         }
     }
     
-    // Dispatch event for other modules
     const event = new CustomEvent('resourcesUpdated', {
         detail: { count: totalResources, resources: currentResources }
     });
@@ -184,6 +174,39 @@ function getAllBlocks() {
         { value: 'block5', label: '📕 Block 5', icon: 'fa-user-nurse' },
         { value: 'final', label: '🏆 Final Block', icon: 'fa-graduation-cap' }
     ];
+}
+
+// ==================== RESOURCE TYPE FILTERING (NEW) ====================
+function filterResourcesByType(type) {
+    currentResourceType = type;
+    
+    // Update button styles
+    const buttons = document.querySelectorAll('.type-tab');
+    buttons.forEach(btn => {
+        const btnType = btn.getAttribute('data-type');
+        if (btnType === type) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+    
+    // Update past paper count badge if showing past papers
+    if (type === 'pastpaper') {
+        const pastpaperCount = currentResources.filter(r => r.resource_type === 'pastpaper').length;
+        const badge = document.getElementById('student-pastpaper-count');
+        if (badge) badge.textContent = pastpaperCount;
+    }
+    
+    // Reset search and filters
+    const searchInput = document.getElementById('resource-search');
+    if (searchInput) searchInput.value = '';
+    
+    const typeFilter = document.getElementById('resource-filter');
+    if (typeFilter) typeFilter.value = 'all';
+    
+    // Re-filter resources
+    filterResourcesByBlock();
 }
 
 async function createBlockFilterUI() {
@@ -274,7 +297,7 @@ async function createBlockFilterUI() {
 async function loadAllResourcesForBlocks() {
     if (isLoading) return;
     
-    console.log('📁 Loading read-only resources...');
+    console.log('📁 Loading read-only resources with past papers...');
     
     const userProfile = await getUserProfile();
     const supabaseClient = getSupabaseClient();
@@ -297,25 +320,32 @@ async function loadAllResourcesForBlocks() {
         const intakeYear = userProfile?.intake_year;
         
         if (!program || !intakeYear) {
-            resourcesGrid.innerHTML = '<div class="error-state premium">Missing enrollment details</div>';
+            resourcesGrid.innerHTML = '<div class="error-state premium">Missing enrollment details. Please contact admin.</div>';
             isLoading = false;
             return;
         }
         
-        const { data: resources, error } = await supabaseClient
+        let query = supabaseClient
             .from('resources')
-            .select('id, title, file_path, file_url, program_type, block, intake, uploaded_by_name, created_at, description, file_type')
+            .select('id, title, file_path, file_url, program_type, block, intake, uploaded_by_name, created_at, description, file_type, resource_type, pastpaper_year, exam_type, course_name')
             .eq('program_type', program)
             .eq('intake', intakeYear)
             .order('created_at', { ascending: false });
         
+        const { data: resources, error } = await query;
+        
         if (error) throw error;
         
         currentResources = resources || [];
+        
+        // Update past paper count badge
+        const pastpaperCount = currentResources.filter(r => r.resource_type === 'pastpaper').length;
+        const badge = document.getElementById('student-pastpaper-count');
+        if (badge) badge.textContent = pastpaperCount;
+        
         populateCourseFilter();
         await filterResourcesByBlock();
         
-        // Update dashboard with resource count
         updateDashboardResourceCount();
         
     } catch (err) {
@@ -334,6 +364,12 @@ async function filterResourcesByBlock() {
     
     let filtered = [...currentResources];
     
+    // Filter by resource type (NEW)
+    if (currentResourceType !== 'all') {
+        filtered = filtered.filter(resource => resource.resource_type === currentResourceType);
+    }
+    
+    // Filter by block
     if (currentBlockFilter !== 'all') {
         const targetKeywords = BLOCK_MAPPING[currentBlockFilter] || [];
         filtered = filtered.filter(resource => {
@@ -342,17 +378,24 @@ async function filterResourcesByBlock() {
         });
     }
     
+    // Filter by search term
     const searchTerm = document.getElementById('resource-search')?.value.toLowerCase() || '';
     if (searchTerm) {
-        filtered = filtered.filter(r => (r.title || '').toLowerCase().includes(searchTerm) ||
-            (r.description || '').toLowerCase().includes(searchTerm));
+        filtered = filtered.filter(r => {
+            const titleMatch = (r.title || '').toLowerCase().includes(searchTerm);
+            const courseMatch = (r.course_name || '').toLowerCase().includes(searchTerm);
+            const descMatch = (r.description || '').toLowerCase().includes(searchTerm);
+            return titleMatch || courseMatch || descMatch;
+        });
     }
     
+    // Filter by file type
     const typeFilter = document.getElementById('resource-filter')?.value || 'all';
     if (typeFilter !== 'all') {
         filtered = filtered.filter(r => getFileType(r.file_path) === typeFilter);
     }
     
+    // Filter by course
     const courseFilter = document.getElementById('course-filter')?.value || 'all';
     if (courseFilter !== 'all') {
         filtered = filtered.filter(r => r.program_type === courseFilter);
@@ -362,7 +405,6 @@ async function filterResourcesByBlock() {
     renderResourcesGrid();
     updateResourceCountDisplay();
     
-    // Update dashboard with filtered count (optional - use total count instead)
     updateDashboardResourceCount();
 }
 
@@ -371,11 +413,18 @@ function renderResourcesGrid() {
     if (!resourcesGrid) return;
     
     if (filteredResources.length === 0) {
+        let emptyMessage = 'No resources match your current filters.';
+        if (currentResourceType === 'pastpaper') {
+            emptyMessage = 'No past papers available for your block. Check back later or contact admin.';
+        } else if (currentResourceType === 'material') {
+            emptyMessage = 'No learning materials available for your block.';
+        }
+        
         resourcesGrid.innerHTML = `
             <div class="empty-state premium">
                 <i class="fas fa-folder-open"></i>
                 <h3>No Resources Found</h3>
-                <p>No resources match your current filters.</p>
+                <p>${emptyMessage}</p>
                 <button onclick="document.getElementById('block-resource-filter').value='all'; document.getElementById('refresh-block-resources').click();" class="premium-btn">
                     <i class="fas fa-eye"></i> View All Blocks
                 </button>
@@ -384,20 +433,34 @@ function renderResourcesGrid() {
         return;
     }
     
-    resourcesGrid.innerHTML = filteredResources.map(resource => `
+    resourcesGrid.innerHTML = filteredResources.map(resource => {
+        const isPastPaper = resource.resource_type === 'pastpaper';
+        const typeBadge = isPastPaper ? 
+            '<span class="pastpaper-badge"><i class="fas fa-history"></i> Past Paper</span>' : 
+            '<span class="material-badge"><i class="fas fa-book"></i> Material</span>';
+        
+        const yearDisplay = isPastPaper ? resource.pastpaper_year : resource.intake;
+        const examTypeDisplay = isPastPaper && resource.exam_type ? getExamTypeLabel(resource.exam_type) : '';
+        const courseDisplay = isPastPaper && resource.course_name ? `<br><small class="course-name">📚 ${escapeHtml(resource.course_name)}</small>` : '';
+        
+        return `
         <div class="resource-card premium-card" data-id="${resource.id}">
             <div class="resource-preview">
                 <div class="preview-icon ${getFileType(resource.file_path)}">
                     <i class="${getFileIcon(resource.file_path)}"></i>
                 </div>
+                ${typeBadge}
             </div>
             <div class="resource-details">
-                <h3 class="resource-title">${escapeHtml(resource.title)}</h3>
+                <h3 class="resource-title">${escapeHtml(resource.title)}${courseDisplay}</h3>
                 <p class="resource-description">${escapeHtml(resource.description || 'No description available')}</p>
                 <div class="resource-meta">
-                    <span class="meta-tag">
-                        <i class="fas fa-calendar"></i> ${new Date(resource.created_at).toLocaleDateString()}
+                    <span class="meta-tag year-tag">
+                        <i class="fas fa-calendar"></i> ${escapeHtml(yearDisplay || 'N/A')}
                     </span>
+                    ${isPastPaper && examTypeDisplay ? `<span class="meta-tag exam-type-tag">
+                        <i class="fas fa-file-alt"></i> ${examTypeDisplay}
+                    </span>` : ''}
                     <span class="meta-tag block-tag ${getBlockTagClass(resource.block)}">
                         <i class="fas ${getBlockIcon(resource.block)}"></i> ${escapeHtml(resource.block || 'General')}
                     </span>
@@ -412,7 +475,20 @@ function renderResourcesGrid() {
                 </button>
             </div>
         </div>
-    `).join('');
+    `}).join('');
+}
+
+function getExamTypeLabel(examType) {
+    const labels = {
+        'CAT_1': 'CAT 1',
+        'CAT_2': 'CAT 2',
+        'CAT': 'CAT',
+        'END_TERM': 'End of Term',
+        'FINAL': 'Final Exam',
+        'SUPPLEMENTARY': 'Supplementary',
+        'SPECIAL': 'Special Exam'
+    };
+    return labels[examType] || examType;
 }
 
 function updateResourceCountDisplay() {
@@ -577,6 +653,12 @@ function addReadOnlyPDFStyles() {
         .loading-spinner.premium { width: 60px; height: 60px; border: 4px solid rgba(255,255,255,0.2); border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
         .read-only-badge { background: #4C1D95 !important; color: white !important; }
+        .pastpaper-badge { position: absolute; top: 10px; right: 10px; background: #f59e0b; color: white; padding: 4px 8px; border-radius: 20px; font-size: 10px; font-weight: 500; }
+        .material-badge { position: absolute; top: 10px; right: 10px; background: #4C1D95; color: white; padding: 4px 8px; border-radius: 20px; font-size: 10px; font-weight: 500; }
+        .resource-card { position: relative; }
+        .exam-type-tag { background: #fef3c7; color: #d97706; }
+        .year-tag { background: #e0e7ff; color: #4338ca; }
+        .course-name { color: #6b7280; font-size: 11px; }
         @media (max-width: 768px) { .readonly-pdf-container { width: 98%; height: 96%; } .pdf-nav-btn, .pdf-zoom-btn { width: 36px; height: 36px; } .readonly-pdf-footer { padding: 10px 16px; } }
         @media (max-width: 640px) { .readonly-pdf-footer { flex-direction: column; } }
     `;
@@ -696,7 +778,7 @@ function toggleFullscreen() { const container = document.querySelector('.readonl
 function handlePDFKeyboard(e) { const modal = document.getElementById('readonly-pdf-modal'); if (!modal || modal.style.display !== 'flex') return; switch(e.key) { case 'ArrowLeft': e.preventDefault(); goToPDFPage(currentPDFPage - 1); break; case 'ArrowRight': e.preventDefault(); goToPDFPage(currentPDFPage + 1); break; case 'Escape': e.preventDefault(); modal.style.display = 'none'; cleanupPDF(); break; case '+': case '=': if (e.ctrlKey) { e.preventDefault(); zoomPDF(1.2); } break; case '-': if (e.ctrlKey) { e.preventDefault(); zoomPDF(0.8); } break; case '0': if (e.ctrlKey) { e.preventDefault(); pdfScale = 1.0; updateZoomDisplay(); renderPDFPage(currentPDFPage); } break; } }
 function cleanupPDF() { if (currentPDFDoc) { currentPDFDoc.destroy(); currentPDFDoc = null; } currentPDFPage = 1; totalPDFPages = 0; pdfScale = 1.5; pageRendering = false; pageNumPending = null; document.removeEventListener('keypress', handlePDFKeyboard); }
 
-// ==================== IMAGE/VIDEO VIEWER ====================
+// ==================== IMAGE/VIDEO/DOCUMENT VIEWER ====================
 function openReadOnlyImage(resource) {
     const modal = document.createElement('div');
     modal.className = 'image-modal-premium';
@@ -733,9 +815,8 @@ function showToast(message, type = 'info') { const toast = document.getElementBy
 
 // ==================== INITIALIZATION ====================
 async function initializeResourcesModule() {
-    console.log('📁 Initializing Premium Resources Module...');
+    console.log('📁 Initializing Premium Resources Module with Past Papers...');
     
-    // Initialize Supabase first
     const supabase = initSupabaseClient();
     if (!supabase) {
         const resourcesGrid = document.getElementById('resources-grid');
@@ -755,6 +836,7 @@ async function initializeResourcesModule() {
 window.loadAllResources = loadAllResourcesForBlocks;
 window.openResource = openResource;
 window.filterResources = filterResources;
+window.filterResourcesByType = filterResourcesByType;
 window.initializeResourcesModule = initializeResourcesModule;
 
 // Wait for DOM then initialize
