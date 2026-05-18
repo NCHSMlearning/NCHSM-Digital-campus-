@@ -729,86 +729,89 @@
     };
     
     window.loadReleasePreview = async function() {
-        const examId = document.getElementById('releaseExamFilter').value;
-        if (!examId) { 
-            document.getElementById('releasePreview').style.display = 'none'; 
-            return; 
-        }
+    const examId = document.getElementById('releaseExamFilter').value;
+    if (!examId) { 
+        document.getElementById('releasePreview').style.display = 'none'; 
+        return; 
+    }
+    
+    document.getElementById('releasePreview').style.display = 'block';
+    selectedStudentIds.clear();
+    
+    // Get ALL grades for this exam (NO status filter)
+    const { data: results, error } = await sb
+        .from('exam_grades')
+        .select('id, student_id, marks, total_score, result_status')
+        .eq('exam_id', parseInt(examId))
+        .eq('question_id', '00000000-0000-0000-0000-000000000000');
+    
+    if (error) {
+        console.error('Error loading results:', error);
+        document.getElementById('releasePreviewBody').innerHTML = `<tr><td colspan="7">Error: ${error.message} </td></tr>`;
+        return;
+    }
+    
+    if (!results || results.length === 0) {
+        document.getElementById('releasePreviewBody').innerHTML = '<tr><td colspan="7">No students have taken this exam yet</td></tr>';
+        document.getElementById('releaseSummary').innerHTML = '<strong>No results available</strong>';
+        return;
+    }
+    
+    // Get already released results
+    const { data: released } = await sb.from('released_exam_results').select('result_id');
+    const releasedSet = new Set(released?.map(r => String(r.result_id)) || []);
+    
+    // FIX: Show ALL results that are NOT released yet (including PENDING)
+    const eligibleResults = results.filter(r => !releasedSet.has(String(r.id)));
+    
+    if (eligibleResults.length === 0) {
+        document.getElementById('releasePreviewBody').innerHTML = '<tr><td colspan="7">✅ All results have already been released!</td></tr>';
+        document.getElementById('releaseSummary').innerHTML = '<strong>No pending results to release</strong>';
+        document.getElementById('confirmReleaseBtn').disabled = true;
+        return;
+    }
+    
+    currentReleaseResults = eligibleResults;
+    
+    // Get student profiles
+    const studentIds = eligibleResults.map(r => r.student_id);
+    const { data: profiles } = await sb
+        .from('consolidated_user_profiles_table')
+        .select('user_id, full_name, student_id, email')
+        .in('user_id', studentIds);
+    
+    const profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p]));
+    
+    // Build the preview table - Show ALL pending results
+    let html = '';
+    eligibleResults.forEach(r => {
+        const student = profileMap[r.student_id];
+        const percentage = parseFloat(r.total_score || 0).toFixed(1);
         
-        document.getElementById('releasePreview').style.display = 'block';
-        selectedStudentIds.clear();
+        // Determine status badge class
+        let statusClass = 'status-pending';
+        if (r.result_status === 'PASS') statusClass = 'status-pass';
+        else if (r.result_status === 'FAIL') statusClass = 'status-fail';
         
-        // Get all grades for this exam with the correct question_id
-        const { data: results, error } = await sb
-            .from('exam_grades')
-            .select('id, student_id, marks, total_score, result_status')
-            .eq('exam_id', parseInt(examId))
-            .eq('question_id', '00000000-0000-0000-0000-000000000000');
-        
-        if (error) {
-            console.error('Error loading results:', error);
-            document.getElementById('releasePreviewBody').innerHTML = `<tr><td colspan="7">Error: ${error.message}</td></tr>`;
-            return;
-        }
-        
-        if (!results || results.length === 0) {
-            document.getElementById('releasePreviewBody').innerHTML = '<tr><td colspan="7">No results found for this exam</td></tr>';
-            document.getElementById('releaseSummary').innerHTML = '<strong>No results available</strong>';
-            return;
-        }
-        
-        // Get already released results
-        const { data: released } = await sb.from('released_exam_results').select('result_id');
-        const releasedSet = new Set(released?.map(r => String(r.result_id)) || []);
-        
-        // Filter to ONLY PASS/FAIL results that are NOT YET released
-        const eligibleResults = results.filter(r => 
-            (r.result_status === 'PASS' || r.result_status === 'FAIL') && 
-            !releasedSet.has(String(r.id))
-        );
-        
-        if (eligibleResults.length === 0) {
-            document.getElementById('releasePreviewBody').innerHTML = '<tr><td colspan="7">✅ All results have already been released!</td></tr>';
-            document.getElementById('releaseSummary').innerHTML = '<strong>No pending results to release</strong>';
-            document.getElementById('confirmReleaseBtn').disabled = true;
-            return;
-        }
-        
-        currentReleaseResults = eligibleResults;
-        
-        // Get student profiles
-        const studentIds = eligibleResults.map(r => r.student_id);
-        const { data: profiles } = await sb
-            .from('consolidated_user_profiles_table')
-            .select('user_id, full_name, student_id')
-            .in('user_id', studentIds);
-        
-        const profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p]));
-        
-        // Build the preview table
-        let html = '';
-        eligibleResults.forEach(r => {
-            const student = profileMap[r.student_id];
-            const percentage = parseFloat(r.total_score || 0).toFixed(1);
-            html += `
-                <tr>
-                    <td><input type="checkbox" class="student-checkbox" data-id="${r.id}" data-student-id="${r.student_id}" onchange="updateSelectedCount()"></td>
-                    <td><span class="student-id-badge">${student?.student_id || 'N/A'}</span></td>
-                    <td><strong>${student?.full_name || 'Unknown'}</strong></td>
-                    <td>${r.marks || 0}</td>
-                    <td>${percentage}%</td>
-                    <td><span class="${r.result_status === 'PASS' ? 'status-pass' : 'status-fail'}">${r.result_status}</span></td>
-                    <td><span class="status-pending">🔒 Pending Release</span></td>
-                </tr>
-            `;
-        });
-        
-        document.getElementById('releasePreviewBody').innerHTML = html;
-        document.getElementById('releaseSummary').innerHTML = `<strong>📋 Pending Results: ${eligibleResults.length} student(s) ready for release</strong>`;
-        document.getElementById('selectAllCheckbox').checked = false;
-        document.getElementById('confirmReleaseBtn').disabled = false;
-        updateSelectedCount();
-    };
+        html += `
+            <tr>
+                <td><input type="checkbox" class="student-checkbox" data-id="${r.id}" data-student-id="${r.student_id}" onchange="updateSelectedCount()"></td>
+                <td><span class="student-id-badge">${student?.student_id || 'N/A'}</span></td>
+                <td><strong>${student?.full_name || 'Unknown'}</strong><br><small>${student?.email || ''}</small></td>
+                <td>${r.marks || 0}</td>
+                <td>${percentage}%</td>
+                <td><span class="${statusClass}">${r.result_status || 'PENDING'}</span></td>
+                <td><span class="status-pending">🔒 Not Released</span></td>
+            </tr>
+        `;
+    });
+    
+    document.getElementById('releasePreviewBody').innerHTML = html;
+    document.getElementById('releaseSummary').innerHTML = `<strong>📋 Pending Results: ${eligibleResults.length} student(s) ready for release</strong>`;
+    document.getElementById('selectAllCheckbox').checked = false;
+    document.getElementById('confirmReleaseBtn').disabled = false;
+    updateSelectedCount();
+};
     
     window.selectAllStudents = function(select) { 
         const checkboxes = document.querySelectorAll('#releasePreviewBody .student-checkbox');
