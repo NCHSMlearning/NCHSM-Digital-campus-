@@ -327,7 +327,7 @@ async function loadExams(showLoading = true) {
     
     try {
         // Fetch profile
-        const { data: profile, error: profileError } = await sb
+        const { data: profile } = await sb
             .from('consolidated_user_profiles_table')
             .select('*')
             .eq('user_id', currentUserId);
@@ -338,33 +338,32 @@ async function loadExams(showLoading = true) {
         
         // Display user info
         const studentIdDisplay = studentProfile?.student_id ? `<span class="student-id-badge">ID: ${studentProfile.student_id}</span>` : '';
-        const programDisplay = studentProfile?.program || 'Not Assigned';
-        const blockDisplay = studentProfile?.block || 'Not Assigned';
-        const intakeDisplay = studentProfile?.intake_year || 'Not Assigned';
-        const nameDisplay = studentProfile?.full_name || studentProfile?.name || 'Student';
-        
         document.getElementById('userInfo').innerHTML = `
-            <strong>👤 ${nameDisplay}</strong><br>
-            📚 ${programDisplay} | Block ${blockDisplay} | Intake: ${intakeDisplay}
+            <strong>👤 ${studentProfile?.full_name || 'Student'}</strong><br>
+            📚 ${studentProfile?.program || 'Not Assigned'} | Block ${studentProfile?.block || 'Not Assigned'} | Intake: ${studentProfile?.intake_year || 'Not Assigned'}
             <br>${studentIdDisplay}
         `;
         
         // Fetch exams
-        const { data: exams, error: examsError } = await sb
+        const { data: exams } = await sb
             .from('exams')
             .select('*')
             .not('online_link', 'is', null);
         
-        if (examsError) throw examsError;
-        
         const filteredExams = filterExamsByStudent(exams || []);
         
-        // Fetch grades (submitted exams)
+        // Fetch grades
         const { data: grades } = await sb
             .from('exam_grades')
             .select('*')
             .eq('student_id', currentUserId)
             .eq('question_id', '00000000-0000-0000-0000-000000000000');
+        
+        // Fetch released results
+        const { data: released } = await sb
+            .from('released_exam_results')
+            .select('result_id');
+        const releasedSet = new Set(released?.map(r => r.result_id) || []);
         
         const container = document.getElementById('examList');
         container.innerHTML = '';
@@ -378,38 +377,36 @@ async function loadExams(showLoading = true) {
         for (const exam of filteredExams) {
             const grade = grades?.find(g => g.exam_id === exam.id);
             const hasGrade = grade && (grade.marks !== null || grade.total_score !== null);
+            const isReleased = grade ? releasedSet.has(grade.id) : false;
+            const hasFinalStatus = grade && (grade.result_status === 'PASS' || grade.result_status === 'FAIL');
             
             let statusBadge, actionButton;
             
             if (!hasGrade) {
-                // Not taken yet - Show Start button
                 statusBadge = '<span class="badge badge-upcoming">📝 Not Started</span>';
                 actionButton = `<button class="btn-start" onclick="startExam(${exam.id}, '${exam.exam_name.replace(/'/g, "\\'")}')">▶ Start Exam</button>`;
-            } else if (grade && (grade.result_status === 'PASS' || grade.result_status === 'FAIL')) {
-                // Grade exists and has a final status - Show Results
-                statusBadge = '<span class="badge badge-completed">✅ Completed</span>';
+            } else if (isReleased && hasFinalStatus) {
+                statusBadge = '<span class="badge badge-completed">✅ Results Released</span>';
                 actionButton = `<button class="btn-details" onclick="viewResult(${exam.id})">📋 View Results</button>`;
-            } else if (grade && grade.result_status === 'Scheduled') {
-                // Scheduled but not started - Show Start button (allow retake)
+            } else if (hasFinalStatus && !isReleased) {
+                statusBadge = '<span class="badge badge-pending">⏳ Pending Release</span>';
+                actionButton = `<button class="btn-pending" disabled>⏳ Awaiting Admin Release</button>`;
+            } else if (grade?.result_status === 'Scheduled') {
                 statusBadge = '<span class="badge badge-upcoming">📝 Not Started</span>';
                 actionButton = `<button class="btn-start" onclick="startExam(${exam.id}, '${exam.exam_name.replace(/'/g, "\\'")}')">▶ Start Exam</button>`;
             } else {
-                // Taken but no final grade yet - Show Pending
                 statusBadge = '<span class="badge badge-pending">⏳ Pending Grading</span>';
                 actionButton = `<button class="btn-pending" disabled>⏳ Awaiting Results</button>`;
             }
             
             let gradeHtml = '';
-            if (hasGrade && (grade.result_status === 'PASS' || grade.result_status === 'FAIL')) {
+            if (isReleased && hasFinalStatus) {
                 const percent = parseFloat(grade.total_score || 0);
                 const passMark = exam.pass_mark || 60;
                 gradeHtml = `<div class="grade-info ${percent >= passMark ? 'grade-pass' : 'grade-fail'}">
                     <span class="score-large">${percent}%</span> <strong>${percent >= passMark ? 'PASS ✓' : 'FAIL ✗'}</strong>
                     <div>Score: ${grade.marks || 0} / ${exam.total_marks || 100} marks</div>
                 </div>`;
-            } else if (hasGrade && grade.result_status === 'Scheduled') {
-                // No grade HTML for scheduled exams
-                gradeHtml = '';
             }
             
             container.innerHTML += `
