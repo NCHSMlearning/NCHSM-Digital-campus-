@@ -1498,28 +1498,153 @@
                 <div id="student-exams"><p>Loading available assessments...</p></div>
             </section>
 
-            <!-- Resources Section -->
-            <section id="resources" class="tab-content">
-                <h2>Resource Center</h2>
-                <form id="upload-resource-form" class="inline-form">
-                    <select id="resource_program" required><option value="">-- Select Program --</option><option value="KRCHN">KRCHN</option><option value="TVET">TVET</option></select>
-                    <select id="resource_intake" required><option value="">-- Select Intake Year --</option><option value="2024">2024</option><option value="2025">2025</option><option value="2026">2026</option><option value="2027">2027</option><option value="2028">2028</option></select>
-                    <select id="resource_block" required><option value="">-- Select Block/Term --</option><option value="A">Block A</option><option value="B">Block B</option><option value="Term 1">Term 1</option><option value="Term 2">Term 2</option><option value="Term 3">Term 3</option></select>
-                    <input type="file" id="resource-file" required accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx">
-                    <input type="text" id="resource-title" placeholder="Title for file" required>
-                    <button type="submit">Upload</button>
-                </form>
-                
-                <div class="toolbar">
-                    <input type="text" id="resource-search" placeholder="Search Resources..." onkeyup="filterTable('resource-search', 'resources-list', [0,1,2,3])">
-                    <button onclick="exportTableToCSV('resources-list', 'Resource_Index_Export.csv')" class="btn-action export-btn">Export Resource List (CSV)</button>
-                </div>
-                
-                <table>
-                    <thead><tr><th>Program</th><th>Title</th><th>Intake</th><th>Block/Term</th><th>Uploaded By</th><th>Date</th><th>Actions</th></tr></thead>
-                    <tbody id="resources-list"><tr><td colspan="7">Loading resources...<\/td><\/tr><\/tbody>
-                </table>
-            </section>
+         <!-- Resources Section with Past Papers Support -->
+<section id="resources" class="tab-content">
+    <h2><i class="fas fa-book-open"></i> Resource Center</h2>
+    <p>Upload learning materials and past examination papers for students</p>
+    
+    <!-- Resource Type Toggle -->
+    <div style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;">
+        <button id="resource-type-all" class="resource-type-btn active" onclick="filterResourceType('all')" style="padding: 10px 20px; background: #4C1D95; color: white; border: none; border-radius: 8px; cursor: pointer;">
+            <i class="fas fa-layer-group"></i> All Resources
+        </button>
+        <button id="resource-type-material" class="resource-type-btn" onclick="filterResourceType('material')" style="padding: 10px 20px; background: #e5e7eb; color: #374151; border: none; border-radius: 8px; cursor: pointer;">
+            <i class="fas fa-book"></i> Learning Materials
+        </button>
+        <button id="resource-type-pastpaper" class="resource-type-btn" onclick="filterResourceType('pastpaper')" style="padding: 10px 20px; background: #e5e7eb; color: #374151; border: none; border-radius: 8px; cursor: pointer;">
+            <i class="fas fa-history"></i> Past Papers
+            <span id="pastpaper-count-badge" style="background: #ef4444; color: white; border-radius: 20px; padding: 2px 8px; margin-left: 8px; font-size: 12px;">0</span>
+        </button>
+    </div>
+    
+    <!-- Upload Form - Enhanced with Past Paper Option -->
+    <div style="background: linear-gradient(135deg, #f3e8ff, #e9d5ff); padding: 20px; border-radius: 12px; margin-bottom: 25px;">
+        <h3><i class="fas fa-upload"></i> Upload Resource</h3>
+        
+        <!-- Upload Type Toggle -->
+        <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                <input type="radio" name="upload_type" value="material" checked onchange="toggleUploadForm()"> 
+                <i class="fas fa-book"></i> Learning Material
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                <input type="radio" name="upload_type" value="pastpaper" onchange="toggleUploadForm()"> 
+                <i class="fas fa-history"></i> Past Paper
+            </label>
+        </div>
+        
+        <!-- Learning Material Form -->
+        <form id="upload-material-form" class="inline-form">
+            <select id="resource_program" required>
+                <option value="">-- Select Program --</option>
+                <option value="KRCHN">KRCHN</option>
+                <option value="TVET">TVET</option>
+                <option value="DPOTT">DPOTT</option>
+                <option value="DHRIT">DHRIT</option>
+                <option value="DSL">DSL</option>
+            </select>
+            <select id="resource_intake" required>
+                <option value="">-- Select Intake Year --</option>
+                <option value="2024">2024</option>
+                <option value="2025">2025</option>
+                <option value="2026">2026</option>
+                <option value="2027">2027</option>
+                <option value="2028">2028</option>
+            </select>
+            <select id="resource_block" required>
+                <option value="">-- Select Block/Term --</option>
+            </select>
+            <input type="file" id="resource-file" required accept=".pdf,.doc,.docx,.ppt,.pptx">
+            <input type="text" id="resource-title" placeholder="Title for file" required>
+            <textarea id="resource-description" placeholder="Description (optional)" rows="2" style="width: 100%;"></textarea>
+            <button type="submit">Upload Material</button>
+        </form>
+        
+        <!-- Past Paper Form -->
+        <form id="upload-pastpaper-form" class="inline-form" style="display: none;">
+            <select id="pastpaper_program" required>
+                <option value="">-- Select Program --</option>
+                <option value="KRCHN">KRCHN</option>
+                <option value="TVET">TVET</option>
+                <option value="DPOTT">DPOTT</option>
+                <option value="DHRIT">DHRIT</option>
+                <option value="DSL">DSL</option>
+            </select>
+            <select id="pastpaper_year" required>
+                <option value="">-- Exam Year --</option>
+                <option value="2020">2020</option>
+                <option value="2021">2021</option>
+                <option value="2022">2022</option>
+                <option value="2023">2023</option>
+                <option value="2024">2024</option>
+                <option value="2025">2025</option>
+                <option value="2026">2026</option>
+            </select>
+            <select id="pastpaper_block" required>
+                <option value="">-- Select Block/Term --</option>
+            </select>
+            <select id="pastpaper_type" required>
+                <option value="">-- Exam Type --</option>
+                <option value="CAT_1">CAT 1</option>
+                <option value="CAT_2">CAT 2</option>
+                <option value="END_TERM">End of Term</option>
+                <option value="FINAL">Final Exam</option>
+                <option value="SUPPLEMENTARY">Supplementary</option>
+            </select>
+            <input type="text" id="pastpaper_course" placeholder="Course/Subject" required>
+            <input type="file" id="pastpaper-file" required accept=".pdf">
+            <textarea id="pastpaper-description" placeholder="Description/Year notes" rows="2" style="width: 100%;"></textarea>
+            <button type="submit">Upload Past Paper</button>
+        </form>
+    </div>
+    
+    <!-- Filters -->
+    <div class="toolbar">
+        <input type="text" id="resource-search" placeholder="🔍 Search resources..." onkeyup="filterResourcesTable()">
+        <select id="resource-block-filter" onchange="filterResourcesTable()">
+            <option value="all">All Blocks</option>
+            <option value="Introductory">Introductory</option>
+            <option value="Block A">Block 1</option>
+            <option value="Block B">Block 2</option>
+            <option value="Block C">Block 3</option>
+            <option value="Block D">Block 4</option>
+            <option value="Block E">Block 5</option>
+            <option value="Final">Final</option>
+        </select>
+        <select id="resource-year-filter" onchange="filterResourcesTable()">
+            <option value="all">All Years</option>
+            <option value="2024">2024</option>
+            <option value="2025">2025</option>
+            <option value="2026">2026</option>
+            <option value="2026">2027</option>
+            <option value="2026">2028</option>
+        </select>
+        <button onclick="exportResourcesToCSV()" class="btn-action export-btn">Export List (CSV)</button>
+        <button onclick="loadAllResources()" class="btn-action"><i class="fas fa-sync-alt"></i> Refresh</button>
+    </div>
+    
+    <!-- Resources Table -->
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Type</th>
+                    <th>Year/Intake</th>
+                    <th>Program</th>
+                    <th>Block/Term</th>
+                    <th>Title/Course</th>
+                    <th>Description</th>
+                    <th>Uploaded By</th>
+                    <th>Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="resources-list">
+                <tr><td colspan="9">Loading resources...</td><td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
 
             <!-- Messages Section -->
             <section id="messages" class="tab-content">
