@@ -1,8 +1,9 @@
 // exams.js - COMPLETE FIXED VERSION
+// Displays released results (including FAIL with 0 marks) in Completed section
 (function() {
     'use strict';
     
-    console.log('✅ exams.js - FIXED VERSION with Clickable Buttons & Stats');
+    console.log('✅ exams.js - FIXED VERSION with Released Results Display');
     
     class ExamsModule {
         constructor() {
@@ -67,7 +68,6 @@
             const now = new Date();
             const kenyaNow = new Date(now.getTime() + (3 * 60 * 60 * 1000));
             
-            // Update each exam's time remaining in the DOM
             this.currentExams.forEach(exam => {
                 if (exam.examStartDateTime && exam.examEndDateTime && exam.actionState === 'available') {
                     if (kenyaNow >= exam.examStartDateTime && kenyaNow <= exam.examEndDateTime) {
@@ -75,7 +75,6 @@
                         const minutesLeft = Math.floor(timeLeftMs / 60000);
                         const secondsLeft = Math.floor((timeLeftMs % 60000) / 1000);
                         
-                        // Update the time remaining display
                         const rowElement = document.querySelector(`tr[data-exam-id="${exam.id}"]`);
                         if (rowElement) {
                             const timeRemainingSpan = rowElement.querySelector('.time-remaining');
@@ -313,10 +312,15 @@
         }
         
         applyDataFilter() {
-            // Filter current exams (not completed and not expired)
-            this.currentExams = this.allExams.filter(exam => !exam.isCompleted && exam.actionState !== 'expired');
-            // Filter completed exams (completed or expired)
-            this.completedExams = this.allExams.filter(exam => exam.isCompleted || exam.actionState === 'expired');
+            // Current exams: NOT completed AND NOT expired AND NOT released (pending)
+            this.currentExams = this.allExams.filter(exam => 
+                !exam.isCompleted && exam.actionState !== 'expired' && exam.actionState !== 'pending_release'
+            );
+            
+            // Completed exams: isCompleted OR expired OR released (including FAIL)
+            this.completedExams = this.allExams.filter(exam => 
+                exam.isCompleted || exam.actionState === 'expired' || exam.actionState === 'pending_release'
+            );
             
             if (this.currentFilter === 'current') {
                 this.completedExams = [];
@@ -389,6 +393,7 @@
                     }
                 }
                 
+                // Load released results
                 this.releasedResults.clear();
                 const { data: released } = await supabase
                     .from('released_exam_results')
@@ -474,17 +479,15 @@
                 const isCatExam = examType.includes('CAT');
                 const isFinalExam = examType === 'EXAM' || examType === 'FINAL';
                 
-                // ========== SMART DATE & TIME COMPARISON ==========
-                let examStatus = 'upcoming';
-                let statusMessage = '';
-                let canStart = false;
-                let countdownText = '';
-                let timeRemainingMs = 0;
-                let formattedExamDateTime = 'TBA';
-                
                 // Build the exam start datetime
                 let examStartDateTime = null;
                 let examEndDateTime = null;
+                let formattedExamDateTime = 'TBA';
+                let countdownText = '';
+                let examStatus = 'upcoming';
+                let statusMessage = '';
+                let canStart = false;
+                let timeRemainingMs = 0;
                 
                 if (group.exam_date) {
                     const [year, month, day] = group.exam_date.split('-');
@@ -554,74 +557,87 @@
                 const hasValidLink = group.exam_link && group.exam_link.trim() !== '' && 
                                     (group.exam_link.startsWith('http') || group.exam_link.includes('docs.google.com'));
                 
-                // Determine final state
+                // ========== CRITICAL FIX: Determine final state correctly ==========
                 let finalStatus = examStatus;
                 let finalCanStart = false;
                 let finalMessage = statusMessage;
                 let buttonText = '';
+                let isCompleted = false;
+                let displayPercentage = null;
+                let gradeText = 'Not Started';
+                let gradeClass = 'pending';
                 
+                // RELEASED RESULTS (PASS or FAIL) - GO TO COMPLETED SECTION
                 if (hasTaken && isReleased) {
+                    displayPercentage = totalPercentage !== null ? totalPercentage : 0;
+                    isCompleted = true;  // ✅ KEY: Released results are ALWAYS completed
                     finalStatus = 'completed';
                     finalCanStart = false;
                     finalMessage = '✅ Completed';
                     buttonText = 'View Results';
-                } else if (hasTaken && !isReleased) {
+                    
+                    // Set grade text based on percentage
+                    if (totalPercentage !== null && totalPercentage >= 85) {
+                        gradeText = 'Distinction';
+                        gradeClass = 'distinction';
+                    } else if (totalPercentage !== null && totalPercentage >= 75) {
+                        gradeText = 'Credit';
+                        gradeClass = 'credit';
+                    } else if (totalPercentage !== null && totalPercentage >= 60) {
+                        gradeText = 'Pass';
+                        gradeClass = 'pass';
+                    } else if (totalPercentage !== null) {
+                        gradeText = 'Fail';
+                        gradeClass = 'fail';
+                    } else {
+                        gradeText = 'Completed';
+                        gradeClass = 'completed';
+                    }
+                }
+                // TAKEN BUT NOT RELEASED YET
+                else if (hasTaken && !isReleased) {
                     finalStatus = 'pending_release';
                     finalCanStart = false;
                     finalMessage = '⏳ Pending Release';
                     buttonText = 'Pending';
-                } else if (examStatus === 'available' && !hasTaken && hasValidLink) {
+                    isCompleted = false;
+                    gradeText = 'Pending Release';
+                    gradeClass = 'pending';
+                    displayPercentage = null;
+                }
+                // AVAILABLE EXAM - CAN START
+                else if (examStatus === 'available' && !hasTaken && hasValidLink) {
                     finalStatus = 'available';
-                    finalCanStart = true;  // THIS IS KEY - makes button clickable
+                    finalCanStart = true;
                     finalMessage = statusMessage;
                     buttonText = 'Start Exam';
-                } else if (examStatus === 'upcoming' && !hasTaken) {
+                    isCompleted = false;
+                }
+                // UPCOMING EXAM
+                else if (examStatus === 'upcoming' && !hasTaken) {
                     finalStatus = 'upcoming';
                     finalCanStart = false;
                     finalMessage = countdownText || 'Coming Soon';
                     buttonText = countdownText || 'Coming Soon';
-                } else if (examStatus === 'expired' && !hasTaken) {
+                    isCompleted = false;
+                }
+                // EXPIRED EXAM (NOT TAKEN)
+                else if (examStatus === 'expired' && !hasTaken) {
                     finalStatus = 'expired';
                     finalCanStart = false;
                     finalMessage = '🔒 Exam Closed';
                     buttonText = 'Missed';
-                } else if (!hasValidLink) {
+                    isCompleted = true;
+                    gradeText = 'Missed';
+                    gradeClass = 'missed';
+                }
+                // NO LINK AVAILABLE
+                else if (!hasValidLink) {
                     finalStatus = 'no_link';
                     finalCanStart = false;
                     finalMessage = '⚠️ Link coming soon';
                     buttonText = 'Not Available';
-                }
-                
-                // Calculate grade display
-                let displayPercentage = null;
-                let gradeText = 'Not Started';
-                let gradeClass = 'pending';
-                let isCompleted = false;
-                
-                if (hasTaken && isReleased && totalPercentage !== null) {
-                    displayPercentage = totalPercentage;
-                    isCompleted = true;
-                    if (totalPercentage >= 85) {
-                        gradeText = 'Distinction';
-                        gradeClass = 'distinction';
-                    } else if (totalPercentage >= 75) {
-                        gradeText = 'Credit';
-                        gradeClass = 'credit';
-                    } else if (totalPercentage >= 60) {
-                        gradeText = 'Pass';
-                        gradeClass = 'pass';
-                    } else {
-                        gradeText = 'Fail';
-                        gradeClass = 'fail';
-                    }
-                } else if (hasTaken && !isReleased) {
-                    gradeText = 'Pending Release';
-                    gradeClass = 'pending';
                     isCompleted = false;
-                } else if (examStatus === 'expired') {
-                    gradeText = 'Missed';
-                    gradeClass = 'missed';
-                    isCompleted = true;
                 }
                 
                 // Format score displays
@@ -638,10 +654,11 @@
                     if (finalScore !== null && finalScore !== undefined) finalDisplay = `${finalScore}%`;
                 }
                 
+                // For released results, show the total percentage in CAT columns
                 if (isReleased && displayPercentage !== null) {
                     if (isCatExam) {
-                        if (cat1Score !== null) cat1Display = `${displayPercentage.toFixed(1)}%`;
-                        if (cat2Score !== null) cat2Display = `${displayPercentage.toFixed(1)}%`;
+                        cat1Display = `${displayPercentage.toFixed(1)}%`;
+                        cat2Display = `${displayPercentage.toFixed(1)}%`;
                     }
                 }
                 
@@ -688,8 +705,8 @@
                 };
             });
             
-            const currentCount = this.allExams.filter(e => !e.isCompleted && e.actionState !== 'expired').length;
-            const completedCount = this.allExams.filter(e => e.isCompleted || e.actionState === 'expired').length;
+            const currentCount = this.allExams.filter(e => !e.isCompleted && e.actionState !== 'expired' && e.actionState !== 'pending_release').length;
+            const completedCount = this.allExams.filter(e => e.isCompleted || e.actionState === 'expired' || e.actionState === 'pending_release').length;
             console.log(`✅ Processed ${this.allExams.length} exams: ${currentCount} current, ${completedCount} completed`);
         }
         
@@ -703,7 +720,7 @@
         displayCurrentTable() {
             if (!this.currentTable) return;
             
-            const activeExams = this.currentExams.filter(exam => !exam.isCompleted);
+            const activeExams = this.currentExams.filter(exam => !exam.isCompleted && exam.actionState !== 'expired' && exam.actionState !== 'pending_release');
             
             if (activeExams.length === 0) {
                 this.currentTable.innerHTML = '';
@@ -712,13 +729,10 @@
             
             const html = activeExams.map(exam => {
                 const isCatExam = exam.isCatExam;
-                
-                // ========== ACTION BUTTON - CLICKABLE WHEN AVAILABLE ==========
                 let actionHtml = '';
                 let timeRemainingHtml = '';
                 
                 if (exam.actionState === 'available' && exam.canTakeExam && exam.hasValidLink) {
-                    // Available now - CLICKABLE button
                     actionHtml = `<a href="${exam.examLink}" 
                                     target="_blank" 
                                     class="exam-link-btn btn-primary"
@@ -727,7 +741,6 @@
                                     <i class="fas fa-external-link-alt"></i> Start Exam
                                 </a>`;
                     
-                    // Show time remaining
                     if (exam.timeRemainingMs > 0) {
                         const minutesLeft = Math.floor(exam.timeRemainingMs / 60000);
                         const secondsLeft = Math.floor((exam.timeRemainingMs % 60000) / 1000);
@@ -741,26 +754,14 @@
                                     <i class="fas fa-hourglass-half"></i> ${exam.countdownText || 'Coming Soon'}
                                 </span>`;
                 }
-                else if (exam.actionState === 'pending_release') {
-                    actionHtml = `<span class="exam-link-btn btn-warning" style="display: inline-block; padding: 8px 16px; background: #F59E0B; color: white; border-radius: 8px; cursor: not-allowed;">
-                                    <i class="fas fa-clock"></i> Pending Release
-                                </span>`;
-                }
-                else if (exam.actionState === 'expired') {
-                    actionHtml = `<span class="exam-link-btn btn-danger" style="display: inline-block; padding: 8px 16px; background: #DC2626; color: white; border-radius: 8px; cursor: not-allowed;">
-                                    <i class="fas fa-calendar-times"></i> Missed
-                                </span>`;
-                }
                 else {
                     actionHtml = `<span class="exam-link-btn btn-secondary" style="display: inline-block; padding: 8px 16px; background: #6B7280; color: white; border-radius: 8px; cursor: not-allowed;">
                                     <i class="fas fa-clock"></i> ${exam.buttonText || 'Coming Soon'}
                                 </span>`;
                 }
                 
-                // Status badge
                 let statusHtml = `<span class="status-badge ${exam.gradeClass}">${exam.gradeText}</span>`;
                 
-                // Assessment cell
                 let assessmentCell = `
                     <div class="assessment-info-box">
                         <div class="assessment-name">
@@ -779,22 +780,17 @@
                     </div>
                 `;
                 
-                // Score columns
-                let cat1Display = exam.cat1Display;
-                let cat2Display = exam.cat2Display;
-                let finalDisplay = exam.finalDisplay;
-                
                 return `
                     <tr class="assessment-row ${isCatExam ? 'cat-exam' : 'final-exam'}" data-exam-id="${exam.id}">
                         <td class="assessment-cell">${assessmentCell}</td>
                         <td class="text-center date-cell">${exam.formattedExamDateTime}</td>
                         <td class="text-center status-cell">${statusHtml}</td>
-                        <td class="text-center">${cat1Display}</td>
-                        <td class="text-center">${cat2Display}</td>
-                        <td class="text-center">${finalDisplay}</td>
+                        <td class="text-center">${exam.cat1Display}</td>
+                        <td class="text-center">${exam.cat2Display}</td>
+                        <td class="text-center">${exam.finalDisplay}</td>
                         <td class="text-center total-cell">${exam.totalPercentage !== null ? `${exam.totalPercentage.toFixed(1)}%` : '--'}</td>
                         <td class="text-center action-cell">${actionHtml}</td>
-                    </tr>
+                    </table>
                 `;
             }).join('');
             
@@ -804,12 +800,17 @@
         displayCompletedTable() {
             if (!this.completedTable) return;
             
-            if (this.completedExams.length === 0) {
+            // Include ALL completed exams (including released FAIL results)
+            const completedReleased = this.completedExams.filter(exam => 
+                exam.isCompleted || exam.actionState === 'expired' || exam.actionState === 'pending_release'
+            );
+            
+            if (completedReleased.length === 0) {
                 this.completedTable.innerHTML = '';
                 return;
             }
             
-            const html = this.completedExams.map(exam => {
+            const html = completedReleased.map(exam => {
                 const isCatExam = exam.isCatExam;
                 const percentage = exam.totalPercentage !== null ? exam.totalPercentage.toFixed(1) : '0';
                 const displayPercentage = exam.totalPercentage !== null ? `${percentage}%` : '--';
@@ -833,13 +834,21 @@
                 `;
                 
                 let gradeBadge = `<span class="grade-badge ${displayClass}">${displayGrade}</span>`;
-                
-                // Show View Results button for completed exams
                 let actionHtml = '';
-                if (exam.isCompleted && exam.isReleased) {
+                
+                // Show View Results button for released exams
+                if (exam.isReleased && exam.hasGrade) {
                     actionHtml = `<button class="exam-link-btn btn-success" onclick="window.examsModule?.viewExamResults(${exam.id})" style="padding: 8px 16px; background: #10B981; color: white; border-radius: 8px; border: none; cursor: pointer;">
                                     <i class="fas fa-chart-line"></i> View Results
                                 </button>`;
+                } else if (exam.actionState === 'pending_release') {
+                    actionHtml = `<span class="exam-link-btn btn-warning" style="padding: 8px 16px; background: #F59E0B; color: white; border-radius: 8px; cursor: not-allowed;">
+                                    <i class="fas fa-clock"></i> Pending Release
+                                </span>`;
+                } else if (exam.actionState === 'expired') {
+                    actionHtml = `<span class="exam-link-btn btn-danger" style="padding: 8px 16px; background: #DC2626; color: white; border-radius: 8px; cursor: not-allowed;">
+                                    <i class="fas fa-calendar-times"></i> Missed
+                                </span>`;
                 } else {
                     actionHtml = `<span class="exam-link-btn btn-secondary" style="padding: 8px 16px; background: #6B7280; color: white; border-radius: 8px; cursor: not-allowed;">
                                     <i class="fas fa-check-circle"></i> ${exam.gradeText}
@@ -880,7 +889,7 @@
                 this.completedHeaderCount.textContent = completedCount;
             }
             
-            // Calculate average score for completed exams
+            // Calculate average score for completed exams that are released
             const scoredExams = this.completedExams.filter(exam => exam.totalPercentage !== null && exam.isReleased);
             if (scoredExams.length > 0) {
                 const total = scoredExams.reduce((sum, exam) => sum + exam.totalPercentage, 0);
@@ -922,31 +931,25 @@
                 if (error) throw error;
                 
                 const exam = this.allExams.find(e => e.id === examId);
-                const percentage = grade.total_score;
+                const percentage = grade.total_score ? parseFloat(grade.total_score) : 0;
                 
                 let gradeText = '';
-                let gradeClass = '';
-                
                 if (percentage >= 85) {
                     gradeText = 'DISTINCTION';
-                    gradeClass = 'distinction';
                 } else if (percentage >= 75) {
                     gradeText = 'CREDIT';
-                    gradeClass = 'credit';
                 } else if (percentage >= 60) {
                     gradeText = 'PASS';
-                    gradeClass = 'pass';
                 } else {
                     gradeText = 'FAIL';
-                    gradeClass = 'fail';
                 }
                 
                 alert(`📊 EXAM RESULTS\n\n` +
                       `Exam: ${exam?.exam_name}\n` +
-                      `Score: ${grade.marks} marks\n` +
+                      `Score: ${grade.marks || 0} marks\n` +
                       `Percentage: ${percentage}%\n` +
                       `Grade: ${gradeText}\n` +
-                      `Released: ${new Date(grade.graded_at).toLocaleDateString()}`);
+                      `Released: ${grade.graded_at ? new Date(grade.graded_at).toLocaleDateString() : 'N/A'}`);
                 
             } catch (error) {
                 console.error('Error loading exam results:', error);
@@ -1017,5 +1020,5 @@
     window.loadExams = () => window.examsModule?.refresh();
     window.refreshAssessments = () => window.examsModule?.refresh();
     
-    console.log('✅ Exams module ready with CLICKABLE buttons and live countdown!');
+    console.log('✅ Exams module ready - Released results (including FAIL with 0%) now appear in Completed section!');
 })();
