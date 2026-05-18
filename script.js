@@ -16,6 +16,39 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 window.sb = sb;
 
+
+// =====================================================
+// SIMPLE GLOBAL SHOWTAB FUNCTION - FIXES ALL ONCLICK ERRORS
+// =====================================================
+window.showTab = function(tabId) {
+    console.log('Opening tab:', tabId);
+    
+    // Hide all tabs
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.style.display = 'none';
+        tab.classList.remove('active');
+    });
+    
+    // Show selected tab
+    const target = document.getElementById(tabId);
+    if (target) {
+        target.style.display = 'block';
+        target.classList.add('active');
+    }
+    
+    // Update nav active state
+    document.querySelectorAll('.nav a').forEach(link => {
+        link.classList.remove('active');
+        if (link.getAttribute('data-tab') === tabId) {
+            link.classList.add('active');
+        }
+    });
+    
+    // Load data if function exists
+    if (typeof loadSectionData === 'function') {
+        loadSectionData(tabId);
+    }
+};
 // Constants
 const RESOURCES_BUCKET = 'resources';
 const IP_API_URL = 'https://api.ipify.org?format=json';
