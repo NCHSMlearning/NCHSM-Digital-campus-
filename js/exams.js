@@ -1022,4 +1022,3 @@
     
     console.log('✅ Exams module ready - Released results (including FAIL with 0%) now appear in Completed section!');
 })();
-```
