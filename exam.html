@@ -77,20 +77,17 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .camera-permission-icon { font-size: 2.2rem; margin-bottom: 8px; }
 .camera-permission-content h3 { color: #0A3D62; margin-bottom: 6px; font-size: 1.1rem; }
 .camera-warning { background: #FEF3C7; border-radius: 8px; padding: 8px; margin: 10px 0; font-size: 0.75rem; }
-.camera-list { text-align: left; margin: 8px 0; padding: 8px; background: #F8FAFC; border-radius: 8px; font-size: 0.7rem; }
-.camera-list ul { margin-left: 15px; }
-#allow-camera-btn { background: #38A169; color: white; padding: 8px 20px; font-size: 0.85rem; margin-top: 8px; border-radius: 8px; cursor: pointer; }
+#allow-camera-btn { background: #38A169; color: white; padding: 8px 20px; font-size: 0.85rem; margin-top: 8px; border-radius: 8px; cursor: pointer; border: none; }
 #allow-camera-btn:hover { background: #2F855A; }
-#face-detection-warning { position: fixed; top: 20px; right: 20px; background: #DC2626; color: white; padding: 12px 20px; border-radius: 12px; z-index: 1500; display: none; box-shadow: 0 4px 15px rgba(0,0,0,0.2); animation: slideInRight 0.3s ease; }
-@keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 .blocked-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 3000; display: none; align-items: center; justify-content: center; text-align: center; }
 .blocked-content { max-width: 350px; padding: 20px; }
 .blocked-icon { font-size: 3rem; margin-bottom: 15px; }
-.success-screen { text-align: center; padding: 30px 20px; background: linear-gradient(135deg, #D1FAE5 0%, #F0FDF4 100%); border-radius: 16px; border: 3px solid #38A169; }
-.success-icon { font-size: 3rem; margin-bottom: 15px; animation: successPulse 2s infinite; }
+.success-screen { text-align: center; padding: 40px 20px; background: linear-gradient(135deg, #D1FAE5 0%, #F0FDF4 100%); border-radius: 16px; border: 3px solid #38A169; }
+.success-icon { font-size: 4rem; margin-bottom: 20px; animation: successPulse 2s infinite; }
 @keyframes successPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
-.redirect-countdown { background: white; padding: 10px; border-radius: 10px; margin: 15px auto; max-width: 250px; border: 2px solid #38A169; font-size: 0.8rem; }
-.dashboard-link { display: inline-block; margin-top: 15px; padding: 8px 25px; background: #38A169; color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 0.85rem; }
+.redirect-countdown { background: white; padding: 12px; border-radius: 10px; margin: 20px auto; max-width: 280px; border: 2px solid #38A169; font-size: 0.9rem; }
+.dashboard-link { display: inline-block; margin-top: 15px; padding: 10px 30px; background: #38A169; color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 0.9rem; }
+.dashboard-link:hover { background: #2F855A; }
 @media (max-width: 768px) { #face-detection-overlay { height: 120px; } .camera-title { font-size: 0.8rem; } .status-item { height: 32px; font-size: 0.7rem; } }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -103,7 +100,6 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
     <p>You attempted to exit fullscreen mode.</p>
     <p>Your exam will be automatically submitted in:</p>
     <div class="countdown-timer" id="exit-countdown">5</div>
-    <p>Your answers have been saved.</p>
 </div>
 
 <div class="page-wrapper">
@@ -163,8 +159,18 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
     <div class="camera-permission-content">
         <div class="camera-permission-icon">📹</div>
         <h3>Camera Access Required</h3>
-        <div class="camera-warning"><strong>Mandatory for exam</strong></div>
+        <div class="camera-warning"><strong>Mandatory for exam security</strong></div>
+        <p>Camera is needed to verify your identity and monitor exam integrity.</p>
         <button id="allow-camera-btn">Allow Camera Access</button>
+    </div>
+</div>
+
+<div id="blocked-screen" class="blocked-screen">
+    <div class="blocked-content">
+        <div class="blocked-icon">🚫</div>
+        <h2 style="color: #DC2626;">Camera Required</h2>
+        <p>Please allow camera access to continue with your exam.</p>
+        <button onclick="location.reload()" style="margin-top: 15px; padding: 8px 20px; background: #0A3D62; color: white; border: none; border-radius: 8px; cursor: pointer;">Try Again</button>
     </div>
 </div>
 
@@ -181,8 +187,8 @@ let studentFullName = '', studentRegNumber = '';
 const EXAM_ID = new URLSearchParams(window.location.search).get('exam_id');
 let questions = [], currentIndex = 0, duration = 0, timerInterval;
 let answers = {}, hasAnsweredAtLeastOne = false;
-let videoStream = null, faceDetectionInterval = null, faceModelsLoaded = false;
-let examStarted = false, isSubmitting = false;
+let videoStream = null, faceDetectionInterval = null;
+let examStarted = false, isSubmitting = false, fullscreenWarningActive = false, countdownInterval = null;
 
 async function getStudentDetails() {
     const { data: profile } = await sb.from('consolidated_user_profiles_table').select('full_name, student_id').eq('user_id', studentId).single();
@@ -194,34 +200,63 @@ async function getStudentDetails() {
     }
 }
 
-async function loadFaceModels() {
-    try {
-        await faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/model');
-        faceModelsLoaded = true;
-    } catch(err) { console.warn('Face models failed:', err); }
-}
-
 async function startCamera() {
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
         videoStream = stream;
         document.getElementById('face-video').srcObject = stream;
         document.getElementById('face-detection-overlay').style.display = 'block';
-        await loadFaceModels();
         document.getElementById('camera-permission-modal').style.display = 'none';
         document.getElementById('cameraStatusBadge').textContent = 'Active';
         examStarted = true;
+        
+        // Enter fullscreen after camera starts
+        setTimeout(() => {
+            document.documentElement.requestFullscreen();
+        }, 500);
     } catch(err) {
         document.getElementById('blocked-screen').style.display = 'flex';
     }
 }
 
-// ========== CORE SUBMISSION FUNCTION - HANDLES BOTH MANUAL AND AUTO ==========
+function showFullscreenExitWarning() {
+    if (fullscreenWarningActive) return;
+    fullscreenWarningActive = true;
+    const warningOverlay = document.getElementById('fullscreen-exit-warning');
+    const countdownEl = document.getElementById('exit-countdown');
+    let countdown = 5;
+    countdownEl.textContent = countdown;
+    warningOverlay.style.display = 'flex';
+    
+    countdownInterval = setInterval(() => {
+        countdown--;
+        countdownEl.textContent = countdown;
+        if (countdown <= 0) {
+            clearInterval(countdownInterval);
+            warningOverlay.style.display = 'none';
+            fullscreenWarningActive = false;
+            executeSubmission();
+        }
+    }, 1000);
+}
+
+function setupFullscreenMonitoring() {
+    document.addEventListener('fullscreenchange', function() {
+        const isFullscreen = !!document.fullscreenElement;
+        if (!isFullscreen && examStarted && !fullscreenWarningActive) {
+            showFullscreenExitWarning();
+        } else if (isFullscreen && fullscreenWarningActive) {
+            if (countdownInterval) clearInterval(countdownInterval);
+            document.getElementById('fullscreen-exit-warning').style.display = 'none';
+            fullscreenWarningActive = false;
+        }
+    });
+}
+
+// ========== GRADE CALCULATION - SAVES TO DATABASE ==========
 async function calculateAndSaveGrade() {
     console.log('📊 Calculating and saving grade...');
-    console.log('Answers:', answers);
     
-    // Get questions with correct answers and marks
     const { data: questions_data } = await sb
         .from('exam_questions')
         .select('id, correct_answer, marks')
@@ -231,11 +266,9 @@ async function calculateAndSaveGrade() {
     let totalPossible = 0;
     const answerRecords = [];
     
-    // Calculate totals and prepare answer records
     for (const q of questions_data || []) {
         const marks = q.marks || 1;
         totalPossible += marks;
-        
         const studentAnswer = answers[q.id];
         const isCorrect = studentAnswer === q.correct_answer;
         const earned = isCorrect ? marks : 0;
@@ -251,7 +284,6 @@ async function calculateAndSaveGrade() {
         });
     }
     
-    // Calculate percentage and status
     const percentage = totalPossible > 0 ? (totalEarned / totalPossible) * 100 : 0;
     const resultStatus = percentage >= 60 ? 'PASS' : 'FAIL';
     
@@ -262,12 +294,11 @@ async function calculateAndSaveGrade() {
     
     // Save individual answers
     if (answerRecords.length > 0) {
-        const { error: answersError } = await sb.from('exam_grades').insert(answerRecords);
-        if (answersError) console.error('Error saving answers:', answersError);
+        await sb.from('exam_grades').insert(answerRecords);
     }
     
     // Save summary record
-    const { error: summaryError } = await sb.from('exam_grades').insert({
+    await sb.from('exam_grades').insert({
         student_id: studentId,
         exam_id: EXAM_ID,
         question_id: '00000000-0000-0000-0000-000000000000',
@@ -276,12 +307,6 @@ async function calculateAndSaveGrade() {
         result_status: resultStatus,
         graded_at: new Date().toISOString()
     });
-    
-    if (summaryError) {
-        console.error('Error saving summary:', summaryError);
-    } else {
-        console.log('✅ Grade saved successfully!');
-    }
     
     // Auto-release if exam is published
     const { data: exam } = await sb.from('exams').select('status').eq('id', EXAM_ID).single();
@@ -302,63 +327,68 @@ async function calculateAndSaveGrade() {
                 released_at: new Date().toISOString(),
                 released_by: 'auto'
             }, { onConflict: 'result_id' });
-            console.log('✅ Auto-released (exam published)');
         }
     }
     
-    return { totalEarned, totalPossible, percentage, resultStatus };
+    return true;
 }
 
-// ========== SUBMISSION HANDLER ==========
+// ========== SUBMISSION - HIDES SCORE FROM STUDENT ==========
 async function executeSubmission() {
-    if (isSubmitting) {
-        console.log('⚠️ Submission already in progress...');
-        return;
-    }
+    if (isSubmitting) return;
     isSubmitting = true;
     
     console.log('📝 Submitting exam...');
     
-    // Stop timer and camera
     if (timerInterval) clearInterval(timerInterval);
     if (faceDetectionInterval) clearInterval(faceDetectionInterval);
     if (videoStream) videoStream.getTracks().forEach(t => t.stop());
+    if (countdownInterval) clearInterval(countdownInterval);
     
-    // Calculate and save grade
-    const result = await calculateAndSaveGrade();
+    // Save grade silently (student never sees the score)
+    await calculateAndSaveGrade();
     
-    // Show success screen with results
+    // Show success screen WITHOUT score
     const container = document.getElementById('exam-container');
     container.innerHTML = `
         <div class="success-screen">
             <div class="success-icon">✅</div>
-            <h2>Exam Submitted!</h2>
-            <p style="font-size: 1.2rem; margin: 15px 0;">
-                Score: <strong>${result.totalEarned}/${result.totalPossible}</strong><br>
-                Percentage: <strong>${result.percentage.toFixed(1)}%</strong><br>
-                Status: <strong style="color: ${result.resultStatus === 'PASS' ? '#38A169' : '#DC2626'}">${result.resultStatus}</strong>
+            <h2>Exam Submitted Successfully!</h2>
+            <p>Thank you for completing the exam.</p>
+            <p style="font-size: 0.85rem; margin-top: 10px; color: #64748B;">
+                Your results will be available after the exam is reviewed.
             </p>
-            <div class="redirect-countdown">Redirecting in <span id="countdown-number">5</span> seconds...</div>
+            <div class="redirect-countdown">
+                Redirecting in <span id="countdown-number">3</span> seconds...
+            </div>
             <a href="exam_dashboard.html" class="dashboard-link">Go to Dashboard Now</a>
         </div>
     `;
     
-    // Countdown redirect
-    let countdown = 5;
-    const interval = setInterval(() => {
+    // Hide navigation
+    const navButtons = document.getElementById('nav-buttons');
+    const progress = document.getElementById('progress');
+    const timer = document.getElementById('timer');
+    if (navButtons) navButtons.style.display = 'none';
+    if (progress) progress.style.display = 'none';
+    if (timer) timer.style.display = 'none';
+    
+    // Countdown and redirect
+    let countdown = 3;
+    const redirectInterval = setInterval(() => {
         countdown--;
         const el = document.getElementById('countdown-number');
         if (el) el.textContent = countdown;
         if (countdown <= 0) {
-            clearInterval(interval);
+            clearInterval(redirectInterval);
             window.location.href = 'exam_dashboard.html';
         }
     }, 1000);
     
-    // Hide navigation
-    document.getElementById('nav-buttons').style.display = 'none';
-    document.getElementById('progress').style.display = 'none';
-    document.getElementById('timer').style.display = 'none';
+    // Backup redirect
+    setTimeout(() => {
+        window.location.href = 'exam_dashboard.html';
+    }, 3500);
 }
 
 // ========== EXAM FUNCTIONS ==========
@@ -375,6 +405,7 @@ async function initExam() {
     renderQuestionStatusTable();
     renderQuestion();
     startTimer(duration * 60);
+    setupFullscreenMonitoring();
     
     document.getElementById('camera-permission-modal').style.display = 'flex';
     document.getElementById('allow-camera-btn').onclick = () => startCamera();
@@ -458,7 +489,7 @@ function startTimer(seconds) {
         timerEl.innerText = `⏱️ Time: ${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
         if (seconds <= 0) {
             clearInterval(interval);
-            executeSubmission(); // AUTO-SUBMIT when timer reaches zero
+            executeSubmission();
         }
         seconds--;
     }, 1000);
@@ -467,7 +498,7 @@ function startTimer(seconds) {
 
 function submitExam() {
     const skipped = questions.filter(q => !answers[q.id]).length;
-    document.getElementById('modal-message').innerHTML = skipped > 0 ? `⚠️ ${skipped} unanswered. Submit anyway?` : `✅ All ${questions.length} answered. Submit?`;
+    document.getElementById('modal-message').innerHTML = skipped > 0 ? `⚠️ ${skipped} question(s) unanswered. Submit anyway?` : `✅ All ${questions.length} questions answered. Submit now?`;
     document.getElementById('submission-modal').style.display = 'flex';
 }
 
