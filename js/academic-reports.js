@@ -249,7 +249,8 @@
                     const credits = 3;
                     
                     processedGrades.push({
-                        courseCode: exam.unit_code || exam.course_code || exam.id?.substring(0, 8) || 'N/A',
+                        courseCode: exam.unit_code || exam.course_code || exam.id?.toString().substring(0, 8)
+ || 'N/A',
                         courseName: exam.exam_name || 'Course',
                         credits: credits,
                         cat1: exam.cat1Score || '--',
