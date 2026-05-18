@@ -109,8 +109,8 @@
         .btn-release:hover { background: #7C3AED; transform: translateY(-2px); }
         .btn-success { background: #10B981; color: white; }
         .btn-success:hover { background: #059669; transform: translateY(-2px); }
-        .btn-reset-student { background: #8B5CF6; color: white; }
-        .btn-reset-student:hover { background: #6D28D9; transform: translateY(-2px); }
+        .btn-reset-student { background: #DC2626; color: white; }
+        .btn-reset-student:hover { background: #B91C1C; transform: translateY(-2px); }
         
         .table-container { background: white; border-radius: 20px; overflow-x: auto; margin-bottom: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
         .table-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; background: #F8FAFC; border-bottom: 1px solid #E2E8F0; flex-wrap: wrap; gap: 15px; }
@@ -166,6 +166,8 @@
         .student-checkbox { width: 18px; height: 18px; cursor: pointer; }
         .select-all-btn { margin-right: 10px; }
         .release-actions { display: flex; gap: 10px; align-items: center; margin-bottom: 15px; flex-wrap: wrap; }
+        .reset-info-card { background: #F0FDF4; padding: 15px; border-radius: 12px; margin-top: 15px; border-left: 4px solid #10B981; }
+        .reset-error-card { background: #FEE2E2; padding: 15px; border-radius: 12px; margin-top: 15px; border-left: 4px solid #DC2626; color: #B91C1C; }
         
         @media (max-width: 768px) { .table-header { flex-direction: column; } th, td { padding: 10px; } .tabs { flex-direction: column; } .notification-panel { width: 320px; right: -20px; } .stat-value { font-size: 1.5rem; } }
     </style>
@@ -174,7 +176,7 @@
 <div class="container">
     <div class="header">
         <h1><i class="fas fa-shield-alt"></i> NCHSM Exam Proctoring Center</h1>
-        <p>Complete Exam Management | Create | Assign | Monitor | Publish | Reset Individual Student</p>
+        <p>Complete Exam Management | Create | Assign | Monitor | Publish | Reset by Email</p>
         <div class="admin-info">
             <div class="user" id="adminName">Loading admin profile...</div>
             <div style="display: flex; align-items: center; gap: 15px;">
@@ -206,20 +208,21 @@
             <div class="table-header">
                 <h2><i class="fas fa-chart-line"></i> Students with Exam Results</h2>
                 <div class="table-actions">
+                    <button class="btn btn-reset-student" onclick="openResetByEmailModal()"><i class="fas fa-envelope"></i> Reset by Email</button>
                     <button class="btn btn-secondary" onclick="exportToExcel('students')"><i class="fas fa-file-excel"></i> Export</button>
                     <button class="btn btn-warning" onclick="printTable('students')"><i class="fas fa-print"></i> Print</button>
                     <button class="btn btn-release" onclick="openReleaseModal()"><i class="fas fa-share-alt"></i> Release Results</button>
                 </div>
             </div>
             <div id="studentsLoading" class="loading"><i class="fas fa-spinner fa-spin"></i> Loading student data...</div>
-            <table id="studentsTable" style="display:none;"><thead><tr><th>Student ID</th><th>Name</th><th>Email</th><th>Program</th><th>Exam</th><th>Score</th><th>%</th><th>Status</th><th>Released</th><th>Actions</th></thead><tbody id="studentsBody"></tbody>}</table>
+            <table id="studentsTable" style="display:none;"><thead><th>Student ID</th><th>Name</th><th>Email</th><th>Program</th><th>Exam</th><th>Score</th><th>%</th><th>Status</th><th>Released</th><th>Actions</th></thead><tbody id="studentsBody"></tbody>}</table>
             <div class="pagination" id="studentsPagination"></div>
         </div>
 
         <div class="table-container" id="allStudentsTableContainer" style="display:none;">
             <div class="table-header"><h2><i class="fas fa-address-book"></i> All Registered Students</h2><div class="table-actions"><button class="btn btn-info" onclick="openAssignExamModal()"><i class="fas fa-plus"></i> Assign Exam</button><button class="btn btn-secondary" onclick="exportToExcel('allStudents')"><i class="fas fa-file-excel"></i> Export</button></div></div>
             <div id="allStudentsLoading" class="loading"><i class="fas fa-spinner fa-spin"></i> Loading students...</div>
-            <table id="allStudentsTable" style="display:none;"><thead><th>Student ID</th><th>Name</th><th>Email</th><th>Program</th><th>Block</th><th>Exams Taken</th><th>Actions</th></thead><tbody id="allStudentsBody"></tbody></table>
+            <table id="allStudentsTable" style="display:none;"><thead><th>Student ID</th><th>Name</th><th>Email</th><th>Program</th><th>Block</th><th>Exams Taken</th><th>Actions</th></thead><tbody id="allStudentsBody"></tbody>}</table>
             <div class="pagination" id="allStudentsPagination"></div>
         </div>
 
@@ -237,7 +240,7 @@
                 </div>
             </div>
             <div id="examsLoading" class="loading"><i class="fas fa-spinner fa-spin"></i> Loading exams...</div>
-            <table id="examsTable" style="display:none;"><thead><th>Exam Name</th><th>Type</th><th>Course</th><th>Duration</th><th>Students</th><th>Status</th><th>Published</th><th>Actions</th></thead><tbody id="examsBody"></tbody></table>
+            <table id="examsTable" style="display:none;"><thead><th>Exam Name</th><th>Type</th><th>Course</th><th>Duration</th><th>Students</th><th>Status</th><th>Published</th><th>Actions</th></thead><tbody id="examsBody"></tbody>}</table>
             <div class="pagination" id="examsPagination"></div>
         </div>
 
@@ -250,7 +253,7 @@
                 </div>
             </div>
             <div id="proctoringLoading" class="loading"><i class="fas fa-spinner fa-spin"></i> Loading proctoring alerts...</div>
-            <table id="proctoringTable" style="display:none;"><thead><th>Time</th><th>Student ID</th><th>Student Name</th><th>Exam</th><th>Alert Type</th><th>Details</th><th>Severity</th><th>Actions</th></thead><tbody id="proctoringBody"></tbody></table>
+            <table id="proctoringTable" style="display:none;"><thead><th>Time</th><th>Student ID</th><th>Student Name</th><th>Exam</th><th>Alert Type</th><th>Details</th><th>Severity</th><th>Actions</th></thead><tbody id="proctoringBody"></tbody>}</table>
             <div class="pagination" id="proctoringPagination"></div>
         </div>
     </div>
@@ -261,35 +264,7 @@
 <div id="examModal" class="modal"><div class="modal-content"><span class="close-modal" onclick="closeExamModal()">&times;</span><h2 id="examModalTitle"><i class="fas fa-plus-circle"></i> Create New Exam</h2><form id="examForm"><div class="form-group"><label>Exam Name *</label><input type="text" id="examName" required placeholder="e.g., OSCE Final Exam"></div><div class="form-group"><label>Exam Type *</label><select id="examType" required><option value="EXAM">Final Exam</option><option value="CAT_1">CAT 1</option><option value="CAT_2">CAT 2</option><option value="QUIZ">Quiz</option></select></div><div class="form-group"><label>Course/Subject</label><input type="text" id="examCourse" placeholder="e.g., Clinical Medicine"></div><div class="form-group"><label>Duration (minutes) *</label><input type="number" id="examDuration" required value="30" min="1" max="180"></div><div class="form-group"><label>Total Marks</label><input type="number" id="examTotalMarks" value="100" min="1"></div><div class="form-group"><label>Exam Link / URL *</label><input type="url" id="examLink" required placeholder="https://your-exam-platform.com/exam"></div><div class="form-group"><label>Program (leave empty for all)</label><input type="text" id="examProgram" placeholder="e.g., Nursing, Clinical Medicine"></div><div class="form-group"><label>Block/Term</label><input type="text" id="examBlock" placeholder="e.g., Block 1, Semester 1"></div><div class="form-group"><label>Intake Year</label><input type="text" id="examIntakeYear" placeholder="e.g., 2024"></div><input type="hidden" id="editingExamId" value=""><div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;"><button type="button" class="btn btn-danger" onclick="closeExamModal()">Cancel</button><button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Exam</button></div></form></div></div>
 <div id="assignExamModal" class="modal"><div class="modal-content"><span class="close-modal" onclick="closeAssignExamModal()">&times;</span><h2><i class="fas fa-tasks"></i> Assign Exam to Student</h2><div class="form-group"><label>Select Student *</label><select id="assignStudentSelect" style="width:100%; padding:12px; border-radius:12px;"></select></div><div class="form-group"><label>Select Exam *</label><select id="assignExamSelect" style="width:100%; padding:12px; border-radius:12px;"></select></div><div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;"><button class="btn btn-danger" onclick="closeAssignExamModal()">Cancel</button><button class="btn btn-primary" onclick="confirmAssignExam()"><i class="fas fa-check"></i> Assign Exam</button></div></div></div>
 
-<div id="releaseModal" class="modal">
-    <div class="modal-content">
-        <span class="close-modal" onclick="closeReleaseModal()">&times;</span>
-        <h2><i class="fas fa-share-alt"></i> Release Results</h2>
-        <div class="filters-grid">
-            <div class="filter-group">
-                <label>Select Exam:</label>
-                <select id="releaseExamFilter" style="width:100%;" onchange="loadReleasePreview()">
-                    <option value="">-- Select Exam --</option>
-                </select>
-            </div>
-        </div>
-        <div id="releasePreview" style="display:none;">
-            <div class="release-actions">
-                <button class="btn btn-secondary select-all-btn" onclick="selectAllStudents(true)">✅ Select All</button>
-                <button class="btn btn-warning" onclick="selectAllStudents(false)">❌ Deselect All</button>
-                <span id="selectedCount" style="margin-left: auto; font-weight: 600;">0 selected</span>
-            </div>
-            <div id="releaseSummary"></div>
-            <div style="max-height: 400px; overflow-y: auto;">
-                <table class="preview-table" style="width:100%;">
-                    <thead><tr><th style="width:40px;"><input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()"></th><th>Student ID</th><th>Student Name</th><th>Score</th><th>%</th><th>Status</th><th>Current</th></tr></thead>
-                    <tbody id="releasePreviewBody"></tbody>
-                </table>
-            </div>
-            <div style="margin-top:20px; display:flex; gap:10px; justify-content:flex-end;"><button class="btn btn-danger" onclick="closeReleaseModal()">Cancel</button><button class="btn btn-release" id="confirmReleaseBtn" onclick="confirmReleaseResults()">Release Selected</button></div>
-        </div>
-    </div>
-</div>
+<div id="releaseModal" class="modal"><div class="modal-content"><span class="close-modal" onclick="closeReleaseModal()">&times;</span><h2><i class="fas fa-share-alt"></i> Release Results</h2><div class="filters-grid"><div class="filter-group"><label>Select Exam:</label><select id="releaseExamFilter" style="width:100%;" onchange="loadReleasePreview()"><option value="">-- Select Exam --</option></select></div></div><div id="releasePreview" style="display:none;"><div class="release-actions"><button class="btn btn-secondary select-all-btn" onclick="selectAllStudents(true)">✅ Select All</button><button class="btn btn-warning" onclick="selectAllStudents(false)">❌ Deselect All</button><span id="selectedCount" style="margin-left: auto; font-weight: 600;">0 selected</span></div><div id="releaseSummary"></div><div style="max-height: 400px; overflow-y: auto;"><table class="preview-table" style="width:100%;"><thead><th style="width:40px;"><input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()"></th><th>Student ID</th><th>Student Name</th><th>Score</th><th>%</th><th>Status</th><th>Current</th></thead><tbody id="releasePreviewBody"></tbody></table></div><div style="margin-top:20px; display:flex; gap:10px; justify-content:flex-end;"><button class="btn btn-danger" onclick="closeReleaseModal()">Cancel</button><button class="btn btn-release" id="confirmReleaseBtn" onclick="confirmReleaseResults()">Release Selected</button></div></div></div></div>
 
 <div id="resetExamModal" class="modal"><div class="modal-content"><span class="close-modal" onclick="closeResetModal()">&times;</span><h2><i class="fas fa-trash-alt"></i> Reset Exam</h2><p>Are you sure you want to reset all student answers for this exam? This action cannot be undone.</p><div style="margin-top:20px; display:flex; gap:10px; justify-content:flex-end;"><button class="btn btn-danger" onclick="closeResetModal()">Cancel</button><button class="btn btn-warning" id="confirmResetBtn" onclick="confirmResetExam()">Reset Exam</button></div></div></div>
 
@@ -386,7 +361,7 @@
         const newStatus = currentStatus === 'published' ? 'draft' : 'published';
         const { error } = await sb.from('exams').update({ status: newStatus }).eq('id', examId);
         if (error) { alert('Error: ' + error.message); }
-        else { loadAllExams(); showToast(`Exam ${newStatus === 'published' ? 'published' : 'unpublished'}!`, 'success'); }
+        else { loadAllExams(); }
     };
     
     window.openResetModal = function(examId, examName) {
@@ -562,35 +537,146 @@
         currentPage.proctoring = 1; loadProctoringLogs();
     };
     
-    // ========== UPDATED STUDENTS RESULTS WITH RESET STUDENT BUTTON ==========
+    // ========== RESET BY EMAIL FUNCTIONALITY ==========
+    window.openResetByEmailModal = function() {
+        let modal = document.getElementById('resetByEmailModal');
+        if (!modal) {
+            const modalHtml = `
+                <div id="resetByEmailModal" class="modal">
+                    <div class="modal-content" style="max-width: 550px;">
+                        <span class="close-modal" onclick="closeResetByEmailModal()">&times;</span>
+                        <h2><i class="fas fa-envelope"></i> Reset Student by Email</h2>
+                        <div style="margin: 20px 0;">
+                            <div class="form-group">
+                                <label>Student Email Address *</label>
+                                <input type="email" id="resetEmailInput" placeholder="e.g., student@example.com" style="width: 100%; padding: 12px; border-radius: 12px; border: 2px solid #E2E8F0;">
+                                <small style="color: #64748B; display: block; margin-top: 5px;">Enter the student's registered email address</small>
+                            </div>
+                            <div class="form-group">
+                                <label>Select Exam (Optional - leave empty to reset ALL exams)</label>
+                                <select id="resetExamSelect" style="width: 100%; padding: 12px; border-radius: 12px; border: 2px solid #E2E8F0;">
+                                    <option value="">-- ALL EXAMS (Reset everything) --</option>
+                                </select>
+                                <small style="color: #64748B; display: block; margin-top: 5px;">Select a specific exam or leave empty to reset all exams for this student</small>
+                            </div>
+                            <div id="resetStudentInfo" style="display: none;" class="reset-info-card"></div>
+                            <div id="resetErrorInfo" style="display: none;" class="reset-error-card"></div>
+                        </div>
+                        <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                            <button class="btn btn-danger" onclick="closeResetByEmailModal()">Cancel</button>
+                            <button class="btn btn-warning" id="confirmResetByEmailBtn" onclick="confirmResetByEmail()" disabled>Reset Student</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            modal = document.getElementById('resetByEmailModal');
+            const emailInput = document.getElementById('resetEmailInput');
+            let debounceTimer;
+            emailInput.addEventListener('input', function() {
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(() => {
+                    const email = emailInput.value.trim();
+                    if (email && email.includes('@')) searchStudentByEmail(email);
+                    else { document.getElementById('resetStudentInfo').style.display = 'none'; document.getElementById('resetErrorInfo').style.display = 'none'; document.getElementById('confirmResetByEmailBtn').disabled = true; }
+                }, 500);
+            });
+        }
+        loadExamsForResetDropdown();
+        document.getElementById('resetEmailInput').value = '';
+        document.getElementById('resetStudentInfo').style.display = 'none';
+        document.getElementById('resetErrorInfo').style.display = 'none';
+        document.getElementById('confirmResetByEmailBtn').disabled = true;
+        modal.style.display = 'flex';
+    };
+    
+    async function loadExamsForResetDropdown() {
+        const { data: exams } = await sb.from('exams').select('id, exam_name').order('exam_name');
+        const select = document.getElementById('resetExamSelect');
+        if (select && exams) {
+            select.innerHTML = '<option value="">-- ALL EXAMS (Reset everything) --</option>' + exams.map(e => `<option value="${e.id}">${e.exam_name}</option>`).join('');
+        }
+    }
+    
+    async function searchStudentByEmail(email) {
+        try {
+            const { data: student, error } = await sb.from('consolidated_user_profiles_table').select('user_id, student_id, full_name, email, program').eq('email', email).single();
+            if (error || !student) {
+                document.getElementById('resetStudentInfo').style.display = 'none';
+                const errorDiv = document.getElementById('resetErrorInfo');
+                errorDiv.style.display = 'block';
+                errorDiv.innerHTML = `⚠️ No student found with email: ${email}`;
+                document.getElementById('confirmResetByEmailBtn').disabled = true;
+                window.resetTargetStudent = null;
+                return;
+            }
+            window.resetTargetStudent = { user_id: student.user_id, student_id: student.student_id, full_name: student.full_name, email: student.email, program: student.program };
+            const infoDiv = document.getElementById('resetStudentInfo');
+            infoDiv.style.display = 'block';
+            infoDiv.innerHTML = `<p><strong>📧 Student Found:</strong> ${student.full_name} ✓</p><p><strong>🆔 Student ID:</strong> ${student.student_id || 'N/A'}</p><p><strong>📚 Program:</strong> ${student.program || 'N/A'}</p>`;
+            document.getElementById('resetErrorInfo').style.display = 'none';
+            document.getElementById('confirmResetByEmailBtn').disabled = false;
+        } catch (err) {
+            console.error(err);
+            document.getElementById('resetStudentInfo').style.display = 'none';
+            const errorDiv = document.getElementById('resetErrorInfo');
+            errorDiv.style.display = 'block';
+            errorDiv.innerHTML = '⚠️ Error searching for student';
+            document.getElementById('confirmResetByEmailBtn').disabled = true;
+        }
+    }
+    
+    window.confirmResetByEmail = async function() {
+        if (!window.resetTargetStudent) { alert('No student selected. Please enter a valid email.'); return; }
+        const examId = document.getElementById('resetExamSelect').value;
+        const student = window.resetTargetStudent;
+        const examName = examId ? (examsMap[examId]?.exam_name || 'Selected Exam') : 'ALL EXAMS';
+        let confirmMsg = `⚠️ RESET STUDENT EXAMS\n\nStudent: ${student.full_name}\nEmail: ${student.email}\nStudent ID: ${student.student_id || 'N/A'}\n\n`;
+        if (examId) confirmMsg += `Exam to reset: ${examName}\nThis will delete ALL answers for this specific exam.\n\n`;
+        else confirmMsg += `⚠️ You are about to reset ALL EXAMS for this student!\nThis will delete EVERY exam attempt.\n\n`;
+        confirmMsg += `This action cannot be undone! Are you absolutely sure?`;
+        if (!confirm(confirmMsg)) return;
+        try {
+            let query = sb.from('exam_grades').delete().eq('student_id', student.user_id);
+            if (examId) query = query.eq('exam_id', parseInt(examId));
+            const { error: deleteError } = await query;
+            if (deleteError) throw deleteError;
+            if (examId) {
+                const { data: grades } = await sb.from('exam_grades').select('id').eq('student_id', student.user_id).eq('exam_id', parseInt(examId));
+                if (grades && grades.length) await sb.from('released_exam_results').delete().in('result_id', grades.map(g => g.id));
+            } else {
+                await sb.from('released_exam_results').delete().eq('student_id', student.user_id);
+            }
+            alert(`✅ Successfully reset ${examId ? `"${examName}" for ${student.full_name}` : `ALL exams for ${student.full_name}`}`);
+            closeResetByEmailModal();
+            loadStudentsWithResults(); loadAllExams(); loadAllStudents();
+        } catch (err) { alert('❌ Error resetting: ' + err.message); }
+    };
+    
+    window.closeResetByEmailModal = function() { const modal = document.getElementById('resetByEmailModal'); if(modal) modal.style.display = 'none'; window.resetTargetStudent = null; };
+    
+    // ========== STUDENTS RESULTS ==========
     window.loadStudentsWithResults = async function() {
         const loadingDiv = document.getElementById('studentsLoading');
         const table = document.getElementById('studentsTable');
         loadingDiv.style.display = 'block'; table.style.display = 'none';
-        
         try {
             await loadExamsMap();
             const { data: grades, error } = await sb.from('exam_grades').select('*').eq('question_id', '00000000-0000-0000-0000-000000000000');
             if(error) { loadingDiv.innerHTML = 'Error loading data'; return; }
-            
             const { data: releases } = await sb.from('released_exam_results').select('result_id');
             const releasedSet = new Set(releases?.map(r => r.result_id) || []);
-            
             const studentIds = [...new Set(grades.map(g => g.student_id))];
             const { data: profiles } = await sb.from('consolidated_user_profiles_table').select('*').in('user_id', studentIds);
             const profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p]));
-            
             studentsResults = grades.map(g => ({ ...g, student_profile: profileMap[g.student_id] || null, isReleased: releasedSet.has(g.id), exam_info: examsMap[g.exam_id] || null }));
-            
             const examFilter = document.getElementById('examFilter')?.value;
             const statusFilter = document.getElementById('statusFilter')?.value;
             const search = document.getElementById('searchInput')?.value;
-            
             let filtered = studentsResults;
             if (examFilter) filtered = filtered.filter(r => r.exam_id == examFilter);
             if (statusFilter) filtered = filtered.filter(r => r.result_status === statusFilter);
             if (search) filtered = filtered.filter(r => r.student_profile?.full_name?.toLowerCase().includes(search.toLowerCase()) || r.student_profile?.student_id?.toLowerCase().includes(search.toLowerCase()));
-            
             studentsResults = filtered;
             displayStudentsResults();
             loadingDiv.style.display = 'none'; table.style.display = 'table';
@@ -598,72 +684,22 @@
         } catch(err) { console.error(err); loadingDiv.innerHTML = 'Error loading data'; }
     };
     
-    // NEW FUNCTION: Reset a single student's exam attempt
     window.resetSingleStudent = async function(studentId, examId, studentName, examName) {
-        if (!confirm(`⚠️ RESET STUDENT EXAM\n\nAre you sure you want to reset "${studentName}"'s attempt for "${examName}"?\n\nThis will:\n• Delete ALL their answers\n• Delete their score\n• Allow them to retake the exam from scratch\n\nThis action cannot be undone!`)) {
-            return;
-        }
-        
+        if (!confirm(`⚠️ RESET STUDENT EXAM\n\nReset "${studentName}"'s attempt for "${examName}"?\n\nThis will delete ALL their answers and scores.\n\nCannot be undone!`)) return;
         try {
-            // Delete the specific student's exam_grades records
-            const { error: deleteError } = await sb
-                .from('exam_grades')
-                .delete()
-                .eq('student_id', studentId)
-                .eq('exam_id', examId);
-            
-            if (deleteError) throw deleteError;
-            
-            // Also delete any released results for this student
-            await sb
-                .from('released_exam_results')
-                .delete()
-                .eq('student_id', studentId);
-            
-            alert(`✅ Success!\n\n${studentName}'s exam "${examName}" has been reset.\nThe student can now retake the exam.`);
-            
-            // Refresh the tables
-            loadStudentsWithResults();
-            loadAllExams();
-            
-        } catch (err) {
-            console.error('Reset error:', err);
-            alert('❌ Error resetting student exam: ' + err.message);
-        }
+            await sb.from('exam_grades').delete().eq('student_id', studentId).eq('exam_id', examId);
+            await sb.from('released_exam_results').delete().eq('student_id', studentId);
+            alert(`✅ ${studentName}'s exam "${examName}" has been reset.`);
+            loadStudentsWithResults(); loadAllExams();
+        } catch (err) { alert('Error: ' + err.message); }
     };
     
     function displayStudentsResults() {
         const start = (currentPage.students - 1) * itemsPerPage;
         const page = studentsResults.slice(start, start + itemsPerPage);
         const tbody = document.getElementById('studentsBody');
-        if(page.length === 0) { 
-            tbody.innerHTML = '<tr><td colspan="11" style="text-align:center">No results found</td></tr>'; 
-            return; 
-        }
-        
-        tbody.innerHTML = page.map(r => {
-            const studentName = (r.student_profile?.full_name || 'Unknown').replace(/'/g, "\\'");
-            const examName = (r.exam_info?.exam_name || 'Exam ' + r.exam_id).replace(/'/g, "\\'");
-            return `
-                <tr>
-                    <td><span class="student-id-badge">${r.student_profile?.student_id || 'N/A'}</span></td>
-                    <td><strong>${r.student_profile?.full_name || 'Unknown'}</strong></td>
-                    <td>${r.student_profile?.email || '-'}</td>
-                    <td>${r.student_profile?.program || '-'}</td>
-                    <td>${r.exam_info?.exam_name || 'Exam ' + r.exam_id}</td>
-                    <td>${r.marks || 0}</td>
-                    <td>${parseFloat(r.total_score || 0).toFixed(1)}%</td>
-                    <td><span class="${r.result_status === 'PASS' ? 'status-pass' : (r.result_status === 'FAIL' ? 'status-fail' : 'status-pending')}">${r.result_status || 'PENDING'}</span></td>
-                    <td>${r.isReleased ? '<span class="status-pass">✅ Released</span>' : '<span class="status-pending">🔒 Not Released</span>'}</td>
-                    <td>
-                        <button class="action-btn btn-view" onclick="viewExamResult('${r.student_id}',${r.exam_id})">View</button>
-                        <button class="action-btn btn-reset-student" onclick="resetSingleStudent('${r.student_id}', ${r.exam_id}, '${studentName}', '${examName}')" style="background:#8B5CF6; color:white;">
-                            <i class="fas fa-user-slash"></i> Reset Student
-                        </button>
-                    </td>
-                </tr>
-            `;
-        }).join('');
+        if(page.length === 0) { tbody.innerHTML = '<tr><td colspan="11" style="text-align:center">No results found</td></tr>'; return; }
+        tbody.innerHTML = page.map(r => { const studentName = (r.student_profile?.full_name || 'Unknown').replace(/'/g, "\\'"); const examName = (r.exam_info?.exam_name || 'Exam ' + r.exam_id).replace(/'/g, "\\'"); return `<tr><td><span class="student-id-badge">${r.student_profile?.student_id || 'N/A'}</span></td><td><strong>${r.student_profile?.full_name || 'Unknown'}</strong></td><td>${r.student_profile?.email || '-'}</td><td>${r.student_profile?.program || '-'}</td><td>${r.exam_info?.exam_name || 'Exam ' + r.exam_id}</td><td>${r.marks || 0}</td><td>${parseFloat(r.total_score || 0).toFixed(1)}%</td><td><span class="${r.result_status === 'PASS' ? 'status-pass' : (r.result_status === 'FAIL' ? 'status-fail' : 'status-pending')}">${r.result_status || 'PENDING'}</span></td><td>${r.isReleased ? '<span class="status-pass">✅ Released</span>' : '<span class="status-pending">🔒 Not Released</span>'}</td><td><button class="action-btn btn-view" onclick="viewExamResult('${r.student_id}',${r.exam_id})">View</button><button class="action-btn btn-reset-student" onclick="resetSingleStudent('${r.student_id}', ${r.exam_id}, '${studentName}', '${examName}')" style="background:#DC2626; color:white;"><i class="fas fa-user-slash"></i> Reset</button></td></tr>`; }).join('');
         renderPagination('students', studentsResults.length);
     }
     
@@ -696,7 +732,7 @@
         const table = document.getElementById('examsTable');
         loadingDiv.style.display = 'block'; table.style.display = 'none';
         try {
-            const { data, error } = await sb.from('exams').select('*').order('id', { ascending: true });
+            const { data, error } = await sb.from('exams').select('*').order('id');
             if(error) throw error;
             allExams = data || [];
             const { data: grades } = await sb.from('exam_grades').select('exam_id, result_status').eq('question_id', '00000000-0000-0000-0000-000000000000');
@@ -715,16 +751,15 @@
         const start = (currentPage.exams - 1) * itemsPerPage;
         const page = exams.slice(start, start + itemsPerPage);
         const tbody = document.getElementById('examsBody');
-        if(page.length === 0) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center">No exams found</td></tr>'; return; }
-        tbody.innerHTML = page.map(e => { const hasResults = hasResultsMap && hasResultsMap[e.id]; const examStatus = hasResults ? 'Completed' : 'Active'; const statusClass = hasResults ? 'status-completed' : 'status-active'; const publishStatus = e.status || 'draft'; return `<tr><td><strong>${e.exam_name}</strong></td><td>${e.exam_type || '-'}</td><td>${e.course || '-'}</td><td>${e.duration_minutes || 30} min</td><td>${countMap?.[e.id] || 0}</td><td><span class="${statusClass}">${examStatus}</span></td><td><label class="publish-toggle"><input type="checkbox" ${publishStatus === 'published' ? 'checked' : ''} onchange="togglePublish(${e.id}, '${publishStatus}')"><span style="margin-left:8px; font-size:0.7rem;">${publishStatus === 'published' ? 'Published' : 'Draft'}</span></label></td><td><button class="action-btn btn-edit" onclick="openCreateExamModal(${e.id})"><i class="fas fa-edit"></i> Edit</button><button class="action-btn btn-assign" onclick="openAssignExamModal()"><i class="fas fa-user-plus"></i> Assign</button><button class="action-btn btn-reset" onclick="openResetModal(${e.id}, '${e.exam_name.replace(/'/g, "\\'")}')"><i class="fas fa-sync-alt"></i> Reset All</button><button class="action-btn btn-delete" onclick="deleteExam(${e.id}, '${e.exam_name.replace(/'/g, "\\'")}')"><i class="fas fa-trash"></i> Delete</button></td></tr>`; }).join('');
+        if(page.length === 0) { tbody.innerHTML = '<tr><td colspan="8">No exams found</td></tr>'; return; }
+        tbody.innerHTML = page.map(e => { const hasResults = hasResultsMap[e.id]; const examStatus = hasResults ? 'Completed' : 'Active'; const statusClass = hasResults ? 'status-completed' : 'status-active'; const publishStatus = e.status || 'draft'; return `<tr><td><strong>${e.exam_name}</strong></td><td>${e.exam_type || '-'}</td><td>${e.course || '-'}</td><td>${e.duration_minutes || 30} min</td><td>${countMap[e.id] || 0}</td><td><span class="${statusClass}">${examStatus}</span></td><td><label class="publish-toggle"><input type="checkbox" ${publishStatus === 'published' ? 'checked' : ''} onchange="togglePublish(${e.id}, '${publishStatus}')"><span style="margin-left:8px;">${publishStatus === 'published' ? 'Published' : 'Draft'}</span></label></td><td><button class="action-btn btn-edit" onclick="openCreateExamModal(${e.id})">Edit</button><button class="action-btn btn-assign" onclick="openAssignExamModal()">Assign</button><button class="action-btn btn-reset" onclick="openResetModal(${e.id}, '${e.exam_name.replace(/'/g, "\\'")}')">Reset All</button><button class="action-btn btn-delete" onclick="deleteExam(${e.id}, '${e.exam_name.replace(/'/g, "\\'")}')">Delete</button></td></tr>`; }).join('');
         renderPagination('exams', exams.length);
     }
     
-    // Release modal functions (unchanged but included)
     window.openReleaseModal = async function() {
         const { data: exams } = await sb.from('exams').select('id, exam_name').order('id', { ascending: false });
         const selectEl = document.getElementById('releaseExamFilter');
-        if(selectEl) selectEl.innerHTML = '<option value="">-- Select Exam --</option>' + (exams || []).map(e => `<option value="${e.id}">${e.exam_name} (ID: ${e.id})</option>`).join('');
+        if(selectEl) selectEl.innerHTML = '<option value="">-- Select Exam --</option>' + (exams || []).map(e => `<option value="${e.id}">${e.exam_name}</option>`).join('');
         document.getElementById('releasePreview').style.display = 'none';
         selectedStudentIds.clear();
         document.getElementById('releaseModal').style.display = 'flex';
@@ -735,34 +770,33 @@
         if (!examId) { document.getElementById('releasePreview').style.display = 'none'; return; }
         document.getElementById('releasePreview').style.display = 'block';
         selectedStudentIds.clear();
-        const { data: results, error } = await sb.from('exam_grades').select('id, student_id, marks, total_score, result_status').eq('exam_id', parseInt(examId)).eq('question_id', '00000000-0000-0000-0000-000000000000');
-        if (error) { document.getElementById('releasePreviewBody').innerHTML = `<tr><td colspan="7">Error: ${error.message}</td></tr>`; return; }
-        const eligibleResults = results.filter(r => r.result_status === 'PASS' || r.result_status === 'FAIL');
-        if (!eligibleResults.length) { document.getElementById('releasePreviewBody').innerHTML = '<tr><td colspan="7">No PASS/FAIL results found</td></tr>'; document.getElementById('releaseSummary').innerHTML = '<strong>No results available</strong>'; return; }
-        currentReleaseResults = eligibleResults;
-        const studentIds = eligibleResults.map(r => r.student_id);
-        const { data: profiles } = await sb.from('consolidated_user_profiles_table').select('user_id, full_name, student_id').in('user_id', studentIds);
-        const profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p]));
+        const { data: results } = await sb.from('exam_grades').select('id, student_id, marks, total_score, result_status').eq('exam_id', parseInt(examId)).eq('question_id', '00000000-0000-0000-0000-000000000000');
+        if (!results) return;
+        const eligible = results.filter(r => r.result_status === 'PASS' || r.result_status === 'FAIL');
+        if (!eligible.length) { document.getElementById('releasePreviewBody').innerHTML = '<tr><td colspan="7">No PASS/FAIL results</td></tr>'; return; }
+        currentReleaseResults = eligible;
+        const { data: profiles } = await sb.from('consolidated_user_profiles_table').select('user_id, full_name, student_id').in('user_id', eligible.map(r=>r.student_id));
+        const profileMap = Object.fromEntries((profiles||[]).map(p=>[p.user_id,p]));
         const { data: released } = await sb.from('released_exam_results').select('result_id');
-        const releasedSet = new Set(released?.map(r => String(r.result_id)) || []);
-        let previewHtml = '', notReleasedCount = 0;
-        eligibleResults.forEach(r => { const isReleased = releasedSet.has(String(r.id)); const canRelease = !isReleased; if(canRelease) notReleasedCount++; const student = profileMap[r.student_id]; previewHtml += `<tr><td><input type="checkbox" class="student-checkbox" data-id="${r.id}" data-student-id="${r.student_id}" ${!canRelease ? 'disabled' : ''} onchange="updateSelectedCount()"></td><td><span class="student-id-badge">${student?.student_id || 'N/A'}</span></td><td><strong>${student?.full_name || 'Unknown'}</strong></td><td>${r.marks || 0}</td><td>${parseFloat(r.total_score || 0).toFixed(1)}%</td><td><span class="${r.result_status==='PASS'?'status-pass':'status-fail'}">${r.result_status}</span></td><td>${isReleased ? '✅ Released' : '🔒 Pending'}</td></tr>`; });
-        document.getElementById('releasePreviewBody').innerHTML = previewHtml;
-        document.getElementById('releaseSummary').innerHTML = `<strong>Students with results: ${eligibleResults.length} | Pending Release: ${notReleasedCount}</strong>`;
+        const releasedSet = new Set(released?.map(r=>String(r.result_id))||[]);
+        let html = ''; let pending=0;
+        eligible.forEach(r=>{ const isReleased=releasedSet.has(String(r.id)); if(!isReleased) pending++; const s=profileMap[r.student_id]; html+=`<tr><td><input type="checkbox" class="student-checkbox" data-id="${r.id}" ${isReleased?'disabled':''} onchange="updateSelectedCount()"></td><td>${s?.student_id||'N/A'}</td><td>${s?.full_name||'Unknown'}</td><td>${r.marks||0}</td><td>${parseFloat(r.total_score||0).toFixed(1)}%</td><td><span class="${r.result_status==='PASS'?'status-pass':'status-fail'}">${r.result_status}</span></td><td>${isReleased?'✅ Released':'🔒 Pending'}</td></tr>`; });
+        document.getElementById('releasePreviewBody').innerHTML = html;
+        document.getElementById('releaseSummary').innerHTML = `<strong>Eligible: ${eligible.length} | Pending: ${pending}</strong>`;
         document.getElementById('selectAllCheckbox').checked = false;
         updateSelectedCount();
     };
     
-    window.selectAllStudents = function(select) { const checkboxes = document.querySelectorAll('#releasePreviewBody .student-checkbox:not(:disabled)'); checkboxes.forEach(cb => { cb.checked = select; const idValue = cb.getAttribute('data-id'); if (select) selectedStudentIds.add(idValue); else selectedStudentIds.delete(idValue); }); updateSelectedCount(); const selectAllBox = document.getElementById('selectAllCheckbox'); if(selectAllBox) selectAllBox.checked = select; };
-    window.toggleSelectAll = function() { const selectAllBox = document.getElementById('selectAllCheckbox'); selectAllStudents(selectAllBox.checked); };
-    window.updateSelectedCount = function() { const count = document.querySelectorAll('#releasePreviewBody .student-checkbox:checked').length; document.getElementById('selectedCount').innerHTML = `${count} selected`; document.getElementById('confirmReleaseBtn').disabled = (count === 0); selectedStudentIds.clear(); document.querySelectorAll('#releasePreviewBody .student-checkbox:checked').forEach(cb => selectedStudentIds.add(cb.getAttribute('data-id'))); };
-    window.confirmReleaseResults = async function() { const selectedIds = Array.from(selectedStudentIds); if(selectedIds.length===0){alert('Select at least one student');return;} const examIdValue = document.getElementById('releaseExamFilter').value; if(!examIdValue) return; if(!confirm(`Release results for ${selectedIds.length} selected student(s)?`)) return; const releaseRecords = []; for(const gradeId of selectedIds){ const result = currentReleaseResults.find(r=>String(r.id)===String(gradeId)); if(result) releaseRecords.push({result_id:result.id, student_id:result.student_id, exam_id:parseInt(examIdValue), released_at:new Date().toISOString(), released_by:'admin'}); } const {error}=await sb.from('released_exam_results').insert(releaseRecords); if(error) alert('Error: '+error.message); else { alert(`✅ Released ${releaseRecords.length} result(s)!`); closeReleaseModal(); loadStudentsWithResults(); loadAllExams(); } };
+    window.selectAllStudents = function(select) { document.querySelectorAll('#releasePreviewBody .student-checkbox:not(:disabled)').forEach(cb=>{ cb.checked=select; const id=cb.getAttribute('data-id'); if(select) selectedStudentIds.add(id); else selectedStudentIds.delete(id); }); updateSelectedCount(); const box=document.getElementById('selectAllCheckbox'); if(box) box.checked=select; };
+    window.toggleSelectAll = function() { selectAllStudents(document.getElementById('selectAllCheckbox').checked); };
+    window.updateSelectedCount = function() { const count=document.querySelectorAll('#releasePreviewBody .student-checkbox:checked').length; document.getElementById('selectedCount').innerHTML=`${count} selected`; document.getElementById('confirmReleaseBtn').disabled=(count===0); selectedStudentIds.clear(); document.querySelectorAll('#releasePreviewBody .student-checkbox:checked').forEach(cb=>selectedStudentIds.add(cb.getAttribute('data-id'))); };
+    window.confirmReleaseResults = async function() { const ids=Array.from(selectedStudentIds); if(ids.length===0) return alert('Select at least one'); const examId=document.getElementById('releaseExamFilter').value; if(!examId) return; if(!confirm(`Release ${ids.length} result(s)?`)) return; const records=[]; for(const gid of ids){ const r=currentReleaseResults.find(rr=>String(rr.id)===String(gid)); if(r) records.push({result_id:r.id, student_id:r.student_id, exam_id:parseInt(examId), released_at:new Date().toISOString(), released_by:'admin'}); } const {error}=await sb.from('released_exam_results').insert(records); if(error) alert('Error: '+error.message); else { alert(`Released ${records.length} result(s)!`); closeReleaseModal(); loadStudentsWithResults(); loadAllExams(); } };
     
     async function updateStats() {
         const totalStudents = allStudents.length;
         const passed = studentsResults.filter(r=>r.result_status==='PASS').length;
         const failed = studentsResults.filter(r=>r.result_status==='FAIL').length;
-        const pending = studentsResults.filter(r=>r.result_status==='PENDING' || !r.result_status).length;
+        const pending = studentsResults.filter(r=>r.result_status==='PENDING'||!r.result_status).length;
         const avg = studentsResults.length ? (studentsResults.reduce((a,b)=>a+(parseFloat(b.total_score)||0),0)/studentsResults.length).toFixed(1) : 0;
         const faceAlerts = proctoringLogs.filter(l=>l.event_type==='multiple_faces_detected').length;
         document.getElementById('statsContainer').innerHTML = `<div class="stat-card total"><div class="stat-value">${totalStudents}</div><div class="stat-label">Total Students</div></div><div class="stat-card passed"><div class="stat-value">${passed}</div><div class="stat-label">Passed</div></div><div class="stat-card failed"><div class="stat-value">${failed}</div><div class="stat-label">Failed</div></div><div class="stat-card pending"><div class="stat-value">${pending}</div><div class="stat-label">Pending Release</div></div><div class="stat-card avg"><div class="stat-value">${avg}%</div><div class="stat-label">Avg Score</div></div><div class="stat-card face-alerts"><div class="stat-value">${faceAlerts}</div><div class="stat-label">Face Violations</div></div>`;
@@ -773,14 +807,12 @@
     window.resetFilters = function() { ['examFilter','statusFilter','searchInput'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';}); currentPage.students=1; loadStudentsWithResults(); };
     window.resetStudentFilters = function() { ['programFilter','studentSearch'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';}); currentPage.allStudents=1; loadAllStudents(); };
     window.resetExamFilters = function() { ['examTypeFilter','examSearch'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';}); currentPage.exams=1; loadAllExams(); };
-    
     window.viewExamResult = async function(sid, eid) { const {data:grade}=await sb.from('exam_grades').select('*').eq('student_id',sid).eq('exam_id',eid).eq('question_id','00000000-0000-0000-0000-000000000000').single(); const {data:exam}=await sb.from('exams').select('*').eq('id',eid).single(); const {data:profile}=await sb.from('consolidated_user_profiles_table').select('*').eq('user_id',sid).single(); document.getElementById('modalContent').innerHTML = `<div style="background:${grade?.result_status==='PASS'?'#D1FAE5':'#FEE2E2'};padding:20px;border-radius:16px;"><h3>${profile?.full_name} (${profile?.student_id})</h3><p><strong>Exam:</strong> ${exam?.exam_name}</p><p><strong>Score:</strong> ${grade?.marks || 0} marks</p><p><strong>Percentage:</strong> ${grade?.total_score || 0}%</p><p><strong>Status:</strong> <span class="${grade?.result_status==='PASS'?'status-pass':'status-fail'}">${grade?.result_status}</span></p></div>`; document.getElementById('studentModal').style.display = 'flex'; };
     window.viewStudentProfile = async function(pid) { const {data:student}=await sb.from('consolidated_user_profiles_table').select('*').eq('id',pid).single(); document.getElementById('modalContent').innerHTML = `<p><strong>Student ID:</strong> ${student.student_id}</p><p><strong>Email:</strong> ${student.email}</p><p><strong>Program:</strong> ${student.program}</p><p><strong>Block:</strong> ${student.block}</p>`; document.getElementById('studentModal').style.display = 'flex'; };
     window.closeModal = function() { document.getElementById('studentModal').style.display = 'none'; };
     window.closeReleaseModal = function() { document.getElementById('releaseModal').style.display = 'none'; selectedStudentIds.clear(); };
     window.exportToExcel = function(type) { let data=[]; if(type==='students') data=studentsResults.map(r=>({'Student ID':r.student_profile?.student_id, 'Name':r.student_profile?.full_name, 'Exam':r.exam_info?.exam_name, 'Score':r.marks, 'Percent':r.total_score, 'Status':r.result_status})); if(type==='allStudents') data=allStudents.map(s=>({'Student ID':s.student_id, 'Name':s.full_name, 'Email':s.email, 'Program':s.program})); if(type==='exams') data=allExams.map(e=>({'Exam Name':e.exam_name, 'Type':e.exam_type, 'Duration':e.duration_minutes})); if(type==='proctoring') data=proctoringLogs.map(l=>({'Time':new Date(l.timestamp).toLocaleString(), 'Student':l.student_profile?.full_name, 'Alert':l.event_type, 'Details':l.details})); const ws=XLSX.utils.json_to_sheet(data); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Data'); XLSX.writeFile(wb,`${type}_${new Date().toISOString().split('T')[0]}.xlsx`); };
     window.printTable = function(type) { const tableHtml = document.getElementById(type==='students'?'studentsTable':type==='allStudents'?'allStudentsTable':type==='exams'?'examsTable':'proctoringTable').outerHTML; const win=window.open(); win.document.write(`<html><head><title>Report</title><style>table{border-collapse:collapse;width:100%}th,td{border:1px solid #ddd;padding:8px}</style></head><body>${tableHtml}</body></html>`); win.print(); };
-    function showToast(message, type) { alert(message); }
     
     document.getElementById('notificationBell').addEventListener('click', (e) => { e.stopPropagation(); document.getElementById('notificationPanel').classList.toggle('show'); loadNotifications(); });
     document.addEventListener('click', () => { document.getElementById('notificationPanel').classList.remove('show'); });
