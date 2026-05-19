@@ -92,7 +92,7 @@ class NurseIQModule {
         this.storageKey = 'nurseiq_user_progress';
         this.lastCourseProgressKey = 'nurseiq_last_course';
         this.currentSessionAnswers = {};
-        this.progressVersion = '2.0'; // Updated version for dashboard integration
+        this.progressVersion = '2.0';
         this.dashboardMetricsKey = 'nurseiq_dashboard_metrics';
     }
     
@@ -167,7 +167,6 @@ class NurseIQModule {
     async initialize() {
         console.log('🚀 Initializing NurseIQ Module...');
         try {
-            // Get user ID - now getCurrentUserId is defined globally
             this.userId = getCurrentUserId();
             console.log('👤 User ID:', this.userId);
             
@@ -176,7 +175,6 @@ class NurseIQModule {
             await this.loadQuestionBankCards();
             this.initialized = true;
             
-            // Update dashboard on initialization
             this.updateDashboardMetrics();
             
             console.log('✅ NurseIQ Module initialized');
@@ -185,24 +183,19 @@ class NurseIQModule {
         }
     }
     
-    // FEATURE 1: Save/Load User Progress
     async loadUserProgress() {
         try {
-            // Load from localStorage first
             const savedProgress = localStorage.getItem(this.storageKey);
             if (savedProgress) {
                 const parsed = JSON.parse(savedProgress);
-                // Check if it's the new format with question IDs
                 if (parsed.version === this.progressVersion && parsed.answers) {
                     this.userTestAnswers = parsed.answers;
                 } else {
-                    // Old format - convert
                     this.userTestAnswers = parsed;
                 }
                 console.log('📊 Loaded saved progress:', Object.keys(this.userTestAnswers).length, 'answered questions');
             }
             
-            // Try to load from database if user is logged in and not anonymous
             if (this.userId && !this.userId.startsWith('anonymous_')) {
                 const supabase = this.getSupabaseClient();
                 if (supabase) {
@@ -225,7 +218,6 @@ class NurseIQModule {
     
     saveUserProgress() {
         try {
-            // Save to localStorage with versioning
             const progressData = {
                 version: this.progressVersion,
                 answers: this.userTestAnswers,
@@ -233,7 +225,6 @@ class NurseIQModule {
             };
             localStorage.setItem(this.storageKey, JSON.stringify(progressData));
             
-            // Save last course progress for resuming
             if (this.currentCourseForTest) {
                 const lastProgress = {
                     courseId: this.currentCourseForTest.id,
@@ -245,12 +236,10 @@ class NurseIQModule {
                 localStorage.setItem(this.lastCourseProgressKey, JSON.stringify(lastProgress));
             }
             
-            // Save to database if user is logged in and not anonymous
             if (this.userId && !this.userId.startsWith('anonymous_')) {
                 this.saveProgressToDatabase();
             }
             
-            // Update dashboard metrics whenever progress is saved
             this.updateDashboardMetrics();
             
             console.log('💾 Progress saved and dashboard updated');
@@ -298,27 +287,21 @@ class NurseIQModule {
         }
     }
     
-    // Dashboard Integration Methods
-    
     getNurseIQDashboardMetrics() {
         try {
-            // Calculate comprehensive metrics from user progress
             let totalAnswered = 0;
             let totalCorrect = 0;
-            let totalQuestionsAttempted = 0;
-            let recentActivity = 0; // Last 7 days activity
+            let recentActivity = 0;
             const courses = {};
             
             const sevenDaysAgo = new Date();
             sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
             
-            // Process all answered questions
             Object.values(this.userTestAnswers).forEach(answer => {
                 if (answer.answered) {
                     totalAnswered++;
                     if (answer.correct) totalCorrect++;
                     
-                    // Count recent activity
                     if (answer.timestamp) {
                         const answerDate = new Date(answer.timestamp);
                         if (answerDate >= sevenDaysAgo) {
@@ -326,7 +309,6 @@ class NurseIQModule {
                         }
                     }
                     
-                    // Track by course
                     if (answer.courseId) {
                         if (!courses[answer.courseId]) {
                             courses[answer.courseId] = {
@@ -341,15 +323,11 @@ class NurseIQModule {
                 }
             });
             
-            // Calculate stats
             const accuracy = totalAnswered > 0 ? Math.round((totalCorrect / totalAnswered) * 100) : 0;
-            const targetQuestions = 100; // Target for progress bar
+            const targetQuestions = 100;
             const progress = Math.min(Math.round((totalAnswered / targetQuestions) * 100), 100);
-            
-            // Calculate study streak
             const streak = this.calculateStudyStreak();
             
-            // Get most active course
             let mostActiveCourse = { name: 'None', answered: 0 };
             Object.entries(courses).forEach(([courseId, courseData]) => {
                 if (courseData.answered > mostActiveCourse.answered) {
@@ -373,7 +351,6 @@ class NurseIQModule {
                 lastUpdated: new Date().toISOString()
             };
             
-            // Cache for dashboard
             localStorage.setItem(this.dashboardMetricsKey, JSON.stringify(metrics));
             
             return metrics;
@@ -385,7 +362,6 @@ class NurseIQModule {
     
     calculateStudyStreak() {
         try {
-            // Get all timestamps from answered questions
             const timestamps = [];
             Object.values(this.userTestAnswers).forEach(answer => {
                 if (answer.answered && answer.timestamp) {
@@ -395,10 +371,8 @@ class NurseIQModule {
             
             if (timestamps.length === 0) return 0;
             
-            // Sort dates in descending order
             timestamps.sort((a, b) => b - a);
             
-            // Remove duplicate dates (same day)
             const uniqueDates = [];
             timestamps.forEach(date => {
                 const dateStr = date.toDateString();
@@ -407,17 +381,14 @@ class NurseIQModule {
                 }
             });
             
-            // Calculate streak
             let streak = 0;
             const today = new Date();
             const yesterday = new Date(today);
             yesterday.setDate(yesterday.getDate() - 1);
             
-            // Check if there was activity today or yesterday
             const todayStr = today.toDateString();
             const yesterdayStr = yesterday.toDateString();
             
-            // Start counting from the most recent activity day
             let startDate = null;
             if (uniqueDates.includes(todayStr)) {
                 startDate = today;
@@ -426,10 +397,9 @@ class NurseIQModule {
                 startDate = yesterday;
                 streak = 1;
             } else {
-                return 0; // No recent activity
+                return 0;
             }
             
-            // Count consecutive days
             for (let i = 1; i < uniqueDates.length; i++) {
                 const checkDate = new Date(startDate);
                 checkDate.setDate(checkDate.getDate() - i);
@@ -438,7 +408,7 @@ class NurseIQModule {
                 if (uniqueDates.includes(checkDateStr)) {
                     streak++;
                 } else {
-                    break; // Streak broken
+                    break;
                 }
             }
             
@@ -466,13 +436,8 @@ class NurseIQModule {
     updateDashboardMetrics() {
         try {
             const metrics = this.getNurseIQDashboardMetrics();
-            
-            // Save to localStorage for dashboard access
             localStorage.setItem(this.dashboardMetricsKey, JSON.stringify(metrics));
-            
-            // Also dispatch event for dashboard to update in real-time
             this.dispatchDashboardUpdateEvent(metrics);
-            
             console.log('📊 Dashboard metrics updated:', metrics);
         } catch (error) {
             console.error('Error updating dashboard metrics:', error);
@@ -493,7 +458,6 @@ class NurseIQModule {
         document.dispatchEvent(event);
     }
     
-    // For dashboard module to get metrics
     static getDashboardMetrics() {
         try {
             const savedMetrics = localStorage.getItem('nurseiq_dashboard_metrics');
@@ -529,7 +493,6 @@ class NurseIQModule {
         let correct = 0;
         let lastAttempt = null;
         
-        // Count answers by question ID
         courseQuestions.forEach(question => {
             const questionAnswer = this.userTestAnswers[question.id];
             if (questionAnswer && questionAnswer.answered) {
@@ -541,11 +504,9 @@ class NurseIQModule {
             }
         });
         
-        // Calculate stats
         const accuracy = answered > 0 ? Math.round((correct / answered) * 100) : 0;
         const completion = answered > 0 ? Math.round((answered / courseQuestions.length) * 100) : 0;
         
-        // Calculate difficulty stats
         const difficultyStats = {
             easy: 0,
             medium: 0,
@@ -622,20 +583,12 @@ class NurseIQModule {
                 }
             });
             
-            // Calculate user stats for each course
             Object.keys(coursesMap).forEach(courseId => {
                 coursesMap[courseId].userStats = this.getCourseUserStats(courseId, coursesMap[courseId].questions);
             });
             
             const coursesArray = Object.values(coursesMap);
-            const overallStats = {
-                totalCourses: coursesArray.length,
-                totalQuestions: questions.length,
-                activeQuestions: questions.length,
-                activeRate: '100%'
-            };
-            
-            this.displayQuestionBankCards(coursesArray, overallStats);
+            this.displayQuestionBankCards(coursesArray);
             
         } catch (error) {
             console.error('❌ Error loading question bank:', error);
@@ -645,7 +598,7 @@ class NurseIQModule {
         }
     }
     
-    displayQuestionBankCards(courses, overallStats) {
+    displayQuestionBankCards(courses) {
         if (!this.studentQuestionBankContent) return;
         
         const searchTerm = this.studentQuestionBankSearch?.value?.toLowerCase() || '';
@@ -673,7 +626,6 @@ class NurseIQModule {
         
         let html = `<div class="question-bank-container">`;
         
-        // Check for last course progress
         const lastProgress = this.getLastCourseProgress();
         if (lastProgress) {
             const lastCourse = courses.find(c => c.id === lastProgress.courseId);
@@ -886,10 +838,8 @@ class NurseIQModule {
             this.currentCourseQuestions = questions;
             this.currentSessionAnswers = {};
             
-            // Determine starting index
             let actualStartIndex = 0;
             if (startIndex === -1) {
-                // Find first unanswered question
                 let firstUnanswered = 0;
                 for (let i = 0; i < questions.length; i++) {
                     const question = questions[i];
@@ -1031,7 +981,7 @@ class NurseIQModule {
                             </button>
                         </div>
                         
-                        <!-- Answer & Explanation Section -->
+                        <!-- Answer & Explanation Section - Stays Visible -->
                         <div id="answerRevealSection" class="answer-reveal-section" style="display: none;">
                             <div class="answer-header">
                                 <h3><i class="fas fa-check-double"></i> Answer & Explanation</h3>
@@ -1168,8 +1118,10 @@ class NurseIQModule {
                 correct: savedAnswer.correct
             };
             this.showUserAnswer(this.userTestAnswers[this.currentQuestionIndex]);
+            // ALWAYS show the explanation if the question was answered - IT STAYS VISIBLE
             this.showAnswerRevealSection();
         } else {
+            // Only hide explanation for unanswered questions
             if (answerRevealSection) answerRevealSection.style.display = 'none';
             this.resetOptionSelection();
         }
@@ -1221,7 +1173,6 @@ class NurseIQModule {
         // Check for saved answer
         const savedAnswer = this.userTestAnswers[question.id];
         if (savedAnswer?.answered) {
-            // Find and select the saved option
             optionsContainer.querySelectorAll('.option-item-improved').forEach(item => {
                 const optionText = item.querySelector('.option-text-improved')?.textContent || '';
                 if (optionText === savedAnswer.selectedOption) {
@@ -1254,7 +1205,6 @@ class NurseIQModule {
         optionsContainer.querySelectorAll('.option-item-improved').forEach(item => {
             item.classList.remove('selected-improved', 'correct-improved', 'incorrect-improved');
         });
-        // Only clear current session answer if not saved
         const question = this.currentCourseQuestions[this.currentQuestionIndex];
         const savedAnswer = this.userTestAnswers[question.id];
         if (!savedAnswer?.answered) {
@@ -1277,7 +1227,6 @@ class NurseIQModule {
                         item.classList.add('correct-improved');
                     } else {
                         item.classList.add('incorrect-improved');
-                        // Show correct answer
                         optionsContainer.querySelectorAll('.option-item-improved').forEach(correctItem => {
                             const correctOptionText = correctItem.querySelector('.option-text-improved')?.textContent || '';
                             if (correctOptionText === userAnswer.correctAnswer) {
@@ -1322,41 +1271,48 @@ class NurseIQModule {
             questionText: question.question_text,
             courseId: question.course_id,
             courseName: this.currentCourseForTest.name,
-            difficulty: question.difficulty
+            difficulty: question.difficulty,
+            explanationViewed: true
         };
         
         this.showUserAnswer(userAnswer);
         this.updateCounters();
         this.updateTopProgressStats();
-        this.showAnswerRevealSection();
+        this.showAnswerRevealSection(); // This shows and STAYS visible
         this.updateQuestionGrid();
         this.showFeedbackNotification(isCorrect);
-        this.saveUserProgress(); // This now also updates dashboard
+        this.saveUserProgress();
         
-        if (isCorrect && this.currentQuestionIndex < this.currentCourseQuestions.length - 1) {
-            setTimeout(() => this.nextQuestion(), 2000);
-        }
+        // REMOVED: Auto-navigation that was hiding the explanation
+        // The explanation will remain visible until user manually navigates
     }
     
     showAnswerRevealSection() {
         const answerRevealSection = document.getElementById('answerRevealSection');
         if (!answerRevealSection) return;
+        
         const question = this.currentCourseQuestions[this.currentQuestionIndex];
         if (!question) return;
+        
         const correctAnswer = question.correct_answer || 'Correct answer not available';
         const correctAnswerText = document.getElementById('correctAnswerText');
         if (correctAnswerText) correctAnswerText.textContent = correctAnswer;
+        
         const explanationText = document.getElementById('explanationText');
         if (explanationText) {
-            explanationText.innerHTML = question.explanation || '<div class="no-explanation">No detailed explanation available.</div>';
+            explanationText.innerHTML = question.explanation || '<div class="no-explanation">No detailed explanation available for this question.</div>';
         }
-        answerRevealSection.style.display = 'block';
         
-        // Save that user has seen the explanation
-        this.userTestAnswers[this.currentQuestionIndex] = {
-            ...this.userTestAnswers[this.currentQuestionIndex],
-            viewed: true
-        };
+        // Make sure it's visible and stays visible
+        answerRevealSection.style.display = 'block';
+        answerRevealSection.style.opacity = '1';
+        answerRevealSection.style.visibility = 'visible';
+        
+        // Add a visual indicator that this question has been answered
+        const questionCard = document.querySelector('.question-card');
+        if (questionCard && this.userTestAnswers[this.currentCourseQuestions[this.currentQuestionIndex]?.id]?.answered) {
+            questionCard.classList.add('has-answer');
+        }
     }
     
     hideAnswer() {
@@ -1368,7 +1324,7 @@ class NurseIQModule {
         const notification = document.createElement('div');
         notification.className = `feedback-notification ${isCorrect ? 'success' : 'error'}`;
         notification.innerHTML = `<i class="fas fa-${isCorrect ? 'check-circle' : 'times-circle'}"></i>
-                                <span>${isCorrect ? 'Correct! Well done!' : 'Incorrect. Review the explanation.'}</span>`;
+                                <span>${isCorrect ? 'Correct! Well done!' : 'Incorrect. Review the explanation below.'}</span>`;
         document.querySelector('.questions-main-container')?.appendChild(notification);
         setTimeout(() => {
             notification.classList.add('fade-out');
@@ -1390,12 +1346,11 @@ class NurseIQModule {
         const savedAnswer = this.userTestAnswers[question.id];
         
         if (savedAnswer?.answered) {
-            // Remove from permanent storage
             delete this.userTestAnswers[question.id];
         }
         
         delete this.userTestAnswers[this.currentQuestionIndex];
-        this.saveUserProgress(); // This will update dashboard
+        this.saveUserProgress();
         
         this.loadCurrentInteractiveQuestion();
         this.updateQuestionGrid();
@@ -1427,7 +1382,6 @@ class NurseIQModule {
                         this.userTestAnswers[currentIndex]?.marked || 
                         false;
         
-        // Save mark status by question ID
         if (question.id) {
             this.userTestAnswers[question.id] = {
                 ...this.userTestAnswers[question.id],
@@ -1472,6 +1426,7 @@ class NurseIQModule {
             this.updateMiniDots();
             this.updateTopProgressStats();
             this.updateNavigationButtons();
+            // The explanation will automatically show/hide based on answered status
         }
     }
     
@@ -1483,6 +1438,7 @@ class NurseIQModule {
             this.updateMiniDots();
             this.updateTopProgressStats();
             this.updateNavigationButtons();
+            // The explanation will automatically show/hide based on answered status
         }
     }
     
@@ -1592,7 +1548,6 @@ class NurseIQModule {
             let questionClass = 'grid-question-number';
             if (i === this.currentQuestionIndex) questionClass += ' grid-current';
             
-            // Check saved answers by question ID first
             const savedAnswer = this.userTestAnswers[question.id];
             if (savedAnswer) {
                 if (savedAnswer.answered) {
@@ -1603,7 +1558,6 @@ class NurseIQModule {
                     questionClass += ' grid-viewed';
                 }
             } else {
-                // Check current session answers
                 const sessionAnswer = this.userTestAnswers[i];
                 if (sessionAnswer) {
                     if (sessionAnswer.answered) {
@@ -1740,7 +1694,6 @@ class NurseIQModule {
         }
     }
     
-    // Helper method to clear all progress (for testing)
     clearAllProgress() {
         if (confirm('Are you sure you want to clear all your progress? This cannot be undone.')) {
             localStorage.removeItem(this.storageKey);
@@ -1771,7 +1724,6 @@ window.initNurseIQ = async function() {
     return window.nurseiqModule;
 };
 
-// Global helper functions
 window.loadQuestionBankCards = function() {
     if (window.nurseiqModule) window.nurseiqModule.loadQuestionBankCards();
     else window.initNurseIQ().then(() => window.nurseiqModule.loadQuestionBankCards()).catch(console.error);
@@ -1833,7 +1785,6 @@ window.clearAllProgress = function() {
     if (window.nurseiqModule) window.nurseiqModule.clearAllProgress(); 
 };
 
-// Dashboard integration helper
 window.getNurseIQDashboardMetrics = function() {
     if (window.nurseiqModule) {
         return window.nurseiqModule.getNurseIQDashboardMetrics();
@@ -1850,4 +1801,4 @@ if (document.readyState === 'loading') {
     setTimeout(() => window.initNurseIQ().catch(console.error), 1000);
 }
 
-console.log('✅ NurseIQ module loaded (Complete Enhanced Version with Dashboard Integration)');
+console.log('✅ NurseIQ module loaded - Explanation section stays visible until user moves to next question');
