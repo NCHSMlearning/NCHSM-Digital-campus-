@@ -1498,7 +1498,7 @@
                 <div id="student-exams"><p>Loading available assessments...</p></div>
             </section>
 
-         <!-- Resources Section with Past Papers Support -->
+         <!-- Resources Section with Past Papers Support - UNIFIED VERSION -->
 <section id="resources" class="tab-content">
     <h2><i class="fas fa-book-open"></i> Resource Center</h2>
     <p>Upload learning materials and past examination papers for students</p>
@@ -1510,91 +1510,90 @@
         </button>
         <button id="resource-type-material" class="resource-type-btn" onclick="filterResourceType('material')" style="padding: 10px 20px; background: #e5e7eb; color: #374151; border: none; border-radius: 8px; cursor: pointer;">
             <i class="fas fa-book"></i> Learning Materials
+            <span id="material-count-badge" style="background: #10b981; color: white; border-radius: 20px; padding: 2px 8px; margin-left: 8px; font-size: 12px;">0</span>
         </button>
         <button id="resource-type-pastpaper" class="resource-type-btn" onclick="filterResourceType('pastpaper')" style="padding: 10px 20px; background: #e5e7eb; color: #374151; border: none; border-radius: 8px; cursor: pointer;">
             <i class="fas fa-history"></i> Past Papers
-            <span id="pastpaper-count-badge" style="background: #ef4444; color: white; border-radius: 20px; padding: 2px 8px; margin-left: 8px; font-size: 12px;">0</span>
+            <span id="pastpaper-count-badge" style="background: #f59e0b; color: white; border-radius: 20px; padding: 2px 8px; margin-left: 8px; font-size: 12px;">0</span>
         </button>
     </div>
     
-    <!-- Upload Form - Enhanced with Past Paper Option -->
+    <!-- UNIFIED UPLOAD FORM - One form for both -->
     <div style="background: linear-gradient(135deg, #f3e8ff, #e9d5ff); padding: 20px; border-radius: 12px; margin-bottom: 25px;">
         <h3><i class="fas fa-upload"></i> Upload Resource</h3>
         
-        <!-- Upload Type Toggle -->
-        <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                <input type="radio" name="upload_type" value="material" checked onchange="toggleUploadForm()"> 
-                <i class="fas fa-book"></i> Learning Material
-            </label>
-            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                <input type="radio" name="upload_type" value="pastpaper" onchange="toggleUploadForm()"> 
-                <i class="fas fa-history"></i> Past Paper
+        <!-- Past Paper Toggle Checkbox -->
+        <div style="margin-bottom: 15px; padding: 10px; background: white; border-radius: 8px;">
+            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                <input type="checkbox" id="resource_is_pastpaper" onchange="togglePastPaperFields()">
+                <i class="fas fa-history"></i>
+                <span><strong>This is a Past Paper</strong> (Check this if uploading exam papers from previous years)</span>
             </label>
         </div>
         
-        <!-- Learning Material Form -->
-        <form id="upload-material-form" class="inline-form">
+        <!-- Unified Form -->
+        <form id="upload-resource-form" class="inline-form" onsubmit="event.preventDefault(); handleResourceUpload(event);">
+            <!-- Common Fields -->
             <select id="resource_program" required>
                 <option value="">-- Select Program --</option>
-                <option value="KRCHN">KRCHN</option>
-                <option value="TVET">TVET</option>
+                <option value="KRCHN">KRCHN Nursing</option>
+                <option value="TVET">TVET Programs</option>
                 <option value="DPOTT">DPOTT</option>
                 <option value="DHRIT">DHRIT</option>
                 <option value="DSL">DSL</option>
             </select>
+            
             <select id="resource_intake" required>
-                <option value="">-- Select Intake Year --</option>
+                <option value="">-- Intake Year --</option>
                 <option value="2024">2024</option>
                 <option value="2025">2025</option>
                 <option value="2026">2026</option>
                 <option value="2027">2027</option>
                 <option value="2028">2028</option>
             </select>
+            
             <select id="resource_block" required>
                 <option value="">-- Select Block/Term --</option>
             </select>
+            
             <input type="file" id="resource-file" required accept=".pdf,.doc,.docx,.ppt,.pptx">
-            <input type="text" id="resource-title" placeholder="Title for file" required>
+            
+            <input type="text" id="resource-title" placeholder="Resource Title" required>
+            
             <textarea id="resource-description" placeholder="Description (optional)" rows="2" style="width: 100%;"></textarea>
-            <button type="submit">Upload Material</button>
-        </form>
-        
-        <!-- Past Paper Form -->
-        <form id="upload-pastpaper-form" class="inline-form" style="display: none;">
-            <select id="pastpaper_program" required>
-                <option value="">-- Select Program --</option>
-                <option value="KRCHN">KRCHN</option>
-                <option value="TVET">TVET</option>
-                <option value="DPOTT">DPOTT</option>
-                <option value="DHRIT">DHRIT</option>
-                <option value="DSL">DSL</option>
-            </select>
-            <select id="pastpaper_year" required>
-                <option value="">-- Exam Year --</option>
-                <option value="2020">2020</option>
-                <option value="2021">2021</option>
-                <option value="2022">2022</option>
-                <option value="2023">2023</option>
-                <option value="2024">2024</option>
-                <option value="2025">2025</option>
-                <option value="2026">2026</option>
-            </select>
-            <select id="pastpaper_block" required>
-                <option value="">-- Select Block/Term --</option>
-            </select>
-            <select id="pastpaper_type" required>
-                <option value="">-- Exam Type --</option>
-                <option value="CAT_1">CAT 1</option>
-                <option value="CAT_2">CAT 2</option>
-                <option value="END_TERM">End of Term</option>
-                <option value="FINAL">Final Exam</option>
-                <option value="SUPPLEMENTARY">Supplementary</option>
-            </select>
-            <input type="text" id="pastpaper_course" placeholder="Course/Subject" required>
-            <input type="file" id="pastpaper-file" required accept=".pdf">
-            <textarea id="pastpaper-description" placeholder="Description/Year notes" rows="2" style="width: 100%;"></textarea>
-            <button type="submit">Upload Past Paper</button>
+            
+            <!-- Past Paper Specific Fields (hidden by default) -->
+            <div id="pastpaper-fields" style="display: none; border-top: 2px dashed #4C1D95; padding-top: 15px; margin-top: 10px;">
+                <h4 style="margin: 0 0 10px 0; color: #4C1D95;"><i class="fas fa-history"></i> Past Paper Details</h4>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <select id="resource_pastpaper_year" style="flex: 1;">
+                        <option value="">-- Exam Year --</option>
+                        <option value="2020">2020</option>
+                        <option value="2021">2021</option>
+                        <option value="2022">2022</option>
+                        <option value="2023">2023</option>
+                        <option value="2024">2024</option>
+                        <option value="2025">2025</option>
+                        <option value="2026">2026</option>
+                    </select>
+                    
+                    <select id="resource_exam_type" style="flex: 1;">
+                        <option value="">-- Exam Type --</option>
+                        <option value="CAT_1">CAT 1</option>
+                        <option value="CAT_2">CAT 2</option>
+                        <option value="END_TERM">End of Term</option>
+                        <option value="FINAL">Final Exam</option>
+                        <option value="SUPPLEMENTARY">Supplementary</option>
+                    </select>
+                    
+                    <input type="text" id="resource_course_name" placeholder="Course Name (e.g., Anatomy, Pharmacology)" style="flex: 2;">
+                </div>
+                <small style="color: #6b7280;"><i class="fas fa-info-circle"></i> These fields are only needed for past papers</small>
+            </div>
+            
+            <button type="submit" style="margin-top: 10px;">
+                <i class="fas fa-upload"></i> Upload Resource
+            </button>
         </form>
     </div>
     
@@ -1604,11 +1603,11 @@
         <select id="resource-block-filter" onchange="filterResourcesTable()">
             <option value="all">All Blocks</option>
             <option value="Introductory">Introductory</option>
-            <option value="Block A">Block 1</option>
-            <option value="Block B">Block 2</option>
-            <option value="Block C">Block 3</option>
-            <option value="Block D">Block 4</option>
-            <option value="Block E">Block 5</option>
+            <option value="Block 1">Block 1</option>
+            <option value="Block 2">Block 2</option>
+            <option value="Block 3">Block 3</option>
+            <option value="Block 4">Block 4</option>
+            <option value="Block 5">Block 5</option>
             <option value="Final">Final</option>
         </select>
         <select id="resource-year-filter" onchange="filterResourcesTable()">
@@ -1616,8 +1615,8 @@
             <option value="2024">2024</option>
             <option value="2025">2025</option>
             <option value="2026">2026</option>
-            <option value="2026">2027</option>
-            <option value="2026">2028</option>
+            <option value="2027">2027</option>
+            <option value="2028">2028</option>
         </select>
         <button onclick="exportResourcesToCSV()" class="btn-action export-btn">Export List (CSV)</button>
         <button onclick="loadAllResources()" class="btn-action"><i class="fas fa-sync-alt"></i> Refresh</button>
@@ -1640,12 +1639,11 @@
                 </tr>
             </thead>
             <tbody id="resources-list">
-                <tr><td colspan="9">Loading resources...</td><td></tr>
+                <tr><td colspan="9"><div class="loading-spinner"></div> Loading resources...<\/td><\/tr>
             </tbody>
         </table>
     </div>
 </section>
-
             <!-- Messages Section -->
             <section id="messages" class="tab-content">
                 <h2>Inbox / Messages</h2>
