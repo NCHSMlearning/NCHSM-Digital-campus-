@@ -1,4 +1,78 @@
 // js/nurseiq.js - COMPLETE ENHANCED VERSION WITH DASHBOARD INTEGRATION
+
+// ============================================
+// HELPER FUNCTION: Get Current User ID
+// ============================================
+function getCurrentUserId() {
+    // Try multiple sources for user ID
+    
+    // 1. Check if there's a global user object
+    if (window.currentUser && window.currentUser.id) {
+        return window.currentUser.id;
+    }
+    
+    // 2. Check localStorage
+    const storedUserId = localStorage.getItem('userId') || 
+                        localStorage.getItem('currentUserId') ||
+                        localStorage.getItem('studentId');
+    if (storedUserId) {
+        return storedUserId;
+    }
+    
+    // 3. Check sessionStorage
+    const sessionUserId = sessionStorage.getItem('userId') ||
+                         sessionStorage.getItem('currentUserId');
+    if (sessionUserId) {
+        return sessionUserId;
+    }
+    
+    // 4. Check if there's a meta tag with user ID
+    const metaUserId = document.querySelector('meta[name="user-id"]')?.content;
+    if (metaUserId) {
+        return metaUserId;
+    }
+    
+    // 5. Check if user is logged in via Supabase
+    if (window.supabaseClient) {
+        try {
+            const session = window.supabaseClient.auth.session();
+            if (session && session.user) {
+                return session.user.id;
+            }
+        } catch(e) {
+            console.warn('Could not get Supabase session:', e);
+        }
+    }
+    
+    // 6. Check for db.supabase
+    if (window.db && window.db.supabase) {
+        try {
+            const session = window.db.supabase.auth.session();
+            if (session && session.user) {
+                return session.user.id;
+            }
+        } catch(e) {
+            console.warn('Could not get db.supabase session:', e);
+        }
+    }
+    
+    // 7. Fallback: Create a session-based ID for anonymous users
+    let anonymousId = sessionStorage.getItem('anonymousUserId');
+    if (!anonymousId) {
+        anonymousId = 'anonymous_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        sessionStorage.setItem('anonymousUserId', anonymousId);
+    }
+    
+    console.log('Using anonymous user ID:', anonymousId);
+    return anonymousId;
+}
+
+// Make it globally available
+window.getCurrentUserId = getCurrentUserId;
+
+// ============================================
+// NURSE IQ MODULE CLASS
+// ============================================
 class NurseIQModule {
     constructor() {
         this.userId = null;
@@ -87,19 +161,22 @@ class NurseIQModule {
     }
     
     getSupabaseClient() {
-        return window.supabaseClient || getSupabaseClient();
+        return window.supabaseClient || (window.db?.supabase) || null;
     }
     
     async initialize() {
         console.log('🚀 Initializing NurseIQ Module...');
         try {
+            // Get user ID - now getCurrentUserId is defined globally
             this.userId = getCurrentUserId();
+            console.log('👤 User ID:', this.userId);
+            
             await this.initializeElements();
             await this.loadUserProgress();
             await this.loadQuestionBankCards();
             this.initialized = true;
             
-            // 🔥 NEW: Update dashboard on initialization
+            // Update dashboard on initialization
             this.updateDashboardMetrics();
             
             console.log('✅ NurseIQ Module initialized');
@@ -125,8 +202,8 @@ class NurseIQModule {
                 console.log('📊 Loaded saved progress:', Object.keys(this.userTestAnswers).length, 'answered questions');
             }
             
-            // Try to load from database if user is logged in
-            if (this.userId) {
+            // Try to load from database if user is logged in and not anonymous
+            if (this.userId && !this.userId.startsWith('anonymous_')) {
                 const supabase = this.getSupabaseClient();
                 if (supabase) {
                     const { data, error } = await supabase
@@ -168,12 +245,12 @@ class NurseIQModule {
                 localStorage.setItem(this.lastCourseProgressKey, JSON.stringify(lastProgress));
             }
             
-            // Save to database if user is logged in
-            if (this.userId) {
+            // Save to database if user is logged in and not anonymous
+            if (this.userId && !this.userId.startsWith('anonymous_')) {
                 this.saveProgressToDatabase();
             }
             
-            // 🔥 NEW: Update dashboard metrics whenever progress is saved
+            // Update dashboard metrics whenever progress is saved
             this.updateDashboardMetrics();
             
             console.log('💾 Progress saved and dashboard updated');
@@ -181,18 +258,27 @@ class NurseIQModule {
             console.warn('Could not save progress:', error);
         }
     }
-    async saveAttemptToDatabase(score, totalQuestions) {
-    if (!this.userId) return;
     
-    await window.db.supabase
-        .from('nurseiq_attempts')
-        .insert({
-            student_id: this.userId,
-            score: score,
-            total_questions: totalQuestions,
-            completed_at: new Date().toISOString()
-        });
-}
+    async saveAttemptToDatabase(score, totalQuestions) {
+        if (!this.userId || this.userId.startsWith('anonymous_')) return;
+        
+        try {
+            const supabase = this.getSupabaseClient();
+            if (!supabase) return;
+            
+            await supabase
+                .from('nurseiq_attempts')
+                .insert({
+                    student_id: this.userId,
+                    score: score,
+                    total_questions: totalQuestions,
+                    completed_at: new Date().toISOString()
+                });
+        } catch (error) {
+            console.warn('Could not save attempt to database:', error);
+        }
+    }
+    
     async saveProgressToDatabase() {
         try {
             const supabase = this.getSupabaseClient();
@@ -212,7 +298,7 @@ class NurseIQModule {
         }
     }
     
-    // 🔥 NEW: Dashboard Integration Methods
+    // Dashboard Integration Methods
     
     getNurseIQDashboardMetrics() {
         try {
@@ -327,8 +413,6 @@ class NurseIQModule {
             const yesterday = new Date(today);
             yesterday.setDate(yesterday.getDate() - 1);
             
-            let currentDate = today;
-            
             // Check if there was activity today or yesterday
             const todayStr = today.toDateString();
             const yesterdayStr = yesterday.toDateString();
@@ -430,7 +514,6 @@ class NurseIQModule {
         };
     }
     
-    // Rest of your existing methods continue below...
     getLastCourseProgress() {
         try {
             const lastProgress = localStorage.getItem(this.lastCourseProgressKey);
@@ -948,7 +1031,7 @@ class NurseIQModule {
                             </button>
                         </div>
                         
-                        <!-- FEATURE 1: Answer & Explanation Section - Now persistent -->
+                        <!-- Answer & Explanation Section -->
                         <div id="answerRevealSection" class="answer-reveal-section" style="display: none;">
                             <div class="answer-header">
                                 <h3><i class="fas fa-check-double"></i> Answer & Explanation</h3>
@@ -1071,7 +1154,7 @@ class NurseIQModule {
         this.updateNavigationButtons();
         this.updateMarkButton();
         
-        // FEATURE 1: Check if we should show answer section from saved answer
+        // Check if we should show answer section from saved answer
         const savedAnswer = this.userTestAnswers[question.id];
         const answerRevealSection = document.getElementById('answerRevealSection');
         
@@ -1425,21 +1508,19 @@ class NurseIQModule {
         this.goToQuestion(questionNum - 1);
     }
     
-  async finishPractice() {  // ← Add 'async'
-    const userStats = this.getCourseUserStats(this.currentCourseForTest.id, this.currentCourseQuestions);
-    const answeredCount = userStats.answered;
-    const correctCount = userStats.correct;
-    const accuracy = userStats.accuracy;
-    
-    const confirmFinish = confirm(`Finish practice session?\n\nAnswered: ${answeredCount}/${this.currentCourseQuestions.length}\nCorrect: ${correctCount}\nAccuracy: ${accuracy}%\n\nReturn to question bank?`);
-    if (confirmFinish) {
-        // ✅ ADD THIS LINE - Saves to nurseiq_attempts table
-        await this.saveAttemptToDatabase(correctCount, this.currentCourseQuestions.length);
+    async finishPractice() {
+        const userStats = this.getCourseUserStats(this.currentCourseForTest.id, this.currentCourseQuestions);
+        const answeredCount = userStats.answered;
+        const correctCount = userStats.correct;
+        const accuracy = userStats.accuracy;
         
-        this.saveUserProgress();
-        this.loadQuestionBankCards();
+        const confirmFinish = confirm(`Finish practice session?\n\nAnswered: ${answeredCount}/${this.currentCourseQuestions.length}\nCorrect: ${correctCount}\nAccuracy: ${accuracy}%\n\nReturn to question bank?`);
+        if (confirmFinish) {
+            await this.saveAttemptToDatabase(correctCount, this.currentCourseQuestions.length);
+            this.saveUserProgress();
+            this.loadQuestionBankCards();
+        }
     }
-}
     
     scrollQuestions(direction) {
         const gridContainer = document.getElementById('questionGridContainer');
@@ -1667,13 +1748,16 @@ class NurseIQModule {
             localStorage.removeItem(this.dashboardMetricsKey);
             this.userTestAnswers = {};
             this.showNotification('All progress cleared', 'success');
-            this.updateDashboardMetrics(); // Update dashboard to show cleared state
+            this.updateDashboardMetrics();
             this.loadQuestionBankCards();
         }
     }
 }
 
-// Global functions
+// ============================================
+// GLOBAL FUNCTIONS AND INITIALIZATION
+// ============================================
+
 window.NurseIQModule = NurseIQModule;
 window.nurseiqModule = null;
 
@@ -1686,14 +1770,6 @@ window.initNurseIQ = async function() {
     await window.nurseiqModule.initialize();
     return window.nurseiqModule;
 };
-
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-        setTimeout(() => window.initNurseIQ().catch(console.error), 1000);
-    });
-} else {
-    setTimeout(() => window.initNurseIQ().catch(console.error), 1000);
-}
 
 // Global helper functions
 window.loadQuestionBankCards = function() {
@@ -1757,12 +1833,21 @@ window.clearAllProgress = function() {
     if (window.nurseiqModule) window.nurseiqModule.clearAllProgress(); 
 };
 
-// 🔥 NEW: Dashboard integration helper
+// Dashboard integration helper
 window.getNurseIQDashboardMetrics = function() {
     if (window.nurseiqModule) {
         return window.nurseiqModule.getNurseIQDashboardMetrics();
     }
     return NurseIQModule.getDashboardMetrics();
 };
+
+// Auto-initialize
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(() => window.initNurseIQ().catch(console.error), 1000);
+    });
+} else {
+    setTimeout(() => window.initNurseIQ().catch(console.error), 1000);
+}
 
 console.log('✅ NurseIQ module loaded (Complete Enhanced Version with Dashboard Integration)');
