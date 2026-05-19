@@ -122,21 +122,25 @@ function updateDashboardResourceCount() {
     document.dispatchEvent(event);
 }
 
-// ==================== PDF.JS INITIALIZATION ====================
+// ==================== PDF.JS INITIALIZATION - FIXED ====================
 async function initializePDFJS() {
     if (pdfjsLoaded) return true;
     
     return new Promise((resolve, reject) => {
+        // Check if PDF.js is already available
         if (typeof window.pdfjsLib !== 'undefined') {
             pdfjsLib = window.pdfjsLib;
+            // Force worker configuration
             if (pdfjsLib.GlobalWorkerOptions) {
                 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
             }
             pdfjsLoaded = true;
+            console.log('✅ PDF.js already loaded and configured');
             resolve(true);
             return;
         }
         
+        // If not available, load it
         const script = document.createElement('script');
         script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
         script.onload = () => {
@@ -145,9 +149,10 @@ async function initializePDFJS() {
                 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
             }
             pdfjsLoaded = true;
+            console.log('✅ PDF.js loaded and configured from CDN');
             resolve(true);
         };
-        script.onerror = () => reject(new Error('Failed to load PDF viewer'));
+        script.onerror = () => reject(new Error('Failed to load PDF.js'));
         document.head.appendChild(script);
     });
 }
@@ -599,7 +604,6 @@ function addPDFModalStyles() {
         '.pdf-page-info{display:flex;align-items:center;gap:8px;color:white;}' +
         '#pdf-page-modal{width:50px;padding:6px;border-radius:6px;border:none;text-align:center;}' +
         '.pdf-protected-badge{background:rgba(76,29,149,0.3);padding:6px 12px;border-radius:20px;color:#a78bfa;font-size:12px;}' +
-        '.pdf-loading-modal,.pdf-error-modal{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;color:white;}' +
         '.loading-spinner{width:40px;height:40px;border:3px solid rgba(255,255,255,0.2);border-top-color:#4C1D95;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 15px;}' +
         '@keyframes spin{to{transform:rotate(360deg);}}' +
         '@media (max-width:768px){.pdf-modal-container{width:98%;height:95%;}.pdf-nav-btn,.pdf-zoom-btn{width:32px;height:32px;}.pdf-modal-footer{padding:10px 15px;}}';
@@ -867,6 +871,12 @@ window.filterResources = filterResourcesByBlock;
 // ==================== INITIALIZATION ====================
 async function initializeResourcesModule() {
     console.log('📁 Initializing Student Resources Module with Past Papers...');
+    
+    // Force PDF.js worker configuration immediately
+    if (typeof pdfjsLib !== 'undefined') {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        console.log('✅ PDF.js worker configured at startup');
+    }
     
     var attempts = 0;
     var maxAttempts = 30;
