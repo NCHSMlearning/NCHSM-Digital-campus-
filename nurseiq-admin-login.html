@@ -535,48 +535,281 @@
         reader.readAsArrayBuffer(file);
     }
     
-    window.processBulkImport = async () => {
-        const courseId = document.getElementById('bulk-course').value;
-        if (!courseId) {
-            alert('Please select a course for the imported questions');
-            return;
+   // Enhanced Bulk Import Parser for Past Paper Format
+
+window.processBulkImport = async () => {
+    const courseId = document.getElementById('bulk-course').value;
+    if (!courseId) {
+        alert('Please select a course for the imported questions');
+        return;
+    }
+    
+    const raw = document.getElementById('bulk-text').value;
+    if (!raw.trim()) {
+        alert('Please paste questions or upload a file');
+        return;
+    }
+    
+    console.log('Processing past paper format...');
+    
+    // Split into sections by question numbers (1., 2., 3., etc.)
+    const questionBlocks = [];
+    const lines = raw.split(/\r?\n/);
+    
+    let currentBlock = '';
+    let inQuestion = false;
+    
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        
+        // Check if line starts a new question (number followed by dot or space)
+        const isNewQuestion = /^\s*\d+[\.\)]\s/.test(line);
+        
+        if (isNewQuestion) {
+            if (currentBlock) {
+                questionBlocks.push(currentBlock);
+            }
+            currentBlock = line + '\n';
+            inQuestion = true;
+        } else if (inQuestion) {
+            currentBlock += line + '\n';
         }
-        
-        const raw = document.getElementById('bulk-text').value;
-        if (!raw.trim()) {
-            alert('Please paste questions or upload a file');
-            return;
-        }
-        
-        const lines = raw.split(/\r?\n/).filter(l => l.trim());
-        let saved = 0;
-        
-        for (let line of lines) {
-            const parts = line.split('|').map(p => p.trim());
-            if (parts.length < 2) continue;
+    }
+    if (currentBlock) {
+        questionBlocks.push(currentBlock);
+    }
+    
+    console.log(`Found ${questionBlocks.length} question blocks`);
+    
+    let saved = 0;
+    let errors = [];
+    
+    for (let block of questionBlocks) {
+        try {
+            // Extract question text (first line after number)
+            const questionMatch = block.match(/^\s*\d+[\.\)]\s*(.+?)(?:\n|$)/);
+            if (!questionMatch) continue;
+            let questionText = questionMatch[1].trim();
             
-            const questionText = parts[0];
-            const options = parts.slice(1, 5);
+            // Extract options (A., B., C., D.)
+            const optionPattern = /([A-D])[\.\)]\s*([^A-D\n][^\n]+)/gi;
+            const options = {
+                A: '',
+                B: '',
+                C: '',
+                D: ''
+            };
             let correctAnswer = '';
-            let explanation = parts[5] || '';
+            let explanation = '';
             
-            for (let opt of options) {
-                if (opt.includes('✓') || opt.includes('✔')) {
-                    correctAnswer = opt.replace(/[✓✔]/g, '').trim();
-                    break;
+            let match;
+            while ((match = optionPattern.exec(block)) !== null) {
+                const letter = match[1].toUpperCase();
+                let optText = match[2].trim();
+                
+                // Check if this option is marked as correct (has ✓ or ✔ or says it's correct)
+                const isCorrect = optText.includes('✓') || optText.includes('✔') || 
+                                 optText.toLowerCase().includes('correct') ||
+                                 (correctAnswer === '' && letter === 'A'); // Fallback to A
+                
+                // Remove checkmark symbols
+                optText = optText.replace(/[✓✔]/g, '').trim();
+                
+                if (letter === 'A') options.A = optText;
+                if (letter === 'B') options.B = optText;
+                if (letter === 'C') options.C = optText;
+                if (letter === 'D') options.D = optText;
+                
+                if (isCorrect && !correctAnswer) {
+                    correctAnswer = optText;
                 }
             }
             
-            if (!correctAnswer && options[0]) correctAnswer = options[0].replace(/[✓✔]/g, '').trim();
+            // Extract answer from "Answer is X:" pattern
+            const answerMatch = block.match(/Answer\s+is\s+([A-D]):?\s*(.+?)(?:\n|$)/i);
+            if (answerMatch) {
+                const answerLetter = answerMatch[1].toUpperCase();
+                if (options[answerLetter]) {
+                    correctAnswer = options[answerLetter];
+                }
+                explanation = answerMatch[2]?.trim() || '';
+            }
             
+            // Also check for "Answer is X" without colon
+            const answerMatch2 = block.match(/Answer\s+is\s+([A-D])\s*(.+?)?$/im);
+            if (answerMatch2 && !correctAnswer) {
+                const answerLetter = answerMatch2[1].toUpperCase();
+                if (options[answerLetter]) {
+                    correctAnswer = options[answerLetter];
+                }
+                if (answerMatch2[2]) {
+                    explanation = answerMatch2[2].trim();
+                }
+            }
+            
+            // If no correct answer found, use first option as fallback
+            if (!correctAnswer) {
+                correctAnswer = options.A || 'Option A';
+            }
+            
+            // Skip if question has no text or no options
+            if (!questionText || (!options.A && !options.B && !options.C && !options.D)) {
+                errors.push(`Skipped: No question or options found`);
+                continue;
+            }
+            
+            // Determine difficulty based on question content or set to medium
+            let difficulty = 'medium';
+            if (questionText.toLowerCase().includes('challenging') || 
+                questionText.toLowerCase().includes('complex')) {
+                difficulty = 'hard';
+            } else if (questionText.toLowerCase().includes('basic') || 
+                       questionText.toLowerCase().includes('simple')) {
+                difficulty = 'easy';
+            }
+            
+            // Create payload
             const payload = {
                 question_text: questionText,
-                option_a: options[0]?.replace(/[✓✔]/g, '').trim() || null,
-                option_b: options[1]?.replace(/[✓✔]/g, '').trim() || null,
-                option_c: options[2]?.replace(/[✓✔]/g, '').trim() || null,
-                option_d: options[3]?.replace(/[✓✔]/g, '').trim() || null,
+                option_a: options.A || null,
+                option_b: options.B || null,
+                option_c: options.C || null,
+                option_d: options.D || null,
                 correct_answer: correctAnswer,
-                explanation: explanation,
+                explanation: explanation || 'From past paper',
+                course_id: courseId,
+                difficulty: difficulty,
+                question_type: 'multiple_choice',
+                curriculum: 'KRCHN',
+                is_active: true,
+                is_published: true,
+                created_at: new Date().toISOString()
+            };
+            
+            // Insert into database
+            const { error } = await sb.from('medical_assessments').insert([payload]);
+            if (error) {
+                errors.push(`Error: ${error.message}`);
+                console.error('Insert error:', error);
+            } else {
+                saved++;
+                console.log(`Saved question ${saved}: ${questionText.substring(0, 50)}...`);
+            }
+            
+        } catch (err) {
+            errors.push(`Parse error: ${err.message}`);
+            console.error('Parse error:', err);
+        }
+    }
+    
+    const resultDiv = document.getElementById('bulk-result');
+    if (saved > 0) {
+        resultDiv.innerHTML = `
+            <div class="badge" style="background:#d1fae5; padding: 12px; display: block; text-align: center;">
+                <i class="fas fa-check-circle"></i> ✅ Successfully imported ${saved} questions!
+                ${errors.length > 0 ? `<br><small>${errors.length} issues encountered</small>` : ''}
+            </div>
+        `;
+        await loadAllData();
+        showToast(`${saved} questions imported successfully from past paper!`, 'success');
+        
+        // Clear the text area after successful import
+        document.getElementById('bulk-text').value = '';
+    } else {
+        resultDiv.innerHTML = `
+            <div class="badge" style="background:#fee2e2; padding: 12px; display: block; text-align: center;">
+                <i class="fas fa-exclamation-triangle"></i> ❌ No questions were imported.
+                <br><small>Please check the format. Expected format:<br>
+                1. Question text?<br>
+                A. Option A<br>
+                B. Option B ✓<br>
+                C. Option C<br>
+                D. Option D<br>
+                Answer is B: Explanation here</small>
+            </div>
+        `;
+        if (errors.length > 0) {
+            console.error('Import errors:', errors);
+        }
+    }
+};
+
+// Alternative: Process by copying question blocks directly
+window.processBulkImportSimple = async () => {
+    const courseId = document.getElementById('bulk-course').value;
+    if (!courseId) {
+        alert('Please select a course');
+        return;
+    }
+    
+    const raw = document.getElementById('bulk-text').value;
+    if (!raw.trim()) {
+        alert('Please paste questions');
+        return;
+    }
+    
+    // Split by double newline or question number
+    let blocks = raw.split(/\n\s*\n/);
+    if (blocks.length < 2) {
+        // Try splitting by question numbers
+        blocks = raw.split(/\n(?=\d+\.)/);
+    }
+    
+    let saved = 0;
+    
+    for (let block of blocks) {
+        if (!block.trim()) continue;
+        
+        // Extract question
+        const qMatch = block.match(/(?:^|\n)(\d+\.\s*)([^\n]+)/);
+        if (!qMatch) continue;
+        
+        let questionText = qMatch[2].trim();
+        
+        // Extract options
+        const optionMatches = block.match(/([A-D])[\.\)]\s*([^\n]+)/gi);
+        if (!optionMatches || optionMatches.length < 2) continue;
+        
+        const options = { A: '', B: '', C: '', D: '' };
+        let correctAnswer = '';
+        
+        for (let opt of optionMatches) {
+            const letterMatch = opt.match(/([A-D])[\.\)]/i);
+            if (!letterMatch) continue;
+            const letter = letterMatch[1].toUpperCase();
+            let optText = opt.replace(/^[A-D][\.\)]\s*/i, '').trim();
+            const isCorrect = optText.includes('✓') || optText.includes('✔');
+            optText = optText.replace(/[✓✔]/g, '').trim();
+            
+            if (letter === 'A') options.A = optText;
+            if (letter === 'B') options.B = optText;
+            if (letter === 'C') options.C = optText;
+            if (letter === 'D') options.D = optText;
+            
+            if (isCorrect) correctAnswer = optText;
+        }
+        
+        // Get answer from "Answer is" statement
+        const answerMatch = block.match(/Answer\s+is\s+([A-D])/i);
+        if (answerMatch && !correctAnswer) {
+            const letter = answerMatch[1].toUpperCase();
+            correctAnswer = options[letter];
+        }
+        
+        // Get explanation
+        let explanation = '';
+        const expMatch = block.match(/Answer\s+is\s+[A-D]:?\s*(.+?)(?:\n|$)/i);
+        if (expMatch) explanation = expMatch[1].trim();
+        
+        if (questionText && (options.A || options.B)) {
+            const payload = {
+                question_text: questionText,
+                option_a: options.A || null,
+                option_b: options.B || null,
+                option_c: options.C || null,
+                option_d: options.D || null,
+                correct_answer: correctAnswer || options.A || 'Option A',
+                explanation: explanation || 'From past paper',
                 course_id: courseId,
                 difficulty: 'medium',
                 question_type: 'multiple_choice',
@@ -589,11 +822,18 @@
             const { error } = await sb.from('medical_assessments').insert([payload]);
             if (!error) saved++;
         }
-        
-        document.getElementById('bulk-result').innerHTML = `<div class="badge" style="background:#d1fae5">✅ Successfully imported ${saved} questions!</div>`;
+    }
+    
+    const resultDiv = document.getElementById('bulk-result');
+    resultDiv.innerHTML = `<div class="badge" style="background:#d1fae5">✅ Imported ${saved} questions!</div>`;
+    if (saved > 0) {
         await loadAllData();
-        showToast(`${saved} questions imported successfully`, 'success');
-    };
+        showToast(`${saved} questions imported!`, 'success');
+        document.getElementById('bulk-text').value = '';
+    } else {
+        resultDiv.innerHTML += `<div class="badge" style="background:#fee2e2">No questions found. Use format:<br>1. Question?<br>A. Option<br>B. Option ✓<br>Answer is B: Explanation</div>`;
+    }
+};
     
     // ==================== COURSE MANAGER ====================
     async function renderCourses() {
