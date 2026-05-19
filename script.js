@@ -596,10 +596,14 @@ async function loadSectionData(tabId) {
     loadFeeStructure();
     break;
         case 'resources': 
-            loadResources(); 
-            updateProgramDropdown($('resource_program'));
-            updateBlockTermOptions('resource_program', 'resource_block');
-            break;
+    if (typeof loadAllResources === 'function') {
+        loadAllResources();
+    } else if (typeof loadResources === 'function') {
+        loadResources();
+    }
+    updateProgramDropdown($('resource_program'));
+    updateBlockTermOptions('resource_program', 'resource_block');
+    break;
         case 'welcome-editor': 
             loadWelcomeMessageForEdit(); 
             break; 
