@@ -128,9 +128,9 @@ async function initializePDFJS() {
     
     return new Promise((resolve, reject) => {
         // Check if PDF.js is already available
-        if (typeof window.pdfjsLib !== 'undefined') {
+        if (typeof window.pdfjsLib !== 'undefined' && window.pdfjsLib) {
             pdfjsLib = window.pdfjsLib;
-            // Force worker configuration
+            // Force worker configuration - check if GlobalWorkerOptions exists
             if (pdfjsLib.GlobalWorkerOptions) {
                 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
             }
@@ -145,7 +145,7 @@ async function initializePDFJS() {
         script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
         script.onload = () => {
             pdfjsLib = window.pdfjsLib;
-            if (pdfjsLib.GlobalWorkerOptions) {
+            if (pdfjsLib && pdfjsLib.GlobalWorkerOptions) {
                 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
             }
             pdfjsLoaded = true;
@@ -872,11 +872,7 @@ window.filterResources = filterResourcesByBlock;
 async function initializeResourcesModule() {
     console.log('📁 Initializing Student Resources Module with Past Papers...');
     
-    // Force PDF.js worker configuration immediately
-    if (typeof pdfjsLib !== 'undefined') {
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-        console.log('✅ PDF.js worker configured at startup');
-    }
+    // Don't try to configure pdfjsLib here - it will be configured when needed
     
     var attempts = 0;
     var maxAttempts = 30;
