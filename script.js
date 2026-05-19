@@ -3533,10 +3533,6 @@ async function saveOfficialAnnouncement() {
  * Handles BOTH Learning Materials AND Past Papers
  *******************************************************/
 
-// Global variables
-let currentResourceType = 'all';
-let allResourcesData = [];
-
 // =====================================================
 // UNIFIED RESOURCE UPLOAD HANDLER
 // Handles both materials and past papers
