@@ -8,6 +8,41 @@
     <link rel="stylesheet" href="nurseiq-admin-style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        /* Additional styles for reorder functionality */
+        .question-card.dragging {
+            opacity: 0.5;
+            cursor: grabbing;
+        }
+        .question-card.drag-over {
+            border: 2px dashed #4f46e5;
+            background: #f0f4ff;
+        }
+        .reorder-handle {
+            cursor: grab;
+            color: #6b7280;
+            margin-right: 10px;
+        }
+        .reorder-handle:active {
+            cursor: grabbing;
+        }
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        .toolbar-left, .toolbar-right {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .hidden {
+            display: none !important;
+        }
+    </style>
 </head>
 <body>
 <div id="app">
@@ -15,36 +50,33 @@
     <div id="login-section">
         <div class="login-wrapper">
             <div class="login-header">
-                <i class="fas fa-stethoscope" style="font-size: 64px; margin-bottom: 20px;"></i>
-                <h1>NurseIQ <span style="color: #c7d2fe;">Ultimate</span></h1>
+                <i class="fas fa-stethoscope"></i>
+                <h1>NurseIQ <span>Ultimate</span></h1>
                 <p>Complete Admin Portal · Question Bank Management</p>
             </div>
             <div class="login-card">
                 <h2>Admin Access</h2>
-                <div id="login-error" class="alert alert-error" style="display: none;"></div>
+                <div id="login-error" class="alert alert-error hidden"></div>
                 <form id="login-form">
                     <div class="form-group">
-                        <label for="login-email"><i class="fas fa-envelope"></i> Email Address</label>
+                        <label for="login-email">Email Address</label>
                         <input type="email" id="login-email" class="form-control" placeholder="admin@nurseiq.com" required>
                     </div>
                     <div class="form-group">
-                        <label for="login-password"><i class="fas fa-lock"></i> Password</label>
+                        <label for="login-password">Password</label>
                         <input type="password" id="login-password" class="form-control" placeholder="Enter your password" required>
                     </div>
-                    <button type="submit" id="login-btn" class="btn btn-primary btn-full btn-lg">
-                        <i class="fas fa-sign-in-alt"></i> Login to Dashboard
-                    </button>
+                    <button type="submit" id="login-btn" class="btn btn-primary btn-full btn-lg">Login to Dashboard</button>
                 </form>
             </div>
         </div>
     </div>
 
     <!-- ADMIN DASHBOARD -->
-    <div id="admin-section" style="display: none;">
-        <!-- Header -->
+    <div id="admin-section" class="hidden">
         <div class="admin-header">
             <div class="admin-header-content">
-                <h1><i class="fas fa-stethoscope"></i> NurseIQ Ultimate</h1>
+                <h1>NurseIQ Ultimate</h1>
                 <p>Complete Admin Portal · Question Bank & Student Management</p>
             </div>
             <div class="admin-header-actions">
@@ -52,91 +84,66 @@
                     <i class="fas fa-user-shield"></i>
                     <span id="user-name">Admin</span>
                 </div>
-                <button onclick="logout()" class="btn btn-danger">
-                    <i class="fas fa-sign-out-alt"></i> Logout
-                </button>
+                <button onclick="logout()" class="btn btn-danger">Logout</button>
             </div>
         </div>
 
-        <!-- Main Layout -->
         <div class="admin-layout">
-            <!-- Sidebar -->
             <div class="admin-sidebar">
-                <div class="sidebar-header">
-                    <h3><i class="fas fa-chart-line"></i> Dashboard Stats</h3>
-                </div>
+                <div class="sidebar-header"><h3>Dashboard Stats</h3></div>
                 <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-value" id="stat-questions">0</div>
-                        <div class="stat-label"><i class="fas fa-database"></i> Total Questions</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" id="stat-students">0</div>
-                        <div class="stat-label"><i class="fas fa-users"></i> Total Students</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" id="stat-courses">0</div>
-                        <div class="stat-label"><i class="fas fa-book"></i> Active Courses</div>
-                    </div>
+                    <div class="stat-card"><div class="stat-value" id="stat-questions">0</div><div class="stat-label">Total Questions</div></div>
+                    <div class="stat-card"><div class="stat-value" id="stat-students">0</div><div class="stat-label">Total Students</div></div>
+                    <div class="stat-card"><div class="stat-value" id="stat-courses">0</div><div class="stat-label">Active Courses</div></div>
                 </div>
-
                 <div class="sidebar-actions">
-                    <h4><i class="fas fa-cog"></i> Management Tools</h4>
-                    <button onclick="showPage('dashboard')" class="sidebar-btn">
-                        <i class="fas fa-chart-pie"></i> Dashboard Overview
-                    </button>
-                    <button onclick="showPage('question-bank')" class="sidebar-btn">
-                        <i class="fas fa-database"></i> Full Question Bank
-                    </button>
-                    <button onclick="showPage('add-question')" class="sidebar-btn">
-                        <i class="fas fa-plus-circle"></i> Add New Question
-                    </button>
-                    <button onclick="showPage('edit-bank')" class="sidebar-btn">
-                        <i class="fas fa-edit"></i> Edit/Delete Questions
-                    </button>
-                    <button onclick="showPage('bulk-import')" class="sidebar-btn">
-                        <i class="fas fa-file-import"></i> Bulk Import (Past Papers)
-                    </button>
-                    <button onclick="showPage('courses')" class="sidebar-btn">
-                        <i class="fas fa-book"></i> Course Manager
-                    </button>
-                    <button onclick="showPage('students')" class="sidebar-btn">
-                        <i class="fas fa-users"></i> Student Manager
-                    </button>
-                    <button onclick="showPage('attempts')" class="sidebar-btn">
-                        <i class="fas fa-chart-line"></i> Student Progress
-                    </button>
-                    <button onclick="showPage('settings')" class="sidebar-btn">
-                        <i class="fas fa-cog"></i> System Settings
-                    </button>
+                    <h4>Management Tools</h4>
+                    <button onclick="showPage('dashboard')" class="sidebar-btn">Dashboard Overview</button>
+                    <button onclick="showPage('question-bank')" class="sidebar-btn">Full Question Bank</button>
+                    <button onclick="showPage('add-question')" class="sidebar-btn">Add New Question</button>
+                    <button onclick="showPage('edit-bank')" class="sidebar-btn">Edit/Delete Questions</button>
+                    <button onclick="showPage('bulk-import')" class="sidebar-btn">Bulk Import (Past Papers)</button>
+                    <button onclick="showPage('courses')" class="sidebar-btn">Course Manager</button>
+                    <button onclick="showPage('students')" class="sidebar-btn">Student Manager</button>
+                    <button onclick="showPage('attempts')" class="sidebar-btn">Student Progress</button>
+                    <button onclick="showPage('settings')" class="sidebar-btn">System Settings</button>
                 </div>
             </div>
-
-            <!-- Main Content Panel -->
             <div class="admin-main" id="main-panel">
-                <!-- Dynamic content loads here -->
-                <div class="loading">
-                    <i class="fas fa-spinner fa-spin"></i>
-                    <p>Loading dashboard...</p>
-                </div>
+                <div class="loading"><i class="fas fa-spinner fa-spin"></i><p>Loading dashboard...</p></div>
             </div>
         </div>
     </div>
 </div>
 
+<!-- Delete Modal -->
+<div id="delete-modal" class="modal hidden">
+    <div class="modal-content">
+        <div class="modal-header"><h3>Delete Selected Questions</h3><button class="modal-close" onclick="closeDeleteModal()">&times;</button></div>
+        <p id="delete-count"></p>
+        <div class="modal-actions"><button onclick="confirmDeleteSelected()" class="btn btn-danger">Confirm Delete</button><button onclick="closeDeleteModal()" class="btn btn-secondary">Cancel</button></div>
+    </div>
+</div>
+
 <script>
-    // ==================== SUPABASE CONFIG ====================
+    // Supabase Config
     const SB_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
     const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
     let sb = null, currentAdmin = null, allCourses = [], allStudents = [], allQuestions = [], userProgress = {};
-    
+    let selectedQuestionsForDelete = [];
+    let reorderMode = false;
+    let currentQuestionsList = [];
+    let dragSourceIndex = null;
+
     document.addEventListener('DOMContentLoaded', async () => {
         sb = window.supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession: false } });
         const session = localStorage.getItem('nurseiq_admin_session');
         if (session) { 
             currentAdmin = JSON.parse(session); 
-            showDashboard(); 
+            document.getElementById('login-section').classList.add('hidden');
+            document.getElementById('admin-section').classList.remove('hidden');
             await loadAllData(); 
+            showPage('dashboard');
         }
     });
 
@@ -152,14 +159,16 @@
             if (!['superadmin', 'admin'].includes(data[0].role)) throw new Error('Access denied');
             localStorage.setItem('nurseiq_admin_session', JSON.stringify({ id: data[0].id, email, name: data[0].full_name }));
             currentAdmin = data[0]; 
-            showDashboard(); 
-            await loadAllData();
+            document.getElementById('login-section').classList.add('hidden');
+            document.getElementById('admin-section').classList.remove('hidden');
+            await loadAllData(); 
+            showPage('dashboard');
         } catch (err) { 
             const errorDiv = document.getElementById('login-error');
-            errorDiv.style.display = 'block'; 
+            errorDiv.classList.remove('hidden');
             errorDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i> ' + err.message; 
             btn.disabled = false; 
-            btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Login to Dashboard'; 
+            btn.innerHTML = 'Login to Dashboard';
         }
     });
 
@@ -173,1044 +182,259 @@
         const { data: prog } = await sb.from('user_progress').select('*'); 
         userProgress = {};
         if (prog) prog.forEach(p => { userProgress[p.user_id] = p.progress_data; });
-        
         document.getElementById('stat-questions').innerText = allQuestions.length;
         document.getElementById('stat-students').innerText = allStudents.length;
         document.getElementById('stat-courses').innerText = allCourses.length;
     }
 
-    function showDashboard() { 
-        document.getElementById('login-section').style.display = 'none'; 
-        document.getElementById('admin-section').style.display = 'block'; 
-        document.getElementById('user-name').innerHTML = `<i class="fas fa-user-check"></i> ${currentAdmin?.name || 'Admin'}`; 
-        showPage('dashboard'); 
-    }
-    
-    function logout() { 
-        localStorage.removeItem('nurseiq_admin_session'); 
-        location.reload(); 
-    }
-
+    function logout() { localStorage.removeItem('nurseiq_admin_session'); location.reload(); }
     const panel = document.getElementById('main-panel');
 
-    // ==================== DASHBOARD ====================
+    // DASHBOARD
     async function renderDashboard() {
-        const totalAttempts = Object.values(userProgress).filter(p => p && Object.keys(p).length > 0).length;
-        const totalAnswered = Object.values(userProgress).reduce((sum, p) => {
-            if (p && p.answers) return sum + Object.values(p.answers).filter(a => a.answered).length;
-            return sum;
-        }, 0);
-        
-        panel.innerHTML = `
-            <div class="page">
-                <div class="page-header">
-                    <h2><i class="fas fa-chart-line"></i> Admin Dashboard</h2>
-                    <p>Welcome back, ${currentAdmin?.name}! Here's an overview of your NurseIQ system.</p>
-                </div>
-                <div class="grid grid-cols-4" style="margin-bottom: 30px;">
-                    <div class="stat-card">
-                        <div class="stat-value">${allQuestions.length}</div>
-                        <div class="stat-label"><i class="fas fa-question-circle"></i> Total Questions</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value">${allStudents.length}</div>
-                        <div class="stat-label"><i class="fas fa-users"></i> Total Students</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value">${allCourses.length}</div>
-                        <div class="stat-label"><i class="fas fa-book"></i> Active Courses</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value">${totalAnswered}</div>
-                        <div class="stat-label"><i class="fas fa-check-circle"></i> Questions Answered</div>
-                    </div>
-                </div>
-                
-                <div class="card">
-                    <div class="card-header">
-                        <h3><i class="fas fa-clock"></i> Recent Student Activity</h3>
-                    </div>
-                    <div id="recent-activity"></div>
-                </div>
-            </div>
-        `;
-        
+        const totalAnswered = Object.values(userProgress).reduce((sum, p) => { if (p && p.answers) return sum + Object.values(p.answers).filter(a => a.answered).length; return sum; }, 0);
+        panel.innerHTML = `<div class="page"><div class="page-header"><h2>Admin Dashboard</h2><p>Welcome back, ${currentAdmin?.name}!</p></div><div class="stats-grid-main"><div class="stat-card-main"><div class="stat-value-main">${allQuestions.length}</div><div class="stat-label-main">Total Questions</div></div><div class="stat-card-main"><div class="stat-value-main">${allStudents.length}</div><div class="stat-label-main">Total Students</div></div><div class="stat-card-main"><div class="stat-value-main">${allCourses.length}</div><div class="stat-label-main">Active Courses</div></div><div class="stat-card-main"><div class="stat-value-main">${totalAnswered}</div><div class="stat-label-main">Questions Answered</div></div></div><div class="card"><div class="card-header"><h3>Recent Student Activity</h3></div><div id="recent-activity"></div></div></div>`;
         const recentDiv = document.getElementById('recent-activity');
         if (recentDiv) {
-            const recent = Object.entries(userProgress)
-                .sort((a, b) => {
-                    const dateA = a[1]?.lastSaved ? new Date(a[1].lastSaved) : new Date(0);
-                    const dateB = b[1]?.lastSaved ? new Date(b[1].lastSaved) : new Date(0);
-                    return dateB - dateA;
-                })
-                .slice(0, 10);
-            
-            if (recent.length === 0) {
-                recentDiv.innerHTML = '<div class="empty-state"><i class="fas fa-inbox"></i><p>No student activity yet</p></div>';
-            } else {
-                recentDiv.innerHTML = recent.map(([userId, progress]) => {
-                    const student = allStudents.find(s => s.id === userId);
-                    const answered = progress?.answers ? Object.values(progress.answers).filter(a => a.answered).length : 0;
-                    const correct = progress?.answers ? Object.values(progress.answers).filter(a => a.correct).length : 0;
-                    const accuracy = answered > 0 ? Math.round(correct / answered * 100) : 0;
-                    return `
-                        <div class="attempt-card" onclick="viewStudentDetails('${userId}')">
-                            <div class="d-flex justify-between align-center">
-                                <strong><i class="fas fa-user-graduate"></i> ${student?.full_name || 'Unknown Student'}</strong>
-                                <span class="badge badge-${accuracy >= 70 ? 'success' : accuracy >= 50 ? 'warning' : 'danger'}">${accuracy}% Accuracy</span>
-                            </div>
-                            <div class="progress-bar" style="margin: 10px 0;">
-                                <div class="progress-fill" style="width: ${accuracy}%"></div>
-                            </div>
-                            <div class="d-flex justify-between text-sm">
-                                <span><i class="fas fa-check-circle"></i> ${answered} answered</span>
-                                <span><i class="fas fa-trophy"></i> ${correct} correct</span>
-                                <span><i class="fas fa-calendar"></i> ${progress?.lastSaved ? new Date(progress.lastSaved).toLocaleDateString() : 'Never'}</span>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-            }
+            const recent = Object.entries(userProgress).slice(0, 10);
+            if (recent.length === 0) recentDiv.innerHTML = '<div class="empty-state"><i class="fas fa-inbox"></i><p>No student activity yet</p></div>';
+            else recentDiv.innerHTML = recent.map(([userId, progress]) => { const student = allStudents.find(s => s.id === userId); const answered = progress?.answers ? Object.values(progress.answers).filter(a => a.answered).length : 0; const correct = progress?.answers ? Object.values(progress.answers).filter(a => a.correct).length : 0; const accuracy = answered > 0 ? Math.round(correct / answered * 100) : 0; return `<div class="attempt-card" onclick="viewStudentDetails('${userId}')"><div class="attempt-header"><strong>${student?.full_name || 'Unknown'}</strong><span class="badge badge-${accuracy >= 70 ? 'success' : accuracy >= 50 ? 'warning' : 'danger'}">${accuracy}%</span></div><div class="progress-bar"><div class="progress-fill" style="width: ${accuracy}%"></div></div><div class="attempt-stats"><span>${answered} answered</span><span>${correct} correct</span></div></div>`; }).join('');
         }
     }
 
-    // ==================== FULL QUESTION BANK ====================
+    // FULL QUESTION BANK WITH REORDER
     async function renderQuestionBank() {
         await loadAllData();
-        panel.innerHTML = `
-            <div class="page">
-                <div class="page-header">
-                    <h2><i class="fas fa-database"></i> Full Question Bank</h2>
-                    <p>Browse, search, and filter all questions in the database.</p>
-                </div>
-                <div class="card">
-                    <div class="grid grid-cols-3" style="margin-bottom: 20px;">
-                        <select id="filter-course" class="form-control">
-                            <option value="">All Courses</option>
-                            ${allCourses.map(c => `<option value="${c.id}">${c.course_name}</option>`).join('')}
-                        </select>
-                        <select id="filter-difficulty" class="form-control">
-                            <option value="">All Difficulties</option>
-                            <option value="easy">Easy</option>
-                            <option value="medium">Medium</option>
-                            <option value="hard">Hard</option>
-                        </select>
-                        <input type="text" id="search-questions" class="form-control" placeholder="Search questions...">
-                    </div>
-                    <div id="questions-list" class="grid grid-cols-auto" style="max-height: 600px; overflow-y: auto;"></div>
-                    <div class="text-center mt-3">
-                        <button onclick="exportAllQuestions()" class="btn btn-success"><i class="fas fa-download"></i> Export All to CSV</button>
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        document.getElementById('filter-course').addEventListener('change', () => filterQuestions());
-        document.getElementById('filter-difficulty').addEventListener('change', () => filterQuestions());
-        document.getElementById('search-questions').addEventListener('input', () => filterQuestions());
-        
-        filterQuestions();
+        reorderMode = false;
+        panel.innerHTML = `<div class="page"><div class="page-header"><h2>Full Question Bank</h2><p>Browse, search, and manage all questions.</p></div><div class="toolbar"><div class="toolbar-left"><div class="selection-info" id="selection-info"><span id="selected-count">0</span> selected</div><button id="delete-selected-btn" class="btn btn-danger hidden" onclick="openDeleteModal()">Delete Selected</button></div><div class="toolbar-right"><button onclick="toggleSelectAll()" class="btn btn-secondary">Select All</button><button id="clear-selection-btn" class="btn btn-secondary hidden" onclick="clearSelection()">Clear</button><button onclick="enableReorderMode()" class="btn btn-info">Reorder Questions</button><button id="save-order-btn" class="btn btn-success hidden" onclick="saveNewOrder()">Save Order</button></div></div><div class="filters"><select id="filter-course" class="form-control"><option value="">All Courses</option>${allCourses.map(c => `<option value="${c.id}">${c.course_name}</option>`).join('')}</select><select id="filter-difficulty" class="form-control"><option value="">All Difficulties</option><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select><input type="text" id="search-questions" class="form-control" placeholder="Search..."></div><div id="questions-grid" class="questions-grid"></div><div class="export-section"><button onclick="exportAllQuestions()" class="btn btn-success">Export All to CSV</button></div></div>`;
+        document.getElementById('filter-course').addEventListener('change', () => renderQuestionsList());
+        document.getElementById('filter-difficulty').addEventListener('change', () => renderQuestionsList());
+        document.getElementById('search-questions').addEventListener('input', () => renderQuestionsList());
+        renderQuestionsList();
     }
-    
-    function filterQuestions() {
+
+    function renderQuestionsList() {
         const courseId = document.getElementById('filter-course')?.value;
         const difficulty = document.getElementById('filter-difficulty')?.value;
         const search = document.getElementById('search-questions')?.value.toLowerCase() || '';
-        
         let filtered = [...allQuestions];
         if (courseId) filtered = filtered.filter(q => q.course_id === courseId);
         if (difficulty) filtered = filtered.filter(q => q.difficulty === difficulty);
         if (search) filtered = filtered.filter(q => q.question_text?.toLowerCase().includes(search));
-        
-        const container = document.getElementById('questions-list');
-        if (container) {
-            if (filtered.length === 0) {
-                container.innerHTML = '<div class="empty-state"><i class="fas fa-search"></i><p>No questions found</p></div>';
-            } else {
-                container.innerHTML = filtered.map(q => `
-                    <div class="question-item">
-                        <div class="badge badge-primary" style="margin-bottom: 10px;">${q.courses?.course_name || 'No Course'}</div>
-                        <strong>${q.question_text?.substring(0, 150)}${q.question_text?.length > 150 ? '...' : ''}</strong>
-                        <div class="badge badge-${q.difficulty === 'easy' ? 'success' : q.difficulty === 'hard' ? 'danger' : 'warning'}" style="margin: 10px 0;">
-                            ${q.difficulty || 'medium'}
-                        </div>
-                        <div class="text-sm text-gray-600"><strong>Correct:</strong> ${q.correct_answer}</div>
-                        <div class="question-actions mt-2">
-                            <button onclick="editQuestion('${q.id}')" class="btn btn-warning btn-sm"><i class="fas fa-edit"></i> Edit</button>
-                            <button onclick="deleteQuestion('${q.id}')" class="btn btn-danger btn-sm"><i class="fas fa-trash"></i> Delete</button>
-                        </div>
-                    </div>
-                `).join('');
-            }
-        }
+        currentQuestionsList = filtered;
+        const container = document.getElementById('questions-grid');
+        if (!container) return;
+        if (filtered.length === 0) { container.innerHTML = '<div class="empty-state"><i class="fas fa-search"></i><p>No questions found</p></div>'; return; }
+        container.innerHTML = filtered.map((q, idx) => `<div class="question-card" data-question-id="${q.id}" data-index="${idx}"><div class="question-card-header">${reorderMode ? `<span class="reorder-handle"><i class="fas fa-grip-vertical"></i></span>` : ''}<input type="checkbox" class="question-checkbox" data-id="${q.id}" onchange="updateSelectionCount()"><span class="badge badge-primary">${escapeHtml(q.courses?.course_name || 'No Course')}</span><span class="badge badge-${q.difficulty === 'easy' ? 'success' : q.difficulty === 'hard' ? 'danger' : 'warning'}">${q.difficulty || 'medium'}</span></div><div class="question-card-content"><div class="question-text">${escapeHtml(q.question_text)}</div><div class="question-options"><div class="option"><span class="option-letter">A.</span> ${escapeHtml(q.option_a || 'N/A')}</div><div class="option"><span class="option-letter">B.</span> ${escapeHtml(q.option_b || 'N/A')}</div><div class="option"><span class="option-letter">C.</span> ${escapeHtml(q.option_c || 'N/A')}</div><div class="option"><span class="option-letter">D.</span> ${escapeHtml(q.option_d || 'N/A')}</div></div><div class="question-correct"><strong>Correct:</strong> ${escapeHtml(q.correct_answer)}</div><div class="question-explanation"><strong>Explanation:</strong> ${escapeHtml(q.explanation || 'No explanation')}</div></div><div class="question-card-actions"><button class="btn btn-warning btn-sm" onclick="openEditModal('${q.id}')">Edit</button><button class="btn btn-danger btn-sm" onclick="deleteSingleQuestion('${q.id}')">Delete</button></div></div>`).join('');
+        if (reorderMode) makeDraggable();
+        updateSelectionInfo();
     }
-    
-    // ==================== ADD NEW QUESTION ====================
+
+    function makeDraggable() {
+        const cards = document.querySelectorAll('.question-card');
+        cards.forEach(card => {
+            card.setAttribute('draggable', 'true');
+            card.style.cursor = 'grab';
+            card.addEventListener('dragstart', handleDragStart);
+            card.addEventListener('dragover', handleDragOver);
+            card.addEventListener('drop', handleDrop);
+            card.addEventListener('dragend', handleDragEnd);
+        });
+    }
+
+    function handleDragStart(e) {
+        dragSourceIndex = parseInt(e.target.closest('.question-card').getAttribute('data-index'));
+        e.target.closest('.question-card').classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+    }
+
+    function handleDragOver(e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        const targetCard = e.target.closest('.question-card');
+        if (targetCard) targetCard.classList.add('drag-over');
+    }
+
+    function handleDrop(e) {
+        e.preventDefault();
+        const targetCard = e.target.closest('.question-card');
+        if (!targetCard) return;
+        targetCard.classList.remove('drag-over');
+        const dragTargetIndex = parseInt(targetCard.getAttribute('data-index'));
+        if (dragSourceIndex === dragTargetIndex) return;
+        const reordered = [...currentQuestionsList];
+        const [movedItem] = reordered.splice(dragSourceIndex, 1);
+        reordered.splice(dragTargetIndex, 0, movedItem);
+        currentQuestionsList = reordered;
+        renderQuestionsList();
+    }
+
+    function handleDragEnd(e) {
+        document.querySelectorAll('.question-card').forEach(card => {
+            card.classList.remove('dragging', 'drag-over');
+        });
+    }
+
+    function enableReorderMode() {
+        reorderMode = true;
+        document.getElementById('save-order-btn')?.classList.remove('hidden');
+        renderQuestionsList();
+        showToast('Reorder mode enabled - Drag and drop questions to reorder', 'info');
+    }
+
+    async function saveNewOrder() {
+        for (let i = 0; i < currentQuestionsList.length; i++) {
+            await sb.from('medical_assessments').update({ sort_order: i + 1 }).eq('id', currentQuestionsList[i].id);
+        }
+        reorderMode = false;
+        document.getElementById('save-order-btn')?.classList.add('hidden');
+        await loadAllData();
+        renderQuestionsList();
+        showToast('Order saved successfully!', 'success');
+    }
+
+    function updateSelectionCount() { const checkboxes = document.querySelectorAll('.question-checkbox:checked'); const count = checkboxes.length; document.getElementById('selected-count').innerText = count; document.getElementById('delete-selected-btn')?.classList.toggle('hidden', count === 0); document.getElementById('clear-selection-btn')?.classList.toggle('hidden', count === 0); selectedQuestionsForDelete = Array.from(checkboxes).map(cb => cb.dataset.id); }
+    function updateSelectionInfo() { const count = document.querySelectorAll('.question-checkbox:checked').length; const info = document.getElementById('selection-info'); if (info) info.innerHTML = `<i class="fas fa-check-circle"></i> ${count} selected`; }
+    function toggleSelectAll() { const checkboxes = document.querySelectorAll('.question-checkbox'); const allChecked = Array.from(checkboxes).every(cb => cb.checked); checkboxes.forEach(cb => cb.checked = !allChecked); updateSelectionCount(); }
+    function clearSelection() { document.querySelectorAll('.question-checkbox').forEach(cb => cb.checked = false); updateSelectionCount(); }
+    function openDeleteModal() { if (selectedQuestionsForDelete.length === 0) return; document.getElementById('delete-count').innerHTML = `Delete <strong>${selectedQuestionsForDelete.length}</strong> question(s)?`; document.getElementById('delete-modal').classList.remove('hidden'); }
+    function closeDeleteModal() { document.getElementById('delete-modal').classList.add('hidden'); }
+    async function confirmDeleteSelected() { const ids = [...selectedQuestionsForDelete]; let deleted = 0; for (const id of ids) { const { error } = await sb.from('medical_assessments').delete().eq('id', id); if (!error) deleted++; } closeDeleteModal(); await loadAllData(); renderQuestionsList(); showToast(`Deleted ${deleted} question(s)`, 'success'); }
+    async function deleteSingleQuestion(id) { if (confirm('Delete this question?')) { await sb.from('medical_assessments').delete().eq('id', id); await loadAllData(); renderQuestionsList(); showToast('Question deleted', 'success'); } }
+
+    // ADD QUESTION
     function renderAddQuestion() {
-        panel.innerHTML = `
-            <div class="page">
-                <div class="page-header">
-                    <h2><i class="fas fa-plus-circle"></i> Add New Question</h2>
-                    <p>Create a new multiple choice question for your question bank.</p>
-                </div>
-                <div class="card">
-                    <form id="add-question-form">
-                        <div class="form-group">
-                            <label><i class="fas fa-book"></i> Select Course</label>
-                            <select id="q-course" class="form-control" required>
-                                <option value="">-- Select Course --</option>
-                                ${allCourses.map(c => `<option value="${c.id}">${c.course_name}</option>`).join('')}
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label><i class="fas fa-question-circle"></i> Question Text</label>
-                            <textarea id="q-text" class="form-control" rows="3" placeholder="Enter the question here..." required></textarea>
-                        </div>
-                        <div class="form-grid">
-                            <div class="form-group">
-                                <label><i class="fas fa-circle"></i> Option A</label>
-                                <input type="text" id="q-opt-a" class="form-control" placeholder="Option A" required>
-                            </div>
-                            <div class="form-group">
-                                <label><i class="fas fa-circle"></i> Option B</label>
-                                <input type="text" id="q-opt-b" class="form-control" placeholder="Option B" required>
-                            </div>
-                            <div class="form-group">
-                                <label><i class="fas fa-circle"></i> Option C</label>
-                                <input type="text" id="q-opt-c" class="form-control" placeholder="Option C" required>
-                            </div>
-                            <div class="form-group">
-                                <label><i class="fas fa-circle"></i> Option D</label>
-                                <input type="text" id="q-opt-d" class="form-control" placeholder="Option D" required>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label><i class="fas fa-check-circle"></i> Correct Answer</label>
-                            <input type="text" id="q-correct" class="form-control" placeholder="Exact match of the correct option" required>
-                        </div>
-                        <div class="form-group">
-                            <label><i class="fas fa-info-circle"></i> Explanation</label>
-                            <textarea id="q-explanation" class="form-control" rows="2" placeholder="Explain why this answer is correct..."></textarea>
-                        </div>
-                        <div class="form-group">
-                            <label><i class="fas fa-chart-line"></i> Difficulty Level</label>
-                            <select id="q-difficulty" class="form-control">
-                                <option value="easy">Easy</option>
-                                <option value="medium" selected>Medium</option>
-                                <option value="hard">Hard</option>
-                            </select>
-                        </div>
-                        <div class="d-flex gap-2">
-                            <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Question</button>
-                            <button type="button" onclick="resetAddForm()" class="btn btn-secondary"><i class="fas fa-undo"></i> Reset</button>
-                        </div>
-                    </form>
-                    <div id="add-result" class="mt-3"></div>
-                </div>
-            </div>
-        `;
-        
+        panel.innerHTML = `<div class="page"><div class="page-header"><h2>Add New Question</h2><p>Create a new multiple choice question.</p></div><div class="card"><form id="add-question-form"><div class="form-group"><label>Course</label><select id="q-course" class="form-control" required><option value="">-- Select Course --</option>${allCourses.map(c => `<option value="${c.id}">${c.course_name}</option>`).join('')}</select></div><div class="form-group"><label>Question Text</label><textarea id="q-text" class="form-control" rows="3" required></textarea></div><div class="options-grid"><div class="form-group"><label>Option A</label><input id="q-opt-a" class="form-control" required></div><div class="form-group"><label>Option B</label><input id="q-opt-b" class="form-control" required></div><div class="form-group"><label>Option C</label><input id="q-opt-c" class="form-control" required></div><div class="form-group"><label>Option D</label><input id="q-opt-d" class="form-control" required></div></div><div class="form-group"><label>Correct Answer</label><input id="q-correct" class="form-control" required></div><div class="form-group"><label>Explanation</label><textarea id="q-explanation" class="form-control" rows="2"></textarea></div><div class="form-group"><label>Difficulty</label><select id="q-difficulty" class="form-control"><option value="easy">Easy</option><option value="medium" selected>Medium</option><option value="hard">Hard</option></select></div><div class="form-actions"><button type="submit" class="btn btn-primary">Save</button><button type="button" onclick="resetAddForm()" class="btn btn-secondary">Reset</button></div></form><div id="add-result" class="mt-3"></div></div></div>`;
         document.getElementById('add-question-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const payload = {
-                question_text: document.getElementById('q-text').value,
-                option_a: document.getElementById('q-opt-a').value,
-                option_b: document.getElementById('q-opt-b').value,
-                option_c: document.getElementById('q-opt-c').value,
-                option_d: document.getElementById('q-opt-d').value,
-                correct_answer: document.getElementById('q-correct').value,
-                explanation: document.getElementById('q-explanation').value,
-                course_id: document.getElementById('q-course').value,
-                difficulty: document.getElementById('q-difficulty').value,
-                question_type: 'multiple_choice',
-                curriculum: 'KRCHN',
-                is_active: true,
-                is_published: true,
-                created_at: new Date().toISOString()
-            };
-            
+            const payload = { question_text: document.getElementById('q-text').value, option_a: document.getElementById('q-opt-a').value, option_b: document.getElementById('q-opt-b').value, option_c: document.getElementById('q-opt-c').value, option_d: document.getElementById('q-opt-d').value, correct_answer: document.getElementById('q-correct').value, explanation: document.getElementById('q-explanation').value, course_id: document.getElementById('q-course').value, difficulty: document.getElementById('q-difficulty').value, question_type: 'multiple_choice', curriculum: 'KRCHN', is_active: true, is_published: true, created_at: new Date().toISOString() };
             const { error } = await sb.from('medical_assessments').insert([payload]);
-            if (error) {
-                document.getElementById('add-result').innerHTML = `<div class="alert alert-error">Error: ${error.message}</div>`;
-            } else {
-                document.getElementById('add-result').innerHTML = `<div class="alert alert-success"><i class="fas fa-check-circle"></i> Question added successfully!</div>`;
-                resetAddForm();
-                await loadAllData();
-                setTimeout(() => document.getElementById('add-result').innerHTML = '', 3000);
-            }
+            const resultDiv = document.getElementById('add-result');
+            if (error) resultDiv.innerHTML = `<div class="alert alert-error">Error: ${error.message}</div>`;
+            else { resultDiv.innerHTML = `<div class="alert alert-success">Question added!</div>`; resetAddForm(); await loadAllData(); setTimeout(() => resultDiv.innerHTML = '', 3000); }
         });
     }
-    
-    function resetAddForm() {
-        document.getElementById('q-text').value = '';
-        document.getElementById('q-opt-a').value = '';
-        document.getElementById('q-opt-b').value = '';
-        document.getElementById('q-opt-c').value = '';
-        document.getElementById('q-opt-d').value = '';
-        document.getElementById('q-correct').value = '';
-        document.getElementById('q-explanation').value = '';
-    }
-    
-    // ==================== EDIT/DELETE QUESTIONS ====================
-    async function renderEditBank() {
-        await loadAllData();
-        panel.innerHTML = `
-            <div class="page">
-                <div class="page-header">
-                    <h2><i class="fas fa-edit"></i> Edit/Delete Questions</h2>
-                    <p>Manage existing questions - edit or remove them from the database.</p>
-                </div>
-                <div class="card">
-                    <div class="grid grid-cols-2" style="margin-bottom: 20px;">
-                        <select id="edit-filter-course" class="form-control">
-                            <option value="">All Courses</option>
-                            ${allCourses.map(c => `<option value="${c.id}">${c.course_name}</option>`).join('')}
-                        </select>
-                        <input type="text" id="edit-search" class="form-control" placeholder="Search questions...">
-                    </div>
-                    <div id="edit-questions-list" class="grid grid-cols-auto" style="max-height: 600px; overflow-y: auto;"></div>
-                </div>
-            </div>
-        `;
-        
-        document.getElementById('edit-filter-course').addEventListener('change', () => filterEditQuestions());
-        document.getElementById('edit-search').addEventListener('input', () => filterEditQuestions());
-        
-        filterEditQuestions();
-    }
-    
-    function filterEditQuestions() {
-        const courseId = document.getElementById('edit-filter-course')?.value;
-        const search = document.getElementById('edit-search')?.value.toLowerCase() || '';
-        
-        let filtered = [...allQuestions];
-        if (courseId) filtered = filtered.filter(q => q.course_id === courseId);
-        if (search) filtered = filtered.filter(q => q.question_text?.toLowerCase().includes(search));
-        
-        const container = document.getElementById('edit-questions-list');
-        if (container) {
-            if (filtered.length === 0) {
-                container.innerHTML = '<div class="empty-state"><i class="fas fa-search"></i><p>No questions found</p></div>';
-            } else {
-                container.innerHTML = filtered.map(q => `
-                    <div class="question-item" id="question-${q.id}">
-                        <div class="badge badge-primary">${q.courses?.course_name || 'No Course'}</div>
-                        <div class="badge badge-${q.difficulty === 'easy' ? 'success' : q.difficulty === 'hard' ? 'danger' : 'warning'}">${q.difficulty || 'medium'}</div>
-                        <div class="mt-2"><strong>${q.question_text}</strong></div>
-                        <div class="text-sm text-gray-600 mt-2">
-                            <div><strong>A:</strong> ${q.option_a}</div>
-                            <div><strong>B:</strong> ${q.option_b}</div>
-                            <div><strong>C:</strong> ${q.option_c}</div>
-                            <div><strong>D:</strong> ${q.option_d}</div>
-                            <div><strong>Correct:</strong> ${q.correct_answer}</div>
-                        </div>
-                        <div class="question-actions mt-2">
-                            <button onclick="openEditModal('${q.id}')" class="btn btn-warning btn-sm"><i class="fas fa-edit"></i> Edit</button>
-                            <button onclick="deleteQuestion('${q.id}')" class="btn btn-danger btn-sm"><i class="fas fa-trash"></i> Delete</button>
-                        </div>
-                    </div>
-                `).join('');
-            }
-        }
-    }
-    
+    function resetAddForm() { ['q-text', 'q-opt-a', 'q-opt-b', 'q-opt-c', 'q-opt-d', 'q-correct', 'q-explanation'].forEach(id => document.getElementById(id).value = ''); }
+
+    // EDIT MODAL
     window.openEditModal = async (questionId) => {
-        const question = allQuestions.find(q => q.id === questionId);
-        if (!question) return;
-        
-        const modal = document.createElement('div');
-        modal.className = 'modal';
-        modal.innerHTML = `
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3><i class="fas fa-edit"></i> Edit Question</h3>
-                    <button class="modal-close" onclick="this.closest('.modal').remove()">&times;</button>
-                </div>
-                <form id="edit-form">
-                    <div class="form-group">
-                        <label>Course</label>
-                        <select id="edit-course" class="form-control" required>
-                            ${allCourses.map(c => `<option value="${c.id}" ${c.id === question.course_id ? 'selected' : ''}>${c.course_name}</option>`).join('')}
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Question Text</label>
-                        <textarea id="edit-text" class="form-control" rows="3" required>${question.question_text || ''}</textarea>
-                    </div>
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label>Option A</label>
-                            <input id="edit-opt-a" class="form-control" value="${(question.option_a || '').replace(/"/g, '&quot;')}" placeholder="Option A">
-                        </div>
-                        <div class="form-group">
-                            <label>Option B</label>
-                            <input id="edit-opt-b" class="form-control" value="${(question.option_b || '').replace(/"/g, '&quot;')}" placeholder="Option B">
-                        </div>
-                        <div class="form-group">
-                            <label>Option C</label>
-                            <input id="edit-opt-c" class="form-control" value="${(question.option_c || '').replace(/"/g, '&quot;')}" placeholder="Option C">
-                        </div>
-                        <div class="form-group">
-                            <label>Option D</label>
-                            <input id="edit-opt-d" class="form-control" value="${(question.option_d || '').replace(/"/g, '&quot;')}" placeholder="Option D">
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label>Correct Answer</label>
-                        <input id="edit-correct" class="form-control" value="${(question.correct_answer || '').replace(/"/g, '&quot;')}" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Explanation</label>
-                        <textarea id="edit-explanation" class="form-control" rows="2">${question.explanation || ''}</textarea>
-                    </div>
-                    <div class="form-group">
-                        <label>Difficulty</label>
-                        <select id="edit-difficulty" class="form-control">
-                            <option value="easy" ${question.difficulty === 'easy' ? 'selected' : ''}>Easy</option>
-                            <option value="medium" ${question.difficulty === 'medium' ? 'selected' : ''}>Medium</option>
-                            <option value="hard" ${question.difficulty === 'hard' ? 'selected' : ''}>Hard</option>
-                        </select>
-                    </div>
-                    <div class="d-flex gap-2 mt-3">
-                        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Changes</button>
-                        <button type="button" onclick="this.closest('.modal').remove()" class="btn btn-secondary">Cancel</button>
-                    </div>
-                </form>
-            </div>
-        `;
-        
+        const q = allQuestions.find(q => q.id === questionId);
+        const modal = document.createElement('div'); modal.className = 'modal'; modal.innerHTML = `<div class="modal-content"><div class="modal-header"><h3>Edit Question</h3><button class="modal-close" onclick="this.closest('.modal').remove()">&times;</button></div><form id="edit-form"><div class="form-group"><label>Course</label><select id="edit-course" class="form-control">${allCourses.map(c => `<option value="${c.id}" ${c.id === q.course_id ? 'selected' : ''}>${c.course_name}</option>`).join('')}</select></div><div class="form-group"><label>Question</label><textarea id="edit-text" class="form-control" rows="3">${escapeHtml(q.question_text || '')}</textarea></div><div class="options-grid"><div class="form-group"><label>A</label><input id="edit-opt-a" value="${escapeHtml(q.option_a || '')}" class="form-control"></div><div class="form-group"><label>B</label><input id="edit-opt-b" value="${escapeHtml(q.option_b || '')}" class="form-control"></div><div class="form-group"><label>C</label><input id="edit-opt-c" value="${escapeHtml(q.option_c || '')}" class="form-control"></div><div class="form-group"><label>D</label><input id="edit-opt-d" value="${escapeHtml(q.option_d || '')}" class="form-control"></div></div><div class="form-group"><label>Correct</label><input id="edit-correct" value="${escapeHtml(q.correct_answer || '')}" class="form-control"></div><div class="form-group"><label>Explanation</label><textarea id="edit-explanation" rows="2" class="form-control">${escapeHtml(q.explanation || '')}</textarea></div><div class="form-group"><label>Difficulty</label><select id="edit-difficulty" class="form-control"><option value="easy" ${q.difficulty === 'easy' ? 'selected' : ''}>Easy</option><option value="medium" ${q.difficulty === 'medium' ? 'selected' : ''}>Medium</option><option value="hard" ${q.difficulty === 'hard' ? 'selected' : ''}>Hard</option></select></div><div class="form-actions"><button type="submit" class="btn btn-primary">Save</button><button type="button" onclick="this.closest('.modal').remove()" class="btn btn-secondary">Cancel</button></div></form></div>`;
         document.body.appendChild(modal);
-        
         document.getElementById('edit-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const updates = {
-                course_id: document.getElementById('edit-course').value,
-                question_text: document.getElementById('edit-text').value,
-                option_a: document.getElementById('edit-opt-a').value,
-                option_b: document.getElementById('edit-opt-b').value,
-                option_c: document.getElementById('edit-opt-c').value,
-                option_d: document.getElementById('edit-opt-d').value,
-                correct_answer: document.getElementById('edit-correct').value,
-                explanation: document.getElementById('edit-explanation').value,
-                difficulty: document.getElementById('edit-difficulty').value,
-                updated_at: new Date().toISOString()
-            };
-            
+            const updates = { course_id: document.getElementById('edit-course').value, question_text: document.getElementById('edit-text').value, option_a: document.getElementById('edit-opt-a').value, option_b: document.getElementById('edit-opt-b').value, option_c: document.getElementById('edit-opt-c').value, option_d: document.getElementById('edit-opt-d').value, correct_answer: document.getElementById('edit-correct').value, explanation: document.getElementById('edit-explanation').value, difficulty: document.getElementById('edit-difficulty').value, updated_at: new Date().toISOString() };
             const { error } = await sb.from('medical_assessments').update(updates).eq('id', questionId);
-            if (error) {
-                alert('Error updating: ' + error.message);
-            } else {
-                alert('Question updated successfully!');
-                modal.remove();
-                await loadAllData();
-                renderEditBank();
-            }
+            if (error) alert('Error: ' + error.message);
+            else { alert('Updated!'); modal.remove(); await loadAllData(); if(document.getElementById('questions-grid')) renderQuestionsList(); }
         });
     };
-    
-    window.deleteQuestion = async (id) => {
-        if (confirm('⚠️ Are you sure you want to delete this question? This action cannot be undone.')) {
-            const { error } = await sb.from('medical_assessments').delete().eq('id', id);
-            if (error) {
-                alert('Error deleting: ' + error.message);
-            } else {
-                await loadAllData();
-                showToast('Question deleted successfully', 'success');
-                if (document.getElementById('edit-questions-list')) {
-                    renderEditBank();
-                } else if (document.getElementById('questions-list')) {
-                    filterQuestions();
-                }
-            }
-        }
-    };
-    
-    // ==================== BULK IMPORT (Past Papers) ====================
-    function renderBulkImport() {
-        panel.innerHTML = `
-            <div class="page">
-                <div class="page-header">
-                    <h2><i class="fas fa-file-import"></i> Bulk Import from Past Papers</h2>
-                    <p>Upload past papers in text format - the system will automatically extract questions.</p>
-                </div>
-                <div class="card">
-                    <div class="form-group">
-                        <label><i class="fas fa-book"></i> Select Course for Import</label>
-                        <select id="bulk-course" class="form-control">
-                            <option value="">-- Select Course --</option>
-                            ${allCourses.map(c => `<option value="${c.id}">${c.course_name}</option>`).join('')}
-                        </select>
-                    </div>
-                    <div class="file-upload" id="bulk-drag-area" onclick="document.getElementById('bulk-file').click()">
-                        <i class="fas fa-cloud-upload-alt"></i>
-                        <p>Drag & drop Excel/CSV file or click to browse</p>
-                        <p class="text-sm text-gray-500">Supported formats: .xlsx, .csv, .txt</p>
-                        <input type="file" id="bulk-file" accept=".xlsx,.csv,.txt" style="display: none">
-                    </div>
-                    <div class="form-group mt-3">
-                        <label><i class="fas fa-file-alt"></i> Or paste past paper text</label>
-                        <textarea id="bulk-text" class="form-control" rows="10" placeholder="Paste your past paper content here...&#10;&#10;Format example:&#10;1. What is normal blood pressure?&#10;A. 90/60 mmHg&#10;B. 120/80 mmHg ✓&#10;C. 140/90 mmHg&#10;D. 160/100 mmHg&#10;Answer is B: Normal BP is 120/80 mmHg"></textarea>
-                    </div>
-                    <div class="d-flex gap-2 mt-3">
-                        <button onclick="processBulkImport()" class="btn btn-primary"><i class="fas fa-upload"></i> Import Questions</button>
-                        <button onclick="document.getElementById('bulk-text').value = ''" class="btn btn-secondary"><i class="fas fa-times"></i> Clear</button>
-                    </div>
-                    <div id="bulk-result" class="mt-3"></div>
-                </div>
-                <div class="card mt-3">
-                    <h3><i class="fas fa-info-circle"></i> Format Instructions</h3>
-                    <div class="text-sm text-gray-600">
-                        <p><strong>Accepted format:</strong></p>
-                        <pre style="background: #f5f5f5; padding: 10px; border-radius: 8px; overflow-x: auto;">
-1. What is the normal range for blood pressure?
-A. 90/60 mmHg
-B. 120/80 mmHg ✓
-C. 140/90 mmHg
-D. 160/100 mmHg
-Answer is B: Normal blood pressure is 120/80 mmHg
 
-2. Which organ is responsible for filtering blood?
-A. Heart
-B. Liver
-C. Kidneys ✓
-D. Lungs
-Answer is C: The kidneys filter waste from the blood</pre>
-                        <p class="mt-2"><i class="fas fa-check-circle text-success"></i> Mark correct answers with ✓ or ✔</p>
-                        <p><i class="fas fa-check-circle text-success"></i> Include "Answer is X:" line for automatic detection</p>
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        const fileInput = document.getElementById('bulk-file');
-        fileInput.onchange = (e) => { if (e.target.files[0]) readBulkFile(e.target.files[0]); };
-        
-        const dragArea = document.getElementById('bulk-drag-area');
-        dragArea.ondragover = (e) => { e.preventDefault(); dragArea.style.borderColor = '#4f46e5'; dragArea.style.background = '#f3f4f6'; };
-        dragArea.ondragleave = () => { dragArea.style.borderColor = '#d1d5db'; dragArea.style.background = 'transparent'; };
-        dragArea.ondrop = (e) => { e.preventDefault(); const file = e.dataTransfer.files[0]; if (file) readBulkFile(file); };
+    // BULK IMPORT
+    function renderBulkImport() {
+        panel.innerHTML = `<div class="page"><div class="page-header"><h2>Bulk Import from Past Papers</h2><p>Paste past paper content - auto extracts questions, options, correct answers (✓), and explanations.</p></div><div class="card"><div class="form-group"><label>Select Course</label><select id="bulk-course" class="form-control"><option value="">-- Select Course --</option>${allCourses.map(c => `<option value="${c.id}">${c.course_name}</option>`).join('')}</select></div><div class="file-upload" id="bulk-drag-area"><i class="fas fa-cloud-upload-alt"></i><p>Drag & drop file or click to browse</p><p class="text-sm">.xlsx, .csv, .txt</p><input type="file" id="bulk-file" accept=".xlsx,.csv,.txt"></div><div class="form-group"><label>Paste past paper text</label><textarea id="bulk-text" class="form-control" rows="12" placeholder="1. Question?&#10;A. Option&#10;B. Option ✓&#10;C. Option&#10;D. Option&#10;Answer is B: Explanation"></textarea></div><div class="form-actions"><button onclick="processBulkImport()" class="btn btn-primary">Import Questions</button><button onclick="clearBulkText()" class="btn btn-secondary">Clear</button></div><div id="bulk-result" class="mt-3"></div></div></div>`;
+        const fileInput = document.getElementById('bulk-file'); const dragArea = document.getElementById('bulk-drag-area');
+        fileInput.onchange = (e) => { if(e.target.files[0]) readBulkFile(e.target.files[0]); };
+        dragArea.onclick = () => fileInput.click();
+        dragArea.ondragover = (e) => { e.preventDefault(); dragArea.classList.add('drag-over'); };
+        dragArea.ondragleave = () => dragArea.classList.remove('drag-over');
+        dragArea.ondrop = (e) => { e.preventDefault(); dragArea.classList.remove('drag-over'); const file = e.dataTransfer.files[0]; if(file) readBulkFile(file); };
     }
-    
-    function readBulkFile(file) {
-        const ext = file.name.split('.').pop().toLowerCase();
-        if (ext === 'txt') {
-            const reader = new FileReader();
-            reader.onload = (e) => { document.getElementById('bulk-text').value = e.target.result; showToast('File loaded successfully', 'success'); };
-            reader.readAsText(file);
-        } else if (ext === 'csv' || ext === 'xlsx') {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
-                const sheet = workbook.Sheets[workbook.SheetNames[0]];
-                const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-                let text = '';
-                rows.forEach(row => { if (row[0]) text += row[0] + '\n'; });
-                document.getElementById('bulk-text').value = text;
-                showToast('Excel/CSV loaded successfully', 'success');
-            };
-            reader.readAsArrayBuffer(file);
-        } else {
-            showToast('Please copy-paste text content from PDF/Word files', 'warning');
-        }
-    }
-    
-   window.processBulkImport = async () => {
-    const courseId = document.getElementById('bulk-course').value;
-    if (!courseId) {
-        alert('Please select a course for the imported questions');
-        return;
-    }
-    
-    const raw = document.getElementById('bulk-text').value;
-    if (!raw.trim()) {
-        alert('Please paste past paper content or upload a file');
-        return;
-    }
-    
-    const resultDiv = document.getElementById('bulk-result');
-    resultDiv.innerHTML = '<div class="alert alert-info"><i class="fas fa-spinner fa-spin"></i> Processing questions...</div>';
-    
-    // Split into question blocks by number (1., 2., 3., etc.)
-    const blocks = raw.split(/\n(?=\d+\.)/);
-    let saved = 0;
-    let failed = 0;
-    
-    for (let block of blocks) {
-        if (!block.trim()) continue;
-        
-        try {
-            // Extract question text
-            const qMatch = block.match(/^\s*\d+\.\s*(.+?)(?:\n|$)/);
-            if (!qMatch) continue;
-            let questionText = qMatch[1].trim();
-            
-            // Extract options (A., B., C., D., E.)
-            const options = {};
-            let correctAnswer = '';
-            let explanation = '';
-            
-            // Find all option lines
-            const optionLines = block.match(/([A-E])[\.\)]\s*([^\n]+)/gi);
-            if (optionLines) {
-                for (let opt of optionLines) {
-                    const letterMatch = opt.match(/([A-E])[\.\)]/i);
-                    if (!letterMatch) continue;
-                    const letter = letterMatch[1].toUpperCase();
-                    let optText = opt.replace(/^[A-E][\.\)]\s*/i, '').trim();
-                    
-                    // Check if marked as correct (has ✓ or ✔)
-                    const isCorrect = optText.includes('✓') || optText.includes('✔');
-                    
-                    // Remove markers
-                    optText = optText.replace(/[✓✔]/g, '').trim();
-                    
-                    options[letter] = optText;
-                    if (isCorrect && !correctAnswer) {
-                        correctAnswer = optText;
+    function readBulkFile(file) { const reader = new FileReader(); reader.onload = (e) => { document.getElementById('bulk-text').value = e.target.result; showToast('File loaded', 'success'); }; reader.readAsText(file); }
+    function clearBulkText() { document.getElementById('bulk-text').value = ''; document.getElementById('bulk-result').innerHTML = ''; }
+    window.processBulkImport = async () => {
+        const courseId = document.getElementById('bulk-course').value;
+        if (!courseId) { alert('Select a course'); return; }
+        const raw = document.getElementById('bulk-text').value;
+        if (!raw.trim()) { alert('Paste content'); return; }
+        const resultDiv = document.getElementById('bulk-result');
+        resultDiv.innerHTML = '<div class="alert alert-info"><i class="fas fa-spinner fa-spin"></i> Processing...</div>';
+        const blocks = raw.split(/\n(?=\d+\.)/);
+        let saved = 0, failed = 0;
+        for (let block of blocks) {
+            if (!block.trim()) continue;
+            try {
+                const qMatch = block.match(/^\s*\d+\.\s*(.+?)(?:\n|$)/);
+                if (!qMatch) continue;
+                let questionText = qMatch[1].trim();
+                const options = {};
+                let correctAnswer = '', explanation = '';
+                const optionLines = block.match(/([A-E])[\.\)]\s*([^\n]+)/gi);
+                if (optionLines) {
+                    for (let opt of optionLines) {
+                        const letterMatch = opt.match(/([A-E])[\.\)]/i);
+                        if (!letterMatch) continue;
+                        const letter = letterMatch[1].toUpperCase();
+                        let optText = opt.replace(/^[A-E][\.\)]\s*/i, '').trim();
+                        const isCorrect = optText.includes('✓') || optText.includes('✔');
+                        optText = optText.replace(/[✓✔]/g, '').trim();
+                        options[letter] = optText;
+                        if (isCorrect && !correctAnswer) correctAnswer = optText;
                     }
                 }
-            }
-            
-            // Extract answer from "Answer is X:" pattern (supports A, B, C, D, E)
-            const answerPattern = /Answer\s+is\s+([A-E])[:\s-]*([^\n]*)/i;
-            const answerMatch = block.match(answerPattern);
-            if (answerMatch) {
-                const answerLetter = answerMatch[1].toUpperCase();
-                if (options[answerLetter]) {
-                    correctAnswer = options[answerLetter];
+                const answerMatch = block.match(/Answer\s+is\s+([A-E])[:\s-]*([^\n]*)/i);
+                if (answerMatch) {
+                    const letter = answerMatch[1].toUpperCase();
+                    if (options[letter]) correctAnswer = options[letter];
+                    explanation = answerMatch[2]?.trim() || '';
                 }
-                // Get explanation (the part after the letter)
-                if (answerMatch[2]) {
-                    explanation = answerMatch[2].trim();
-                }
-            }
-            
-            // Also try to find explanation after "Answer:"
-            if (!explanation) {
-                const expMatch = block.match(/Answer[:\s-]+[A-E][:\s-]*([^\n]+)/i);
-                if (expMatch) explanation = expMatch[1].trim();
-            }
-            
-            // If no correct answer found, use first option
-            if (!correctAnswer) {
-                const firstLetter = Object.keys(options)[0];
-                correctAnswer = options[firstLetter] || 'Option A';
-            }
-            
-            // If no explanation, create a default one
-            if (!explanation) {
-                explanation = `The correct answer is: ${correctAnswer}`;
-            }
-            
-            // Clean up explanation
-            explanation = explanation.replace(/^[:\s-]+/, '').trim();
-            
-            // Skip invalid questions
-            if (!questionText || Object.keys(options).length < 2) {
-                failed++;
-                continue;
-            }
-            
-            // Create payload (supports up to E option)
-            const payload = {
-                question_text: questionText,
-                option_a: options.A || null,
-                option_b: options.B || null,
-                option_c: options.C || null,
-                option_d: options.D || null,
-                option_e: options.E || null,
-                correct_answer: correctAnswer,
-                explanation: explanation.substring(0, 1000),
-                course_id: courseId,
-                difficulty: 'medium',
-                question_type: 'multiple_choice',
-                curriculum: 'KRCHN',
-                is_active: true,
-                is_published: true,
-                created_at: new Date().toISOString()
-            };
-            
-            const { error } = await sb.from('medical_assessments').insert([payload]);
-            if (error) {
-                failed++;
-                console.error('Insert error:', error);
-            } else {
-                saved++;
-            }
-            
-        } catch (err) {
-            failed++;
-            console.error('Parse error:', err);
+                if (!correctAnswer) correctAnswer = options.A || 'Option A';
+                if (!explanation) explanation = `The correct answer is: ${correctAnswer}`;
+                explanation = explanation.replace(/^[:\s-]+/, '').trim();
+                if (!questionText || Object.keys(options).length < 2) { failed++; continue; }
+                const payload = { question_text: questionText, option_a: options.A || null, option_b: options.B || null, option_c: options.C || null, option_d: options.D || null, option_e: options.E || null, correct_answer: correctAnswer, explanation: explanation.substring(0,1000), course_id: courseId, difficulty: 'medium', question_type: 'multiple_choice', curriculum: 'KRCHN', is_active: true, is_published: true, created_at: new Date().toISOString() };
+                const { error } = await sb.from('medical_assessments').insert([payload]);
+                if (error) failed++; else saved++;
+            } catch(err) { failed++; }
         }
-    }
-    
-    if (saved > 0) {
-        resultDiv.innerHTML = `
-            <div class="alert alert-success">
-                <i class="fas fa-check-circle"></i> 
-                ✅ Successfully imported ${saved} questions!
-                ${failed > 0 ? `<br><small>⚠️ ${failed} questions failed (check format)</small>` : ''}
-            </div>
-        `;
-        await loadAllData();
-        showToast(`${saved} questions imported successfully!`, 'success');
-        document.getElementById('bulk-text').value = '';
-    } else {
-        resultDiv.innerHTML = `
-            <div class="alert alert-error">
-                <i class="fas fa-exclamation-triangle"></i> 
-                ❌ No questions were imported.
-                <br><small>Please use format:<br>
-                1. Question text?<br>
-                A. Option A<br>
-                B. Option B ✓<br>
-                C. Option C<br>
-                D. Option D<br>
-                Answer is B: Your explanation here</small>
-            </div>
-        `;
-    }
-};
-    // ==================== COURSE MANAGER ====================
-    async function renderCourses() {
-        await loadAllData();
-        panel.innerHTML = `
-            <div class="page">
-                <div class="page-header">
-                    <h2><i class="fas fa-book"></i> Course Manager</h2>
-                    <p>Manage nursing courses and their status.</p>
-                </div>
-                <div class="card">
-                    <button onclick="addNewCourse()" class="btn btn-success mb-3"><i class="fas fa-plus"></i> Add New Course</button>
-                    <div id="courses-list" class="grid grid-cols-auto"></div>
-                </div>
-            </div>
-        `;
-        
-        const container = document.getElementById('courses-list');
-        if (container) {
-            container.innerHTML = allCourses.map(c => `
-                <div class="course-card">
-                    <div class="d-flex justify-between align-center">
-                        <div>
-                            <h3><i class="fas fa-book-open"></i> ${c.course_name}</h3>
-                            <div class="badge badge-${c.status === 'Active' ? 'success' : 'danger'} mt-1">${c.status || 'Active'}</div>
-                            <div class="text-sm text-gray-500 mt-1">Unit: ${c.unit_code || 'N/A'}</div>
-                        </div>
-                        <div class="d-flex gap-1">
-                            <button onclick="editCourse('${c.id}', '${c.course_name}', '${c.unit_code || ''}')" class="btn btn-warning btn-sm"><i class="fas fa-edit"></i></button>
-                            <button onclick="toggleCourseStatus('${c.id}', '${c.status || 'Active'}')" class="btn btn-info btn-sm"><i class="fas fa-toggle-on"></i></button>
-                        </div>
-                    </div>
-                </div>
-            `).join('');
-        }
-    }
-    
-    window.addNewCourse = async () => {
-        const name = prompt('Enter course name:');
-        if (name) {
-            const unitCode = prompt('Enter unit code (e.g., KRCHN101):');
-            const { error } = await sb.from('courses').insert([{
-                course_name: name,
-                unit_code: unitCode || '',
-                status: 'Active',
-                created_at: new Date().toISOString()
-            }]);
-            if (!error) {
-                await loadAllData();
-                renderCourses();
-                showToast('Course added successfully', 'success');
-            }
-        }
+        if (saved > 0) { resultDiv.innerHTML = `<div class="alert alert-success">✅ Imported ${saved} questions! ${failed > 0 ? `(${failed} failed)` : ''}</div>`; await loadAllData(); showToast(`${saved} questions imported`, 'success'); document.getElementById('bulk-text').value = ''; }
+        else resultDiv.innerHTML = `<div class="alert alert-error">❌ No questions imported. Check format.</div>`;
     };
-    
-    window.editCourse = async (id, currentName, currentUnit) => {
-        const newName = prompt('Edit course name:', currentName);
-        const newUnit = prompt('Edit unit code:', currentUnit);
-        if (newName) {
-            const { error } = await sb.from('courses').update({
-                course_name: newName,
-                unit_code: newUnit || ''
-            }).eq('id', id);
-            if (!error) {
-                await loadAllData();
-                renderCourses();
-                showToast('Course updated successfully', 'success');
-            }
-        }
-    };
-    
-    window.toggleCourseStatus = async (id, currentStatus) => {
-        const newStatus = currentStatus === 'Active' ? 'Inactive' : 'Active';
-        const { error } = await sb.from('courses').update({ status: newStatus }).eq('id', id);
-        if (!error) {
-            await loadAllData();
-            renderCourses();
-            showToast(`Course ${newStatus === 'Active' ? 'activated' : 'deactivated'}`, 'success');
-        }
-    };
-    
-    // ==================== STUDENT MANAGER ====================
-    async function renderStudents() {
-        await loadAllData();
-        panel.innerHTML = `
-            <div class="page">
-                <div class="page-header">
-                    <h2><i class="fas fa-users"></i> Student Manager</h2>
-                    <p>View and manage all registered students.</p>
-                </div>
-                <div class="card">
-                    <div class="form-group">
-                        <input type="text" id="student-search" class="form-control" placeholder="Search students by name or email...">
-                    </div>
-                    <div id="students-list" class="table-container"></div>
-                </div>
-            </div>
-        `;
-        
-        document.getElementById('student-search').addEventListener('input', () => filterStudents());
-        filterStudents();
-    }
-    
-    function filterStudents() {
-        const search = document.getElementById('student-search')?.value.toLowerCase() || '';
-        const filtered = allStudents.filter(s => 
-            s.full_name?.toLowerCase().includes(search) || 
-            s.email?.toLowerCase().includes(search)
-        );
-        
-        const container = document.getElementById('students-list');
-        if (container) {
-            container.innerHTML = `
-                <table class="table">
-                    <thead>
-                        <tr><th>Name</th><th>Email</th><th>Role</th><th>Questions</th><th>Actions</th></tr>
-                    </thead>
-                    <tbody>
-                        ${filtered.map(s => {
-                            const prog = userProgress[s.id];
-                            const answered = prog?.answers ? Object.values(prog.answers).filter(a => a.answered).length : 0;
-                            return `
-                                <tr>
-                                    <td><i class="fas fa-user-graduate"></i> ${s.full_name || '—'}</td>
-                                    <td>${s.email}</td>
-                                    <td><span class="badge badge-${s.role === 'admin' ? 'warning' : 'primary'}">${s.role || 'student'}</span></td>
-                                    <td>${answered}</td>
-                                    <td class="table-actions">
-                                        <button onclick="viewStudentDetails('${s.id}')" class="btn btn-info btn-sm"><i class="fas fa-eye"></i></button>
-                                        <button onclick="promoteToAdmin('${s.id}')" class="btn btn-warning btn-sm"><i class="fas fa-user-shield"></i></button>
-                                        <button onclick="resetStudentProgress('${s.id}')" class="btn btn-danger btn-sm"><i class="fas fa-trash"></i></button>
-                                    </td>
-                                </tr>
-                            `;
-                        }).join('')}
-                    </tbody>
-                </table>
-            `;
-        }
-    }
-    
-    window.viewStudentDetails = async (studentId) => {
-        const student = allStudents.find(s => s.id === studentId);
-        const prog = userProgress[studentId];
-        const answers = prog?.answers ? Object.values(prog.answers).filter(a => a.answered) : [];
-        
-        const modal = document.createElement('div');
-        modal.className = 'modal';
-        modal.innerHTML = `
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3><i class="fas fa-user-graduate"></i> ${student?.full_name || 'Student'} - Progress Details</h3>
-                    <button class="modal-close" onclick="this.closest('.modal').remove()">&times;</button>
-                </div>
-                <div class="stats-grid">
-                    <div class="stat-card"><div class="stat-value">${answers.length}</div><div class="stat-label">Answered</div></div>
-                    <div class="stat-card"><div class="stat-value">${answers.filter(a => a.correct).length}</div><div class="stat-label">Correct</div></div>
-                    <div class="stat-card"><div class="stat-value">${answers.length > 0 ? Math.round(answers.filter(a => a.correct).length / answers.length * 100) : 0}%</div><div class="stat-label">Accuracy</div></div>
-                </div>
-                <div style="max-height: 400px; overflow-y: auto;">
-                    ${answers.map((a, i) => `
-                        <div class="question-item">
-                            <div class="badge badge-${a.correct ? 'success' : 'danger'}">${a.correct ? '✓ Correct' : '✗ Incorrect'}</div>
-                            <div class="mt-1"><strong>Q${i + 1}:</strong> ${a.questionText || 'N/A'}</div>
-                            <div class="text-sm">Your answer: ${a.selectedOption}</div>
-                            ${!a.correct ? `<div class="text-sm text-success">Correct answer: ${a.correctAnswer}</div>` : ''}
-                        </div>
-                    `).join('')}
-                </div>
-                <div class="mt-3 text-center">
-                    <button onclick="this.closest('.modal').remove()" class="btn btn-primary">Close</button>
-                </div>
-            </div>
-        `;
-        document.body.appendChild(modal);
-    };
-    
-    window.promoteToAdmin = async (id) => {
-        if (confirm('Promote this user to admin?')) {
-            await sb.from('consolidated_user_profiles_table').update({ role: 'admin' }).eq('id', id);
-            await loadAllData();
-            renderStudents();
-            showToast('User promoted to admin', 'success');
-        }
-    };
-    
-    window.resetStudentProgress = async (id) => {
-        if (confirm('⚠️ Reset all progress for this student? This cannot be undone.')) {
-            await sb.from('user_progress').delete().eq('user_id', id);
-            await loadAllData();
-            renderStudents();
-            showToast('Student progress reset', 'success');
-        }
-    };
-    
-    // ==================== STUDENT PROGRESS ====================
-    async function renderAttempts() {
-        await loadAllData();
-        const stats = allStudents.map(s => {
-            const prog = userProgress[s.id];
-            let total = 0, correct = 0;
-            if (prog && prog.answers) {
-                const answers = Object.values(prog.answers).filter(a => a.answered);
-                total = answers.length;
-                correct = answers.filter(a => a.correct).length;
-            }
-            return { student: s, total, correct, accuracy: total > 0 ? Math.round(correct / total * 100) : 0 };
-        }).filter(s => s.total > 0).sort((a, b) => b.total - a.total);
-        
-        panel.innerHTML = `
-            <div class="page">
-                <div class="page-header">
-                    <h2><i class="fas fa-chart-line"></i> Student Progress Overview</h2>
-                    <p>Track student performance and progress metrics.</p>
-                </div>
-                <div class="card">
-                    <div id="attempts-list">
-                        ${stats.length === 0 ? '<div class="empty-state"><i class="fas fa-inbox"></i><p>No student attempts yet</p></div>' : stats.map(s => `
-                            <div class="attempt-card" onclick="viewStudentDetails('${s.student.id}')">
-                                <div class="d-flex justify-between align-center">
-                                    <strong><i class="fas fa-user-graduate"></i> ${s.student.full_name || 'Unknown'}</strong>
-                                    <span class="badge badge-${s.accuracy >= 70 ? 'success' : s.accuracy >= 50 ? 'warning' : 'danger'}">${s.accuracy}% Accuracy</span>
-                                </div>
-                                <div class="progress-bar" style="margin: 10px 0;">
-                                    <div class="progress-fill" style="width: ${s.accuracy}%"></div>
-                                </div>
-                                <div class="d-flex justify-between text-sm">
-                                    <span><i class="fas fa-question-circle"></i> ${s.total} answered</span>
-                                    <span><i class="fas fa-check-circle"></i> ${s.correct} correct</span>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-    
-    // ==================== SETTINGS ====================
-    function renderSettings() {
-        panel.innerHTML = `
-            <div class="page">
-                <div class="page-header">
-                    <h2><i class="fas fa-cog"></i> System Settings</h2>
-                    <p>Configure system preferences and data management.</p>
-                </div>
-                <div class="card">
-                    <h3><i class="fas fa-database"></i> Data Management</h3>
-                    <div class="d-flex gap-2 mt-3">
-                        <button onclick="exportAllData()" class="btn btn-primary"><i class="fas fa-download"></i> Export All Data (JSON)</button>
-                        <button onclick="exportAllQuestions()" class="btn btn-success"><i class="fas fa-file-excel"></i> Export Questions (CSV)</button>
-                        <button onclick="clearAllStudentProgress()" class="btn btn-danger"><i class="fas fa-trash"></i> Clear All Student Progress</button>
-                    </div>
-                </div>
-                <div class="card mt-3">
-                    <h3><i class="fas fa-info-circle"></i> System Information</h3>
-                    <div class="stats-grid mt-3">
-                        <div class="stat-card"><div class="stat-value">${allQuestions.length}</div><div class="stat-label">Total Questions</div></div>
-                        <div class="stat-card"><div class="stat-value">${allStudents.length}</div><div class="stat-label">Total Students</div></div>
-                        <div class="stat-card"><div class="stat-value">${allCourses.length}</div><div class="stat-label">Active Courses</div></div>
-                        <div class="stat-card"><div class="stat-value">${Object.keys(userProgress).length}</div><div class="stat-label">Active Students</div></div>
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-    
-    window.exportAllData = async () => {
-        const data = {
-            questions: allQuestions,
-            courses: allCourses,
-            students: allStudents,
-            progress: userProgress,
-            exportedAt: new Date().toISOString()
-        };
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = `nurseiq_backup_${Date.now()}.json`;
-        a.click();
-        URL.revokeObjectURL(a.href);
-        showToast('Data exported successfully', 'success');
-    };
-    
-    window.exportAllQuestions = async () => {
-        const csv = ['Question,Correct Answer,Course,Difficulty',
-            ...allQuestions.map(q => `"${q.question_text?.replace(/"/g, '""')}","${q.correct_answer?.replace(/"/g, '""')}","${q.courses?.course_name || ''}","${q.difficulty || ''}"`)
-        ].join('\n');
-        const blob = new Blob([csv], { type: 'text/csv' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = `questions_export_${Date.now()}.csv`;
-        a.click();
-        URL.revokeObjectURL(a.href);
-        showToast('Questions exported successfully', 'success');
-    };
-    
-    window.clearAllStudentProgress = async () => {
-        if (confirm('⚠️ WARNING: This will delete ALL student progress data. This cannot be undone. Continue?')) {
-            await sb.from('user_progress').delete().neq('user_id', '');
-            await loadAllData();
-            showToast('All student progress cleared', 'success');
-        }
-    };
-    
-    // ==================== UTILITIES ====================
-    function showToast(msg, type) {
-        const toast = document.createElement('div');
-        toast.className = `toast toast-${type}`;
-        toast.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i> ${msg}`;
-        toast.style.cssText = `
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background: ${type === 'success' ? '#10b981' : '#ef4444'};
-            color: white;
-            padding: 12px 24px;
-            border-radius: 12px;
-            z-index: 9999;
-            animation: slideInUp 0.3s ease;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        `;
-        document.body.appendChild(toast);
-        setTimeout(() => toast.remove(), 3000);
-    }
-    
+
+    // COURSES, STUDENTS, ATTEMPTS, SETTINGS (simplified)
+    async function renderCourses() { await loadAllData(); panel.innerHTML = `<div class="page"><div class="page-header"><h2>Course Manager</h2><p>Manage nursing courses.</p></div><div class="card"><button onclick="addNewCourse()" class="btn btn-success">Add New Course</button><div id="courses-list" class="courses-list"></div></div></div>`; const container = document.getElementById('courses-list'); if(container) container.innerHTML = allCourses.map(c => `<div class="course-item"><div class="course-info"><h3>${c.course_name}</h3><span class="badge badge-${c.status === 'Active' ? 'success' : 'danger'}">${c.status || 'Active'}</span><div class="course-unit">Unit: ${c.unit_code || 'N/A'}</div></div><div class="course-actions"><button onclick="editCourse('${c.id}', '${c.course_name}', '${c.unit_code || ''}')" class="btn btn-warning btn-sm">Edit</button><button onclick="toggleCourseStatus('${c.id}', '${c.status || 'Active'}')" class="btn btn-info btn-sm">Toggle</button></div></div>`).join(''); }
+    window.addNewCourse = async () => { const name = prompt('Course name:'); if(name) { const unitCode = prompt('Unit code:'); await sb.from('courses').insert([{ course_name: name, unit_code: unitCode || '', status: 'Active', created_at: new Date().toISOString() }]); await loadAllData(); renderCourses(); showToast('Course added', 'success'); } };
+    window.editCourse = async (id, name, unit) => { const newName = prompt('Edit name:', name); if(newName) { const newUnit = prompt('Unit code:', unit); await sb.from('courses').update({ course_name: newName, unit_code: newUnit || '' }).eq('id', id); await loadAllData(); renderCourses(); showToast('Course updated', 'success'); } };
+    window.toggleCourseStatus = async (id, status) => { const newStatus = status === 'Active' ? 'Inactive' : 'Active'; await sb.from('courses').update({ status: newStatus }).eq('id', id); await loadAllData(); renderCourses(); showToast(`Course ${newStatus}`, 'success'); };
+
+    async function renderStudents() { await loadAllData(); panel.innerHTML = `<div class="page"><div class="page-header"><h2>Student Manager</h2><p>View and manage students.</p></div><div class="card"><input type="text" id="student-search" class="form-control" placeholder="Search..."><div id="students-list" class="table-container"></div></div></div>`; document.getElementById('student-search').addEventListener('input', () => filterStudents()); filterStudents(); }
+    function filterStudents() { const search = document.getElementById('student-search')?.value.toLowerCase() || ''; const filtered = allStudents.filter(s => s.full_name?.toLowerCase().includes(search) || s.email?.toLowerCase().includes(search)); const container = document.getElementById('students-list'); if(container) container.innerHTML = `<table class="table"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Questions</th><th>Actions</th></tr></thead><tbody>${filtered.map(s => { const prog = userProgress[s.id]; const answered = prog?.answers ? Object.values(prog.answers).filter(a => a.answered).length : 0; return `<tr><td>${s.full_name || '—'}</td><td>${s.email}</td><td><span class="badge badge-${s.role === 'admin' ? 'warning' : 'primary'}">${s.role || 'student'}</span></td><td>${answered}</td><td class="table-actions"><button onclick="viewStudentDetails('${s.id}')" class="btn btn-info btn-sm">View</button><button onclick="promoteToAdmin('${s.id}')" class="btn btn-warning btn-sm">Promote</button><button onclick="resetStudentProgress('${s.id}')" class="btn btn-danger btn-sm">Reset</button></td></tr>`; }).join('')}</tbody></table>`; }
+    window.viewStudentDetails = async (studentId) => { const student = allStudents.find(s => s.id === studentId); const prog = userProgress[studentId]; const answers = prog?.answers ? Object.values(prog.answers).filter(a => a.answered) : []; const modal = document.createElement('div'); modal.className = 'modal'; modal.innerHTML = `<div class="modal-content"><div class="modal-header"><h3>${student?.full_name || 'Student'} - Progress</h3><button class="modal-close" onclick="this.closest('.modal').remove()">&times;</button></div><div class="stats-grid-small"><div class="stat-card-small">${answers.length}<br><small>Answered</small></div><div class="stat-card-small">${answers.filter(a => a.correct).length}<br><small>Correct</small></div><div class="stat-card-small">${answers.length > 0 ? Math.round(answers.filter(a => a.correct).length / answers.length * 100) : 0}%<br><small>Accuracy</small></div></div><div class="answers-list">${answers.map((a,i) => `<div class="answer-item"><div class="badge badge-${a.correct ? 'success' : 'danger'}">${a.correct ? '✓' : '✗'}</div><div><strong>Q${i+1}:</strong> ${a.questionText || 'N/A'}</div><div>Your answer: ${a.selectedOption}</div>${!a.correct ? `<div>Correct: ${a.correctAnswer}</div>` : ''}</div>`).join('')}</div><div class="modal-actions"><button onclick="this.closest('.modal').remove()" class="btn btn-primary">Close</button></div></div>`; document.body.appendChild(modal); };
+    window.promoteToAdmin = async (id) => { if(confirm('Promote to admin?')) { await sb.from('consolidated_user_profiles_table').update({ role: 'admin' }).eq('id', id); await loadAllData(); renderStudents(); showToast('Promoted', 'success'); } };
+    window.resetStudentProgress = async (id) => { if(confirm('Reset progress?')) { await sb.from('user_progress').delete().eq('user_id', id); await loadAllData(); renderStudents(); showToast('Progress reset', 'success'); } };
+
+    async function renderAttempts() { await loadAllData(); const stats = allStudents.map(s => { const prog = userProgress[s.id]; let total = 0, correct = 0; if(prog && prog.answers) { const answers = Object.values(prog.answers).filter(a => a.answered); total = answers.length; correct = answers.filter(a => a.correct).length; } return { student: s, total, correct, accuracy: total > 0 ? Math.round(correct / total * 100) : 0 }; }).filter(s => s.total > 0).sort((a,b) => b.total - a.total); panel.innerHTML = `<div class="page"><div class="page-header"><h2>Student Progress</h2><p>Track performance metrics.</p></div><div class="card"><div id="attempts-list">${stats.length === 0 ? '<div class="empty-state"><i class="fas fa-inbox"></i><p>No attempts yet</p></div>' : stats.map(s => `<div class="attempt-card" onclick="viewStudentDetails('${s.student.id}')"><div class="attempt-header"><strong>${s.student.full_name || 'Unknown'}</strong><span class="badge badge-${s.accuracy >= 70 ? 'success' : s.accuracy >= 50 ? 'warning' : 'danger'}">${s.accuracy}%</span></div><div class="progress-bar"><div class="progress-fill" style="width: ${s.accuracy}%"></div></div><div class="attempt-stats"><span>${s.total} answered</span><span>${s.correct} correct</span></div></div>`).join('')}</div></div></div>`; }
+
+    function renderSettings() { panel.innerHTML = `<div class="page"><div class="page-header"><h2>System Settings</h2><p>Configure system preferences.</p></div><div class="card"><h3>Data Management</h3><div class="settings-actions"><button onclick="exportAllData()" class="btn btn-primary">Export All (JSON)</button><button onclick="exportAllQuestions()" class="btn btn-success">Export Questions (CSV)</button><button onclick="clearAllStudentProgress()" class="btn btn-danger">Clear All Progress</button></div></div><div class="card"><h3>System Info</h3><div class="stats-grid-small"><div class="stat-card-small">${allQuestions.length}<br><small>Questions</small></div><div class="stat-card-small">${allStudents.length}<br><small>Students</small></div><div class="stat-card-small">${allCourses.length}<br><small>Courses</small></div><div class="stat-card-small">${Object.keys(userProgress).length}<br><small>Active</small></div></div></div></div>`; }
+    window.exportAllData = async () => { const data = { questions: allQuestions, courses: allCourses, students: allStudents, progress: userProgress }; const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `backup_${Date.now()}.json`; a.click(); showToast('Exported', 'success'); };
+    window.exportAllQuestions = async () => { const csv = ['Question,Correct Answer,Course,Difficulty', ...allQuestions.map(q => `"${(q.question_text || '').replace(/"/g,'""')}","${(q.correct_answer || '').replace(/"/g,'""')}","${q.courses?.course_name || ''}","${q.difficulty || ''}"`)].join('\n'); const blob = new Blob([csv], {type:'text/csv'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `questions_${Date.now()}.csv`; a.click(); showToast('Exported', 'success'); };
+    window.clearAllStudentProgress = async () => { if(confirm('Delete ALL student progress?')) { await sb.from('user_progress').delete().neq('user_id', ''); await loadAllData(); showToast('All progress cleared', 'success'); } };
+
+    function escapeHtml(text) { if(!text) return ''; const div = document.createElement('div'); div.textContent = text; return div.innerHTML; }
+    function showToast(msg, type) { const toast = document.createElement('div'); toast.className = `toast toast-${type}`; toast.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : 'info-circle'}"></i> ${msg}`; document.body.appendChild(toast); setTimeout(() => toast.remove(), 3000); }
+
     window.showPage = (page) => {
-        if (page === 'dashboard') renderDashboard();
-        else if (page === 'question-bank') renderQuestionBank();
-        else if (page === 'add-question') renderAddQuestion();
-        else if (page === 'edit-bank') renderEditBank();
-        else if (page === 'bulk-import') renderBulkImport();
-        else if (page === 'courses') renderCourses();
-        else if (page === 'students') renderStudents();
-        else if (page === 'attempts') renderAttempts();
-        else if (page === 'settings') renderSettings();
+        if(page === 'dashboard') renderDashboard();
+        else if(page === 'question-bank') renderQuestionBank();
+        else if(page === 'add-question') renderAddQuestion();
+        else if(page === 'edit-bank') renderQuestionBank();
+        else if(page === 'bulk-import') renderBulkImport();
+        else if(page === 'courses') renderCourses();
+        else if(page === 'students') renderStudents();
+        else if(page === 'attempts') renderAttempts();
+        else if(page === 'settings') renderSettings();
     };
-    
     window.logout = logout;
-    window.editQuestion = openEditModal;
+    window.enableReorderMode = enableReorderMode;
+    window.saveNewOrder = saveNewOrder;
+    window.toggleSelectAll = toggleSelectAll;
+    window.clearSelection = clearSelection;
+    window.openDeleteModal = openDeleteModal;
+    window.closeDeleteModal = closeDeleteModal;
+    window.confirmDeleteSelected = confirmDeleteSelected;
+    window.deleteSingleQuestion = deleteSingleQuestion;
+    window.updateSelectionCount = updateSelectionCount;
+    window.resetAddForm = resetAddForm;
 </script>
 </body>
 </html>
