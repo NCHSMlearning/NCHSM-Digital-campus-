@@ -16,7 +16,7 @@ let currentResource = null;
 let currentResources = [];
 let filteredResources = [];
 let currentBlockFilter = 'all';
-let currentResourceType = 'all'; // 'all', 'material', 'pastpaper'
+let currentResourceType = 'all';
 let isLoading = false;
 let supabaseClient = null;
 
@@ -182,8 +182,8 @@ function filterResourcesByType(type) {
     
     // Update button styles
     const buttons = document.querySelectorAll('.type-tab');
-    buttons.forEach(btn => {
-        const btnType = btn.getAttribute('data-type');
+    buttons.forEach(function(btn) {
+        var btnType = btn.getAttribute('data-type');
         if (btnType === type) {
             btn.classList.add('active');
         } else {
@@ -193,60 +193,53 @@ function filterResourcesByType(type) {
     
     // Update past paper count badge
     if (type === 'pastpaper') {
-        const pastpaperCount = currentResources.filter(r => r.resource_type === 'pastpaper').length;
-        const badge = document.getElementById('student-pastpaper-count');
+        var pastpaperCount = currentResources.filter(function(r) { return r.resource_type === 'pastpaper'; }).length;
+        var badge = document.getElementById('student-pastpaper-count');
         if (badge) badge.textContent = pastpaperCount;
     }
     
     // Reset search
-    const searchInput = document.getElementById('student-resource-search');
+    var searchInput = document.getElementById('student-resource-search');
     if (searchInput) searchInput.value = '';
     
     // Re-filter resources
     filterResourcesByBlock();
 }
 
-// Student version of filter
 window.filterStudentResourceType = filterResourcesByType;
 
 async function createBlockFilterUI() {
-    // Use student-specific elements
-    const resourcesHeader = document.querySelector('#resources .resources-header');
+    var resourcesHeader = document.querySelector('#resources .resources-header');
     if (!resourcesHeader) return;
     
-    // Check if using student version IDs
-    const existingFilter = document.getElementById('student-block-resource-filter');
+    var existingFilter = document.getElementById('student-block-resource-filter');
     if (existingFilter) return;
     
-    // Get user profile for block
-    const userProfile = await getUserProfile();
-    const userBlock = userProfile?.block || 'Introductory';
+    var userProfile = await getUserProfile();
+    var userBlock = userProfile?.block || 'Introductory';
     
-    // Update block display
-    const blockDisplay = document.getElementById('student-current-user-block');
+    var blockDisplay = document.getElementById('student-current-user-block');
     if (blockDisplay) blockDisplay.textContent = userBlock;
     
-    // Set up refresh button
-    const refreshBtn = document.getElementById('student-refresh-block-resources');
-    const blockFilter = document.getElementById('student-block-resource-filter');
+    var refreshBtn = document.getElementById('student-refresh-block-resources');
+    var blockFilter = document.getElementById('student-block-resource-filter');
     
     if (refreshBtn) {
-        // Remove existing listeners and add new one
-        const newRefreshBtn = refreshBtn.cloneNode(true);
+        var newRefreshBtn = refreshBtn.cloneNode(true);
         refreshBtn.parentNode.replaceChild(newRefreshBtn, refreshBtn);
-        newRefreshBtn.addEventListener('click', async () => {
+        newRefreshBtn.addEventListener('click', async function() {
             if (isLoading) return;
             currentBlockFilter = blockFilter ? blockFilter.value : 'all';
             await loadAllResourcesForBlocks();
-            showToast(`📚 Loaded ${filteredResources.length} resources`, 'success');
+            showToast('📚 Loaded ' + filteredResources.length + ' resources', 'success');
         });
     }
     
-    // Set default block filter based on user's block
     if (blockFilter) {
-        let userBlockValue = 'all';
-        for (const [value, keywords] of Object.entries(BLOCK_MAPPING)) {
-            if (keywords.some(k => userBlock.toLowerCase().includes(k.toLowerCase()))) {
+        var userBlockValue = 'all';
+        for (var value in BLOCK_MAPPING) {
+            var keywords = BLOCK_MAPPING[value];
+            if (keywords.some(function(k) { return userBlock.toLowerCase().includes(k.toLowerCase()); })) {
                 userBlockValue = value;
                 break;
             }
@@ -256,8 +249,7 @@ async function createBlockFilterUI() {
             currentBlockFilter = userBlockValue;
         }
         
-        // Add change listener
-        blockFilter.addEventListener('change', () => {
+        blockFilter.addEventListener('change', function() {
             currentBlockFilter = blockFilter.value;
         });
     }
@@ -269,11 +261,10 @@ async function loadAllResourcesForBlocks() {
     
     console.log('📁 Loading read-only resources with past papers...');
     
-    const userProfile = await getUserProfile();
-    const supabaseClient = getSupabaseClient();
+    var userProfile = await getUserProfile();
+    var supabaseClient = getSupabaseClient();
     
-    // Use student-specific grid ID
-    let resourcesGrid = document.getElementById('student-resources-grid');
+    var resourcesGrid = document.getElementById('student-resources-grid');
     if (!resourcesGrid) resourcesGrid = document.getElementById('resources-grid');
     
     if (!supabaseClient) {
@@ -288,8 +279,8 @@ async function loadAllResourcesForBlocks() {
     currentResources = [];
     
     try {
-        const program = userProfile?.program;
-        const intakeYear = userProfile?.intake_year;
+        var program = userProfile?.program;
+        var intakeYear = userProfile?.intake_year;
         
         if (!program || !intakeYear) {
             resourcesGrid.innerHTML = '<div class="error-state premium">Missing enrollment details. Please contact admin.</div>';
@@ -297,157 +288,155 @@ async function loadAllResourcesForBlocks() {
             return;
         }
         
-        console.log(`📊 Fetching resources for: ${program} - ${intakeYear}`);
+        console.log('📊 Fetching resources for: ' + program + ' - ' + intakeYear);
         
-        let query = supabaseClient
+        var query = supabaseClient
             .from('resources')
             .select('id, title, file_path, file_url, program_type, block, intake, uploaded_by_name, created_at, description, file_type, resource_type, pastpaper_year, exam_type, course_name')
             .eq('program_type', program)
             .eq('intake', intakeYear)
             .order('created_at', { ascending: false });
         
-        const { data: resources, error } = await query;
+        var result = await query;
+        var resources = result.data;
+        var error = result.error;
         
         if (error) throw error;
         
         currentResources = resources || [];
-        console.log(`✅ Loaded ${currentResources.length} resources`);
+        console.log('✅ Loaded ' + currentResources.length + ' resources');
         
-        // Update past paper count badge
-        const pastpaperCount = currentResources.filter(r => r.resource_type === 'pastpaper').length;
-        const badge = document.getElementById('student-pastpaper-count');
+        var pastpaperCount = currentResources.filter(function(r) { return r.resource_type === 'pastpaper'; }).length;
+        var badge = document.getElementById('student-pastpaper-count');
         if (badge) badge.textContent = pastpaperCount;
         
-        // Apply filters
-        let filtered = [...currentResources];
+        var filtered = [...currentResources];
         
-        // Filter by resource type
         if (currentResourceType !== 'all') {
-            filtered = filtered.filter(resource => resource.resource_type === currentResourceType);
+            filtered = filtered.filter(function(resource) { return resource.resource_type === currentResourceType; });
         }
         
-        // Filter by block
         if (currentBlockFilter !== 'all') {
-            const targetKeywords = BLOCK_MAPPING[currentBlockFilter] || [];
-            filtered = filtered.filter(resource => {
-                const resourceBlock = (resource.block || '').toString().toLowerCase();
-                return targetKeywords.some(keyword => resourceBlock.includes(keyword.toLowerCase()));
+            var targetKeywords = BLOCK_MAPPING[currentBlockFilter] || [];
+            filtered = filtered.filter(function(resource) {
+                var resourceBlock = (resource.block || '').toString().toLowerCase();
+                return targetKeywords.some(function(keyword) { return resourceBlock.includes(keyword.toLowerCase()); });
             });
         }
         
-        // Filter by search term
-        const searchTerm = document.getElementById('student-resource-search')?.value.toLowerCase() || '';
+        var searchTerm = document.getElementById('student-resource-search')?.value.toLowerCase() || '';
         if (searchTerm) {
-            filtered = filtered.filter(r => {
-                const titleMatch = (r.title || '').toLowerCase().includes(searchTerm);
-                const courseMatch = (r.course_name || '').toLowerCase().includes(searchTerm);
-                const descMatch = (r.description || '').toLowerCase().includes(searchTerm);
+            filtered = filtered.filter(function(r) {
+                var titleMatch = (r.title || '').toLowerCase().includes(searchTerm);
+                var courseMatch = (r.course_name || '').toLowerCase().includes(searchTerm);
+                var descMatch = (r.description || '').toLowerCase().includes(searchTerm);
                 return titleMatch || courseMatch || descMatch;
             });
         }
         
-        // Filter by file type
-        const fileTypeFilter = document.getElementById('student-resource-type-filter')?.value || 'all';
+        var fileTypeFilter = document.getElementById('student-resource-type-filter')?.value || 'all';
         if (fileTypeFilter !== 'all') {
-            filtered = filtered.filter(r => getFileType(r.file_path) === fileTypeFilter);
+            filtered = filtered.filter(function(r) { return getFileType(r.file_path) === fileTypeFilter; });
         }
         
-        // Filter by year
-        const yearFilter = document.getElementById('student-year-filter')?.value || 'all';
+        var yearFilter = document.getElementById('student-year-filter')?.value || 'all';
         if (yearFilter !== 'all') {
             if (currentResourceType === 'pastpaper') {
-                filtered = filtered.filter(r => r.pastpaper_year == yearFilter);
+                filtered = filtered.filter(function(r) { return r.pastpaper_year == yearFilter; });
             } else {
-                filtered = filtered.filter(r => r.intake == yearFilter);
+                filtered = filtered.filter(function(r) { return r.intake == yearFilter; });
             }
         }
         
         filteredResources = filtered;
         renderResourcesGrid();
-        
         updateDashboardResourceCount();
         
     } catch (err) {
-        console.error("Error loading resources:", err);
-        showError(resourcesGrid, `Error: ${err.message}`);
+        console.error('Error loading resources:', err);
+        showError(resourcesGrid, 'Error: ' + err.message);
     } finally {
         isLoading = false;
     }
 }
 
 function renderResourcesGrid() {
-    let resourcesGrid = document.getElementById('student-resources-grid');
+    var resourcesGrid = document.getElementById('student-resources-grid');
     if (!resourcesGrid) resourcesGrid = document.getElementById('resources-grid');
     if (!resourcesGrid) return;
     
     if (filteredResources.length === 0) {
-        let emptyMessage = 'No resources match your current filters.';
+        var emptyMessage = 'No resources match your current filters.';
         if (currentResourceType === 'pastpaper') {
             emptyMessage = 'No past papers available for your block. Check back later or contact admin.';
         } else if (currentResourceType === 'material') {
             emptyMessage = 'No learning materials available for your block.';
         }
         
-        resourcesGrid.innerHTML = `
-            <div class="empty-state premium">
-                <i class="fas fa-folder-open"></i>
-                <h3>No Resources Found</h3>
-                <p>${emptyMessage}</p>
-                <button onclick="location.reload()" class="premium-btn">
-                    <i class="fas fa-sync-alt"></i> Refresh
-                </button>
-            </div>
-        `;
+        resourcesGrid.innerHTML = '<div class="empty-state premium">' +
+            '<i class="fas fa-folder-open"></i>' +
+            '<h3>No Resources Found</h3>' +
+            '<p>' + emptyMessage + '</p>' +
+            '<button onclick="location.reload()" class="premium-btn">' +
+            '<i class="fas fa-sync-alt"></i> Refresh</button>' +
+            '</div>';
         return;
     }
     
-    resourcesGrid.innerHTML = filteredResources.map(resource => {
-        const isPastPaper = resource.resource_type === 'pastpaper';
-        const typeBadge = isPastPaper ? 
+    var html = '';
+    for (var i = 0; i < filteredResources.length; i++) {
+        var resource = filteredResources[i];
+        var isPastPaper = resource.resource_type === 'pastpaper';
+        var typeBadge = isPastPaper ? 
             '<span class="pastpaper-badge"><i class="fas fa-history"></i> Past Paper</span>' : 
             '<span class="material-badge"><i class="fas fa-book"></i> Material</span>';
         
-        const yearDisplay = isPastPaper ? resource.pastpaper_year : resource.intake;
-        const examTypeDisplay = isPastPaper && resource.exam_type ? getExamTypeLabel(resource.exam_type) : '';
-        const courseDisplay = isPastPaper && resource.course_name ? `<br><small class="course-name">📚 ${escapeHtml(resource.course_name)}</small>` : '';
+        var yearDisplay = isPastPaper ? resource.pastpaper_year : resource.intake;
+        var examTypeDisplay = isPastPaper && resource.exam_type ? getExamTypeLabel(resource.exam_type) : '';
+        var courseDisplay = isPastPaper && resource.course_name ? '<br><small class="course-name">📚 ' + escapeHtml(resource.course_name) + '</small>' : '';
         
-        return `
-        <div class="resource-card premium-card" data-id="${resource.id}">
-            <div class="resource-preview">
-                <div class="preview-icon ${getFileType(resource.file_path)}">
-                    <i class="${getFileIcon(resource.file_path)}"></i>
-                </div>
-                ${typeBadge}
-            </div>
-            <div class="resource-details">
-                <h3 class="resource-title">${escapeHtml(resource.title)}${courseDisplay}</h3>
-                <p class="resource-description">${escapeHtml(resource.description || 'No description available')}</p>
-                <div class="resource-meta">
-                    <span class="meta-tag year-tag">
-                        <i class="fas fa-calendar"></i> ${escapeHtml(yearDisplay || 'N/A')}
-                    </span>
-                    ${isPastPaper && examTypeDisplay ? `<span class="meta-tag exam-type-tag">
-                        <i class="fas fa-file-alt"></i> ${examTypeDisplay}
-                    </span>` : ''}
-                    <span class="meta-tag block-tag ${getBlockTagClass(resource.block)}">
-                        <i class="fas ${getBlockIcon(resource.block)}"></i> ${escapeHtml(resource.block || 'General')}
-                    </span>
-                    <span class="meta-tag read-only-badge">
-                        <i class="fas fa-eye"></i> Read Only
-                    </span>
-                </div>
-            </div>
-            <div class="resource-actions">
-                <button class="action-btn view-btn" onclick="openResourceInline(${resource.id})">
-                    <i class="fas fa-eye"></i> Read Now
-                </button>
-            </div>
-        </div>
-    `}).join('');
+        html += '<div class="resource-card premium-card" data-id="' + resource.id + '">' +
+            '<div class="resource-preview">' +
+            '<div class="preview-icon ' + getFileType(resource.file_path) + '">' +
+            '<i class="' + getFileIcon(resource.file_path) + '"></i>' +
+            '</div>' +
+            typeBadge +
+            '</div>' +
+            '<div class="resource-details">' +
+            '<h3 class="resource-title">' + escapeHtml(resource.title) + courseDisplay + '</h3>' +
+            '<p class="resource-description">' + escapeHtml(resource.description || 'No description available') + '</p>' +
+            '<div class="resource-meta">' +
+            '<span class="meta-tag year-tag">' +
+            '<i class="fas fa-calendar"></i> ' + escapeHtml(yearDisplay || 'N/A') +
+            '</span>';
+        
+        if (isPastPaper && examTypeDisplay) {
+            html += '<span class="meta-tag exam-type-tag">' +
+                '<i class="fas fa-file-alt"></i> ' + examTypeDisplay +
+                '</span>';
+        }
+        
+        html += '<span class="meta-tag block-tag ' + getBlockTagClass(resource.block) + '">' +
+            '<i class="fas ' + getBlockIcon(resource.block) + '"></i> ' + escapeHtml(resource.block || 'General') +
+            '</span>' +
+            '<span class="meta-tag read-only-badge">' +
+            '<i class="fas fa-eye"></i> Read Only' +
+            '</span>' +
+            '</div>' +
+            '</div>' +
+            '<div class="resource-actions">' +
+            '<button class="action-btn view-btn" onclick="openResourceInline(' + resource.id + ')">' +
+            '<i class="fas fa-eye"></i> Read Now' +
+            '</button>' +
+            '</div>' +
+            '</div>';
+    }
+    
+    resourcesGrid.innerHTML = html;
 }
 
 function getExamTypeLabel(examType) {
-    const labels = {
+    var labels = {
         'CAT_1': 'CAT 1',
         'CAT_2': 'CAT 2',
         'CAT': 'CAT',
@@ -461,7 +450,7 @@ function getExamTypeLabel(examType) {
 
 function getBlockTagClass(block) {
     if (!block) return 'tag-general';
-    const b = block.toLowerCase();
+    var b = block.toLowerCase();
     if (b.includes('intro')) return 'tag-intro';
     if (b.includes('block 1')) return 'tag-block1';
     if (b.includes('block 2')) return 'tag-block2';
@@ -474,7 +463,7 @@ function getBlockTagClass(block) {
 
 function getBlockIcon(block) {
     if (!block) return 'fa-layer-group';
-    const b = block.toLowerCase();
+    var b = block.toLowerCase();
     if (b.includes('intro')) return 'fa-flag-checkered';
     if (b.includes('block 1')) return 'fa-book';
     if (b.includes('block 2')) return 'fa-book-open';
@@ -485,16 +474,23 @@ function getBlockIcon(block) {
     return 'fa-layer-group';
 }
 
-// ==================== RESOURCE VIEWER - OPEN IN PORTAL ====================
+// ==================== RESOURCE VIEWER ====================
 async function openResourceInline(resourceId) {
-    const resource = currentResources.find(r => r.id == resourceId);
+    var resource = null;
+    for (var i = 0; i < currentResources.length; i++) {
+        if (currentResources[i].id == resourceId) {
+            resource = currentResources[i];
+            break;
+        }
+    }
+    
     if (!resource) {
         showToast('Resource not found', 'error');
         return;
     }
     currentResource = resource;
     
-    const fileType = getFileType(resource.file_path);
+    var fileType = getFileType(resource.file_path);
     
     if (fileType === 'pdf') {
         await openPDFInModal(resource);
@@ -503,12 +499,10 @@ async function openResourceInline(resourceId) {
     } else if (fileType === 'video') {
         openVideoInModal(resource);
     } else {
-        // For other files, open in new tab
         window.open(resource.file_url, '_blank');
     }
 }
 
-// Legacy function for compatibility
 window.openResource = openResourceInline;
 
 async function openPDFInModal(resource) {
@@ -523,60 +517,58 @@ async function openPDFInModal(resource) {
 }
 
 function createPDFViewerModal(resource) {
-    const existingModal = document.getElementById('pdf-viewer-modal');
+    var existingModal = document.getElementById('pdf-viewer-modal');
     if (existingModal) existingModal.remove();
     
-    const modal = document.createElement('div');
+    var modal = document.createElement('div');
     modal.id = 'pdf-viewer-modal';
     modal.className = 'pdf-viewer-modal';
-    modal.innerHTML = `
-        <div class="pdf-modal-container">
-            <div class="pdf-modal-header">
-                <div class="pdf-modal-title">
-                    <i class="fas fa-file-pdf"></i>
-                    <span>${escapeHtml(resource.title)}</span>
-                </div>
-                <div class="pdf-modal-actions">
-                    <button class="pdf-modal-btn" id="pdf-fullscreen-btn" title="Fullscreen"><i class="fas fa-expand"></i></button>
-                    <button class="pdf-modal-btn close-pdf-modal" title="Close"><i class="fas fa-times"></i></button>
-                </div>
-            </div>
-            <div class="pdf-modal-body">
-                <div id="pdf-loading-modal" class="pdf-loading-modal">
-                    <div class="loading-spinner"></div>
-                    <p>Loading document...</p>
-                </div>
-                <div id="pdf-error-modal" class="pdf-error-modal" style="display: none;">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <h3>Failed to Load Document</h3>
-                    <p id="pdf-error-message-modal"></p>
-                    <button id="retry-pdf-modal" class="btn-primary">Retry</button>
-                </div>
-                <div id="pdf-viewer-modal-area" class="pdf-viewer-modal-area" style="display: none;">
-                    <canvas id="pdf-canvas-modal" class="pdf-canvas-modal"></canvas>
-                </div>
-            </div>
-            <div class="pdf-modal-footer">
-                <div class="pdf-nav-controls">
-                    <button class="pdf-nav-btn" id="pdf-first-modal" title="First Page"><i class="fas fa-fast-backward"></i></button>
-                    <button class="pdf-nav-btn" id="pdf-prev-modal" title="Previous"><i class="fas fa-chevron-left"></i></button>
-                    <span class="pdf-page-info">
-                        <input type="number" id="pdf-page-modal" value="1" min="1"> / <span id="pdf-total-modal">1</span>
-                    </span>
-                    <button class="pdf-nav-btn" id="pdf-next-modal" title="Next"><i class="fas fa-chevron-right"></i></button>
-                    <button class="pdf-nav-btn" id="pdf-last-modal" title="Last Page"><i class="fas fa-fast-forward"></i></button>
-                </div>
-                <div class="pdf-zoom-controls">
-                    <button class="pdf-zoom-btn" id="pdf-zoom-out-modal"><i class="fas fa-search-minus"></i></button>
-                    <span id="pdf-zoom-percent-modal">100%</span>
-                    <button class="pdf-zoom-btn" id="pdf-zoom-in-modal"><i class="fas fa-search-plus"></i></button>
-                </div>
-                <div class="pdf-protected-badge">
-                    <i class="fas fa-lock"></i> Read Only - No Download
-                </div>
-            </div>
-        </div>
-    `;
+    modal.innerHTML = '<div class="pdf-modal-container">' +
+        '<div class="pdf-modal-header">' +
+        '<div class="pdf-modal-title">' +
+        '<i class="fas fa-file-pdf"></i>' +
+        '<span>' + escapeHtml(resource.title) + '</span>' +
+        '</div>' +
+        '<div class="pdf-modal-actions">' +
+        '<button class="pdf-modal-btn" id="pdf-fullscreen-btn" title="Fullscreen"><i class="fas fa-expand"></i></button>' +
+        '<button class="pdf-modal-btn close-pdf-modal" title="Close"><i class="fas fa-times"></i></button>' +
+        '</div>' +
+        '</div>' +
+        '<div class="pdf-modal-body">' +
+        '<div id="pdf-loading-modal" class="pdf-loading-modal">' +
+        '<div class="loading-spinner"></div>' +
+        '<p>Loading document...</p>' +
+        '</div>' +
+        '<div id="pdf-error-modal" class="pdf-error-modal" style="display: none;">' +
+        '<i class="fas fa-exclamation-triangle"></i>' +
+        '<h3>Failed to Load Document</h3>' +
+        '<p id="pdf-error-message-modal"></p>' +
+        '<button id="retry-pdf-modal" class="btn-primary">Retry</button>' +
+        '</div>' +
+        '<div id="pdf-viewer-modal-area" class="pdf-viewer-modal-area" style="display: none;">' +
+        '<canvas id="pdf-canvas-modal" class="pdf-canvas-modal"></canvas>' +
+        '</div>' +
+        '</div>' +
+        '<div class="pdf-modal-footer">' +
+        '<div class="pdf-nav-controls">' +
+        '<button class="pdf-nav-btn" id="pdf-first-modal" title="First Page"><i class="fas fa-fast-backward"></i></button>' +
+        '<button class="pdf-nav-btn" id="pdf-prev-modal" title="Previous"><i class="fas fa-chevron-left"></i></button>' +
+        '<span class="pdf-page-info">' +
+        '<input type="number" id="pdf-page-modal" value="1" min="1"> / <span id="pdf-total-modal">1</span>' +
+        '</span>' +
+        '<button class="pdf-nav-btn" id="pdf-next-modal" title="Next"><i class="fas fa-chevron-right"></i></button>' +
+        '<button class="pdf-nav-btn" id="pdf-last-modal" title="Last Page"><i class="fas fa-fast-forward"></i></button>' +
+        '</div>' +
+        '<div class="pdf-zoom-controls">' +
+        '<button class="pdf-zoom-btn" id="pdf-zoom-out-modal"><i class="fas fa-search-minus"></i></button>' +
+        '<span id="pdf-zoom-percent-modal">100%</span>' +
+        '<button class="pdf-zoom-btn" id="pdf-zoom-in-modal"><i class="fas fa-search-plus"></i></button>' +
+        '</div>' +
+        '<div class="pdf-protected-badge">' +
+        '<i class="fas fa-lock"></i> Read Only - No Download' +
+        '</div>' +
+        '</div>' +
+        '</div>';
     
     document.body.appendChild(modal);
     addPDFModalStyles();
@@ -587,192 +579,76 @@ function createPDFViewerModal(resource) {
 function addPDFModalStyles() {
     if (document.getElementById('pdf-modal-styles')) return;
     
-    const styles = document.createElement('style');
+    var styles = document.createElement('style');
     styles.id = 'pdf-modal-styles';
-    styles.textContent = `
-        .pdf-viewer-modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.95);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 100000;
-        }
-        .pdf-modal-container {
-            width: 95%;
-            height: 90%;
-            background: #1a1a2e;
-            border-radius: 16px;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
-        }
-        .pdf-modal-header {
-            padding: 12px 20px;
-            background: linear-gradient(135deg, #16213e, #1a1a2e);
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .pdf-modal-title {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            color: white;
-            font-weight: 500;
-        }
-        .pdf-modal-title i {
-            font-size: 20px;
-            color: #ef4444;
-        }
-        .pdf-modal-actions {
-            display: flex;
-            gap: 10px;
-        }
-        .pdf-modal-btn {
-            background: rgba(255,255,255,0.1);
-            border: none;
-            color: white;
-            width: 36px;
-            height: 36px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 16px;
-        }
-        .pdf-modal-btn:hover {
-            background: #4C1D95;
-        }
-        .pdf-modal-body {
-            flex: 1;
-            overflow: auto;
-            background: #2d2d3a;
-            position: relative;
-        }
-        .pdf-viewer-modal-area {
-            display: flex;
-            justify-content: center;
-            padding: 20px;
-            min-height: 100%;
-        }
-        .pdf-canvas-modal {
-            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-            background: white;
-            border-radius: 4px;
-            max-width: 100%;
-            height: auto;
-        }
-        .pdf-modal-footer {
-            padding: 12px 20px;
-            background: linear-gradient(135deg, #16213e, #1a1a2e);
-            border-top: 1px solid rgba(255,255,255,0.1);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-        .pdf-nav-controls, .pdf-zoom-controls {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .pdf-nav-btn, .pdf-zoom-btn {
-            background: rgba(255,255,255,0.1);
-            border: none;
-            color: white;
-            width: 36px;
-            height: 36px;
-            border-radius: 6px;
-            cursor: pointer;
-        }
-        .pdf-nav-btn:hover, .pdf-zoom-btn:hover {
-            background: #4C1D95;
-        }
-        .pdf-page-info {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            color: white;
-        }
-        #pdf-page-modal {
-            width: 50px;
-            padding: 6px;
-            border-radius: 6px;
-            border: none;
-            text-align: center;
-        }
-        .pdf-protected-badge {
-            background: rgba(76,29,149,0.3);
-            padding: 6px 12px;
-            border-radius: 20px;
-            color: #a78bfa;
-            font-size: 12px;
-        }
-        .pdf-loading-modal, .pdf-error-modal {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            text-align: center;
-            color: white;
-        }
-        .loading-spinner {
-            width: 40px;
-            height: 40px;
-            border: 3px solid rgba(255,255,255,0.2);
-            border-top-color: #4C1D95;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 15px;
-        }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        @media (max-width: 768px) {
-            .pdf-modal-container { width: 98%; height: 95%; }
-            .pdf-nav-btn, .pdf-zoom-btn { width: 32px; height: 32px; }
-            .pdf-modal-footer { padding: 10px 15px; }
-        }
-    `;
+    styles.textContent = '.pdf-viewer-modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.95);display:none;justify-content:center;align-items:center;z-index:100000;}' +
+        '.pdf-modal-container{width:95%;height:90%;background:#1a1a2e;border-radius:16px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 40px rgba(0,0,0,0.5);}' +
+        '.pdf-modal-header{padding:12px 20px;background:linear-gradient(135deg,#16213e,#1a1a2e);border-bottom:1px solid rgba(255,255,255,0.1);display:flex;justify-content:space-between;align-items:center;}' +
+        '.pdf-modal-title{display:flex;align-items:center;gap:10px;color:white;font-weight:500;}' +
+        '.pdf-modal-title i{font-size:20px;color:#ef4444;}' +
+        '.pdf-modal-actions{display:flex;gap:10px;}' +
+        '.pdf-modal-btn{background:rgba(255,255,255,0.1);border:none;color:white;width:36px;height:36px;border-radius:8px;cursor:pointer;font-size:16px;}' +
+        '.pdf-modal-btn:hover{background:#4C1D95;}' +
+        '.pdf-modal-body{flex:1;overflow:auto;background:#2d2d3a;position:relative;}' +
+        '.pdf-viewer-modal-area{display:flex;justify-content:center;padding:20px;min-height:100%;}' +
+        '.pdf-canvas-modal{box-shadow:0 4px 20px rgba(0,0,0,0.3);background:white;border-radius:4px;max-width:100%;height:auto;}' +
+        '.pdf-modal-footer{padding:12px 20px;background:linear-gradient(135deg,#16213e,#1a1a2e);border-top:1px solid rgba(255,255,255,0.1);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;}' +
+        '.pdf-nav-controls,.pdf-zoom-controls{display:flex;align-items:center;gap:8px;}' +
+        '.pdf-nav-btn,.pdf-zoom-btn{background:rgba(255,255,255,0.1);border:none;color:white;width:36px;height:36px;border-radius:6px;cursor:pointer;}' +
+        '.pdf-nav-btn:hover,.pdf-zoom-btn:hover{background:#4C1D95;}' +
+        '.pdf-page-info{display:flex;align-items:center;gap:8px;color:white;}' +
+        '#pdf-page-modal{width:50px;padding:6px;border-radius:6px;border:none;text-align:center;}' +
+        '.pdf-protected-badge{background:rgba(76,29,149,0.3);padding:6px 12px;border-radius:20px;color:#a78bfa;font-size:12px;}' +
+        '.pdf-loading-modal,.pdf-error-modal{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;color:white;}' +
+        '.loading-spinner{width:40px;height:40px;border:3px solid rgba(255,255,255,0.2);border-top-color:#4C1D95;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 15px;}' +
+        '@keyframes spin{to{transform:rotate(360deg);}}' +
+        '@media (max-width:768px){.pdf-modal-container{width:98%;height:95%;}.pdf-nav-btn,.pdf-zoom-btn{width:32px;height:32px;}.pdf-modal-footer{padding:10px 15px;}}';
     document.head.appendChild(styles);
 }
 
 function setupPDFModalEvents() {
-    const modal = document.getElementById('pdf-viewer-modal');
-    const closeBtn = document.querySelector('.close-pdf-modal');
-    const fullscreenBtn = document.getElementById('pdf-fullscreen-btn');
+    var modal = document.getElementById('pdf-viewer-modal');
+    var closeBtn = document.querySelector('.close-pdf-modal');
+    var fullscreenBtn = document.getElementById('pdf-fullscreen-btn');
     
-    if (closeBtn) closeBtn.onclick = () => { modal.style.display = 'none'; cleanupPDFModal(); };
+    if (closeBtn) closeBtn.onclick = function() { modal.style.display = 'none'; cleanupPDFModal(); };
     if (fullscreenBtn) fullscreenBtn.onclick = togglePDFFullscreen;
-    if (modal) modal.onclick = (e) => { if (e.target === modal) { modal.style.display = 'none'; cleanupPDFModal(); } };
+    if (modal) modal.onclick = function(e) { if (e.target === modal) { modal.style.display = 'none'; cleanupPDFModal(); } };
     
-    document.getElementById('pdf-first-modal')?.onclick = () => goToPDFModalPage(1);
-    document.getElementById('pdf-prev-modal')?.onclick = () => goToPDFModalPage(currentPDFPage - 1);
-    document.getElementById('pdf-next-modal')?.onclick = () => goToPDFModalPage(currentPDFPage + 1);
-    document.getElementById('pdf-last-modal')?.onclick = () => goToPDFModalPage(totalPDFPages);
-    document.getElementById('pdf-zoom-in-modal')?.onclick = () => zoomPDFModal(1.2);
-    document.getElementById('pdf-zoom-out-modal')?.onclick = () => zoomPDFModal(0.8);
+    var firstBtn = document.getElementById('pdf-first-modal');
+    var prevBtn = document.getElementById('pdf-prev-modal');
+    var nextBtn = document.getElementById('pdf-next-modal');
+    var lastBtn = document.getElementById('pdf-last-modal');
+    var zoomInBtn = document.getElementById('pdf-zoom-in-modal');
+    var zoomOutBtn = document.getElementById('pdf-zoom-out-modal');
     
-    const pageInput = document.getElementById('pdf-page-modal');
-    pageInput?.addEventListener('change', () => {
-        const page = parseInt(pageInput.value);
-        if (page >= 1 && page <= totalPDFPages) goToPDFModalPage(page);
-    });
+    if (firstBtn) firstBtn.onclick = function() { goToPDFModalPage(1); };
+    if (prevBtn) prevBtn.onclick = function() { goToPDFModalPage(currentPDFPage - 1); };
+    if (nextBtn) nextBtn.onclick = function() { goToPDFModalPage(currentPDFPage + 1); };
+    if (lastBtn) lastBtn.onclick = function() { goToPDFModalPage(totalPDFPages); };
+    if (zoomInBtn) zoomInBtn.onclick = function() { zoomPDFModal(1.2); };
+    if (zoomOutBtn) zoomOutBtn.onclick = function() { zoomPDFModal(0.8); };
+    
+    var pageInput = document.getElementById('pdf-page-modal');
+    if (pageInput) {
+        pageInput.addEventListener('change', function() {
+            var page = parseInt(pageInput.value);
+            if (page >= 1 && page <= totalPDFPages) goToPDFModalPage(page);
+        });
+    }
 }
 
 async function loadPDFInModal(pdfUrl) {
     try {
-        document.getElementById('pdf-loading-modal').style.display = 'flex';
-        document.getElementById('pdf-error-modal').style.display = 'none';
-        document.getElementById('pdf-viewer-modal-area').style.display = 'none';
+        var loadingDiv = document.getElementById('pdf-loading-modal');
+        var errorDiv = document.getElementById('pdf-error-modal');
+        var viewerDiv = document.getElementById('pdf-viewer-modal-area');
         
-        const loadingTask = pdfjsLib.getDocument({ 
+        if (loadingDiv) loadingDiv.style.display = 'flex';
+        if (errorDiv) errorDiv.style.display = 'none';
+        if (viewerDiv) viewerDiv.style.display = 'none';
+        
+        var loadingTask = pdfjsLib.getDocument({ 
             url: pdfUrl, 
             cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/',
             cMapPacked: true,
@@ -780,20 +656,28 @@ async function loadPDFInModal(pdfUrl) {
         });
         currentPDFDoc = await loadingTask.promise;
         totalPDFPages = currentPDFDoc.numPages;
-        document.getElementById('pdf-total-modal').textContent = totalPDFPages;
-        document.getElementById('pdf-page-modal').max = totalPDFPages;
         
-        document.getElementById('pdf-loading-modal').style.display = 'none';
-        document.getElementById('pdf-viewer-modal-area').style.display = 'flex';
+        var totalSpan = document.getElementById('pdf-total-modal');
+        var pageInput = document.getElementById('pdf-page-modal');
+        if (totalSpan) totalSpan.textContent = totalPDFPages;
+        if (pageInput) pageInput.max = totalPDFPages;
+        
+        if (loadingDiv) loadingDiv.style.display = 'none';
+        if (viewerDiv) viewerDiv.style.display = 'flex';
         pdfScale = 1.0;
         updateZoomDisplayModal();
         await renderPDFModalPage(1);
     } catch (error) {
         console.error('PDF loading error:', error);
-        document.getElementById('pdf-loading-modal').style.display = 'none';
-        document.getElementById('pdf-error-modal').style.display = 'flex';
-        document.getElementById('pdf-error-message-modal').textContent = error.message;
-        document.getElementById('retry-pdf-modal').onclick = () => loadPDFInModal(pdfUrl);
+        var loadingDiv = document.getElementById('pdf-loading-modal');
+        var errorDiv = document.getElementById('pdf-error-modal');
+        var errorMsg = document.getElementById('pdf-error-message-modal');
+        var retryBtn = document.getElementById('retry-pdf-modal');
+        
+        if (loadingDiv) loadingDiv.style.display = 'none';
+        if (errorDiv) errorDiv.style.display = 'flex';
+        if (errorMsg) errorMsg.textContent = error.message;
+        if (retryBtn) retryBtn.onclick = function() { loadPDFInModal(pdfUrl); };
     }
 }
 
@@ -803,12 +687,12 @@ async function renderPDFModalPage(pageNum) {
     pageRendering = true;
     
     try {
-        const page = await currentPDFDoc.getPage(pageNum);
-        const canvas = document.getElementById('pdf-canvas-modal');
+        var page = await currentPDFDoc.getPage(pageNum);
+        var canvas = document.getElementById('pdf-canvas-modal');
         if (!canvas) { pageRendering = false; return; }
-        const ctx = canvas.getContext('2d', { alpha: false });
-        const viewport = page.getViewport({ scale: pdfScale });
-        const pixelRatio = window.devicePixelRatio || 1;
+        var ctx = canvas.getContext('2d', { alpha: false });
+        var viewport = page.getViewport({ scale: pdfScale });
+        var pixelRatio = window.devicePixelRatio || 1;
         canvas.width = viewport.width * pixelRatio;
         canvas.height = viewport.height * pixelRatio;
         canvas.style.width = viewport.width + 'px';
@@ -818,7 +702,8 @@ async function renderPDFModalPage(pageNum) {
         await page.render({ canvasContext: ctx, viewport: viewport, background: 'white' }).promise;
         
         currentPDFPage = pageNum;
-        document.getElementById('pdf-page-modal').value = pageNum;
+        var pageInput = document.getElementById('pdf-page-modal');
+        if (pageInput) pageInput.value = pageNum;
         updatePDFModalNavButtons();
     } catch (error) {
         console.error('Render error:', error);
@@ -835,23 +720,24 @@ function goToPDFModalPage(pageNum) {
 }
 
 function zoomPDFModal(factor) {
-    pdfScale *= factor;
-    pdfScale = Math.max(0.5, Math.min(pdfScale, 3.0));
+    pdfScale = pdfScale * factor;
+    if (pdfScale < 0.5) pdfScale = 0.5;
+    if (pdfScale > 3.0) pdfScale = 3.0;
     updateZoomDisplayModal();
     renderPDFModalPage(currentPDFPage);
 }
 
 function updateZoomDisplayModal() {
-    const percent = Math.round(pdfScale * 100);
-    const zoomDisplay = document.getElementById('pdf-zoom-percent-modal');
+    var percent = Math.round(pdfScale * 100);
+    var zoomDisplay = document.getElementById('pdf-zoom-percent-modal');
     if (zoomDisplay) zoomDisplay.textContent = percent + '%';
 }
 
 function updatePDFModalNavButtons() {
-    const firstBtn = document.getElementById('pdf-first-modal');
-    const prevBtn = document.getElementById('pdf-prev-modal');
-    const nextBtn = document.getElementById('pdf-next-modal');
-    const lastBtn = document.getElementById('pdf-last-modal');
+    var firstBtn = document.getElementById('pdf-first-modal');
+    var prevBtn = document.getElementById('pdf-prev-modal');
+    var nextBtn = document.getElementById('pdf-next-modal');
+    var lastBtn = document.getElementById('pdf-last-modal');
     if (firstBtn) firstBtn.disabled = currentPDFPage <= 1;
     if (prevBtn) prevBtn.disabled = currentPDFPage <= 1;
     if (nextBtn) nextBtn.disabled = currentPDFPage >= totalPDFPages;
@@ -859,7 +745,7 @@ function updatePDFModalNavButtons() {
 }
 
 function togglePDFFullscreen() {
-    const container = document.querySelector('.pdf-modal-container');
+    var container = document.querySelector('.pdf-modal-container');
     if (!container) return;
     if (!document.fullscreenElement) {
         container.requestFullscreen();
@@ -881,55 +767,50 @@ function cleanupPDFModal() {
 }
 
 function openImageInModal(resource) {
-    const modal = document.createElement('div');
+    var modal = document.createElement('div');
     modal.className = 'image-viewer-modal';
-    modal.innerHTML = `
-        <div class="image-modal-container">
-            <div class="image-modal-header">
-                <span>${escapeHtml(resource.title)}</span>
-                <button class="close-image-modal"><i class="fas fa-times"></i></button>
-            </div>
-            <div class="image-modal-body">
-                <img src="${resource.file_url}" alt="${escapeHtml(resource.title)}">
-            </div>
-            <div class="image-modal-footer">
-                <i class="fas fa-lock"></i> Protected Image - No Download
-            </div>
-        </div>
-    `;
+    modal.innerHTML = '<div class="image-modal-container">' +
+        '<div class="image-modal-header">' +
+        '<span>' + escapeHtml(resource.title) + '</span>' +
+        '<button class="close-image-modal"><i class="fas fa-times"></i></button>' +
+        '</div>' +
+        '<div class="image-modal-body">' +
+        '<img src="' + resource.file_url + '" alt="' + escapeHtml(resource.title) + '">' +
+        '</div>' +
+        '<div class="image-modal-footer">' +
+        '<i class="fas fa-lock"></i> Protected Image - No Download' +
+        '</div>' +
+        '</div>';
     document.body.appendChild(modal);
     modal.style.display = 'flex';
-    modal.querySelector('.close-image-modal').onclick = () => modal.remove();
-    modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+    modal.querySelector('.close-image-modal').onclick = function() { modal.remove(); };
+    modal.onclick = function(e) { if (e.target === modal) modal.remove(); };
 }
 
 function openVideoInModal(resource) {
-    const modal = document.createElement('div');
+    var modal = document.createElement('div');
     modal.className = 'video-viewer-modal';
-    modal.innerHTML = `
-        <div class="video-modal-container">
-            <div class="video-modal-header">
-                <span>${escapeHtml(resource.title)}</span>
-                <button class="close-video-modal"><i class="fas fa-times"></i></button>
-            </div>
-            <div class="video-modal-body">
-                <video controls controlslist="nodownload" disablepictureinpicture>
-                    <source src="${resource.file_url}" type="video/mp4">
-                    Your browser does not support video playback.
-                </video>
-            </div>
-            <div class="video-modal-footer">
-                <i class="fas fa-lock"></i> Protected Video - No Download
-            </div>
-        </div>
-    `;
+    modal.innerHTML = '<div class="video-modal-container">' +
+        '<div class="video-modal-header">' +
+        '<span>' + escapeHtml(resource.title) + '</span>' +
+        '<button class="close-video-modal"><i class="fas fa-times"></i></button>' +
+        '</div>' +
+        '<div class="video-modal-body">' +
+        '<video controls controlslist="nodownload" disablepictureinpicture>' +
+        '<source src="' + resource.file_url + '" type="video/mp4">' +
+        'Your browser does not support video playback.' +
+        '</video>' +
+        '</div>' +
+        '<div class="video-modal-footer">' +
+        '<i class="fas fa-lock"></i> Protected Video - No Download' +
+        '</div>' +
+        '</div>';
     document.body.appendChild(modal);
     modal.style.display = 'flex';
-    modal.querySelector('.close-video-modal').onclick = () => modal.remove();
-    modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+    modal.querySelector('.close-video-modal').onclick = function() { modal.remove(); };
+    modal.onclick = function(e) { if (e.target === modal) modal.remove(); };
 }
 
-// Student filter function
 window.filterStudentResources = function() {
     loadAllResourcesForBlocks();
 };
@@ -937,7 +818,7 @@ window.filterStudentResources = function() {
 // ==================== UTILITY FUNCTIONS ====================
 function getFileType(filePath) {
     if (!filePath) return 'unknown';
-    const ext = filePath.split('.').pop().toLowerCase();
+    var ext = filePath.split('.').pop().toLowerCase();
     if (ext === 'pdf') return 'pdf';
     if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(ext)) return 'image';
     if (['mp4', 'avi', 'mov', 'wmv', 'webm'].includes(ext)) return 'video';
@@ -945,60 +826,65 @@ function getFileType(filePath) {
 }
 
 function getFileIcon(filePath) {
-    const type = getFileType(filePath);
-    const icons = { pdf: 'fa-file-pdf', image: 'fa-file-image', video: 'fa-file-video' };
-    return `fas ${icons[type] || 'fa-file-alt'}`;
+    var type = getFileType(filePath);
+    var icons = { pdf: 'fa-file-pdf', image: 'fa-file-image', video: 'fa-file-video' };
+    return 'fas ' + (icons[type] || 'fa-file-alt');
 }
 
 function escapeHtml(str) {
     if (!str) return '';
-    const div = document.createElement('div');
+    var div = document.createElement('div');
     div.textContent = str;
     return div.innerHTML;
 }
 
 function showLoading(element, message) {
-    if (element) element.innerHTML = `<div class="loading-state-premium"><div class="loading-spinner premium"></div><p>${message}</p></div>`;
+    if (element) element.innerHTML = '<div class="loading-state-premium"><div class="loading-spinner premium"></div><p>' + message + '</p></div>';
 }
 
 function showError(element, message) {
-    if (element) element.innerHTML = `<div class="error-state-premium"><i class="fas fa-exclamation-triangle"></i><h3>Error</h3><p>${message}</p><button onclick="location.reload()" class="premium-btn">Retry</button></div>`;
+    if (element) element.innerHTML = '<div class="error-state-premium"><i class="fas fa-exclamation-triangle"></i><h3>Error</h3><p>' + message + '</p><button onclick="location.reload()" class="premium-btn">Retry</button></div>';
 }
 
-function showToast(message, type = 'info') {
-    const toast = document.getElementById('toast');
+function showToast(message, type) {
+    type = type || 'info';
+    var toast = document.getElementById('toast');
     if (toast) {
         toast.textContent = message;
         toast.style.display = 'block';
         toast.style.backgroundColor = type === 'error' ? '#dc2626' : '#10b981';
-        setTimeout(() => { toast.style.display = 'none'; }, 3000);
+        setTimeout(function() { toast.style.display = 'none'; }, 3000);
     } else {
         console.log(message);
     }
 }
 
+function filterResourcesByBlock() {
+    loadAllResourcesForBlocks();
+}
+window.filterResources = filterResourcesByBlock;
+
 // ==================== INITIALIZATION ====================
 async function initializeResourcesModule() {
     console.log('📁 Initializing Student Resources Module with Past Papers...');
     
-    // Wait for database and user profile to be ready
-    let attempts = 0;
-    const maxAttempts = 30;
+    var attempts = 0;
+    var maxAttempts = 30;
     
     function checkAndInit() {
         attempts++;
         
-        if (window.db?.supabase && window.currentUserProfile?.program) {
+        if (window.db && window.db.supabase && window.currentUserProfile && window.currentUserProfile.program) {
             console.log('✅ Database and user ready, loading resources...');
             initSupabaseClient();
-            createBlockFilterUI().then(() => {
+            createBlockFilterUI().then(function() {
                 loadAllResourcesForBlocks();
             });
         } else if (attempts < maxAttempts) {
             setTimeout(checkAndInit, 500);
         } else {
             console.error('❌ Timeout waiting for dependencies');
-            const grid = document.getElementById('student-resources-grid');
+            var grid = document.getElementById('student-resources-grid');
             if (grid) {
                 grid.innerHTML = '<div class="error-state">Unable to load resources. Please refresh the page.</div>';
             }
@@ -1011,7 +897,6 @@ async function initializeResourcesModule() {
 // Make functions global
 window.loadAllResources = loadAllResourcesForBlocks;
 window.openResourceInline = openResourceInline;
-window.filterResources = filterResourcesByBlock;
 window.filterResourcesByType = filterResourcesByType;
 window.filterStudentResourceType = filterResourcesByType;
 window.filterStudentResources = filterStudentResources;
@@ -1021,6 +906,5 @@ window.initializeResourcesModule = initializeResourcesModule;
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initializeResourcesModule);
 } else {
-    // If DOM already loaded, wait a bit for other scripts
     setTimeout(initializeResourcesModule, 500);
 }
