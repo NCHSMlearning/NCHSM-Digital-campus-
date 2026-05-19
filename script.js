@@ -3527,17 +3527,17 @@ async function saveOfficialAnnouncement() {
 }
 
 /*******************************************************
- * 15. RESOURCES MANAGEMENT - COMPLETE WITH PAST PAPERS
- * Supports: Learning Materials & Past Papers
- * Auto-detects file type and applies correct Content-Type
+ * 15. RESOURCES MANAGEMENT - UNIFIED VERSION
+ * Handles BOTH Learning Materials AND Past Papers
  *******************************************************/
 
-// Global variables for resource filtering
-let currentResourceType = 'all'; // 'all', 'material', 'pastpaper'
+// Global variables
+let currentResourceType = 'all';
 let allResourcesData = [];
 
 // =====================================================
-// RESOURCE UPLOAD HANDLER (FIXED for PDFs)
+// UNIFIED RESOURCE UPLOAD HANDLER
+// Handles both materials and past papers
 // =====================================================
 async function handleResourceUpload(e) {
     e.preventDefault();
@@ -3545,12 +3545,19 @@ async function handleResourceUpload(e) {
     const originalText = submitButton.textContent;
     setButtonLoading(submitButton, true, originalText);
 
+    // Get form values
     const program = $('resource_program').value;
     const intake = $('resource_intake').value;
     const block = $('resource_block').value;
     const fileInput = $('resource-file');
     const title = $('resource-title').value.trim();
     const description = $('resource-description')?.value.trim() || '';
+    
+    // Past paper specific fields (optional)
+    const isPastPaper = $('resource_is_pastpaper')?.checked || false;
+    const pastpaperYear = $('resource_pastpaper_year')?.value || null;
+    const examType = $('resource_exam_type')?.value || null;
+    const courseName = $('resource_course_name')?.value.trim() || null;
 
     if (!fileInput.files.length || !program || !intake || !block || !title) {
         showFeedback('Please select a file and fill all required fields.', 'error');
@@ -3559,9 +3566,8 @@ async function handleResourceUpload(e) {
     }
 
     let file = fileInput.files[0];
-    let uploadFile = file;
     
-    // ✅ CRITICAL FIX: Force correct content type for PDFs
+    // ✅ Force correct content type for PDFs
     let contentType = file.type;
     const isPDF = file.name.toLowerCase().endsWith('.pdf');
     
@@ -3570,25 +3576,29 @@ async function handleResourceUpload(e) {
         console.log('📄 PDF detected - forcing Content-Type: application/pdf');
     }
 
+    // Create unique filename
+    const timestamp = Date.now();
+    const safeTitle = title.replace(/[^\w\-]+/g, '_');
     const originalExt = file.name.split('.').pop();
-    const baseName = title.replace(/[^\w\-]+/g, '_') + '_' + Date.now();
+    let finalName = `${safeTitle}_${timestamp}.${originalExt}`;
     
-    let originalName = `${baseName}.${originalExt}`;
-    let filePath = `learning_materials/${program}/${intake}/${block}/${originalName}`;
+    // Determine storage path
+    let filePath;
+    let resourceType = 'material';
+    
+    if (isPastPaper && pastpaperYear && examType && courseName) {
+        resourceType = 'pastpaper';
+        filePath = `past_papers/${program}/${pastpaperYear}/${block}/${finalName}`;
+    } else {
+        resourceType = 'material';
+        filePath = `learning_materials/${program}/${intake}/${block}/${finalName}`;
+    }
 
     try {
-        // Handle Word/PPT conversion (placeholder - would need actual conversion service)
-        if (/\.(docx?|pptx?)$/i.test(file.name)) {
-            originalName = `${baseName}.pdf`;
-            filePath = `learning_materials/${program}/${intake}/${block}/${originalName}`;
-            contentType = 'application/pdf';
-            showFeedback('Note: Document conversion will be applied in production.', 'info');
-        }
-
-        // Upload with correct content type
+        // Upload to storage with forced content type
         const { error: uploadError } = await sb.storage
             .from(RESOURCES_BUCKET)
-            .upload(filePath, uploadFile, {
+            .upload(filePath, file, {
                 cacheControl: '3600',
                 upsert: true,
                 contentType: contentType
@@ -3600,32 +3610,49 @@ async function handleResourceUpload(e) {
             .from(RESOURCES_BUCKET)
             .getPublicUrl(filePath);
 
+        // Prepare database record
+        const dbRecord = {
+            title: title,
+            description: description,
+            program_type: program,
+            intake: intake,
+            block: block,
+            file_path: filePath,
+            file_name: finalName,
+            file_url: publicUrl,
+            resource_type: resourceType,
+            uploaded_by: currentUserProfile?.id,
+            uploaded_by_name: currentUserProfile?.full_name,
+            created_at: new Date().toISOString()
+        };
+        
+        // Add past paper specific fields
+        if (isPastPaper && pastpaperYear && examType && courseName) {
+            dbRecord.pastpaper_year = parseInt(pastpaperYear);
+            dbRecord.exam_type = examType;
+            dbRecord.course_name = courseName;
+            dbRecord.intake = pastpaperYear; // Use past paper year as intake for filtering
+        }
+
         const { error: dbError, data } = await sb
             .from('resources')
-            .insert({
-                title: title,
-                description: description,
-                program_type: program,
-                intake: intake,
-                block: block,
-                file_path: filePath,
-                file_name: originalName,
-                file_url: publicUrl,
-                resource_type: 'material',
-                uploaded_by: currentUserProfile?.id,
-                uploaded_by_name: currentUserProfile?.full_name,
-                created_at: new Date().toISOString()
-            }).select('id');
+            .insert(dbRecord)
+            .select('id');
         
         if (dbError) throw dbError;
 
-        await logAudit('RESOURCE_UPLOAD', `Uploaded learning material: ${title} to ${program}/${intake}/${block}.`, data?.[0]?.id, 'SUCCESS');
-        showFeedback(`✅ Learning material "${title}" uploaded successfully!`, 'success');
+        await logAudit('RESOURCE_UPLOAD', `Uploaded ${resourceType}: ${title}`, data?.[0]?.id, 'SUCCESS');
+        showFeedback(`✅ "${title}" uploaded successfully!`, 'success');
+        
+        // Reset form
         e.target.reset();
+        if ($('resource_is_pastpaper')) $('resource_is_pastpaper').checked = false;
+        togglePastPaperFields();
+        
         loadAllResources();
         
     } catch (err) {
-        await logAudit('RESOURCE_UPLOAD', `Failed to upload resource: ${title}. Reason: ${err.message}`, null, 'FAILURE');
+        await logAudit('RESOURCE_UPLOAD', `Failed: ${title}. ${err.message}`, null, 'FAILURE');
         console.error('Upload failed:', err);
         showFeedback(`❌ Upload failed: ${err.message}`, 'error');
     } finally {
@@ -3634,113 +3661,28 @@ async function handleResourceUpload(e) {
 }
 
 // =====================================================
-// PAST PAPER UPLOAD HANDLER
+// TOGGLE PAST PAPER FIELDS
 // =====================================================
-async function handlePastPaperUpload(e) {
-    e.preventDefault();
-    const submitButton = e.submitter;
-    const originalText = submitButton.textContent;
-    setButtonLoading(submitButton, true, originalText);
-
-    const program = $('pastpaper_program').value;
-    const year = $('pastpaper_year').value;
-    const block = $('pastpaper_block').value;
-    const examType = $('pastpaper_type').value;
-    const course = $('pastpaper_course').value.trim();
-    const fileInput = $('pastpaper-file');
-    const description = $('pastpaper-description').value.trim();
-
-    if (!program || !year || !block || !examType || !course || !fileInput.files.length) {
-        showFeedback('Please fill all required fields.', 'error');
-        setButtonLoading(submitButton, false, originalText);
-        return;
-    }
-
-    const file = fileInput.files[0];
+function togglePastPaperFields() {
+    const isPastPaper = $('resource_is_pastpaper')?.checked || false;
+    const pastpaperFields = document.getElementById('pastpaper-fields');
     
-    if (!file.name.toLowerCase().endsWith('.pdf')) {
-        showFeedback('Only PDF files are allowed for past papers.', 'error');
-        setButtonLoading(submitButton, false, originalText);
-        return;
+    if (pastpaperFields) {
+        pastpaperFields.style.display = isPastPaper ? 'block' : 'none';
     }
-
-    // Create filename: EXAMTYPE_COURSE_YEAR_TIMESTAMP.pdf
-    const timestamp = Date.now();
-    const safeCourse = course.replace(/[^\w\-]/g, '_');
-    const fileName = `${examType}_${safeCourse}_${year}_${timestamp}.pdf`;
-    const filePath = `past_papers/${program}/${year}/${block}/${fileName}`;
-
-    try {
-        // Force correct content type for PDF
-        const { error: uploadError } = await sb.storage
-            .from(RESOURCES_BUCKET)
-            .upload(filePath, file, {
-                cacheControl: '3600',
-                upsert: false,
-                contentType: 'application/pdf'
-            });
-        
-        if (uploadError) throw uploadError;
-
-        const { data: { publicUrl } } = sb.storage
-            .from(RESOURCES_BUCKET)
-            .getPublicUrl(filePath);
-
-        const examTypeDisplay = {
-            'CAT_1': 'CAT 1',
-            'CAT_2': 'CAT 2',
-            'END_TERM': 'End of Term',
-            'FINAL': 'Final Exam',
-            'SUPPLEMENTARY': 'Supplementary'
-        }[examType] || examType;
-
-        const { error: dbError, data } = await sb
-            .from('resources')
-            .insert({
-                title: `${course} - ${examTypeDisplay} (${year})`,
-                description: description || `${examTypeDisplay} examination paper for ${course} - ${year}`,
-                program_type: program,
-                intake: year,
-                block: block,
-                file_path: filePath,
-                file_name: fileName,
-                file_url: publicUrl,
-                resource_type: 'pastpaper',
-                pastpaper_year: year,
-                exam_type: examType,
-                course_name: course,
-                uploaded_by: currentUserProfile?.id,
-                uploaded_by_name: currentUserProfile?.full_name,
-                created_at: new Date().toISOString()
-            }).select('id');
-        
-        if (dbError) throw dbError;
-
-        await logAudit('PAST_PAPER_UPLOAD', `Uploaded past paper: ${course} - ${examType} (${year})`, data?.[0]?.id, 'SUCCESS');
-        showFeedback(`✅ Past paper for ${course} (${year}) uploaded successfully!`, 'success');
-        
-        // Reset form
-        $('pastpaper_program').value = '';
-        $('pastpaper_year').value = '';
-        $('pastpaper_block').value = '';
-        $('pastpaper_type').value = '';
-        $('pastpaper_course').value = '';
-        $('pastpaper-file').value = '';
-        $('pastpaper-description').value = '';
-        
-        loadAllResources();
-        
-    } catch (err) {
-        await logAudit('PAST_PAPER_UPLOAD', `Failed to upload past paper: ${course}. Reason: ${err.message}`, null, 'FAILURE');
-        console.error('Past paper upload failed:', err);
-        showFeedback(`❌ Upload failed: ${err.message}`, 'error');
-    } finally {
-        setButtonLoading(submitButton, false, originalText);
-    }
+    
+    // Update required attributes
+    const yearInput = $('resource_pastpaper_year');
+    const examTypeSelect = $('resource_exam_type');
+    const courseInput = $('resource_course_name');
+    
+    if (yearInput) yearInput.required = isPastPaper;
+    if (examTypeSelect) examTypeSelect.required = isPastPaper;
+    if (courseInput) courseInput.required = isPastPaper;
 }
 
 // =====================================================
-// LOAD ALL RESOURCES (with type filtering)
+// LOAD ALL RESOURCES
 // =====================================================
 async function loadAllResources() {
     const tableBody = $('resources-list');
@@ -3751,7 +3693,6 @@ async function loadAllResources() {
     try {
         let query = sb.from('resources').select('*').order('created_at', { ascending: false });
         
-        // Filter by resource type
         if (currentResourceType === 'material') {
             query = query.eq('resource_type', 'material');
         } else if (currentResourceType === 'pastpaper') {
@@ -3764,12 +3705,17 @@ async function loadAllResources() {
         
         allResourcesData = resources || [];
         
-        // Update past paper count badge
+        // Update counts
         const pastpaperCount = allResourcesData.filter(r => r.resource_type === 'pastpaper').length;
-        const badge = $('pastpaper-count-badge');
-        if (badge) badge.textContent = pastpaperCount;
+        const materialCount = allResourcesData.filter(r => r.resource_type === 'material').length;
         
-        // Apply additional filters
+        const pastpaperBadge = $('pastpaper-count-badge');
+        const materialBadge = $('material-count-badge');
+        
+        if (pastpaperBadge) pastpaperBadge.textContent = pastpaperCount;
+        if (materialBadge) materialBadge.textContent = materialCount;
+        
+        // Apply filters
         let filtered = [...allResourcesData];
         
         const searchTerm = $('resource-search')?.value.toLowerCase() || '';
@@ -3800,8 +3746,8 @@ async function loadAllResources() {
         
     } catch (error) {
         console.error('Error loading resources:', error);
-        tableBody.innerHTML = `<tr><td colspan="9" style="color: red;">Error: ${error.message}</td></tr>`;
-        await logAudit('RESOURCE_LOAD', `Failed to load resources: ${error.message}`, null, 'FAILURE');
+        tableBody.innerHTML = `<tr><td colspan="9" style="color: red;">Error: ${error.message}</td><\/tr>`;
+        await logAudit('RESOURCE_LOAD', `Failed: ${error.message}`, null, 'FAILURE');
     }
 }
 
@@ -3814,11 +3760,11 @@ function renderResourcesTable(resources) {
     
     if (!resources || resources.length === 0) {
         const emptyMessage = currentResourceType === 'pastpaper' 
-            ? 'No past papers found. Upload past papers using the form above.'
+            ? 'No past papers found.'
             : currentResourceType === 'material'
-            ? 'No learning materials found. Upload materials using the form above.'
-            : 'No resources found. Upload learning materials or past papers.';
-        tableBody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 40px;">📁 ${emptyMessage}</td></tr>`;
+            ? 'No learning materials found.'
+            : 'No resources found.';
+        tableBody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 40px;">📁 ${emptyMessage}</td><\/tr>`;
         return;
     }
     
@@ -3826,48 +3772,32 @@ function renderResourcesTable(resources) {
     
     resources.forEach(resource => {
         const isPastPaper = resource.resource_type === 'pastpaper';
-        
-        // Type badge
+        const typeClass = isPastPaper ? 'badge-warning' : 'badge-info';
         const typeIcon = isPastPaper ? '📄' : '📚';
         const typeLabel = isPastPaper ? 'Past Paper' : 'Material';
-        const typeClass = isPastPaper ? 'badge-warning' : 'badge-info';
-        
-        // Year/Intake display
         const yearDisplay = isPastPaper ? resource.pastpaper_year : resource.intake;
         
-        // Title display
         let titleDisplay = resource.title;
         if (isPastPaper && resource.course_name && resource.exam_type) {
             const examLabel = getExamTypeLabel(resource.exam_type);
             titleDisplay = `${resource.course_name} - ${examLabel} (${resource.pastpaper_year})`;
         }
         
-        // Date formatting
-        const uploadDate = new Date(resource.created_at);
-        const dateFormatted = uploadDate.toLocaleDateString();
-        
-        // Escape for security
-        const safeId = resource.id;
-        const safeTitle = escapeHtml(titleDisplay, true);
-        const safeUrl = resource.file_url;
+        const uploadDate = new Date(resource.created_at).toLocaleDateString();
         
         const row = document.createElement('tr');
         row.innerHTML = `
             <td><span class="badge ${typeClass}"><i class="${isPastPaper ? 'fas fa-history' : 'fas fa-book'}"></i> ${typeLabel}</span></td>
             <td><strong>${escapeHtml(yearDisplay || 'N/A')}</strong></td>
             <td>${escapeHtml(resource.program_type || 'N/A')}</td>
-            <td><span class="block-badge">${escapeHtml(resource.block || 'N/A')}</span></td>
-            <td><strong>${escapeHtml(titleDisplay)}</strong><br><small class="text-muted">${escapeHtml(resource.course_name || '')}</small></td>
-            <td><small>${escapeHtml((resource.description || '-').substring(0, 60))}${(resource.description || '').length > 60 ? '...' : ''}</small></td>
+            <td>${escapeHtml(resource.block || 'N/A')}</td>
+            <td><strong>${escapeHtml(titleDisplay)}</strong><br><small>${escapeHtml(resource.course_name || '')}</small></td>
+            <td><small>${escapeHtml((resource.description || '-').substring(0, 50))}</small></td>
             <td>${escapeHtml(resource.uploaded_by_name || 'Unknown')}</td>
-            <td><small>${dateFormatted}</small></td>
-            <td class="actions-cell">
-                <a href="${safeUrl}" target="_blank" class="btn-view" title="View/Download">
-                    <i class="fas fa-eye"></i> View
-                </a>
-                <button onclick="deleteResourceItem('${safeId}', '${safeTitle}')" class="btn-delete-sm" title="Delete">
-                    <i class="fas fa-trash"></i>
-                </button>
+            <td>${uploadDate}</td>
+            <td>
+                <a href="${resource.file_url}" target="_blank" class="btn-action btn-small">View</a>
+                <button onclick="deleteResourceItem(${resource.id}, '${escapeHtml(resource.title)}')" class="btn-delete btn-small">Delete</button>
             </td>
         `;
         tableBody.appendChild(row);
@@ -3875,64 +3805,29 @@ function renderResourcesTable(resources) {
 }
 
 // =====================================================
-// HELPER: Get Exam Type Display Label
-// =====================================================
-function getExamTypeLabel(examType) {
-    const labels = {
-        'CAT_1': 'CAT 1',
-        'CAT_2': 'CAT 2',
-        'CAT': 'CAT',
-        'END_TERM': 'End of Term',
-        'FINAL': 'Final Exam',
-        'SUPPLEMENTARY': 'Supplementary',
-        'SPECIAL': 'Special Exam'
-    };
-    return labels[examType] || examType;
-}
-
-// =====================================================
-// DELETE RESOURCE ITEM
+// DELETE RESOURCE
 // =====================================================
 async function deleteResourceItem(resourceId, title) {
-    if (!confirm(`⚠️ Permanently delete "${title}"?\n\nThis action cannot be undone.`)) return;
+    if (!confirm(`⚠️ Permanently delete "${title}"?`)) return;
     
     try {
-        // First get the file path
-        const { data: resource, error: fetchError } = await sb
+        const { data: resource } = await sb
             .from('resources')
             .select('file_path')
             .eq('id', resourceId)
             .single();
         
-        if (fetchError) throw fetchError;
-        
-        // Delete from storage
         if (resource?.file_path) {
-            const { error: storageError } = await sb.storage
-                .from(RESOURCES_BUCKET)
-                .remove([resource.file_path]);
-            
-            if (storageError) {
-                console.warn('Storage delete warning:', storageError);
-                // Continue with DB delete even if storage fails
-            }
+            await sb.storage.from(RESOURCES_BUCKET).remove([resource.file_path]);
         }
         
-        // Delete from database
-        const { error: dbError } = await sb
-            .from('resources')
-            .delete()
-            .eq('id', resourceId);
+        await sb.from('resources').delete().eq('id', resourceId);
         
-        if (dbError) throw dbError;
-        
-        await logAudit('RESOURCE_DELETE', `Deleted resource: ${title}`, resourceId, 'SUCCESS');
-        showFeedback(`✅ "${title}" deleted successfully.`, 'success');
+        await logAudit('RESOURCE_DELETE', `Deleted: ${title}`, resourceId, 'SUCCESS');
+        showFeedback(`✅ "${title}" deleted.`, 'success');
         loadAllResources();
         
     } catch (error) {
-        console.error('Delete failed:', error);
-        await logAudit('RESOURCE_DELETE', `Failed to delete: ${title}. ${error.message}`, resourceId, 'FAILURE');
         showFeedback(`❌ Delete failed: ${error.message}`, 'error');
     }
 }
@@ -3943,24 +3838,19 @@ async function deleteResourceItem(resourceId, title) {
 function filterResourceType(type) {
     currentResourceType = type;
     
-    // Update button styles
-    const buttons = ['all', 'material', 'pastpaper'];
-    buttons.forEach(btnType => {
+    ['all', 'material', 'pastpaper'].forEach(btnType => {
         const btn = $(`resource-type-${btnType}`);
         if (btn) {
             if (btnType === type) {
                 btn.style.background = '#4C1D95';
                 btn.style.color = 'white';
-                btn.style.border = 'none';
             } else {
                 btn.style.background = '#e5e7eb';
                 btn.style.color = '#374151';
-                btn.style.border = '1px solid #d1d5db';
             }
         }
     });
     
-    // Reset filters when changing type
     if ($('resource-search')) $('resource-search').value = '';
     if ($('resource-block-filter')) $('resource-block-filter').value = 'all';
     if ($('resource-year-filter')) $('resource-year-filter').value = 'all';
@@ -3972,75 +3862,13 @@ function filterResourcesTable() {
     loadAllResources();
 }
 
-function toggleUploadForm() {
-    const materialForm = $('upload-material-form');
-    const pastpaperForm = $('upload-pastpaper-form');
-    const uploadType = document.querySelector('input[name="upload_type"]:checked')?.value;
-    
-    if (materialForm && pastpaperForm) {
-        if (uploadType === 'material') {
-            materialForm.style.display = 'flex';
-            pastpaperForm.style.display = 'none';
-        } else {
-            materialForm.style.display = 'none';
-            pastpaperForm.style.display = 'flex';
-        }
-    }
-}
-
-// =====================================================
-// EXPORT RESOURCES TO CSV
-// =====================================================
-function exportResourcesToCSV() {
-    if (!allResourcesData.length) {
-        showFeedback('No data to export.', 'warning');
-        return;
-    }
-    
-    let filtered = [...allResourcesData];
-    
-    // Apply current type filter
-    if (currentResourceType === 'material') {
-        filtered = filtered.filter(r => r.resource_type === 'material');
-    } else if (currentResourceType === 'pastpaper') {
-        filtered = filtered.filter(r => r.resource_type === 'pastpaper');
-    }
-    
-    const headers = ['Type', 'Year/Intake', 'Program', 'Block', 'Title', 'Course', 'Description', 'Uploaded By', 'Date'];
-    const rows = filtered.map(r => [
-        r.resource_type === 'pastpaper' ? 'Past Paper' : 'Learning Material',
-        r.resource_type === 'pastpaper' ? r.pastpaper_year : r.intake,
-        r.program_type,
-        r.block,
-        r.title,
-        r.course_name || '',
-        r.description || '',
-        r.uploaded_by_name || '',
-        new Date(r.created_at).toLocaleDateString()
-    ]);
-    
-    const csvContent = [headers, ...rows]
-        .map(row => row.map(cell => `"${String(cell || '').replace(/"/g, '""')}"`).join(','))
-        .join('\n');
-    
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.href = url;
-    link.download = `resources_export_${currentResourceType}_${new Date().toISOString().split('T')[0]}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
-    
-    showFeedback(`✅ Exported ${filtered.length} records to CSV.`, 'success');
-}
-
 // =====================================================
 // INITIALIZE RESOURCES SECTION
 // =====================================================
 function initResourcesSection() {
-    console.log('📁 Initializing Resources Section with Past Papers support...');
+    console.log('📁 Initializing Unified Resources Section...');
     
-    // Set up block/term options for resource forms
+    // Set up block options
     const resourceProgram = $('resource_program');
     const resourceBlock = $('resource_block');
     if (resourceProgram && resourceBlock) {
@@ -4049,28 +3877,20 @@ function initResourcesSection() {
         });
     }
     
-    const pastpaperProgram = $('pastpaper_program');
-    const pastpaperBlock = $('pastpaper_block');
-    if (pastpaperProgram && pastpaperBlock) {
-        pastpaperProgram.addEventListener('change', () => {
-            updateBlockTermOptions('pastpaper_program', 'pastpaper_block');
-        });
+    // Set up past paper checkbox toggle
+    const pastpaperCheckbox = $('resource_is_pastpaper');
+    if (pastpaperCheckbox) {
+        pastpaperCheckbox.addEventListener('change', togglePastPaperFields);
     }
     
-    // Set up form submissions
-    const materialForm = $('upload-material-form');
-    if (materialForm) {
-        materialForm.removeEventListener('submit', handleResourceUpload);
-        materialForm.addEventListener('submit', handleResourceUpload);
+    // Set up form submission
+    const uploadForm = $('upload-resource-form');
+    if (uploadForm) {
+        uploadForm.removeEventListener('submit', handleResourceUpload);
+        uploadForm.addEventListener('submit', handleResourceUpload);
     }
     
-    const pastpaperForm = $('upload-pastpaper-form');
-    if (pastpaperForm) {
-        pastpaperForm.removeEventListener('submit', handlePastPaperUpload);
-        pastpaperForm.addEventListener('submit', handlePastPaperUpload);
-    }
-    
-    // Set up filter listeners
+    // Set up filters
     const searchInput = $('resource-search');
     if (searchInput) {
         searchInput.addEventListener('keyup', debounce(filterResourcesTable, 300));
@@ -4086,36 +3906,25 @@ function initResourcesSection() {
         yearFilter.addEventListener('change', filterResourcesTable);
     }
     
-    // Load initial data
     loadAllResources();
 }
 
-// Debounce helper for search
 function debounce(func, wait) {
     let timeout;
-    return function executedFunction(...args) {
-        const later = () => {
-            clearTimeout(timeout);
-            func(...args);
-        };
+    return function(...args) {
         clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
+        timeout = setTimeout(() => func.apply(this, args), wait);
     };
 }
 
-// =====================================================
-// MAKE FUNCTIONS GLOBAL
-// =====================================================
+// Make functions global
 window.loadAllResources = loadAllResources;
 window.filterResourceType = filterResourceType;
 window.filterResourcesTable = filterResourcesTable;
 window.deleteResourceItem = deleteResourceItem;
-window.exportResourcesToCSV = exportResourcesToCSV;
-window.toggleUploadForm = toggleUploadForm;
-window.handleResourceUpload = handleResourceUpload;
-window.handlePastPaperUpload = handlePastPaperUpload;
+window.togglePastPaperFields = togglePastPaperFields;
 window.initResourcesSection = initResourcesSection;
-window.getExamTypeLabel = getExamTypeLabel;
+window.handleResourceUpload = handleResourceUpload;
 
 /*******************************************************
  * 16. SECURITY & SYSTEM STATUS
