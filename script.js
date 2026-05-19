@@ -63,6 +63,8 @@ const USER_PROFILE_TABLE = 'consolidated_user_profiles_table';
 let currentUserProfile = null;
 let currentUserId = null;
 let attendanceMap = null;
+let currentResourceType = 'all';      // ← ADD THIS
+let allResourcesData = [];             // ← ADD THIS
 
 // TVET Program Codes
 const TVET_PROGRAMS = [
