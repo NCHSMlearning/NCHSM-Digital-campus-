@@ -2910,16 +2910,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-function getExamTypeLabel(examType) {
-    const labels = {
-        'CAT_1': 'CAT 1',
-        'CAT_2': 'CAT 2',
-        'CAT': 'CAT',
-        'EXAM': 'Final Exam',
-        'ASSIGNMENT': 'Assignment'
-    };
-    return labels[examType] || examType;
-}
 
 function showGradeModal(modalHtml) {
     const existingModal = document.getElementById('gradeModal');
