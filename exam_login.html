@@ -2,8 +2,15 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>NCHSM Exam Portal - Secure Login</title>
+<!-- PWA Manifest -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0A3D62">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="NCHSM Exams">
+<link rel="apple-touch-icon" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png">
 <link rel="icon" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -426,29 +433,66 @@ body::after {
     color: #94A3B8;
 }
 
-/* Responsive */
+/* PWA Install prompt custom */
+.install-pwa-banner {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    right: 20px;
+    background: #0A3D62;
+    color: white;
+    padding: 12px 18px;
+    border-radius: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    z-index: 1000;
+    box-shadow: 0 10px 25px -5px rgba(0,0,0,0.2);
+    backdrop-filter: blur(8px);
+    background: rgba(10, 61, 98, 0.95);
+    border: 1px solid rgba(253, 185, 19, 0.3);
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+.install-pwa-banner button {
+    background: #FDB913;
+    border: none;
+    padding: 6px 16px;
+    border-radius: 40px;
+    font-weight: 600;
+    color: #0A3D62;
+    cursor: pointer;
+    font-family: 'Poppins', sans-serif;
+}
+.install-pwa-banner .close-install {
+    background: transparent;
+    color: white;
+    font-size: 1.2rem;
+    padding: 0 6px;
+}
 @media (max-width: 480px) {
     .login-container {
         padding: 30px 24px;
     }
-    
     .logo {
         width: 70px;
         height: 70px;
     }
-    
     .college-header h1 {
         font-size: 1rem;
     }
-    
     .contact-grid {
         grid-template-columns: 1fr;
         gap: 8px;
     }
-    
     .help-links {
         flex-wrap: wrap;
         gap: 12px;
+    }
+    .install-pwa-banner {
+        font-size: 0.7rem;
+        padding: 8px 12px;
     }
 }
 </style>
@@ -587,7 +631,17 @@ body::after {
     </div>
 </div>
 
+<!-- PWA Install Banner (dynamic) -->
+<div id="installBanner" class="install-pwa-banner" style="display: none;">
+    <span><i class="fas fa-download"></i> Install NCHSM Exam Portal App for quick access & offline ready!</span>
+    <div>
+        <button id="installAppBtn">Install</button>
+        <button id="closeInstallBanner" class="close-install"><i class="fas fa-times"></i></button>
+    </div>
+</div>
+
 <script>
+// Supabase Configuration
 const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -616,39 +670,30 @@ termsLink.addEventListener('click', (e) => {
     e.preventDefault();
     termsModal.style.display = 'flex';
 });
-
 privacyLink.addEventListener('click', (e) => {
     e.preventDefault();
     termsModal.style.display = 'flex';
 });
-
 closeTermsModal.addEventListener('click', () => {
     termsModal.style.display = 'none';
 });
-
 acceptTermsModalBtn.addEventListener('click', () => {
     acceptTermsCheckbox.checked = true;
     loginBtn.disabled = false;
     termsModal.style.display = 'none';
 });
-
-// Close modal when clicking outside
 termsModal.addEventListener('click', (e) => {
-    if (e.target === termsModal) {
-        termsModal.style.display = 'none';
-    }
+    if (e.target === termsModal) termsModal.style.display = 'none';
 });
 
-// Forgot password handler
+// Forgot password / support
 document.getElementById('forgotPasswordLink').addEventListener('click', (e) => {
     e.preventDefault();
-    alert('Please contact your instructor to reset your password.');
+    alert('Please contact your instructor to reset your password or email portal.nchsm@gmail.com');
 });
-
-// Contact support handler
 document.getElementById('contactSupportLink').addEventListener('click', (e) => {
     e.preventDefault();
-    alert('Please email portal.nchsm@gmail.com or call 0790969743 for assistance.');
+    alert('Reach us: portal.nchsm@gmail.com | Call 0790969743 | Mon-Fri 8AM-5PM');
 });
 
 // Login function
@@ -745,33 +790,117 @@ async function handleLogin() {
 }
 
 loginBtn.addEventListener('click', handleLogin);
-
 passwordInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter' && !loginBtn.disabled) {
-        handleLogin();
-    }
+    if (e.key === 'Enter' && !loginBtn.disabled) handleLogin();
 });
-
 emailInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-        passwordInput.focus();
-    }
+    if (e.key === 'Enter') passwordInput.focus();
 });
 
 window.addEventListener('DOMContentLoaded', async () => {
     const savedUserId = localStorage.getItem('currentUserId');
-    const savedEmail = localStorage.getItem('studentEmail');
-    
     if (savedUserId && savedUserId !== 'null') {
         const { data } = await sb.auth.getSession();
         if (data.session) {
             window.location.href = 'exam_dashboard.html';
+            return;
         } else {
             localStorage.removeItem('currentUserId');
             localStorage.removeItem('studentEmail');
         }
     }
+    // Register Service Worker and PWA handling
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js').then(reg => console.log('SW registered:', reg)).catch(err => console.log('SW failed:', err));
+    }
 });
+
+// ========== PWA MANIFEST + INSTALL PROMPT ==========
+// We dynamically create manifest.json content for completeness (also served via link)
+// Ensure manifest is available at root path context, but we inject script to generate manifest blob or ensure link is valid.
+// Since manifest.json is referenced in head, we need to make sure it's served. For standalone demo, we create a Blob URL and replace link.
+// But better: programmatically add manifest and fetch it via data url? No, browsers require valid URL. We'll actually generate manifest dynamically and create object URL.
+(function setupManifestAndInstall() {
+    const manifestObj = {
+        name: "NCHSM Exam Portal",
+        short_name: "NCHSM Exams",
+        description: "Secure exam portal for Nakuru College of Health Sciences and Management",
+        start_url: ".",
+        display: "standalone",
+        theme_color: "#0A3D62",
+        background_color: "#0A3D62",
+        icons: [
+            {
+                src: "https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png",
+                sizes: "512x512",
+                type: "image/png",
+                purpose: "any maskable"
+            },
+            {
+                src: "https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png",
+                sizes: "192x192",
+                type: "image/png"
+            }
+        ]
+    };
+    const manifestBlob = new Blob([JSON.stringify(manifestObj)], {type: 'application/json'});
+    const manifestURL = URL.createObjectURL(manifestBlob);
+    const manifestLink = document.querySelector('link[rel="manifest"]');
+    if (manifestLink) {
+        manifestLink.href = manifestURL;
+    } else {
+        const link = document.createElement('link');
+        link.rel = 'manifest';
+        link.href = manifestURL;
+        document.head.appendChild(link);
+    }
+    
+    // PWA install prompt handling
+    let deferredPrompt = null;
+    const installBanner = document.getElementById('installBanner');
+    const installBtn = document.getElementById('installAppBtn');
+    const closeInstallBanner = document.getElementById('closeInstallBanner');
+    
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        if (installBanner) installBanner.style.display = 'flex';
+    });
+    
+    if (installBtn) {
+        installBtn.addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    installBanner.style.display = 'none';
+                }
+                deferredPrompt = null;
+            } else {
+                alert('Installation not available now. You can add to home screen manually via browser menu.');
+            }
+        });
+    }
+    if (closeInstallBanner) {
+        closeInstallBanner.addEventListener('click', () => {
+            installBanner.style.display = 'none';
+        });
+    }
+    window.addEventListener('appinstalled', () => {
+        installBanner.style.display = 'none';
+        deferredPrompt = null;
+    });
+})();
+
+// Also append simple service worker if not present, provide minimal sw.js content via registration
+// Create sw.js blob and register if not existent (fallback)
+if ('serviceWorker' in navigator && !window.location.href.includes('sw.js')) {
+    const swCode = `self.addEventListener('install', event => { self.skipWaiting(); });
+self.addEventListener('fetch', event => { event.respondWith(fetch(event.request)); });`;
+    const swBlob = new Blob([swCode], {type: 'application/javascript'});
+    const swUrl = URL.createObjectURL(swBlob);
+    navigator.serviceWorker.register(swUrl).catch(e => console.log);
+}
 </script>
 </body>
 </html>
