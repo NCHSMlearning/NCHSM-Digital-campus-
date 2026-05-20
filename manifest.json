@@ -4,21 +4,30 @@
   "description": "Nakuru College of Health Sciences and Management Student Portal",
   "start_url": ".",
   "display": "standalone",
-  "background_color": "#4C1D95",
-  "theme_color": "#4C1D95",
+  "background_color": "#0A3D62",
+  "theme_color": "#0A3D62",
   "orientation": "portrait",
+  "categories": ["education", "productivity"],
   "icons": [
     {
       "src": "https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png",
-      "sizes": "192x192",
+      "sizes": "100x100",
       "type": "image/png",
       "purpose": "any maskable"
-    },
+    }
+  ],
+  "shortcuts": [
     {
-      "src": "https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "name": "Login",
+      "short_name": "Login",
+      "description": "Go to login page",
+      "url": "/",
+      "icons": [
+        {
+          "src": "https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png",
+          "sizes": "100x100"
+        }
+      ]
     }
   ]
 }
