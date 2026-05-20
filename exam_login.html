@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>NCHSM Exam Portal - Secure Login</title>
-<!-- PWA Manifest -->
+<!-- PWA Manifest with corrected icon sizes and categories -->
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0A3D62">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -631,7 +631,7 @@ body::after {
     </div>
 </div>
 
-<!-- PWA Install Banner (dynamic) -->
+<!-- PWA Install Banner -->
 <div id="installBanner" class="install-pwa-banner" style="display: none;">
     <span><i class="fas fa-download"></i> Install NCHSM Exam Portal App for quick access & offline ready!</span>
     <div>
@@ -809,45 +809,54 @@ window.addEventListener('DOMContentLoaded', async () => {
             localStorage.removeItem('studentEmail');
         }
     }
-    // Register Service Worker and PWA handling
+    
+    // Register Service Worker with proper network interception
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/sw.js').then(reg => console.log('SW registered:', reg)).catch(err => console.log('SW failed:', err));
+        try {
+            const registration = await navigator.serviceWorker.register('/sw.js');
+            console.log('Service Worker registered successfully:', registration);
+        } catch (error) {
+            console.log('Service Worker registration failed:', error);
+        }
     }
 });
 
-// ========== PWA MANIFEST + INSTALL PROMPT ==========
-// We dynamically create manifest.json content for completeness (also served via link)
-// Ensure manifest is available at root path context, but we inject script to generate manifest blob or ensure link is valid.
-// Since manifest.json is referenced in head, we need to make sure it's served. For standalone demo, we create a Blob URL and replace link.
-// But better: programmatically add manifest and fetch it via data url? No, browsers require valid URL. We'll actually generate manifest dynamically and create object URL.
-(function setupManifestAndInstall() {
+// ========== PWA MANIFEST - CORRECTED ICON SIZES & CATEGORIES ==========
+(function setupCompliantManifest() {
+    // Icon actual size is 100x100, so we declare that exact size
     const manifestObj = {
         name: "NCHSM Exam Portal",
         short_name: "NCHSM Exams",
         description: "Secure exam portal for Nakuru College of Health Sciences and Management",
-        start_url: ".",
+        start_url: "/",
         display: "standalone",
         theme_color: "#0A3D62",
         background_color: "#0A3D62",
+        categories: ["education", "productivity", "reference"],  // ✅ Added categories member
         icons: [
             {
                 src: "https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png",
-                sizes: "512x512",
+                sizes: "100x100",  // ✅ Corrected - matches actual image dimensions
                 type: "image/png",
                 purpose: "any maskable"
-            },
+            }
+        ],
+        screenshots: [
             {
                 src: "https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png",
-                sizes: "192x192",
+                sizes: "100x100",
                 type: "image/png"
             }
         ]
     };
-    const manifestBlob = new Blob([JSON.stringify(manifestObj)], {type: 'application/json'});
+    
+    // Replace manifest link with corrected version
+    const existingLink = document.querySelector('link[rel="manifest"]');
+    const manifestBlob = new Blob([JSON.stringify(manifestObj, null, 2)], {type: 'application/json'});
     const manifestURL = URL.createObjectURL(manifestBlob);
-    const manifestLink = document.querySelector('link[rel="manifest"]');
-    if (manifestLink) {
-        manifestLink.href = manifestURL;
+    
+    if (existingLink) {
+        existingLink.href = manifestURL;
     } else {
         const link = document.createElement('link');
         link.rel = 'manifest';
@@ -877,7 +886,7 @@ window.addEventListener('DOMContentLoaded', async () => {
                 }
                 deferredPrompt = null;
             } else {
-                alert('Installation not available now. You can add to home screen manually via browser menu.');
+                alert('To install, use browser menu: "Add to Home Screen" or "Install App"');
             }
         });
     }
@@ -889,17 +898,66 @@ window.addEventListener('DOMContentLoaded', async () => {
     window.addEventListener('appinstalled', () => {
         installBanner.style.display = 'none';
         deferredPrompt = null;
+        console.log('PWA installed successfully');
     });
 })();
 
-// Also append simple service worker if not present, provide minimal sw.js content via registration
-// Create sw.js blob and register if not existent (fallback)
-if ('serviceWorker' in navigator && !window.location.href.includes('sw.js')) {
-    const swCode = `self.addEventListener('install', event => { self.skipWaiting(); });
-self.addEventListener('fetch', event => { event.respondWith(fetch(event.request)); });`;
+// Create proper Service Worker with network interception and offline fallback
+if ('serviceWorker' in navigator) {
+    const swCode = `// NCHSM Exam Portal Service Worker - Proper Network Interception
+const CACHE_NAME = 'nchsm-exam-v1';
+const urlsToCache = [
+    '/',
+    '/index.html'
+];
+
+self.addEventListener('install', event => {
+    event.waitUntil(
+        caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache))
+    );
+    self.skipWaiting();
+});
+
+self.addEventListener('fetch', event => {
+    event.respondWith(
+        caches.match(event.request).then(response => {
+            if (response) return response;
+            return fetch(event.request).then(fetchResponse => {
+                if (!fetchResponse || fetchResponse.status !== 200 || fetchResponse.type !== 'basic') {
+                    return fetchResponse;
+                }
+                const responseToCache = fetchResponse.clone();
+                caches.open(CACHE_NAME).then(cache => {
+                    cache.put(event.request, responseToCache);
+                });
+                return fetchResponse;
+            });
+        }).catch(() => {
+            return caches.match('/index.html');
+        })
+    );
+});
+
+self.addEventListener('activate', event => {
+    event.waitUntil(
+        caches.keys().then(cacheNames => {
+            return Promise.all(
+                cacheNames.map(cacheName => {
+                    if (cacheName !== CACHE_NAME) {
+                        return caches.delete(cacheName);
+                    }
+                })
+            );
+        })
+    );
+    self.clients.claim();
+});`;
+    
     const swBlob = new Blob([swCode], {type: 'application/javascript'});
     const swUrl = URL.createObjectURL(swBlob);
-    navigator.serviceWorker.register(swUrl).catch(e => console.log);
+    navigator.serviceWorker.register(swUrl).then(reg => {
+        console.log('Service Worker registered with network interception');
+    }).catch(err => console.log('SW registration error:', err));
 }
 </script>
 </body>
