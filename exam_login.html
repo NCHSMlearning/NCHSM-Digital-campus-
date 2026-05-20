@@ -2,17 +2,22 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NCHSM Exam Portal - Windows App</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>NCHSM Exam Portal - Secure Login</title>
 
-<!-- Windows App Specific Meta Tags -->
-<meta name="msapplication-TileColor" content="#0A3D62">
-<meta name="msapplication-TileImage" content="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png">
-<meta name="msapplication-starturl" content="/">
-
-<!-- PWA Manifest for Windows -->
+<!-- PWA Manifest (COMPLETE - all required fields) -->
 <link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0A3D62">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="NCHSM Exams">
+
+<!-- Icons -->
 <link rel="icon" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png">
+<link rel="apple-touch-icon" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png">
+
+<!-- Fonts & Styles -->
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -432,8 +437,8 @@ body::after {
     color: #94A3B8;
 }
 
-/* Windows App Installation Button */
-.windows-install-btn {
+/* Windows Install Button */
+.install-btn {
     position: fixed;
     bottom: 20px;
     right: 20px;
@@ -454,9 +459,8 @@ body::after {
     transition: all 0.3s;
 }
 
-.windows-install-btn:hover {
+.install-btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(0,0,0,0.3);
     background: #e5a800;
 }
 
@@ -471,19 +475,9 @@ body::after {
     .college-header h1 {
         font-size: 1rem;
     }
-    .contact-grid {
-        grid-template-columns: 1fr;
-        gap: 8px;
-    }
-    .help-links {
-        flex-wrap: wrap;
-        gap: 12px;
-    }
-    .windows-install-btn {
+    .install-btn {
         padding: 10px 18px;
         font-size: 0.75rem;
-        bottom: 15px;
-        right: 15px;
     }
 }
 </style>
@@ -498,7 +492,6 @@ body::after {
 
 <div class="login-wrapper">
     <div class="login-container">
-        <!-- College Header -->
         <div class="college-header">
             <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" class="logo" alt="NCHSM Logo">
             <h1>Nakuru College of Health Sciences<br>and Management (NCHSM)</h1>
@@ -509,19 +502,16 @@ body::after {
             <span>Student Login</span>
         </div>
 
-        <!-- Error Message -->
         <div id="error" class="error-message">
             <i class="fas fa-exclamation-circle"></i>
             <span id="errorText"></span>
         </div>
 
-        <!-- Loading Message -->
         <div id="loading" class="info-message" style="display: none;">
             <i class="fas fa-spinner fa-spin"></i>
             <span>Verifying your credentials...</span>
         </div>
 
-        <!-- Login Form -->
         <form id="loginForm">
             <div class="form-group">
                 <div class="input-icon">
@@ -562,7 +552,7 @@ body::after {
             <div class="contact-grid">
                 <div class="contact-item">
                     <i class="fas fa-map-marker-alt"></i>
-                    <span>Kiamunyi Off Nakuru - Kabarak Rd, Along Canon Ndungu Street, Nakuru</span>
+                    <span>Kiamunyi Off Nakuru - Kabarak Rd</span>
                 </div>
                 <div class="contact-item">
                     <i class="fas fa-envelope"></i>
@@ -572,10 +562,6 @@ body::after {
                     <i class="fas fa-phone-alt"></i>
                     <span>0790969743</span>
                 </div>
-                <div class="contact-item">
-                    <i class="fas fa-inbox"></i>
-                    <span>P. O. Box 12906 - 20100, Nakuru</span>
-                </div>
             </div>
             
             <div class="hours">
@@ -584,44 +570,34 @@ body::after {
             </div>
             
             <div class="copyright">
-                <i class="fas fa-shield-alt"></i> Secure Proctored Exams | &copy; 2026 NCHSM. All rights reserved.
+                <i class="fas fa-shield-alt"></i> Secure Proctored Exams | &copy; 2026 NCHSM
             </div>
         </div>
     </div>
 </div>
 
-<!-- WINDOWS INSTALL BUTTON - ALWAYS VISIBLE -->
-<button id="windowsInstallBtn" class="windows-install-btn">
+<!-- Install Button -->
+<button id="windowsInstallBtn" class="install-btn">
     <i class="fab fa-windows"></i> Install Windows App
 </button>
 
 <!-- Terms Modal -->
-<div id="termsModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 10000; align-items: center; justify-content: center;">
-    <div style="background: white; max-width: 500px; width: 90%; border-radius: 20px; padding: 30px; max-height: 80vh; overflow-y: auto;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-            <h2 style="color: #0A3D62;">Terms & Conditions</h2>
-            <button id="closeTermsModal" style="background: none; border: none; font-size: 24px; cursor: pointer;">&times;</button>
-        </div>
-        <div style="line-height: 1.6; color: #475569;">
-            <h3>Exam Integrity and Conduct</h3>
-            <p>By accessing this examination portal, you agree to the following terms:</p>
-            <ul style="margin: 15px 0 15px 20px;">
-                <li>You will not share your login credentials with anyone</li>
-                <li>Camera proctoring will be active during your exam</li>
-                <li>Multiple faces detected will result in automatic submission</li>
-                <li>Tab switching or leaving the exam window is prohibited</li>
-                <li>All answers are final once submitted</li>
-                <li>Academic dishonesty will result in disciplinary action</li>
-            </ul>
-            <h3>Privacy Notice</h3>
-            <p>Your camera feed is processed locally and not stored. Only proctoring events are logged.</p>
-        </div>
-        <button id="acceptTermsModalBtn" style="margin-top: 20px; width: 100%; padding: 12px; background: #38A169; color: white; border: none; border-radius: 10px; font-weight: 600; cursor: pointer;">I Accept</button>
+<div id="termsModal" style="display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:10000; align-items:center; justify-content:center;">
+    <div style="background:white; max-width:500px; width:90%; border-radius:20px; padding:30px;">
+        <h2 style="color:#0A3D62;">Terms & Conditions</h2>
+        <ul style="margin:20px 0 20px 20px; line-height:1.6;">
+            <li>Camera proctoring will be active during exams</li>
+            <li>No tab switching or leaving exam window</li>
+            <li>Multiple faces detected = automatic submission</li>
+            <li>Do not share login credentials</li>
+        </ul>
+        <button id="acceptTermsModalBtn" style="width:100%; padding:12px; background:#38A169; color:white; border:none; border-radius:10px; font-weight:600; cursor:pointer;">I Accept</button>
+        <button id="closeTermsModal" style="margin-top:10px; width:100%; padding:8px; background:transparent; border:none; cursor:pointer;">Close</button>
     </div>
 </div>
 
 <script>
-// Supabase Configuration
+// Supabase Config
 const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -630,102 +606,69 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const emailInput = document.getElementById('email');
 const passwordInput = document.getElementById('password');
 const loginBtn = document.getElementById('loginBtn');
-const acceptTermsCheckbox = document.getElementById('acceptTerms');
+const acceptTerms = document.getElementById('acceptTerms');
 const errorDiv = document.getElementById('error');
 const errorText = document.getElementById('errorText');
 const loadingDiv = document.getElementById('loading');
-const termsModal = document.getElementById('termsModal');
-const termsLink = document.getElementById('termsLink');
-const privacyLink = document.getElementById('privacyLink');
-const closeTermsModal = document.getElementById('closeTermsModal');
-const acceptTermsModalBtn = document.getElementById('acceptTermsModalBtn');
-
-// Enable login button
-acceptTermsCheckbox.addEventListener('change', () => {
-    loginBtn.disabled = !acceptTermsCheckbox.checked;
-});
 
 // Terms Modal
-termsLink.addEventListener('click', (e) => {
+const termsModal = document.getElementById('termsModal');
+document.getElementById('termsLink').addEventListener('click', (e) => {
     e.preventDefault();
     termsModal.style.display = 'flex';
 });
-privacyLink.addEventListener('click', (e) => {
+document.getElementById('privacyLink').addEventListener('click', (e) => {
     e.preventDefault();
     termsModal.style.display = 'flex';
 });
-closeTermsModal.addEventListener('click', () => {
+document.getElementById('closeTermsModal').addEventListener('click', () => {
     termsModal.style.display = 'none';
 });
-acceptTermsModalBtn.addEventListener('click', () => {
-    acceptTermsCheckbox.checked = true;
+document.getElementById('acceptTermsModalBtn').addEventListener('click', () => {
+    acceptTerms.checked = true;
     loginBtn.disabled = false;
     termsModal.style.display = 'none';
 });
-termsModal.addEventListener('click', (e) => {
-    if (e.target === termsModal) termsModal.style.display = 'none';
+
+acceptTerms.addEventListener('change', () => {
+    loginBtn.disabled = !acceptTerms.checked;
 });
 
-// Help links
-document.getElementById('forgotPasswordLink').addEventListener('click', (e) => {
+// Login Handler
+async function handleLogin(e) {
     e.preventDefault();
-    alert('Contact exam support: portal.nchsm@gmail.com');
-});
-document.getElementById('contactSupportLink').addEventListener('click', (e) => {
-    e.preventDefault();
-    alert('IT Support: portal.nchsm@gmail.com | 0790969743');
-});
-
-// Login handler
-async function handleLogin() {
     const email = emailInput.value.trim();
     const password = passwordInput.value;
     
     errorDiv.style.display = 'none';
     
     if (!email || !password) {
-        errorText.innerText = 'Please enter both email and password.';
+        errorText.innerText = 'Please enter email and password';
         errorDiv.style.display = 'flex';
         return;
     }
     
-    if (!acceptTermsCheckbox.checked) {
-        errorText.innerText = 'Please accept the Terms and Conditions.';
+    if (!acceptTerms.checked) {
+        errorText.innerText = 'Please accept Terms & Conditions';
         errorDiv.style.display = 'flex';
         return;
     }
-
+    
+    loadingDiv.style.display = 'flex';
+    loginBtn.disabled = true;
+    loginBtn.innerHTML = '<span class="loading-spinner"></span><span>Logging in...</span>';
+    
     try {
-        loadingDiv.style.display = 'flex';
-        loginBtn.disabled = true;
-        loginBtn.innerHTML = '<span class="loading-spinner"></span><span>Logging in...</span>';
-
-        const { data: authData, error: authError } = await sb.auth.signInWithPassword({ email, password });
+        const { data, error } = await sb.auth.signInWithPassword({ email, password });
+        if (error) throw new Error(error.message);
         
-        if (authError || !authData.user) {
-            throw new Error(authError?.message || 'Invalid credentials');
-        }
-
-        // Check student profile
-        const { data: studentData, error: studentError } = await sb
-            .from('consolidated_user_profiles_table')
-            .select('user_id, program, email')
-            .eq('email', email)
-            .single();
-
-        let finalUserId = studentData?.user_id || authData.user.id;
-        let finalEmail = studentData?.email || email;
-
-        localStorage.setItem('currentUserId', finalUserId);
-        localStorage.setItem('studentEmail', finalEmail);
-        sessionStorage.setItem('currentUserId', finalUserId);
-
+        localStorage.setItem('currentUserId', data.user.id);
+        localStorage.setItem('studentEmail', email);
+        
         loginBtn.innerHTML = '<i class="fas fa-check"></i><span>Success! Redirecting...</span>';
-        
         setTimeout(() => {
             window.location.href = 'exam_dashboard.html';
         }, 1000);
-        
     } catch (err) {
         errorText.innerText = err.message;
         errorDiv.style.display = 'flex';
@@ -735,64 +678,55 @@ async function handleLogin() {
     }
 }
 
-loginBtn.addEventListener('click', handleLogin);
-passwordInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter' && !loginBtn.disabled) handleLogin();
+document.getElementById('loginForm').addEventListener('submit', handleLogin);
+document.getElementById('forgotPasswordLink').addEventListener('click', (e) => {
+    e.preventDefault();
+    alert('Contact portal.nchsm@gmail.com for password reset');
+});
+document.getElementById('contactSupportLink').addEventListener('click', (e) => {
+    e.preventDefault();
+    alert('Call 0790969743 or email portal.nchsm@gmail.com');
 });
 
-// Check existing session
-window.addEventListener('DOMContentLoaded', async () => {
-    const savedUserId = localStorage.getItem('currentUserId');
-    if (savedUserId && savedUserId !== 'null') {
-        const { data } = await sb.auth.getSession();
-        if (data.session) {
-            window.location.href = 'exam_dashboard.html';
-        }
-    }
-});
-
-// ========== WINDOWS APP INSTALLATION ==========
-const windowsInstallBtn = document.getElementById('windowsInstallBtn');
-
-windowsInstallBtn.addEventListener('click', () => {
-    // Create download link for Windows installer
-    const winAppUrl = 'https://pwabuilder.com/package/windows10'; // PWABuilder Windows package
-    
-    // Show installation instructions
-    const installMessage = `📱 WINDOWS APP INSTALLATION:
-
-Option 1 (Easiest): Use PWABuilder
-1. Go to https://pwabuilder.com
-2. Enter this app URL when deployed
-3. Download Windows package
-4. Double-click to install
-
-Option 2 (Quick Install via Browser):
-• Chrome/Edge: Click the "⊕" icon in address bar
-• Then click "Install" - works as Windows app!
-
-Option 3 (Manual):
-Contact IT for the .msix installer file
-
-The app will then appear in your Start Menu as "NCHSM Exams"`;
-
-    alert(installMessage);
-    
-    // Open PWABuilder for easy Windows package creation
+// Windows App Installation
+document.getElementById('windowsInstallBtn').addEventListener('click', () => {
     window.open('https://pwabuilder.com', '_blank');
+    alert('📱 To install as Windows App:\n\n1. Go to PWABuilder.com\n2. Enter this site URL\n3. Download Windows package\n4. Double-click to install');
+});
+</script>
+
+<!-- SERVICE WORKER - CRITICAL FOR WINDOWS APP -->
+<script>
+if ('serviceWorker' in navigator) {
+    const swCode = `const CACHE_NAME = 'nchsm-v1';
+const urlsToCache = ['/', '/index.html'];
+
+self.addEventListener('install', event => {
+    event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache)));
+    self.skipWaiting();
 });
 
-// Service Worker for offline support
-if ('serviceWorker' in navigator) {
-    const swCode = `self.addEventListener('install', e => self.skipWaiting());
-self.addEventListener('fetch', e => e.respondWith(fetch(e.request).catch(() => caches.match(e.request))));`;
-    const blob = new Blob([swCode], {type: 'application/javascript'});
-    navigator.serviceWorker.register(URL.createObjectURL(blob));
-}
+self.addEventListener('fetch', event => {
+    event.respondWith(
+        caches.match(event.request).then(response => {
+            return response || fetch(event.request);
+        })
+    );
+});
 
-// Detect if running as Windows App
-if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
-    console.log('Running as installed Windows App');
+self.addEventListener('activate', event => {
+    event.waitUntil(caches.keys().then(cacheNames => {
+        return Promise.all(cacheNames.map(name => {
+            if (name !== CACHE_NAME) return caches.delete(name);
+        }));
+    }));
+});`;
+    
+    const blob = new Blob([swCode], {type: 'application/javascript'});
+    const swUrl = URL.createObjectURL(blob);
+    navigator.serviceWorker.register(swUrl).then(reg => {
+        console.log('✅ Service Worker registered');
+    });
 }
 </script>
 </body>
