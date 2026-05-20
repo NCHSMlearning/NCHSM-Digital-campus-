@@ -1,964 +1,596 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>NCHSM Exam Portal - Secure Login</title>
-<!-- PWA Manifest with corrected icon sizes and categories -->
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#0A3D62">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="NCHSM Exams">
-<link rel="apple-touch-icon" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png">
-<link rel="icon" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png">
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-<style>
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
-body {
-    font-family: 'Poppins', sans-serif;
-    background: linear-gradient(135deg, #0A3D62 0%, #073450 100%);
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    overflow-x: hidden;
-}
-
-/* Animated Background */
-body::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: radial-gradient(circle at 20% 50%, rgba(253, 185, 19, 0.08) 0%, transparent 50%);
-    pointer-events: none;
-}
-
-body::after {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(circle, rgba(253, 185, 19, 0.05) 0%, transparent 70%);
-    animation: rotateBg 30s linear infinite;
-    pointer-events: none;
-}
-
-@keyframes rotateBg {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-}
-
-/* Floating Particles */
-.particle {
-    position: absolute;
-    background: rgba(253, 185, 19, 0.15);
-    border-radius: 50%;
-    pointer-events: none;
-    animation: float 20s infinite ease-in-out;
-}
-
-@keyframes float {
-    0%, 100% { transform: translateY(0) translateX(0); }
-    25% { transform: translateY(-20px) translateX(10px); }
-    50% { transform: translateY(0) translateX(20px); }
-    75% { transform: translateY(20px) translateX(10px); }
-}
-
-/* Login Wrapper */
-.login-wrapper {
-    width: 100%;
-    max-width: 520px;
-    margin: 40px 20px;
-    position: relative;
-    z-index: 10;
-}
-
-.login-container {
-    background: rgba(255, 255, 255, 0.98);
-    backdrop-filter: blur(10px);
-    border-radius: 32px;
-    padding: 40px 32px 30px;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-    border: 1px solid rgba(253, 185, 19, 0.2);
-}
-
-.login-container:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.3);
-}
-
-/* College Header - TOP SECTION */
-.college-header {
-    text-align: center;
-    margin-bottom: 24px;
-}
-
-.logo {
-    width: 85px;
-    height: 85px;
-    border-radius: 50%;
-    border: 3px solid #FDB913;
-    padding: 6px;
-    background: white;
-    transition: transform 0.3s ease;
-}
-
-.logo:hover {
-    transform: scale(1.05);
-}
-
-.college-header h1 {
-    font-size: 1.3rem;
-    font-weight: 700;
-    color: #0A3D62;
-    margin-top: 12px;
-    letter-spacing: -0.3px;
-    line-height: 1.3;
-}
-
-.college-tagline {
-    font-size: 0.75rem;
-    color: #64748B;
-    margin-top: 6px;
-    line-height: 1.4;
-}
-
-/* Divider */
-.divider {
-    text-align: center;
-    margin: 20px 0;
-    position: relative;
-}
-
-.divider::before,
-.divider::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    width: calc(50% - 40px);
-    height: 1px;
-    background: #E2E8F0;
-}
-
-.divider::before {
-    left: 0;
-}
-
-.divider::after {
-    right: 0;
-}
-
-.divider span {
-    background: white;
-    padding: 0 15px;
-    color: #94A3B8;
-    font-size: 0.75rem;
-    font-weight: 500;
-}
-
-/* Form Group */
-.form-group {
-    margin-bottom: 20px;
-}
-
-.input-icon {
-    position: relative;
-    display: flex;
-    align-items: center;
-}
-
-.input-icon i {
-    position: absolute;
-    left: 16px;
-    color: #94A3B8;
-    font-size: 1rem;
-    transition: all 0.3s ease;
-}
-
-.input-icon input {
-    width: 100%;
-    padding: 14px 16px 14px 48px;
-    font-size: 0.95rem;
-    font-family: 'Poppins', sans-serif;
-    border: 2px solid #E2E8F0;
-    border-radius: 14px;
-    background: #FFFFFF;
-    transition: all 0.3s ease;
-    outline: none;
-}
-
-.input-icon input:focus {
-    border-color: #FDB913;
-    box-shadow: 0 0 0 3px rgba(253, 185, 19, 0.1);
-}
-
-.input-icon input:focus + i {
-    color: #FDB913;
-}
-
-/* Login Button */
-.login-btn {
-    width: 100%;
-    padding: 14px;
-    background: linear-gradient(135deg, #38A169, #2F855A);
-    color: white;
-    border: none;
-    border-radius: 14px;
-    font-size: 1rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    margin-top: 10px;
-}
-
-.login-btn i {
-    font-size: 1.1rem;
-    transition: transform 0.3s ease;
-}
-
-.login-btn:hover {
-    background: linear-gradient(135deg, #2F855A, #38A169);
-    transform: translateY(-2px);
-    box-shadow: 0 10px 20px -5px rgba(56, 161, 105, 0.4);
-}
-
-.login-btn:hover i {
-    transform: translateX(5px);
-}
-
-.login-btn:disabled {
-    opacity: 0.7;
-    transform: none;
-    cursor: not-allowed;
-}
-
-/* Loading Spinner */
-.loading-spinner {
-    display: inline-block;
-    width: 18px;
-    height: 18px;
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    border-top-color: white;
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
-
-/* Error Message */
-.error-message {
-    background: #FEE2E2;
-    border-left: 4px solid #DC2626;
-    padding: 12px 16px;
-    border-radius: 12px;
-    margin-bottom: 20px;
-    display: none;
-    align-items: center;
-    gap: 10px;
-}
-
-.error-message i {
-    color: #DC2626;
-    font-size: 1rem;
-}
-
-.error-message span {
-    color: #DC2626;
-    font-size: 0.85rem;
-    font-weight: 500;
-    flex: 1;
-}
-
-/* Info Message */
-.info-message {
-    background: #DBEAFE;
-    border-left: 4px solid #3B82F6;
-    padding: 12px 16px;
-    border-radius: 12px;
-    margin-bottom: 20px;
-    display: none;
-    align-items: center;
-    gap: 10px;
-}
-
-.info-message i {
-    color: #3B82F6;
-    font-size: 1rem;
-}
-
-.info-message span {
-    color: #1E40AF;
-    font-size: 0.85rem;
-    font-weight: 500;
-    flex: 1;
-}
-
-/* Terms & Conditions */
-.terms-section {
-    margin-top: 20px;
-    padding-top: 16px;
-}
-
-.terms-checkbox {
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    margin-bottom: 16px;
-}
-
-.terms-checkbox input[type="checkbox"] {
-    width: 18px;
-    height: 18px;
-    margin-top: 2px;
-    cursor: pointer;
-    accent-color: #38A169;
-}
-
-.terms-checkbox label {
-    font-size: 0.8rem;
-    color: #475569;
-    line-height: 1.4;
-    cursor: pointer;
-}
-
-.terms-checkbox label a {
-    color: #0A3D62;
-    text-decoration: none;
-    font-weight: 600;
-    transition: color 0.2s;
-}
-
-.terms-checkbox label a:hover {
-    color: #FDB913;
-}
-
-/* Help Links */
-.help-links {
-    display: flex;
-    justify-content: center;
-    gap: 20px;
-    margin-top: 20px;
-}
-
-.help-links a {
-    font-size: 0.75rem;
-    color: #94A3B8;
-    text-decoration: none;
-    transition: color 0.2s;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.help-links a i {
-    font-size: 0.7rem;
-}
-
-.help-links a:hover {
-    color: #0A3D62;
-}
-
-/* Footer - Contact Info */
-.college-footer {
-    margin-top: 24px;
-    padding-top: 20px;
-    border-top: 1px solid #E2E8F0;
-}
-
-.contact-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 10px;
-    margin-bottom: 12px;
-}
-
-.contact-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 0.7rem;
-    color: #475569;
-}
-
-.contact-item i {
-    width: 24px;
-    color: #FDB913;
-    font-size: 0.8rem;
-}
-
-.contact-item span {
-    flex: 1;
-}
-
-.hours {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    margin-top: 10px;
-    padding-top: 10px;
-    border-top: 1px dashed #E2E8F0;
-    font-size: 0.7rem;
-    color: #38A169;
-}
-
-.hours i {
-    color: #FDB913;
-}
-
-.copyright {
-    text-align: center;
-    margin-top: 12px;
-    font-size: 0.65rem;
-    color: #94A3B8;
-}
-
-/* PWA Install prompt custom */
-.install-pwa-banner {
-    position: fixed;
-    bottom: 20px;
-    left: 20px;
-    right: 20px;
-    background: #0A3D62;
-    color: white;
-    padding: 12px 18px;
-    border-radius: 60px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    z-index: 1000;
-    box-shadow: 0 10px 25px -5px rgba(0,0,0,0.2);
-    backdrop-filter: blur(8px);
-    background: rgba(10, 61, 98, 0.95);
-    border: 1px solid rgba(253, 185, 19, 0.3);
-    font-size: 0.85rem;
-    font-weight: 500;
-}
-.install-pwa-banner button {
-    background: #FDB913;
-    border: none;
-    padding: 6px 16px;
-    border-radius: 40px;
-    font-weight: 600;
-    color: #0A3D62;
-    cursor: pointer;
-    font-family: 'Poppins', sans-serif;
-}
-.install-pwa-banner .close-install {
-    background: transparent;
-    color: white;
-    font-size: 1.2rem;
-    padding: 0 6px;
-}
-@media (max-width: 480px) {
-    .login-container {
-        padding: 30px 24px;
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>NCHSM Exam Portal | Secure Login</title>
+  <!-- PWA Meta & Manifest (inline, no certificate hassle) -->
+  <link rel="manifest" href="data:application/manifest+json,{%22name%22:%22NCHSM%20Exam%20Portal%22,%22short_name%22:%22NCHSM%20Exams%22,%22start_url%22:%22.%22,%22display%22:%22standalone%22,%22theme_color%22:%22%230A3D62%22,%22background_color%22:%22%230A3D62%22,%22categories%22:[%22education%22,%22productivity%22],%22icons%22:[{%22src%22:%22https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png%22,%22sizes%22:%22100x100%22,%22type%22:%22image/png%22}]}">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="NCHSM Exams">
+  <meta name="theme-color" content="#0A3D62">
+  <link rel="icon" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
     }
-    .logo {
-        width: 70px;
-        height: 70px;
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(145deg, #0A2F44 0%, #06212e 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      padding: 24px;
     }
-    .college-header h1 {
-        font-size: 1rem;
+
+    /* animated background particles */
+    .bg-shape {
+      position: fixed;
+      background: radial-gradient(circle, rgba(253,185,19,0.12) 0%, transparent 70%);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 0;
+      animation: floatGlow 18s infinite alternate;
     }
-    .contact-grid {
-        grid-template-columns: 1fr;
-        gap: 8px;
+
+    @keyframes floatGlow {
+      0% { transform: translate(0,0) scale(1); opacity: 0.3; }
+      100% { transform: translate(30px, -30px) scale(1.2); opacity: 0.6; }
+    }
+
+    .login-wrapper {
+      width: 100%;
+      max-width: 500px;
+      position: relative;
+      z-index: 10;
+    }
+
+    .login-card {
+      background: rgba(255,255,255,0.98);
+      backdrop-filter: blur(2px);
+      border-radius: 40px;
+      padding: 32px 28px 36px;
+      box-shadow: 0 30px 50px rgba(0,0,0,0.25), 0 0 0 1px rgba(253,185,19,0.2);
+      transition: transform 0.2s ease;
+    }
+
+    .logo-area {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .logo-img {
+      width: 88px;
+      height: 88px;
+      border-radius: 50%;
+      border: 3px solid #FDB913;
+      padding: 5px;
+      background: white;
+      object-fit: cover;
+    }
+
+    .college-name {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #0A3D62;
+      margin: 12px 0 4px;
+      line-height: 1.3;
+    }
+
+    .tagline {
+      font-size: 0.7rem;
+      color: #5a6e85;
+      letter-spacing: 0.3px;
+    }
+
+    .divider-text {
+      text-align: center;
+      margin: 18px 0 20px;
+      position: relative;
+    }
+    .divider-text span {
+      background: white;
+      padding: 0 16px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: #8a99b0;
+    }
+    .divider-text::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: #e2edf2;
+      z-index: -1;
+    }
+
+    .input-group {
+      margin-bottom: 18px;
+    }
+    .input-icon {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .input-icon i {
+      position: absolute;
+      left: 16px;
+      color: #94a3b8;
+      font-size: 1rem;
+    }
+    .input-icon input {
+      width: 100%;
+      padding: 14px 16px 14px 46px;
+      font-size: 0.9rem;
+      font-family: 'Inter', sans-serif;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 24px;
+      background: #ffffff;
+      transition: 0.2s;
+      outline: none;
+    }
+    .input-icon input:focus {
+      border-color: #FDB913;
+      box-shadow: 0 0 0 3px rgba(253,185,19,0.2);
+    }
+
+    .terms-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin: 18px 0 12px;
+    }
+    .terms-row input {
+      width: 18px;
+      height: 18px;
+      margin-top: 2px;
+      accent-color: #2c7a4d;
+    }
+    .terms-row label {
+      font-size: 0.75rem;
+      color: #2c3e50;
+      line-height: 1.4;
+    }
+    .terms-row a {
+      color: #0A3D62;
+      font-weight: 600;
+      text-decoration: none;
+    }
+    .terms-row a:hover {
+      color: #FDB913;
+    }
+
+    .login-btn {
+      background: linear-gradient(105deg, #1F6E43, #2c8c5a);
+      width: 100%;
+      border: none;
+      padding: 14px;
+      border-radius: 40px;
+      font-weight: 700;
+      font-size: 1rem;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      cursor: pointer;
+      transition: all 0.25s;
+      margin-top: 6px;
+    }
+    .login-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .login-btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 18px -8px rgba(31,110,67,0.5);
+      background: linear-gradient(105deg, #145a39, #237a4e);
+    }
+
+    .error-banner, .info-banner {
+      display: none;
+      align-items: center;
+      gap: 12px;
+      background: #fee2e2;
+      border-left: 4px solid #dc2626;
+      padding: 12px 16px;
+      border-radius: 20px;
+      margin-bottom: 22px;
+      font-size: 0.8rem;
+    }
+    .info-banner {
+      background: #e6f0ff;
+      border-left-color: #2563eb;
     }
     .help-links {
-        flex-wrap: wrap;
-        gap: 12px;
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      margin: 20px 0 18px;
+    }
+    .help-links a {
+      font-size: 0.7rem;
+      color: #5b6e8c;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .help-links a:hover {
+      color: #0A3D62;
+    }
+    .contact-footer {
+      border-top: 1px solid #e9edf2;
+      margin-top: 18px;
+      padding-top: 20px;
+      font-size: 0.7rem;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .contact-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #2c3e50;
+    }
+    .contact-item i {
+      width: 24px;
+      color: #FDB913;
+    }
+    .copyright {
+      text-align: center;
+      margin-top: 16px;
+      font-size: 0.6rem;
+      color: #7c8ba0;
     }
     .install-pwa-banner {
-        font-size: 0.7rem;
-        padding: 8px 12px;
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      right: 20px;
+      background: #0A3D62;
+      color: white;
+      border-radius: 60px;
+      padding: 12px 20px;
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 1000;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+      backdrop-filter: blur(12px);
+      background: rgba(10,61,98,0.95);
+      font-size: 0.8rem;
+      font-weight: 500;
     }
-}
-</style>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    .install-pwa-banner button {
+      background: #FDB913;
+      border: none;
+      padding: 6px 18px;
+      border-radius: 40px;
+      font-weight: bold;
+      color: #0A3D62;
+      cursor: pointer;
+    }
+    @media (max-width: 520px) {
+      .login-card { padding: 28px 20px; }
+      .contact-footer { grid-template-columns: 1fr; }
+    }
+  </style>
 </head>
 <body>
+  <div class="bg-shape" style="width: 280px; height: 280px; top: -80px; right: -60px;"></div>
+  <div class="bg-shape" style="width: 220px; height: 220px; bottom: 20px; left: -50px; animation-duration: 22s;"></div>
 
-<!-- Floating Particles -->
-<div class="particle" style="width: 60px; height: 60px; top: 10%; left: 5%; animation-duration: 25s;"></div>
-<div class="particle" style="width: 40px; height: 40px; bottom: 15%; right: 8%; animation-duration: 20s;"></div>
-<div class="particle" style="width: 80px; height: 80px; top: 30%; right: 15%; animation-duration: 30s;"></div>
-<div class="particle" style="width: 30px; height: 30px; bottom: 25%; left: 12%; animation-duration: 18s;"></div>
+  <div class="login-wrapper">
+    <div class="login-card">
+      <div class="logo-area">
+        <img class="logo-img" src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo">
+        <div class="college-name">Nakuru College of Health Sciences<br>& Management (NCHSM)</div>
+        <div class="tagline">Excellence in Health & Digital Innovation</div>
+      </div>
+      <div class="divider-text"><span>SECURE EXAM PORTAL</span></div>
 
-<div class="login-wrapper">
-    <div class="login-container">
-        <!-- College Header - TOP SECTION with Logo -->
-        <div class="college-header">
-            <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" class="logo" alt="NCHSM Logo">
-            <h1>Nakuru College of Health Sciences<br>and Management (NCHSM)</h1>
-            <p class="college-tagline">Providing quality health sciences and management education with practical skills and digital innovation.</p>
+      <!-- error / info messages -->
+      <div id="errorBox" class="error-banner"><i class="fas fa-exclamation-circle"></i><span id="errorMsg"></span></div>
+      <div id="infoBox" class="info-banner"><i class="fas fa-spinner fa-spin"></i><span id="infoMsg">Verifying credentials...</span></div>
+
+      <form id="loginFormElement">
+        <div class="input-group">
+          <div class="input-icon">
+            <i class="fas fa-envelope"></i>
+            <input type="email" id="email" placeholder="student@nchsm.ac.ke" autocomplete="email">
+          </div>
+        </div>
+        <div class="input-group">
+          <div class="input-icon">
+            <i class="fas fa-lock"></i>
+            <input type="password" id="password" placeholder="Password" autocomplete="current-password">
+          </div>
         </div>
 
-        <!-- Divider -->
-        <div class="divider">
-            <span>Student Login</span>
+        <div class="terms-row">
+          <input type="checkbox" id="acceptTermsCheckbox">
+          <label for="acceptTermsCheckbox">I agree to the <a href="#" id="termsModalTrigger">Terms & Conditions</a> and <a href="#" id="privacyModalTrigger">Privacy Policy</a></label>
         </div>
 
-        <!-- Error Message -->
-        <div id="error" class="error-message">
-            <i class="fas fa-exclamation-circle"></i>
-            <span id="errorText"></span>
-        </div>
+        <button type="submit" id="loginButton" class="login-btn" disabled>
+          <span>Login to Exam Portal</span>
+          <i class="fas fa-arrow-right"></i>
+        </button>
+      </form>
 
-        <!-- Loading Message -->
-        <div id="loading" class="info-message" style="display: none;">
-            <i class="fas fa-spinner fa-spin"></i>
-            <span>Verifying your credentials...</span>
-        </div>
+      <div class="help-links">
+        <a href="#" id="forgotPwdLink"><i class="fas fa-question-circle"></i> Forgot password?</a>
+        <a href="#" id="supportLink"><i class="fas fa-headset"></i> IT Support</a>
+      </div>
 
-        <!-- Login Form -->
-        <form id="loginForm">
-            <div class="form-group">
-                <div class="input-icon">
-                    <i class="fas fa-envelope"></i>
-                    <input type="email" id="email" placeholder="Email Address" autocomplete="email">
-                </div>
-            </div>
-
-            <div class="form-group">
-                <div class="input-icon">
-                    <i class="fas fa-lock"></i>
-                    <input type="password" id="password" placeholder="Password" autocomplete="current-password">
-                </div>
-            </div>
-
-            <!-- Terms & Conditions -->
-            <div class="terms-section">
-                <div class="terms-checkbox">
-                    <input type="checkbox" id="acceptTerms">
-                    <label for="acceptTerms">
-                        I agree to the <a href="#" id="termsLink">Terms and Conditions</a> and 
-                        <a href="#" id="privacyLink">Privacy Policy</a>
-                    </label>
-                </div>
-            </div>
-
-            <button type="submit" id="loginBtn" class="login-btn" disabled>
-                <span>Login to Portal</span>
-                <i class="fas fa-arrow-right"></i>
-            </button>
-        </form>
-
-        <!-- Help Links -->
-        <div class="help-links">
-            <a href="#" id="forgotPasswordLink"><i class="fas fa-question-circle"></i> Forgot Password?</a>
-            <a href="#" id="contactSupportLink"><i class="fas fa-headset"></i> Contact Support</a>
-        </div>
-
-        <!-- Footer with Contact Info -->
-        <div class="college-footer">
-            <div class="contact-grid">
-                <div class="contact-item">
-                    <i class="fas fa-map-marker-alt"></i>
-                    <span>Kiamunyi Off Nakuru - Kabarak Rd, Along Canon Ndungu Street, Nakuru</span>
-                </div>
-                <div class="contact-item">
-                    <i class="fas fa-envelope"></i>
-                    <span>portal.nchsm@gmail.com</span>
-                </div>
-                <div class="contact-item">
-                    <i class="fas fa-phone-alt"></i>
-                    <span>0790969743</span>
-                </div>
-                <div class="contact-item">
-                    <i class="fas fa-inbox"></i>
-                    <span>P. O. Box 12906 - 20100, Nakuru</span>
-                </div>
-            </div>
-            
-            <div class="hours">
-                <i class="fas fa-clock"></i>
-                <span>Mon - Fri: 8:00 AM - 5:00 PM</span>
-            </div>
-            
-            <div class="copyright">
-                <i class="fas fa-shield-alt"></i> Secure Proctored Exams | &copy; 2026 NCHSM. All rights reserved.
-            </div>
-        </div>
+      <div class="contact-footer">
+        <div class="contact-item"><i class="fas fa-map-marker-alt"></i> Kiamunyi, Nakuru - Kabarak Rd</div>
+        <div class="contact-item"><i class="fas fa-envelope"></i> portal.nchsm@gmail.com</div>
+        <div class="contact-item"><i class="fas fa-phone-alt"></i> 0790969743</div>
+        <div class="contact-item"><i class="fas fa-clock"></i> Mon-Fri 8am - 5pm</div>
+      </div>
+      <div class="copyright"><i class="fas fa-shield-alt"></i> Proctored exams | NCHSM © 2026</div>
     </div>
-</div>
+  </div>
 
-<!-- Terms & Conditions Modal -->
-<div id="termsModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 10000; align-items: center; justify-content: center;">
-    <div style="background: white; max-width: 500px; width: 90%; border-radius: 20px; padding: 30px; max-height: 80vh; overflow-y: auto;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-            <h2 style="color: #0A3D62;">Terms & Conditions</h2>
-            <button id="closeTermsModal" style="background: none; border: none; font-size: 24px; cursor: pointer;">&times;</button>
-        </div>
-        <div style="line-height: 1.6; color: #475569;">
-            <h3>Exam Integrity and Conduct</h3>
-            <p>By accessing this examination portal, you agree to the following terms:</p>
-            <ul style="margin: 15px 0 15px 20px;">
-                <li>You will not share your login credentials with anyone</li>
-                <li>Camera proctoring will be active during your exam</li>
-                <li>Multiple faces detected will result in automatic submission</li>
-                <li>Tab switching or leaving the exam window is prohibited</li>
-                <li>All answers are final once submitted</li>
-                <li>Academic dishonesty will result in disciplinary action</li>
-            </ul>
-            <h3>Privacy Notice</h3>
-            <p>Your camera feed is processed locally and not stored. Only proctoring events (face detection, tab switches) are logged for review.</p>
-            <h3>Technical Requirements</h3>
-            <p>You must have a working camera and stable internet connection. Technical issues should be reported immediately.</p>
-        </div>
-        <button id="acceptTermsModalBtn" style="margin-top: 20px; width: 100%; padding: 12px; background: #38A169; color: white; border: none; border-radius: 10px; font-weight: 600; cursor: pointer;">I Accept</button>
+  <!-- Terms Modal -->
+  <div id="termsModal" style="display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.8); align-items: center; justify-content: center; z-index: 1100;">
+    <div style="background: white; max-width: 480px; width: 90%; border-radius: 32px; padding: 28px; max-height: 80vh; overflow-y: auto;">
+      <h2 style="color:#0A3D62;">Exam Code of Conduct</h2>
+      <ul style="margin: 16px 0 20px 20px; line-height: 1.5;">
+        <li>Do not share login credentials.</li>
+        <li>Camera proctoring will be active during exams.</li>
+        <li>Multiple faces detected = automatic submission.</li>
+        <li>Tab switching / leaving exam window is prohibited.</li>
+        <li>All answers are final after submission.</li>
+        <li>Academic dishonesty leads to disciplinary action.</li>
+      </ul>
+      <p><strong>Privacy:</strong> Camera feed processed locally; only proctoring events are logged.</p>
+      <button id="acceptTermsModalBtn" style="margin-top: 24px; width:100%; padding:12px; background:#2c8c5a; color:white; border:none; border-radius: 40px; font-weight: bold;">I Accept</button>
+      <button id="closeTermsModal" style="margin-top: 12px; background:transparent; border:none; font-size:0.8rem; cursor:pointer;">Close</button>
     </div>
-</div>
+  </div>
 
-<!-- PWA Install Banner -->
-<div id="installBanner" class="install-pwa-banner" style="display: none;">
-    <span><i class="fas fa-download"></i> Install NCHSM Exam Portal App for quick access & offline ready!</span>
-    <div>
-        <button id="installAppBtn">Install</button>
-        <button id="closeInstallBanner" class="close-install"><i class="fas fa-times"></i></button>
-    </div>
-</div>
+  <div id="installBanner" class="install-pwa-banner">
+    <span><i class="fas fa-download"></i> Install NCHSM Exam App (Offline ready)</span>
+    <button id="doInstallBtn">Install</button>
+    <button id="closeInstallBanner" style="background:transparent; color:white;">✕</button>
+  </div>
 
-<script>
-// Supabase Configuration
-const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  <script>
+    // ======================= SUPABASE CONFIG =======================
+    const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// DOM Elements
-const emailInput = document.getElementById('email');
-const passwordInput = document.getElementById('password');
-const loginBtn = document.getElementById('loginBtn');
-const acceptTermsCheckbox = document.getElementById('acceptTerms');
-const errorDiv = document.getElementById('error');
-const errorText = document.getElementById('errorText');
-const loadingDiv = document.getElementById('loading');
-const termsModal = document.getElementById('termsModal');
-const termsLink = document.getElementById('termsLink');
-const privacyLink = document.getElementById('privacyLink');
-const closeTermsModal = document.getElementById('closeTermsModal');
-const acceptTermsModalBtn = document.getElementById('acceptTermsModalBtn');
+    // DOM elements
+    const emailEl = document.getElementById('email');
+    const passwordEl = document.getElementById('password');
+    const loginBtn = document.getElementById('loginButton');
+    const termsCheck = document.getElementById('acceptTermsCheckbox');
+    const errorDiv = document.getElementById('errorBox');
+    const errorSpan = document.getElementById('errorMsg');
+    const infoDiv = document.getElementById('infoBox');
+    const infoSpan = document.getElementById('infoMsg');
 
-// Enable/disable login button based on terms acceptance
-acceptTermsCheckbox.addEventListener('change', () => {
-    loginBtn.disabled = !acceptTermsCheckbox.checked;
-});
+    // modal controls
+    const termsModal = document.getElementById('termsModal');
+    const termsModalTrigger = document.getElementById('termsModalTrigger');
+    const privacyModalTrigger = document.getElementById('privacyModalTrigger');
+    const closeTermsModal = document.getElementById('closeTermsModal');
+    const acceptTermsModalBtn = document.getElementById('acceptTermsModalBtn');
 
-// Show Terms Modal
-termsLink.addEventListener('click', (e) => {
-    e.preventDefault();
-    termsModal.style.display = 'flex';
-});
-privacyLink.addEventListener('click', (e) => {
-    e.preventDefault();
-    termsModal.style.display = 'flex';
-});
-closeTermsModal.addEventListener('click', () => {
-    termsModal.style.display = 'none';
-});
-acceptTermsModalBtn.addEventListener('click', () => {
-    acceptTermsCheckbox.checked = true;
-    loginBtn.disabled = false;
-    termsModal.style.display = 'none';
-});
-termsModal.addEventListener('click', (e) => {
-    if (e.target === termsModal) termsModal.style.display = 'none';
-});
+    // toggle login button by terms
+    termsCheck.addEventListener('change', () => {
+      loginBtn.disabled = !termsCheck.checked;
+    });
 
-// Forgot password / support
-document.getElementById('forgotPasswordLink').addEventListener('click', (e) => {
-    e.preventDefault();
-    alert('Please contact your instructor to reset your password or email portal.nchsm@gmail.com');
-});
-document.getElementById('contactSupportLink').addEventListener('click', (e) => {
-    e.preventDefault();
-    alert('Reach us: portal.nchsm@gmail.com | Call 0790969743 | Mon-Fri 8AM-5PM');
-});
-
-// Login function
-async function handleLogin() {
-    const email = emailInput.value.trim();
-    const password = passwordInput.value;
-    
-    errorDiv.style.display = 'none';
-    errorText.innerText = '';
-    
-    if (!email || !password) {
-        errorText.innerText = 'Please enter both email and password.';
-        errorDiv.style.display = 'flex';
-        return;
+    // show terms modal
+    function showTermsModal() {
+      termsModal.style.display = 'flex';
     }
-    
-    if (!acceptTermsCheckbox.checked) {
-        errorText.innerText = 'Please accept the Terms and Conditions to continue.';
-        errorDiv.style.display = 'flex';
-        return;
+    termsModalTrigger.addEventListener('click', (e) => { e.preventDefault(); showTermsModal(); });
+    privacyModalTrigger.addEventListener('click', (e) => { e.preventDefault(); showTermsModal(); });
+    closeTermsModal.addEventListener('click', () => { termsModal.style.display = 'none'; });
+    acceptTermsModalBtn.addEventListener('click', () => {
+      termsCheck.checked = true;
+      loginBtn.disabled = false;
+      termsModal.style.display = 'none';
+    });
+    termsModal.addEventListener('click', (e) => { if(e.target === termsModal) termsModal.style.display = 'none'; });
+
+    // helper: hide/show messages
+    function hideAlerts() {
+      errorDiv.style.display = 'none';
+      infoDiv.style.display = 'none';
     }
+    function showError(msg) {
+      hideAlerts();
+      errorSpan.innerText = msg;
+      errorDiv.style.display = 'flex';
+    }
+    function showInfo(msg, isSpinner = true) {
+      hideAlerts();
+      infoSpan.innerText = msg;
+      infoDiv.style.display = 'flex';
+      if (isSpinner) {
+        infoDiv.querySelector('i').className = 'fas fa-spinner fa-spin';
+      } else {
+        infoDiv.querySelector('i').className = 'fas fa-info-circle';
+      }
+    }
+    function hideInfo() { infoDiv.style.display = 'none'; }
 
-    try {
-        loadingDiv.style.display = 'flex';
-        loginBtn.disabled = true;
-        loginBtn.innerHTML = '<span class="loading-spinner"></span><span>Logging in...</span>';
+    // ============= LOGIN HANDLER =============
+    async function handleLogin(e) {
+      if(e) e.preventDefault();
+      const email = emailEl.value.trim();
+      const password = passwordEl.value;
 
-        const { data: authData, error: authError } = await sb.auth.signInWithPassword({
-            email,
-            password
-        });
-        
-        if (authError || !authData.user) {
-            errorText.innerText = authError?.message || 'Invalid email or password.';
-            errorDiv.style.display = 'flex';
-            loadingDiv.style.display = 'none';
-            loginBtn.disabled = false;
-            loginBtn.innerHTML = '<span>Login to Portal</span><i class="fas fa-arrow-right"></i>';
-            return;
+      if(!email || !password) {
+        showError('❌ Please enter email and password.');
+        return;
+      }
+      if(!termsCheck.checked) {
+        showError('You must accept the Terms & Conditions to proceed.');
+        return;
+      }
+
+      // reset UI
+      hideAlerts();
+      showInfo('Authenticating with secure server...', true);
+      loginBtn.disabled = true;
+      const originalBtnHtml = loginBtn.innerHTML;
+      loginBtn.innerHTML = '<span class="fa-solid fa-spinner fa-pulse"></span> Verifying...';
+
+      try {
+        // 1) sign in with Supabase
+        const { data: authData, error: authError } = await sb.auth.signInWithPassword({ email, password });
+        if (authError || !authData?.user) {
+          throw new Error(authError?.message || 'Invalid email or password.');
         }
 
-        const { data: studentData, error: studentError } = await sb
+        // 2) fetch student profile from consolidated_user_profiles_table
+        let profile = null;
+        let profileError = null;
+        const { data: byEmail, error: errEmail } = await sb
+          .from('consolidated_user_profiles_table')
+          .select('user_id, program, block, intake_year, email')
+          .eq('email', email)
+          .maybeSingle();
+        
+        if (errEmail && errEmail.code !== 'PGRST116') {
+          console.warn(errEmail);
+        }
+        
+        if (byEmail) {
+          profile = byEmail;
+        } else {
+          // fallback by user_id
+          const { data: byId, error: errId } = await sb
             .from('consolidated_user_profiles_table')
             .select('user_id, program, block, intake_year, email')
-            .eq('email', email)
-            .single();
-
-        let finalUserId = null;
-        let finalEmail = null;
-
-        if (studentError || !studentData) {
-            const { data: studentById, error: idError } = await sb
-                .from('consolidated_user_profiles_table')
-                .select('user_id, program, block, intake_year, email')
-                .eq('user_id', authData.user.id)
-                .single();
-            
-            if (idError || !studentById) {
-                errorText.innerText = 'Access denied: Student not registered for exams.';
-                errorDiv.style.display = 'flex';
-                loadingDiv.style.display = 'none';
-                loginBtn.disabled = false;
-                loginBtn.innerHTML = '<span>Login to Portal</span><i class="fas fa-arrow-right"></i>';
-                await sb.auth.signOut();
-                return;
-            }
-            
-            finalUserId = studentById.user_id;
-            finalEmail = studentById.email || email;
-        } else {
-            finalUserId = studentData.user_id;
-            finalEmail = studentData.email || email;
+            .eq('user_id', authData.user.id)
+            .maybeSingle();
+          if (errId && errId.code !== 'PGRST116') console.warn(errId);
+          if (byId) profile = byId;
         }
 
-        localStorage.setItem('currentUserId', finalUserId);
-        localStorage.setItem('studentEmail', finalEmail);
-        sessionStorage.setItem('currentUserId', finalUserId);
-        sessionStorage.setItem('studentEmail', finalEmail);
+        if (!profile) {
+          await sb.auth.signOut();
+          throw new Error('Access denied: Your account is not registered for examinations. Contact admin.');
+        }
 
-        loginBtn.innerHTML = '<i class="fas fa-check"></i><span>Success! Redirecting...</span>';
+        // store session data
+        const userId = profile.user_id || authData.user.id;
+        const studentEmail = profile.email || email;
+        localStorage.setItem('currentUserId', userId);
+        localStorage.setItem('studentEmail', studentEmail);
+        sessionStorage.setItem('exam_auth', 'verified');
+        sessionStorage.setItem('studentName', profile.program || 'Candidate');
+
+        // success visual
+        showInfo('✅ Login successful! Redirecting to dashboard...', false);
+        loginBtn.innerHTML = '<i class="fas fa-check-circle"></i> Redirecting...';
         
         setTimeout(() => {
-            window.location.href = 'exam_dashboard.html';
-        }, 1000);
-        
-    } catch (err) {
+          window.location.href = 'exam_dashboard.html';
+        }, 1200);
+
+      } catch (err) {
         console.error('Login error:', err);
-        errorText.innerText = 'An unexpected error occurred. Please try again.';
-        errorDiv.style.display = 'flex';
-        loadingDiv.style.display = 'none';
+        showError(err.message || 'Network error. Please check internet and try again.');
         loginBtn.disabled = false;
-        loginBtn.innerHTML = '<span>Login to Portal</span><i class="fas fa-arrow-right"></i>';
+        loginBtn.innerHTML = originalBtnHtml;
+        hideInfo();
+      }
     }
-}
 
-loginBtn.addEventListener('click', handleLogin);
-passwordInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter' && !loginBtn.disabled) handleLogin();
-});
-emailInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') passwordInput.focus();
-});
+    // attach listeners
+    const form = document.getElementById('loginFormElement');
+    form.addEventListener('submit', handleLogin);
+    loginBtn.addEventListener('click', handleLogin);
+    passwordEl.addEventListener('keypress', (e) => { if(e.key === 'Enter' && !loginBtn.disabled) handleLogin(); });
+    document.getElementById('forgotPwdLink').addEventListener('click', (e) => {
+      e.preventDefault();
+      alert('📧 Please contact exam support: portal.nchsm@gmail.com or call 0790969743 to reset your password.');
+    });
+    document.getElementById('supportLink').addEventListener('click', (e) => {
+      e.preventDefault();
+      alert('🛟 IT Support: portal.nchsm@gmail.com | WhatsApp: 0790969743 | Office hours Mon-Fri 8am-5pm');
+    });
 
-window.addEventListener('DOMContentLoaded', async () => {
-    const savedUserId = localStorage.getItem('currentUserId');
-    if (savedUserId && savedUserId !== 'null') {
-        const { data } = await sb.auth.getSession();
-        if (data.session) {
-            window.location.href = 'exam_dashboard.html';
-            return;
+    // session redirect if already logged in
+    (async function checkExistingSession() {
+      const storedUserId = localStorage.getItem('currentUserId');
+      if(storedUserId && storedUserId !== 'null') {
+        const { data: { session } } = await sb.auth.getSession();
+        if(session) {
+          window.location.replace('exam_dashboard.html');
+          return;
         } else {
-            localStorage.removeItem('currentUserId');
-            localStorage.removeItem('studentEmail');
+          localStorage.removeItem('currentUserId');
+          sessionStorage.removeItem('exam_auth');
         }
-    }
-    
-    // Register Service Worker with proper network interception
-    if ('serviceWorker' in navigator) {
-        try {
-            const registration = await navigator.serviceWorker.register('/sw.js');
-            console.log('Service Worker registered successfully:', registration);
-        } catch (error) {
-            console.log('Service Worker registration failed:', error);
-        }
-    }
-});
+      }
+    })();
 
-// ========== PWA MANIFEST - CORRECTED ICON SIZES & CATEGORIES ==========
-(function setupCompliantManifest() {
-    // Icon actual size is 100x100, so we declare that exact size
-    const manifestObj = {
-        name: "NCHSM Exam Portal",
-        short_name: "NCHSM Exams",
-        description: "Secure exam portal for Nakuru College of Health Sciences and Management",
-        start_url: "/",
-        display: "standalone",
-        theme_color: "#0A3D62",
-        background_color: "#0A3D62",
-        categories: ["education", "productivity", "reference"],  // ✅ Added categories member
-        icons: [
-            {
-                src: "https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png",
-                sizes: "100x100",  // ✅ Corrected - matches actual image dimensions
-                type: "image/png",
-                purpose: "any maskable"
-            }
-        ],
-        screenshots: [
-            {
-                src: "https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png",
-                sizes: "100x100",
-                type: "image/png"
-            }
-        ]
-    };
-    
-    // Replace manifest link with corrected version
-    const existingLink = document.querySelector('link[rel="manifest"]');
-    const manifestBlob = new Blob([JSON.stringify(manifestObj, null, 2)], {type: 'application/json'});
-    const manifestURL = URL.createObjectURL(manifestBlob);
-    
-    if (existingLink) {
-        existingLink.href = manifestURL;
-    } else {
-        const link = document.createElement('link');
-        link.rel = 'manifest';
-        link.href = manifestURL;
-        document.head.appendChild(link);
-    }
-    
-    // PWA install prompt handling
+    // =============== PWA INSTALL (No certificate errors) ===============
     let deferredPrompt = null;
     const installBanner = document.getElementById('installBanner');
-    const installBtn = document.getElementById('installAppBtn');
-    const closeInstallBanner = document.getElementById('closeInstallBanner');
-    
+    const installBtn = document.getElementById('doInstallBtn');
+    const closeInstall = document.getElementById('closeInstallBanner');
+
     window.addEventListener('beforeinstallprompt', (e) => {
-        e.preventDefault();
-        deferredPrompt = e;
-        if (installBanner) installBanner.style.display = 'flex';
+      e.preventDefault();
+      deferredPrompt = e;
+      installBanner.style.display = 'flex';
     });
-    
-    if (installBtn) {
-        installBtn.addEventListener('click', async () => {
-            if (deferredPrompt) {
-                deferredPrompt.prompt();
-                const { outcome } = await deferredPrompt.userChoice;
-                if (outcome === 'accepted') {
-                    installBanner.style.display = 'none';
-                }
-                deferredPrompt = null;
-            } else {
-                alert('To install, use browser menu: "Add to Home Screen" or "Install App"');
-            }
-        });
-    }
-    if (closeInstallBanner) {
-        closeInstallBanner.addEventListener('click', () => {
-            installBanner.style.display = 'none';
-        });
-    }
-    window.addEventListener('appinstalled', () => {
-        installBanner.style.display = 'none';
+
+    installBtn.addEventListener('click', async () => {
+      if(deferredPrompt) {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if(outcome === 'accepted') {
+          installBanner.style.display = 'none';
+        }
         deferredPrompt = null;
-        console.log('PWA installed successfully');
+      } else {
+        alert('📱 You can install this app manually: Use browser menu → "Install App" or "Add to Home Screen"');
+      }
     });
-})();
+    closeInstall.addEventListener('click', () => {
+      installBanner.style.display = 'none';
+    });
+    window.addEventListener('appinstalled', () => {
+      installBanner.style.display = 'none';
+      deferredPrompt = null;
+    });
 
-// Create proper Service Worker with network interception and offline fallback
-if ('serviceWorker' in navigator) {
-    const swCode = `// NCHSM Exam Portal Service Worker - Proper Network Interception
-const CACHE_NAME = 'nchsm-exam-v1';
-const urlsToCache = [
-    '/',
-    '/index.html'
-];
-
-self.addEventListener('install', event => {
-    event.waitUntil(
-        caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache))
-    );
-    self.skipWaiting();
-});
-
-self.addEventListener('fetch', event => {
-    event.respondWith(
-        caches.match(event.request).then(response => {
-            if (response) return response;
-            return fetch(event.request).then(fetchResponse => {
-                if (!fetchResponse || fetchResponse.status !== 200 || fetchResponse.type !== 'basic') {
-                    return fetchResponse;
-                }
-                const responseToCache = fetchResponse.clone();
-                caches.open(CACHE_NAME).then(cache => {
-                    cache.put(event.request, responseToCache);
-                });
-                return fetchResponse;
-            });
-        }).catch(() => {
-            return caches.match('/index.html');
-        })
-    );
-});
-
-self.addEventListener('activate', event => {
-    event.waitUntil(
-        caches.keys().then(cacheNames => {
-            return Promise.all(
-                cacheNames.map(cacheName => {
-                    if (cacheName !== CACHE_NAME) {
-                        return caches.delete(cacheName);
-                    }
-                })
-            );
-        })
-    );
-    self.clients.claim();
-});`;
-    
-    const swBlob = new Blob([swCode], {type: 'application/javascript'});
-    const swUrl = URL.createObjectURL(swBlob);
-    navigator.serviceWorker.register(swUrl).then(reg => {
-        console.log('Service Worker registered with network interception');
-    }).catch(err => console.log('SW registration error:', err));
-}
-</script>
+    // simple service worker for offline / caching (bypasses certificate issues)
+    if('serviceWorker' in navigator) {
+      const swCode = `const CACHE = "nchsm-exam-v2";
+self.addEventListener("install", e => { self.skipWaiting(); });
+self.addEventListener("fetch", e => { e.respondWith(fetch(e.request).catch(() => caches.match(e.request))); });`;
+      const blob = new Blob([swCode], {type: "application/javascript"});
+      const swUrl = URL.createObjectURL(blob);
+      navigator.serviceWorker.register(swUrl).then(reg => console.log("📡 SW registered")).catch(err => console.log("SW error", err));
+    }
+  </script>
 </body>
 </html>
