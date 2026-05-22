@@ -42,6 +42,106 @@
         .hidden {
             display: none !important;
         }
+        
+        /* NEW: Progress & Marked Review Styles */
+        .student-progress-card {
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            border: 1px solid #e2e8f0;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .student-progress-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            transform: translateX(4px);
+        }
+        .progress-stats-row {
+            display: flex;
+            gap: 16px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+        .progress-stat {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+        }
+        .marked-review-item {
+            background: #fffbeb;
+            padding: 12px;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            border-left: 4px solid #f59e0b;
+        }
+        .badge-marked {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        .search-input {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            margin-bottom: 16px;
+            font-size: 14px;
+        }
+        .student-detail-modal {
+            max-width: 700px;
+            width: 90%;
+        }
+        .marked-questions-list {
+            max-height: 300px;
+            overflow-y: auto;
+            margin: 15px 0;
+        }
+        .answers-list-detailed {
+            max-height: 250px;
+            overflow-y: auto;
+        }
+        .stat-cards-mini {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .stat-card-mini {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 12px;
+            text-align: center;
+        }
+        .stat-card-mini .value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #0f3b5c;
+        }
+        .stat-card-mini .label {
+            font-size: 11px;
+            color: #64748b;
+            margin-top: 4px;
+        }
+        
+        /* Improved Sidebar Navigation */
+        .sidebar-nav-section {
+            margin-top: 20px;
+            padding-top: 10px;
+            border-top: 1px solid #e2e8f0;
+        }
+        .sidebar-nav-title {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #64748b;
+            margin-bottom: 10px;
+            padding-left: 12px;
+        }
+        .sidebar-btn i {
+            margin-right: 10px;
+            width: 20px;
+        }
     </style>
 </head>
 <body>
@@ -96,17 +196,40 @@
                     <div class="stat-card"><div class="stat-value" id="stat-students">0</div><div class="stat-label">Total Students</div></div>
                     <div class="stat-card"><div class="stat-value" id="stat-courses">0</div><div class="stat-label">Active Courses</div></div>
                 </div>
+                
+                <!-- IMPROVED SIDEBAR NAVIGATION WITH SECTIONS -->
                 <div class="sidebar-actions">
-                    <h4>Management Tools</h4>
-                    <button onclick="showPage('dashboard')" class="sidebar-btn">Dashboard Overview</button>
-                    <button onclick="showPage('question-bank')" class="sidebar-btn">Full Question Bank</button>
-                    <button onclick="showPage('add-question')" class="sidebar-btn">Add New Question</button>
-                    <button onclick="showPage('edit-bank')" class="sidebar-btn">Edit/Delete Questions</button>
-                    <button onclick="showPage('bulk-import')" class="sidebar-btn">Bulk Import (Past Papers)</button>
-                    <button onclick="showPage('courses')" class="sidebar-btn">Course Manager</button>
-                    <button onclick="showPage('students')" class="sidebar-btn">Student Manager</button>
-                    <button onclick="showPage('attempts')" class="sidebar-btn">Student Progress</button>
-                    <button onclick="showPage('settings')" class="sidebar-btn">System Settings</button>
+                    <div class="sidebar-nav-section">
+                        <div class="sidebar-nav-title"><i class="fas fa-chart-line"></i> MAIN DASHBOARD</div>
+                        <button onclick="showPage('dashboard')" class="sidebar-btn"><i class="fas fa-tachometer-alt"></i> Dashboard Overview</button>
+                    </div>
+                    
+                    <div class="sidebar-nav-section">
+                        <div class="sidebar-nav-title"><i class="fas fa-database"></i> QUESTION BANK</div>
+                        <button onclick="showPage('question-bank')" class="sidebar-btn"><i class="fas fa-list"></i> Full Question Bank</button>
+                        <button onclick="showPage('add-question')" class="sidebar-btn"><i class="fas fa-plus-circle"></i> Add New Question</button>
+                        <button onclick="showPage('edit-bank')" class="sidebar-btn"><i class="fas fa-edit"></i> Edit/Delete Questions</button>
+                        <button onclick="showPage('bulk-import')" class="sidebar-btn"><i class="fas fa-upload"></i> Bulk Import (Past Papers)</button>
+                    </div>
+                    
+                    <div class="sidebar-nav-section">
+                        <div class="sidebar-nav-title"><i class="fas fa-graduation-cap"></i> ACADEMICS</div>
+                        <button onclick="showPage('courses')" class="sidebar-btn"><i class="fas fa-book"></i> Course Manager</button>
+                        <button onclick="showPage('students')" class="sidebar-btn"><i class="fas fa-users"></i> Student Manager</button>
+                    </div>
+                    
+                    <!-- NEW SECTION: PROGRESS & REVIEW -->
+                    <div class="sidebar-nav-section">
+                        <div class="sidebar-nav-title"><i class="fas fa-chart-simple"></i> PROGRESS & REVIEW</div>
+                        <button onclick="showPage('individual-progress')" class="sidebar-btn"><i class="fas fa-user-chart"></i> Individual Student Progress</button>
+                        <button onclick="showPage('marked-review')" class="sidebar-btn"><i class="fas fa-flag-checkered"></i> Questions Marked for Review</button>
+                        <button onclick="showPage('attempts')" class="sidebar-btn"><i class="fas fa-history"></i> Student Progress Summary</button>
+                    </div>
+                    
+                    <div class="sidebar-nav-section">
+                        <div class="sidebar-nav-title"><i class="fas fa-cog"></i> SYSTEM</div>
+                        <button onclick="showPage('settings')" class="sidebar-btn"><i class="fas fa-sliders-h"></i> System Settings</button>
+                    </div>
                 </div>
             </div>
             <div class="admin-main" id="main-panel">
@@ -190,18 +313,182 @@
     function logout() { localStorage.removeItem('nurseiq_admin_session'); location.reload(); }
     const panel = document.getElementById('main-panel');
 
-    // DASHBOARD
+    // ============================================
+    // HELPER FUNCTIONS FOR PROGRESS
+    // ============================================
+    function getStudentProgress(studentId) {
+        const progress = userProgress[studentId] || {};
+        let answers = [];
+        let markedQuestions = [];
+        
+        if (progress.answers) {
+            answers = Object.values(progress.answers).filter(a => a && a.answered);
+            if (progress.markedForReview) {
+                markedQuestions = Object.entries(progress.markedForReview).map(([qid, data]) => ({ qid, ...data }));
+            }
+        } else {
+            answers = Object.entries(progress).filter(([key, val]) => val && val.answered && !key.includes('version')).map(([key, val]) => ({ ...val, questionId: key }));
+            markedQuestions = Object.entries(progress).filter(([key, val]) => val && val.marked && !key.includes('version')).map(([key, val]) => ({ qid: key, timestamp: val.timestamp, note: val.markedNote }));
+        }
+        
+        const correct = answers.filter(a => a.correct).length;
+        const total = answers.length;
+        const accuracy = total > 0 ? Math.round((correct / total) * 100) : 0;
+        
+        const answersWithDetails = answers.map(ans => {
+            const question = allQuestions.find(q => q.id === ans.questionId || q.id === ans.id);
+            return {
+                ...ans,
+                questionText: question?.question_text || ans.questionText || 'Unknown Question',
+                correctAnswer: ans.correctAnswer || question?.correct_answer || 'N/A',
+                selectedOption: ans.selectedOption || 'Not recorded'
+            };
+        });
+        
+        const markedWithDetails = markedQuestions.map(marked => {
+            const question = allQuestions.find(q => q.id === marked.qid);
+            return {
+                ...marked,
+                questionText: question?.question_text || 'Question not found',
+                courseName: question?.courses?.course_name || 'Unknown',
+                difficulty: question?.difficulty || 'medium'
+            };
+        });
+        
+        return { answers: answersWithDetails, markedQuestions: markedWithDetails, totalAnswered: total, correctCount: correct, accuracy, hasProgress: total > 0 };
+    }
+
+    // ============================================
+    // DASHBOARD (Enhanced with Marked Count)
+    // ============================================
     async function renderDashboard() {
         const totalAnswered = Object.values(userProgress).reduce((sum, p) => { if (p && p.answers) return sum + Object.values(p.answers).filter(a => a.answered).length; return sum; }, 0);
-        panel.innerHTML = `<div class="page"><div class="page-header"><h2>Admin Dashboard</h2><p>Welcome back, ${currentAdmin?.name}!</p></div><div class="stats-grid-main"><div class="stat-card-main"><div class="stat-value-main">${allQuestions.length}</div><div class="stat-label-main">Total Questions</div></div><div class="stat-card-main"><div class="stat-value-main">${allStudents.length}</div><div class="stat-label-main">Total Students</div></div><div class="stat-card-main"><div class="stat-value-main">${allCourses.length}</div><div class="stat-label-main">Active Courses</div></div><div class="stat-card-main"><div class="stat-value-main">${totalAnswered}</div><div class="stat-label-main">Questions Answered</div></div></div><div class="card"><div class="card-header"><h3>Recent Student Activity</h3></div><div id="recent-activity"></div></div></div>`;
+        let totalMarked = 0;
+        Object.values(userProgress).forEach(progress => {
+            if (progress.markedForReview) totalMarked += Object.keys(progress.markedForReview).length;
+            else if (progress) {
+                Object.values(progress).forEach(val => { if (val && val.marked) totalMarked++; });
+            }
+        });
+        
+        panel.innerHTML = `<div class="page"><div class="page-header"><h2>Admin Dashboard</h2><p>Welcome back, ${currentAdmin?.name}!</p></div><div class="stats-grid-main"><div class="stat-card-main"><div class="stat-value-main">${allQuestions.length}</div><div class="stat-label-main">Total Questions</div></div><div class="stat-card-main"><div class="stat-value-main">${allStudents.length}</div><div class="stat-label-main">Total Students</div></div><div class="stat-card-main"><div class="stat-value-main">${allCourses.length}</div><div class="stat-label-main">Active Courses</div></div><div class="stat-card-main"><div class="stat-value-main">${totalAnswered}</div><div class="stat-label-main">Questions Answered</div></div><div class="stat-card-main"><div class="stat-value-main">${totalMarked}</div><div class="stat-label-main">Marked for Review</div></div></div><div class="card"><div class="card-header"><h3>Recent Student Activity</h3></div><div id="recent-activity"></div></div></div>`;
         const recentDiv = document.getElementById('recent-activity');
         if (recentDiv) {
             const recent = Object.entries(userProgress).slice(0, 10);
             if (recent.length === 0) recentDiv.innerHTML = '<div class="empty-state"><i class="fas fa-inbox"></i><p>No student activity yet</p></div>';
-            else recentDiv.innerHTML = recent.map(([userId, progress]) => { const student = allStudents.find(s => s.id === userId); const answered = progress?.answers ? Object.values(progress.answers).filter(a => a.answered).length : 0; const correct = progress?.answers ? Object.values(progress.answers).filter(a => a.correct).length : 0; const accuracy = answered > 0 ? Math.round(correct / answered * 100) : 0; return `<div class="attempt-card" onclick="viewStudentDetails('${userId}')"><div class="attempt-header"><strong>${student?.full_name || 'Unknown'}</strong><span class="badge badge-${accuracy >= 70 ? 'success' : accuracy >= 50 ? 'warning' : 'danger'}">${accuracy}%</span></div><div class="progress-bar"><div class="progress-fill" style="width: ${accuracy}%"></div></div><div class="attempt-stats"><span>${answered} answered</span><span>${correct} correct</span></div></div>`; }).join('');
+            else recentDiv.innerHTML = recent.map(([userId, progress]) => { 
+                const student = allStudents.find(s => s.id === userId); 
+                const answered = progress?.answers ? Object.values(progress.answers).filter(a => a.answered).length : 0; 
+                const correct = progress?.answers ? Object.values(progress.answers).filter(a => a.correct).length : 0; 
+                const accuracy = answered > 0 ? Math.round(correct / answered * 100) : 0;
+                const markedCount = progress?.markedForReview ? Object.keys(progress.markedForReview).length : 0;
+                return `<div class="attempt-card" onclick="viewStudentDetailsModal('${userId}')"><div class="attempt-header"><strong>${student?.full_name || 'Unknown'}</strong><span class="badge badge-${accuracy >= 70 ? 'success' : accuracy >= 50 ? 'warning' : 'danger'}">${accuracy}%</span></div><div class="progress-bar"><div class="progress-fill" style="width: ${accuracy}%"></div></div><div class="attempt-stats"><span>${answered} answered</span><span>${correct} correct</span><span><i class="fas fa-flag"></i> ${markedCount} marked</span></div></div>`; 
+            }).join('');
         }
     }
 
+    // ============================================
+    // INDIVIDUAL STUDENT PROGRESS PAGE (NEW)
+    // ============================================
+    async function renderIndividualProgress() {
+        panel.innerHTML = `<div class="page"><div class="page-header"><h2><i class="fas fa-user-chart"></i> Individual Student Progress</h2><p>View detailed progress and questions marked for review by each student.</p></div><div class="card"><input type="text" id="progressSearchInput" class="search-input" placeholder="🔍 Search by student name or email..."><div id="studentsProgressList"></div></div></div>`;
+        renderStudentsProgressList();
+        document.getElementById('progressSearchInput')?.addEventListener('input', () => renderStudentsProgressList());
+    }
+
+    function renderStudentsProgressList() {
+        const search = document.getElementById('progressSearchInput')?.value.toLowerCase() || '';
+        const filtered = allStudents.filter(s => (s.full_name?.toLowerCase().includes(search) || s.email?.toLowerCase().includes(search)));
+        const container = document.getElementById('studentsProgressList');
+        if (!container) return;
+        
+        container.innerHTML = filtered.map(s => {
+            const prog = getStudentProgress(s.id);
+            const accuracyColor = prog.accuracy >= 70 ? '#10b981' : prog.accuracy >= 50 ? '#f59e0b' : '#ef4444';
+            return `<div class="student-progress-card" onclick="viewStudentDetailsModal('${s.id}')">
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap;">
+                            <div><strong><i class="fas fa-user-graduate"></i> ${s.full_name || 'Unknown Student'}</strong><br><small style="color:#64748b;">${s.email || 'No email'}</small></div>
+                            <span class="badge ${prog.hasProgress ? (prog.accuracy >= 70 ? 'badge-success' : prog.accuracy >= 50 ? 'badge-warning' : 'badge-danger') : 'badge-secondary'}">${prog.hasProgress ? prog.accuracy + '%' : 'No Activity'}</span>
+                        </div>
+                        ${prog.hasProgress ? `
+                            <div class="progress-bar" style="margin:12px 0;"><div class="progress-fill" style="width: ${prog.accuracy}%; background: ${accuracyColor};"></div></div>
+                            <div class="progress-stats-row">
+                                <span class="progress-stat"><i class="fas fa-question-circle"></i> ${prog.totalAnswered} answered</span>
+                                <span class="progress-stat"><i class="fas fa-check-circle" style="color:#10b981;"></i> ${prog.correctCount} correct</span>
+                                <span class="progress-stat"><i class="fas fa-flag" style="color:#f59e0b;"></i> ${prog.markedQuestions.length} marked for review</span>
+                            </div>
+                        ` : '<div style="margin-top:12px; color:#94a3b8;"><i class="fas fa-hourglass-start"></i> No questions attempted yet</div>'}
+                    </div>`;
+        }).join('');
+        if (filtered.length === 0) container.innerHTML = '<div class="empty-state"><i class="fas fa-search"></i><p>No students found</p></div>';
+    }
+
+    // ============================================
+    // STUDENT DETAILS MODAL (with Marked Questions)
+    // ============================================
+    window.viewStudentDetailsModal = async (studentId) => {
+        const student = allStudents.find(s => s.id === studentId);
+        const prog = getStudentProgress(studentId);
+        
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+        modal.innerHTML = `<div class="modal-content student-detail-modal">
+            <div class="modal-header"><h3><i class="fas fa-user-graduate"></i> ${student?.full_name || 'Student'} - Complete Progress Report</h3><button class="modal-close" onclick="this.closest('.modal').remove()">&times;</button></div>
+            <div class="stat-cards-mini">
+                <div class="stat-card-mini"><div class="value">${prog.totalAnswered}</div><div class="label">Answered</div></div>
+                <div class="stat-card-mini"><div class="value">${prog.correctCount}</div><div class="label">Correct</div></div>
+                <div class="stat-card-mini"><div class="value">${prog.accuracy}%</div><div class="label">Accuracy</div></div>
+            </div>
+            
+            <h4><i class="fas fa-flag-checkered" style="color:#f59e0b;"></i> Questions Marked for Review (${prog.markedQuestions.length})</h4>
+            <div class="marked-questions-list">
+                ${prog.markedQuestions.length === 0 ? '<div class="empty-state"><i class="fas fa-inbox"></i><p>No questions marked for review</p></div>' : 
+                    prog.markedQuestions.map(m => `<div class="marked-review-item">
+                        <div><strong>${m.questionText}</strong></div>
+                        <div style="font-size:12px; margin-top:6px;">
+                            <span class="badge badge-primary">${m.courseName}</span>
+                            <span class="badge ${m.difficulty === 'easy' ? 'badge-success' : m.difficulty === 'hard' ? 'badge-danger' : 'badge-warning'}">${m.difficulty}</span>
+                            ${m.timestamp ? `<span><i class="fas fa-clock"></i> ${new Date(m.timestamp).toLocaleString()}</span>` : ''}
+                        </div>
+                        ${m.note ? `<div style="margin-top:6px; font-size:12px; color:#78716c;"><i class="fas fa-sticky-note"></i> ${m.note}</div>` : ''}
+                    </div>`).join('')
+                }
+            </div>
+            
+            <h4><i class="fas fa-list-check"></i> Answered Questions (${prog.answers.length})</h4>
+            <div class="answers-list-detailed">
+                ${prog.answers.length === 0 ? '<div class="empty-state"><i class="fas fa-inbox"></i><p>No questions answered yet</p></div>' :
+                    prog.answers.map((a, i) => `<div style="padding:10px; border-bottom:1px solid #e2e8f0;">
+                        <div><span class="badge ${a.correct ? 'badge-success' : 'badge-danger'}">${a.correct ? '✓' : '✗'}</span> <strong>Q${i+1}:</strong> ${a.questionText?.substring(0, 100)}${a.questionText?.length > 100 ? '...' : ''}</div>
+                        <div style="font-size:12px; margin-top:5px; color:#64748b;">Your answer: ${a.selectedOption} | Correct: ${a.correctAnswer}</div>
+                    </div>`).join('')
+                }
+            </div>
+            <div class="modal-actions" style="margin-top:20px;"><button onclick="this.closest('.modal').remove()" class="btn btn-primary">Close</button></div>
+        </div>`;
+        document.body.appendChild(modal);
+    };
+
+    // ============================================
+    // MARKED FOR REVIEW - GLOBAL VIEW (NEW)
+    // ============================================
+    async function renderMarkedReview() {
+        let allMarkedItems = [];
+        for (const student of allStudents) {
+            const prog = getStudentProgress(student.id);
+            for (const marked of prog.markedQuestions) {
+                allMarkedItems.push({ student, marked });
+            }
+        }
+        allMarkedItems.sort((a, b) => new Date(b.marked.timestamp) - new Date(a.marked.timestamp));
+        
+        panel.innerHTML = `<div class="page"><div class="page-header"><h2><i class="fas fa-flag-checkered"></i> All Questions Marked for Review</h2><p>${allMarkedItems.length} questions marked across all students</p></div><div class="card"><div id="globalMarkedList">${allMarkedItems.length === 0 ? '<div class="empty-state"><i class="fas fa-inbox"></i><p>No questions have been marked for review by any student yet.</p></div>' : allMarkedItems.map(item => `<div class="student-progress-card" onclick="viewStudentDetailsModal('${item.student.id}')" style="cursor:pointer;"><div style="display:flex; justify-content:space-between; align-items:center;"><div><strong><i class="fas fa-user"></i> ${item.student.full_name || item.student.email || 'Unknown'}</strong><div style="font-size:13px; margin-top:4px;">${item.marked.questionText}</div></div><span class="badge badge-marked"><i class="fas fa-flag"></i> Marked</span></div><div style="margin-top:8px; font-size:12px;"><span><i class="fas fa-book"></i> ${item.marked.courseName}</span> | <span><i class="fas fa-clock"></i> ${new Date(item.marked.timestamp).toLocaleString()}</span>${item.marked.note ? ` | <span><i class="fas fa-sticky-note"></i> ${item.marked.note}</span>` : ''}</div></div>`).join('')}</div></div></div>`;
+    }
+
+    // ============================================
+    // EXISTING FUNCTIONS (Preserved from Original)
+    // ============================================
+    
     // FULL QUESTION BANK WITH REORDER
     async function renderQuestionBank() {
         await loadAllData();
@@ -391,21 +678,33 @@
         else resultDiv.innerHTML = `<div class="alert alert-error">❌ No questions imported. Check format.</div>`;
     };
 
-    // COURSES, STUDENTS, ATTEMPTS, SETTINGS (simplified)
+    // COURSES, STUDENTS, ATTEMPTS, SETTINGS
     async function renderCourses() { await loadAllData(); panel.innerHTML = `<div class="page"><div class="page-header"><h2>Course Manager</h2><p>Manage nursing courses.</p></div><div class="card"><button onclick="addNewCourse()" class="btn btn-success">Add New Course</button><div id="courses-list" class="courses-list"></div></div></div>`; const container = document.getElementById('courses-list'); if(container) container.innerHTML = allCourses.map(c => `<div class="course-item"><div class="course-info"><h3>${c.course_name}</h3><span class="badge badge-${c.status === 'Active' ? 'success' : 'danger'}">${c.status || 'Active'}</span><div class="course-unit">Unit: ${c.unit_code || 'N/A'}</div></div><div class="course-actions"><button onclick="editCourse('${c.id}', '${c.course_name}', '${c.unit_code || ''}')" class="btn btn-warning btn-sm">Edit</button><button onclick="toggleCourseStatus('${c.id}', '${c.status || 'Active'}')" class="btn btn-info btn-sm">Toggle</button></div></div>`).join(''); }
     window.addNewCourse = async () => { const name = prompt('Course name:'); if(name) { const unitCode = prompt('Unit code:'); await sb.from('courses').insert([{ course_name: name, unit_code: unitCode || '', status: 'Active', created_at: new Date().toISOString() }]); await loadAllData(); renderCourses(); showToast('Course added', 'success'); } };
     window.editCourse = async (id, name, unit) => { const newName = prompt('Edit name:', name); if(newName) { const newUnit = prompt('Unit code:', unit); await sb.from('courses').update({ course_name: newName, unit_code: newUnit || '' }).eq('id', id); await loadAllData(); renderCourses(); showToast('Course updated', 'success'); } };
     window.toggleCourseStatus = async (id, status) => { const newStatus = status === 'Active' ? 'Inactive' : 'Active'; await sb.from('courses').update({ status: newStatus }).eq('id', id); await loadAllData(); renderCourses(); showToast(`Course ${newStatus}`, 'success'); };
 
     async function renderStudents() { await loadAllData(); panel.innerHTML = `<div class="page"><div class="page-header"><h2>Student Manager</h2><p>View and manage students.</p></div><div class="card"><input type="text" id="student-search" class="form-control" placeholder="Search..."><div id="students-list" class="table-container"></div></div></div>`; document.getElementById('student-search').addEventListener('input', () => filterStudents()); filterStudents(); }
-    function filterStudents() { const search = document.getElementById('student-search')?.value.toLowerCase() || ''; const filtered = allStudents.filter(s => s.full_name?.toLowerCase().includes(search) || s.email?.toLowerCase().includes(search)); const container = document.getElementById('students-list'); if(container) container.innerHTML = `<table class="table"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Questions</th><th>Actions</th></tr></thead><tbody>${filtered.map(s => { const prog = userProgress[s.id]; const answered = prog?.answers ? Object.values(prog.answers).filter(a => a.answered).length : 0; return `<tr><td>${s.full_name || '—'}</td><td>${s.email}</td><td><span class="badge badge-${s.role === 'admin' ? 'warning' : 'primary'}">${s.role || 'student'}</span></td><td>${answered}</td><td class="table-actions"><button onclick="viewStudentDetails('${s.id}')" class="btn btn-info btn-sm">View</button><button onclick="promoteToAdmin('${s.id}')" class="btn btn-warning btn-sm">Promote</button><button onclick="resetStudentProgress('${s.id}')" class="btn btn-danger btn-sm">Reset</button></td></tr>`; }).join('')}</tbody></table>`; }
-    window.viewStudentDetails = async (studentId) => { const student = allStudents.find(s => s.id === studentId); const prog = userProgress[studentId]; const answers = prog?.answers ? Object.values(prog.answers).filter(a => a.answered) : []; const modal = document.createElement('div'); modal.className = 'modal'; modal.innerHTML = `<div class="modal-content"><div class="modal-header"><h3>${student?.full_name || 'Student'} - Progress</h3><button class="modal-close" onclick="this.closest('.modal').remove()">&times;</button></div><div class="stats-grid-small"><div class="stat-card-small">${answers.length}<br><small>Answered</small></div><div class="stat-card-small">${answers.filter(a => a.correct).length}<br><small>Correct</small></div><div class="stat-card-small">${answers.length > 0 ? Math.round(answers.filter(a => a.correct).length / answers.length * 100) : 0}%<br><small>Accuracy</small></div></div><div class="answers-list">${answers.map((a,i) => `<div class="answer-item"><div class="badge badge-${a.correct ? 'success' : 'danger'}">${a.correct ? '✓' : '✗'}</div><div><strong>Q${i+1}:</strong> ${a.questionText || 'N/A'}</div><div>Your answer: ${a.selectedOption}</div>${!a.correct ? `<div>Correct: ${a.correctAnswer}</div>` : ''}</div>`).join('')}</div><div class="modal-actions"><button onclick="this.closest('.modal').remove()" class="btn btn-primary">Close</button></div></div>`; document.body.appendChild(modal); };
+    function filterStudents() { const search = document.getElementById('student-search')?.value.toLowerCase() || ''; const filtered = allStudents.filter(s => s.full_name?.toLowerCase().includes(search) || s.email?.toLowerCase().includes(search)); const container = document.getElementById('students-list'); if(container) container.innerHTML = `<table class="table"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Questions</th><th>Marked</th><th>Actions</th></tr></thead><tbody>${filtered.map(s => { const prog = getStudentProgress(s.id); return `<tr><td>${s.full_name || '—'}</td><td>${s.email}</td><td><span class="badge badge-${s.role === 'admin' ? 'warning' : 'primary'}">${s.role || 'student'}</span></td><td>${prog.totalAnswered}</td><td><span class="badge badge-marked">${prog.markedQuestions.length}</span></td><td class="table-actions"><button onclick="viewStudentDetailsModal('${s.id}')" class="btn btn-info btn-sm">View Progress</button><button onclick="promoteToAdmin('${s.id}')" class="btn btn-warning btn-sm">Promote</button><button onclick="resetStudentProgress('${s.id}')" class="btn btn-danger btn-sm">Reset</button></td></tr>`; }).join('')}</tbody></table>`; }
     window.promoteToAdmin = async (id) => { if(confirm('Promote to admin?')) { await sb.from('consolidated_user_profiles_table').update({ role: 'admin' }).eq('id', id); await loadAllData(); renderStudents(); showToast('Promoted', 'success'); } };
-    window.resetStudentProgress = async (id) => { if(confirm('Reset progress?')) { await sb.from('user_progress').delete().eq('user_id', id); await loadAllData(); renderStudents(); showToast('Progress reset', 'success'); } };
+    window.resetStudentProgress = async (id) => { if(confirm('Reset progress for this student?')) { await sb.from('user_progress').delete().eq('user_id', id); await loadAllData(); renderStudents(); showToast('Progress reset', 'success'); } };
 
-    async function renderAttempts() { await loadAllData(); const stats = allStudents.map(s => { const prog = userProgress[s.id]; let total = 0, correct = 0; if(prog && prog.answers) { const answers = Object.values(prog.answers).filter(a => a.answered); total = answers.length; correct = answers.filter(a => a.correct).length; } return { student: s, total, correct, accuracy: total > 0 ? Math.round(correct / total * 100) : 0 }; }).filter(s => s.total > 0).sort((a,b) => b.total - a.total); panel.innerHTML = `<div class="page"><div class="page-header"><h2>Student Progress</h2><p>Track performance metrics.</p></div><div class="card"><div id="attempts-list">${stats.length === 0 ? '<div class="empty-state"><i class="fas fa-inbox"></i><p>No attempts yet</p></div>' : stats.map(s => `<div class="attempt-card" onclick="viewStudentDetails('${s.student.id}')"><div class="attempt-header"><strong>${s.student.full_name || 'Unknown'}</strong><span class="badge badge-${s.accuracy >= 70 ? 'success' : s.accuracy >= 50 ? 'warning' : 'danger'}">${s.accuracy}%</span></div><div class="progress-bar"><div class="progress-fill" style="width: ${s.accuracy}%"></div></div><div class="attempt-stats"><span>${s.total} answered</span><span>${s.correct} correct</span></div></div>`).join('')}</div></div></div>`; }
+    async function renderAttempts() { await loadAllData(); const stats = allStudents.map(s => { const prog = getStudentProgress(s.id); return { student: s, total: prog.totalAnswered, correct: prog.correctCount, accuracy: prog.accuracy, marked: prog.markedQuestions.length }; }).filter(s => s.total > 0).sort((a,b) => b.total - a.total); panel.innerHTML = `<div class="page"><div class="page-header"><h2>Student Progress Summary</h2><p>Track performance metrics across all students.</p></div><div class="card"><div id="attempts-list">${stats.length === 0 ? '<div class="empty-state"><i class="fas fa-inbox"></i><p>No attempts yet</p></div>' : stats.map(s => `<div class="attempt-card" onclick="viewStudentDetailsModal('${s.student.id}')"><div class="attempt-header"><strong>${s.student.full_name || 'Unknown'}</strong><span class="badge badge-${s.accuracy >= 70 ? 'success' : s.accuracy >= 50 ? 'warning' : 'danger'}">${s.accuracy}%</span></div><div class="progress-bar"><div class="progress-fill" style="width: ${s.accuracy}%"></div></div><div class="attempt-stats"><span>${s.total} answered</span><span>${s.correct} correct</span><span><i class="fas fa-flag"></i> ${s.marked} marked</span></div></div>`).join('')}</div></div></div>`; }
 
-    function renderSettings() { panel.innerHTML = `<div class="page"><div class="page-header"><h2>System Settings</h2><p>Configure system preferences.</p></div><div class="card"><h3>Data Management</h3><div class="settings-actions"><button onclick="exportAllData()" class="btn btn-primary">Export All (JSON)</button><button onclick="exportAllQuestions()" class="btn btn-success">Export Questions (CSV)</button><button onclick="clearAllStudentProgress()" class="btn btn-danger">Clear All Progress</button></div></div><div class="card"><h3>System Info</h3><div class="stats-grid-small"><div class="stat-card-small">${allQuestions.length}<br><small>Questions</small></div><div class="stat-card-small">${allStudents.length}<br><small>Students</small></div><div class="stat-card-small">${allCourses.length}<br><small>Courses</small></div><div class="stat-card-small">${Object.keys(userProgress).length}<br><small>Active</small></div></div></div></div>`; }
+    function renderSettings() { panel.innerHTML = `<div class="page"><div class="page-header"><h2>System Settings</h2><p>Configure system preferences.</p></div><div class="card"><h3>Data Management</h3><div class="settings-actions"><button onclick="exportAllData()" class="btn btn-primary">Export All (JSON)</button><button onclick="exportAllQuestions()" class="btn btn-success">Export Questions (CSV)</button><button onclick="exportStudentProgressCSV()" class="btn btn-info">Export Student Progress (CSV)</button><button onclick="clearAllStudentProgress()" class="btn btn-danger">Clear All Progress</button></div></div><div class="card"><h3>System Info</h3><div class="stats-grid-small"><div class="stat-card-small">${allQuestions.length}<br><small>Questions</small></div><div class="stat-card-small">${allStudents.length}<br><small>Students</small></div><div class="stat-card-small">${allCourses.length}<br><small>Courses</small></div><div class="stat-card-small">${Object.keys(userProgress).length}<br><small>Active</small></div></div></div></div>`; }
+    
+    window.exportStudentProgressCSV = () => {
+        const rows = [['Student Name', 'Email', 'Questions Answered', 'Correct', 'Accuracy %', 'Marked for Review']];
+        for (const student of allStudents) {
+            const prog = getStudentProgress(student.id);
+            rows.push([student.full_name || 'Unknown', student.email || '', prog.totalAnswered, prog.correctCount, prog.accuracy, prog.markedQuestions.length]);
+        }
+        const csv = rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `student_progress_${Date.now()}.csv`; a.click(); URL.revokeObjectURL(blob.href);
+        showToast('Student progress exported!', 'success');
+    };
+    
     window.exportAllData = async () => { const data = { questions: allQuestions, courses: allCourses, students: allStudents, progress: userProgress }; const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `backup_${Date.now()}.json`; a.click(); showToast('Exported', 'success'); };
     window.exportAllQuestions = async () => { const csv = ['Question,Correct Answer,Course,Difficulty', ...allQuestions.map(q => `"${(q.question_text || '').replace(/"/g,'""')}","${(q.correct_answer || '').replace(/"/g,'""')}","${q.courses?.course_name || ''}","${q.difficulty || ''}"`)].join('\n'); const blob = new Blob([csv], {type:'text/csv'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `questions_${Date.now()}.csv`; a.click(); showToast('Exported', 'success'); };
     window.clearAllStudentProgress = async () => { if(confirm('Delete ALL student progress?')) { await sb.from('user_progress').delete().neq('user_id', ''); await loadAllData(); showToast('All progress cleared', 'success'); } };
@@ -422,8 +721,11 @@
         else if(page === 'courses') renderCourses();
         else if(page === 'students') renderStudents();
         else if(page === 'attempts') renderAttempts();
+        else if(page === 'individual-progress') renderIndividualProgress();
+        else if(page === 'marked-review') renderMarkedReview();
         else if(page === 'settings') renderSettings();
     };
+    
     window.logout = logout;
     window.enableReorderMode = enableReorderMode;
     window.saveNewOrder = saveNewOrder;
@@ -435,6 +737,7 @@
     window.deleteSingleQuestion = deleteSingleQuestion;
     window.updateSelectionCount = updateSelectionCount;
     window.resetAddForm = resetAddForm;
+    window.viewStudentDetailsModal = viewStudentDetailsModal;
 </script>
 </body>
 </html>
