@@ -1,68 +1,72 @@
-// js/nurseiq.js - COMPLETE ENHANCED VERSION WITH DATABASE FIX
+// js/nurseiq.js - COMPLETE ENHANCED VERSION WITH DATABASE FIX & AUTO-MIGRATION
 // ============================================
 // HELPER FUNCTION: Get Current User ID
 // ============================================
 function getCurrentUserId() {
-    // Try multiple sources for user ID
+    // PRIORITY 1: Check for user ID from the page's logged-in user
+    if (window.userData && window.userData.id) {
+        console.log('✅ Found user ID from window.userData:', window.userData.id);
+        return window.userData.id;
+    }
     
-    // 1. Check if there's a global user object
     if (window.currentUser && window.currentUser.id) {
+        console.log('✅ Found user ID from window.currentUser:', window.currentUser.id);
         return window.currentUser.id;
     }
     
-    // 2. Check localStorage
+    // Check for user ID in meta tags from the backend
+    const userIdMeta = document.querySelector('meta[name="user-id"]')?.content;
+    if (userIdMeta) {
+        console.log('✅ Found user ID from meta tag:', userIdMeta);
+        return userIdMeta;
+    }
+    
+    // Check for user ID in data attributes on body
+    const bodyUserId = document.body.getAttribute('data-user-id');
+    if (bodyUserId) {
+        console.log('✅ Found user ID from body attribute:', bodyUserId);
+        return bodyUserId;
+    }
+    
+    // Check localStorage for the correct ID from login
     const storedUserId = localStorage.getItem('userId') || 
                         localStorage.getItem('currentUserId') ||
-                        localStorage.getItem('studentId');
+                        localStorage.getItem('studentId') ||
+                        localStorage.getItem('user_id');
     if (storedUserId) {
+        console.log('✅ Found user ID from localStorage:', storedUserId);
         return storedUserId;
     }
     
-    // 3. Check sessionStorage
+    // Check sessionStorage
     const sessionUserId = sessionStorage.getItem('userId') ||
-                         sessionStorage.getItem('currentUserId');
+                         sessionStorage.getItem('currentUserId') ||
+                         sessionStorage.getItem('user_id');
     if (sessionUserId) {
+        console.log('✅ Found user ID from sessionStorage:', sessionUserId);
         return sessionUserId;
     }
     
-    // 4. Check if there's a meta tag with user ID
-    const metaUserId = document.querySelector('meta[name="user-id"]')?.content;
-    if (metaUserId) {
-        return metaUserId;
+    // Check if there's a global user object from the main app
+    if (window.app && window.app.user && window.app.user.id) {
+        console.log('✅ Found user ID from window.app:', window.app.user.id);
+        return window.app.user.id;
     }
     
-    // 5. Check if user is logged in via Supabase
-    if (window.supabaseClient) {
-        try {
-            const session = window.supabaseClient.auth.session();
-            if (session && session.user) {
-                return session.user.id;
-            }
-        } catch(e) {
-            console.warn('Could not get Supabase session:', e);
-        }
+    // Check for user ID in a global variable
+    if (window.USER_ID) {
+        console.log('✅ Found user ID from window.USER_ID:', window.USER_ID);
+        return window.USER_ID;
     }
     
-    // 6. Check for db.supabase
-    if (window.db && window.db.supabase) {
-        try {
-            const session = window.db.supabase.auth.session();
-            if (session && session.user) {
-                return session.user.id;
-            }
-        } catch(e) {
-            console.warn('Could not get db.supabase session:', e);
-        }
-    }
-    
-    // 7. Fallback: Create a session-based ID for anonymous users
+    // Fallback: Create a session-based ID for anonymous users
     let anonymousId = sessionStorage.getItem('anonymousUserId');
     if (!anonymousId) {
         anonymousId = 'anonymous_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
         sessionStorage.setItem('anonymousUserId', anonymousId);
     }
     
-    console.log('Using anonymous user ID:', anonymousId);
+    console.log('⚠️ Using anonymous user ID:', anonymousId);
     return anonymousId;
 }
 
@@ -93,6 +97,7 @@ class NurseIQModule {
         this.currentSessionAnswers = {};
         this.progressVersion = '2.0';
         this.dashboardMetricsKey = 'nurseiq_dashboard_metrics';
+        this.saveTimeout = null;
     }
     
     async initializeElements() {
@@ -169,16 +174,125 @@ class NurseIQModule {
             this.userId = getCurrentUserId();
             console.log('👤 User ID:', this.userId);
             
+            // Store the correct user ID in localStorage for persistence
+            if (this.userId && !this.userId.startsWith('anonymous_')) {
+                localStorage.setItem('userId', this.userId);
+                localStorage.setItem('currentUserId', this.userId);
+                localStorage.setItem('studentId', this.userId);
+            }
+            
             await this.initializeElements();
             await this.loadUserProgress();
+            
+            // 🔥 AUTO-MIGRATE old progress from localStorage to database
+            await this.migrateOldProgress();
+            
             await this.loadQuestionBankCards();
             this.initialized = true;
             
             this.updateDashboardMetrics();
             
-            console.log('✅ NurseIQ Module initialized');
+            // Set up auto-save on page unload
+            window.addEventListener('beforeunload', () => {
+                if (this.userTestAnswers && Object.keys(this.userTestAnswers).length > 0) {
+                    this.saveProgressToDatabase();
+                }
+            });
+            
+            // Set up periodic auto-save every 30 seconds
+            setInterval(() => {
+                if (this.userTestAnswers && Object.keys(this.userTestAnswers).length > 0) {
+                    this.saveProgressToDatabase();
+                }
+            }, 30000);
+            
+            console.log('✅ NurseIQ Module initialized with auto-save and migration');
         } catch (error) {
             console.error('❌ Failed to initialize:', error);
+        }
+    }
+    
+    // 🔥 NEW METHOD: Auto-migrate old progress from localStorage to database
+    async migrateOldProgress() {
+        try {
+            const supabase = this.getSupabaseClient();
+            if (!supabase) {
+                console.warn('⚠️ No Supabase client available for migration');
+                return;
+            }
+            
+            if (!this.userId || this.userId.startsWith('anonymous_')) {
+                console.warn('⚠️ Anonymous user, skipping migration');
+                return;
+            }
+            
+            // Check if user has progress in localStorage
+            const localProgress = localStorage.getItem(this.storageKey);
+            if (!localProgress) {
+                console.log('📭 No localStorage progress found for migration');
+                return;
+            }
+            
+            const parsedProgress = JSON.parse(localProgress);
+            const hasAnswers = parsedProgress.answers && Object.keys(parsedProgress.answers).length > 0;
+            
+            if (!hasAnswers) {
+                console.log('📭 localStorage has no answers to migrate');
+                return;
+            }
+            
+            console.log('📦 Found localStorage progress, checking database...');
+            
+            // Check if user already has progress in database
+            const { data: existingProgress, error: checkError } = await supabase
+                .from('user_progress')
+                .select('user_id')
+                .eq('user_id', this.userId)
+                .maybeSingle();
+            
+            if (checkError && checkError.code !== 'PGRST116') {
+                console.error('Error checking existing progress:', checkError);
+                return;
+            }
+            
+            // If no database progress exists, migrate localStorage data
+            if (!existingProgress) {
+                console.log('🔄 Migrating old progress from localStorage to database for:', this.userId);
+                
+                const progressData = {
+                    version: this.progressVersion,
+                    answers: parsedProgress.answers || parsedProgress,
+                    lastSaved: new Date().toISOString(),
+                    migratedFromLocal: true,
+                    migrationDate: new Date().toISOString()
+                };
+                
+                const { error: insertError } = await supabase
+                    .from('user_progress')
+                    .insert({
+                        user_id: this.userId,
+                        progress_data: progressData,
+                        updated_at: new Date().toISOString()
+                    });
+                
+                if (insertError) {
+                    console.error('❌ Migration failed:', insertError);
+                } else {
+                    console.log('✅ Old progress migrated successfully!');
+                    this.showNotification('Your previous progress has been saved to the cloud!', 'success');
+                    
+                    // Update local answers with the migrated data
+                    if (parsedProgress.answers) {
+                        this.userTestAnswers = { ...this.userTestAnswers, ...parsedProgress.answers };
+                        this.saveUserProgress();
+                    }
+                }
+            } else {
+                console.log('✅ Database progress already exists, no migration needed');
+            }
+            
+        } catch (error) {
+            console.error('❌ Migration error:', error);
         }
     }
     
@@ -214,6 +328,9 @@ class NurseIQModule {
                         const dbAnswers = data.progress_data.answers || {};
                         this.userTestAnswers = { ...dbAnswers, ...this.userTestAnswers };
                         console.log('📊 Loaded from database, total:', Object.keys(this.userTestAnswers).length);
+                        
+                        // Save merged data back to localStorage
+                        this.saveUserProgress();
                     }
                 }
             }
@@ -225,7 +342,7 @@ class NurseIQModule {
         }
     }
     
-    // NEW METHOD: Ensure user exists in consolidated_user_profiles_table
+    // Ensure user exists in consolidated_user_profiles_table
     async ensureUserExistsInProfileTable() {
         try {
             const supabase = this.getSupabaseClient();
@@ -234,11 +351,13 @@ class NurseIQModule {
             // Get user info from various sources
             const userEmail = localStorage.getItem('userEmail') || 
                              sessionStorage.getItem('userEmail') || 
+                             document.querySelector('meta[name="user-email"]')?.content ||
                              `${this.userId}@student.nurseiq.com`;
             
             const userName = localStorage.getItem('userName') || 
                             sessionStorage.getItem('userName') || 
                             sessionStorage.getItem('studentName') ||
+                            document.querySelector('meta[name="user-name"]')?.content ||
                             'Student';
             
             // Try to get student ID from storage
@@ -308,13 +427,21 @@ class NurseIQModule {
                 localStorage.setItem(this.lastCourseProgressKey, JSON.stringify(lastProgress));
             }
             
+            // Auto-save to database with debounce
             if (this.userId && !this.userId.startsWith('anonymous_')) {
-                this.saveProgressToDatabase();
+                // Clear existing timeout
+                if (this.saveTimeout) {
+                    clearTimeout(this.saveTimeout);
+                }
+                // Debounce save to avoid too many requests
+                this.saveTimeout = setTimeout(() => {
+                    this.saveProgressToDatabase();
+                }, 1000);
             }
             
             this.updateDashboardMetrics();
             
-            console.log('💾 Progress saved and dashboard updated');
+            console.log('💾 Progress saved to localStorage and queued for database');
         } catch (error) {
             console.warn('Could not save progress:', error);
         }
@@ -340,7 +467,7 @@ class NurseIQModule {
         }
     }
     
-    // FIXED: saveProgressToDatabase with foreign key handling
+    // saveProgressToDatabase with foreign key handling
     async saveProgressToDatabase() {
         try {
             const supabase = this.getSupabaseClient();
@@ -1915,4 +2042,4 @@ if (document.readyState === 'loading') {
     setTimeout(() => window.initNurseIQ().catch(console.error), 1000);
 }
 
-console.log('✅ NurseIQ module loaded - Fixed database saving with foreign key handling');
+console.log('✅ NurseIQ module loaded - Fixed with auto-migration for all students');
