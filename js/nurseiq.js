@@ -1,5 +1,4 @@
-// js/nurseiq.js - COMPLETE ENHANCED VERSION WITH DASHBOARD INTEGRATION
-
+// js/nurseiq.js - COMPLETE ENHANCED VERSION WITH DATABASE FIX
 // ============================================
 // HELPER FUNCTION: Get Current User ID
 // ============================================
@@ -185,6 +184,7 @@ class NurseIQModule {
     
     async loadUserProgress() {
         try {
+            // First load from localStorage
             const savedProgress = localStorage.getItem(this.storageKey);
             if (savedProgress) {
                 const parsed = JSON.parse(savedProgress);
@@ -193,26 +193,98 @@ class NurseIQModule {
                 } else {
                     this.userTestAnswers = parsed;
                 }
-                console.log('📊 Loaded saved progress:', Object.keys(this.userTestAnswers).length, 'answered questions');
+                console.log('📊 Loaded from localStorage:', Object.keys(this.userTestAnswers).length, 'answered questions');
             }
             
+            // Then load from database
             if (this.userId && !this.userId.startsWith('anonymous_')) {
                 const supabase = this.getSupabaseClient();
                 if (supabase) {
+                    // First ensure user exists in profile table
+                    await this.ensureUserExistsInProfileTable();
+                    
                     const { data, error } = await supabase
                         .from('user_progress')
                         .select('progress_data')
                         .eq('user_id', this.userId)
-                        .single();
+                        .maybeSingle();
                     
                     if (!error && data && data.progress_data) {
-                        this.userTestAnswers = { ...this.userTestAnswers, ...data.progress_data };
-                        console.log('📊 Loaded progress from database');
+                        // Merge database progress (localStorage takes precedence for recent answers)
+                        const dbAnswers = data.progress_data.answers || {};
+                        this.userTestAnswers = { ...dbAnswers, ...this.userTestAnswers };
+                        console.log('📊 Loaded from database, total:', Object.keys(this.userTestAnswers).length);
                     }
                 }
             }
+            
+            this.updateDashboardMetrics();
+            
         } catch (error) {
             console.warn('Could not load user progress:', error);
+        }
+    }
+    
+    // NEW METHOD: Ensure user exists in consolidated_user_profiles_table
+    async ensureUserExistsInProfileTable() {
+        try {
+            const supabase = this.getSupabaseClient();
+            if (!supabase) return;
+            
+            // Get user info from various sources
+            const userEmail = localStorage.getItem('userEmail') || 
+                             sessionStorage.getItem('userEmail') || 
+                             `${this.userId}@student.nurseiq.com`;
+            
+            const userName = localStorage.getItem('userName') || 
+                            sessionStorage.getItem('userName') || 
+                            sessionStorage.getItem('studentName') ||
+                            'Student';
+            
+            // Try to get student ID from storage
+            const studentId = localStorage.getItem('studentId') || 
+                             sessionStorage.getItem('studentId') || 
+                             null;
+            
+            console.log('📝 Ensuring user exists in consolidated_user_profiles_table:', this.userId);
+            
+            // First check if user already exists
+            const { data: existingUser, error: checkError } = await supabase
+                .from('consolidated_user_profiles_table')
+                .select('id')
+                .eq('id', this.userId)
+                .maybeSingle();
+            
+            if (checkError && checkError.code !== 'PGRST116') {
+                console.error('Error checking user existence:', checkError);
+                return;
+            }
+            
+            if (!existingUser) {
+                // User doesn't exist, create them
+                const { error: insertError } = await supabase
+                    .from('consolidated_user_profiles_table')
+                    .insert({
+                        id: this.userId,
+                        email: userEmail,
+                        full_name: userName,
+                        role: 'student',
+                        student_id: studentId,
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                    });
+                
+                if (insertError) {
+                    console.error('❌ Failed to create user profile:', insertError);
+                } else {
+                    console.log('✅ User profile created successfully in consolidated_user_profiles_table');
+                }
+            } else {
+                console.log('✅ User already exists in profile table');
+            }
+            
+        } catch (error) {
+            console.error('❌ Error ensuring user exists:', error);
         }
     }
     
@@ -268,22 +340,66 @@ class NurseIQModule {
         }
     }
     
+    // FIXED: saveProgressToDatabase with foreign key handling
     async saveProgressToDatabase() {
         try {
             const supabase = this.getSupabaseClient();
-            if (!supabase) return;
+            if (!supabase) {
+                console.warn('⚠️ No Supabase client available');
+                return;
+            }
             
-            const { error } = await supabase
+            if (!this.userId || this.userId.startsWith('anonymous_')) {
+                console.warn('⚠️ Anonymous user, skipping database save');
+                return;
+            }
+            
+            // Prepare progress data
+            const progressData = {
+                version: this.progressVersion,
+                answers: this.userTestAnswers,
+                lastSaved: new Date().toISOString()
+            };
+            
+            console.log('💾 Saving progress to database for user:', this.userId);
+            
+            const { data, error } = await supabase
                 .from('user_progress')
                 .upsert({
                     user_id: this.userId,
-                    progress_data: this.userTestAnswers,
+                    progress_data: progressData,
                     updated_at: new Date().toISOString()
                 }, { onConflict: 'user_id' });
             
-            if (error) throw error;
+            if (error) {
+                console.error('❌ Database save error:', error);
+                
+                // If foreign key error (user not in consolidated table), try to fix
+                if (error.code === '23503') {
+                    console.log('🔄 Foreign key error - attempting to ensure user exists...');
+                    await this.ensureUserExistsInProfileTable();
+                    
+                    // Retry the save
+                    const { error: retryError } = await supabase
+                        .from('user_progress')
+                        .upsert({
+                            user_id: this.userId,
+                            progress_data: progressData,
+                            updated_at: new Date().toISOString()
+                        }, { onConflict: 'user_id' });
+                    
+                    if (retryError) {
+                        console.error('❌ Retry failed:', retryError);
+                    } else {
+                        console.log('✅ Progress saved after user creation');
+                    }
+                }
+            } else {
+                console.log('✅ Progress saved to database successfully');
+            }
+            
         } catch (error) {
-            console.error('Database save error:', error);
+            console.error('❌ Exception in saveProgressToDatabase:', error);
         }
     }
     
@@ -1426,7 +1542,6 @@ class NurseIQModule {
             this.updateMiniDots();
             this.updateTopProgressStats();
             this.updateNavigationButtons();
-            // The explanation will automatically show/hide based on answered status
         }
     }
     
@@ -1438,7 +1553,6 @@ class NurseIQModule {
             this.updateMiniDots();
             this.updateTopProgressStats();
             this.updateNavigationButtons();
-            // The explanation will automatically show/hide based on answered status
         }
     }
     
@@ -1801,4 +1915,4 @@ if (document.readyState === 'loading') {
     setTimeout(() => window.initNurseIQ().catch(console.error), 1000);
 }
 
-console.log('✅ NurseIQ module loaded - Explanation section stays visible until user moves to next question');
+console.log('✅ NurseIQ module loaded - Fixed database saving with foreign key handling');
