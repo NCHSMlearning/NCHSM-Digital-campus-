@@ -1,8 +1,11 @@
-// js/exam-card.js - COMPACT v6 (Space Optimized)
+// js/exam-card.js - COMPACT v6.1 (Fixed)
 
 (function() {
     'use strict';
     
+    // =====================================================
+    // CONFIGURATION
+    // =====================================================
     const CONFIG = {
         LOGO_URL: 'https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png',
         DEFAULT_CREDITS: 3,
@@ -24,6 +27,9 @@
         ]
     };
     
+    // =====================================================
+    // MAIN CLASS
+    // =====================================================
     class ExamCardModule {
         constructor() {
             this.approvedUnits = [];
@@ -40,6 +46,37 @@
             }
         }
         
+        // ========== UTILITY METHODS ==========
+        escapeHtml(str) {
+            if (!str) return '';
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+        
+        formatDate(date = new Date()) {
+            return date.toLocaleDateString('en-KE', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            });
+        }
+        
+        getExamPeriod() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = now.getMonth();
+            
+            if (month >= 2 && month <= 5) {
+                return `March - June ${year} (Trimester 1)`;
+            }
+            if (month >= 6 && month <= 9) {
+                return `July - October ${year} (Trimester 2)`;
+            }
+            return `November - February ${year}/${year + 1} (Trimester 3)`;
+        }
+        
+        // ========== INITIALIZATION ==========
         init() {
             this.cacheElements();
             this.setupEventListeners();
@@ -53,16 +90,22 @@
         }
         
         setupEventListeners() {
-            const events = ['appReady', 'profileLoaded', 'unitRegistrationReady'];
-            events.forEach(event => {
-                document.addEventListener(event, () => this.tryLoadIfLoggedIn());
+            document.addEventListener('appReady', () => this.tryLoadIfLoggedIn());
+            document.addEventListener('profileLoaded', (e) => {
+                if (e.detail?.profile) {
+                    this.userProfile = e.detail.profile;
+                    this.updateUserData();
+                    this.loadExamCard();
+                }
             });
+            document.addEventListener('unitRegistrationReady', () => this.loadExamCard());
             
             document.querySelectorAll('[data-tab="hub-exam-card"]').forEach(link => {
                 link.addEventListener('click', () => setTimeout(() => this.loadExamCard(), 100));
             });
         }
         
+        // ========== USER MANAGEMENT ==========
         tryLoadIfLoggedIn() {
             const profile = this.getUserProfileFromSources();
             if (profile) {
@@ -102,9 +145,13 @@
             return false;
         }
         
+        // ========== DATA LOADING ==========
         async loadExamCard() {
             if (this.isLoading) return;
-            if (!this.userProfile) { this.showDemoCard(); return; }
+            if (!this.userProfile) { 
+                this.showDemoCard(); 
+                return; 
+            }
             
             this.isLoading = true;
             this.showLoading();
@@ -169,6 +216,7 @@
             }
         }
         
+        // ========== UI RENDERING ==========
         displayExamCard() {
             if (!this.examCardContent) return;
             
@@ -196,7 +244,7 @@
                     <div class="exam-card-compact">
                         <!-- Header - Compact -->
                         <div class="card-header">
-                            <img src="${CONFIG.LOGO_URL}" alt="Logo" class="card-logo">
+                            <img src="${CONFIG.LOGO_URL}" alt="Logo" class="card-logo" onerror="this.style.display='none'">
                             <div class="header-text">
                                 <div class="institution">NAKURU COLLEGE OF HEALTH SCIENCES</div>
                                 <div class="card-title">EXAMINATION CARD</div>
@@ -213,7 +261,7 @@
                             <div class="info-item"><span class="info-label">Program:</span> ${this.escapeHtml(student?.program || 'KRCHN')}</div>
                             <div class="info-item"><span class="info-label">Block:</span> <strong>${this.escapeHtml(currentBlock)}</strong></div>
                             <div class="info-item"><span class="info-label">Units:</span> ${approvedUnits.length} | Credits: ${totalCredits}</div>
-                            <div class="info-item"><span class="info-label">Issued:</span> ${utils.formatDate()}</div>
+                            <div class="info-item"><span class="info-label">Issued:</span> ${this.formatDate()}</div>
                         </div>
                         
                         <!-- Units Table - Compact -->
@@ -246,7 +294,7 @@
                             <div class="signature"><div class="sign-line"></div><div>Finance Officer</div></div>
                         </div>
                         
-                        <!-- Footer Rules - Single line -->
+                        <!-- Footer Rules - Compact -->
                         <div class="card-footer">
                             <div class="rule-text">📌 Present at each exam | 🚫 No electronics | ⏰ Arrive 30 mins early</div>
                             <div class="student-sign">
@@ -256,9 +304,7 @@
                         </div>
                     </div>
                     
-                    <button class="print-btn" id="printExamCardBtn">
-                        🖨️ Print Card
-                    </button>
+                    ${isEligible ? '<button class="print-btn" id="printExamCardBtn">🖨️ Print Card</button>' : ''}
                 </div>
             `;
             
@@ -266,7 +312,7 @@
             this.addCompactStyles();
             
             const printBtn = document.getElementById('printExamCardBtn');
-            if (printBtn && isEligible) {
+            if (printBtn) {
                 printBtn.addEventListener('click', (e) => {
                     e.preventDefault();
                     this.printExamCard();
@@ -312,6 +358,7 @@
                     background: white;
                     padding: 5px;
                     border-radius: 8px;
+                    object-fit: contain;
                 }
                 
                 .header-text {
@@ -531,10 +578,49 @@
                         print-color-adjust: exact;
                     }
                 }
+                
+                /* Mobile Responsive */
+                @media (max-width: 600px) {
+                    .info-grid {
+                        grid-template-columns: repeat(2, 1fr);
+                        gap: 6px 10px;
+                        font-size: 11px;
+                        padding: 10px 15px;
+                    }
+                    
+                    .card-header {
+                        padding: 10px 15px;
+                        gap: 10px;
+                    }
+                    
+                    .card-logo {
+                        height: 40px;
+                    }
+                    
+                    .card-title {
+                        font-size: 14px;
+                    }
+                    
+                    .institution {
+                        font-size: 9px;
+                    }
+                    
+                    .signatures-row {
+                        flex-direction: column;
+                        gap: 10px;
+                    }
+                    
+                    .student-sign {
+                        flex-direction: column;
+                        gap: 8px;
+                        text-align: center;
+                    }
+                }
             `;
             document.head.appendChild(style);
         }
         
+        // ========== PRINT FUNCTION ==========
         printExamCard() {
             const printContent = document.getElementById('exam-card-print-area');
             if (!printContent) return;
@@ -577,6 +663,7 @@
             printWindow.document.close();
         }
         
+        // ========== DEMO & LOADING ==========
         showDemoCard() {
             if (!this.examCardContent) return;
             this.userProfile = CONFIG.DEMO_DATA;
@@ -597,10 +684,7 @@
             }
         }
         
-        escapeHtml(str) {
-            return utils.escapeHtml(str);
-        }
-        
+        // ========== PUBLIC METHODS ==========
         refresh() {
             this.loaded = false;
             this.loadExamCard();
