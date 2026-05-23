@@ -2077,95 +2077,80 @@
             </form>
         </div>
     </div>
-
-        <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script> 
     <script type="module" src="script.js"></script>
 
-    <!-- GLOBAL FUNCTIONS FIX - MUST BE HERE -->
+    <!-- GLOBAL FUNCTIONS FIX - ONLY ADD MISSING FUNCTIONS (NO DUPLICATES) -->
     <script>
-        // Make showTab globally available for onclick handlers
-        window.showTab = function(tabId) {
-            console.log('Opening tab:', tabId);
-            document.querySelectorAll('.tab-content').forEach(tab => {
-                tab.classList.remove('active');
-                tab.style.display = 'none';
-            });
-            const targetTab = document.getElementById(tabId);
-            if (targetTab) {
-                targetTab.classList.add('active');
-                targetTab.style.display = 'block';
+        // Only add showTab if script.js didn't already (safety fallback)
+        if (typeof window.showTab === 'undefined') {
+            window.showTab = function(tabId) {
+                console.log('Opening tab:', tabId);
+                document.querySelectorAll('.tab-content').forEach(tab => {
+                    tab.classList.remove('active');
+                    tab.style.display = 'none';
+                });
+                const targetTab = document.getElementById(tabId);
+                if (targetTab) {
+                    targetTab.classList.add('active');
+                    targetTab.style.display = 'block';
+                }
+                document.querySelectorAll('.nav a').forEach(link => {
+                    link.classList.remove('active');
+                    if (link.getAttribute('data-tab') === tabId) {
+                        link.classList.add('active');
+                    }
+                });
+                if (typeof loadSectionData === 'function') loadSectionData(tabId);
+            };
+        }
+        
+        // Only add logout if not already defined
+        if (typeof window.logout === 'undefined') {
+            window.logout = function() {
+                window.location.href = 'login.html';
+            };
+        }
+        
+        // Only add closeModal if not already defined
+        if (typeof window.closeModal === 'undefined') {
+            window.closeModal = function(modalId) {
+                const modal = document.getElementById(modalId);
+                if (modal) modal.style.display = 'none';
+            };
+        }
+        
+        // Only add closeGradeModal if not already defined
+        if (typeof window.closeGradeModal === 'undefined') {
+            window.closeGradeModal = function() {
+                const modal = document.getElementById('gradeModal');
+                if (modal) modal.style.display = 'none';
+            };
+        }
+        
+        // DO NOT redeclare terminateAllSessions - it's already in script.js!
+        // DO NOT redeclare loadActiveSessions - it's already in script.js!
+        // DO NOT redeclare refreshSessions - it's already in script.js!
+        // DO NOT redeclare exportSessionsToCSV - it's already in script.js!
+        
+        // Mobile navigation (safe to run - doesn't conflict with anything)
+        document.addEventListener('DOMContentLoaded', function() {
+            const mobileToggle = document.getElementById('mobileNavToggle');
+            if (mobileToggle) {
+                mobileToggle.addEventListener('click', function() {
+                    document.getElementById('sidebar')?.classList.toggle('active');
+                });
             }
             document.querySelectorAll('.nav a').forEach(link => {
-                link.classList.remove('active');
-                if (link.getAttribute('data-tab') === tabId) {
-                    link.classList.add('active');
-                }
-            });
-            if (typeof loadSectionData === 'function') loadSectionData(tabId);
-        };
-        
-        // Make logout globally available
-        window.logout = function() {
-            window.location.href = 'login.html';
-        };
-        
-        // Make closeModal globally available
-        window.closeModal = function(modalId) {
-            const modal = document.getElementById(modalId);
-            if (modal) modal.style.display = 'none';
-        };
-        
-        // Make closeGradeModal globally available
-        window.closeGradeModal = function() {
-            const modal = document.getElementById('gradeModal');
-            if (modal) modal.style.display = 'none';
-        };
-        
-        // Session management functions
-        window.refreshSessions = function() {
-            if (typeof loadActiveSessions === 'function') {
-                loadActiveSessions();
-            } else {
-                console.log('loadActiveSessions not yet loaded, retrying...');
-                setTimeout(() => {
-                    if (typeof loadActiveSessions === 'function') loadActiveSessions();
-                }, 1000);
-            }
-        };
-        
-        window.terminateAllSessions = function() {
-            if (typeof terminateAllSessions === 'function') {
-                terminateAllSessions();
-            } else {
-                console.log('Waiting for terminateAllSessions to load...');
-                setTimeout(() => {
-                    if (typeof terminateAllSessions === 'function') terminateAllSessions();
-                    else alert('Session management loading. Please click again in a moment.');
-                }, 1000);
-            }
-        };
-        
-        window.exportSessionsToCSV = function() {
-            if (typeof exportSessionsToCSV === 'function') {
-                exportSessionsToCSV();
-            } else {
-                alert('Export function loading. Please try again.');
-            }
-        };
-        
-        // Mobile navigation
-        document.getElementById('mobileNavToggle')?.addEventListener('click', function() {
-            document.getElementById('sidebar')?.classList.toggle('active');
-        });
-        document.querySelectorAll('.nav a').forEach(link => {
-            link.addEventListener('click', function() {
-                document.getElementById('sidebar')?.classList.remove('active');
+                link.addEventListener('click', function() {
+                    document.getElementById('sidebar')?.classList.remove('active');
+                });
             });
         });
         
-        console.log('✅ Global functions registered - Dashboard ready');
+        console.log('✅ Global fallback functions registered (no duplicates)');
     </script>
 </body>
 </html>
