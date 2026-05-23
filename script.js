@@ -1195,11 +1195,10 @@ async function loadActiveSessions() {
         
         if (error) throw error;
         
-        // Update statistics
-        const activeCount = sessions?.length || 0;
-        document.getElementById('active-session-count').textContent = activeCount;
-        document.getElementById('total-active-sessions').textContent = activeCount;
-        
+       // Update statistics
+const activeCount = sessions?.length || 0;
+document.getElementById('active-session-count').textContent = activeCount;
+// document.getElementById('total-active-sessions') does NOT exist in HTML - removed
         // Calculate average session duration
         if (sessions && sessions.length > 0) {
             const avgDuration = calculateAverageSessionDuration(sessions);
