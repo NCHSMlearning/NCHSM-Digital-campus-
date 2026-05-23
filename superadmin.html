@@ -1201,24 +1201,67 @@
                 </div>
             </section>
 
-            <!-- Session Management Section -->
-            <section id="session-management" class="tab-content">
-                <h2><i class="fas fa-user-clock"></i> Active Sessions Management</h2>
-                <table>
-                    <thead><tr><th>User</th><th>Role</th><th>IP Address</th><th>Login Time</th><th>Last Activity</th><th>Device/Browser</th><th>Actions</th></tr></thead>
-                    <tbody id="active-sessions-table">
-                        <tr><td>John Doe</td><td>Student</td><td>192.168.1.105</td><td>Today, 09:15 AM</td><td>5 minutes ago</td><td>Chrome on Windows</td><td><button class="btn-warning"><i class="fas fa-sign-out-alt"></i> Terminate</button></td></tr>
-                    </tbody>
-                </table>
-                <button onclick="terminateAllSessions()" class="btn-danger" style="margin-top: 20px;"><i class="fas fa-radiation-alt"></i> Terminate All Sessions</button>
-                
-                <h3>Session Statistics</h3>
-                <div class="cards">
-                    <div class="card"><h3>Active Sessions</h3><p class="data">18</p><p class="minor-data">Currently logged in</p></div>
-                    <div class="card"><h3>Avg Session Duration</h3><p class="data">34m</p><p class="minor-data">Across all users</p></div>
-                    <div class="card"><h3>Concurrent Peak</h3><p class="data">42</p><p class="minor-data">Today at 11:00 AM</p></div>
-                </div>
-            </section>
+          <!-- Session Management Section - REPLACE the entire section -->
+<section id="session-management" class="tab-content">
+    <h2><i class="fas fa-user-clock"></i> Active Sessions Management</h2>
+    
+    <!-- Session Stats Cards -->
+    <div class="cards">
+        <div class="card">
+            <h3>Active Sessions</h3>
+            <p class="data" id="active-session-count">0</p>
+            <p class="minor-data">Currently logged in</p>
+        </div>
+        <div class="card">
+            <h3>Avg Session Duration</h3>
+            <p class="data" id="avg-session-duration">0m</p>
+            <p class="minor-data">Across all users</p>
+        </div>
+        <div class="card">
+            <h3>Peak Concurrent</h3>
+            <p class="data" id="peak-concurrent">0</p>
+            <p class="minor-data">Today at <span id="peak-time">--:--</span></p>
+        </div>
+    </div>
+    
+    <!-- Toolbar -->
+    <div class="toolbar">
+        <button onclick="refreshSessions()" class="btn-action">
+            <i class="fas fa-sync-alt"></i> Refresh
+        </button>
+        <button onclick="exportSessionsToCSV()" class="btn-action export-btn">
+            <i class="fas fa-download"></i> Export Sessions
+        </button>
+        <button onclick="terminateAllSessions()" class="btn-danger" id="terminateAllBtn">
+            <i class="fas fa-radiation-alt"></i> Terminate All Sessions
+        </button>
+    </div>
+    
+    <!-- Sessions Table -->
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>User</th>
+                    <th>Role</th>
+                    <th>IP Address</th>
+                    <th>Login Time</th>
+                    <th>Last Activity</th>
+                    <th>Device/Browser</th>
+                    <th>Duration</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="active-sessions-table">
+                <tr><td colspan="8"><div class="loading-spinner"></div> Loading active sessions...</td></tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <p class="minor-data" style="margin-top: 10px; text-align: right;">
+        Last updated: <span id="sessions-last-updated">--:--:--</span>
+    </p>
+</section>
 
             <!-- Error Tracking Section -->
             <section id="error-tracking" class="tab-content">
