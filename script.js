@@ -5096,13 +5096,6 @@ function enable2FAForAll() {
     logAudit('2FA_ENABLE_SYSTEM', 'Enabled 2FA system-wide', null, 'SUCCESS');
 }
 
-// Session Management
-function terminateAllSessions() {
-    if (confirm('Are you sure you want to terminate ALL active sessions?')) {
-        showFeedback('All sessions terminated!', 'success');
-        logAudit('SESSIONS_TERMINATE_ALL', 'Terminated all active sessions', null, 'SUCCESS');
-    }
-}
 
 // Error Tracking
 function filterErrors(severity) {
