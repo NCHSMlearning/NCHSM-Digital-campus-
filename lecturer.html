@@ -4,16 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NCHSM Lecturer Dashboard</title>
-    <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" sizes="32x32">
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/main.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
     <style>
+        /* ========== MATCHING SUPER ADMIN STYLES ========== */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', Roboto, sans-serif; background: #f3f4f6; color: #1f2937; }
         .container { display: flex; min-height: 100vh; }
         
+        /* Sidebar - MATCHES SUPER ADMIN */
         .sidebar { width: 280px; background: linear-gradient(180deg, #0f172a 0%, #1e1b4b 100%); color: #e2e8f0; position: fixed; height: 100vh; overflow-y: auto; transition: transform 0.3s; z-index: 1000; }
         .sidebar-header { padding: 24px 20px; text-align: center; border-bottom: 1px solid #334155; }
         .sidebar-header img { width: 70px; background: white; padding: 8px; border-radius: 20px; margin-bottom: 12px; }
@@ -25,13 +29,15 @@
         .logout { margin-top: 40px; padding: 20px; border-top: 1px solid #334155; }
         .logout button { background: none; border: none; color: #f87171; display: flex; align-items: center; gap: 12px; width: 100%; cursor: pointer; font-size: 1rem; padding: 0; }
         
-        .main { flex: 1; margin-left: 280px; padding: 28px 32px; }
+        /* Main Content */
+        .main { flex: 1; margin-left: 280px; padding: 28px 32px; background: #f8fafc; min-height: 100vh; }
         header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; flex-wrap: wrap; gap: 15px; }
         header h1 { font-size: 1.8rem; color: #0f172a; }
         .subtitle { color: #475569; margin-top: 4px; }
         .header-actions { display: flex; gap: 12px; }
         .btn-notification, .btn-help { background: #e2e8f0; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; }
         
+        /* Cards - MATCHES SUPER ADMIN */
         .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 30px; }
         .card { background: white; border-radius: 20px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); cursor: pointer; border: 1px solid #e2e8f0; transition: 0.2s; }
         .card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
@@ -40,33 +46,42 @@
         .card-alert-danger { border-left: 4px solid #dc2626; }
         .card-alert-warning { border-left: 4px solid #f59e0b; }
         
+        /* Forms - MATCHES SUPER ADMIN */
         .inline-form, .check-in-controls { background: #f1f5f9; padding: 20px; border-radius: 20px; margin-bottom: 30px; }
         .form-row { display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 15px; }
         .form-group { flex: 1; min-width: 180px; }
         .form-group label { display: block; margin-bottom: 6px; font-weight: 500; font-size: 0.85rem; color: #334155; }
         .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #cbd5e1; background: white; }
         
-        .data-table { width: 100%; background: white; border-collapse: collapse; border-radius: 16px; overflow: hidden; }
+        /* Tables - MATCHES SUPER ADMIN */
+        .data-table { width: 100%; background: white; border-collapse: collapse; border-radius: 16px; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
         .data-table th, .data-table td { padding: 12px 16px; text-align: left; border-bottom: 1px solid #e2e8f0; }
-        .data-table th { background: #f8fafc; font-weight: 600; }
+        .data-table th { background: #f8fafc; font-weight: 600; color: #334155; }
         .table-responsive { overflow-x: auto; margin-bottom: 20px; }
         
-        .search-container { display: flex; gap: 10px; margin-bottom: 20px; }
+        /* Search & Filters */
+        .search-container { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
         .search-container input { flex: 1; padding: 10px 14px; border-radius: 12px; border: 1px solid #cbd5e1; }
         .search-container button { background: #4C1D95; color: white; border: none; padding: 10px 20px; border-radius: 12px; cursor: pointer; }
+        .filter-bar { display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
+        .filter-bar input, .filter-bar select { padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; }
+        .toolbar { display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
         
-        .badge { display: inline-block; padding: 4px 10px; border-radius: 30px; font-size: 12px; }
+        /* Badges */
+        .badge { display: inline-block; padding: 4px 10px; border-radius: 30px; font-size: 12px; font-weight: 500; }
         .badge-success { background: #d1fae5; color: #065f46; }
         .badge-warning { background: #fed7aa; color: #9a3412; }
         .badge-danger { background: #fee2e2; color: #991b1b; }
         .badge-info { background: #dbeafe; color: #1e40af; }
         
+        /* Buttons */
         .btn-action { background: #4C1D95; border: none; padding: 8px 18px; border-radius: 40px; color: white; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
         .btn-danger { background: #dc2626; }
         .btn-warning { background: #f59e0b; color: #1f2937; }
         .btn-success { background: #10b981; }
         .btn-cancel { background: #6b7280; }
         
+        /* Profile */
         .profile-card { background: white; border-radius: 20px; padding: 25px; display: flex; gap: 25px; flex-wrap: wrap; margin-bottom: 25px; align-items: center; }
         .profile-avatar { width: 120px; height: 120px; border-radius: 50%; object-fit: cover; background: #4C1D95; display: flex; align-items: center; justify-content: center; color: white; font-size: 48px; }
         .profile-avatar img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
@@ -76,61 +91,77 @@
         .detail-item { border-bottom: 1px solid #e5e7eb; padding-bottom: 8px; }
         .detail-item strong { display: block; font-size: 12px; color: #6b7280; }
         
+        /* Modals - MATCHES SUPER ADMIN */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 2000; }
-        .modal.active { display: flex; }
+        .modal.active, .modal[style*="display: flex"] { display: flex; }
         .modal-content { background: white; border-radius: 24px; max-width: 900px; width: 90%; max-height: 85vh; overflow-y: auto; }
         .modal-header { padding: 16px 20px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
         .modal-body { padding: 20px; }
         .modal-actions { padding: 16px 20px; border-top: 1px solid #e2e8f0; display: flex; gap: 12px; justify-content: flex-end; }
-        .close-btn { font-size: 28px; cursor: pointer; background: none; border: none; }
+        .close-btn { font-size: 28px; cursor: pointer; background: none; border: none; color: #64748b; }
         
+        /* Feedback */
         .feedback { position: fixed; bottom: 20px; right: 20px; padding: 12px 20px; border-radius: 8px; z-index: 3000; display: none; }
         .feedback-success { background: #10b981; color: white; display: block; }
         .feedback-error { background: #ef4444; color: white; display: block; }
         .feedback-info { background: #3b82f6; color: white; display: block; }
+        .feedback-warning { background: #f59e0b; color: #1f2937; display: block; }
         
+        /* Tab Content */
         .tab-content { display: none; }
         .tab-content.active { display: block; }
         
+        /* Loading */
         .loading-spinner { display: inline-block; width: 30px; height: 30px; border: 3px solid #e2e8f0; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
         
+        /* Attendance Metrics */
         .attendance-metrics { background: white; border-radius: 20px; padding: 20px; margin-top: 20px; }
         .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-top: 15px; }
         .metric-card { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 20px; border-radius: 12px; text-align: center; }
         .metric-value { font-size: 2rem; font-weight: bold; }
         .metric-label { font-size: 0.85rem; margin-top: 5px; opacity: 0.9; }
         
+        /* Grade Table */
         .grade-input { width: 80px; padding: 6px; border-radius: 6px; border: 1px solid #cbd5e1; text-align: center; }
+        .total-score { font-weight: bold; background: #f3f4f6; }
         
-        .menu-toggle { display: none; position: fixed; top: 20px; left: 20px; z-index: 1100; background: #4C1D95; color: white; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-size: 1.2rem; }
+        /* Session Type Badges */
+        .session-badge { display: inline-block; padding: 4px 8px; border-radius: 12px; font-size: 11px; }
+        .session-class { background: #dbeafe; color: #1e40af; }
+        .session-clinical { background: #d1fae5; color: #065f46; }
+        .session-exam { background: #fed7aa; color: #9a3412; }
+        
+        /* Mobile */
+        .mobile-nav-toggle { display: none; position: fixed; top: 20px; left: 20px; z-index: 1100; background: #4C1D95; color: white; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-size: 1.2rem; }
         @media (max-width: 768px) {
             .sidebar { transform: translateX(-100%); }
             .sidebar.active { transform: translateX(0); }
             .main { margin-left: 0; padding-top: 70px; }
-            .menu-toggle { display: block; }
+            .mobile-nav-toggle { display: block; }
         }
     </style>
 </head>
 <body>
-    <button class="menu-toggle" id="menuToggle">☰</button>
     <div class="container">
+        <div class="mobile-nav-toggle" id="mobileNavToggle">☰</div>
+
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
-                <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="Logo">
+                <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="Logo" onerror="this.style.display='none'">
                 <h2>LECTURER</h2>
             </div>
             <ul class="nav" id="mainNav">
-                <li><a data-tab="dashboard" class="active"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
-                <li><a data-tab="profile"><i class="fas fa-user"></i> My Profile</a></li>
-                <li><a data-tab="my-courses"><i class="fas fa-book"></i> My Courses</a></li>
-                <li><a data-tab="my-students"><i class="fas fa-users"></i> My Students</a></li>
-                <li><a data-tab="sessions"><i class="fas fa-calendar-alt"></i> Sessions</a></li>
-                <li><a data-tab="attendance"><i class="fas fa-clipboard-check"></i> Attendance</a></li>
-                <li><a data-tab="cats"><i class="fas fa-file-alt"></i> Exams/CATs</a></li>
-                <li><a data-tab="resources"><i class="fas fa-file-upload"></i> Resources</a></li>
-                <li><a data-tab="messages"><i class="fas fa-envelope"></i> Messages</a></li>
-                <li><a data-tab="calendar"><i class="fas fa-calendar"></i> Calendar</a></li>
+                <li><a href="#" data-tab="dashboard" class="active"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+                <li><a href="#" data-tab="profile"><i class="fas fa-user"></i> My Profile</a></li>
+                <li><a href="#" data-tab="my-courses"><i class="fas fa-book"></i> My Courses</a></li>
+                <li><a href="#" data-tab="my-students"><i class="fas fa-users"></i> My Students</a></li>
+                <li><a href="#" data-tab="sessions"><i class="fas fa-calendar-alt"></i> Sessions</a></li>
+                <li><a href="#" data-tab="attendance"><i class="fas fa-clipboard-check"></i> Attendance</a></li>
+                <li><a href="#" data-tab="cats"><i class="fas fa-file-alt"></i> Exams/CATs</a></li>
+                <li><a href="#" data-tab="resources"><i class="fas fa-file-upload"></i> Resources</a></li>
+                <li><a href="#" data-tab="messages"><i class="fas fa-envelope"></i> Messages</a></li>
+                <li><a href="#" data-tab="calendar"><i class="fas fa-calendar"></i> Calendar</a></li>
             </ul>
             <div class="logout">
                 <button id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Logout</button>
@@ -151,14 +182,30 @@
 
             <div id="feedbackMsg" class="feedback"></div>
 
-            <!-- DASHBOARD -->
+            <!-- DASHBOARD SECTION -->
             <section id="dashboard-content" class="tab-content active">
                 <h2><i class="fas fa-tachometer-alt"></i> Lecturer Dashboard</h2>
                 <div class="cards">
-                    <div class="card" onclick="showTab('my-students')"><h3>My Students</h3><p class="data" id="totalStudents">0</p></div>
-                    <div class="card" onclick="showTab('my-courses')"><h3>My Courses</h3><p class="data" id="totalCourses">0</p></div>
-                    <div class="card card-alert-danger" onclick="showTab('my-students')"><h3>At Risk Students</h3><p class="data" id="atRiskCount">0</p></div>
-                    <div class="card card-alert-warning" onclick="showTab('cats')"><h3>Pending Grading</h3><p class="data" id="pendingGrading">0</p></div>
+                    <div class="card" onclick="showTab('my-students')">
+                        <h3><i class="fas fa-users"></i> My Students</h3>
+                        <p class="data" id="totalStudents">0</p>
+                        <p class="minor-data">Under your supervision</p>
+                    </div>
+                    <div class="card" onclick="showTab('my-courses')">
+                        <h3><i class="fas fa-book"></i> My Courses</h3>
+                        <p class="data" id="totalCourses">0</p>
+                        <p class="minor-data">Assigned to you</p>
+                    </div>
+                    <div class="card card-alert-danger" onclick="showTab('my-students')">
+                        <h3><i class="fas fa-exclamation-triangle"></i> At Risk Students</h3>
+                        <p class="data" id="atRiskCount">0</p>
+                        <p class="minor-data">Need attention</p>
+                    </div>
+                    <div class="card card-alert-warning" onclick="showTab('cats')">
+                        <h3><i class="fas fa-file-signature"></i> Pending Grading</h3>
+                        <p class="data" id="pendingGrading">0</p>
+                        <p class="minor-data">Exams to grade</p>
+                    </div>
                 </div>
                 <div class="attendance-metrics">
                     <h3><i class="fas fa-chart-bar"></i> Attendance Overview</h3>
@@ -170,7 +217,7 @@
                 </div>
             </section>
 
-            <!-- PROFILE -->
+            <!-- PROFILE SECTION -->
             <section id="profile-content" class="tab-content">
                 <h2><i class="fas fa-user"></i> My Profile</h2>
                 <div class="profile-card">
@@ -197,42 +244,47 @@
                 </div>
             </section>
 
-            <!-- MY COURSES -->
+            <!-- MY COURSES SECTION -->
             <section id="my-courses-content" class="tab-content">
                 <h2><i class="fas fa-book"></i> My Courses</h2>
-                <div class="search-container">
+                <div class="filter-bar">
                     <input type="text" id="courseSearch" placeholder="Search by course name or code..." onkeyup="filterCourses()">
-                    <button onclick="filterCourses()"><i class="fas fa-search"></i> Search</button>
+                    <button class="btn-action" onclick="exportTableToCSV('coursesTableBody', 'My_Courses.csv')"><i class="fas fa-download"></i> Export CSV</button>
                 </div>
                 <div class="table-responsive">
                     <table class="data-table">
-                        <thead><tr><th>Code</th><th>Course Name</th><th>Program</th><th>Block</th><th>Intake</th><th>Students</th><th>Action</th></tr></thead>
+                        <thead><tr><th>Code</th><th>Course Name</th><th>Program</th><th>Block</th><th>Intake</th><th>Students</th><th>Actions</th></tr></thead>
                         <tbody id="coursesTableBody"><tr><td colspan="7"><div class="loading-spinner"></div> Loading courses...<\/td><\/tr><\/tbody>
                     </table>
                 </div>
             </section>
 
-            <!-- MY STUDENTS -->
+            <!-- MY STUDENTS SECTION -->
             <section id="my-students-content" class="tab-content">
                 <h2><i class="fas fa-users"></i> My Students</h2>
-                <div class="search-container">
-                    <input type="text" id="studentSearch" placeholder="Search by name or registration number..." onkeyup="filterStudents()">
-                    <button onclick="filterStudents()"><i class="fas fa-search"></i> Search</button>
+                <div class="filter-bar">
+                    <input type="text" id="studentSearch" placeholder="Search by name or ID..." onkeyup="filterStudents()">
+                    <select id="studentStatusFilter" onchange="filterStudents()">
+                        <option value="all">All Status</option>
+                        <option value="active">Active</option>
+                        <option value="at-risk">At Risk</option>
+                    </select>
+                    <button class="btn-action" onclick="exportTableToCSV('studentsTableBody', 'My_Students.csv')"><i class="fas fa-download"></i> Export CSV</button>
                 </div>
                 <div class="table-responsive">
                     <table class="data-table">
                         <thead><tr><th>Name</th><th>Reg No.</th><th>Email</th><th>Program</th><th>Intake</th><th>Block</th><th>Status</th><th>Actions</th></tr></thead>
-                        <tbody id="studentsTableBody"><td><td colspan="8"><div class="loading-spinner"></div> Loading students...<\/td><\/tr><\/tbody>
+                        <tbody id="studentsTableBody"><tr><td colspan="8"><div class="loading-spinner"></div> Loading students...<\/td><\/tr><\/tbody>
                     </table>
                 </div>
             </section>
 
-            <!-- SESSIONS -->
+            <!-- SESSIONS SECTION -->
             <section id="sessions-content" class="tab-content">
-                <h2><i class="fas fa-calendar-alt"></i> Schedule Session</h2>
+                <h2><i class="fas fa-calendar-alt"></i> Manage Sessions</h2>
                 <form id="addSessionForm" class="inline-form">
                     <div class="form-row">
-                        <div class="form-group"><label>Session Title *</label><input type="text" id="sessionTitle" required placeholder="e.g., Maternal Health Lecture"></div>
+                        <div class="form-group"><label>Session Title *</label><input type="text" id="sessionTitle" required></div>
                         <div class="form-group"><label>Date *</label><input type="date" id="sessionDate" required></div>
                         <div class="form-group"><label>Time *</label><input type="time" id="sessionTime" required></div>
                     </div>
@@ -243,7 +295,9 @@
                     </div>
                     <button type="submit" class="btn-action"><i class="fas fa-calendar-plus"></i> Schedule Session</button>
                 </form>
-                <h3>Upcoming Sessions</h3>
+                <div class="toolbar">
+                    <button class="btn-action" onclick="exportTableToCSV('sessionsTableBody', 'Sessions.csv')"><i class="fas fa-download"></i> Export CSV</button>
+                </div>
                 <div class="table-responsive">
                     <table class="data-table">
                         <thead><tr><th>Title</th><th>Date/Time</th><th>Course</th><th>Program/Block</th><th>Attendance Link</th><th>Actions</th></tr></thead>
@@ -252,16 +306,13 @@
                 </div>
             </section>
 
-            <!-- ATTENDANCE -->
+            <!-- ATTENDANCE SECTION -->
             <section id="attendance-content" class="tab-content">
                 <h2><i class="fas fa-clipboard-check"></i> Attendance Management</h2>
-                
                 <div class="check-in-controls">
                     <h4><i class="fas fa-map-marker-alt"></i> Lecturer Check-in</h4>
-                    <p>Mark your own attendance with GPS location</p>
                     <button id="lecturerCheckinBtn" class="btn-action"><i class="fas fa-location-dot"></i> Mark My Attendance</button>
                 </div>
-                
                 <form id="manualAttendanceForm" class="inline-form">
                     <h4><i class="fas fa-user-plus"></i> Manual Student Attendance</h4>
                     <div class="form-row">
@@ -293,12 +344,12 @@
                 <div class="table-responsive">
                     <table class="data-table">
                         <thead><tr><th>Date</th><th>Student</th><th>Reg No.</th><th>Session Type</th><th>Course</th><th>Time</th><th>Status</th><th>Recorded By</th></tr></thead>
-                        <tbody id="pastAttendanceTableBody"><td><td colspan="8"><div class="loading-spinner"></div> Loading past records...<\/td><\/tr><\/tbody>
+                        <tbody id="pastAttendanceTableBody"><tr><td colspan="8"><div class="loading-spinner"></div> Loading past records...<\/td><\/tr><\/tbody>
                     </table>
                 </div>
             </section>
 
-            <!-- EXAMS -->
+            <!-- EXAMS SECTION -->
             <section id="cats-content" class="tab-content">
                 <h2><i class="fas fa-file-alt"></i> Exams & CATs Management</h2>
                 <form id="addExamForm" class="inline-form">
@@ -329,12 +380,12 @@
                 <div class="table-responsive">
                     <table class="data-table">
                         <thead><tr><th>Type</th><th>Title</th><th>Course</th><th>Program/Block</th><th>Date</th><th>Duration</th><th>Status</th><th>Actions</th></tr></thead>
-                        <tbody id="examsTableBody"><tr><td colspan="8"><div class="loading-spinner"></div> Loading exams...<\/td><\/tr><\/tbody>
+                        <tbody id="examsTableBody"></td><td colspan="8"><div class="loading-spinner"></div> Loading exams...<\/td><\/tr><\/tbody>
                     </table>
                 </div>
             </section>
 
-            <!-- RESOURCES -->
+            <!-- RESOURCES SECTION -->
             <section id="resources-content" class="tab-content">
                 <h2><i class="fas fa-file-upload"></i> Learning Resources</h2>
                 <form id="uploadResourceForm" class="inline-form">
@@ -361,7 +412,7 @@
                 </div>
             </section>
 
-            <!-- MESSAGES -->
+            <!-- MESSAGES SECTION -->
             <section id="messages-content" class="tab-content">
                 <h2><i class="fas fa-envelope"></i> Messages</h2>
                 <form id="sendMessageForm" class="inline-form">
@@ -381,7 +432,7 @@
                 </div>
             </section>
 
-            <!-- CALENDAR -->
+            <!-- CALENDAR SECTION -->
             <section id="calendar-content" class="tab-content">
                 <h2><i class="fas fa-calendar"></i> Academic Calendar</h2>
                 <div id="calendarDisplay" style="background: white; border-radius: 16px; padding: 16px; min-height: 500px;"></div>
@@ -394,7 +445,7 @@
         <div class="modal-content">
             <div class="modal-header"><h3 id="gradeModalTitle">Grade Students</h3><button class="close-btn" onclick="closeModal('gradeModal')">&times;</button></div>
             <div class="modal-body" id="gradeModalBody"><div class="loading-spinner"></div></div>
-            <div class="modal-actions"><button class="btn-action" onclick="saveGrades()">Save Grades</button><button class="btn-cancel" onclick="closeModal('gradeModal')">Cancel</button></div>
+            <div class="modal-actions"><button class="btn-action" onclick="saveAllGrades()">Save Grades</button><button class="btn-cancel" onclick="closeModal('gradeModal')">Cancel</button></div>
         </div>
     </div>
 
@@ -421,39 +472,87 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
-
+    
     <script>
         // =====================================================
-        // LECTURER DASHBOARD - MATCHING SUPER ADMIN DATABASE
+        // LECTURER DASHBOARD SCRIPT - MATCHES SUPER ADMIN
         // =====================================================
         
         const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
         const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        window.sb = sb;
         
-        let currentUser = null;
         let currentUserProfile = null;
+        let currentUserId = null;
+        let attendanceMap = null;
+        let lecturerTargetProgram = null;
         let allCourses = [];
         let allStudents = [];
-        let attendanceMap = null;
         let calendar = null;
+        let currentGradingExam = null;
         
+        // =====================================================
+        // UTILITY FUNCTIONS (MATCH SUPER ADMIN)
+        // =====================================================
         function $(id) { return document.getElementById(id); }
         
-        function showFeedback(msg, type) {
+        function escapeHtml(s) {
+            if (!s) return '';
+            return String(s).replace(/[&<>]/g, function(m) {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                return m;
+            });
+        }
+        
+        function showFeedback(message, type) {
             const el = $('feedbackMsg');
-            el.textContent = msg;
-            el.className = `feedback feedback-${type}`;
-            el.style.display = 'block';
-            setTimeout(() => el.style.display = 'none', 5000);
+            if (el) {
+                el.textContent = message;
+                el.className = `feedback feedback-${type}`;
+                el.style.display = 'block';
+                setTimeout(() => el.style.display = 'none', 5000);
+            } else { alert(message); }
         }
         
         function closeModal(modalId) {
             const modal = $(modalId);
-            if (modal) modal.classList.remove('active');
+            if (modal) modal.style.display = 'none';
+            if (modalId === 'mapModal' && attendanceMap) {
+                attendanceMap.remove();
+                attendanceMap = null;
+            }
         }
         
-        // Navigation - FIXED
+        function exportTableToCSV(tableId, filename) {
+            const table = document.getElementById(tableId);
+            if (!table) return;
+            const rows = table.querySelectorAll('tr');
+            let csv = [];
+            for (let i = 0; i < rows.length; i++) {
+                const row = [];
+                const cols = rows[i].querySelectorAll('td');
+                if (cols.length < 2) continue;
+                for (let j = 0; j < cols.length; j++) {
+                    let data = cols[j].innerText.trim();
+                    data = data.replace(/"/g, '""');
+                    row.push('"' + data + '"');
+                }
+                csv.push(row.join(','));
+            }
+            const blob = new Blob([csv.join('\n')], { type: 'text/csv' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            link.click();
+            URL.revokeObjectURL(blob);
+        }
+        
+        // =====================================================
+        // SHOW TAB FUNCTION (GLOBAL FOR ONCLICK)
+        // =====================================================
         window.showTab = function(tabId) {
             console.log('Opening tab:', tabId);
             document.querySelectorAll('.tab-content').forEach(tab => {
@@ -471,10 +570,13 @@
                     link.classList.add('active');
                 }
             });
-            loadTabData(tabId);
+            loadSectionData(tabId);
         };
         
-        async function loadTabData(tabId) {
+        // =====================================================
+        // SECTION DATA LOADER
+        // =====================================================
+        async function loadSectionData(tabId) {
             switch(tabId) {
                 case 'dashboard': await loadDashboard(); break;
                 case 'profile': await loadProfile(); break;
@@ -495,20 +597,13 @@
         async function loadDashboard() {
             try {
                 const program = currentUserProfile?.program || 'KRCHN';
-                
-                const { data: students } = await sb.from('consolidated_user_profiles_table').select('*').eq('role', 'student').eq('program', program);
-                allStudents = students || [];
                 $('totalStudents').textContent = allStudents.length;
+                $('totalCourses').textContent = allCourses.filter(c => c.target_program === program).length;
                 $('atRiskCount').textContent = allStudents.filter(s => (s.cumulative_absences || 0) > 5).length;
-                
-                const { data: courses } = await sb.from('courses').select('*').eq('target_program', program);
-                allCourses = courses || [];
-                $('totalCourses').textContent = allCourses.length;
                 
                 const { data: exams } = await sb.from('exams').select('id').eq('status', 'Scheduled');
                 $('pendingGrading').textContent = exams?.length || 0;
                 
-                // Attendance metrics
                 const today = new Date().toISOString().split('T')[0];
                 const { data: todayData } = await sb.from('geo_attendance_logs').select('*').gte('check_in_time', today);
                 $('todayAttendance').textContent = todayData?.filter(l => l.program === program).length || 0;
@@ -522,7 +617,7 @@
                 const uniqueStudents = [...new Set((monthData || []).filter(l => l.program === program).map(l => l.user_id))].length;
                 const rate = allStudents.length ? Math.round((uniqueStudents / allStudents.length) * 100) : 0;
                 $('monthlyRate').textContent = `${rate}%`;
-            } catch(e) { console.log('Dashboard error:', e); }
+            } catch(e) { console.error('Dashboard error:', e); }
         }
         
         // =====================================================
@@ -546,11 +641,11 @@
         $('photoInput')?.addEventListener('change', async (e) => {
             const file = e.target.files[0];
             if (!file) return;
-            const fileName = `avatars/${currentUser.id}_${Date.now()}.jpg`;
+            const fileName = `avatars/${currentUserId}_${Date.now()}.jpg`;
             const { error } = await sb.storage.from('resources').upload(fileName, file);
             if (error) { showFeedback(error.message, 'error'); return; }
             const { data } = sb.storage.from('resources').getPublicUrl(fileName);
-            await sb.from('consolidated_user_profiles_table').update({ avatar_url: data.publicUrl }).eq('user_id', currentUser.id);
+            await sb.from('consolidated_user_profiles_table').update({ avatar_url: data.publicUrl }).eq('user_id', currentUserId);
             showFeedback('Photo updated!', 'success');
             loadProfile();
         });
@@ -561,9 +656,10 @@
         async function loadCourses() {
             const program = currentUserProfile?.program || 'KRCHN';
             const { data } = await sb.from('courses').select('*').eq('target_program', program);
+            allCourses = data || [];
             const tbody = $('coursesTableBody');
-            if (!data?.length) { tbody.innerHTML = '<tr><td colspan="7">No courses found<\/td><\/tr>'; return; }
-            tbody.innerHTML = data.map(c => `
+            if (!allCourses.length) { tbody.innerHTML = '<tr><td colspan="7">No courses found<\/td><\/tr>'; return; }
+            tbody.innerHTML = allCourses.map(c => `
                 <tr>
                     <td><strong>${c.unit_code || 'N/A'}</strong></td>
                     <td>${c.course_name}</td>
@@ -590,9 +686,9 @@
             const { data } = await sb.from('consolidated_user_profiles_table').select('*').eq('role', 'student').eq('program', program);
             allStudents = data || [];
             const tbody = $('studentsTableBody');
-            if (!allStudents.length) { tbody.innerHTML = '<td><td colspan="8">No students found<\/td><\/tr>'; return; }
+            if (!allStudents.length) { tbody.innerHTML = '<tr><td colspan="8">No students found<\/td><\/tr>'; return; }
             tbody.innerHTML = allStudents.map(s => `
-                <tr>
+                <tr class="${(s.cumulative_absences || 0) > 5 ? 'at-risk' : ''}">
                     <td>${s.full_name}</td>
                     <td><strong>${s.student_id || 'N/A'}</strong></td>
                     <td>${s.email}</td>
@@ -607,8 +703,16 @@
         
         window.filterStudents = function() {
             const search = $('studentSearch').value.toLowerCase();
+            const statusFilter = $('studentStatusFilter').value;
             const rows = document.querySelectorAll('#studentsTableBody tr');
-            rows.forEach(row => { row.style.display = row.textContent.toLowerCase().includes(search) ? '' : 'none'; });
+            rows.forEach(row => {
+                const status = row.cells[6]?.textContent?.toLowerCase() || '';
+                const matchesStatus = statusFilter === 'all' || 
+                    (statusFilter === 'active' && !status.includes('risk')) ||
+                    (statusFilter === 'at-risk' && status.includes('risk'));
+                const matchesSearch = row.textContent.toLowerCase().includes(search);
+                row.style.display = (matchesStatus && matchesSearch) ? '' : 'none';
+            });
         };
         
         window.viewStudent = function(id) {
@@ -634,7 +738,7 @@
                 target_program: $('sessionProgram').value,
                 block_term: $('sessionBlock').value,
                 course_id: $('sessionCourse').value,
-                lecturer_id: currentUser?.id
+                lecturer_id: currentUserId
             });
             if (error) { showFeedback(error.message, 'error'); return; }
             showFeedback('Session scheduled!', 'success');
@@ -643,9 +747,9 @@
         });
         
         async function loadSessions() {
-            const { data } = await sb.from('scheduled_sessions').select('*').eq('lecturer_id', currentUser?.id).order('session_date', false);
+            const { data } = await sb.from('scheduled_sessions').select('*').eq('lecturer_id', currentUserId).order('session_date', false);
             const tbody = $('sessionsTableBody');
-            if (!data?.length) { tbody.innerHTML = '<tr><td colspan="6">No sessions scheduled<\/td><\/tr>'; return; }
+            if (!data?.length) { tbody.innerHTML = '<td><td colspan="6">No sessions scheduled<\/td><\/tr>'; return; }
             tbody.innerHTML = data.map(s => `
                 <tr>
                     <td>${s.session_title}</td>
@@ -689,17 +793,12 @@
             if (!navigator.geolocation) { alert('Geolocation not supported'); return; }
             navigator.geolocation.getCurrentPosition(async (pos) => {
                 const { error } = await sb.from('geo_attendance_logs').insert({
-                    user_id: currentUser?.id,
-                    user_role: 'lecturer',
-                    session_type: 'Lecturer Check-in',
-                    check_in_time: new Date().toISOString(),
-                    latitude: pos.coords.latitude,
-                    longitude: pos.coords.longitude,
-                    program: currentUserProfile?.program,
-                    location_name: 'Lecturer Check-in'
+                    user_id: currentUserId, user_role: 'lecturer', session_type: 'Lecturer Check-in',
+                    check_in_time: new Date().toISOString(), latitude: pos.coords.latitude, longitude: pos.coords.longitude,
+                    program: currentUserProfile?.program, location_name: 'Lecturer Check-in'
                 });
                 if (error) showFeedback(error.message, 'error');
-                else { showFeedback('Check-in recorded!', 'success'); loadAttendance(); }
+                else { showFeedback('Check-in recorded!', 'success'); await loadAttendance(); }
             }, () => alert('Location access denied'));
         });
         
@@ -709,21 +808,14 @@
             if (!student) { showFeedback('Select a student', 'error'); return; }
             const dateTime = `${$('attDate').value}T${$('attTime').value || '12:00'}:00`;
             const { error } = await sb.from('geo_attendance_logs').insert({
-                user_id: $('attStudentId').value,
-                student_name: student.full_name,
-                user_role: 'student',
-                session_type: $('attSessionType').value,
-                check_in_time: dateTime,
-                course_id: $('attCourseId').value || null,
-                location_details: $('attLocation').value || 'Manual Entry',
-                status: 'Present',
-                recorded_by_id: currentUser?.id,
-                recorded_by_name: currentUserProfile?.full_name,
-                program: currentUserProfile?.program,
-                is_manual_entry: true
+                user_id: $('attStudentId').value, student_name: student.full_name, user_role: 'student',
+                session_type: $('attSessionType').value, check_in_time: dateTime, course_id: $('attCourseId').value || null,
+                location_details: $('attLocation').value || 'Manual Entry', status: 'Present',
+                recorded_by_id: currentUserId, recorded_by_name: currentUserProfile?.full_name,
+                program: currentUserProfile?.program, is_manual_entry: true
             });
             if (error) showFeedback(error.message, 'error');
-            else { showFeedback('Attendance recorded!', 'success'); e.target.reset(); loadAttendance(); }
+            else { showFeedback('Attendance recorded!', 'success'); e.target.reset(); await loadAttendance(); }
         });
         
         async function loadAttendance() {
@@ -732,14 +824,14 @@
             const { data } = await sb.from('geo_attendance_logs').select('*').gte('check_in_time', today).order('check_in_time', false);
             const tbody = $('attendanceTableBody');
             if (!data?.length) { tbody.innerHTML = '<tr><td colspan="8">No attendance records today<\/td><\/tr>'; return; }
-            const filtered = data.filter(l => l.program === program || l.recorded_by_id === currentUser?.id);
+            const filtered = data.filter(l => l.program === program || l.recorded_by_id === currentUserId);
             tbody.innerHTML = filtered.map(a => {
                 const student = allStudents.find(s => s.user_id === a.user_id);
                 return `
                     <tr>
                         <td>${a.student_name || student?.full_name || 'N/A'}</td>
                         <td>${student?.student_id || 'N/A'}</td>
-                        <td><span class="badge badge-info">${a.session_type}</span></td>
+                        <td><span class="session-badge session-${(a.session_type || 'class').toLowerCase()}">${a.session_type}</span></td>
                         <td>${allCourses.find(c => c.id === a.course_id)?.course_name || 'N/A'}</td>
                         <td>${new Date(a.check_in_time).toLocaleTimeString()}</td>
                         <td>${a.location_details || a.location_name || 'N/A'}</td>
@@ -756,7 +848,7 @@
             const { data } = await sb.from('geo_attendance_logs').select('*').lte('check_in_time', monthAgo.toISOString()).order('check_in_time', false).limit(100);
             const tbody = $('pastAttendanceTableBody');
             if (!data?.length) { tbody.innerHTML = '<tr><td colspan="8">No past records found<\/td><\/tr>'; return; }
-            const filtered = data.filter(l => l.program === program || l.recorded_by_id === currentUser?.id);
+            const filtered = data.filter(l => l.program === program || l.recorded_by_id === currentUserId);
             tbody.innerHTML = filtered.map(a => {
                 const student = allStudents.find(s => s.user_id === a.user_id);
                 return `
@@ -764,12 +856,12 @@
                         <td>${new Date(a.check_in_time).toLocaleDateString()}</td>
                         <td>${a.student_name || student?.full_name || 'N/A'}</td>
                         <td>${student?.student_id || 'N/A'}</td>
-                        <td><span class="badge badge-info">${a.session_type}</span></td>
+                        <td><span class="session-badge session-${(a.session_type || 'class').toLowerCase()}">${a.session_type}</span></td>
                         <td>${allCourses.find(c => c.id === a.course_id)?.course_name || 'N/A'}</td>
                         <td>${new Date(a.check_in_time).toLocaleTimeString()}</td>
                         <td><span class="badge badge-success">Present</span></td>
                         <td>${a.recorded_by_name || 'Self'}</td>
-                    </tr>
+                    <tr>
                 `;
             }).join('');
         }
@@ -782,7 +874,7 @@
         
         window.showMap = function(lat, lng, name) {
             const modal = $('mapModal');
-            modal.classList.add('active');
+            modal.style.display = 'flex';
             setTimeout(() => {
                 if (attendanceMap) attendanceMap.remove();
                 attendanceMap = L.map('mapContainer').setView([lat, lng], 16);
@@ -814,7 +906,7 @@
                 duration_minutes: parseInt($('examDuration').value) || 120,
                 online_link: $('examLink').value || null,
                 status: $('examStatus').value,
-                created_by: currentUser?.id
+                created_by: currentUserId
             });
             if (error) { showFeedback(error.message, 'error'); return; }
             showFeedback('Exam created successfully!', 'success');
@@ -823,15 +915,14 @@
         });
         
         async function loadExams() {
-            const program = currentUserProfile?.program || 'KRCHN';
-            const { data } = await sb.from('exams').select('*').eq('target_program', program).order('exam_date', false);
+            const { data } = await sb.from('exams').select('*, course:course_id(course_name)').eq('created_by', currentUserId).order('exam_date', false);
             const tbody = $('examsTableBody');
             if (!data?.length) { tbody.innerHTML = '<tr><td colspan="8">No exams created<\/td><\/tr>'; return; }
             tbody.innerHTML = data.map(e => `
                 <tr>
                     <td><span class="badge badge-info">${e.exam_type}</span></td>
                     <td><strong>${e.exam_name}</strong></td>
-                    <td>${allCourses.find(c => c.id === e.course_id)?.course_name || 'General'}</td>
+                    <td>${e.course?.course_name || 'General'}</td>
                     <td>${e.target_program}/${e.block_term}</td>
                     <td>${new Date(e.exam_date).toLocaleDateString()}</td>
                     <td>${e.duration_minutes} min</td>
@@ -859,7 +950,7 @@
             $('editExamTitle').value = data.exam_name;
             $('editExamDate').value = data.exam_date;
             $('editExamStatus').value = data.status;
-            $('examEditModal').classList.add('active');
+            $('examEditModal').style.display = 'flex';
         };
         
         $('editExamForm')?.addEventListener('submit', async (e) => {
@@ -883,8 +974,6 @@
         // =====================================================
         // GRADE MODAL
         // =====================================================
-        let currentGradingExam = null;
-        
         window.openGradeModal = async (examId) => {
             const { data: exam } = await sb.from('exams').select('*, course:course_id(course_name)').eq('id', examId).single();
             if (!exam) return;
@@ -906,7 +995,7 @@
                     </tr>`;
                 }).join('')}</tbody></table></div>
             `;
-            $('gradeModal').classList.add('active');
+            $('gradeModal').style.display = 'flex';
         };
         
         window.filterGradeTable = function() {
@@ -915,7 +1004,7 @@
             rows.forEach(row => { row.style.display = row.getAttribute('data-name')?.includes(search) ? '' : 'none'; });
         };
         
-        window.saveGrades = async () => {
+        window.saveAllGrades = async () => {
             const rows = document.querySelectorAll('#gradeTableBody tr');
             let saved = 0;
             for (const row of rows) {
@@ -930,7 +1019,7 @@
                         student_id: studentId,
                         score: parseFloat(score),
                         status: status,
-                        graded_by: currentUser?.id,
+                        graded_by: currentUserId,
                         question_id: '00000000-0000-0000-0000-000000000000'
                     });
                     if (!error) saved++;
@@ -944,9 +1033,7 @@
         // =====================================================
         // RESOURCES
         // =====================================================
-        async function populateResourceForm() {
-            // Block options populated based on program selection
-        }
+        async function populateResourceForm() {}
         
         $('uploadResourceForm')?.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -964,7 +1051,7 @@
                 block: $('resourceBlock').value,
                 file_path: filePath,
                 file_url: urlData.publicUrl,
-                uploaded_by: currentUser?.id,
+                uploaded_by: currentUserId,
                 uploaded_by_name: currentUserProfile?.full_name
             });
             if (error) showFeedback(error.message, 'error');
@@ -972,9 +1059,9 @@
         });
         
         async function loadResources() {
-            const { data } = await sb.from('resources').select('*').eq('uploaded_by', currentUser?.id).order('created_at', false);
+            const { data } = await sb.from('resources').select('*').eq('uploaded_by', currentUserId).order('created_at', false);
             const tbody = $('resourcesTableBody');
-            if (!data?.length) { tbody.innerHTML = '<tr><td colspan="5">No resources uploaded<\/td><\/tr>'; return; }
+            if (!data?.length) { tbody.innerHTML = '<td><td colspan="5">No resources uploaded<\/td><\/tr>'; return; }
             tbody.innerHTML = data.map(r => `
                 <tr>
                     <td>${r.title}</td>
@@ -1014,7 +1101,7 @@
                 target_user_id: $('msgRecipient').value,
                 subject: $('msgSubject').value,
                 message: $('msgBody').value,
-                sender_id: currentUser?.id,
+                sender_id: currentUserId,
                 sender_name: currentUserProfile?.full_name,
                 target_program: currentUserProfile?.program
             });
@@ -1025,9 +1112,9 @@
         });
         
         async function loadMessages() {
-            const { data } = await sb.from('notifications').select('*').eq('sender_id', currentUser?.id).order('created_at', false);
+            const { data } = await sb.from('notifications').select('*').eq('sender_id', currentUserId).order('created_at', false);
             const tbody = $('messagesTableBody');
-            if (!data?.length) { tbody.innerHTML = '<tr><td colspan="4">No messages sent<\/td><\/tr>'; return; }
+            if (!data?.length) { tbody.innerHTML = '<td><td colspan="4">No messages sent<\/td><\/tr>'; return; }
             tbody.innerHTML = data.map(m => `
                 <tr>
                     <td>${new Date(m.created_at).toLocaleDateString()}</td>
@@ -1046,8 +1133,8 @@
             if (!el) return;
             try {
                 const [sessions, exams] = await Promise.all([
-                    sb.from('scheduled_sessions').select('*').eq('lecturer_id', currentUser?.id),
-                    sb.from('exams').select('*')
+                    sb.from('scheduled_sessions').select('*').eq('lecturer_id', currentUserId),
+                    sb.from('exams').select('*').eq('created_by', currentUserId)
                 ]);
                 const events = [
                     ...(sessions.data || []).map(s => ({ title: s.session_title, start: s.session_date, color: '#3498db' })),
@@ -1070,46 +1157,49 @@
         async function init() {
             try {
                 const { data: { session } } = await sb.auth.getSession();
-                if (!session) { window.location.href = '/login'; return; }
-                currentUser = session.user;
-                const { data: profile } = await sb.from('consolidated_user_profiles_table').select('*').eq('user_id', currentUser.id).single();
-                if (!profile || profile.role !== 'lecturer') throw new Error('Access denied');
+                if (!session) { window.location.href = 'login.html'; return; }
+                currentUserId = session.user.id;
+                const { data: profile } = await sb.from('consolidated_user_profiles_table').select('*').eq('user_id', currentUserId).single();
+                if (!profile || profile.role !== 'lecturer') { throw new Error('Access denied. Lecturer only.'); }
                 currentUserProfile = profile;
+                lecturerTargetProgram = profile.program || 'KRCHN';
                 $('welcomeHeader').textContent = `Welcome, ${profile.full_name || 'Lecturer'}!`;
+                await loadCourses();
                 await loadStudents();
                 await loadDashboard();
                 await loadTabData('dashboard');
             } catch(e) {
                 console.error('Init error:', e);
                 alert('Session error. Please login again.');
-                window.location.href = '/login';
+                window.location.href = 'login.html';
             }
         }
         
-        // =====================================================
-        // FIXED NAVIGATION - ADD CLICK HANDLERS
-        // =====================================================
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('Setting up navigation...');
-            const navLinks = document.querySelectorAll('.nav a');
-            navLinks.forEach(link => {
-                link.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    const tabId = this.getAttribute('data-tab');
-                    console.log('Clicked:', tabId);
-                    showTab(tabId);
-                });
-            });
-            console.log('Navigation ready!');
-        });
+        async function loadTabData(tabId) {
+            await loadSectionData(tabId);
+        }
         
-        // Event Listeners
-        $('menuToggle')?.addEventListener('click', () => $('sidebar')?.classList.toggle('active'));
-        $('logoutBtn')?.addEventListener('click', async () => { await sb.auth.signOut(); window.location.href = '/login'; });
+        // =====================================================
+        // EVENT LISTENERS
+        // =====================================================
+        $('mobileNavToggle')?.addEventListener('click', () => $('sidebar')?.classList.toggle('active'));
+        document.querySelectorAll('.nav a').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const tabId = link.getAttribute('data-tab');
+                if (tabId) showTab(tabId);
+                $('sidebar')?.classList.remove('active');
+            });
+        });
+        $('logoutBtn')?.addEventListener('click', async () => { await sb.auth.signOut(); window.location.href = 'login.html'; });
         $('notificationBtn')?.addEventListener('click', () => showFeedback('Notifications coming soon', 'info'));
         $('helpBtn')?.addEventListener('click', () => showFeedback('Help documentation coming soon', 'info'));
         $('editProfileBtn')?.addEventListener('click', () => showFeedback('Profile editing coming soon', 'info'));
         $('changePasswordBtn')?.addEventListener('click', () => showFeedback('Password change coming soon', 'info'));
+        
+        // Make functions global for HTML onclick
+        window.exportTableToCSV = exportTableToCSV;
+        window.closeModal = closeModal;
         
         // Start
         init();
