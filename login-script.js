@@ -1,5 +1,5 @@
 // ============================================
-// SINGLE SUPABASE INITIALIZATION - SAFE METHOD
+// COMPLETE LOGIN SCRIPT WITH SESSION TRACKING
 // ============================================
 
 // Create a namespace for our app to avoid conflicts
@@ -302,7 +302,7 @@ window.NCHSMLogin = {
             
             console.log('✅ Profile loaded');
             
-            await this.completeLogin(profileData);
+            await this.completeLogin(profileData, authData.session?.access_token);
             
         } catch (error) {
             console.error('💥 Login error:', error);
@@ -322,6 +322,105 @@ window.NCHSMLogin = {
             loginButton.disabled = false;
             buttonText.textContent = 'Sign In';
         }
+    },
+    
+    // ============================================
+    // SESSION TRACKING - NEW!
+    // ============================================
+    trackUserSession: async function(userId, email, sessionToken, userAgent) {
+        try {
+            console.log('🔍 Tracking session for user:', email);
+            
+            // Get user's IP address
+            let ipAddress = 'unknown';
+            try {
+                const ipResponse = await fetch('https://api.ipify.org?format=json');
+                const ipData = await ipResponse.json();
+                ipAddress = ipData.ip;
+            } catch (ipError) {
+                console.warn('Could not fetch IP:', ipError);
+            }
+            
+            // Parse device info from user agent
+            const deviceInfo = this.parseUserAgent(userAgent);
+            
+            // Set session expiration (24 hours from now)
+            const expiresAt = new Date();
+            expiresAt.setHours(expiresAt.getHours() + 24);
+            
+            // Generate a unique session token if not provided
+            const finalSessionToken = sessionToken || this.generateSessionToken();
+            
+            // Insert new session record
+            const { data, error } = await this.supabase
+                .from('user_sessions')
+                .insert({
+                    user_id: userId,
+                    session_token: finalSessionToken,
+                    ip_address: ipAddress,
+                    user_agent: userAgent,
+                    device_info: deviceInfo,
+                    login_time: new Date().toISOString(),
+                    last_activity: new Date().toISOString(),
+                    expires_at: expiresAt.toISOString(),
+                    is_active: true
+                })
+                .select();
+            
+            if (error) {
+                console.error('❌ Failed to track session:', error.message);
+                return null;
+            }
+            
+            console.log('✅ Session tracked for user:', email);
+            
+            // Store session info in localStorage for activity updates
+            if (data && data[0]) {
+                localStorage.setItem('current_session_id', data[0].id);
+                localStorage.setItem('session_token', finalSessionToken);
+            }
+            
+            return data?.[0];
+            
+        } catch (error) {
+            console.error('❌ Session tracking error:', error);
+            return null;
+        }
+    },
+    
+    // Parse user agent for device info
+    parseUserAgent: function(userAgent) {
+        if (!userAgent) return 'Unknown Device';
+        
+        const ua = userAgent.toLowerCase();
+        
+        // Browser detection
+        let browser = 'Unknown';
+        if (ua.includes('chrome') && !ua.includes('edg')) browser = 'Chrome';
+        else if (ua.includes('firefox')) browser = 'Firefox';
+        else if (ua.includes('safari') && !ua.includes('chrome')) browser = 'Safari';
+        else if (ua.includes('edg')) browser = 'Edge';
+        else if (ua.includes('opera')) browser = 'Opera';
+        
+        // OS detection
+        let os = 'Unknown';
+        if (ua.includes('windows')) os = 'Windows';
+        else if (ua.includes('mac')) os = 'macOS';
+        else if (ua.includes('linux')) os = 'Linux';
+        else if (ua.includes('android')) os = 'Android';
+        else if (ua.includes('ios') || ua.includes('iphone') || ua.includes('ipad')) os = 'iOS';
+        
+        // Device type
+        let device = 'Desktop';
+        if (ua.includes('mobile')) device = 'Mobile';
+        else if (ua.includes('tablet')) device = 'Tablet';
+        
+        return `${browser} on ${os} (${device})`;
+    },
+    
+    // Generate a unique session token
+    generateSessionToken: function() {
+        return 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 16);
     },
     
     // ============================================
@@ -386,14 +485,13 @@ window.NCHSMLogin = {
     },
     
     // ============================================
-    // COMPLETE LOGIN - WITH LOGIN TRACKING (Non-blocking)
+    // COMPLETE LOGIN - WITH LOGIN TRACKING AND SESSION TRACKING
     // ============================================
-    completeLogin: async function(profileData) {
+    completeLogin: async function(profileData, sessionToken) {
         console.log('🎉 Completing login for:', profileData.email);
         
         try {
-            // Update last login (NON-BLOCKING - don't await)
-            // This ensures login continues even if tracking fails
+            // Update last login (NON-BLOCKING)
             this.updateLastLogin(profileData.user_id, profileData.email)
                 .then(result => {
                     if (result) {
@@ -405,6 +503,22 @@ window.NCHSMLogin = {
                 .catch(err => {
                     console.warn('Non-critical: Login update failed', err);
                 });
+            
+            // Track user session (NEW - NON-BLOCKING)
+            this.trackUserSession(
+                profileData.user_id,
+                profileData.email,
+                sessionToken,
+                navigator.userAgent
+            ).then(result => {
+                if (result) {
+                    console.log('✅ Session tracked successfully');
+                } else {
+                    console.warn('⚠️ Session tracking skipped (non-critical)');
+                }
+            }).catch(err => {
+                console.warn('Non-critical: Session tracking failed', err);
+            });
             
             // Store profile in localStorage
             localStorage.setItem('currentUserProfile', JSON.stringify(profileData));
