@@ -1165,10 +1165,436 @@ async function load2FASettings() {
 }
 
 // Session Management
+// =====================================================
+// SESSION MANAGEMENT - FULLY INTEGRATED WITH YOUR DB
+// =====================================================
+
 async function loadActiveSessions() {
-    // Placeholder for active sessions loading
-    console.log('Loading active sessions...');
+    const tbody = document.getElementById('active-sessions-table');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '<tr><td colspan="8"><div class="loading-spinner"></div> Loading active sessions...</td></tr>';
+    
+    try {
+        // Get active sessions with user profile data from YOUR existing table
+        const { data: sessions, error } = await sb
+            .from('user_sessions')
+            .select(`
+                *,
+                user:consolidated_user_profiles_table!user_id (
+                    user_id,
+                    full_name,
+                    email,
+                    role,
+                    program,
+                    intake_year
+                )
+            `)
+            .eq('is_active', true)
+            .order('last_activity', { ascending: false });
+        
+        if (error) throw error;
+        
+        // Update statistics
+        const activeCount = sessions?.length || 0;
+        document.getElementById('active-session-count').textContent = activeCount;
+        document.getElementById('total-active-sessions').textContent = activeCount;
+        
+        // Calculate average session duration
+        if (sessions && sessions.length > 0) {
+            const avgDuration = calculateAverageSessionDuration(sessions);
+            document.getElementById('avg-session-duration').textContent = avgDuration;
+        } else {
+            document.getElementById('avg-session-duration').textContent = '0m';
+        }
+        
+        // Calculate peak concurrent (from your logs)
+        await loadPeakConcurrentStats();
+        
+        if (!sessions || sessions.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px;">No active sessions found</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = '';
+        
+        for (const session of sessions) {
+            const user = session.user;
+            const loginTime = new Date(session.login_time).toLocaleString();
+            const lastActivity = new Date(session.last_activity).toLocaleString();
+            const duration = getSessionDuration(session.login_time, session.last_activity);
+            
+            // Get device/browser info from user_agent
+            const deviceInfo = parseUserAgent(session.user_agent);
+            
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${escapeHtml(user?.full_name || 'Unknown User')}</td>
+                <td><span class="role-badge role-${user?.role || 'user'}">${escapeHtml(user?.role || 'N/A')}</span></td>
+                <td>${escapeHtml(session.ip_address || 'N/A')}</td>
+                <td>${loginTime}</td>
+                <td>${lastActivity}</td>
+                <td><small>${escapeHtml(deviceInfo)}</small></td>
+                <td><span class="duration-badge">${duration}</span></td>
+                <td>
+                    <button onclick="terminateSession('${session.id}', '${escapeHtml(user?.full_name || 'User')}')" 
+                            class="btn-terminate" title="Terminate Session">
+                        <i class="fas fa-power-off"></i> Terminate
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(row);
+        }
+        
+        // Update last updated timestamp
+        const lastUpdated = document.getElementById('sessions-last-updated');
+        if (lastUpdated) {
+            lastUpdated.textContent = new Date().toLocaleTimeString();
+        }
+        
+    } catch (error) {
+        console.error('Error loading active sessions:', error);
+        tbody.innerHTML = `<tr><td colspan="8" style="color: red;">Error: ${error.message}</td></tr>`;
+    }
 }
+
+// Helper: Calculate average session duration
+function calculateAverageSessionDuration(sessions) {
+    let totalMinutes = 0;
+    let count = 0;
+    
+    for (const session of sessions) {
+        const login = new Date(session.login_time);
+        const lastActivity = new Date(session.last_activity);
+        const minutes = Math.floor((lastActivity - login) / 1000 / 60);
+        if (minutes > 0) {
+            totalMinutes += minutes;
+            count++;
+        }
+    }
+    
+    const avgMinutes = count > 0 ? Math.floor(totalMinutes / count) : 0;
+    return avgMinutes > 60 ? `${Math.floor(avgMinutes / 60)}h ${avgMinutes % 60}m` : `${avgMinutes}m`;
+}
+
+// Helper: Get session duration string
+function getSessionDuration(loginTime, lastActivity) {
+    const login = new Date(loginTime);
+    const last = new Date(lastActivity);
+    const minutes = Math.floor((last - login) / 1000 / 60);
+    
+    if (minutes < 1) return '< 1m';
+    if (minutes < 60) return `${minutes}m`;
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+}
+
+// Helper: Parse user agent for device info
+function parseUserAgent(userAgent) {
+    if (!userAgent) return 'Unknown';
+    
+    const ua = userAgent.toLowerCase();
+    
+    // Browser detection
+    let browser = 'Unknown';
+    if (ua.includes('chrome')) browser = 'Chrome';
+    else if (ua.includes('firefox')) browser = 'Firefox';
+    else if (ua.includes('safari')) browser = 'Safari';
+    else if (ua.includes('edge')) browser = 'Edge';
+    else if (ua.includes('opera')) browser = 'Opera';
+    
+    // OS detection
+    let os = 'Unknown';
+    if (ua.includes('windows')) os = 'Windows';
+    else if (ua.includes('mac')) os = 'macOS';
+    else if (ua.includes('linux')) os = 'Linux';
+    else if (ua.includes('android')) os = 'Android';
+    else if (ua.includes('ios') || ua.includes('iphone') || ua.includes('ipad')) os = 'iOS';
+    
+    // Device type
+    let device = 'Desktop';
+    if (ua.includes('mobile')) device = 'Mobile';
+    else if (ua.includes('tablet')) device = 'Tablet';
+    
+    return `${browser} on ${os} (${device})`;
+}
+
+// Terminate a single session
+async function terminateSession(sessionId, userName) {
+    if (!confirm(`⚠️ Terminate session for ${userName}?\n\nThis will force the user to log in again.`)) {
+        return;
+    }
+    
+    try {
+        const { error } = await sb
+            .from('user_sessions')
+            .update({ 
+                is_active: false, 
+                terminated_at: new Date().toISOString(),
+                terminated_by: currentUserProfile?.user_id
+            })
+            .eq('id', sessionId);
+        
+        if (error) throw error;
+        
+        // Log the action
+        await logAudit('SESSION_TERMINATE', `Terminated session for ${userName}`, sessionId, 'SUCCESS');
+        
+        showFeedback(`✅ Session for ${userName} terminated successfully!`, 'success');
+        
+        // Refresh the sessions list
+        loadActiveSessions();
+        
+    } catch (error) {
+        console.error('Error terminating session:', error);
+        await logAudit('SESSION_TERMINATE', `Failed to terminate session for ${userName}: ${error.message}`, sessionId, 'FAILURE');
+        showFeedback(`❌ Failed to terminate session: ${error.message}`, 'error');
+    }
+}
+
+// Terminate ALL active sessions (except current admin)
+async function terminateAllSessions() {
+    const adminName = currentUserProfile?.full_name || 'Super Admin';
+    
+    if (!confirm(`⚠️⚠️⚠️ CRITICAL ACTION ⚠️⚠️⚠️\n\nYou are about to terminate ALL active sessions across the entire system.\n\nThis will log out EVERY user except you (${adminName}).\n\nAre you absolutely sure?`)) {
+        return;
+    }
+    
+    // Second confirmation for safety
+    if (!confirm(`FINAL WARNING: This action is IRREVERSIBLE. Type "CONFIRM" to proceed.`)) {
+        return;
+    }
+    
+    const confirmation = prompt(`Type "CONFIRM" to terminate all sessions:`);
+    if (confirmation !== 'CONFIRM') {
+        showFeedback('Operation cancelled.', 'warning');
+        return;
+    }
+    
+    try {
+        // Terminate all sessions except current admin
+        const { error } = await sb
+            .from('user_sessions')
+            .update({ 
+                is_active: false, 
+                terminated_at: new Date().toISOString(),
+                terminated_by: currentUserProfile?.user_id,
+                termination_reason: 'admin_bulk_termination'
+            })
+            .neq('user_id', currentUserProfile?.user_id)
+            .eq('is_active', true);
+        
+        if (error) throw error;
+        
+        // Also clear any session tokens from localStorage on server side
+        // This is logged for audit
+        
+        const { count } = await sb
+            .from('user_sessions')
+            .select('*', { count: 'exact', head: true })
+            .eq('is_active', false)
+            .gte('terminated_at', new Date().toISOString());
+        
+        await logAudit('SESSIONS_TERMINATE_ALL', `Terminated all active sessions. Count: ${count || 0} sessions terminated.`, null, 'SUCCESS');
+        
+        showFeedback(`✅ All sessions terminated successfully! ${count || 0} users have been logged out.`, 'success');
+        
+        // Refresh the sessions list
+        loadActiveSessions();
+        
+    } catch (error) {
+        console.error('Error terminating all sessions:', error);
+        await logAudit('SESSIONS_TERMINATE_ALL', `Failed to terminate all sessions: ${error.message}`, null, 'FAILURE');
+        showFeedback(`❌ Failed to terminate all sessions: ${error.message}`, 'error');
+    }
+}
+
+// Load peak concurrent users statistics
+async function loadPeakConcurrentStats() {
+    try {
+        // Get today's date range
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        
+        // Query session logs for today
+        const { data: sessions, error } = await sb
+            .from('user_sessions')
+            .select('login_time, last_activity')
+            .gte('login_time', today.toISOString())
+            .lt('login_time', tomorrow.toISOString());
+        
+        if (error) throw error;
+        
+        if (!sessions || sessions.length === 0) {
+            document.getElementById('peak-concurrent').textContent = '0';
+            document.getElementById('peak-time').textContent = 'N/A';
+            return;
+        }
+        
+        // Calculate peak concurrent sessions
+        let maxConcurrent = 0;
+        let peakTime = null;
+        
+        // Create time points
+        const events = [];
+        sessions.forEach(session => {
+            events.push({ time: new Date(session.login_time), type: 'start' });
+            events.push({ time: new Date(session.last_activity), type: 'end' });
+        });
+        
+        // Sort by time
+        events.sort((a, b) => a.time - b.time);
+        
+        let current = 0;
+        for (const event of events) {
+            if (event.type === 'start') {
+                current++;
+                if (current > maxConcurrent) {
+                    maxConcurrent = current;
+                    peakTime = event.time;
+                }
+            } else {
+                current--;
+            }
+        }
+        
+        document.getElementById('peak-concurrent').textContent = maxConcurrent;
+        if (peakTime) {
+            document.getElementById('peak-time').textContent = peakTime.toLocaleTimeString();
+        }
+        
+    } catch (error) {
+        console.error('Error loading peak stats:', error);
+        document.getElementById('peak-concurrent').textContent = 'Error';
+        document.getElementById('peak-time').textContent = 'Error';
+    }
+}
+
+// Track user session (call this when users log in)
+async function trackUserSession(userId, sessionToken, ipAddress, userAgent) {
+    try {
+        // First, expire any existing active sessions for this user (optional - implement based on your needs)
+        // await sb.from('user_sessions').update({ is_active: false }).eq('user_id', userId).eq('is_active', true);
+        
+        // Create new session
+        const expiresAt = new Date();
+        expiresAt.setHours(expiresAt.getHours() + 24); // 24 hour session
+        
+        const { data, error } = await sb
+            .from('user_sessions')
+            .insert([{
+                user_id: userId,
+                session_token: sessionToken,
+                ip_address: ipAddress,
+                user_agent: userAgent,
+                device_info: parseUserAgent(userAgent),
+                login_time: new Date().toISOString(),
+                last_activity: new Date().toISOString(),
+                expires_at: expiresAt.toISOString(),
+                is_active: true
+            }])
+            .select();
+        
+        if (error) throw error;
+        
+        console.log('✅ Session tracked for user:', userId);
+        return data?.[0];
+        
+    } catch (error) {
+        console.error('Error tracking session:', error);
+        return null;
+    }
+}
+
+// Update session activity (call this on user actions)
+async function updateSessionActivity(sessionToken) {
+    try {
+        await sb
+            .from('user_sessions')
+            .update({ last_activity: new Date().toISOString() })
+            .eq('session_token', sessionToken)
+            .eq('is_active', true);
+    } catch (error) {
+        console.error('Error updating session activity:', error);
+    }
+}
+
+// Refresh sessions data
+function refreshSessions() {
+    loadActiveSessions();
+    showFeedback('Sessions data refreshed!', 'success');
+}
+
+// Export sessions data
+async function exportSessionsToCSV() {
+    try {
+        const { data: sessions, error } = await sb
+            .from('user_sessions')
+            .select(`
+                *,
+                user:consolidated_user_profiles_table!user_id (
+                    full_name,
+                    email,
+                    role
+                )
+            `)
+            .order('login_time', { ascending: false });
+        
+        if (error) throw error;
+        
+        if (!sessions || sessions.length === 0) {
+            showFeedback('No session data to export.', 'warning');
+            return;
+        }
+        
+        // Prepare CSV data
+        const csvRows = [['User', 'Email', 'Role', 'IP Address', 'Login Time', 'Last Activity', 'Duration', 'Device', 'Status']];
+        
+        for (const session of sessions) {
+            const duration = getSessionDuration(session.login_time, session.last_activity);
+            const status = session.is_active ? 'Active' : 'Terminated';
+            
+            csvRows.push([
+                `"${session.user?.full_name || 'Unknown'}"`,
+                `"${session.user?.email || 'N/A'}"`,
+                session.user?.role || 'N/A',
+                session.ip_address || 'N/A',
+                new Date(session.login_time).toLocaleString(),
+                new Date(session.last_activity).toLocaleString(),
+                duration,
+                session.device_info || 'Unknown',
+                status
+            ]);
+        }
+        
+        const csvContent = csvRows.map(row => row.join(',')).join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `sessions_export_${new Date().toISOString().split('T')[0]}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+        
+        showFeedback('Sessions exported successfully!', 'success');
+        
+    } catch (error) {
+        console.error('Error exporting sessions:', error);
+        showFeedback(`Export failed: ${error.message}`, 'error');
+    }
+}
+
+// Make functions globally available
+window.loadActiveSessions = loadActiveSessions;
+window.terminateSession = terminateSession;
+window.terminateAllSessions = terminateAllSessions;
+window.refreshSessions = refreshSessions;
+window.exportSessionsToCSV = exportSessionsToCSV;
+window.trackUserSession = trackUserSession;
+window.updateSessionActivity = updateSessionActivity;
 
 // Error Tracking
 async function loadErrorLogs() {
