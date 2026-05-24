@@ -1,4 +1,4 @@
-// js/exam-card.js - COMPACT v6.1 (Fixed)
+// js/exam-card.js - COMPACT v6.2 (Fixed)
 
 (function() {
     'use strict';
@@ -228,7 +228,7 @@
             // Calculate total credits
             const totalCredits = approvedUnits.reduce((sum, unit) => sum + (unit.credits || CONFIG.DEFAULT_CREDITS), 0);
             
-            // Generate compact table rows
+            // Generate compact table rows with Lecturer's Sign column
             const tableRows = approvedUnits.map((unit, index) => `
                 <tr>
                     <td>${index + 1}</td>
@@ -246,7 +246,7 @@
                         <div class="card-header">
                             <img src="${CONFIG.LOGO_URL}" alt="Logo" class="card-logo" onerror="this.style.display='none'">
                             <div class="header-text">
-                                <div class="institution">NAKURU COLLEGE OF HEALTH SCIENCES</div>
+                                <div class="institution">NAKURU COLLEGE OF HEALTH SCIENCES AND MANAGEMENT</div>
                                 <div class="card-title">EXAMINATION CARD</div>
                             </div>
                             <div class="status-badge ${isEligible ? 'eligible' : 'ineligible'}">
@@ -271,9 +271,9 @@
                                     <tr>
                                         <th width="5%">#</th>
                                         <th width="20%">Code</th>
-                                        <th width="50%">Unit Name</th>
-                                        <th width="10%">Cr</th>
-                                        <th width="15%">Sign</th>
+                                        <th width="45%">Unit Name</th>
+                                        <th width="8%">Cr</th>
+                                        <th width="22%">Lecturer's Sign</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -294,12 +294,11 @@
                             <div class="signature"><div class="sign-line"></div><div>Finance Officer</div></div>
                         </div>
                         
-                        <!-- Footer Rules - Compact -->
+                        <!-- Footer Rules - Compact (No stamp) -->
                         <div class="card-footer">
                             <div class="rule-text">📌 Present at each exam | 🚫 No electronics | ⏰ Arrive 30 mins early</div>
                             <div class="student-sign">
                                 <span>Student Signature: _________________</span>
-                                <span class="stamp">🔵 OFFICIAL STAMP</span>
                             </div>
                         </div>
                     </div>
@@ -502,19 +501,10 @@
                 
                 .student-sign {
                     display: flex;
-                    justify-content: space-between;
+                    justify-content: flex-end;
                     align-items: center;
                     padding-top: 5px;
                     border-top: 1px dashed #e2e8f0;
-                }
-                
-                .stamp {
-                    color: #4C1D95;
-                    font-weight: 600;
-                    font-size: 9px;
-                    border: 1px solid #4C1D95;
-                    padding: 2px 8px;
-                    border-radius: 4px;
                 }
                 
                 /* Print Button */
@@ -611,9 +601,7 @@
                     }
                     
                     .student-sign {
-                        flex-direction: column;
-                        gap: 8px;
-                        text-align: center;
+                        justify-content: center;
                     }
                 }
             `;
