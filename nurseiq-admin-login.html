@@ -82,7 +82,7 @@
         .btn-full { width: 100%; justify-content: center; }
         .hidden { display: none !important; }
 
-        /* ========== PREMIUM SIDEBAR NAVIGATION ========== */
+        /* Admin Container */
         .admin-container {
             display: flex;
             min-height: 100vh;
@@ -101,7 +101,6 @@
             z-index: 100;
         }
 
-        /* Sidebar Header */
         .sidebar-header {
             padding: 28px 24px;
             border-bottom: 1px solid rgba(255,255,255,0.1);
@@ -116,7 +115,6 @@
         .sidebar-header h2 i { color: #fbbf24; font-size: 1.6rem; }
         .sidebar-subtitle { font-size: 0.75rem; opacity: 0.7; margin-top: 8px; letter-spacing: 0.5px; }
 
-        /* Stats Cards in Sidebar */
         .sidebar-stats {
             padding: 20px 24px;
             display: grid;
@@ -133,7 +131,6 @@
         .stat-badge-value { font-size: 1.5rem; font-weight: 800; }
         .stat-badge-label { font-size: 0.7rem; opacity: 0.8; margin-top: 4px; }
 
-        /* Navigation Sections */
         .sidebar-nav {
             flex: 1;
             padding: 20px 16px;
@@ -152,7 +149,6 @@
             align-items: center;
             gap: 8px;
         }
-        .nav-section-title i { font-size: 0.7rem; }
         .sidebar-nav-item {
             width: 100%;
             text-align: left;
@@ -182,7 +178,6 @@
             box-shadow: 0 4px 12px rgba(59,130,246,0.3);
         }
 
-        /* Main Content */
         .main-content {
             flex: 1;
             margin-left: 280px;
@@ -191,7 +186,6 @@
             min-height: 100vh;
         }
 
-        /* Top Bar */
         .top-bar {
             background: white;
             border-radius: 24px;
@@ -214,10 +208,6 @@
             justify-content: center;
             color: white;
         }
-        .welcome-text { font-weight: 500; }
-        .welcome-text small { font-size: 12px; color: #64748b; }
-
-        /* Cards */
         .card {
             background: white;
             border-radius: 24px;
@@ -252,16 +242,51 @@
         .stat-value-main { font-size: 36px; font-weight: 800; color: #0f3b5c; }
         .stat-label-main { font-size: 13px; color: #64748b; margin-top: 8px; }
 
-        /* Question Cards */
-        .question-card {
-            background: white;
-            border-radius: 20px;
-            padding: 20px;
-            margin-bottom: 16px;
+        /* Preview Styles */
+        .preview-container {
+            max-height: 500px;
+            overflow-y: auto;
+            margin: 20px 0;
             border: 1px solid #e2e8f0;
-            transition: all 0.2s;
+            border-radius: 16px;
+            background: #f8fafc;
         }
-        .question-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
+        .preview-item {
+            padding: 16px;
+            border-bottom: 1px solid #e2e8f0;
+            background: white;
+            margin: 8px;
+            border-radius: 12px;
+        }
+        .preview-question {
+            font-weight: 700;
+            color: #0f3b5c;
+            margin-bottom: 8px;
+        }
+        .preview-options {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin: 8px 0;
+            font-size: 13px;
+        }
+        .preview-correct {
+            background: #d1fae5;
+            padding: 4px 10px;
+            border-radius: 20px;
+            display: inline-block;
+            font-size: 12px;
+            color: #065f46;
+            margin-top: 8px;
+        }
+        .preview-explanation {
+            background: #fef3c7;
+            padding: 8px 12px;
+            border-radius: 12px;
+            margin-top: 8px;
+            font-size: 12px;
+            color: #92400e;
+        }
         .badge {
             display: inline-block;
             padding: 4px 12px;
@@ -317,11 +342,6 @@
             to { transform: translateX(0); opacity: 1; }
         }
         
-        /* Reorder styles */
-        .question-card.dragging { opacity: 0.5; cursor: grabbing; }
-        .question-card.drag-over { border: 2px dashed #4f46e5; background: #f0f4ff; }
-        .reorder-handle { cursor: grab; color: #6b7280; margin-right: 10px; }
-        .reorder-handle:active { cursor: grabbing; }
         .toolbar {
             display: flex;
             justify-content: space-between;
@@ -331,7 +351,6 @@
             gap: 15px;
         }
         
-        /* Student Progress Card */
         .student-progress-card {
             background: white;
             border-radius: 16px;
@@ -345,13 +364,6 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.08);
             transform: translateX(4px);
         }
-        .marked-review-item {
-            background: #fffbeb;
-            padding: 12px;
-            border-radius: 12px;
-            margin-bottom: 10px;
-            border-left: 4px solid #f59e0b;
-        }
         .search-input {
             width: 100%;
             padding: 12px 16px;
@@ -360,6 +372,14 @@
             margin-bottom: 20px;
             font-size: 14px;
         }
+        .alert {
+            padding: 12px 16px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+        }
+        .alert-info { background: #dbeafe; color: #1e40af; }
+        .alert-success { background: #d1fae5; color: #065f46; }
+        .alert-error { background: #fee2e2; color: #991b1b; }
     </style>
 </head>
 <body>
@@ -390,7 +410,6 @@
     <!-- ADMIN DASHBOARD -->
     <div id="admin-section" class="hidden">
         <div class="admin-container">
-            <!-- PREMIUM SIDEBAR NAVIGATION -->
             <aside class="sidebar">
                 <div class="sidebar-header">
                     <h2><i class="fas fa-graduation-cap"></i> NurseIQ</h2>
@@ -404,34 +423,33 @@
                 <div class="sidebar-nav">
                     <div class="nav-section">
                         <div class="nav-section-title"><i class="fas fa-chart-line"></i> MAIN</div>
-                        <button onclick="showPage('dashboard')" class="sidebar-nav-item" data-page="dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard Overview</button>
+                        <button onclick="showPage('dashboard')" class="sidebar-nav-item"><i class="fas fa-tachometer-alt"></i> Dashboard Overview</button>
                     </div>
                     <div class="nav-section">
                         <div class="nav-section-title"><i class="fas fa-database"></i> QUESTION BANK</div>
-                        <button onclick="showPage('question-bank')" class="sidebar-nav-item" data-page="question-bank"><i class="fas fa-list"></i> Full Question Bank</button>
-                        <button onclick="showPage('add-question')" class="sidebar-nav-item" data-page="add-question"><i class="fas fa-plus-circle"></i> Add New Question</button>
-                        <button onclick="showPage('edit-bank')" class="sidebar-nav-item" data-page="edit-bank"><i class="fas fa-edit"></i> Edit/Delete Questions</button>
-                        <button onclick="showPage('bulk-import')" class="sidebar-nav-item" data-page="bulk-import"><i class="fas fa-upload"></i> Bulk Import</button>
+                        <button onclick="showPage('question-bank')" class="sidebar-nav-item"><i class="fas fa-list"></i> Full Question Bank</button>
+                        <button onclick="showPage('add-question')" class="sidebar-nav-item"><i class="fas fa-plus-circle"></i> Add New Question</button>
+                        <button onclick="showPage('edit-bank')" class="sidebar-nav-item"><i class="fas fa-edit"></i> Edit/Delete Questions</button>
+                        <button onclick="showPage('bulk-import')" class="sidebar-nav-item"><i class="fas fa-upload"></i> Bulk Import</button>
                     </div>
                     <div class="nav-section">
                         <div class="nav-section-title"><i class="fas fa-graduation-cap"></i> ACADEMICS</div>
-                        <button onclick="showPage('courses')" class="sidebar-nav-item" data-page="courses"><i class="fas fa-book"></i> Course Manager</button>
-                        <button onclick="showPage('students')" class="sidebar-nav-item" data-page="students"><i class="fas fa-users"></i> Student Manager</button>
+                        <button onclick="showPage('courses')" class="sidebar-nav-item"><i class="fas fa-book"></i> Course Manager</button>
+                        <button onclick="showPage('students')" class="sidebar-nav-item"><i class="fas fa-users"></i> Student Manager</button>
                     </div>
                     <div class="nav-section">
                         <div class="nav-section-title"><i class="fas fa-chart-simple"></i> PROGRESS & REVIEW</div>
-                        <button onclick="showPage('individual-progress')" class="sidebar-nav-item" data-page="individual-progress"><i class="fas fa-user-chart"></i> Individual Progress</button>
-                        <button onclick="showPage('marked-review')" class="sidebar-nav-item" data-page="marked-review"><i class="fas fa-flag-checkered"></i> Marked for Review</button>
-                        <button onclick="showPage('attempts')" class="sidebar-nav-item" data-page="attempts"><i class="fas fa-history"></i> Progress Summary</button>
+                        <button onclick="showPage('individual-progress')" class="sidebar-nav-item"><i class="fas fa-user-chart"></i> Individual Progress</button>
+                        <button onclick="showPage('marked-review')" class="sidebar-nav-item"><i class="fas fa-flag-checkered"></i> Marked for Review</button>
+                        <button onclick="showPage('attempts')" class="sidebar-nav-item"><i class="fas fa-history"></i> Progress Summary</button>
                     </div>
                     <div class="nav-section">
                         <div class="nav-section-title"><i class="fas fa-cog"></i> SYSTEM</div>
-                        <button onclick="showPage('settings')" class="sidebar-nav-item" data-page="settings"><i class="fas fa-sliders-h"></i> Settings</button>
+                        <button onclick="showPage('settings')" class="sidebar-nav-item"><i class="fas fa-sliders-h"></i> Settings</button>
                     </div>
                 </div>
             </aside>
 
-            <!-- MAIN CONTENT -->
             <main class="main-content">
                 <div class="top-bar">
                     <div class="welcome-text">
@@ -518,7 +536,6 @@
     function logout() { localStorage.removeItem('nurseiq_admin_session'); location.reload(); }
     const panel = document.getElementById('main-panel');
 
-    // Helper to get student progress
     function getStudentProgress(studentId) {
         const progress = userProgress[studentId] || {};
         let answers = [];
@@ -551,7 +568,6 @@
         return { answers: answersWithDetails, markedQuestions: markedWithDetails, totalAnswered: total, correctCount: correct, accuracy, hasProgress: total > 0 };
     }
 
-    // DASHBOARD
     async function renderDashboard() {
         const totalAnswered = Object.values(userProgress).reduce((sum, p) => { if (p && p.answers) return sum + Object.values(p.answers).filter(a => a.answered).length; return sum; }, 0);
         let totalMarked = 0;
@@ -575,50 +591,188 @@
         }
     }
 
-    // INDIVIDUAL STUDENT PROGRESS
-    async function renderIndividualProgress() {
-        panel.innerHTML = `<div class="card"><div class="card-header"><h3><i class="fas fa-user-chart"></i> Individual Student Progress</h3></div><input type="text" id="searchStudent" class="search-input" placeholder="🔍 Search by name or email..."><div id="studentsList"></div></div>`;
-        filterStudents();
-        document.getElementById('searchStudent')?.addEventListener('input', () => filterStudents());
-    }
-    
-    function filterStudents() {
-        const search = document.getElementById('searchStudent')?.value.toLowerCase() || '';
-        const filtered = allStudents.filter(s => s.full_name?.toLowerCase().includes(search) || s.email?.toLowerCase().includes(search));
-        const container = document.getElementById('studentsList');
-        if (!container) return;
-        container.innerHTML = filtered.map(s => {
-            const prog = getStudentProgress(s.id);
-            return `<div class="student-progress-card" onclick="viewStudentDetails('${s.id}')"><div><strong>${s.full_name || 'Unknown'}</strong><span class="badge ${prog.accuracy >= 70 ? 'badge-success' : prog.accuracy >= 50 ? 'badge-warning' : 'badge-danger'}" style="float:right;">${prog.accuracy}%</span></div><div class="progress-bar"><div class="progress-fill" style="width: ${prog.accuracy}%"></div></div><div><small><i class="fas fa-check-circle"></i> ${prog.correctCount}/${prog.totalAnswered} correct | <i class="fas fa-flag"></i> ${prog.markedQuestions.length} marked</small></div></div>`;
-        }).join('');
-        if (filtered.length === 0) container.innerHTML = '<div class="empty-state"><i class="fas fa-search"></i><p>No students found</p></div>';
+    // ==================== BULK IMPORT WITH PREVIEW ====================
+    function renderBulkImport() {
+        panel.innerHTML = `
+            <div class="card">
+                <div class="card-header">
+                    <h2><i class="fas fa-upload"></i> Bulk Import Questions</h2>
+                    <button onclick="document.getElementById('bulk-text').value = ''" class="btn btn-secondary btn-sm">Clear</button>
+                </div>
+                <div class="form-group">
+                    <label>Select Course</label>
+                    <select id="bulk-course" class="form-control">
+                        <option value="">-- Select Course --</option>
+                        ${allCourses.map(c => `<option value="${c.id}">${c.course_name}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Paste Questions (Format: 1. Question? A. Option B. Option ✓ C. Option D. Option Answer is B: Explanation)</label>
+                    <textarea id="bulk-text" class="form-control" rows="12" placeholder="1. What is normal blood pressure?&#10;A. 90/60 mmHg&#10;B. 120/80 mmHg ✓&#10;C. 140/90 mmHg&#10;D. 160/100 mmHg&#10;Answer is B: Normal BP is 120/80 mmHg&#10;&#10;2. Which organ filters blood?&#10;A. Heart&#10;B. Liver&#10;C. Kidneys ✓&#10;D. Lungs&#10;Answer is C: The kidneys filter waste from blood"></textarea>
+                </div>
+                <div style="display: flex; gap: 12px; margin-bottom: 20px;">
+                    <button onclick="previewBulkImport()" class="btn btn-info"><i class="fas fa-eye"></i> Preview Questions</button>
+                    <button id="confirm-import-btn" class="btn btn-primary hidden" onclick="confirmBulkImport()"><i class="fas fa-check-circle"></i> Confirm Import</button>
+                </div>
+                <div id="preview-area" style="display: none;">
+                    <h4><i class="fas fa-list"></i> Extracted Questions Preview</h4>
+                    <div id="preview-container" class="preview-container"></div>
+                </div>
+                <div id="bulk-result"></div>
+            </div>
+        `;
     }
 
-    // MARKED FOR REVIEW GLOBAL VIEW
-    async function renderMarkedReview() {
-        let allMarked = [];
-        for (const student of allStudents) {
-            const prog = getStudentProgress(student.id);
-            for (const marked of prog.markedQuestions) {
-                allMarked.push({ student, marked });
-            }
+    let pendingImportData = [];
+
+    window.previewBulkImport = () => {
+        const courseId = document.getElementById('bulk-course').value;
+        if (!courseId) {
+            alert('Please select a course first');
+            return;
         }
-        allMarked.sort((a, b) => new Date(b.marked.timestamp) - new Date(a.marked.timestamp));
         
-        panel.innerHTML = `<div class="card"><div class="card-header"><h3><i class="fas fa-flag-checkered"></i> All Questions Marked for Review (${allMarked.length})</h3></div>${allMarked.length === 0 ? '<div class="empty-state"><i class="fas fa-inbox"></i><p>No questions marked for review</p></div>' : allMarked.map(item => `<div class="student-progress-card" onclick="viewStudentDetails('${item.student.id}')"><div><strong>${item.student.full_name || 'Unknown'}</strong><span class="badge badge-warning" style="float:right;"><i class="fas fa-flag"></i> Marked</span></div><div style="margin-top:8px;"><strong>Q:</strong> ${item.marked.questionText?.substring(0, 100)}...</div><div style="font-size:12px; margin-top:6px;"><i class="fas fa-clock"></i> ${new Date(item.marked.timestamp).toLocaleString()}</div></div>`).join('')}</div>`;
-    }
-
-    // VIEW STUDENT DETAILS MODAL
-    window.viewStudentDetails = async (studentId) => {
-        const student = allStudents.find(s => s.id === studentId);
-        const prog = getStudentProgress(studentId);
-        const modal = document.createElement('div');
-        modal.className = 'modal';
-        modal.innerHTML = `<div class="modal-content"><div class="card-header"><h3>${student?.full_name || 'Student'} - Detailed Report</h3><button onclick="this.closest('.modal').remove()" style="background:none;border:none;font-size:24px;cursor:pointer;">&times;</button></div><div class="stats-grid-main" style="grid-template-columns:repeat(3,1fr);margin-bottom:20px;"><div class="stat-card-main"><div class="stat-value-main">${prog.totalAnswered}</div><div class="stat-label-main">Answered</div></div><div class="stat-card-main"><div class="stat-value-main">${prog.correctCount}</div><div class="stat-label-main">Correct</div></div><div class="stat-card-main"><div class="stat-value-main">${prog.accuracy}%</div><div class="stat-label-main">Accuracy</div></div></div><h4><i class="fas fa-flag-checkered"></i> Marked for Review (${prog.markedQuestions.length})</h4><div style="max-height:200px;overflow-y:auto;">${prog.markedQuestions.length === 0 ? '<div class="empty-state">No marked questions</div>' : prog.markedQuestions.map(m => `<div class="marked-review-item"><strong>${m.questionText}</strong><br><small><i class="fas fa-clock"></i> ${new Date(m.timestamp).toLocaleString()}</small></div>`).join('')}</div><h4 style="margin-top:15px;">Answered Questions</h4><div style="max-height:200px;overflow-y:auto;">${prog.answers.map((a,i) => `<div style="padding:10px;border-bottom:1px solid #e2e8f0;"><span class="badge ${a.correct ? 'badge-success' : 'badge-danger'}">${a.correct ? '✓' : '✗'}</span> <strong>Q${i+1}:</strong> ${a.questionText?.substring(0,80)}...<br><small>Your: ${a.selectedOption} | Correct: ${a.correctAnswer}</small></div>`).join('')}</div><div style="margin-top:20px;"><button onclick="this.closest('.modal').remove()" class="btn btn-primary">Close</button></div></div>`;
-        document.body.appendChild(modal);
+        const raw = document.getElementById('bulk-text').value;
+        if (!raw.trim()) {
+            alert('Please paste question content');
+            return;
+        }
+        
+        const blocks = raw.split(/\n(?=\d+\.)/);
+        const extractedQuestions = [];
+        
+        for (let block of blocks) {
+            if (!block.trim()) continue;
+            
+            const qMatch = block.match(/^\s*\d+\.\s*(.+?)(?:\n|$)/);
+            if (!qMatch) continue;
+            const questionText = qMatch[1].trim();
+            
+            const options = { A: '', B: '', C: '', D: '' };
+            let correctLetter = '';
+            let explanation = '';
+            
+            const optionLines = block.match(/([A-D])[\.\)]\s*([^\n]+)/gi);
+            if (optionLines) {
+                for (let opt of optionLines) {
+                    const letterMatch = opt.match(/([A-D])[\.\)]/i);
+                    if (!letterMatch) continue;
+                    const letter = letterMatch[1].toUpperCase();
+                    let optText = opt.replace(/^[A-D][\.\)]\s*/i, '').trim();
+                    const isCorrect = optText.includes('✓') || optText.includes('✔');
+                    optText = optText.replace(/[✓✔]/g, '').trim();
+                    options[letter] = optText;
+                    if (isCorrect) correctLetter = letter;
+                }
+            }
+            
+            const answerMatch = block.match(/Answer\s+is\s+([A-D])[:\s-]*([^\n]*)/i);
+            if (answerMatch) {
+                correctLetter = answerMatch[1].toUpperCase();
+                explanation = answerMatch[2]?.trim() || '';
+            }
+            
+            if (!correctLetter) correctLetter = 'A';
+            if (!explanation) explanation = `The correct answer is ${correctLetter}: ${options[correctLetter]}`;
+            
+            extractedQuestions.push({
+                question: questionText,
+                options: options,
+                correctLetter: correctLetter,
+                correctText: options[correctLetter],
+                explanation: explanation
+            });
+        }
+        
+        if (extractedQuestions.length === 0) {
+            document.getElementById('bulk-result').innerHTML = '<div class="alert alert-error">No questions found. Check format.</div>';
+            return;
+        }
+        
+        pendingImportData = extractedQuestions;
+        
+        const previewDiv = document.getElementById('preview-area');
+        const container = document.getElementById('preview-container');
+        previewDiv.style.display = 'block';
+        
+        container.innerHTML = extractedQuestions.map((q, idx) => `
+            <div class="preview-item">
+                <div class="preview-question">${idx + 1}. ${escapeHtml(q.question)}</div>
+                <div class="preview-options">
+                    <div><span class="badge ${q.correctLetter === 'A' ? 'badge-success' : 'badge-primary'}">A.</span> ${escapeHtml(q.options.A)}</div>
+                    <div><span class="badge ${q.correctLetter === 'B' ? 'badge-success' : 'badge-primary'}">B.</span> ${escapeHtml(q.options.B)}</div>
+                    <div><span class="badge ${q.correctLetter === 'C' ? 'badge-success' : 'badge-primary'}">C.</span> ${escapeHtml(q.options.C)}</div>
+                    <div><span class="badge ${q.correctLetter === 'D' ? 'badge-success' : 'badge-primary'}">D.</span> ${escapeHtml(q.options.D)}</div>
+                </div>
+                <div class="preview-correct"><i class="fas fa-check-circle"></i> Correct Answer: ${q.correctLetter} - ${escapeHtml(q.correctText)}</div>
+                <div class="preview-explanation"><i class="fas fa-info-circle"></i> Explanation: ${escapeHtml(q.explanation)}</div>
+            </div>
+        `).join('');
+        
+        document.getElementById('confirm-import-btn').classList.remove('hidden');
+        document.getElementById('bulk-result').innerHTML = `<div class="alert alert-info">✅ Found ${extractedQuestions.length} questions. Review above and click "Confirm Import" to save.</div>`;
     };
 
-    // FULL QUESTION BANK (preserved from original)
+    window.confirmBulkImport = async () => {
+        if (pendingImportData.length === 0) {
+            alert('No questions to import. Click "Preview Questions" first.');
+            return;
+        }
+        
+        const courseId = document.getElementById('bulk-course').value;
+        if (!courseId) {
+            alert('Please select a course');
+            return;
+        }
+        
+        const resultDiv = document.getElementById('bulk-result');
+        resultDiv.innerHTML = '<div class="alert alert-info"><i class="fas fa-spinner fa-spin"></i> Importing questions...</div>';
+        
+        let saved = 0;
+        let failed = 0;
+        
+        for (let q of pendingImportData) {
+            const payload = {
+                question_text: q.question,
+                option_a: q.options.A || null,
+                option_b: q.options.B || null,
+                option_c: q.options.C || null,
+                option_d: q.options.D || null,
+                correct_answer: q.correctLetter,  // ← Stores LETTER (A, B, C, D)
+                explanation: q.explanation.substring(0, 1000),
+                course_id: courseId,
+                difficulty: 'medium',
+                question_type: 'multiple_choice',
+                curriculum: 'KRCHN',
+                is_active: true,
+                is_published: true,
+                created_at: new Date().toISOString()
+            };
+            
+            const { error } = await sb.from('medical_assessments').insert([payload]);
+            if (error) {
+                failed++;
+                console.error('Insert error:', error);
+            } else {
+                saved++;
+            }
+        }
+        
+        if (saved > 0) {
+            resultDiv.innerHTML = `<div class="alert alert-success">✅ Successfully imported ${saved} questions! ${failed > 0 ? `(${failed} failed)` : ''}</div>`;
+            await loadAllData();
+            showToast(`${saved} questions imported successfully!`, 'success');
+            document.getElementById('bulk-text').value = '';
+            document.getElementById('preview-area').style.display = 'none';
+            document.getElementById('confirm-import-btn').classList.add('hidden');
+            pendingImportData = [];
+        } else {
+            resultDiv.innerHTML = `<div class="alert alert-error">❌ No questions imported. Please check format.</div>`;
+        }
+    };
+
+    // ==================== OTHER FUNCTIONS ====================
+    
     async function renderQuestionBank() {
         await loadAllData();
         reorderMode = false;
@@ -641,20 +795,20 @@
         const container = document.getElementById('questions-grid');
         if (!container) return;
         if (filtered.length === 0) { container.innerHTML = '<div class="empty-state">No questions found</div>'; return; }
-        container.innerHTML = filtered.map((q, idx) => `<div class="question-card" data-question-id="${q.id}" data-index="${idx}"><div class="question-card-header">${reorderMode ? `<span class="reorder-handle"><i class="fas fa-grip-vertical"></i></span>` : ''}<input type="checkbox" class="question-checkbox" data-id="${q.id}" onchange="updateSelectionCount()"><span class="badge badge-primary">${escapeHtml(q.courses?.course_name || 'No Course')}</span><span class="badge badge-${q.difficulty === 'easy' ? 'success' : q.difficulty === 'hard' ? 'danger' : 'warning'}">${q.difficulty || 'medium'}</span></div><div class="question-card-content"><div class="question-text">${escapeHtml(q.question_text)}</div><div class="question-options"><div><strong>A:</strong> ${escapeHtml(q.option_a || 'N/A')}</div><div><strong>B:</strong> ${escapeHtml(q.option_b || 'N/A')}</div><div><strong>C:</strong> ${escapeHtml(q.option_c || 'N/A')}</div><div><strong>D:</strong> ${escapeHtml(q.option_d || 'N/A')}</div></div><div><strong>Correct:</strong> ${escapeHtml(q.correct_answer)}</div><div><strong>Explanation:</strong> ${escapeHtml(q.explanation || 'No explanation')}</div></div><div><button class="btn btn-warning btn-sm" onclick="openEditModal('${q.id}')">Edit</button> <button class="btn btn-danger btn-sm" onclick="deleteSingleQuestion('${q.id}')">Delete</button></div></div>`).join('');
+        container.innerHTML = filtered.map((q, idx) => `<div class="student-progress-card" data-question-id="${q.id}" data-index="${idx}"><div class="question-card-header">${reorderMode ? `<span class="reorder-handle"><i class="fas fa-grip-vertical"></i></span>` : ''}<input type="checkbox" class="question-checkbox" data-id="${q.id}" onchange="updateSelectionCount()"><span class="badge badge-primary">${escapeHtml(q.courses?.course_name || 'No Course')}</span><span class="badge ${q.difficulty === 'easy' ? 'badge-success' : q.difficulty === 'hard' ? 'badge-danger' : 'badge-warning'}">${q.difficulty || 'medium'}</span></div><div><strong>${escapeHtml(q.question_text)}</strong></div><div><small>A: ${escapeHtml(q.option_a || 'N/A')} | B: ${escapeHtml(q.option_b || 'N/A')} | C: ${escapeHtml(q.option_c || 'N/A')} | D: ${escapeHtml(q.option_d || 'N/A')}</small></div><div><strong>Correct:</strong> ${escapeHtml(q.correct_answer)}</div><div><strong>Explanation:</strong> ${escapeHtml(q.explanation || 'No explanation')}</div><div style="margin-top:10px;"><button class="btn btn-warning btn-sm" onclick="openEditModal('${q.id}')">Edit</button> <button class="btn btn-danger btn-sm" onclick="deleteSingleQuestion('${q.id}')">Delete</button></div></div>`).join('');
         if (reorderMode) makeDraggable();
         updateSelectionCount();
     }
 
     function makeDraggable() {
-        const cards = document.querySelectorAll('.question-card');
+        const cards = document.querySelectorAll('.student-progress-card');
         cards.forEach(card => {
             card.setAttribute('draggable', 'true');
-            card.addEventListener('dragstart', e => { dragSourceIndex = parseInt(e.target.closest('.question-card').getAttribute('data-index')); e.target.closest('.question-card').classList.add('dragging'); });
-            card.addEventListener('dragover', e => { e.preventDefault(); e.target.closest('.question-card')?.classList.add('drag-over'); });
+            card.addEventListener('dragstart', e => { dragSourceIndex = parseInt(e.target.closest('.student-progress-card').getAttribute('data-index')); e.target.closest('.student-progress-card').classList.add('dragging'); });
+            card.addEventListener('dragover', e => { e.preventDefault(); e.target.closest('.student-progress-card')?.classList.add('drag-over'); });
             card.addEventListener('drop', e => {
                 e.preventDefault();
-                const targetCard = e.target.closest('.question-card');
+                const targetCard = e.target.closest('.student-progress-card');
                 if (!targetCard) return;
                 targetCard.classList.remove('drag-over');
                 const dragTargetIndex = parseInt(targetCard.getAttribute('data-index'));
@@ -665,7 +819,7 @@
                 currentQuestionsList = reordered;
                 renderQuestionsList();
             });
-            card.addEventListener('dragend', () => document.querySelectorAll('.question-card').forEach(c => c.classList.remove('dragging', 'drag-over')));
+            card.addEventListener('dragend', () => document.querySelectorAll('.student-progress-card').forEach(c => c.classList.remove('dragging', 'drag-over')));
         });
     }
 
@@ -677,9 +831,8 @@
     async function confirmDeleteSelected() { for (const id of selectedQuestionsForDelete) await sb.from('medical_assessments').delete().eq('id', id); await loadAllData(); renderQuestionsList(); showToast('Deleted', 'success'); }
     async function deleteSingleQuestion(id) { if(confirm('Delete?')) { await sb.from('medical_assessments').delete().eq('id', id); await loadAllData(); renderQuestionsList(); showToast('Deleted', 'success'); } }
 
-    // ADD QUESTION
     function renderAddQuestion() {
-        panel.innerHTML = `<div class="card"><div class="card-header"><h2>Add New Question</h2></div><form id="add-question-form"><div class="form-group"><label>Course</label><select id="q-course" class="form-control" required><option value="">-- Select --</option>${allCourses.map(c => `<option value="${c.id}">${c.course_name}</option>`).join('')}</select></div><div class="form-group"><label>Question</label><textarea id="q-text" class="form-control" rows="3" required></textarea></div><div class="form-group"><label>Option A</label><input id="q-opt-a" class="form-control" required></div><div class="form-group"><label>Option B</label><input id="q-opt-b" class="form-control" required></div><div class="form-group"><label>Option C</label><input id="q-opt-c" class="form-control" required></div><div class="form-group"><label>Option D</label><input id="q-opt-d" class="form-control" required></div><div class="form-group"><label>Correct Answer</label><input id="q-correct" class="form-control" required></div><div class="form-group"><label>Explanation</label><textarea id="q-explanation" class="form-control" rows="2"></textarea></div><div class="form-group"><label>Difficulty</label><select id="q-difficulty" class="form-control"><option value="easy">Easy</option><option value="medium" selected>Medium</option><option value="hard">Hard</option></select></div><button type="submit" class="btn btn-primary">Save Question</button></form><div id="add-result"></div></div>`;
+        panel.innerHTML = `<div class="card"><div class="card-header"><h2>Add New Question</h2></div><form id="add-question-form"><div class="form-group"><label>Course</label><select id="q-course" class="form-control" required><option value="">-- Select --</option>${allCourses.map(c => `<option value="${c.id}">${c.course_name}</option>`).join('')}</select></div><div class="form-group"><label>Question</label><textarea id="q-text" class="form-control" rows="3" required></textarea></div><div class="form-group"><label>Option A</label><input id="q-opt-a" class="form-control" required></div><div class="form-group"><label>Option B</label><input id="q-opt-b" class="form-control" required></div><div class="form-group"><label>Option C</label><input id="q-opt-c" class="form-control" required></div><div class="form-group"><label>Option D</label><input id="q-opt-d" class="form-control" required></div><div class="form-group"><label>Correct Answer (A, B, C, or D)</label><input id="q-correct" class="form-control" placeholder="A, B, C, or D" required></div><div class="form-group"><label>Explanation</label><textarea id="q-explanation" class="form-control" rows="2"></textarea></div><div class="form-group"><label>Difficulty</label><select id="q-difficulty" class="form-control"><option value="easy">Easy</option><option value="medium" selected>Medium</option><option value="hard">Hard</option></select></div><button type="submit" class="btn btn-primary">Save Question</button></form><div id="add-result"></div></div>`;
         document.getElementById('add-question-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const payload = { question_text: document.getElementById('q-text').value, option_a: document.getElementById('q-opt-a').value, option_b: document.getElementById('q-opt-b').value, option_c: document.getElementById('q-opt-c').value, option_d: document.getElementById('q-opt-d').value, correct_answer: document.getElementById('q-correct').value, explanation: document.getElementById('q-explanation').value, course_id: document.getElementById('q-course').value, difficulty: document.getElementById('q-difficulty').value, question_type: 'multiple_choice', curriculum: 'KRCHN', is_active: true, is_published: true, created_at: new Date().toISOString() };
@@ -690,43 +843,6 @@
         });
     }
 
-    // BULK IMPORT
-    function renderBulkImport() {
-        panel.innerHTML = `<div class="card"><div class="card-header"><h2>Bulk Import</h2></div><div class="form-group"><label>Course</label><select id="bulk-course" class="form-control"><option value="">-- Select --</option>${allCourses.map(c => `<option value="${c.id}">${c.course_name}</option>`).join('')}</select></div><div class="form-group"><label>Paste Content</label><textarea id="bulk-text" class="form-control" rows="10" placeholder="1. Question?&#10;A. Option&#10;B. Option ✓&#10;Answer is B: Explanation"></textarea></div><button onclick="processBulkImport()" class="btn btn-primary">Import</button><div id="bulk-result"></div></div>`;
-    }
-    window.processBulkImport = async () => {
-        const courseId = document.getElementById('bulk-course').value;
-        if (!courseId) { alert('Select course'); return; }
-        const raw = document.getElementById('bulk-text').value;
-        if (!raw.trim()) { alert('Paste content'); return; }
-        const blocks = raw.split(/\n(?=\d+\.)/);
-        let saved = 0;
-        for (let block of blocks) {
-            if (!block.trim()) continue;
-            const qMatch = block.match(/^\s*\d+\.\s*(.+?)(?:\n|$)/);
-            if (!qMatch) continue;
-            const options = {};
-            const optionLines = block.match(/([A-E])[\.\)]\s*([^\n]+)/gi);
-            if (optionLines) {
-                for (let opt of optionLines) {
-                    const letterMatch = opt.match(/([A-E])[\.\)]/i);
-                    if (!letterMatch) continue;
-                    const letter = letterMatch[1].toUpperCase();
-                    let optText = opt.replace(/^[A-E][\.\)]\s*/i, '').trim();
-                    const isCorrect = optText.includes('✓');
-                    optText = optText.replace(/[✓✔]/g, '').trim();
-                    options[letter] = optText;
-                }
-            }
-            const payload = { question_text: qMatch[1].trim(), option_a: options.A, option_b: options.B, option_c: options.C, option_d: options.D, correct_answer: options.A, explanation: 'Imported', course_id: courseId, difficulty: 'medium', question_type: 'multiple_choice', curriculum: 'KRCHN', is_active: true, is_published: true, created_at: new Date().toISOString() };
-            const { error } = await sb.from('medical_assessments').insert([payload]);
-            if (!error) saved++;
-        }
-        document.getElementById('bulk-result').innerHTML = `<div class="alert alert-success">Imported ${saved} questions!</div>`;
-        await loadAllData();
-    };
-
-    // COURSES
     async function renderCourses() {
         await loadAllData();
         panel.innerHTML = `<div class="card"><div class="card-header"><h2>Course Manager</h2><button onclick="addNewCourse()" class="btn btn-success btn-sm">+ Add Course</button></div><div id="courses-list"></div></div>`;
@@ -737,7 +853,6 @@
     window.editCourse = async (id) => { const newName = prompt('New name:'); if(newName) { await sb.from('courses').update({ course_name: newName }).eq('id', id); await loadAllData(); renderCourses(); showToast('Updated', 'success'); } };
     window.toggleCourseStatus = async (id) => { const course = allCourses.find(c => c.id === id); const newStatus = course?.status === 'Active' ? 'Inactive' : 'Active'; await sb.from('courses').update({ status: newStatus }).eq('id', id); await loadAllData(); renderCourses(); showToast(`${newStatus}`, 'success'); };
 
-    // STUDENTS
     async function renderStudents() {
         await loadAllData();
         panel.innerHTML = `<div class="card"><div class="card-header"><h2>Student Manager</h2></div><input type="text" id="student-search" class="search-input" placeholder="Search..."><div id="students-list"></div></div>`;
@@ -748,18 +863,49 @@
         const search = document.getElementById('student-search')?.value.toLowerCase() || '';
         const filtered = allStudents.filter(s => s.full_name?.toLowerCase().includes(search) || s.email?.toLowerCase().includes(search));
         const container = document.getElementById('students-list');
-        if(container) container.innerHTML = filtered.map(s => { const prog = getStudentProgress(s.id); return `<div class="student-progress-card"><div><strong>${s.full_name || 'Unknown'}</strong><span class="badge badge-primary" style="float:right;">${s.role || 'student'}</span></div><div><small>${s.email}</small></div><div class="progress-stats-row" style="margin-top:8px;"><span><i class="fas fa-question-circle"></i> ${prog.totalAnswered} answered</span><span><i class="fas fa-flag"></i> ${prog.markedQuestions.length} marked</span></div><div style="margin-top:10px;"><button onclick="viewStudentDetails('${s.id}')" class="btn btn-info btn-sm">View Progress</button> <button onclick="resetStudentProgress('${s.id}')" class="btn btn-danger btn-sm">Reset</button></div></div>`; }).join('');
+        if(container) container.innerHTML = filtered.map(s => { const prog = getStudentProgress(s.id); return `<div class="student-progress-card"><div><strong>${s.full_name || 'Unknown'}</strong><span class="badge badge-primary" style="float:right;">${s.role || 'student'}</span></div><div><small>${s.email}</small></div><div style="margin-top:8px;"><span><i class="fas fa-question-circle"></i> ${prog.totalAnswered} answered</span><span><i class="fas fa-flag"></i> ${prog.markedQuestions.length} marked</span></div><div style="margin-top:10px;"><button onclick="viewStudentDetails('${s.id}')" class="btn btn-info btn-sm">View Progress</button> <button onclick="resetStudentProgress('${s.id}')" class="btn btn-danger btn-sm">Reset</button></div></div>`; }).join('');
     }
+    window.viewStudentDetails = async (studentId) => {
+        const student = allStudents.find(s => s.id === studentId);
+        const prog = getStudentProgress(studentId);
+        const modal = document.createElement('div'); modal.className = 'modal';
+        modal.innerHTML = `<div class="modal-content"><div class="card-header"><h3>${student?.full_name || 'Student'} - Detailed Report</h3><button onclick="this.closest('.modal').remove()" style="background:none;border:none;font-size:24px;cursor:pointer;">&times;</button></div><div class="stats-grid-main" style="grid-template-columns:repeat(3,1fr);margin-bottom:20px;"><div class="stat-card-main"><div class="stat-value-main">${prog.totalAnswered}</div><div class="stat-label-main">Answered</div></div><div class="stat-card-main"><div class="stat-value-main">${prog.correctCount}</div><div class="stat-label-main">Correct</div></div><div class="stat-card-main"><div class="stat-value-main">${prog.accuracy}%</div><div class="stat-label-main">Accuracy</div></div></div><h4><i class="fas fa-flag-checkered"></i> Marked for Review (${prog.markedQuestions.length})</h4><div style="max-height:200px;overflow-y:auto;">${prog.markedQuestions.length === 0 ? '<div class="empty-state">No marked questions</div>' : prog.markedQuestions.map(m => `<div style="background:#fffbeb;padding:12px;border-radius:12px;margin-bottom:10px;"><strong>${escapeHtml(m.questionText)}</strong><br><small><i class="fas fa-clock"></i> ${new Date(m.timestamp).toLocaleString()}</small></div>`).join('')}</div><h4 style="margin-top:15px;">Answered Questions</h4><div style="max-height:200px;overflow-y:auto;">${prog.answers.map((a,i) => `<div style="padding:10px;border-bottom:1px solid #e2e8f0;"><span class="badge ${a.correct ? 'badge-success' : 'badge-danger'}">${a.correct ? '✓' : '✗'}</span> <strong>Q${i+1}:</strong> ${escapeHtml(a.questionText?.substring(0,80))}...<br><small>Your: ${a.selectedOption} | Correct: ${a.correctAnswer}</small></div>`).join('')}</div><div style="margin-top:20px;"><button onclick="this.closest('.modal').remove()" class="btn btn-primary">Close</button></div></div>`;
+        document.body.appendChild(modal);
+    };
     window.resetStudentProgress = async (id) => { if(confirm('Reset progress?')) { await sb.from('user_progress').delete().eq('user_id', id); await loadAllData(); renderStudents(); showToast('Progress reset', 'success'); } };
 
-    // ATTEMPTS SUMMARY
+    async function renderIndividualProgress() {
+        panel.innerHTML = `<div class="card"><div class="card-header"><h3><i class="fas fa-user-chart"></i> Individual Student Progress</h3></div><input type="text" id="searchStudent" class="search-input" placeholder="🔍 Search by name or email..."><div id="studentsList"></div></div>`;
+        filterIndividualStudents();
+        document.getElementById('searchStudent')?.addEventListener('input', () => filterIndividualStudents());
+    }
+    function filterIndividualStudents() {
+        const search = document.getElementById('searchStudent')?.value.toLowerCase() || '';
+        const filtered = allStudents.filter(s => s.full_name?.toLowerCase().includes(search) || s.email?.toLowerCase().includes(search));
+        const container = document.getElementById('studentsList');
+        if (!container) return;
+        container.innerHTML = filtered.map(s => { const prog = getStudentProgress(s.id); return `<div class="student-progress-card" onclick="viewStudentDetails('${s.id}')"><div><strong>${s.full_name || 'Unknown'}</strong><span class="badge ${prog.accuracy >= 70 ? 'badge-success' : prog.accuracy >= 50 ? 'badge-warning' : 'badge-danger'}" style="float:right;">${prog.accuracy}%</span></div><div class="progress-bar"><div class="progress-fill" style="width: ${prog.accuracy}%"></div></div><div><small><i class="fas fa-check-circle"></i> ${prog.correctCount}/${prog.totalAnswered} correct | <i class="fas fa-flag"></i> ${prog.markedQuestions.length} marked</small></div></div>`; }).join('');
+        if (filtered.length === 0) container.innerHTML = '<div class="empty-state"><i class="fas fa-search"></i><p>No students found</p></div>';
+    }
+
+    async function renderMarkedReview() {
+        let allMarked = [];
+        for (const student of allStudents) {
+            const prog = getStudentProgress(student.id);
+            for (const marked of prog.markedQuestions) {
+                allMarked.push({ student, marked });
+            }
+        }
+        allMarked.sort((a, b) => new Date(b.marked.timestamp) - new Date(a.marked.timestamp));
+        panel.innerHTML = `<div class="card"><div class="card-header"><h3><i class="fas fa-flag-checkered"></i> All Questions Marked for Review (${allMarked.length})</h3></div>${allMarked.length === 0 ? '<div class="empty-state"><i class="fas fa-inbox"></i><p>No questions marked for review</p></div>' : allMarked.map(item => `<div class="student-progress-card" onclick="viewStudentDetails('${item.student.id}')"><div><strong>${item.student.full_name || 'Unknown'}</strong><span class="badge badge-warning" style="float:right;"><i class="fas fa-flag"></i> Marked</span></div><div style="margin-top:8px;"><strong>Q:</strong> ${escapeHtml(item.marked.questionText?.substring(0, 100))}...</div><div style="font-size:12px; margin-top:6px;"><i class="fas fa-clock"></i> ${new Date(item.marked.timestamp).toLocaleString()}</div></div>`).join('')}</div>`;
+    }
+
     async function renderAttempts() {
         await loadAllData();
         const stats = allStudents.map(s => { const prog = getStudentProgress(s.id); return { student: s, total: prog.totalAnswered, correct: prog.correctCount, accuracy: prog.accuracy, marked: prog.markedQuestions.length }; }).filter(s => s.total > 0).sort((a,b) => b.total - a.total);
         panel.innerHTML = `<div class="card"><div class="card-header"><h2>Progress Summary</h2></div>${stats.length === 0 ? '<div class="empty-state">No attempts yet</div>' : stats.map(s => `<div class="student-progress-card" onclick="viewStudentDetails('${s.student.id}')"><div><strong>${s.student.full_name || 'Unknown'}</strong><span class="badge ${s.accuracy >= 70 ? 'badge-success' : s.accuracy >= 50 ? 'badge-warning' : 'badge-danger'}" style="float:right;">${s.accuracy}%</span></div><div class="progress-bar"><div class="progress-fill" style="width: ${s.accuracy}%"></div></div><div><small>${s.total} answered | ${s.correct} correct | ${s.marked} marked</small></div></div>`).join('')}</div>`;
     }
 
-    // SETTINGS
     function renderSettings() {
         panel.innerHTML = `<div class="card"><div class="card-header"><h2>System Settings</h2></div><div style="margin-bottom:15px;"><button onclick="exportAllData()" class="btn btn-primary">Export All (JSON)</button> <button onclick="exportAllQuestions()" class="btn btn-success">Export Questions (CSV)</button> <button onclick="exportStudentProgressCSV()" class="btn btn-info">Export Progress (CSV)</button></div><div style="border-top:1px solid #e2e8f0; padding-top:15px;"><button onclick="clearAllStudentProgress()" class="btn btn-danger">Clear All Student Progress</button><p style="font-size:12px; margin-top:8px;">⚠️ This will delete all student answers and marked questions</p></div></div><div class="card"><h3>System Info</h3><div class="stats-grid-main"><div class="stat-card-main"><div class="stat-value-main">${allQuestions.length}</div><div>Questions</div></div><div class="stat-card-main"><div class="stat-value-main">${allStudents.length}</div><div>Students</div></div><div class="stat-card-main"><div class="stat-value-main">${allCourses.length}</div><div>Courses</div></div><div class="stat-card-main"><div class="stat-value-main">${Object.keys(userProgress).length}</div><div>Active Students</div></div></div></div>`;
     }
@@ -769,11 +915,10 @@
     window.exportStudentProgressCSV = () => { const rows = [['Student', 'Email', 'Answered', 'Correct', 'Accuracy', 'Marked']]; for (const student of allStudents) { const prog = getStudentProgress(student.id); rows.push([student.full_name || 'Unknown', student.email || '', prog.totalAnswered, prog.correctCount, prog.accuracy, prog.markedQuestions.length]); } const csv = rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n'); const blob = new Blob([csv], { type: 'text/csv' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `student_progress_${Date.now()}.csv`; a.click(); showToast('Exported', 'success'); };
     window.clearAllStudentProgress = async () => { if(confirm('Delete ALL student progress?')) { await sb.from('user_progress').delete().neq('user_id', ''); await loadAllData(); showToast('All progress cleared', 'success'); } };
 
-    // EDIT MODAL
     window.openEditModal = async (questionId) => {
         const q = allQuestions.find(q => q.id === questionId);
         const modal = document.createElement('div'); modal.className = 'modal';
-        modal.innerHTML = `<div class="modal-content"><h3>Edit Question</h3><form id="edit-form"><div class="form-group"><label>Course</label><select id="edit-course" class="form-control">${allCourses.map(c => `<option value="${c.id}" ${c.id === q.course_id ? 'selected' : ''}>${c.course_name}</option>`).join('')}</select></div><div class="form-group"><label>Question</label><textarea id="edit-text" class="form-control" rows="3">${escapeHtml(q.question_text || '')}</textarea></div><div class="form-group"><label>A</label><input id="edit-opt-a" value="${escapeHtml(q.option_a || '')}" class="form-control"></div><div class="form-group"><label>B</label><input id="edit-opt-b" value="${escapeHtml(q.option_b || '')}" class="form-control"></div><div class="form-group"><label>C</label><input id="edit-opt-c" value="${escapeHtml(q.option_c || '')}" class="form-control"></div><div class="form-group"><label>D</label><input id="edit-opt-d" value="${escapeHtml(q.option_d || '')}" class="form-control"></div><div class="form-group"><label>Correct</label><input id="edit-correct" value="${escapeHtml(q.correct_answer || '')}" class="form-control"></div><div class="form-group"><label>Explanation</label><textarea id="edit-explanation" rows="2" class="form-control">${escapeHtml(q.explanation || '')}</textarea></div><div class="form-group"><label>Difficulty</label><select id="edit-difficulty" class="form-control"><option value="easy" ${q.difficulty === 'easy' ? 'selected' : ''}>Easy</option><option value="medium" ${q.difficulty === 'medium' ? 'selected' : ''}>Medium</option><option value="hard" ${q.difficulty === 'hard' ? 'selected' : ''}>Hard</option></select></div><div style="display:flex; gap:10px; margin-top:20px;"><button type="submit" class="btn btn-primary">Save</button><button type="button" onclick="this.closest('.modal').remove()" class="btn btn-secondary">Cancel</button></div></form></div>`;
+        modal.innerHTML = `<div class="modal-content"><h3>Edit Question</h3><form id="edit-form"><div class="form-group"><label>Course</label><select id="edit-course" class="form-control">${allCourses.map(c => `<option value="${c.id}" ${c.id === q.course_id ? 'selected' : ''}>${c.course_name}</option>`).join('')}</select></div><div class="form-group"><label>Question</label><textarea id="edit-text" class="form-control" rows="3">${escapeHtml(q.question_text || '')}</textarea></div><div class="form-group"><label>A</label><input id="edit-opt-a" value="${escapeHtml(q.option_a || '')}" class="form-control"></div><div class="form-group"><label>B</label><input id="edit-opt-b" value="${escapeHtml(q.option_b || '')}" class="form-control"></div><div class="form-group"><label>C</label><input id="edit-opt-c" value="${escapeHtml(q.option_c || '')}" class="form-control"></div><div class="form-group"><label>D</label><input id="edit-opt-d" value="${escapeHtml(q.option_d || '')}" class="form-control"></div><div class="form-group"><label>Correct (A, B, C, D)</label><input id="edit-correct" value="${escapeHtml(q.correct_answer || '')}" class="form-control"></div><div class="form-group"><label>Explanation</label><textarea id="edit-explanation" rows="2" class="form-control">${escapeHtml(q.explanation || '')}</textarea></div><div class="form-group"><label>Difficulty</label><select id="edit-difficulty" class="form-control"><option value="easy" ${q.difficulty === 'easy' ? 'selected' : ''}>Easy</option><option value="medium" ${q.difficulty === 'medium' ? 'selected' : ''}>Medium</option><option value="hard" ${q.difficulty === 'hard' ? 'selected' : ''}>Hard</option></select></div><div style="display:flex; gap:10px; margin-top:20px;"><button type="submit" class="btn btn-primary">Save</button><button type="button" onclick="this.closest('.modal').remove()" class="btn btn-secondary">Cancel</button></div></form></div>`;
         document.body.appendChild(modal);
         document.getElementById('edit-form').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -788,9 +933,6 @@
     function showToast(msg, type) { const toast = document.createElement('div'); toast.className = 'toast'; toast.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : 'info-circle'}"></i> ${msg}`; document.body.appendChild(toast); setTimeout(() => toast.remove(), 3000); }
 
     window.showPage = (page) => {
-        document.querySelectorAll('.sidebar-nav-item').forEach(btn => btn.classList.remove('active'));
-        const activeBtn = document.querySelector(`.sidebar-nav-item[data-page="${page}"]`);
-        if(activeBtn) activeBtn.classList.add('active');
         if(page === 'dashboard') renderDashboard();
         else if(page === 'question-bank') renderQuestionBank();
         else if(page === 'add-question') renderAddQuestion();
@@ -811,6 +953,8 @@
     window.confirmDeleteSelected = confirmDeleteSelected;
     window.deleteSingleQuestion = deleteSingleQuestion;
     window.updateSelectionCount = updateSelectionCount;
+    window.previewBulkImport = previewBulkImport;
+    window.confirmBulkImport = confirmBulkImport;
 </script>
 </body>
 </html>
