@@ -1,19 +1,46 @@
-// ==================== TIMETABLE MANAGER MODULE ====================
-const TimetableManager = {
+// ==================== COMPLETE TIMETABLE MODULE ====================
+const TimetableModule = {
     currentTimetable: [],
+    currentBlock: null,
+    
+    // Blocks in order (matches your existing system)
+    blocks: ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'],
+    
     daysOrder: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
     dayNames: {
         monday: 'Monday', tuesday: 'Tuesday', wednesday: 'Wednesday',
         thursday: 'Thursday', friday: 'Friday'
     },
     
-    // Load timetable from Supabase
-    async loadTimetable(block = 'Block 4') {
+    // Get student's current block from profile
+    getStudentBlock() {
+        const profile = window.currentUserProfile || {};
+        let block = profile.block || 'Block 4';
+        
+        // Normalize block name (handle various formats)
+        const blockMap = {
+            'introductory': 'Introductory', 'Introductory Block': 'Introductory',
+            'block1': 'Block 1', 'Block 1': 'Block 1',
+            'block2': 'Block 2', 'Block 2': 'Block 2',
+            'block3': 'Block 3', 'Block 3': 'Block 3',
+            'block4': 'Block 4', 'Block 4': 'Block 4',
+            'block5': 'Block 5', 'Block 5': 'Block 5',
+            'final': 'Final', 'Final Block': 'Final'
+        };
+        
+        return blockMap[block?.toLowerCase()] || block || 'Block 4';
+    },
+    
+    // Load timetable for specific block
+    async loadTimetable(block = null) {
         try {
+            const targetBlock = block || this.getStudentBlock();
+            this.currentBlock = targetBlock;
+            
             const { data, error } = await window.db.supabase
                 .from('timetables')
                 .select('*')
-                .eq('block', block)
+                .eq('block', targetBlock)
                 .order('day_of_week', { ascending: true })
                 .order('start_time', { ascending: true });
             
@@ -39,7 +66,7 @@ const TimetableManager = {
         const dayMap = {1: 'monday', 2: 'tuesday', 3: 'wednesday', 4: 'thursday', 5: 'friday'};
         let currentDay = dayMap[currentDayIndex];
         
-        // Check today's upcoming classes
+        // Check today's upcoming classes (not holiday)
         let todayClasses = this.currentTimetable.filter(c => 
             c.day_of_week === currentDay && !c.is_holiday
         );
@@ -73,7 +100,18 @@ const TimetableManager = {
         const container = document.getElementById(containerId);
         if (!container) return;
         
-        await this.loadTimetable('Block 4');
+        await this.loadTimetable();
+        
+        if (this.currentTimetable.length === 0) {
+            container.innerHTML = `
+                <div class="empty-timetable">
+                    <i class="fas fa-calendar-times"></i>
+                    <p>No timetable available for ${this.currentBlock}</p>
+                    <small>Please contact admin to upload the timetable</small>
+                </div>
+            `;
+            return;
+        }
         
         let filteredData = this.currentTimetable;
         if (weekFilter !== 'all') {
@@ -97,13 +135,13 @@ const TimetableManager = {
         let html = `<div class="timetable-container"><table class="timetable-table">
             <thead><tr>
                 <th>Day</th><th>Time</th><th>Course/Session</th><th>Lecturer</th><th>Venue</th>
-            </tr></thead><tbody>`;
+            </thead><tbody>`;
         
         for (const day of this.daysOrder) {
             const classes = grouped[day];
             if (classes.length === 0) {
                 html += `<tr><td><strong>${this.dayNames[day]}</strong></td>
-                        <td colspan="4" style="color:#94a3b8; text-align:center;">No classes scheduled</td></tr>`;
+                        <td colspan="4" class="no-class">No classes scheduled</td></tr>`;
             } else {
                 classes.forEach((cls, idx) => {
                     const holidayBadge = cls.is_holiday ? '<span class="holiday-badge">HOLIDAY</span>' : '';
@@ -137,6 +175,12 @@ const TimetableManager = {
             const cls = nextClass.class;
             card.style.display = 'block';
             
+            // Update the block badge
+            const blockBadge = document.getElementById('current-block-badge');
+            if (blockBadge) {
+                blockBadge.innerHTML = `<i class="fas fa-graduation-cap"></i> ${this.currentBlock}`;
+            }
+            
             document.getElementById('next-class-time').innerHTML = `${cls.start_time} - ${cls.end_time}`;
             document.getElementById('next-class-name').innerHTML = cls.session_name || cls.course_name;
             document.getElementById('next-class-lecturer').innerHTML = cls.lecturer_name || 'TBA';
@@ -154,7 +198,6 @@ const TimetableManager = {
     },
     
     // ========== ADMIN FUNCTIONS ==========
-    // Parse CSV data
     parseCSV(csvText) {
         const lines = csvText.split(/\r?\n/);
         const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
@@ -163,7 +206,6 @@ const TimetableManager = {
         for (let i = 1; i < lines.length; i++) {
             if (!lines[i].trim()) continue;
             
-            // Handle quoted values
             let row = [];
             let inQuote = false;
             let current = '';
@@ -205,8 +247,7 @@ const TimetableManager = {
         return data;
     },
     
-    // Upload timetable to Supabase
-    async uploadTimetable(entries, block = 'Block 4') {
+    async uploadTimetable(entries, block) {
         const enriched = entries.map(entry => ({
             ...entry,
             block: block,
@@ -222,8 +263,7 @@ const TimetableManager = {
         return data;
     },
     
-    // Delete all timetable entries for a block
-    async clearTimetable(block = 'Block 4') {
+    async clearTimetable(block) {
         const { error } = await window.db.supabase
             .from('timetables')
             .delete()
@@ -233,7 +273,6 @@ const TimetableManager = {
         return true;
     },
     
-    // Process uploaded file
     async processUpload(file, block, onProgress) {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
@@ -248,7 +287,6 @@ const TimetableManager = {
                     
                     if (onProgress) onProgress(`Found ${entries.length} entries, uploading...`, 60);
                     
-                    // Clear existing and upload new
                     await this.clearTimetable(block);
                     const result = await this.uploadTimetable(entries, block);
                     
@@ -261,7 +299,19 @@ const TimetableManager = {
             reader.onerror = () => reject(new Error('Failed to read file'));
             reader.readAsText(file);
         });
+    },
+    
+    // Get all blocks that have timetables
+    async getBlocksWithTimetables() {
+        const { data, error } = await window.db.supabase
+            .from('timetables')
+            .select('block')
+            .order('block');
+        
+        if (error) return [];
+        const uniqueBlocks = [...new Set(data.map(d => d.block))];
+        return uniqueBlocks;
     }
 };
 
-window.TimetableManager = TimetableManager;
+window.TimetableModule = TimetableModule;
