@@ -5333,3 +5333,174 @@ p {
 #academic-reports .text-center {
     text-align: center !important;
 }
+/* ========== TIMETABLE STYLES ========== */
+.timetable-container {
+    background: white;
+    border-radius: 16px;
+    overflow-x: auto;
+    margin-top: 1rem;
+}
+
+.timetable-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.timetable-table th {
+    background: linear-gradient(135deg, #4C1D95, #7c3aed);
+    color: white;
+    padding: 12px 10px;
+    font-weight: 600;
+    position: sticky;
+    top: 0;
+}
+
+.timetable-table td {
+    padding: 10px;
+    border-bottom: 1px solid #e2e8f0;
+    vertical-align: top;
+}
+
+.timetable-table tr:hover {
+    background: #f8fafc;
+}
+
+/* Next Class Card - Quick Actions */
+.next-class-card {
+    background: linear-gradient(135deg, #4C1D95, #7c3aed);
+    border-radius: 16px;
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+    color: white;
+    box-shadow: 0 4px 15px rgba(76,29,149,0.3);
+}
+
+.next-class-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    font-size: 0.8rem;
+    opacity: 0.9;
+}
+
+.next-class-time {
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin: 8px 0;
+}
+
+.next-class-name {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 5px 0;
+}
+
+.next-class-details {
+    font-size: 0.8rem;
+    opacity: 0.9;
+    margin-top: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.next-class-details span {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+/* Admin Upload Panel */
+.admin-upload-panel {
+    background: white;
+    border-radius: 20px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.upload-area {
+    border: 2px dashed #cbd5e1;
+    border-radius: 12px;
+    padding: 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    background: #f8fafc;
+}
+
+.upload-area:hover {
+    border-color: #4C1D95;
+    background: #f1f5f9;
+}
+
+.upload-area.drag-over {
+    border-color: #4C1D95;
+    background: #ede9fe;
+}
+
+.week-filter {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+
+.week-btn {
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1px solid #e2e8f0;
+    background: white;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: all 0.2s;
+}
+
+.week-btn.active {
+    background: #4C1D95;
+    color: white;
+    border-color: #4C1D95;
+}
+
+.holiday-badge {
+    background: #dc2626;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    margin-left: 8px;
+    display: inline-block;
+}
+
+.exam-badge {
+    background: #f59e0b;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    margin-left: 8px;
+}
+
+.pending-badge {
+    background: #94a3b8;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    margin-left: 5px;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+    .timetable-table th,
+    .timetable-table td {
+        padding: 8px 6px;
+        font-size: 0.75rem;
+    }
+    
+    .next-class-time {
+        font-size: 1rem;
+    }
+}
