@@ -4572,12 +4572,16 @@ function triggerBackup() {
 }
 
 /*******************************************************
- * 18. CALENDAR INTEGRATION (FIXED - with proper array handling)
+ * 18. CALENDAR & TIMETABLE MANAGEMENT (COMPLETE)
+ * Supports: Excel, CSV, Word, PDF uploads
  *******************************************************/
 
 // Global calendar instance
 let mainCalendar = null;
 
+// =====================================================
+// RENDER FULL CALENDAR (shows events from all sources)
+// =====================================================
 async function renderFullCalendar() {
     const calendarEl = $('fullCalendarDisplay');
     if (!calendarEl) {
@@ -4587,222 +4591,207 @@ async function renderFullCalendar() {
     
     calendarEl.innerHTML = '<div style="text-align: center; padding: 40px;"><div class="loading-spinner"></div><p>Loading calendar...</p></div>';
     
-    // Get current user for filtering (if student view)
     const currentUser = await getCurrentUser();
     const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'superadmin';
     
     try {
-        // Fetch from ALL relevant tables - ENSURE they are always arrays
-        let sessions = [];
-        let exams = [];
-        let calendarEvents = [];
-        let units = [];
+        let sessions = [], exams = [], calendarEvents = [], timetableEvents = [], units = [];
         
-        // Fetch sessions with error handling
+        // Fetch sessions
         try {
             const { data } = await fetchData('scheduled_sessions', '*', {}, 'session_date', true);
             sessions = Array.isArray(data) ? data : [];
-            console.log(`✅ Loaded ${sessions.length} sessions`);
-        } catch(e) { 
-            console.error('Sessions fetch error:', e);
-            sessions = [];
-        }
+        } catch(e) { sessions = []; }
         
-        // Fetch exams with error handling
+        // Fetch exams
         try {
             const { data } = await fetchData('exams', '*, course:course_id(course_name)', {}, 'exam_date', true);
             exams = Array.isArray(data) ? data : [];
-            console.log(`✅ Loaded ${exams.length} exams`);
-        } catch(e) { 
-            console.error('Exams fetch error:', e);
-            exams = [];
-        }
+        } catch(e) { exams = []; }
         
-        // Fetch calendar events with error handling
+        // Fetch calendar events (admin uploaded)
         try {
             const { data } = await fetchData('calendar_events', '*', {}, 'event_date', true);
             calendarEvents = Array.isArray(data) ? data : [];
-            console.log(`✅ Loaded ${calendarEvents.length} calendar events`);
-        } catch(e) { 
-            console.error('Calendar events fetch error:', e);
-            calendarEvents = [];
-        }
+        } catch(e) { calendarEvents = []; }
         
-        // Fetch units with error handling
+        // Fetch TIMETABLE events from timetables table
+        try {
+            const { data } = await sb
+                .from('timetables')
+                .select('*')
+                .order('week_number', { ascending: true })
+                .order('day_of_week', { ascending: true });
+            timetableEvents = Array.isArray(data) ? data : [];
+            console.log(`✅ Loaded ${timetableEvents.length} timetable entries`);
+        } catch(e) { timetableEvents = []; }
+        
+        // Fetch units
         try {
             const { data } = await fetchData('unit_registrations', '*, units(*)', {}, 'created_at', true);
             units = Array.isArray(data) ? data : [];
-            console.log(`✅ Loaded ${units.length} unit registrations`);
-        } catch(e) { 
-            console.error('Units fetch error:', e);
-            units = [];
-        }
+        } catch(e) { units = []; }
 
         const events = [];
+        const dayNumberMap = { 'sunday': 0, 'monday': 1, 'tuesday': 2, 'wednesday': 3, 'thursday': 4, 'friday': 5, 'saturday': 6 };
+        
+        // Helper to get date for a specific day in current week
+        function getDateForDay(dayName, weekNumber = 1, baseDate = new Date()) {
+            const dayIndex = dayNumberMap[dayName.toLowerCase()];
+            if (dayIndex === undefined) return null;
+            
+            const currentDay = baseDate.getDay();
+            const daysToAdd = (dayIndex - currentDay + 7) % 7;
+            const targetDate = new Date(baseDate);
+            targetDate.setDate(baseDate.getDate() + daysToAdd + ((weekNumber - 1) * 7));
+            return targetDate.toISOString().split('T')[0];
+        }
 
         // 1. Add scheduled sessions (classes, clinicals)
-        if (sessions && sessions.length > 0) {
-            sessions.forEach(s => {
-                if (!s) return;
-                // Filter for student view
-                if (!isAdmin && !shouldShowToStudent(s, currentUser)) return;
-                
-                let title = `${(s.session_type || 'CLASS').toUpperCase()}: ${s.session_title || 'Session'}`;
-                let color = s.session_type === 'clinical' ? '#2ecc71' : s.session_type === 'event' ? '#9b59b6' : '#3498db';
-                
-                let startDate = s.session_date;
-                if (s.session_time) {
-                    startDate = s.session_date + 'T' + s.session_time;
-                }
-                
-                let endDate = null;
-                if (s.session_end_time) {
-                    endDate = s.session_date + 'T' + s.session_end_time;
-                }
-                
-                events.push({
-                    id: `session_${s.id}`,
-                    title: title,
-                    start: startDate,
-                    end: endDate,
-                    allDay: !s.session_time,
-                    color: color,
-                    extendedProps: {
-                        type: s.session_type || 'session',
-                        venue: s.venue || 'TBA',
-                        description: s.session_description || 'No description',
-                        program: s.target_program || 'General',
-                        block: s.target_block || 'General'
-                    }
-                });
+        sessions.forEach(s => {
+            if (!s) return;
+            if (!isAdmin && !shouldShowToStudent(s, currentUser)) return;
+            
+            let title = `${(s.session_type || 'CLASS').toUpperCase()}: ${s.session_title || 'Session'}`;
+            let color = s.session_type === 'clinical' ? '#2ecc71' : s.session_type === 'event' ? '#9b59b6' : '#3498db';
+            
+            let startDate = s.session_date;
+            if (s.session_time) startDate = s.session_date + 'T' + s.session_time;
+            
+            let endDate = null;
+            if (s.session_end_time) endDate = s.session_date + 'T' + s.session_end_time;
+            
+            events.push({
+                id: `session_${s.id}`,
+                title: title,
+                start: startDate,
+                end: endDate,
+                allDay: !s.session_time,
+                color: color,
+                extendedProps: { type: s.session_type || 'session', venue: s.venue || 'TBA', description: s.session_description || 'No description', program: s.target_program || 'General', block: s.target_block || 'General' }
             });
-        }
+        });
 
         // 2. Add exams
-        if (exams && exams.length > 0) {
-            exams.forEach(e => {
-                if (!e) return;
-                if (!isAdmin && !shouldShowToStudent(e, currentUser)) return;
-                
-                const courseName = e.course?.course_name || e.exam_name || 'Exam';
-                const start = e.exam_date + (e.exam_start_time ? `T${e.exam_start_time}` : '');
-                let end = null;
-                if (e.exam_start_time && e.duration_minutes) {
-                    const startDate = new Date(`2000-01-01T${e.exam_start_time}`);
-                    const endDate = new Date(startDate.getTime() + e.duration_minutes * 60000);
-                    end = e.exam_date + `T${endDate.toTimeString().slice(0, 8)}`;
-                }
+        exams.forEach(e => {
+            if (!e) return;
+            if (!isAdmin && !shouldShowToStudent(e, currentUser)) return;
+            
+            const courseName = e.course?.course_name || e.exam_name || 'Exam';
+            const start = e.exam_date + (e.exam_start_time ? `T${e.exam_start_time}` : '');
+            let end = null;
+            if (e.exam_start_time && e.duration_minutes) {
+                const startDate = new Date(`2000-01-01T${e.exam_start_time}`);
+                const endDate = new Date(startDate.getTime() + e.duration_minutes * 60000);
+                end = e.exam_date + `T${endDate.toTimeString().slice(0, 8)}`;
+            }
 
+            events.push({
+                id: `exam_${e.id}`,
+                title: `${e.exam_type || 'EXAM'}: ${e.exam_name || 'Exam'} (${courseName})`,
+                start: start,
+                end: end,
+                allDay: !e.exam_start_time,
+                color: '#e74c3c',
+                extendedProps: { type: 'exam', venue: 'Exam Hall', description: `Duration: ${e.duration_minutes || 'N/A'} minutes`, program: e.target_program || 'General', block: e.target_block || 'General' }
+            });
+        });
+
+        // 3. Add TIMETABLE events (from timetables table - THIS IS THE NEW FEATURE!)
+        const currentDate = new Date();
+        timetableEvents.forEach(tt => {
+            if (!tt) return;
+            
+            // Filter by student's block if not admin
+            if (!isAdmin) {
+                const userBlock = currentUser?.block || 'Block 4';
+                if (tt.block !== userBlock) return;
+            }
+            
+            const eventDate = getDateForDay(tt.day_of_week, tt.week_number, currentDate);
+            if (!eventDate) return;
+            
+            const holidayBadge = tt.is_holiday ? '🔴 HOLIDAY - ' : '';
+            const examBadge = tt.is_exam ? '📝 EXAM - ' : '';
+            
+            events.push({
+                id: `timetable_${tt.id}`,
+                title: `${holidayBadge}${examBadge}${tt.session_name || tt.course_name}`,
+                start: `${eventDate}T${tt.start_time}`,
+                end: `${eventDate}T${tt.end_time}`,
+                allDay: false,
+                color: tt.is_holiday ? '#dc2626' : (tt.is_exam ? '#f59e0b' : '#4C1D95'),
+                extendedProps: {
+                    type: tt.is_holiday ? 'holiday' : (tt.is_exam ? 'exam' : 'class'),
+                    venue: tt.venue || 'TBD',
+                    description: `${tt.course_name || ''} - Week ${tt.week_number}`,
+                    program: tt.program || 'General',
+                    block: tt.block || 'General',
+                    lecturer: tt.lecturer_name || 'TBA'
+                }
+            });
+        });
+
+        // 4. Add calendar events (admin uploaded)
+        calendarEvents.forEach(event => {
+            if (!event) return;
+            if (!isAdmin && !shouldShowToStudent(event, currentUser)) return;
+            
+            let title = event.event_name || 'Untitled Event';
+            let color = getEventColor(event.type);
+            let icon = getEventIcon(event.type);
+            
+            const start = event.event_date + (event.start_time ? `T${event.start_time}` : '');
+            let end = null;
+            if (event.start_time && event.end_time) end = event.event_date + `T${event.end_time}`;
+
+            events.push({
+                id: `calendar_${event.id}`,
+                title: `${icon} ${title}`,
+                start: start,
+                end: end,
+                allDay: !event.start_time,
+                color: color,
+                extendedProps: { type: event.type || 'event', venue: event.venue || 'TBA', description: event.description || 'No description', program: event.target_program || 'General', block: event.target_block || 'General', organizer: event.organizer || 'Admin' }
+            });
+        });
+
+        // 5. Add unit deadlines
+        units.forEach(unitReg => {
+            if (unitReg && unitReg.units && unitReg.units.assessment_deadline) {
                 events.push({
-                    id: `exam_${e.id}`,
-                    title: `${e.exam_type || 'EXAM'}: ${e.exam_name || 'Exam'} (${courseName})`,
-                    start: start,
-                    end: end,
-                    allDay: !e.exam_start_time,
-                    color: '#e74c3c',
-                    extendedProps: {
-                        type: 'exam',
-                        venue: 'Exam Hall',
-                        description: `Duration: ${e.duration_minutes || 'N/A'} minutes`,
-                        program: e.target_program || 'General',
-                        block: e.target_block || 'General'
-                    }
+                    id: `unit_${unitReg.id}`,
+                    title: `📝 Assignment: ${unitReg.units?.unit_name || 'Unit Assessment'}`,
+                    start: unitReg.units.assessment_deadline,
+                    allDay: true,
+                    color: '#f39c12',
+                    extendedProps: { type: 'assignment', description: `Unit: ${unitReg.units?.unit_code || 'Unknown'} - Assessment due` }
                 });
-            });
-        }
+            }
+        });
 
-        // 3. Add calendar_events (admin uploaded timetables) - THIS IS WHERE ADMIN UPLOADS APPEAR!
-        if (calendarEvents && calendarEvents.length > 0) {
-            calendarEvents.forEach(event => {
-                if (!event) return;
-                if (!isAdmin && !shouldShowToStudent(event, currentUser)) return;
-                
-                let title = event.event_name || 'Untitled Event';
-                let color = getEventColor(event.type);
-                let icon = getEventIcon(event.type);
-                
-                const start = event.event_date + (event.start_time ? `T${event.start_time}` : '');
-                let end = null;
-                if (event.start_time && event.end_time) {
-                    end = event.event_date + `T${event.end_time}`;
-                }
-
-                events.push({
-                    id: `calendar_${event.id}`,
-                    title: `${icon} ${title}`,
-                    start: start,
-                    end: end,
-                    allDay: !event.start_time,
-                    color: color,
-                    extendedProps: {
-                        type: event.type || 'event',
-                        venue: event.venue || 'TBA',
-                        description: event.description || 'No description',
-                        program: event.target_program || 'General',
-                        block: event.target_block || 'General',
-                        organizer: event.organizer || 'Admin'
-                    }
-                });
-            });
-        }
-
-        // 4. Add unit deadlines from unit_registrations
-        if (units && units.length > 0) {
-            units.forEach(unitReg => {
-                if (unitReg && unitReg.units && unitReg.units.assessment_deadline) {
-                    events.push({
-                        id: `unit_${unitReg.id}`,
-                        title: `📝 Assignment: ${unitReg.units?.unit_name || 'Unit Assessment'}`,
-                        start: unitReg.units.assessment_deadline,
-                        allDay: true,
-                        color: '#f39c12',
-                        extendedProps: {
-                            type: 'assignment',
-                            description: `Unit: ${unitReg.units?.unit_code || 'Unknown'} - Assessment due`
-                        }
-                    });
-                }
-            });
-        }
-
-        console.log(`📅 Total events loaded: ${events.length}`);
+        console.log(`📅 Total events loaded: ${events.length} (${timetableEvents.length} from timetable)`);
 
         // Initialize or update calendar
         if (typeof FullCalendar !== 'undefined' && calendarEl) {
-            if (mainCalendar) {
-                mainCalendar.destroy();
-            }
+            if (mainCalendar) mainCalendar.destroy();
             
             mainCalendar = new FullCalendar.Calendar(calendarEl, {
                 initialView: 'dayGridMonth',
-                headerToolbar: {
-                    left: 'prev,next today',
-                    center: 'title',
-                    right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
-                },
+                headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek' },
                 events: events,
-                eventClick: function(info) {
-                    showEventDetails(info.event);
-                },
+                eventClick: function(info) { showEventDetails(info.event); },
                 eventDidMount: function(info) {
-                    // Add tooltip
                     info.el.title = info.event.extendedProps.description || info.event.title;
-                    
-                    // Add custom styling for different event types
-                    if (info.event.extendedProps.type === 'exam') {
-                        info.el.style.borderLeft = '4px solid #e74c3c';
-                    } else if (info.event.extendedProps.type === 'clinical') {
-                        info.el.style.borderLeft = '4px solid #2ecc71';
-                    } else if (info.event.extendedProps.type === 'assignment') {
-                        info.el.style.borderLeft = '4px solid #f39c12';
-                    }
+                    if (info.event.extendedProps.type === 'exam') info.el.style.borderLeft = '4px solid #e74c3c';
+                    else if (info.event.extendedProps.type === 'clinical') info.el.style.borderLeft = '4px solid #2ecc71';
+                    else if (info.event.extendedProps.type === 'holiday') info.el.style.borderLeft = '4px solid #dc2626';
+                    else if (info.event.extendedProps.type === 'class') info.el.style.borderLeft = '4px solid #4C1D95';
                 }
             });
-
             mainCalendar.render();
-            console.log('✅ Calendar rendered successfully');
         } else {
-            calendarEl.innerHTML = '<p style="color: red;">FullCalendar library not loaded. Please ensure it is included in your HTML.</p>';
+            calendarEl.innerHTML = '<p style="color: red;">FullCalendar library not loaded.</p>';
         }
     } catch (error) {
         console.error('Calendar render error:', error);
@@ -4810,47 +4799,40 @@ async function renderFullCalendar() {
     }
 }
 
-// Helper: Check if event should show to student based on program/block
+// =====================================================
+// HELPER FUNCTIONS
+// =====================================================
 function shouldShowToStudent(event, user) {
     if (!user || user.role === 'admin' || user.role === 'superadmin') return true;
-    
     const eventProgram = event.target_program || event.program_type || 'General';
-    const eventBlock = event.target_block || event.block_term || 'General';
-    const userProgram = user.program;
-    const userBlock = user.block;
-    
-    // Show if event is for everyone OR matches student's program AND block
-    const programMatch = eventProgram === 'General' || eventProgram === userProgram;
-    const blockMatch = eventBlock === 'General' || eventBlock === userBlock;
-    
+    const eventBlock = event.target_block || event.block || 'General';
+    const programMatch = eventProgram === 'General' || eventProgram === user.program;
+    const blockMatch = eventBlock === 'General' || eventBlock === user.block;
     return programMatch && blockMatch;
 }
 
-// Get color based on event type
 function getEventColor(type) {
-    const eventType = (type || '').toUpperCase();
-    if (eventType.includes('EXAM')) return '#e74c3c';
-    if (eventType.includes('CAT')) return '#e67e22';
-    if (eventType.includes('CLINICAL')) return '#2ecc71';
-    if (eventType.includes('CLASS') || eventType.includes('LECTURE')) return '#3498db';
-    if (eventType.includes('ASSIGNMENT')) return '#f39c12';
-    if (eventType.includes('EVENT')) return '#9b59b6';
+    const t = (type || '').toUpperCase();
+    if (t.includes('EXAM')) return '#e74c3c';
+    if (t.includes('CAT')) return '#e67e22';
+    if (t.includes('CLINICAL')) return '#2ecc71';
+    if (t.includes('CLASS')) return '#3498db';
+    if (t.includes('ASSIGNMENT')) return '#f39c12';
+    if (t.includes('HOLIDAY')) return '#dc2626';
     return '#95a5a6';
 }
 
-// Get icon for event type
 function getEventIcon(type) {
-    const eventType = (type || '').toUpperCase();
-    if (eventType.includes('EXAM')) return '📝';
-    if (eventType.includes('CAT')) return '📋';
-    if (eventType.includes('CLINICAL')) return '🏥';
-    if (eventType.includes('CLASS')) return '📚';
-    if (eventType.includes('ASSIGNMENT')) return '📄';
-    if (eventType.includes('EVENT')) return '🎉';
+    const t = (type || '').toUpperCase();
+    if (t.includes('EXAM')) return '📝';
+    if (t.includes('CAT')) return '📋';
+    if (t.includes('CLINICAL')) return '🏥';
+    if (t.includes('CLASS')) return '📚';
+    if (t.includes('ASSIGNMENT')) return '📄';
+    if (t.includes('HOLIDAY')) return '🔴';
     return '📅';
 }
 
-// Show event details modal when clicked
 function showEventDetails(event) {
     const props = event.extendedProps;
     const startDate = event.start ? new Date(event.start) : new Date();
@@ -4858,8 +4840,8 @@ function showEventDetails(event) {
     const endTime = event.end ? new Date(event.end).toLocaleTimeString() : '';
     
     const modalHtml = `
-        <div id="eventDetailModal" class="modal" style="display: flex;">
-            <div class="modal-content" style="max-width: 500px;">
+        <div id="eventDetailModal" class="modal" style="display: flex; z-index: 10000;">
+            <div class="modal-content" style="max-width: 500px; background: white; border-radius: 12px;">
                 <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #e5e7eb;">
                     <h3 style="margin: 0;">${escapeHtml(event.title)}</h3>
                     <span class="close" onclick="closeModal('eventDetailModal')" style="cursor: pointer; font-size: 24px;">&times;</span>
@@ -4867,12 +4849,12 @@ function showEventDetails(event) {
                 <div class="modal-body" style="padding: 20px;">
                     <p><strong>📅 Date:</strong> ${startDate.toLocaleDateString()}</p>
                     ${startTime ? `<p><strong>⏰ Time:</strong> ${startTime} ${endTime ? '- ' + endTime : ''}</p>` : ''}
-                    ${props.venue && props.venue !== 'TBA' ? `<p><strong>📍 Venue:</strong> ${escapeHtml(props.venue)}</p>` : ''}
+                    ${props.venue && props.venue !== 'TBA' && props.venue !== 'TBD' ? `<p><strong>📍 Venue:</strong> ${escapeHtml(props.venue)}</p>` : ''}
                     ${props.type ? `<p><strong>🏷️ Type:</strong> ${escapeHtml(props.type)}</p>` : ''}
+                    ${props.lecturer ? `<p><strong>👨‍🏫 Lecturer:</strong> ${escapeHtml(props.lecturer)}</p>` : ''}
                     ${props.description && props.description !== 'No description' ? `<p><strong>📝 Details:</strong> ${escapeHtml(props.description)}</p>` : ''}
                     ${props.program && props.program !== 'General' ? `<p><strong>🎓 Program:</strong> ${escapeHtml(props.program)}</p>` : ''}
                     ${props.block && props.block !== 'General' ? `<p><strong>📌 Block:</strong> ${escapeHtml(props.block)}</p>` : ''}
-                    ${props.organizer ? `<p><strong>👤 Organizer:</strong> ${escapeHtml(props.organizer)}</p>` : ''}
                 </div>
                 <div class="modal-actions" style="padding: 15px; border-top: 1px solid #e5e7eb; display: flex; justify-content: flex-end;">
                     <button onclick="closeModal('eventDetailModal')" class="btn" style="padding: 8px 16px; background: #6b7280; color: white; border: none; border-radius: 6px; cursor: pointer;">Close</button>
@@ -4881,31 +4863,387 @@ function showEventDetails(event) {
         </div>
     `;
     
-    // Remove existing modal if any
     const existingModal = document.getElementById('eventDetailModal');
     if (existingModal) existingModal.remove();
-    
     document.body.insertAdjacentHTML('beforeend', modalHtml);
 }
 
-// Refresh calendar data
-async function refreshCalendarData() {
-    const calendarEl = $('fullCalendarDisplay');
-    if (calendarEl) {
-        await renderFullCalendar();
+// =====================================================
+// TIMETABLE UPLOAD FUNCTIONS (Supports Excel, CSV, Word, PDF)
+// =====================================================
+
+// Main upload function - supports all file types
+window.uploadTimetableToSupabase = async function() {
+    const fileInput = document.getElementById('adminTimetableFile');
+    const blockSelect = document.getElementById('adminTimetableBlock');
+    const programSelect = document.getElementById('adminTimetableProgram');
+    
+    if (!fileInput || !fileInput.files || !fileInput.files[0]) {
+        alert('Please select a file (Excel, CSV, Word, or PDF)');
+        return;
     }
+    
+    const file = fileInput.files[0];
+    const block = blockSelect ? blockSelect.value : 'Block 4';
+    const program = programSelect ? programSelect.value : 'KRCHN';
+    const fileName = file.name.toLowerCase();
+    
+    // Show loading indicator
+    const uploadBtn = event?.target;
+    const originalText = uploadBtn ? uploadBtn.innerHTML : 'Upload';
+    if (uploadBtn) {
+        uploadBtn.disabled = true;
+        uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+    }
+    
+    try {
+        // Check file type and process accordingly
+        if (fileName.endsWith('.csv') || fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
+            // Process Excel/CSV files
+            await processSpreadsheetFile(file, block, program);
+        } else if (fileName.endsWith('.pdf')) {
+            // Process PDF files - store as document, not as calendar events
+            await processPDFFile(file, block, program);
+        } else if (fileName.endsWith('.doc') || fileName.endsWith('.docx')) {
+            // Process Word documents
+            await processWordFile(file, block, program);
+        } else {
+            alert('Unsupported file type. Please upload Excel, CSV, Word, or PDF files.');
+        }
+        
+        // Refresh preview and calendar
+        if (typeof previewTimetable === 'function') previewTimetable();
+        if (typeof renderFullCalendar === 'function') renderFullCalendar();
+        
+        // Clear file input
+        fileInput.value = '';
+        
+    } catch (error) {
+        console.error('Upload error:', error);
+        alert('Upload failed: ' + error.message);
+    } finally {
+        if (uploadBtn) {
+            uploadBtn.disabled = false;
+            uploadBtn.innerHTML = originalText;
+        }
+    }
+};
+
+// Process Excel/CSV files
+async function processSpreadsheetFile(file, block, program) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+            try {
+                let entries = [];
+                const fileName = file.name.toLowerCase();
+                
+                if (fileName.endsWith('.csv')) {
+                    // Parse CSV
+                    const text = e.target.result;
+                    const lines = text.split(/\r?\n/);
+                    const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+                    
+                    for (let i = 1; i < lines.length; i++) {
+                        if (!lines[i].trim()) continue;
+                        
+                        let row = [];
+                        let inQuote = false;
+                        let current = '';
+                        for (let char of lines[i]) {
+                            if (char === '"') {
+                                inQuote = !inQuote;
+                            } else if (char === ',' && !inQuote) {
+                                row.push(current.trim());
+                                current = '';
+                            } else {
+                                current += char;
+                            }
+                        }
+                        row.push(current.trim());
+                        
+                        if (row.length >= 3) {
+                            const entry = {};
+                            headers.forEach((h, idx) => {
+                                let value = row[idx] || '';
+                                value = value.replace(/^"|"$/g, '');
+                                entry[h] = value;
+                            });
+                            
+                            entries.push({
+                                day_of_week: (entry.day_of_week || entry.day || '').toString().toLowerCase(),
+                                week_number: parseInt(entry.week_number || entry.week || 1),
+                                start_time: entry.start_time || entry.start || entry.startTime || '08:00',
+                                end_time: entry.end_time || entry.end || entry.endTime || '10:00',
+                                session_name: entry.session_name || entry.session || entry.title || entry.course || '',
+                                course_name: entry.course_name || entry.course || '',
+                                lecturer_name: entry.lecturer_name || entry.lecturer || entry.instructor || 'TBA',
+                                venue: entry.venue || entry.location || 'TBD',
+                                block: block,
+                                program: program,
+                                academic_year: '2026',
+                                is_holiday: (entry.is_holiday === 'TRUE' || entry.is_holiday === 'true' || entry.holiday === 'TRUE' || entry.holiday === 'true') ? true : false,
+                                is_exam: (entry.is_exam === 'TRUE' || entry.is_exam === 'true' || entry.exam === 'TRUE' || entry.exam === 'true') ? true : false,
+                                pending_allocation: (entry.lecturer_name === 'TBA' || entry.lecturer === 'TBA' || entry.pending === 'TRUE') ? true : false
+                            });
+                        }
+                    }
+                } else {
+                    // Parse Excel
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const rows = XLSX.utils.sheet_to_json(sheet);
+                    
+                    for (const row of rows) {
+                        entries.push({
+                            day_of_week: (row.day_of_week || row.Day || row.day || '').toString().toLowerCase(),
+                            week_number: parseInt(row.week_number || row.Week || row.week || 1),
+                            start_time: row.start_time || row.Start_Time || row.startTime || row.Start || '08:00',
+                            end_time: row.end_time || row.End_Time || row.endTime || row.End || '10:00',
+                            session_name: row.session_name || row.Session || row.title || row.Title || row.Course || row.course || '',
+                            course_name: row.course_name || row.Course_Name || row.course || '',
+                            lecturer_name: row.lecturer_name || row.Lecturer || row.lecturer || row.instructor || 'TBA',
+                            venue: row.venue || row.Venue || row.location || 'TBD',
+                            block: block,
+                            program: program,
+                            academic_year: '2026',
+                            is_holiday: (row.is_holiday === 'TRUE' || row.is_holiday === true || row.holiday === 'TRUE' || row.holiday === true) ? true : false,
+                            is_exam: (row.is_exam === 'TRUE' || row.is_exam === true || row.exam === 'TRUE' || row.exam === true) ? true : false,
+                            pending_allocation: (row.lecturer_name === 'TBA' || row.lecturer === 'TBA') ? true : false
+                        });
+                    }
+                }
+                
+                if (entries.length === 0) {
+                    throw new Error('No valid data found in file');
+                }
+                
+                // Delete existing entries for this block
+                const { error: deleteError } = await sb.from('timetables').delete().eq('block', block);
+                if (deleteError) throw deleteError;
+                
+                // Insert new entries in batches
+                const batchSize = 50;
+                for (let i = 0; i < entries.length; i += batchSize) {
+                    const batch = entries.slice(i, i + batchSize);
+                    const { error: insertError } = await sb.from('timetables').insert(batch);
+                    if (insertError) throw insertError;
+                }
+                
+                alert(`✅ Success! ${entries.length} timetable entries uploaded for ${block}`);
+                resolve();
+                
+            } catch (error) {
+                reject(error);
+            }
+        };
+        
+        if (file.name.toLowerCase().endsWith('.csv')) {
+            reader.readAsText(file);
+        } else {
+            reader.readAsArrayBuffer(file);
+        }
+    });
 }
 
-// ADMIN TIMETABLE UPLOAD FUNCTIONS
+// Process PDF files (store as document, not as calendar events)
+async function processPDFFile(file, block, program) {
+    // Upload PDF to storage
+    const timestamp = Date.now();
+    const fileName = `timetable_${block}_${program}_${timestamp}.pdf`;
+    const filePath = `timetables/${block}/${fileName}`;
+    
+    const { error: uploadError } = await sb.storage
+        .from('resources')
+        .upload(filePath, file, { contentType: 'application/pdf' });
+    
+    if (uploadError) throw uploadError;
+    
+    const { data: { publicUrl } } = sb.storage.from('resources').getPublicUrl(filePath);
+    
+    // Store metadata in timetables_documents table
+    const { error: insertError } = await sb.from('timetables_documents').insert([{
+        file_name: file.name,
+        file_url: publicUrl,
+        block: block,
+        program: program,
+        uploaded_by: currentUserProfile?.id,
+        uploaded_at: new Date().toISOString()
+    }]);
+    
+    if (insertError) throw insertError;
+    
+    alert(`✅ PDF timetable uploaded successfully for ${block}!\nFile stored in resources.`);
+}
+
+// Process Word files
+async function processWordFile(file, block, program) {
+    const timestamp = Date.now();
+    const fileName = `timetable_${block}_${program}_${timestamp}.docx`;
+    const filePath = `timetables/${block}/${fileName}`;
+    
+    const { error: uploadError } = await sb.storage
+        .from('resources')
+        .upload(filePath, file, { contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+    
+    if (uploadError) throw uploadError;
+    
+    const { data: { publicUrl } } = sb.storage.from('resources').getPublicUrl(filePath);
+    
+    const { error: insertError } = await sb.from('timetables_documents').insert([{
+        file_name: file.name,
+        file_url: publicUrl,
+        block: block,
+        program: program,
+        file_type: 'word',
+        uploaded_by: currentUserProfile?.id,
+        uploaded_at: new Date().toISOString()
+    }]);
+    
+    if (insertError) throw insertError;
+    
+    alert(`✅ Word document uploaded successfully for ${block}!`);
+}
+
+// Clear entire block timetable
+window.clearTimetableBlock = async function() {
+    const blockSelect = document.getElementById('adminTimetableBlock');
+    const block = blockSelect ? blockSelect.value : 'Block 4';
+    
+    if (!confirm(`⚠️ WARNING: This will DELETE ALL timetable entries for ${block}. This cannot be undone. Continue?`)) return;
+    
+    try {
+        const { error } = await sb.from('timetables').delete().eq('block', block);
+        if (error) throw error;
+        alert(`✅ ${block} timetable cleared successfully`);
+        if (typeof previewTimetable === 'function') previewTimetable();
+        if (typeof renderFullCalendar === 'function') renderFullCalendar();
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+};
+
+// Preview timetable for selected block
+window.previewTimetable = async function() {
+    const blockSelect = document.getElementById('previewBlockSelect');
+    const container = document.getElementById('adminTimetablePreview');
+    if (!container) return;
+    
+    const block = blockSelect ? blockSelect.value : 'Block 4';
+    container.innerHTML = '<div class="loading-spinner"></div> Loading...';
+    
+    try {
+        const { data, error } = await sb
+            .from('timetables')
+            .select('*')
+            .eq('block', block)
+            .order('week_number', { ascending: true })
+            .order('day_of_week', { ascending: true })
+            .order('start_time', { ascending: true });
+        
+        if (error) throw error;
+        
+        if (!data || data.length === 0) {
+            container.innerHTML = '<div style="text-align:center; padding:40px; color:#6b7280;">📭 No timetable found for ' + block + '. Upload a file to add classes.</div>';
+            return;
+        }
+        
+        const weeks = {};
+        data.forEach(cls => {
+            const week = cls.week_number || 1;
+            if (!weeks[week]) weeks[week] = [];
+            weeks[week].push(cls);
+        });
+        
+        const dayNames = { monday:'Monday', tuesday:'Tuesday', wednesday:'Wednesday', thursday:'Thursday', friday:'Friday', saturday:'Saturday', sunday:'Sunday' };
+        const daysOrder = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+        
+        let html = '';
+        for (const week in weeks) {
+            html += `<h4 style="margin: 20px 0 10px 0; background: #4C1D95; color: white; padding: 8px 12px; border-radius: 8px;">📅 Week ${week}</h4>`;
+            html += `<table style="width:100%; margin-bottom:20px; border-collapse: collapse;">
+                        <thead><tr style="background: #f3f4f6;">
+                            <th style="padding: 10px; text-align: left;">Day</th>
+                            <th style="padding: 10px; text-align: left;">Time</th>
+                            <th style="padding: 10px; text-align: left;">Session/Course</th>
+                            <th style="padding: 10px; text-align: left;">Lecturer</th>
+                            <th style="padding: 10px; text-align: left;">Venue</th>
+                         </tr></thead><tbody>`;
+            
+            for (const day of daysOrder) {
+                const dayClasses = weeks[week].filter(c => c.day_of_week === day);
+                dayClasses.sort((a,b) => a.start_time.localeCompare(b.start_time));
+                
+                dayClasses.forEach((cls, idx) => {
+                    const holidayBadge = cls.is_holiday ? '<span style="background:#dc2626; color:white; padding:2px 6px; border-radius:4px; font-size:10px; margin-left:5px;">HOLIDAY</span>' : '';
+                    const examBadge = cls.is_exam ? '<span style="background:#f59e0b; color:white; padding:2px 6px; border-radius:4px; font-size:10px; margin-left:5px;">EXAM</span>' : '';
+                    
+                    html += `<tr style="border-bottom: 1px solid #e5e7eb;">
+                        <td style="padding: 8px;">${idx === 0 ? dayNames[day] : ''}</td>
+                        <td style="padding: 8px;">${cls.start_time} - ${cls.end_time}</td>
+                        <td style="padding: 8px;"><strong>${escapeHtml(cls.session_name || cls.course_name)}</strong> ${holidayBadge}${examBadge}<br><small>${escapeHtml(cls.course_name || '')}</small></td>
+                        <td style="padding: 8px;">${escapeHtml(cls.lecturer_name || 'TBA')} ${cls.pending_allocation ? '<span style="background:#94a3b8; color:white; padding:2px 6px; border-radius:4px; font-size:10px;">Pending</span>' : ''}</td>
+                        <td style="padding: 8px;">${escapeHtml(cls.venue || 'TBD')}</td>
+                    </tr>`;
+                });
+            }
+            html += `</tbody></table>`;
+        }
+        container.innerHTML = html;
+        
+    } catch (error) {
+        container.innerHTML = '<div style="color:red;">Error loading timetable: ' + error.message + '</div>';
+    }
+};
+
+// Download CSV template
+window.downloadTimetableTemplate = function() {
+    const csvContent = `day_of_week,week_number,start_time,end_time,session_name,course_name,lecturer_name,venue,is_holiday,is_exam
+monday,1,08:00,10:30,Critical Care Nursing,Critical Care,Mr. Peter Onkundi,Skills Lab,FALSE,FALSE
+monday,1,11:00,13:00,ENT Disorders,Ear Nose Throat,Mr. Kevin Matoka,Lecture Hall 1,FALSE,FALSE
+tuesday,1,08:00,10:30,Medical Surgical III,Dermatology/Burns,Mr. Job Juma,Lecture Hall 1,FALSE,FALSE
+tuesday,1,14:00,17:00,Leadership,Management in Nursing,Mr. Kevin Matoka,Lecture Hall 2,FALSE,FALSE
+wednesday,1,09:00,12:00,Community Diagnosis,Community Health,Mr. Job Juma,Lecture Hall 1,FALSE,FALSE
+wednesday,1,14:00,17:00,Teaching and Learning,Methodology,Md. Mary Nyamboki,Lecture Hall 2,FALSE,FALSE
+thursday,1,08:00,10:30,Communicable Diseases,Vector Borne,TBA,Lecture Hall 1,FALSE,FALSE
+thursday,1,11:00,13:00,Research Methods,Research,Dr. Anne Wanjiku,Room 101,FALSE,FALSE
+friday,1,09:00,11:00,Weekly Review,Review Session,Tutorial Staff,Room 203,FALSE,FALSE
+monday,2,08:00,10:30,Medical Surgical III,Dermatology/Burns,Mr. Job Juma,Lecture Hall 1,FALSE,FALSE
+tuesday,2,09:00,12:00,MADARAKA DAY,Public Holiday,,,TRUE,FALSE
+wednesday,2,08:00,10:30,Teaching and Learning,Methodology,Md. Mary Nyamboki,Lecture Hall 2,FALSE,FALSE
+thursday,2,11:00,13:00,Community Health,Community Health,Mr. Gideon Kibet,Lecture Hall 1,FALSE,FALSE
+friday,2,14:00,17:00,Leadership,Nursing Management,Mr. Kevin Matoka,Lecture Hall 2,FALSE,FALSE`;
+    
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'timetable_template.csv';
+    link.click();
+    URL.revokeObjectURL(link.href);
+};
+
+// Refresh calendar data
+async function refreshCalendarData() {
+    await renderFullCalendar();
+}
+
+// Add single event to calendar
+async function addCalendarEvent(eventData) {
+    const { error } = await sb.from('calendar_events').insert([eventData]);
+    if (error) {
+        alert('Failed to add event: ' + error.message);
+        return false;
+    }
+    await renderFullCalendar();
+    alert('✅ Event added to calendar!');
+    return true;
+}
+
+// Upload Excel timetable (legacy function - kept for compatibility)
 async function uploadTimetableExcel(file, program, block) {
     if (!file) {
         alert('Please select an Excel file');
-        return false;
-    }
-    
-    // Check if SheetJS is loaded
-    if (typeof XLSX === 'undefined') {
-        alert('Excel parser not loaded. Please refresh the page and try again.');
         return false;
     }
     
@@ -4918,72 +5256,32 @@ async function uploadTimetableExcel(file, program, block) {
             const rows = XLSX.utils.sheet_to_json(sheet);
             
             let added = 0;
-            let errors = [];
-            
             for (const row of rows) {
-                try {
-                    const eventData = {
-                        event_name: row.Title || row.title || row.Course || row.course,
-                        event_date: row.Date || row.date,
-                        start_time: row.Start_Time || row.start_time || row['Start Time'] || null,
-                        end_time: row.End_Time || row.end_time || row['End Time'] || null,
-                        venue: row.Venue || row.venue || null,
-                        type: (row.Type || row.type || 'CLASS').toUpperCase(),
-                        description: row.Description || row.description || '',
-                        target_program: program || 'General',
-                        target_block: block || 'General',
-                        organizer: 'Admin Upload'
-                    };
-                    
-                    if (!eventData.event_name || !eventData.event_date) {
-                        errors.push(row);
-                        continue;
-                    }
-                    
+                const eventData = {
+                    event_name: row.Title || row.title || row.Course || row.course,
+                    event_date: row.Date || row.date,
+                    start_time: row.Start_Time || row.start_time || null,
+                    end_time: row.End_Time || row.end_time || null,
+                    venue: row.Venue || row.venue || null,
+                    type: (row.Type || row.type || 'CLASS').toUpperCase(),
+                    description: row.Description || row.description || '',
+                    target_program: program || 'General',
+                    target_block: block || 'General',
+                    organizer: 'Admin Upload'
+                };
+                
+                if (eventData.event_name && eventData.event_date) {
                     const { error } = await sb.from('calendar_events').insert([eventData]);
-                    if (error) throw error;
-                    added++;
-                } catch (err) {
-                    errors.push(row);
+                    if (!error) added++;
                 }
             }
-            
-            alert(`✅ Added ${added} events to calendar!\n${errors.length} errors.`);
-            refreshCalendarData();
+            alert(`✅ Added ${added} events to calendar!`);
+            await renderFullCalendar();
         } catch (err) {
-            console.error('Excel processing error:', err);
-            alert('Error processing Excel file: ' + err.message);
+            alert('Error processing file: ' + err.message);
         }
     };
     reader.readAsArrayBuffer(file);
-}
-
-// Add single event to calendar (Admin function)
-async function addCalendarEvent(eventData) {
-    const { error } = await sb.from('calendar_events').insert([eventData]);
-    if (error) {
-        console.error('Error adding event:', error);
-        alert('Failed to add event: ' + error.message);
-        return false;
-    }
-    refreshCalendarData();
-    alert('✅ Event added to calendar!');
-    return true;
-}
-
-// Download Excel template
-function downloadTimetableTemplate() {
-    const templateData = [
-        ['Date', 'Title', 'Start Time', 'End Time', 'Venue', 'Type', 'Description'],
-        ['2026-06-15', 'Nursing 101 Lecture', '09:00', '11:00', 'Hall A', 'CLASS', 'Introduction to Nursing'],
-        ['2026-06-16', 'Clinical Skills Lab', '10:00', '12:00', 'Skills Lab', 'CLINICAL', 'Practical session'],
-        ['2026-06-17', 'Anatomy CAT 1', '14:00', '16:00', 'Exam Hall', 'EXAM', 'First CAT examination']
-    ];
-    
-    const ws = XLSX.utils.aoa_to_sheet(templateData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Timetable_Template');
-    XLSX.writeFile(wb, 'timetable_template.xlsx');
 }
 
 // Expose functions globally
@@ -4992,6 +5290,9 @@ window.refreshCalendarData = refreshCalendarData;
 window.uploadTimetableExcel = uploadTimetableExcel;
 window.addCalendarEvent = addCalendarEvent;
 window.downloadTimetableTemplate = downloadTimetableTemplate;
+window.uploadTimetableToSupabase = uploadTimetableToSupabase;
+window.clearTimetableBlock = clearTimetableBlock;
+window.previewTimetable = previewTimetable;
 /*******************************************************
  * 19. ENHANCED FEATURES IMPLEMENTATION
  *******************************************************/
