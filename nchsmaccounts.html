@@ -8,6 +8,7 @@
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     
     <style>
         * {
@@ -73,6 +74,12 @@
             border-radius: 8px;
             cursor: pointer;
             font-weight: 500;
+            transition: all 0.2s;
+        }
+        
+        .logout-btn:hover {
+            background: #b91c1c;
+            transform: translateY(-1px);
         }
         
         /* Stats Cards */
@@ -89,11 +96,12 @@
             border-radius: 16px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.08);
             border-left: 4px solid #10b981;
-            transition: transform 0.2s;
+            transition: transform 0.2s, box-shadow 0.2s;
         }
         
         .stat-card:hover {
             transform: translateY(-2px);
+            box-shadow: 0 8px 25px -5px rgba(0,0,0,0.1);
         }
         
         .stat-card h3 {
@@ -116,6 +124,12 @@
             padding: 20px;
             margin-bottom: 25px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px -5px rgba(0,0,0,0.1);
         }
         
         .card-title {
@@ -155,6 +169,7 @@
             border: 1px solid #cbd5e1;
             border-radius: 10px;
             font-size: 14px;
+            transition: all 0.2s;
         }
         
         .form-group input:focus, .form-group select:focus {
@@ -173,13 +188,15 @@
             display: inline-flex;
             align-items: center;
             gap: 8px;
+            transition: all 0.2s;
         }
         
         .btn-primary { background: #10b981; color: white; }
-        .btn-primary:hover { background: #059669; }
+        .btn-primary:hover { background: #059669; transform: translateY(-1px); }
         .btn-secondary { background: #64748b; color: white; }
-        .btn-danger { background: #ef4444; color: white; }
+        .btn-secondary:hover { background: #475569; transform: translateY(-1px); }
         .btn-outline { background: transparent; border: 1px solid #cbd5e1; color: #475569; }
+        .btn-outline:hover { background: #f8fafc; border-color: #10b981; transform: translateY(-1px); }
         
         /* Smart Filters */
         .smart-filters {
@@ -202,6 +219,7 @@
             font-size: 11px;
             font-weight: 600;
             color: #64748b;
+            text-transform: uppercase;
         }
         
         .filter-group select, .filter-group input {
@@ -209,6 +227,12 @@
             border: 1px solid #cbd5e1;
             border-radius: 8px;
             background: white;
+            transition: all 0.2s;
+        }
+        
+        .filter-group select:focus, .filter-group input:focus {
+            outline: none;
+            border-color: #10b981;
         }
         
         /* Table */
@@ -254,6 +278,10 @@
         .badge-unpaid { background: #fee2e2; color: #dc2626; }
         .badge-overdue { background: #fef3c7; color: #d97706; }
         
+        /* Text colors */
+        .text-danger { color: #dc2626; font-weight: 600; }
+        .text-success { color: #059669; font-weight: 600; }
+        
         /* Modal */
         .modal {
             display: none;
@@ -263,6 +291,7 @@
             width: 100%;
             height: 100%;
             background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(4px);
             justify-content: center;
             align-items: center;
             z-index: 1000;
@@ -280,6 +309,8 @@
             border-bottom: 1px solid #e2e8f0;
             display: flex;
             justify-content: space-between;
+            background: #f8fafc;
+            border-radius: 16px 16px 0 0;
         }
         .modal-body { padding: 20px; }
         .modal-footer {
@@ -288,8 +319,11 @@
             display: flex;
             justify-content: flex-end;
             gap: 10px;
+            background: #f8fafc;
+            border-radius: 0 0 16px 16px;
         }
-        .close { cursor: pointer; font-size: 24px; color: #94a3b8; }
+        .close { cursor: pointer; font-size: 24px; color: #94a3b8; transition: color 0.2s; }
+        .close:hover { color: #dc2626; }
         
         /* Loading */
         .loading-spinner {
@@ -303,16 +337,63 @@
         }
         @keyframes spin { to { transform: rotate(360deg); } }
         
-        /* Receipt */
-        .receipt-box {
-            background: #f8fafc;
-            padding: 20px;
+        /* Toast Notifications */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: #1e293b;
+            color: white;
+            padding: 12px 20px;
             border-radius: 12px;
-            font-family: monospace;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            z-index: 1100;
+            animation: slideIn 0.3s ease;
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.2);
+        }
+        .toast-success { background: #059669; }
+        .toast-error { background: #dc2626; }
+        .toast-info { background: #3b82f6; }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
+        
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
         }
         
         @media print {
             .smart-header, .card:first-child, .btn, .modal-footer { display: none; }
+            body { background: white; }
+        }
+        
+        @media (max-width: 768px) {
+            .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+            .smart-filters { flex-direction: column; }
+            .filter-group { width: 100%; }
+            th, td { padding: 8px 8px; font-size: 11px; }
+            .btn { padding: 6px 12px; font-size: 12px; }
         }
     </style>
 </head>
@@ -388,7 +469,7 @@
             </div>
             <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 10px;">
                 <button class="btn btn-outline" onclick="clearPaymentForm()">Clear</button>
-                <button class="btn btn-primary" onclick="recordPayment()"><i class="fas fa-save"></i> Record Payment</button>
+                <button class="btn btn-primary" id="recordPaymentBtn" onclick="recordPayment()"><i class="fas fa-save"></i> Record Payment</button>
             </div>
         </div>
         
@@ -406,11 +487,12 @@
             <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: space-between; align-items: center;">
                 <div style="display: flex; gap: 10px;">
                     <button class="btn btn-secondary" onclick="refreshData()"><i class="fas fa-sync-alt"></i> Refresh</button>
-                    <button class="btn btn-outline" onclick="exportToExcel()"><i class="fas fa-file-excel"></i> Export Excel</button>
-                    <button class="btn btn-outline" onclick="exportToCSV()"><i class="fas fa-download"></i> Export CSV</button>
-                    <button class="btn btn-outline" onclick="printReport()"><i class="fas fa-print"></i> Print Report</button>
+                    <button class="btn btn-outline" onclick="exportToExcel()"><i class="fas fa-file-excel"></i> Excel</button>
+                    <button class="btn btn-outline" onclick="exportToCSV()"><i class="fas fa-download"></i> CSV</button>
+                    <button class="btn btn-outline" onclick="exportToPDF()"><i class="fas fa-file-pdf"></i> PDF</button>
+                    <button class="btn btn-outline" onclick="printReport()"><i class="fas fa-print"></i> Print</button>
                 </div>
-                <div><span id="recordCount" style="font-size:12px; color:#64748b;">0 students shown</span></div>
+                <div><span id="recordCount" style="font-size:12px; color:#64748b;"><i class="fas fa-database"></i> 0 students shown</span></div>
             </div>
         </div>
         
@@ -422,7 +504,7 @@
                     <thead>
                         <tr><th>#</th><th>Student Name</th><th>ID</th><th>Program</th><th>Intake</th><th>Block</th><th>Total Fees</th><th>Paid</th><th>Balance</th><th>Status</th><th>Last Payment</th><th>Action</th>
                     </thead>
-                    <tbody id="tableBody"><tr><td colspan="12" style="text-align:center;padding:40px;"><div class="loading-spinner"></div> Loading students...</td></tr></tbody>
+                    <tbody id="tableBody"><tr><td colspan="12" style="text-align:center;padding:40px;"><div class="loading-spinner"></div> Loading students...<\/td><\/tr><\/tbody>
                 </table>
             </div>
         </div>
@@ -431,8 +513,9 @@
         <div class="card">
             <div class="card-title"><i class="fas fa-history"></i> Recent Payments <button class="btn btn-outline" style="margin-left:10px;padding:4px 12px;" onclick="viewAllPayments()">View All</button></div>
             <div class="table-wrapper">
-                <table><thead><tr><th>Date</th><th>Student</th><th>Amount</th><th>Method</th><th>Reference</th><th>Receipt</th><th>By</th></tr></thead>
-                <tbody id="recentPaymentsBody"><tr><td colspan="7" style="text-align:center;padding:20px;"><div class="loading-spinner"></div></td></tr></tbody>
+                <table>
+                    <thead><tr><th>Date</th><th>Student</th><th>Amount</th><th>Method</th><th>Reference</th><th>Receipt</th><th>By</th></tr></thead>
+                    <tbody id="recentPaymentsBody"><tr><td colspan="7" style="text-align:center;padding:20px;"><div class="loading-spinner"></div><\/td><\/tr><\/tbody>
                 </table>
             </div>
         </div>
