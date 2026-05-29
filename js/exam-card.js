@@ -1,4 +1,4 @@
-// js/exam-card.js - v8.9 (REG NO. instead of ID Number)
+// js/exam-card.js - v8.9 (REG NO. instead of ID Number) - SYNTAX FIXED
 
 (function() {
     'use strict';
@@ -414,7 +414,7 @@
                         <div class="signature-line"></div>
                         <div class="signature-hint">(Lecturer's Signature)</div>
                     </td>
-                `
+                </tr>
             `).join('');
             
             const html = `
