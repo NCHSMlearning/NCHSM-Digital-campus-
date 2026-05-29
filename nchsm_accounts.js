@@ -18,6 +18,25 @@ const DEFAULT_FEES = {
 };
 
 // =====================================================
+// TOAST NOTIFICATIONS
+// =====================================================
+function showToast(message, type = 'success') {
+    var existing = document.querySelector('.toast');
+    if (existing) existing.remove();
+    
+    var toast = document.createElement('div');
+    toast.className = 'toast toast-' + type;
+    var icon = type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle';
+    toast.innerHTML = '<i class="fas ' + icon + '"></i> ' + message;
+    document.body.appendChild(toast);
+    
+    setTimeout(function() {
+        toast.style.animation = 'slideOut 0.3s ease';
+        setTimeout(function() { if (toast && toast.remove) toast.remove(); }, 300);
+    }, 3000);
+}
+
+// =====================================================
 // INITIALIZATION
 // =====================================================
 document.addEventListener('DOMContentLoaded', function() {
@@ -34,13 +53,13 @@ document.addEventListener('DOMContentLoaded', function() {
 async function checkAuth() {
     if (!db) return;
     
-    const session = await db.auth.getSession();
+    var session = await db.auth.getSession();
     if (!session.data.session) {
         window.location.href = 'login.html';
         return;
     }
     
-    const { data: profile } = await db
+    var { data: profile } = await db
         .from('consolidated_user_profiles_table')
         .select('*')
         .eq('email', session.data.session.user.email)
@@ -50,10 +69,9 @@ async function checkAuth() {
         currentStaff = profile;
         document.getElementById('currentUser').innerText = profile.full_name || profile.email;
         
-        // Only accounts, admin, superadmin can access
         if (!['accounts', 'admin', 'superadmin'].includes(profile.role)) {
-            alert('Access denied. Accounts department only.');
-            window.location.href = 'login.html';
+            showToast('Access denied. Accounts department only.', 'error');
+            setTimeout(function() { window.location.href = 'login.html'; }, 2000);
             return;
         }
     }
@@ -62,15 +80,17 @@ async function checkAuth() {
 }
 
 function setupEventListeners() {
-    // Smart filters
-    document.getElementById('smartSearch')?.addEventListener('keyup', renderTable);
-    document.getElementById('filterProgram')?.addEventListener('change', function() { updateBlockFilter(); renderTable(); });
-    document.getElementById('filterBlock')?.addEventListener('change', renderTable);
-    document.getElementById('filterIntake')?.addEventListener('change', renderTable);
-    document.getElementById('filterStatus')?.addEventListener('change', renderTable);
-    document.getElementById('sortBy')?.addEventListener('change', renderTable);
+    var searchInput = document.getElementById('smartSearch');
+    if (searchInput) {
+        searchInput.addEventListener('keyup', function() { renderTable(); });
+    }
     
-    // Set default date
+    document.getElementById('filterProgram')?.addEventListener('change', function() { updateBlockFilter(); renderTable(); });
+    document.getElementById('filterBlock')?.addEventListener('change', function() { renderTable(); });
+    document.getElementById('filterIntake')?.addEventListener('change', function() { renderTable(); });
+    document.getElementById('filterStatus')?.addEventListener('change', function() { renderTable(); });
+    document.getElementById('sortBy')?.addEventListener('change', function() { renderTable(); });
+    
     var today = new Date().toISOString().split('T')[0];
     var dateInput = document.getElementById('paymentDate');
     if (dateInput) dateInput.value = today;
@@ -82,18 +102,19 @@ function setupEventListeners() {
 async function loadAllData() {
     if (!db) return;
     
-    // Load fee structure
-    const { data: fees } = await db.from('fee_structure').select('*');
+    showToast('Loading data...', 'info');
+    
+    var { data: fees } = await db.from('fee_structure').select('*');
     if (fees) {
         feeStructure = {};
-        fees.forEach(f => {
+        for (var i = 0; i < fees.length; i++) {
+            var f = fees[i];
             if (!feeStructure[f.program]) feeStructure[f.program] = {};
             feeStructure[f.program][f.block] = f.amount;
-        });
+        }
     }
     
-    // Load students
-    const { data: students } = await db
+    var { data: students } = await db
         .from('consolidated_user_profiles_table')
         .select('*')
         .eq('role', 'student')
@@ -101,19 +122,18 @@ async function loadAllData() {
         .order('full_name');
     allStudents = students || [];
     
-    // Load payments
-    const { data: payments } = await db.from('fee_payments').select('*, recorded_by_user:recorded_by(full_name)').order('payment_date', { ascending: false });
+    var { data: payments } = await db.from('fee_payments').select('*, recorded_by_user:recorded_by(full_name)').order('payment_date', { ascending: false });
     allPayments = payments || [];
     
-    // Populate dropdowns
     populateStudentDropdown();
     populateIntakeFilter();
     updateBlockFilter();
     
-    // Load stats and table
     updateStats();
     renderTable();
     loadRecentPayments();
+    
+    showToast('Loaded ' + allStudents.length + ' students and ' + allPayments.length + ' payments', 'success');
 }
 
 function getStudentFees(student) {
@@ -172,7 +192,9 @@ function populateIntakeFilter() {
     }
     select.innerHTML = '<option value="all">All Years</option>';
     for (var y in years) {
-        select.innerHTML += '<option value="' + y + '">' + y + '</option>';
+        if (years.hasOwnProperty(y)) {
+            select.innerHTML += '<option value="' + y + '">' + y + '</option>';
+        }
     }
 }
 
@@ -187,7 +209,6 @@ function updateBlockFilter() {
     } else if (program === 'TVET') {
         blocks = ['Introductory', 'Term 1', 'Term 2', 'Term 3', 'Term 4', 'Term 5', 'Term 6', 'Final'];
     } else {
-        // Get unique blocks from all students
         var unique = {};
         for (var i = 0; i < allStudents.length; i++) {
             var b = allStudents[i].block;
@@ -209,7 +230,6 @@ function renderTable() {
     var tbody = document.getElementById('tableBody');
     if (!tbody) return;
     
-    // Get filters
     var search = (document.getElementById('smartSearch')?.value || '').toLowerCase();
     var programFilter = document.getElementById('filterProgram')?.value || 'all';
     var blockFilter = document.getElementById('filterBlock')?.value || 'all';
@@ -217,7 +237,6 @@ function renderTable() {
     var statusFilter = document.getElementById('filterStatus')?.value || 'all';
     var sortBy = document.getElementById('sortBy')?.value || 'name';
     
-    // Build student data with balances
     var studentData = [];
     for (var i = 0; i < allStudents.length; i++) {
         var s = allStudents[i];
@@ -229,7 +248,6 @@ function renderTable() {
         if (balance <= 0) status = 'paid';
         else if (paid > 0) status = 'partial';
         
-        // Check overdue (no payment in 30+ days)
         var isOverdue = false;
         if (balance > 0 && lastPayment) {
             var daysSince = (new Date() - lastPayment) / (1000 * 3600 * 24);
@@ -255,7 +273,6 @@ function renderTable() {
         });
     }
     
-    // Apply filters
     var filtered = [];
     for (var i = 0; i < studentData.length; i++) {
         var s = studentData[i];
@@ -269,15 +286,14 @@ function renderTable() {
         filtered.push(s);
     }
     
-    // Sort
     if (sortBy === 'name') filtered.sort(function(a,b) { return a.name.localeCompare(b.name); });
     else if (sortBy === 'balance_high') filtered.sort(function(a,b) { return b.balance - a.balance; });
     else if (sortBy === 'balance_low') filtered.sort(function(a,b) { return a.balance - b.balance; });
     
-    document.getElementById('recordCount').innerText = filtered.length + ' students shown';
+    document.getElementById('recordCount').innerHTML = '<i class="fas fa-database"></i> ' + filtered.length + ' students shown';
     
     if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;padding:40px;">No students match your filters</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;padding:40px;">No students match your filters<\/td><\/tr>';
         return;
     }
     
@@ -293,20 +309,20 @@ function renderTable() {
         var balanceClass = s.balance > 0 ? 'text-danger' : 'text-success';
         
         html += '<tr>';
-        html += '<td>' + (i+1) + '</td>';
-        html += '<td><strong>' + escapeHtml(s.name) + '</strong><br><small style="color:#666;">' + escapeHtml(s.email) + '</small></td>';
-        html += '<td>' + s.id.substring(0,8) + '...</td>';
-        html += '<td>' + escapeHtml(s.program) + '</td>';
-        html += '<td>' + escapeHtml(s.intake) + '</td>';
-        html += '<td>' + escapeHtml(s.block) + '</td>';
-        html += '<td>KES ' + s.fees.toLocaleString() + '</td>';
-        html += '<td>KES ' + s.paid.toLocaleString() + '</td>';
-        html += '<td class="' + balanceClass + '">KES ' + s.balance.toLocaleString() + '</td>';
-        html += '<td><span class="badge ' + statusClass + '">' + statusText + '</span></td>';
-        html += '<td>' + s.lastPaymentDate + '</td>';
+        html += '<td>' + (i+1) + '<\/td>';
+        html += '<td><strong>' + escapeHtml(s.name) + '</strong><br><small style="color:#666;">' + escapeHtml(s.email) + '</small><\/td>';
+        html += '<td>' + s.id.substring(0,8) + '...<\/td>';
+        html += '<td>' + escapeHtml(s.program) + '<\/td>';
+        html += '<td>' + escapeHtml(s.intake) + '<\/td>';
+        html += '<td>' + escapeHtml(s.block) + '<\/td>';
+        html += '<td>KES ' + s.fees.toLocaleString() + '<\/td>';
+        html += '<td>KES ' + s.paid.toLocaleString() + '<\/td>';
+        html += '<td class="' + balanceClass + '">KES ' + s.balance.toLocaleString() + '<\/td>';
+        html += '<td><span class="badge ' + statusClass + '">' + statusText + '</span><\/td>';
+        html += '<td>' + s.lastPaymentDate + '<\/td>';
         html += '<td><button class="btn btn-outline" style="padding:4px 8px;font-size:11px;" onclick="showHistory(\'' + s.id + '\')"><i class="fas fa-history"></i> History</button> ';
-        html += '<button class="btn btn-primary" style="padding:4px 8px;font-size:11px;" onclick="quickPay(\'' + s.id + '\')"><i class="fas fa-plus"></i> Pay</button></td>';
-        html += '</tr>';
+        html += '<button class="btn btn-primary" style="padding:4px 8px;font-size:11px;" onclick="quickPay(\'' + s.id + '\')"><i class="fas fa-plus"></i> Pay</button><\/td>';
+        html += '<\/tr>';
     }
     
     tbody.innerHTML = html;
@@ -335,9 +351,10 @@ function updateStats() {
 }
 
 // =====================================================
-// RECORD PAYMENT
+// RECORD PAYMENT (with loading state)
 // =====================================================
 window.recordPayment = async function() {
+    var btn = document.getElementById('recordPaymentBtn');
     var studentId = document.getElementById('studentId').value;
     var amount = parseFloat(document.getElementById('amount').value);
     var method = document.getElementById('paymentMethod').value;
@@ -346,9 +363,13 @@ window.recordPayment = async function() {
     var period = document.getElementById('period').value;
     var notes = document.getElementById('notes').value;
     
-    if (!studentId) { alert('Select a student'); return; }
-    if (!amount || isNaN(amount) || amount <= 0) { alert('Enter valid amount'); return; }
-    if (!paymentDate) { alert('Select payment date'); return; }
+    if (!studentId) { showToast('Select a student', 'error'); return; }
+    if (!amount || isNaN(amount) || amount <= 0) { showToast('Enter valid amount', 'error'); return; }
+    if (!paymentDate) { showToast('Select payment date', 'error'); return; }
+    
+    var originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
     
     var receiptNo = 'RCT-' + Date.now() + '-' + Math.floor(Math.random() * 10000);
     
@@ -366,29 +387,30 @@ window.recordPayment = async function() {
     };
     
     try {
-        const { error } = await db.from('fee_payments').insert([paymentData]);
+        var { error } = await db.from('fee_payments').insert([paymentData]);
         if (error) throw error;
         
-        // Reload data
-        const { data: newPayments } = await db.from('fee_payments').select('*').order('payment_date', { ascending: false });
+        var { data: newPayments } = await db.from('fee_payments').select('*').order('payment_date', { ascending: false });
         allPayments = newPayments || [];
         
         updateStats();
         renderTable();
         loadRecentPayments();
+        populateStudentDropdown();
         
-        // Show receipt
         showReceipt(receiptNo, studentId, amount, paymentDate, method, reference);
         
-        // Clear amount field only
         document.getElementById('amount').value = '';
         document.getElementById('reference').value = '';
         document.getElementById('notes').value = '';
         
-        alert('✅ Payment recorded! Receipt: ' + receiptNo);
+        showToast('✅ Payment recorded! Receipt: ' + receiptNo, 'success');
         
     } catch(err) {
-        alert('Error: ' + err.message);
+        showToast('Error: ' + err.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
     }
 };
 
@@ -397,8 +419,8 @@ window.quickPay = function(studentId) {
     if (select) select.value = studentId;
     document.getElementById('amount').focus();
     document.getElementById('paymentDate').value = new Date().toISOString().split('T')[0];
-    // Scroll to payment form
     document.querySelector('.card:first-of-type').scrollIntoView({ behavior: 'smooth' });
+    showToast('Ready to record payment for selected student', 'info');
 };
 
 window.clearPaymentForm = function() {
@@ -407,6 +429,7 @@ window.clearPaymentForm = function() {
     document.getElementById('reference').value = '';
     document.getElementById('notes').value = '';
     document.getElementById('paymentDate').value = new Date().toISOString().split('T')[0];
+    showToast('Form cleared', 'info');
 };
 
 // =====================================================
@@ -450,7 +473,7 @@ window.showHistory = async function(studentId) {
         html += '<table style="width:100%;border-collapse:collapse;"><thead><tr style="background:#f1f5f9;"><th>Date</th><th>Amount</th><th>Method</th><th>Reference</th><th>Receipt No</th></tr></thead><tbody>';
         for (var i = 0; i < studentPayments.length; i++) {
             var p = studentPayments[i];
-            html += '<tr><td>' + p.payment_date + '</td><td>KES ' + parseFloat(p.amount).toLocaleString() + '</td><td>' + escapeHtml(p.payment_method) + '</td><td>' + (p.reference || '-') + '</td><td><code>' + p.receipt_no + '</code></td></tr>';
+            html += '<tr><td>' + p.payment_date + '<\/td><td>KES ' + parseFloat(p.amount).toLocaleString() + '<\/td><td>' + escapeHtml(p.payment_method) + '<\/td><td>' + (p.reference || '-') + '<\/td><td><code>' + p.receipt_no + '</code><\/td><\/tr>';
         }
         html += '</tbody></table>';
     }
@@ -512,11 +535,10 @@ async function loadRecentPayments() {
     
     var recent = allPayments.slice(0, 20);
     if (recent.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;">No payments yet</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;">No payments yet<\/td><\/tr>';
         return;
     }
     
-    // Get student names
     var studentNames = {};
     for (var i = 0; i < allStudents.length; i++) {
         studentNames[allStudents[i].user_id] = allStudents[i].full_name;
@@ -526,27 +548,27 @@ async function loadRecentPayments() {
     for (var i = 0; i < recent.length; i++) {
         var p = recent[i];
         html += '<tr>';
-        html += '<td>' + p.payment_date + '</td>';
-        html += '<td>' + escapeHtml(studentNames[p.student_id] || 'Unknown') + '</td>';
-        html += '<td>KES ' + parseFloat(p.amount).toLocaleString() + '</td>';
-        html += '<td>' + escapeHtml(p.payment_method) + '</td>';
-        html += '<td>' + (p.reference || '-') + '</td>';
-        html += '<td><code>' + p.receipt_no + '</code></td>';
-        html += '<td>' + (p.recorded_by_user?.full_name || p.recorded_by || 'System') + '</td>';
-        html += '</tr>';
+        html += '<td>' + p.payment_date + '<\/td>';
+        html += '<td>' + escapeHtml(studentNames[p.student_id] || 'Unknown') + '<\/td>';
+        html += '<td>KES ' + parseFloat(p.amount).toLocaleString() + '<\/td>';
+        html += '<td>' + escapeHtml(p.payment_method) + '<\/td>';
+        html += '<td>' + (p.reference || '-') + '<\/td>';
+        html += '<td><code>' + p.receipt_no + '</code><\/td>';
+        html += '<td>' + (p.recorded_by_user?.full_name || p.recorded_by || 'System') + '<\/td>';
+        html += '<\/tr>';
     }
     tbody.innerHTML = html;
 }
 
 window.viewAllPayments = function() {
-    var html = '<table style="width:100%;border-collapse:collapse;"><thead><tr><th>Date</th><th>Student</th><th>Amount</th><th>Method</th><th>Reference</th><th>Receipt</th></tr></thead><tbody>';
+    var html = '<table style="width:100%;border-collapse:collapse;"><thead><tr style="background:#f1f5f9;"><th>Date</th><th>Student</th><th>Amount</th><th>Method</th><th>Reference</th><th>Receipt</th></tr></thead><tbody>';
     for (var i = 0; i < allPayments.length; i++) {
         var p = allPayments[i];
         var student = '';
         for (var j = 0; j < allStudents.length; j++) {
             if (allStudents[j].user_id === p.student_id) { student = allStudents[j].full_name; break; }
         }
-        html += '<tr><td>' + p.payment_date + '</td><td>' + escapeHtml(student) + '</td><td>KES ' + parseFloat(p.amount).toLocaleString() + '</td><td>' + escapeHtml(p.payment_method) + '</td><td>' + (p.reference || '-') + '</td><td>' + p.receipt_no + '</td></tr>';
+        html += '<tr><td>' + p.payment_date + '<\/td><td>' + escapeHtml(student) + '<\/td><td>KES ' + parseFloat(p.amount).toLocaleString() + '<\/td><td>' + escapeHtml(p.payment_method) + '<\/td><td>' + (p.reference || '-') + '<\/td><td>' + p.receipt_no + '<\/td><\/tr>';
     }
     html += '</tbody></table>';
     document.getElementById('historyBody').innerHTML = html;
@@ -562,6 +584,7 @@ window.exportToExcel = function() {
     var ws = XLSX.utils.table_to_sheet(table, { raw: true });
     XLSX.utils.book_append_sheet(wb, ws, 'Student_Accounts');
     XLSX.writeFile(wb, 'NCHSM_Accounts_' + new Date().toISOString().split('T')[0] + '.xlsx');
+    showToast('Excel export complete!', 'success');
 };
 
 window.exportToCSV = function() {
@@ -583,6 +606,20 @@ window.exportToCSV = function() {
     link.download = 'NCHSM_Accounts_' + new Date().toISOString().split('T')[0] + '.csv';
     link.click();
     URL.revokeObjectURL(link.href);
+    showToast('CSV export complete!', 'success');
+};
+
+window.exportToPDF = function() {
+    var element = document.getElementById('studentsTable');
+    var opt = {
+        margin: 10,
+        filename: 'NCHSM_Accounts_' + new Date().toISOString().split('T')[0] + '.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+    };
+    html2pdf().set(opt).from(element).save();
+    showToast('PDF generation started...', 'info');
 };
 
 window.printReport = function() {
@@ -593,8 +630,9 @@ window.printReport = function() {
 // REFRESH
 // =====================================================
 window.refreshData = async function() {
-    const { data: students } = await db.from('consolidated_user_profiles_table').select('*').eq('role', 'student').eq('status', 'approved');
-    const { data: payments } = await db.from('fee_payments').select('*').order('payment_date', { ascending: false });
+    showToast('Refreshing data...', 'info');
+    var { data: students } = await db.from('consolidated_user_profiles_table').select('*').eq('role', 'student').eq('status', 'approved');
+    var { data: payments } = await db.from('fee_payments').select('*').order('payment_date', { ascending: false });
     allStudents = students || [];
     allPayments = payments || [];
     populateStudentDropdown();
@@ -603,7 +641,7 @@ window.refreshData = async function() {
     updateStats();
     renderTable();
     loadRecentPayments();
-    alert('Data refreshed!');
+    showToast('Data refreshed!', 'success');
 };
 
 // =====================================================
