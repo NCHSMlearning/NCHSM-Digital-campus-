@@ -1,4 +1,4 @@
-// js/exam-card.js - v8.5 (Logo restored + exact rules format)
+// js/exam-card.js - v8.8 (Declaration FIRST, then Signature, then Date)
 
 (function() {
     'use strict';
@@ -393,7 +393,7 @@
             printWindow.document.close();
         }
         
-        // ========== UI RENDERING WITH LOGO + EXACT RULES FORMAT ==========
+        // ========== UI RENDERING WITH CORRECT ORDER: Declaration FIRST, THEN Signature, THEN Date ==========
         displayExamCard() {
             if (!this.examCardContent) return;
             
@@ -482,7 +482,7 @@
                             </div>
                         </div>
                         
-                        <!-- RULES AND STUDENT SIGNATURE - EXACT FORMAT -->
+                        <!-- RULES AND STUDENT SIGNATURE - CORRECT ORDER: Declaration FIRST, THEN Signature, THEN Date -->
                         <div class="card-footer">
                             <div class="rules-header">📋 EXAMINATION RULES & REGULATIONS</div>
                             <div class="rules-list">
@@ -493,15 +493,23 @@
                                 <div class="rule-item">✓ No unauthorized materials allowed</div>
                             </div>
                             
-                            <div class="student-signature-section">
+                            <div class="student-section">
+                                <!-- 1. DECLARATION FIRST -->
+                                <div class="student-declaration">
+                                    I hereby confirm that I have read and understood the examination rules and regulations.
+                                </div>
+                                
+                                <!-- 2. SIGNATURE LINE SECOND -->
                                 <div class="student-sign-line">
                                     <span class="student-label">Student Signature:</span>
                                     <span class="signature-line-inline"></span>
                                 </div>
-                                <div class="student-declaration">
-                                    I hereby confirm that I have read and understood the examination rules and regulations.
+                                
+                                <!-- 3. DATE LINE THIRD (LAST) -->
+                                <div class="student-date-line">
+                                    <span class="date-label">Date:</span>
+                                    <span class="signature-line-date"></span>
                                 </div>
-                                <div class="student-date">Date: _____________</div>
                             </div>
                         </div>
                     </div>
@@ -580,12 +588,15 @@
                 .rules-list { margin-bottom: 15px; }
                 .rule-item { font-size: 10px; color: #713f12; margin-bottom: 4px; }
                 
-                .student-signature-section { border-top: 1px dashed #e2e8f0; padding-top: 12px; margin-top: 5px; }
-                .student-sign-line { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-                .student-label { font-weight: 600; font-size: 11px; color: #334155; }
+                /* Student Section - Correct Order */
+                .student-section { border-top: 1px dashed #e2e8f0; padding-top: 12px; margin-top: 5px; }
+                .student-declaration { font-size: 10px; color: #475569; margin: 10px 0; font-style: italic; text-align: center; }
+                .student-sign-line { display: flex; align-items: center; gap: 10px; margin: 12px 0 8px 0; }
+                .student-label { font-weight: 600; font-size: 11px; color: #334155; min-width: 110px; }
                 .signature-line-inline { display: inline-block; flex: 1; height: 1px; background: #333; border-top: 1px solid #333; }
-                .student-declaration { font-size: 10px; color: #475569; margin: 10px 0; font-style: italic; }
-                .student-date { font-size: 10px; color: #64748b; margin-top: 8px; }
+                .student-date-line { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+                .date-label { font-weight: 600; font-size: 11px; color: #334155; min-width: 110px; }
+                .signature-line-date { display: inline-block; flex: 1; height: 1px; background: #333; border-top: 1px solid #333; }
                 
                 .action-buttons { display: flex; gap: 15px; justify-content: center; margin-top: 20px; }
                 .download-btn, .print-btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 24px; border: none; border-radius: 40px; font-weight: 600; font-size: 13px; cursor: pointer; }
@@ -601,7 +612,7 @@
                     .action-buttons, button { display: none !important; }
                     .card-header { background: #1e3a5f !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                     .status-badge.eligible { background: #10b981 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                    .signature-line, .sign-line, .signature-line-inline { border-top: 1px solid #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                    .signature-line, .sign-line, .signature-line-inline, .signature-line-date { border-top: 1px solid #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                 }
                 
                 @media (max-width: 600px) {
@@ -612,6 +623,7 @@
                     .signatures-row { flex-direction: column; gap: 15px; }
                     .action-buttons { flex-direction: column; gap: 10px; padding: 0 10px; }
                     .download-btn, .print-btn { justify-content: center; width: 100%; }
+                    .student-sign-line, .student-date-line { flex-wrap: wrap; }
                 }
             `;
             document.head.appendChild(style);
@@ -649,5 +661,5 @@
     window.downloadExamCard = () => window.examCardModule?.downloadExamCardDirect();
     window.refreshExamCard = () => window.examCardModule?.refresh();
     
-    console.log('✅ Exam Card module ready - Logo restored!');
+    console.log('✅ Exam Card module ready - Correct order: Declaration FIRST, Signature SECOND, Date THIRD!');
 })();
