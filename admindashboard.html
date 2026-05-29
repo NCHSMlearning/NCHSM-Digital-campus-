@@ -21,6 +21,7 @@
             <span></span>
         </div>
 
+        <!-- SIDEBAR - ADMIN VERSION (Limited Menu) -->
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <img src="images/Logo_NCHSM.png" alt="Logo" onerror="this.style.display='none'">
@@ -45,8 +46,7 @@
                 <li><a href="#" data-tab="welcome-editor"><i class="fas fa-edit"></i> Welcome Message</a></li>
                 <li><a href="#" data-tab="system-health"><i class="fas fa-heartbeat"></i> System Health</a></li>
                 <li><a href="#" data-tab="user-analytics"><i class="fas fa-chart-line"></i> User Analytics</a></li>
-                <li><a href="#" data-tab="audit"><i class="fas fa-search"></i> Audit Logs</a></li>
-                <li><a href="#" data-tab="security"><i class="fas fa-cog"></i> Security Settings</a></li>
+                <!-- REMOVED: Audit Logs, Security Settings, Backup, API Management, Session Management, Error Tracking (Super Admin only) -->
             </ul>
             <div class="logout">
                 <a href="#" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</a>
@@ -125,9 +125,7 @@
                 <div class="table-responsive">
                     <table class="data-table">
                         <thead>
-                            <tr>
-                                <th>ID</th><th>Name</th><th>Email</th><th>Role</th><th>Program</th><th>Status</th><th>Actions</th>
-                            </tr>
+                            <tr><th>ID</th><th>Name</th><th>Email</th><th>Role</th><th>Program</th><th>Status</th><th>Actions</th></tr>
                         </thead>
                         <tbody id="users-table">
                             <tr><td colspan="7"><div class="loading-spinner"></div> Loading users...<\/td><\/tr>
@@ -415,39 +413,6 @@
                     <div class="card"><h3>Weekly Retention</h3><p class="data">78%</p></div>
                 </div>
             </section>
-
-            <!-- Audit Logs -->
-            <section id="audit" class="tab-content">
-                <h2><i class="fas fa-search"></i> Audit Logs</h2>
-                <div class="toolbar">
-                    <input type="date" id="audit_date_filter">
-                    <button onclick="loadAuditLogs()" class="btn-action">Filter</button>
-                    <button onclick="exportTableToCSV('audit-table', 'Audit_Logs.csv')" class="btn-action">Export CSV</button>
-                </div>
-                <div class="table-responsive">
-                    <table class="data-table">
-                        <thead><tr><th>Timestamp</th><th>User</th><th>Action</th><th>IP Address</th><th>Status</th></tr></thead>
-                        <tbody id="audit-table"><tr><td colspan="5">Loading audit logs...<\/td><\/tr><\/tbody>
-                    </table>
-                </div>
-            </section>
-
-            <!-- Security Settings -->
-            <section id="security" class="tab-content">
-                <h2><i class="fas fa-cog"></i> Security Settings</h2>
-                <div class="security-settings">
-                    <h3>System Security</h3>
-                    <label><input type="checkbox" id="force_2fa_admins"> Force 2FA for All Admins</label>
-                    <label><input type="checkbox" id="force_2fa_lecturers"> Force 2FA for Lecturers</label>
-                    <label><input type="checkbox" id="session_timeout"> Session Timeout (30 minutes)</label>
-                    <label><input type="checkbox" id="ip_restriction"> IP Restriction Enabled</label>
-                    <button onclick="saveSecuritySettings()" class="btn-action" style="margin-top: 20px;">Save Security Settings</button>
-                </div>
-                <div class="cards" style="margin-top: 20px;">
-                    <div class="card"><h3>2FA Enrollment</h3><p class="data">12/15</p><p class="minor-data">Admins enrolled</p></div>
-                    <div class="card"><h3>Active Sessions</h3><p class="data" id="securityActiveSessions">0</p></div>
-                </div>
-            </section>
         </main>
     </div>
 
@@ -460,25 +425,40 @@
             </div>
             <form id="edit-user-form">
                 <input type="hidden" id="edit_user_id">
+                <p class="subtitle">Editing User ID: <span id="edit_user_id_display">N/A</span></p>
                 <label>Full Name</label>
                 <input type="text" id="edit_user_name" required>
                 <label>Email</label>
                 <input type="email" id="edit_user_email" required>
                 <label>Role</label>
-                <select id="edit_user_role">
+                <select id="edit_user_role" required>
                     <option value="student">Student</option>
                     <option value="lecturer">Lecturer</option>
                     <option value="admin">Admin</option>
                 </select>
-                <label>Status</label>
-                <select id="edit_user_status">
-                    <option value="active">Active</option>
-                    <option value="blocked">Blocked</option>
+                <label>Program Type</label>
+                <select id="edit_user_program" required>
+                    <option value="KRCHN">KRCHN</option>
+                    <option value="TVET">TVET</option>
                 </select>
-                <div class="modal-actions">
-                    <button type="submit" class="btn-action">Save Changes</button>
-                    <button type="button" onclick="closeModal('userEditModal')">Cancel</button>
-                </div>
+                <label>Intake Year</label>
+                <input type="text" id="edit_user_intake" required>
+                <label>Block/Term</label>
+                <select id="edit_user_block" required>
+                    <option value="">-- Select --</option>
+                </select>
+                <label>Blocked Status</label>
+                <select id="edit_user_block_status" required>
+                    <option value="false">Active</option>
+                    <option value="true">BLOCKED</option>
+                </select>
+                <hr>
+                <h3>Password Reset (Optional)</h3>
+                <label>New Password</label>
+                <input type="password" id="edit_user_new_password">
+                <label>Confirm Password</label>
+                <input type="password" id="edit_user_confirm_password">
+                <button type="submit" class="btn-action">Save Changes</button>
             </form>
         </div>
     </div>
@@ -497,6 +477,6 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
-    <script src="script.js"></script>
+    <script src="admin.js"></script>
 </body>
 </html>
