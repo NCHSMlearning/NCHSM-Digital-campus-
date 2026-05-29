@@ -551,8 +551,8 @@ window.NCHSMLogin = {
         
         // Role to HTML file mapping
         const roleRedirects = {
-            'superadmin': 'super_admin.html',
-            'super_admin': 'super_admin.html',
+            'superadmin': 'superadmin.html',
+            'super_admin': 'superadmin.html',
             'admin': 'admin.html',
             'student': 'student.html',
             'lecturer': 'lecturer.html',
@@ -570,7 +570,7 @@ window.NCHSMLogin = {
         
         // Special case for super admin
         if (profileData.email === 'super_admin@nchs.edu') {
-            redirectFile = 'super_admin.html';
+            redirectFile = 'superadmin.html';
         }
         
         console.log(`🎯 Redirecting to: ${redirectFile}`);
