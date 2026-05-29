@@ -1,4 +1,4 @@
-// js/exam-card.js - v8.8 (Declaration FIRST, then Signature, then Date)
+// js/exam-card.js - v8.9 (REG NO. instead of ID Number)
 
 (function() {
     'use strict';
@@ -393,7 +393,7 @@
             printWindow.document.close();
         }
         
-        // ========== UI RENDERING WITH CORRECT ORDER: Declaration FIRST, THEN Signature, THEN Date ==========
+        // ========== UI RENDERING WITH "REG NO." INSTEAD OF "ID Number" ==========
         displayExamCard() {
             if (!this.examCardContent) return;
             
@@ -414,7 +414,7 @@
                         <div class="signature-line"></div>
                         <div class="signature-hint">(Lecturer's Signature)</div>
                     </td>
-                </tr>
+                `
             `).join('');
             
             const html = `
@@ -434,7 +434,7 @@
                         
                         <div class="info-grid">
                             <div class="info-item"><span class="info-label">Name:</span> ${this.escapeHtml(student?.full_name || 'Not Available')}</div>
-                            <div class="info-item"><span class="info-label">ID Number:</span> ${this.escapeHtml(student?.student_id || 'N/A')}</div>
+                            <div class="info-item"><span class="info-label">REG NO.:</span> ${this.escapeHtml(student?.student_id || 'N/A')}</div>
                             <div class="info-item"><span class="info-label">Program:</span> ${this.escapeHtml(student?.program || 'KRCHN')}</div>
                             <div class="info-item"><span class="info-label">Current Block:</span> <strong>${this.escapeHtml(currentBlock)}</strong></div>
                             <div class="info-item"><span class="info-label">Registered Units:</span> ${approvedUnits.length}</div>
@@ -482,7 +482,7 @@
                             </div>
                         </div>
                         
-                        <!-- RULES AND STUDENT SIGNATURE - CORRECT ORDER: Declaration FIRST, THEN Signature, THEN Date -->
+                        <!-- RULES AND STUDENT SIGNATURE -->
                         <div class="card-footer">
                             <div class="rules-header">📋 EXAMINATION RULES & REGULATIONS</div>
                             <div class="rules-list">
@@ -494,18 +494,15 @@
                             </div>
                             
                             <div class="student-section">
-                                <!-- 1. DECLARATION FIRST -->
                                 <div class="student-declaration">
                                     I hereby confirm that I have read and understood the examination rules and regulations.
                                 </div>
                                 
-                                <!-- 2. SIGNATURE LINE SECOND -->
                                 <div class="student-sign-line">
                                     <span class="student-label">Student Signature:</span>
                                     <span class="signature-line-inline"></span>
                                 </div>
                                 
-                                <!-- 3. DATE LINE THIRD (LAST) -->
                                 <div class="student-date-line">
                                     <span class="date-label">Date:</span>
                                     <span class="signature-line-date"></span>
@@ -588,7 +585,6 @@
                 .rules-list { margin-bottom: 15px; }
                 .rule-item { font-size: 10px; color: #713f12; margin-bottom: 4px; }
                 
-                /* Student Section - Correct Order */
                 .student-section { border-top: 1px dashed #e2e8f0; padding-top: 12px; margin-top: 5px; }
                 .student-declaration { font-size: 10px; color: #475569; margin: 10px 0; font-style: italic; text-align: center; }
                 .student-sign-line { display: flex; align-items: center; gap: 10px; margin: 12px 0 8px 0; }
@@ -661,5 +657,5 @@
     window.downloadExamCard = () => window.examCardModule?.downloadExamCardDirect();
     window.refreshExamCard = () => window.examCardModule?.refresh();
     
-    console.log('✅ Exam Card module ready - Correct order: Declaration FIRST, Signature SECOND, Date THIRD!');
+    console.log('✅ Exam Card module ready - REG NO. instead of ID Number!');
 })();
