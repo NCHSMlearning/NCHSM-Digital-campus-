@@ -1,11 +1,8 @@
-// js/exam-card.js - v8.9 (REG NO. instead of ID Number) - SYNTAX FIXED
+// js/exam-card.js - v9.0 (FIXED: Clean table layout, no HTML entities, signature only)
 
 (function() {
     'use strict';
     
-    // =====================================================
-    // CONFIGURATION
-    // =====================================================
     const CONFIG = {
         LOGO_URL: 'https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png',
         DEFAULT_CREDITS: 3,
@@ -18,17 +15,24 @@
             block: 'Introductory'
         },
         DEMO_UNITS: [
-            { unit_code: 'NUR 101', unit_name: 'Introduction to Nursing', credits: 3 },
-            { unit_code: 'NUR 102', unit_name: 'Anatomy & Physiology', credits: 3 },
-            { unit_code: 'NUR 103', unit_name: 'Medical Terminology', credits: 2 },
-            { unit_code: 'NUR 104', unit_name: 'Pharmacology Basics', credits: 3 },
-            { unit_code: 'NUR 105', unit_name: 'Patient Care Skills', credits: 3 }
+            { unit_code: 'NCHSGN 101', unit_name: 'Communication, Customer Care & Public Relations', credits: 3 },
+            { unit_code: 'NCHSGN 102', unit_name: 'Information Communication Technology', credits: 3 },
+            { unit_code: 'NCHSGN 103', unit_name: 'Anatomy and Physiology', credits: 3 },
+            { unit_code: 'NCHSGN 108', unit_name: 'Human Nutrition', credits: 3 },
+            { unit_code: 'NCHSGN 104', unit_name: 'Fundamentals of Nursing Practice', credits: 3 },
+            { unit_code: 'NCHSGN 105', unit_name: 'Critical and Reflective Thinking Skills', credits: 3 },
+            { unit_code: 'NCHSGN 106', unit_name: 'Microbiology, Parasitology and Immunology', credits: 3 },
+            { unit_code: 'NCHSGN 107', unit_name: 'Clinical Pharmacology I', credits: 3 },
+            { unit_code: 'NCHSGN 109', unit_name: 'Psychology', credits: 3 },
+            { unit_code: 'NCHSMW 110', unit_name: 'Midwifery I', credits: 3 },
+            { unit_code: 'NCHSMW 111', unit_name: 'Neonatal Nursing I', credits: 3 },
+            { unit_code: 'NCHSCH 112', unit_name: 'Introduction to Community Health', credits: 3 },
+            { unit_code: 'NCHSCH 113', unit_name: 'Environmental and Occupational Health', credits: 3 },
+            { unit_code: 'NCHSCH 114', unit_name: 'Sociology and Anthropology', credits: 3 },
+            { unit_code: 'NCHSCH 125', unit_name: 'Community Health I', credits: 3 }
         ]
     };
     
-    // =====================================================
-    // MAIN CLASS
-    // =====================================================
     class ExamCardModule {
         constructor() {
             this.approvedUnits = [];
@@ -45,12 +49,14 @@
             }
         }
         
-        // ========== UTILITY METHODS ==========
-        escapeHtml(str) {
+        cleanText(str) {
             if (!str) return '';
-            const div = document.createElement('div');
-            div.textContent = str;
-            return div.innerHTML;
+            // Convert HTML entities to actual characters
+            return str.replace(/&amp;/g, '&')
+                      .replace(/&#x27;/g, "'")
+                      .replace(/&quot;/g, '"')
+                      .replace(/&lt;/g, '<')
+                      .replace(/&gt;/g, '>');
         }
         
         formatDate(date = new Date()) {
@@ -75,7 +81,6 @@
             return `November - February ${year}/${year + 1} (Trimester 3)`;
         }
         
-        // ========== INITIALIZATION ==========
         init() {
             this.cacheElements();
             this.setupEventListeners();
@@ -119,7 +124,6 @@
             });
         }
         
-        // ========== USER MANAGEMENT ==========
         tryLoadIfLoggedIn() {
             const profile = this.getUserProfileFromSources();
             if (profile) {
@@ -159,7 +163,6 @@
             return false;
         }
         
-        // ========== DATA LOADING ==========
         async loadExamCard() {
             if (this.isLoading) return;
             if (!this.userProfile) { 
@@ -230,7 +233,6 @@
             }
         }
         
-        // ========== DIRECT PDF DOWNLOAD ==========
         async downloadExamCardDirect() {
             const cardElement = document.getElementById('exam-card-print-area');
             if (!cardElement) {
@@ -338,7 +340,6 @@
             });
         }
         
-        // ========== PRINT FUNCTION ==========
         printExamCard() {
             const printContent = document.getElementById('exam-card-print-area');
             if (!printContent) return;
@@ -393,7 +394,6 @@
             printWindow.document.close();
         }
         
-        // ========== UI RENDERING WITH "REG NO." INSTEAD OF "ID Number" ==========
         displayExamCard() {
             if (!this.examCardContent) return;
             
@@ -404,18 +404,27 @@
             
             const totalCredits = approvedUnits.reduce((sum, unit) => sum + (unit.credits || CONFIG.DEFAULT_CREDITS), 0);
             
-            const tableRows = approvedUnits.map((unit, index) => `
-                <tr>
-                    <td class="text-center">${index + 1}</td>
-                    <td><strong>${this.escapeHtml(unit.unit_code || unit.code || '')}</strong></td>
-                    <td>${this.escapeHtml(unit.unit_name || unit.name || '')}</td>
-                    <td class="text-center">${unit.credits || CONFIG.DEFAULT_CREDITS}</td>
-                    <td class="signature-cell">
-                        <div class="signature-line"></div>
-                        <div class="signature-hint">(Lecturer's Signature)</div>
-                    </td>
-                </tr>
-            `).join('');
+            // Clean unit names to remove HTML entities
+            const cleanUnitName = (name) => {
+                if (!name) return '';
+                return name.replace(/&amp;/g, '&').replace(/&#x27;/g, "'");
+            };
+            
+            const tableRows = approvedUnits.map((unit, index) => {
+                const unitName = cleanUnitName(unit.unit_name || unit.name || '');
+                const unitCode = unit.unit_code || unit.code || '';
+                return `
+                    <tr>
+                        <td class="text-center">${index + 1}</td>
+                        <td><strong>${this.cleanText(unitCode)}</strong></td>
+                        <td>${this.cleanText(unitName)}</td>
+                        <td class="text-center">${unit.credits || CONFIG.DEFAULT_CREDITS}</td>
+                        <td class="signature-cell">
+                            <div class="signature-line"></div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
             
             const html = `
                 <div class="exam-card-wrapper" id="exam-card-print-area">
@@ -428,15 +437,15 @@
                                 <div class="card-subtitle">(Exam Entry Permit)</div>
                             </div>
                             <div class="status-badge ${isEligible ? 'eligible' : 'ineligible'}">
-                                ${isEligible ? '✓ ELIGIBLE' : '✗ NOT ELIGIBLE'}
+                                ${isEligible ? 'ELIGIBLE' : 'NOT ELIGIBLE'}
                             </div>
                         </div>
                         
                         <div class="info-grid">
-                            <div class="info-item"><span class="info-label">Name:</span> ${this.escapeHtml(student?.full_name || 'Not Available')}</div>
-                            <div class="info-item"><span class="info-label">REG NO.:</span> ${this.escapeHtml(student?.student_id || 'N/A')}</div>
-                            <div class="info-item"><span class="info-label">Program:</span> ${this.escapeHtml(student?.program || 'KRCHN')}</div>
-                            <div class="info-item"><span class="info-label">Current Block:</span> <strong>${this.escapeHtml(currentBlock)}</strong></div>
+                            <div class="info-item"><span class="info-label">Name:</span> ${this.cleanText(student?.full_name || 'Not Available')}</div>
+                            <div class="info-item"><span class="info-label">REG NO.:</span> ${this.cleanText(student?.student_id || 'N/A')}</div>
+                            <div class="info-item"><span class="info-label">Program:</span> ${this.cleanText(student?.program || 'KRCHN')}</div>
+                            <div class="info-item"><span class="info-label">Current Block:</span> <strong>${this.cleanText(currentBlock)}</strong></div>
                             <div class="info-item"><span class="info-label">Registered Units:</span> ${approvedUnits.length}</div>
                             <div class="info-item"><span class="info-label">Total Credits:</span> ${totalCredits}</div>
                             <div class="info-item"><span class="info-label">Exam Period:</span> ${this.getExamPeriod()}</div>
@@ -466,7 +475,6 @@
                             </table>
                         ` : '<div class="no-units">No approved units found. Please register for units.</div>'}
                         
-                        <!-- SIGNATURES SECTION -->
                         <div class="signatures-row">
                             <div class="signature">
                                 <div class="sign-line"></div>
@@ -482,15 +490,14 @@
                             </div>
                         </div>
                         
-                        <!-- RULES AND STUDENT SIGNATURE -->
                         <div class="card-footer">
-                            <div class="rules-header">📋 EXAMINATION RULES & REGULATIONS</div>
+                            <div class="rules-header">EXAMINATION RULES & REGULATIONS</div>
                             <div class="rules-list">
-                                <div class="rule-item">✓ Present your exam card at each examination hall</div>
-                                <div class="rule-item">✓ No electronic devices allowed in examination room</div>
-                                <div class="rule-item">✓ Arrive 30 minutes before examination start time</div>
-                                <div class="rule-item">✓ Mobile phones must be switched off and stored</div>
-                                <div class="rule-item">✓ No unauthorized materials allowed</div>
+                                <div class="rule-item"> Present your exam card at each examination hall</div>
+                                <div class="rule-item"> No electronic devices allowed in examination room</div>
+                                <div class="rule-item"> Arrive 30 minutes before examination start time</div>
+                                <div class="rule-item"> Mobile phones must be switched off and stored</div>
+                                <div class="rule-item"> No unauthorized materials allowed</div>
                             </div>
                             
                             <div class="student-section">
@@ -502,19 +509,14 @@
                                     <span class="student-label">Student Signature:</span>
                                     <span class="signature-line-inline"></span>
                                 </div>
-                                
-                                <div class="student-date-line">
-                                    <span class="date-label">Date:</span>
-                                    <span class="signature-line-date"></span>
-                                </div>
                             </div>
                         </div>
                     </div>
                     
                     ${isEligible ? `
                         <div class="action-buttons">
-                            <button class="download-btn" id="downloadExamCardBtn">📥 Download PDF</button>
-                            <button class="print-btn" id="printExamCardBtn">🖨️ Print Card</button>
+                            <button class="download-btn" id="downloadExamCardBtn">Download PDF</button>
+                            <button class="print-btn" id="printExamCardBtn">Print Card</button>
                         </div>
                     ` : ''}
                 </div>
@@ -571,8 +573,8 @@
                 .text-center { text-align: center; }
                 
                 .signature-cell { padding: 5px 0; }
-                .signature-line { width: 100%; height: 1px; background: #333; border-top: 1px solid #333; margin: 5px 0; }
-                .signature-hint { font-size: 8px; color: #94a3b8; text-align: center; }
+                .signature-line { width: 100%; height: 1px; background: #333; border-top: 1px solid #333; margin: 8px 0; }
+                
                 .total-row { background: #f8fafc; font-weight: 600; border-top: 2px solid #cbd5e1; }
                 .no-units { padding: 30px; text-align: center; color: #ef4444; font-size: 14px; }
                 
@@ -586,13 +588,10 @@
                 .rule-item { font-size: 10px; color: #713f12; margin-bottom: 4px; }
                 
                 .student-section { border-top: 1px dashed #e2e8f0; padding-top: 12px; margin-top: 5px; }
-                .student-declaration { font-size: 10px; color: #475569; margin: 10px 0; font-style: italic; text-align: center; }
+                .student-declaration { font-size: 10px; color: #475569; margin: 10px 0; text-align: center; }
                 .student-sign-line { display: flex; align-items: center; gap: 10px; margin: 12px 0 8px 0; }
                 .student-label { font-weight: 600; font-size: 11px; color: #334155; min-width: 110px; }
                 .signature-line-inline { display: inline-block; flex: 1; height: 1px; background: #333; border-top: 1px solid #333; }
-                .student-date-line { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
-                .date-label { font-weight: 600; font-size: 11px; color: #334155; min-width: 110px; }
-                .signature-line-date { display: inline-block; flex: 1; height: 1px; background: #333; border-top: 1px solid #333; }
                 
                 .action-buttons { display: flex; gap: 15px; justify-content: center; margin-top: 20px; }
                 .download-btn, .print-btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 24px; border: none; border-radius: 40px; font-weight: 600; font-size: 13px; cursor: pointer; }
@@ -608,7 +607,7 @@
                     .action-buttons, button { display: none !important; }
                     .card-header { background: #1e3a5f !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                     .status-badge.eligible { background: #10b981 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                    .signature-line, .sign-line, .signature-line-inline, .signature-line-date { border-top: 1px solid #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                    .signature-line, .sign-line, .signature-line-inline { border-top: 1px solid #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                 }
                 
                 @media (max-width: 600px) {
@@ -619,7 +618,6 @@
                     .signatures-row { flex-direction: column; gap: 15px; }
                     .action-buttons { flex-direction: column; gap: 10px; padding: 0 10px; }
                     .download-btn, .print-btn { justify-content: center; width: 100%; }
-                    .student-sign-line, .student-date-line { flex-wrap: wrap; }
                 }
             `;
             document.head.appendChild(style);
@@ -657,5 +655,5 @@
     window.downloadExamCard = () => window.examCardModule?.downloadExamCardDirect();
     window.refreshExamCard = () => window.examCardModule?.refresh();
     
-    console.log('✅ Exam Card module ready - REG NO. instead of ID Number!');
+    console.log('Exam Card module ready - Clean version!');
 })();
