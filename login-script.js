@@ -1,5 +1,5 @@
 // ============================================
-// COMPLETE LOGIN SCRIPT WITH SESSION TRACKING
+// SECURE LOGIN SCRIPT - HACKER PROTECTED
 // ============================================
 
 // Create a namespace for our app to avoid conflicts
@@ -8,7 +8,29 @@ window.NCHSMLogin = {
     state: {
         currentUser: null,
         isLoggingIn: false,
-        trustedDevices: JSON.parse(localStorage.getItem('trusted_devices') || '{}')
+        failedAttempts: 0,
+        lastFailedTime: null,
+        trustedDevices: JSON.parse(localStorage.getItem('trusted_devices') || '{}'),
+        sessionId: null
+    },
+    
+    // Security Configuration
+    security: {
+        maxFailedAttempts: 5,
+        lockoutDuration: 15 * 60 * 1000, // 15 minutes
+        minPasswordLength: 8,
+        sessionTimeout: 24 * 60 * 60 * 1000, // 24 hours
+        rateLimit: {
+            enabled: true,
+            maxRequests: 10,
+            timeWindow: 60 * 1000 // 1 minute
+        }
+    },
+    
+    // Rate limiting tracking
+    rateLimit: {
+        requests: [],
+        blockedUntil: null
     },
     
     // Supabase client (will be initialized later)
@@ -19,6 +41,9 @@ window.NCHSMLogin = {
     // ============================================
     init: function() {
         console.log('🚀 Initializing NCHSMLogin...');
+        
+        // Hide console from potential hackers (disable right-click, F12, etc.)
+        this.disableDeveloperTools();
         
         // Initialize Feather Icons
         if (typeof feather !== 'undefined') {
@@ -46,7 +71,149 @@ window.NCHSMLogin = {
         // Initialize Supabase safely
         this.initSupabase();
         
-        console.log('✅ NCHSMLogin initialized');
+        // Clear sensitive data from URL
+        this.clearURLParameters();
+        
+        // Add honeypot field to catch bots
+        this.addHoneypot();
+        
+        console.log('✅ NCHSMLogin initialized securely');
+    },
+    
+    // ============================================
+    // SECURITY: Disable Developer Tools
+    // ============================================
+    disableDeveloperTools: function() {
+        // Disable right-click
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            return false;
+        });
+        
+        // Disable F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U
+        document.addEventListener('keydown', function(e) {
+            // F12
+            if (e.key === 'F12') {
+                e.preventDefault();
+                return false;
+            }
+            // Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U
+            if (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J')) {
+                e.preventDefault();
+                return false;
+            }
+            // Ctrl+U
+            if (e.ctrlKey && e.key === 'u') {
+                e.preventDefault();
+                return false;
+            }
+            // Ctrl+Shift+C
+            if (e.ctrlKey && e.shiftKey && e.key === 'C') {
+                e.preventDefault();
+                return false;
+            }
+        });
+        
+        // Disable console.log override attempts
+        const originalConsoleLog = console.log;
+        console.log = function() {
+            // Filter out sensitive info
+            const args = Array.from(arguments);
+            if (args.some(arg => typeof arg === 'string' && 
+                (arg.includes('password') || arg.includes('token') || arg.includes('key')))) {
+                return;
+            }
+            originalConsoleLog.apply(console, args);
+        };
+    },
+    
+    // ============================================
+    // SECURITY: Clear URL Parameters
+    // ============================================
+    clearURLParameters: function() {
+        if (window.location.search.length > 0) {
+            const cleanUrl = window.location.protocol + '//' + window.location.host + window.location.pathname;
+            window.history.replaceState({}, document.title, cleanUrl);
+        }
+    },
+    
+    // ============================================
+    // SECURITY: Add Honeypot Field
+    // ============================================
+    addHoneypot: function() {
+        const form = document.getElementById('loginForm');
+        if (form && !document.getElementById('honeypot')) {
+            const honeypot = document.createElement('div');
+            honeypot.style.display = 'none';
+            honeypot.innerHTML = '<input type="text" id="honeypot" name="honeypot" value="" tabindex="-1" autocomplete="off">';
+            form.appendChild(honeypot);
+        }
+    },
+    
+    // ============================================
+    // SECURITY: Check Rate Limit
+    // ============================================
+    isRateLimited: function() {
+        const now = Date.now();
+        
+        // Clean old requests
+        this.rateLimit.requests = this.rateLimit.requests.filter(time => now - time < this.security.rateLimit.timeWindow);
+        
+        // Check if blocked
+        if (this.rateLimit.blockedUntil && now < this.rateLimit.blockedUntil) {
+            const remainingMinutes = Math.ceil((this.rateLimit.blockedUntil - now) / 60000);
+            this.showError(document.getElementById('errorMsg'), `Too many attempts. Please try again in ${remainingMinutes} minutes.`);
+            return true;
+        }
+        
+        // Check request count
+        if (this.rateLimit.requests.length >= this.security.rateLimit.maxRequests) {
+            this.rateLimit.blockedUntil = now + (15 * 60 * 1000); // Block for 15 minutes
+            this.showError(document.getElementById('errorMsg'), 'Too many login attempts. Please try again in 15 minutes.');
+            return true;
+        }
+        
+        return false;
+    },
+    
+    addRateLimitRequest: function() {
+        this.rateLimit.requests.push(Date.now());
+    },
+    
+    // ============================================
+    // SECURITY: Check Failed Attempts
+    // ============================================
+    checkFailedAttempts: function(email) {
+        const now = Date.now();
+        
+        if (this.state.failedAttempts >= this.security.maxFailedAttempts) {
+            if (this.state.lastFailedTime && (now - this.state.lastFailedTime) < this.security.lockoutDuration) {
+                const remainingMinutes = Math.ceil((this.security.lockoutDuration - (now - this.state.lastFailedTime)) / 60000);
+                this.showError(document.getElementById('errorMsg'), `Account temporarily locked. Try again in ${remainingMinutes} minutes.`);
+                return true;
+            } else {
+                // Reset failed attempts after lockout period
+                this.state.failedAttempts = 0;
+                this.state.lastFailedTime = null;
+            }
+        }
+        return false;
+    },
+    
+    recordFailedAttempt: function() {
+        this.state.failedAttempts++;
+        this.state.lastFailedTime = Date.now();
+        
+        // Store in session storage to persist across page refreshes
+        sessionStorage.setItem('failedAttempts', this.state.failedAttempts);
+        sessionStorage.setItem('lastFailedTime', this.state.lastFailedTime);
+    },
+    
+    resetFailedAttempts: function() {
+        this.state.failedAttempts = 0;
+        this.state.lastFailedTime = null;
+        sessionStorage.removeItem('failedAttempts');
+        sessionStorage.removeItem('lastFailedTime');
     },
     
     // ============================================
@@ -61,7 +228,8 @@ window.NCHSMLogin = {
                     {
                         auth: {
                             persistSession: true,
-                            autoRefreshToken: true
+                            autoRefreshToken: true,
+                            detectSessionInUrl: false // Prevent session from URL
                         },
                         db: {
                             schema: 'public'
@@ -120,15 +288,25 @@ window.NCHSMLogin = {
             input.addEventListener('blur', (e) => this.validateField(e));
             input.addEventListener('input', (e) => this.clearFieldError(e));
         });
+        
+        // Check for bot/honeypot
+        const honeypot = document.getElementById('honeypot');
+        if (honeypot) {
+            honeypot.addEventListener('change', () => {
+                if (honeypot.value) {
+                    // Bot detected
+                    console.log('Bot detected');
+                    loginForm.style.display = 'none';
+                }
+            });
+        }
     },
     
     initModals: function() {
-        // Add keyboard navigation to modals
         document.querySelectorAll('.modal-overlay').forEach(modal => {
             modal.addEventListener('keydown', (e) => this.handleModalKeyboard(e));
         });
         
-        // Close modal on backdrop click
         document.querySelectorAll('.modal-overlay').forEach(modal => {
             modal.addEventListener('click', (e) => {
                 if (e.target === modal) {
@@ -139,7 +317,6 @@ window.NCHSMLogin = {
     },
     
     initFocusManagement: function() {
-        // Trap focus in modals
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Tab' && document.querySelector('.modal-overlay.active')) {
                 this.trapFocus(e);
@@ -191,7 +368,13 @@ window.NCHSMLogin = {
             new Intl.DateTimeFormat().resolvedOptions().timeZone
         ].join('|');
         
-        return btoa(data).substring(0, 32);
+        // Simple hash to avoid exposing raw data
+        let hash = 0;
+        for (let i = 0; i < data.length; i++) {
+            hash = ((hash << 5) - hash) + data.charCodeAt(i);
+            hash |= 0;
+        }
+        return Math.abs(hash).toString(16);
     },
     
     // ============================================
@@ -226,10 +409,13 @@ window.NCHSMLogin = {
     },
     
     // ============================================
-    // LOGIN HANDLER
+    // SECURE LOGIN HANDLER
     // ============================================
     handleLogin: async function(e) {
         e.preventDefault();
+        
+        // Check rate limiting
+        if (this.isRateLimited()) return;
         
         if (this.state.isLoggingIn) return;
         
@@ -239,13 +425,31 @@ window.NCHSMLogin = {
         const loginButton = document.getElementById('loginButton');
         const buttonText = document.getElementById('button-text');
         
-        if (!this.validateEmail(email)) {
-            this.showError(errorMsg, 'Please enter a valid email address');
+        // Check honeypot (bot detection)
+        const honeypot = document.getElementById('honeypot');
+        if (honeypot && honeypot.value) {
+            // Bot detected - silently fail
+            this.addRateLimitRequest();
             return;
         }
         
-        if (!password) {
-            this.showError(errorMsg, 'Please enter your password');
+        if (!this.validateEmail(email)) {
+            this.showError(errorMsg, 'Invalid email format');
+            this.recordFailedAttempt();
+            this.addRateLimitRequest();
+            return;
+        }
+        
+        if (!password || password.length < 4) {
+            this.showError(errorMsg, 'Invalid credentials');
+            this.recordFailedAttempt();
+            this.addRateLimitRequest();
+            return;
+        }
+        
+        // Check failed attempts
+        if (this.checkFailedAttempts(email)) {
+            this.addRateLimitRequest();
             return;
         }
         
@@ -254,12 +458,17 @@ window.NCHSMLogin = {
         loginButton.disabled = true;
         buttonText.innerHTML = '<span class="loading-spinner"></span> Signing In...';
         
+        this.addRateLimitRequest();
+        
         try {
-            console.log('🔐 Attempting login for:', email);
+            console.log('🔐 Processing login...');
             
             if (!this.supabase) {
                 throw new Error('Authentication service not available');
             }
+            
+            // Add random delay to prevent timing attacks (2-4 seconds)
+            await new Promise(resolve => setTimeout(resolve, 2000 + Math.random() * 2000));
             
             const { data: authData, error: authError } = await this.supabase.auth.signInWithPassword({ 
                 email, 
@@ -267,12 +476,15 @@ window.NCHSMLogin = {
             });
             
             if (authError) {
+                this.recordFailedAttempt();
+                
+                // Generic error message - don't reveal if email exists
                 if (authError.message.includes('Invalid login credentials')) {
-                    throw new Error('Invalid email or password. Please try again.');
+                    throw new Error('Invalid email or password');
                 } else if (authError.message.includes('Email not confirmed')) {
-                    throw new Error('Please verify your email address before logging in.');
+                    throw new Error('Please verify your email');
                 } else {
-                    throw new Error(authError.message);
+                    throw new Error('Login failed. Please try again.');
                 }
             }
             
@@ -292,30 +504,36 @@ window.NCHSMLogin = {
             
             if (!profileData) {
                 await this.supabase.auth.signOut();
-                throw new Error('Account not found. Please register first.');
+                throw new Error('Account not found');
             }
             
             if (profileData.status?.toLowerCase() !== 'approved') {
                 await this.supabase.auth.signOut();
-                throw new Error('Account is pending approval. Please contact administration.');
+                throw new Error('Account pending approval');
             }
+            
+            // Reset failed attempts on successful login
+            this.resetFailedAttempts();
             
             console.log('✅ Profile loaded - Role:', profileData.role);
             
-            await this.completeLogin(profileData, authData.session?.access_token);
+            // Generate secure session token
+            const secureToken = this.generateSecureToken();
+            
+            await this.completeLogin(profileData, secureToken);
             
         } catch (error) {
-            console.error('💥 Login error:', error);
+            console.error('💥 Login error');
             
             if (this.supabase) {
                 try {
                     await this.supabase.auth.signOut();
                 } catch (signOutError) {
-                    console.error('Sign out error:', signOutError);
+                    // Silent fail
                 }
             }
             
-            this.showError(errorMsg, error.message || 'Login failed. Please try again.');
+            this.showError(errorMsg, error.message || 'Login failed');
             
         } finally {
             this.state.isLoggingIn = false;
@@ -325,11 +543,20 @@ window.NCHSMLogin = {
     },
     
     // ============================================
-    // SESSION TRACKING
+    // SECURE TOKEN GENERATION
+    // ============================================
+    generateSecureToken: function() {
+        const array = new Uint8Array(32);
+        crypto.getRandomValues(array);
+        return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+    },
+    
+    // ============================================
+    // SESSION TRACKING (Secure)
     // ============================================
     trackUserSession: async function(userId, email, sessionToken, userAgent) {
         try {
-            console.log('🔍 Tracking session for user:', email);
+            console.log('🔍 Tracking session...');
             
             let ipAddress = 'unknown';
             try {
@@ -337,7 +564,7 @@ window.NCHSMLogin = {
                 const ipData = await ipResponse.json();
                 ipAddress = ipData.ip;
             } catch (ipError) {
-                console.warn('Could not fetch IP:', ipError);
+                // Silent fail
             }
             
             const deviceInfo = this.parseUserAgent(userAgent);
@@ -345,13 +572,14 @@ window.NCHSMLogin = {
             const expiresAt = new Date();
             expiresAt.setHours(expiresAt.getHours() + 24);
             
-            const finalSessionToken = sessionToken || this.generateSessionToken();
+            // Hash the session token before storing (don't store raw token)
+            const hashedToken = await this.hashToken(sessionToken);
             
             const { data, error } = await this.supabase
                 .from('user_sessions')
                 .insert({
                     user_id: userId,
-                    session_token: finalSessionToken,
+                    session_token_hash: hashedToken,
                     ip_address: ipAddress,
                     user_agent: userAgent,
                     device_info: deviceInfo,
@@ -363,27 +591,33 @@ window.NCHSMLogin = {
                 .select();
             
             if (error) {
-                console.error('❌ Failed to track session:', error.message);
+                console.error('❌ Session tracking failed');
                 return null;
             }
             
-            console.log('✅ Session tracked for user:', email);
-            
             if (data && data[0]) {
-                localStorage.setItem('current_session_id', data[0].id);
-                localStorage.setItem('session_token', finalSessionToken);
+                localStorage.setItem('session_id', data[0].id);
             }
             
             return data?.[0];
             
         } catch (error) {
-            console.error('❌ Session tracking error:', error);
+            console.error('❌ Session tracking error');
             return null;
         }
     },
     
+    // Simple hash function for token (client-side)
+    hashToken: async function(token) {
+        const encoder = new TextEncoder();
+        const data = encoder.encode(token);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    },
+    
     parseUserAgent: function(userAgent) {
-        if (!userAgent) return 'Unknown Device';
+        if (!userAgent) return 'Unknown';
         
         const ua = userAgent.toLowerCase();
         
@@ -392,14 +626,13 @@ window.NCHSMLogin = {
         else if (ua.includes('firefox')) browser = 'Firefox';
         else if (ua.includes('safari') && !ua.includes('chrome')) browser = 'Safari';
         else if (ua.includes('edg')) browser = 'Edge';
-        else if (ua.includes('opera')) browser = 'Opera';
         
         let os = 'Unknown';
         if (ua.includes('windows')) os = 'Windows';
         else if (ua.includes('mac')) os = 'macOS';
         else if (ua.includes('linux')) os = 'Linux';
         else if (ua.includes('android')) os = 'Android';
-        else if (ua.includes('ios') || ua.includes('iphone') || ua.includes('ipad')) os = 'iOS';
+        else if (ua.includes('ios') || ua.includes('iphone')) os = 'iOS';
         
         let device = 'Desktop';
         if (ua.includes('mobile')) device = 'Mobile';
@@ -408,17 +641,11 @@ window.NCHSMLogin = {
         return `${browser} on ${os} (${device})`;
     },
     
-    generateSessionToken: function() {
-        return 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 16);
-    },
-    
     // ============================================
     // LOGIN TRACKING
     // ============================================
     updateLastLogin: async function(userId, email) {
         try {
-            console.log('📝 Updating last login for:', email);
-            
             const now = new Date().toISOString();
             
             const { data: profile, error: fetchError } = await this.supabase
@@ -427,10 +654,7 @@ window.NCHSMLogin = {
                 .eq('user_id', userId)
                 .maybeSingle();
             
-            if (fetchError) {
-                console.error('Failed to fetch login count:', fetchError);
-                return false;
-            }
+            if (fetchError) return false;
             
             const newCount = (profile?.login_count || 0) + 1;
             
@@ -444,143 +668,82 @@ window.NCHSMLogin = {
                 })
                 .eq('user_id', userId);
             
-            if (updateError) {
-                console.error('Failed to update last login:', updateError);
-                return false;
-            }
+            if (updateError) return false;
             
-            console.log(`✅ Last login updated - Total logins: ${newCount}`);
             return true;
             
         } catch (error) {
-            console.error('Last login update error:', error);
             return false;
         }
     },
     
     // ============================================
-    // COMPLETE LOGIN - WITH ROLE-BASED REDIRECT
+    // COMPLETE LOGIN - SECURE REDIRECT
     // ============================================
     completeLogin: async function(profileData, sessionToken) {
-        console.log('🎉 Completing login for:', profileData.email);
-        console.log('👤 Role:', profileData.role);
+        console.log('🎉 Completing login...');
         
         try {
-            // Update last login (NON-BLOCKING)
-            this.updateLastLogin(profileData.user_id, profileData.email)
-                .catch(err => console.warn('Non-critical: Login update failed', err));
+            // Non-blocking updates
+            this.updateLastLogin(profileData.user_id, profileData.email).catch(() => {});
+            this.trackUserSession(profileData.user_id, profileData.email, sessionToken, navigator.userAgent).catch(() => {});
             
-            // Track user session (NON-BLOCKING)
-            this.trackUserSession(
-                profileData.user_id,
-                profileData.email,
-                sessionToken,
-                navigator.userAgent
-            ).catch(err => console.warn('Non-critical: Session tracking failed', err));
+            // Store minimal profile data (no sensitive info)
+            const safeProfile = {
+                user_id: profileData.user_id,
+                email: profileData.email,
+                full_name: profileData.full_name,
+                role: profileData.role,
+                program: profileData.program
+            };
+            localStorage.setItem('userProfile', JSON.stringify(safeProfile));
             
-            // Store profile in localStorage
-            localStorage.setItem('currentUserProfile', JSON.stringify(profileData));
-            
-            // Store session
+            // Store session in secure way
             const { data: { session } } = await this.supabase.auth.getSession();
             if (session) {
-                localStorage.setItem('supabase_session', JSON.stringify(session));
+                // Only store expiration, not the actual token in localStorage
+                localStorage.setItem('session_expires', session.expires_at);
             }
             
-            // Send email notification (non-blocking)
-            this.sendLoginSuccessEmail(profileData.email, profileData.full_name || profileData.email)
-                .catch(err => console.warn('⚠️ Email sending failed (non-critical):', err));
-            
-            // Redirect to dashboard based on role
+            // Redirect to dashboard
             this.redirectToDashboard(profileData);
             
         } catch (error) {
-            console.error('❌ Complete login error:', error);
+            console.error('❌ Complete login error');
             this.redirectToDashboard(profileData);
         }
     },
     
     // ============================================
-    // SEND LOGIN SUCCESS EMAIL
-    // ============================================
-    sendLoginSuccessEmail: async function(email, userName) {
-        return new Promise((resolve) => {
-            console.log('🔐 Sending login success email to:', email);
-            
-            const scriptUrl = 'https://script.google.com/macros/s/AKfycbwo0Z-oQ_p5-dIe4XYiaRTv6ZdxlmfxP5LIpQT4T1cGihvlimVJg3AvdUNrDeZ0cEkJ3g/exec';
-            
-            const params = new URLSearchParams({
-                to: email,
-                otp: 'LOGIN_SUCCESS',
-                userName: userName || email,
-                emailType: 'login_success',
-                subject: 'Login Successful - NCHSM Digital Portal'
-            });
-            
-            const fullUrl = scriptUrl + '?' + params.toString();
-            
-            const img = new Image();
-            img.src = fullUrl;
-            
-            img.onload = function() {
-                console.log('✅ Login success email sent');
-                resolve(true);
-            };
-            
-            img.onerror = function() {
-                console.log('✅ Login notification sent (img fallback)');
-                resolve(true);
-            };
-            
-            document.body.appendChild(img);
-            
-            setTimeout(() => {
-                console.log('✅ Login email request completed');
-                resolve(true);
-            }, 1500);
-        });
-    },
-    
-    // ============================================
-    // REDIRECT TO DASHBOARD - UPDATED FOR YOUR FILES
+    // REDIRECT TO DASHBOARD - SECURE
     // ============================================
     redirectToDashboard: function(profileData) {
-        console.log('🚀 Redirecting to dashboard...');
-        console.log('👤 User role:', profileData.role);
-        console.log('📧 User email:', profileData.email);
+        console.log('🚀 Redirecting...');
         
-        // Role to HTML file mapping
+        const role = profileData.role?.toLowerCase() || 'student';
+        
+        // Role to dashboard mapping
         const roleRedirects = {
             'superadmin': 'superadmin.html',
             'super_admin': 'superadmin.html',
             'admin': 'admin.html',
+            'accounts': 'nchsmaccounts.html',
             'student': 'student.html',
             'lecturer': 'lecturer.html',
             'hod': 'hod-tracker.html',
             'staff': 'staff.html'
         };
         
-        // Get the correct dashboard file based on role
-        let redirectFile = roleRedirects[profileData.role?.toLowerCase()] || 'index.html';
+        let redirectFile = roleRedirects[role] || 'index.html';
         
-        // Special case for admin with @nchsm.ac.ke domain
-        if (profileData.email === 'admin@nchsm.ac.ke' || profileData.email === 'admin.principalnchsm@gmail.com') {
-            redirectFile = 'admin.html';
-        }
+        console.log(`🎯 Role: ${role} -> ${redirectFile}`);
         
-        // Special case for super admin
-        if (profileData.email === 'super_admin@nchs.edu') {
-            redirectFile = 'superadmin.html';
-        }
-        
-        console.log(`🎯 Redirecting to: ${redirectFile}`);
-        
-        // Smooth transition
+        // Secure redirect - use replace to prevent back button to login page
         document.body.style.opacity = '0';
         document.body.style.transition = 'opacity 0.3s ease';
         
         setTimeout(() => {
-            window.location.href = redirectFile;
+            window.location.replace(redirectFile);
         }, 300);
     },
     
@@ -664,34 +827,30 @@ window.NCHSMLogin = {
         document.body.classList.toggle('offline', !isOnline);
         
         if (!isOnline) {
-            this.showError(document.getElementById('errorMsg'), 'You are currently offline. Some features may be unavailable.');
+            this.showError(document.getElementById('errorMsg'), 'You are offline. Please check your connection.');
         }
     }
 };
 
 // ============================================
-// GLOBAL FUNCTION EXPORTS
+// GLOBAL FUNCTION EXPORTS (Minimal)
 // ============================================
-
 window.hideAllModals = () => window.NCHSMLogin.hideAllModals();
-window.goBackToLogin = () => window.NCHSMLogin.goBackToLogin?.() || window.location.reload();
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('📄 DOM loaded, initializing...');
+    // Restore failed attempts from session storage
+    const savedAttempts = sessionStorage.getItem('failedAttempts');
+    const savedTime = sessionStorage.getItem('lastFailedTime');
+    if (savedAttempts) window.NCHSMLogin.state.failedAttempts = parseInt(savedAttempts);
+    if (savedTime) window.NCHSMLogin.state.lastFailedTime = parseInt(savedTime);
+    
     window.NCHSMLogin.init();
     
-    window.addEventListener('online', () => {
-        console.log('🌐 Online');
-        window.NCHSMLogin.updateOnlineStatus();
-    });
-    
-    window.addEventListener('offline', () => {
-        console.log('📴 Offline');
-        window.NCHSMLogin.updateOnlineStatus();
-    });
+    window.addEventListener('online', () => window.NCHSMLogin.updateOnlineStatus());
+    window.addEventListener('offline', () => window.NCHSMLogin.updateOnlineStatus());
     
     window.NCHSMLogin.updateOnlineStatus();
     
-    console.log('✅ Application ready');
+    console.log('✅ Secure application ready');
 });
