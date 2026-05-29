@@ -1,4 +1,4 @@
-// js/exam-card.js - COMPACT v7.2 (Fixed: Download PDF using browser print method)
+// js/exam-card.js - COMPACT v7.3 (FIXED: Download button opens print dialog for Save as PDF)
 
 (function() {
     'use strict';
@@ -60,20 +60,6 @@
                 month: 'long', 
                 day: 'numeric' 
             });
-        }
-        
-        getExamPeriod() {
-            const now = new Date();
-            const year = now.getFullYear();
-            const month = now.getMonth();
-            
-            if (month >= 2 && month <= 5) {
-                return `March - June ${year} (Trimester 1)`;
-            }
-            if (month >= 6 && month <= 9) {
-                return `July - October ${year} (Trimester 2)`;
-            }
-            return `November - February ${year}/${year + 1} (Trimester 3)`;
         }
         
         // ========== INITIALIZATION ==========
@@ -216,57 +202,53 @@
             }
         }
         
-        // ========== DOWNLOAD AS PDF - Using browser print method (reliable) ==========
+        // ========== DOWNLOAD AS PDF - Opens print dialog for Save as PDF ==========
         downloadExamCardAsPDF() {
             const cardElement = document.getElementById('exam-card-print-area');
             if (!cardElement) {
-                console.error('Card element not found');
+                alert('Exam card not found. Please refresh and try again.');
                 return;
             }
             
-            // Show loading indicator on button
+            // Show loading state on button
             const downloadBtn = document.getElementById('downloadExamCardBtn');
             const originalText = downloadBtn?.innerHTML || 'Download PDF';
             if (downloadBtn) {
-                downloadBtn.innerHTML = '⏳ Preparing PDF...';
+                downloadBtn.innerHTML = '⏳ Preparing...';
                 downloadBtn.disabled = true;
             }
             
-            // Get all styles
+            // Get styles
             const styles = document.getElementById('exam-card-compact-styles')?.innerHTML || '';
             
-            // Clone the card to avoid modifying original
+            // Clone the card
             const cloneCard = cardElement.cloneNode(true);
             
-            // Remove buttons from clone
-            const buttons = cloneCard.querySelectorAll('.action-buttons, .download-btn, .print-btn');
-            buttons.forEach(btn => btn.remove());
+            // Remove action buttons from clone
+            const actionButtons = cloneCard.querySelectorAll('.action-buttons');
+            actionButtons.forEach(btn => btn.remove());
             
-            // Create full HTML document for PDF generation via print
-            const pdfHtml = `
+            // Create print window content
+            const printContent = `
                 <!DOCTYPE html>
                 <html>
                 <head>
                     <title>Exam Card - ${this.userProfile?.full_name || 'Student'}</title>
                     <meta charset="UTF-8">
                     <style>
-                        * {
-                            margin: 0;
-                            padding: 0;
-                            box-sizing: border-box;
-                        }
+                        ${styles}
                         body {
                             font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
                             padding: 20px;
+                            margin: 0;
                             background: white;
                         }
-                        ${styles}
                         .action-buttons, .download-btn, .print-btn {
                             display: none !important;
                         }
                         .exam-card-wrapper {
-                            margin: 0 auto;
                             max-width: 800px;
+                            margin: 0 auto;
                         }
                         @media print {
                             body {
@@ -293,41 +275,49 @@
                 <body>
                     ${cloneCard.outerHTML}
                     <script>
-                        // Auto-trigger print dialog which allows "Save as PDF"
+                        // Auto-trigger print dialog when window loads
                         window.onload = function() {
+                            // Small delay to ensure rendering is complete
                             setTimeout(function() {
                                 window.print();
+                                // Close window after print dialog is closed
+                                window.onafterprint = function() {
+                                    window.close();
+                                };
+                                // Fallback close after 10 seconds if user doesn't close
                                 setTimeout(function() {
                                     window.close();
-                                }, 500);
-                            }, 300);
+                                }, 10000);
+                            }, 500);
                         };
                     <\/script>
                 </body>
                 </html>
             `;
             
-            // Open new window with the content
-            const pdfWindow = window.open('', '_blank');
-            pdfWindow.document.write(pdfHtml);
-            pdfWindow.document.close();
+            // Open new window and write content
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(printContent);
+            printWindow.document.close();
             
-            // Reset button after a delay
+            // Reset button
             setTimeout(() => {
                 if (downloadBtn) {
                     downloadBtn.innerHTML = originalText;
                     downloadBtn.disabled = false;
                 }
-            }, 1000);
+            }, 2000);
         }
         
-        // ========== PRINT FUNCTION (Direct print) ==========
+        // ========== PRINT FUNCTION ==========
         printExamCard() {
             const printContent = document.getElementById('exam-card-print-area');
             if (!printContent) return;
             
-            // Get all styles for print
             const styles = document.getElementById('exam-card-compact-styles')?.innerHTML || '';
+            const cloneCard = printContent.cloneNode(true);
+            const actionButtons = cloneCard.querySelectorAll('.action-buttons');
+            actionButtons.forEach(btn => btn.remove());
             
             const printWindow = window.open('', '_blank');
             printWindow.document.write(`
@@ -337,32 +327,24 @@
                     <title>Exam Card - ${this.userProfile?.full_name || 'Student'}</title>
                     <meta charset="UTF-8">
                     <style>
-                        * {
-                            margin: 0;
-                            padding: 0;
-                            box-sizing: border-box;
-                        }
+                        ${styles}
                         body {
                             font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
                             padding: 20px;
+                            margin: 0;
                             background: white;
                         }
-                        ${styles}
                         .action-buttons, .download-btn, .print-btn {
                             display: none !important;
                         }
                         .exam-card-wrapper {
-                            margin: 0 auto;
                             max-width: 800px;
+                            margin: 0 auto;
                         }
                         @media print {
                             body {
                                 padding: 0;
                                 margin: 0;
-                            }
-                            .exam-card-wrapper {
-                                margin: 0;
-                                padding: 10px;
                             }
                             .card-header {
                                 background: #1e3a5f !important;
@@ -378,7 +360,7 @@
                     </style>
                 </head>
                 <body>
-                    ${printContent.outerHTML}
+                    ${cloneCard.outerHTML}
                     <script>
                         window.onload = function() {
                             setTimeout(function() {
@@ -404,10 +386,8 @@
             const isEligible = approvedUnits.length > 0;
             const currentBlock = this.userBlock || student?.block || 'Current Block';
             
-            // Calculate total credits
             const totalCredits = approvedUnits.reduce((sum, unit) => sum + (unit.credits || CONFIG.DEFAULT_CREDITS), 0);
             
-            // Generate compact table rows with Lecturer's Sign column
             const tableRows = approvedUnits.map((unit, index) => `
                 <tr>
                     <td class="text-center">${index + 1}</td>
@@ -421,7 +401,6 @@
             const html = `
                 <div class="exam-card-wrapper" id="exam-card-print-area">
                     <div class="exam-card-compact">
-                        <!-- Header - Compact -->
                         <div class="card-header">
                             <img src="${CONFIG.LOGO_URL}" alt="Logo" class="card-logo" onerror="this.style.display='none'">
                             <div class="header-text">
@@ -433,7 +412,6 @@
                             </div>
                         </div>
                         
-                        <!-- Student Info - Grid Compact -->
                         <div class="info-grid">
                             <div class="info-item"><span class="info-label">Name:</span> ${this.escapeHtml(student?.full_name || 'Not Available')}</div>
                             <div class="info-item"><span class="info-label">ID:</span> ${this.escapeHtml(student?.student_id || 'N/A')}</div>
@@ -443,7 +421,6 @@
                             <div class="info-item"><span class="info-label">Issued:</span> ${this.formatDate()}</div>
                         </div>
                         
-                        <!-- Units Table - Compact -->
                         ${approvedUnits.length > 0 ? `
                             <table class="units-table">
                                 <thead>
@@ -466,14 +443,12 @@
                             </table>
                         ` : '<div class="no-units">No approved units found</div>'}
                         
-                        <!-- Signatures - 3 in one line -->
                         <div class="signatures-row">
                             <div class="signature"><div class="sign-line"></div><div>HOD Nursing</div></div>
                             <div class="signature"><div class="sign-line"></div><div>Principal</div></div>
                             <div class="signature"><div class="sign-line"></div><div>Finance Officer</div></div>
                         </div>
                         
-                        <!-- Footer Rules - Compact -->
                         <div class="card-footer">
                             <div class="rule-text">📌 Present at each exam | 🚫 No electronics | ⏰ Arrive 30 mins early</div>
                             <div class="student-sign">
@@ -482,10 +457,9 @@
                         </div>
                     </div>
                     
-                    <!-- ACTION BUTTONS: DOWNLOAD AS PDF AND PRINT -->
                     ${isEligible ? `
                         <div class="action-buttons">
-                            <button class="download-btn" id="downloadExamCardBtn">📄 Download as PDF</button>
+                            <button class="download-btn" id="downloadExamCardBtn">📄 Save as PDF</button>
                             <button class="print-btn" id="printExamCardBtn">🖨️ Print Card</button>
                         </div>
                     ` : ''}
@@ -495,7 +469,6 @@
             this.examCardContent.innerHTML = html;
             this.addCompactStyles();
             
-            // Attach event listeners for BOTH buttons
             const downloadBtn = document.getElementById('downloadExamCardBtn');
             const printBtn = document.getElementById('printExamCardBtn');
             
@@ -521,13 +494,11 @@
             const style = document.createElement('style');
             style.id = 'exam-card-compact-styles';
             style.textContent = `
-                /* Compact Card Styles */
                 .exam-card-wrapper {
                     max-width: 800px;
                     margin: 0 auto;
                     font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
                 }
-                
                 .exam-card-compact {
                     background: white;
                     border: 1px solid #e2e8f0;
@@ -535,8 +506,6 @@
                     overflow: hidden;
                     box-shadow: 0 4px 12px rgba(0,0,0,0.08);
                 }
-                
-                /* Header */
                 .card-header {
                     background: linear-gradient(135deg, #1e3a5f, #2c5a8c);
                     color: white;
@@ -545,7 +514,6 @@
                     align-items: center;
                     gap: 15px;
                 }
-                
                 .card-logo {
                     height: 50px;
                     width: auto;
@@ -554,24 +522,20 @@
                     border-radius: 8px;
                     object-fit: contain;
                 }
-                
                 .header-text {
                     flex: 1;
                 }
-                
                 .institution {
                     font-size: 11px;
                     opacity: 0.9;
                     letter-spacing: 0.5px;
                 }
-                
                 .card-title {
                     font-size: 18px;
                     font-weight: 800;
                     letter-spacing: 1px;
                     margin-top: 2px;
                 }
-                
                 .status-badge {
                     padding: 4px 12px;
                     border-radius: 20px;
@@ -579,16 +543,12 @@
                     font-weight: 700;
                     white-space: nowrap;
                 }
-                
                 .status-badge.eligible {
                     background: #10b981;
                 }
-                
                 .status-badge.ineligible {
                     background: #dc2626;
                 }
-                
-                /* Info Grid */
                 .info-grid {
                     display: grid;
                     grid-template-columns: repeat(3, 1fr);
@@ -598,24 +558,19 @@
                     border-bottom: 1px solid #e2e8f0;
                     font-size: 12px;
                 }
-                
                 .info-item {
                     color: #334155;
                 }
-                
                 .info-label {
                     font-weight: 600;
                     color: #64748b;
                     margin-right: 5px;
                 }
-                
-                /* Units Table */
                 .units-table {
                     width: 100%;
                     border-collapse: collapse;
                     font-size: 11px;
                 }
-                
                 .units-table th {
                     background: #f1f5f9;
                     padding: 8px 8px;
@@ -624,40 +579,29 @@
                     color: #1e293b;
                     border-bottom: 1px solid #e2e8f0;
                 }
-                
                 .units-table td {
                     padding: 6px 8px;
                     border-bottom: 1px solid #f1f5f9;
                 }
-                
-                .units-table tr:hover {
-                    background: #faf5ff;
-                }
-                
                 .text-center {
                     text-align: center;
                 }
-                
                 .signature-cell {
                     font-family: monospace;
                     font-size: 10px;
                     color: #94a3b8;
                 }
-                
                 .total-row {
                     background: #f8fafc;
                     font-weight: 600;
                     border-top: 1px solid #e2e8f0;
                 }
-                
                 .no-units {
                     padding: 20px;
                     text-align: center;
                     color: #ef4444;
                     font-size: 13px;
                 }
-                
-                /* Signatures Row */
                 .signatures-row {
                     display: flex;
                     justify-content: space-between;
@@ -666,34 +610,28 @@
                     border-top: 1px solid #e2e8f0;
                     gap: 15px;
                 }
-                
                 .signature {
                     flex: 1;
                     text-align: center;
                     font-size: 10px;
                     color: #475569;
                 }
-                
                 .sign-line {
                     border-top: 1px solid #334155;
                     margin-bottom: 6px;
                     padding-top: 4px;
                 }
-                
-                /* Footer */
                 .card-footer {
                     padding: 10px 20px;
                     background: #fefce8;
                     border-top: 1px solid #e2e8f0;
                     font-size: 10px;
                 }
-                
                 .rule-text {
                     color: #854d0e;
                     margin-bottom: 8px;
                     text-align: center;
                 }
-                
                 .student-sign {
                     display: flex;
                     justify-content: flex-end;
@@ -701,16 +639,12 @@
                     padding-top: 5px;
                     border-top: 1px dashed #e2e8f0;
                 }
-                
-                /* ACTION BUTTONS CONTAINER */
                 .action-buttons {
                     display: flex;
                     gap: 15px;
                     justify-content: center;
                     margin-top: 20px;
                 }
-                
-                /* Download Button & Print Button styling */
                 .download-btn, .print-btn {
                     display: inline-flex;
                     align-items: center;
@@ -724,125 +658,50 @@
                     transition: all 0.2s ease;
                     font-family: inherit;
                 }
-                
                 .download-btn {
                     background: #059669;
                     color: white;
                 }
-                
                 .download-btn:hover {
                     background: #047857;
                     transform: scale(1.02);
                 }
-                
                 .print-btn {
                     background: #1e3a5f;
                     color: white;
                 }
-                
                 .print-btn:hover {
                     background: #2c5a8c;
                     transform: scale(1.02);
                 }
-                
                 .download-btn:disabled, .print-btn:disabled {
                     opacity: 0.6;
                     cursor: not-allowed;
                     transform: none;
                 }
-                
-                /* PRINT STYLES */
                 @media print {
-                    body * {
-                        visibility: hidden;
-                    }
-                    
-                    .exam-card-wrapper, .exam-card-wrapper * {
-                        visibility: visible;
-                    }
-                    
-                    .exam-card-wrapper {
-                        position: absolute;
-                        top: 0;
-                        left: 0;
-                        width: 100%;
-                        margin: 0;
-                        padding: 10px;
-                    }
-                    
-                    .action-buttons, .download-btn, .print-btn {
-                        display: none !important;
-                    }
-                    
-                    .exam-card-compact {
-                        box-shadow: none;
-                        border: 1px solid #ccc;
-                    }
-                    
-                    .card-header {
-                        background: #1e3a5f !important;
-                        -webkit-print-color-adjust: exact;
-                        print-color-adjust: exact;
-                    }
-                    
-                    .status-badge.eligible {
-                        background: #10b981 !important;
-                        -webkit-print-color-adjust: exact;
-                        print-color-adjust: exact;
-                    }
+                    body * { visibility: hidden; }
+                    .exam-card-wrapper, .exam-card-wrapper * { visibility: visible; }
+                    .exam-card-wrapper { position: absolute; top: 0; left: 0; width: 100%; margin: 0; padding: 10px; }
+                    .action-buttons, .download-btn, .print-btn { display: none !important; }
+                    .card-header { background: #1e3a5f !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                    .status-badge.eligible { background: #10b981 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                 }
-                
-                /* Mobile Responsive */
                 @media (max-width: 600px) {
-                    .info-grid {
-                        grid-template-columns: repeat(2, 1fr);
-                        gap: 6px 10px;
-                        font-size: 11px;
-                        padding: 10px 15px;
-                    }
-                    
-                    .card-header {
-                        padding: 10px 15px;
-                        gap: 10px;
-                    }
-                    
-                    .card-logo {
-                        height: 40px;
-                    }
-                    
-                    .card-title {
-                        font-size: 14px;
-                    }
-                    
-                    .institution {
-                        font-size: 9px;
-                    }
-                    
-                    .signatures-row {
-                        flex-direction: column;
-                        gap: 10px;
-                    }
-                    
-                    .student-sign {
-                        justify-content: center;
-                    }
-                    
-                    .action-buttons {
-                        flex-direction: column;
-                        gap: 10px;
-                        padding: 0 10px;
-                    }
-                    
-                    .download-btn, .print-btn {
-                        justify-content: center;
-                        width: 100%;
-                    }
+                    .info-grid { grid-template-columns: repeat(2, 1fr); gap: 6px 10px; font-size: 11px; padding: 10px 15px; }
+                    .card-header { padding: 10px 15px; gap: 10px; }
+                    .card-logo { height: 40px; }
+                    .card-title { font-size: 14px; }
+                    .institution { font-size: 9px; }
+                    .signatures-row { flex-direction: column; gap: 10px; }
+                    .student-sign { justify-content: center; }
+                    .action-buttons { flex-direction: column; gap: 10px; padding: 0 10px; }
+                    .download-btn, .print-btn { justify-content: center; width: 100%; }
                 }
             `;
             document.head.appendChild(style);
         }
         
-        // ========== DEMO & LOADING ==========
         showDemoCard() {
             if (!this.examCardContent) return;
             this.userProfile = CONFIG.DEMO_DATA;
@@ -863,19 +722,17 @@
             }
         }
         
-        // ========== PUBLIC METHODS ==========
         refresh() {
             this.loaded = false;
             this.loadExamCard();
         }
     }
     
-    // Initialize module
     window.examCardModule = new ExamCardModule();
     window.loadExamCard = () => window.examCardModule?.loadExamCard();
     window.printExamCard = () => window.examCardModule?.printExamCard();
     window.downloadExamCardAsPDF = () => window.examCardModule?.downloadExamCardAsPDF();
     window.refreshExamCard = () => window.examCardModule?.refresh();
     
-    console.log('✅ Compact Exam Card module ready (v7.2 - PDF download using browser print method)');
+    console.log('✅ Exam Card module ready - Save as PDF button works!');
 })();
