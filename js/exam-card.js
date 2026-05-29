@@ -1,4 +1,4 @@
-// js/exam-card.js - v8.4 (EXACT layout: Rules + Student Signature)
+// js/exam-card.js - v8.5 (Logo restored + exact rules format)
 
 (function() {
     'use strict';
@@ -393,7 +393,7 @@
             printWindow.document.close();
         }
         
-        // ========== UI RENDERING WITH EXACT RULES FORMAT ==========
+        // ========== UI RENDERING WITH LOGO + EXACT RULES FORMAT ==========
         displayExamCard() {
             if (!this.examCardContent) return;
             
@@ -421,6 +421,7 @@
                 <div class="exam-card-wrapper" id="exam-card-print-area">
                     <div class="exam-card-compact">
                         <div class="card-header">
+                            <img src="${CONFIG.LOGO_URL}" alt="Logo" class="card-logo" onerror="this.style.display='none'">
                             <div class="header-text">
                                 <div class="institution">NAKURU COLLEGE OF HEALTH SCIENCES AND MANAGEMENT</div>
                                 <div class="card-title">EXAMINATION CARD</div>
@@ -545,7 +546,8 @@
                 .exam-card-wrapper { max-width: 850px; margin: 0 auto; font-family: 'Segoe UI', Roboto, sans-serif; }
                 .exam-card-compact { background: white; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
                 
-                .card-header { background: linear-gradient(135deg, #1e3a5f, #2c5a8c); color: white; padding: 15px 20px; display: flex; align-items: center; justify-content: space-between; }
+                .card-header { background: linear-gradient(135deg, #1e3a5f, #2c5a8c); color: white; padding: 15px 20px; display: flex; align-items: center; gap: 15px; }
+                .card-logo { height: 55px; width: auto; background: white; padding: 5px; border-radius: 8px; object-fit: contain; }
                 .header-text { flex: 1; }
                 .institution { font-size: 12px; opacity: 0.9; letter-spacing: 0.5px; }
                 .card-title { font-size: 22px; font-weight: 800; letter-spacing: 1px; margin-top: 2px; }
@@ -604,7 +606,7 @@
                 
                 @media (max-width: 600px) {
                     .info-grid { grid-template-columns: repeat(2, 1fr); gap: 6px 10px; padding: 10px 15px; }
-                    .card-header { padding: 10px 15px; }
+                    .card-header { padding: 10px 15px; gap: 10px; }
                     .card-logo { height: 40px; }
                     .card-title { font-size: 16px; }
                     .signatures-row { flex-direction: column; gap: 15px; }
@@ -647,5 +649,5 @@
     window.downloadExamCard = () => window.examCardModule?.downloadExamCardDirect();
     window.refreshExamCard = () => window.examCardModule?.refresh();
     
-    console.log('✅ Exam Card module ready - Exact rules format!');
+    console.log('✅ Exam Card module ready - Logo restored!');
 })();
