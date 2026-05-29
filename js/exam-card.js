@@ -1,4 +1,4 @@
-// js/exam-card.js - v8.0 (DIRECT DOWNLOAD - No print dialog, auto-saves PDF)
+// js/exam-card.js - v8.2 (FIXED: Signature line uses CSS border, not underscores)
 
 (function() {
     'use strict';
@@ -69,16 +69,13 @@
             setTimeout(() => this.tryLoadIfLoggedIn(), CONFIG.LOAD_DELAY);
         }
         
-        // Load required libraries for PDF generation
         loadRequiredLibraries() {
-            // Load html2canvas if not present
             if (typeof html2canvas === 'undefined') {
                 const script1 = document.createElement('script');
                 script1.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
                 document.head.appendChild(script1);
             }
             
-            // Load jsPDF if not present
             if (typeof jspdf === 'undefined') {
                 const script2 = document.createElement('script');
                 script2.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
@@ -219,7 +216,7 @@
             }
         }
         
-        // ========== DIRECT PDF DOWNLOAD - NO DIALOG, AUTO SAVES ==========
+        // ========== DIRECT PDF DOWNLOAD WITH FIXED SIGNATURE LINES ==========
         async downloadExamCardDirect() {
             const cardElement = document.getElementById('exam-card-print-area');
             if (!cardElement) {
@@ -227,7 +224,6 @@
                 return;
             }
             
-            // Show loading state
             const downloadBtn = document.getElementById('downloadExamCardBtn');
             const originalText = downloadBtn?.innerHTML || '📥 Download PDF';
             if (downloadBtn) {
@@ -236,21 +232,32 @@
             }
             
             try {
-                // Wait for libraries to load
                 await this.waitForLibraries();
                 
-                // Clone the card to avoid modifying original
                 const cloneCard = cardElement.cloneNode(true);
                 
                 // Remove action buttons from clone
                 const actionButtons = cloneCard.querySelectorAll('.action-buttons');
                 actionButtons.forEach(btn => btn.remove());
                 
-                // Hide buttons in clone for cleaner PDF
+                // Hide all buttons
                 const allButtons = cloneCard.querySelectorAll('button');
                 allButtons.forEach(btn => btn.style.display = 'none');
                 
-                // Create a temporary container for rendering
+                // FIX: Replace underscore text with proper styled signature divs
+                const signatureCells = cloneCard.querySelectorAll('.signature-cell');
+                signatureCells.forEach(cell => {
+                    // Replace the underscore text with a proper bordered div
+                    cell.innerHTML = '<div class="signature-line"></div>';
+                    cell.style.padding = '4px 0';
+                });
+                
+                // Also fix the student signature section
+                const studentSignSpan = cloneCard.querySelector('.student-sign span');
+                if (studentSignSpan) {
+                    studentSignSpan.innerHTML = 'Student Signature: <span class="signature-line-inline"></span>';
+                }
+                
                 const tempContainer = document.createElement('div');
                 tempContainer.style.position = 'absolute';
                 tempContainer.style.left = '-9999px';
@@ -260,26 +267,24 @@
                 tempContainer.appendChild(cloneCard);
                 document.body.appendChild(tempContainer);
                 
-                // Ensure all styles are applied
-                await new Promise(resolve => setTimeout(resolve, 100));
+                await new Promise(resolve => setTimeout(resolve, 200));
                 
-                // Render to canvas
                 const canvas = await html2canvas(cloneCard, {
-                    scale: 2,
+                    scale: 3,
                     backgroundColor: '#ffffff',
                     logging: false,
                     useCORS: true,
-                    allowTaint: false
+                    allowTaint: false,
+                    windowWidth: cloneCard.scrollWidth,
+                    windowHeight: cloneCard.scrollHeight
                 });
                 
-                // Remove temporary container
                 document.body.removeChild(tempContainer);
                 
-                // Create PDF
                 const { jsPDF } = window.jspdf;
                 const imgData = canvas.toDataURL('image/png');
-                const imgWidth = 210; // A4 width in mm
-                const pageHeight = 297; // A4 height in mm
+                const imgWidth = 210;
+                const pageHeight = 297;
                 const imgHeight = (canvas.height * imgWidth) / canvas.width;
                 
                 const pdf = new jsPDF('p', 'mm', 'a4');
@@ -287,7 +292,6 @@
                 
                 pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
                 
-                // Add new page if needed
                 if (imgHeight > pageHeight) {
                     let heightLeft = imgHeight - pageHeight;
                     position = -pageHeight;
@@ -299,13 +303,11 @@
                     }
                 }
                 
-                // Save the PDF
                 const studentName = this.userProfile?.full_name || 'Student';
                 const safeName = studentName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
                 const date = this.formatDate().replace(/[, ]/g, '_');
                 pdf.save(`Exam_Card_${safeName}_${date}.pdf`);
                 
-                // Show success message briefly
                 if (downloadBtn) {
                     downloadBtn.innerHTML = '✅ Downloaded!';
                     setTimeout(() => {
@@ -333,10 +335,8 @@
                     }
                 }, 100);
                 
-                // Timeout after 10 seconds
                 setTimeout(() => {
                     clearInterval(checkLibraries);
-                    console.warn('Libraries loaded with timeout');
                     resolve();
                 }, 10000);
             });
@@ -397,7 +397,7 @@
             printWindow.document.close();
         }
         
-        // ========== UI RENDERING ==========
+        // ========== UI RENDERING WITH FIXED SIGNATURE STYLES ==========
         displayExamCard() {
             if (!this.examCardContent) return;
             
@@ -414,7 +414,7 @@
                     <td><strong>${this.escapeHtml(unit.unit_code || unit.code || '')}</strong></td>
                     <td>${this.escapeHtml(unit.unit_name || unit.name || '')}</td>
                     <td class="text-center">${unit.credits || CONFIG.DEFAULT_CREDITS}</td>
-                    <td class="signature-cell">____________</td>
+                    <td class="signature-cell"><div class="signature-line"></div></td>
                 </tr>
             `).join('');
             
@@ -447,9 +447,9 @@
                                     <tr>
                                         <th width="5%">#</th>
                                         <th width="20%">Code</th>
-                                        <th width="45%">Unit Name</th>
-                                        <th width="8%">Cr</th>
-                                        <th width="22%">Lecturer's Sign</th>
+                                        <th width="43%">Unit Name</th>
+                                        <th width="7%">Cr</th>
+                                        <th width="25%">Lecturer's Sign</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -472,7 +472,7 @@
                         <div class="card-footer">
                             <div class="rule-text">📌 Present at each exam | 🚫 No electronics | ⏰ Arrive 30 mins early</div>
                             <div class="student-sign">
-                                <span>Student Signature: _________________</span>
+                                <span>Student Signature: <span class="signature-line-inline"></span></span>
                             </div>
                         </div>
                     </div>
@@ -528,25 +528,45 @@
                 .info-item { color: #334155; }
                 .info-label { font-weight: 600; color: #64748b; margin-right: 5px; }
                 .units-table { width: 100%; border-collapse: collapse; font-size: 11px; }
-                .units-table th { background: #f1f5f9; padding: 8px; text-align: left; font-weight: 700; border-bottom: 1px solid #e2e8f0; }
-                .units-table td { padding: 6px 8px; border-bottom: 1px solid #f1f5f9; }
+                .units-table th { background: #f1f5f9; padding: 8px; text-align: left; font-weight: 700; border-bottom: 2px solid #cbd5e1; }
+                .units-table td { padding: 8px; border-bottom: 1px solid #e2e8f0; vertical-align: middle; }
                 .text-center { text-align: center; }
-                .signature-cell { font-family: monospace; font-size: 10px; color: #94a3b8; }
-                .total-row { background: #f8fafc; font-weight: 600; border-top: 1px solid #e2e8f0; }
+                
+                /* FIXED: Signature line using CSS border - no underscores! */
+                .signature-cell { padding: 4px 0; }
+                .signature-line {
+                    width: 100%;
+                    height: 1px;
+                    background: #333;
+                    border: none;
+                    border-top: 1px solid #333;
+                    margin: 8px 0;
+                }
+                .signature-line-inline {
+                    display: inline-block;
+                    width: 200px;
+                    height: 1px;
+                    background: #333;
+                    border-top: 1px solid #333;
+                    margin-left: 10px;
+                    vertical-align: middle;
+                }
+                
+                .total-row { background: #f8fafc; font-weight: 600; border-top: 2px solid #cbd5e1; }
                 .no-units { padding: 20px; text-align: center; color: #ef4444; font-size: 13px; }
-                .signatures-row { display: flex; justify-content: space-between; padding: 12px 20px; gap: 15px; }
+                .signatures-row { display: flex; justify-content: space-between; padding: 12px 20px; gap: 15px; border-top: 1px solid #e2e8f0; }
                 .signature { flex: 1; text-align: center; font-size: 10px; color: #475569; }
-                .sign-line { border-top: 1px solid #334155; margin-bottom: 6px; padding-top: 4px; }
+                .sign-line { border-top: 1px solid #334155; margin-bottom: 6px; padding-top: 4px; width: 100%; }
                 .card-footer { padding: 10px 20px; background: #fefce8; border-top: 1px solid #e2e8f0; font-size: 10px; }
                 .rule-text { color: #854d0e; margin-bottom: 8px; text-align: center; }
                 .student-sign { display: flex; justify-content: flex-end; padding-top: 5px; border-top: 1px dashed #e2e8f0; }
                 .action-buttons { display: flex; gap: 15px; justify-content: center; margin-top: 20px; }
-                .download-btn, .print-btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 24px; border: none; border-radius: 40px; font-weight: 600; font-size: 13px; cursor: pointer; transition: all 0.2s ease; }
+                .download-btn, .print-btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 24px; border: none; border-radius: 40px; font-weight: 600; font-size: 13px; cursor: pointer; }
                 .download-btn { background: #059669; color: white; }
                 .download-btn:hover { background: #047857; transform: scale(1.02); }
                 .print-btn { background: #1e3a5f; color: white; }
                 .print-btn:hover { background: #2c5a8c; transform: scale(1.02); }
-                .download-btn:disabled, .print-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+                
                 @media print {
                     body * { visibility: hidden; }
                     .exam-card-wrapper, .exam-card-wrapper * { visibility: visible; }
@@ -554,7 +574,13 @@
                     .action-buttons, button { display: none !important; }
                     .card-header { background: #1e3a5f !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                     .status-badge.eligible { background: #10b981 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                    .signature-line, .sign-line, .signature-line-inline { 
+                        border-top: 1px solid #000 !important;
+                        -webkit-print-color-adjust: exact;
+                        print-color-adjust: exact;
+                    }
                 }
+                
                 @media (max-width: 600px) {
                     .info-grid { grid-template-columns: repeat(2, 1fr); gap: 6px 10px; font-size: 11px; padding: 10px 15px; }
                     .card-header { padding: 10px 15px; gap: 10px; }
@@ -565,6 +591,7 @@
                     .student-sign { justify-content: center; }
                     .action-buttons { flex-direction: column; gap: 10px; padding: 0 10px; }
                     .download-btn, .print-btn { justify-content: center; width: 100%; }
+                    .signature-line-inline { width: 120px; }
                 }
             `;
             document.head.appendChild(style);
@@ -596,12 +623,11 @@
         }
     }
     
-    // Initialize module
     window.examCardModule = new ExamCardModule();
     window.loadExamCard = () => window.examCardModule?.loadExamCard();
     window.printExamCard = () => window.examCardModule?.printExamCard();
     window.downloadExamCard = () => window.examCardModule?.downloadExamCardDirect();
     window.refreshExamCard = () => window.examCardModule?.refresh();
     
-    console.log('✅ Exam Card module ready - DIRECT PDF DOWNLOAD (no dialog, auto-saves)!');
+    console.log('✅ Exam Card module ready - Signature lines fixed for mobile PDF download!');
 })();
