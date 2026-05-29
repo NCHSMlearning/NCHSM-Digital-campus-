@@ -46,7 +46,6 @@
                 <li><a href="#" data-tab="welcome-editor"><i class="fas fa-edit"></i> Welcome Message</a></li>
                 <li><a href="#" data-tab="system-health"><i class="fas fa-heartbeat"></i> System Health</a></li>
                 <li><a href="#" data-tab="user-analytics"><i class="fas fa-chart-line"></i> User Analytics</a></li>
-                <!-- REMOVED: Audit Logs, Security Settings, Backup, API Management, Session Management, Error Tracking (Super Admin only) -->
             </ul>
             <div class="logout">
                 <a href="#" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</a>
@@ -55,7 +54,7 @@
 
         <main class="main">
             <header>
-                <h1>Welcome, Admin!</h1>
+                <h1 id="welcomeHeader">Welcome, Admin!</h1>
                 <p class="subtitle">Manage students, courses, and system operations</p>
             </header>
 
@@ -63,29 +62,29 @@
             <section id="dashboard" class="tab-content active">
                 <div id="student-welcome-message">
                     <div class="alert alert-info" style="background: #e0e7ff; padding: 15px; border-radius: 12px; margin-bottom: 20px;">
-                        <i class="fas fa-bell"></i> Welcome to NCHSM Admin Dashboard
+                        <i class="fas fa-spinner fa-spin"></i> Loading welcome message...
                     </div>
                 </div>
                 
                 <div class="cards">
                     <div class="card" onclick="showTab('users')">
                         <h3><i class="fas fa-users"></i> Total Users</h3>
-                        <p class="data" id="totalUsers">0</p>
+                        <p class="data" id="totalUsers">--</p>
                         <p class="minor-data">All system users</p>
                     </div>
                     <div class="card" onclick="showTab('pending')">
                         <h3><i class="fas fa-clock"></i> Pending Approvals</h3>
-                        <p class="data" id="pendingApprovals">0</p>
+                        <p class="data" id="pendingApprovals">--</p>
                         <p class="minor-data">Waiting for approval</p>
                     </div>
                     <div class="card" onclick="showTab('enroll')">
                         <h3><i class="fas fa-user-graduate"></i> Total Students</h3>
-                        <p class="data" id="totalStudents">0</p>
+                        <p class="data" id="totalStudents">--</p>
                         <p class="minor-data">Active students</p>
                     </div>
                     <div class="card" onclick="showTab('support-tickets')">
                         <h3><i class="fas fa-ticket-alt"></i> Support Tickets</h3>
-                        <p class="data" id="dashboardOpenTickets">0</p>
+                        <p class="data" id="dashboardOpenTickets">--</p>
                         <p class="minor-data">Open tickets</p>
                     </div>
                 </div>
@@ -93,22 +92,22 @@
                 <div class="cards">
                     <div class="card" onclick="showTab('attendance')">
                         <h3>Today's Check-ins</h3>
-                        <p class="data" id="totalDailyCheckIns">0</p>
+                        <p class="data" id="totalDailyCheckIns">--</p>
                         <p class="minor-data">Total Check-ins Today</p>
                     </div>
                     <div class="card" onclick="showTab('fee-accounts')">
                         <h3><i class="fas fa-credit-card"></i> Outstanding Fees</h3>
-                        <p class="data" id="dashboardOutstandingFees">KES 0</p>
+                        <p class="data" id="dashboardOutstandingFees">KES --</p>
                         <p class="minor-data">Total unpaid balance</p>
                     </div>
                     <div class="card" onclick="showTab('courses')">
                         <h3><i class="fas fa-book"></i> Total Courses</h3>
-                        <p class="data" id="totalCourses">0</p>
+                        <p class="data" id="totalCourses">--</p>
                         <p class="minor-data">Across all programs</p>
                     </div>
                     <div class="card" onclick="showTab('unit-management')">
                         <h3><i class="fas fa-book"></i> Total Units</h3>
-                        <p class="data" id="dashboardTotalUnits">0</p>
+                        <p class="data" id="dashboardTotalUnits">--</p>
                         <p class="minor-data">Available for registration</p>
                     </div>
                 </div>
@@ -120,7 +119,7 @@
                 <div class="toolbar">
                     <input type="text" id="user-search" placeholder="Search by Name or Email..." onkeyup="filterTable('user-search', 'users-table', [1,2,3])">
                     <button onclick="exportTableToCSV('users-table', 'System_Users_Export.csv')" class="btn-action export-btn">Export Users (CSV)</button>
-                    <button onclick="loadUsers()" class="btn-action"><i class="fas fa-sync-alt"></i> Refresh</button>
+                    <button onclick="loadAllUsers()" class="btn-action"><i class="fas fa-sync-alt"></i> Refresh</button>
                 </div>
                 <div class="table-responsive">
                     <table class="data-table">
@@ -140,7 +139,7 @@
                 <div class="table-responsive">
                     <table class="data-table">
                         <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Program</th><th>Registered</th><th>Actions</th></tr></thead>
-                        <tbody id="pending-table"><tr><td colspan="6">Loading pending...<\/td><\/tr><\/tbody>
+                        <tbody id="pending-table"><tr><td colspan="6"><div class="loading-spinner"></div> Loading pending...<\/td><\/tr><\/tbody>
                     </table>
                 </div>
             </section>
@@ -173,7 +172,7 @@
                 <div class="table-responsive">
                     <table class="data-table">
                         <thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Program</th><th>Status</th><th>Actions</th></tr></thead>
-                        <tbody id="students-table"><tr><td colspan="6">Loading...<\/td><\/tr><\/tbody>
+                        <tbody id="students-table"><tr><td colspan="6"><div class="loading-spinner"></div> Loading students...<\/td><\/tr><\/tbody>
                     </table>
                 </div>
             </section>
@@ -197,8 +196,8 @@
                 </form>
                 <div class="table-responsive">
                     <table class="data-table">
-                        <thead><tr><th>Course Name</th><th>Unit Code</th><th>Program</th><th>Intake</th><th>Actions</th></tr></thead>
-                        <tbody id="courses-table"><tr><td colspan="5">Loading...<\/td><\/tr><\/tbody>
+                        <thead><tr><th>Course Name</th><th>Unit Code</th><th>Program</th><th>Intake</th><th>Actions</th><tr></thead>
+                        <tbody id="courses-table"><tr><td colspan="5"><div class="loading-spinner"></div> Loading courses...<\/td><\/tr><\/tbody>
                     </table>
                 </div>
             </section>
@@ -213,7 +212,17 @@
                         <option value="KRCHN">KRCHN</option>
                         <option value="TVET">TVET</option>
                     </select>
-                    <button onclick="loadUnits()" class="btn-action">Refresh Units</button>
+                    <button onclick="loadAllUnits()" class="btn-action">Refresh Units</button>
+                </div>
+                <div class="block-buttons">
+                    <button class="block-btn active" data-block="all" onclick="filterUnitsByBlock('all')">All Blocks</button>
+                    <button class="block-btn" data-block="Introductory" onclick="filterUnitsByBlock('Introductory')">Introductory</button>
+                    <button class="block-btn" data-block="Block 1" onclick="filterUnitsByBlock('Block 1')">Block 1</button>
+                    <button class="block-btn" data-block="Block 2" onclick="filterUnitsByBlock('Block 2')">Block 2</button>
+                    <button class="block-btn" data-block="Block 3" onclick="filterUnitsByBlock('Block 3')">Block 3</button>
+                    <button class="block-btn" data-block="Block 4" onclick="filterUnitsByBlock('Block 4')">Block 4</button>
+                    <button class="block-btn" data-block="Block 5" onclick="filterUnitsByBlock('Block 5')">Block 5</button>
+                    <button class="block-btn" data-block="Final" onclick="filterUnitsByBlock('Final')">Final Block</button>
                 </div>
                 <div class="units-grid" id="units-list-container">
                     <div class="loading-spinner"></div>
@@ -225,10 +234,10 @@
             <section id="support-tickets" class="tab-content">
                 <h2><i class="fas fa-ticket-alt"></i> Support Tickets</h2>
                 <div class="cards">
-                    <div class="card"><h3>Open</h3><p class="data" id="admin_open_tickets">0</p></div>
-                    <div class="card"><h3>In Progress</h3><p class="data" id="admin_progress_tickets">0</p></div>
-                    <div class="card"><h3>Closed</h3><p class="data" id="admin_closed_tickets">0</p></div>
-                    <div class="card"><h3>Urgent</h3><p class="data" id="admin_urgent_tickets">0</p></div>
+                    <div class="card"><h3>Open</h3><p class="data" id="admin_open_tickets">--</p></div>
+                    <div class="card"><h3>In Progress</h3><p class="data" id="admin_progress_tickets">--</p></div>
+                    <div class="card"><h3>Closed</h3><p class="data" id="admin_closed_tickets">--</p></div>
+                    <div class="card"><h3>Urgent</h3><p class="data" id="admin_urgent_tickets">--</p></div>
                 </div>
                 <div class="filter-bar">
                     <input type="text" id="admin_ticket_search" placeholder="Search tickets...">
@@ -238,33 +247,74 @@
                         <option value="in_progress">In Progress</option>
                         <option value="closed">Closed</option>
                     </select>
-                    <button onclick="loadTickets()" class="btn-action">Refresh</button>
+                    <button onclick="loadAdminTickets()" class="btn-action">Refresh</button>
                 </div>
                 <div class="table-responsive">
                     <table class="data-table">
                         <thead><tr><th>Ticket #</th><th>Student</th><th>Subject</th><th>Priority</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead>
-                        <tbody id="admin-tickets-body"><tr><td colspan="7">Loading tickets...<\/td><\/tr><\/tbody>
+                        <tbody id="admin-tickets-body"><td><td colspan="7"><div class="loading-spinner"></div> Loading tickets...<\/td><\/tr><\/tbody>
                     </table>
                 </div>
             </section>
 
-            <!-- Fee Accounts -->
+            <!-- Fee Accounts - DISPLAY ONLY (Live data from database) -->
             <section id="fee-accounts" class="tab-content">
-                <h2><i class="fas fa-credit-card"></i> Fee Accounts</h2>
+                <h2><i class="fas fa-credit-card"></i> Student Fee Balances</h2>
+                <p class="subtitle">Live data from database - View only</p>
+                
                 <div class="cards">
-                    <div class="card"><h3>Outstanding Balance</h3><p class="data" id="totalOutstandingBalance">KES 0</p></div>
-                    <div class="card"><h3>Today's Collections</h3><p class="data" id="todayCollections">KES 0</p></div>
-                    <div class="card"><h3>Overdue Accounts</h3><p class="data" id="overdueAccounts">0</p></div>
+                    <div class="card">
+                        <h3>Outstanding Balance</h3>
+                        <p class="data" id="totalOutstandingBalance">KES --</p>
+                        <p class="minor-data">Total unpaid balance</p>
+                    </div>
+                    <div class="card">
+                        <h3>Total Collected</h3>
+                        <p class="data" id="totalCollected">KES --</p>
+                        <p class="minor-data">All-time payments received</p>
+                    </div>
+                    <div class="card">
+                        <h3>Overdue Accounts</h3>
+                        <p class="data" id="overdueAccounts">--</p>
+                        <p class="minor-data">Students with balance > 30 days</p>
+                    </div>
                 </div>
+                
                 <div class="filter-bar">
-                    <input type="text" id="account_search" placeholder="Search by student name...">
-                    <button onclick="loadFeeAccounts()" class="btn-action">Refresh</button>
+                    <input type="text" id="account_search" placeholder="Search by student name or ID...">
+                    <select id="account_balance_filter">
+                        <option value="all">All Students</option>
+                        <option value="positive">Positive Balance (Credit)</option>
+                        <option value="zero">Zero Balance</option>
+                        <option value="negative">Outstanding Balance</option>
+                        <option value="overdue">Overdue (>30 days)</option>
+                    </select>
+                    <button onclick="exportAccountsToCSV()" class="btn-action export-btn">Export Balances (CSV)</button>
+                    <button onclick="loadStudentBalances()" class="btn-action"><i class="fas fa-sync-alt"></i> Refresh</button>
                 </div>
+                
                 <div class="table-responsive">
                     <table class="data-table">
-                        <thead><tr><th>Student</th><th>Student ID</th><th>Total Due</th><th>Paid</th><th>Balance</th><th>Status</th><th>Actions</th></tr></thead>
-                        <tbody id="student-accounts-body"><tr><td colspan="7">Loading accounts...<\/td><\/tr><\/tbody>
+                        <thead>
+                            <tr>
+                                <th>Student Name</th>
+                                <th>Student ID</th>
+                                <th>Program</th>
+                                <th>Intake</th>
+                                <th>Total Fees Due</th>
+                                <th>Total Paid</th>
+                                <th>Current Balance</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="student-accounts-body">
+                            <tr><td colspan="8"><div class="loading-spinner"></div> Loading student balances...<\/td><\/tr>
+                        </tbody>
                     </table>
+                </div>
+                
+                <div class="alert alert-info" style="margin-top: 20px; padding: 12px; background: #e0e7ff; border-radius: 8px;">
+                    <i class="fas fa-info-circle"></i> <strong>Note:</strong> This is a read-only view of student fee balances. For payment recording and fee structure management, please contact the Finance Department.
                 </div>
             </section>
 
@@ -285,7 +335,7 @@
                 <div class="table-responsive">
                     <table class="data-table">
                         <thead><tr><th>Title</th><th>Date</th><th>Time</th><th>Program</th><th>Actions</th></tr></thead>
-                        <tbody id="sessions-list"><tr><td colspan="5">Loading sessions...<\/td><\/tr><\/tbody>
+                        <tbody id="sessions-list"><tr><td colspan="5"><div class="loading-spinner"></div> Loading sessions...<\/td><\/tr><\/tbody>
                     </table>
                 </div>
             </section>
@@ -300,7 +350,7 @@
                 <div class="table-responsive">
                     <table class="data-table">
                         <thead><tr><th>Student</th><th>Date</th><th>Session Type</th><th>Location</th><th>Status</th></tr></thead>
-                        <tbody id="attendance-table"><tr><td colspan="5">Loading attendance...<\/td><\/tr><\/tbody>
+                        <tbody id="attendance-table"><tr><td colspan="5"><div class="loading-spinner"></div> Loading attendance...<\/td><\/tr><\/tbody>
                     </table>
                 </div>
             </section>
@@ -326,7 +376,7 @@
                 <div class="table-responsive">
                     <table class="data-table">
                         <thead><tr><th>Type</th><th>Title</th><th>Date</th><th>Program</th><th>Status</th><th>Actions</th></tr></thead>
-                        <tbody id="exams-list"><tr><td colspan="6">Loading exams...<\/td><\/tr><\/tbody>
+                        <tbody id="exams-list"><tr><td colspan="6"><div class="loading-spinner"></div> Loading exams...<\/td><\/tr><\/tbody>
                     </table>
                 </div>
             </section>
@@ -346,7 +396,7 @@
                 <div class="table-responsive">
                     <table class="data-table">
                         <thead><tr><th>Title</th><th>Program</th><th>Uploaded By</th><th>Date</th><th>Actions</th></tr></thead>
-                        <tbody id="resources-list"><tr><td colspan="5">Loading resources...<\/td><\/tr><\/tbody>
+                        <tbody id="resources-list"><tr><td colspan="5"><div class="loading-spinner"></div> Loading resources...<\/td><\/tr><\/tbody>
                     </table>
                 </div>
             </section>
@@ -367,7 +417,7 @@
                 <div class="table-responsive">
                     <table class="data-table">
                         <thead><tr><th>To</th><th>Subject</th><th>Sent By</th><th>Date</th><th>Actions</th></tr></thead>
-                        <tbody id="messages-list"><tr><td colspan="5">Loading messages...<\/td><\/tr><\/tbody>
+                        <tbody id="messages-list"><td><td colspan="5"><div class="loading-spinner"></div> Loading messages...<\/td><\/tr><\/tbody>
                     </table>
                 </div>
             </section>
@@ -375,7 +425,10 @@
             <!-- Calendar -->
             <section id="calendar" class="tab-content">
                 <h2><i class="fas fa-calendar"></i> System Calendar</h2>
-                <div id="fullCalendarDisplay" style="background: white; padding: 20px; border-radius: 12px;"></div>
+                <div id="fullCalendarDisplay" style="background: white; padding: 20px; border-radius: 12px; min-height: 400px;">
+                    <div class="loading-spinner"></div>
+                    <p>Loading calendar...</p>
+                </div>
             </section>
 
             <!-- Welcome Editor -->
@@ -386,31 +439,72 @@
                     <button type="submit" class="btn-action">Save Welcome Message</button>
                 </form>
                 <h3>Live Preview</h3>
-                <div id="live-preview" style="background: white; padding: 20px; border-radius: 12px; margin-top: 15px;"></div>
+                <div id="live-preview" style="background: white; padding: 20px; border-radius: 12px; margin-top: 15px;">
+                    <div class="loading-spinner"></div>
+                    <p>Loading preview...</p>
+                </div>
             </section>
 
             <!-- System Health -->
             <section id="system-health" class="tab-content">
                 <h2><i class="fas fa-heartbeat"></i> System Health Monitor</h2>
                 <div class="health-cards">
-                    <div class="health-card"><h4>Server Load</h4><div class="progress-bar"><div class="progress-fill" style="width: 45%"></div></div><span>45%</span></div>
-                    <div class="health-card"><h4>Database</h4><div class="progress-bar"><div class="progress-fill" style="width: 78%"></div></div><span>Optimal</span></div>
-                    <div class="health-card"><h4>Storage</h4><div class="progress-bar"><div class="progress-fill" style="width: 62%"></div></div><span>62GB / 100GB</span></div>
+                    <div class="health-card">
+                        <h4>Server Load</h4>
+                        <div class="progress-bar"><div class="progress-fill" style="width: 0%"></div></div>
+                        <span id="server-load-text">Loading...</span>
+                    </div>
+                    <div class="health-card">
+                        <h4>Database</h4>
+                        <div class="progress-bar"><div class="progress-fill" style="width: 0%"></div></div>
+                        <span id="db-query-time">Loading...</span>
+                    </div>
+                    <div class="health-card">
+                        <h4>Storage</h4>
+                        <div class="progress-bar"><div class="progress-fill" style="width: 0%"></div></div>
+                        <span id="storage-used">Loading...</span>
+                    </div>
+                    <div class="health-card">
+                        <h4>API Response</h4>
+                        <div class="progress-bar"><div class="progress-fill" style="width: 0%"></div></div>
+                        <span id="api-response-time">Loading...</span>
+                    </div>
                 </div>
                 <div class="cards">
-                    <div class="card"><h3>Uptime</h3><p class="data">99.8%</p></div>
-                    <div class="card"><h3>Error Rate</h3><p class="data">0.2%</p></div>
-                    <div class="card"><h3>Active Sessions</h3><p class="data" id="activeSessions">0</p></div>
+                    <div class="card"><h3>Uptime</h3><p class="data">--</p><p class="minor-data">Last 30 days</p></div>
+                    <div class="card"><h3>Error Rate</h3><p class="data">--</p><p class="minor-data">Last 24 hours</p></div>
+                    <div class="card"><h3>Active Sessions</h3><p class="data" id="activeSessions">--</p><p class="minor-data">Current</p></div>
                 </div>
             </section>
 
             <!-- User Analytics -->
             <section id="user-analytics" class="tab-content">
                 <h2><i class="fas fa-chart-line"></i> User Analytics</h2>
+                <div class="analytics-grid">
+                    <div class="analytics-card">
+                        <h4>Login Frequency</h4>
+                        <div style="height: 200px; background: #f5f7fa; border-radius: 6px; display: flex; align-items: center; justify-content: center;">
+                            <i class="fas fa-chart-line fa-3x" style="color: #4C1D95;"></i>
+                        </div>
+                    </div>
+                    <div class="analytics-card">
+                        <h4>Feature Usage</h4>
+                        <div style="height: 200px; background: #f5f7fa; border-radius: 6px; display: flex; align-items: center; justify-content: center;">
+                            <i class="fas fa-chart-bar fa-3x" style="color: #4C1D95;"></i>
+                        </div>
+                    </div>
+                    <div class="analytics-card">
+                        <h4>Peak Usage Times</h4>
+                        <div style="height: 200px; background: #f5f7fa; border-radius: 6px; display: flex; align-items: center; justify-content: center;">
+                            <i class="fas fa-chart-pie fa-3x" style="color: #4C1D95;"></i>
+                        </div>
+                    </div>
+                </div>
                 <div class="cards">
-                    <div class="card"><h3>Daily Active Users</h3><p class="data">342</p></div>
-                    <div class="card"><h3>Avg. Session</h3><p class="data">12.4m</p></div>
-                    <div class="card"><h3>Weekly Retention</h3><p class="data">78%</p></div>
+                    <div class="card"><h3>Avg. Session Duration</h3><p class="data" id="avgSessionDuration">--</p><p class="minor-data">+2.3% from last week</p></div>
+                    <div class="card"><h3>Daily Active Users</h3><p class="data" id="dailyActiveUsers">--</p><p class="minor-data">+15 from yesterday</p></div>
+                    <div class="card"><h3>Weekly Retention</h3><p class="data" id="weeklyRetention">--</p><p class="minor-data">Stable</p></div>
+                    <div class="card"><h3>Feature Adoption</h3><p class="data" id="featureAdoption">--</p><p class="minor-data">+5% this month</p></div>
                 </div>
             </section>
         </main>
@@ -470,6 +564,19 @@
                 <span class="close" onclick="closeModal('ticketDetailModal')">&times;</span>
             </div>
             <div class="modal-body" id="ticketDetailBody"></div>
+        </div>
+    </div>
+
+    <div id="mapModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Location Map</h3>
+                <span class="close" onclick="closeModal('mapModal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div id="mapbox-map" style="height: 400px;"></div>
+                <p id="map-details"></p>
+            </div>
         </div>
     </div>
 
