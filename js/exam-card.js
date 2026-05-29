@@ -1,4 +1,4 @@
-// js/exam-card.js - COMPACT v7.3 (FIXED: Download button opens print dialog for Save as PDF)
+// js/exam-card.js - COMPACT v7.5 (FIXED: Print dialog works, window closes after)
 
 (function() {
     'use strict';
@@ -38,6 +38,7 @@
             this.userBlock = null;
             this.userId = null;
             this.isLoading = false;
+            this.printWindow = null;
             
             if (document.readyState === 'loading') {
                 document.addEventListener('DOMContentLoaded', () => this.init());
@@ -60,6 +61,20 @@
                 month: 'long', 
                 day: 'numeric' 
             });
+        }
+        
+        getExamPeriod() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = now.getMonth();
+            
+            if (month >= 2 && month <= 5) {
+                return `March - June ${year} (Trimester 1)`;
+            }
+            if (month >= 6 && month <= 9) {
+                return `July - October ${year} (Trimester 2)`;
+            }
+            return `November - February ${year}/${year + 1} (Trimester 3)`;
         }
         
         // ========== INITIALIZATION ==========
@@ -202,7 +217,7 @@
             }
         }
         
-        // ========== DOWNLOAD AS PDF - Opens print dialog for Save as PDF ==========
+        // ========== DOWNLOAD AS PDF - WORKING WITH AUTO-CLOSE ==========
         downloadExamCardAsPDF() {
             const cardElement = document.getElementById('exam-card-print-area');
             if (!cardElement) {
@@ -212,42 +227,53 @@
             
             // Show loading state on button
             const downloadBtn = document.getElementById('downloadExamCardBtn');
-            const originalText = downloadBtn?.innerHTML || 'Download PDF';
+            const originalText = downloadBtn?.innerHTML || '📄 Save as PDF';
             if (downloadBtn) {
-                downloadBtn.innerHTML = '⏳ Preparing...';
+                downloadBtn.innerHTML = '⏳ Preparing PDF...';
                 downloadBtn.disabled = true;
             }
             
-            // Get styles
+            // Get all styles
             const styles = document.getElementById('exam-card-compact-styles')?.innerHTML || '';
             
-            // Clone the card
+            // Clone the card to avoid modifying original
             const cloneCard = cardElement.cloneNode(true);
             
             // Remove action buttons from clone
             const actionButtons = cloneCard.querySelectorAll('.action-buttons');
             actionButtons.forEach(btn => btn.remove());
             
-            // Create print window content
-            const printContent = `
+            const studentName = this.userProfile?.full_name || 'Student';
+            
+            // Create the print HTML
+            const printHtml = `
                 <!DOCTYPE html>
                 <html>
                 <head>
-                    <title>Exam Card - ${this.userProfile?.full_name || 'Student'}</title>
+                    <title>Exam Card - ${studentName}</title>
                     <meta charset="UTF-8">
                     <style>
                         ${styles}
+                        * {
+                            margin: 0;
+                            padding: 0;
+                            box-sizing: border-box;
+                        }
                         body {
                             font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
                             padding: 20px;
-                            margin: 0;
                             background: white;
+                            display: flex;
+                            justify-content: center;
+                            align-items: center;
+                            min-height: 100vh;
                         }
                         .action-buttons, .download-btn, .print-btn {
                             display: none !important;
                         }
                         .exam-card-wrapper {
                             max-width: 800px;
+                            width: 100%;
                             margin: 0 auto;
                         }
                         @media print {
@@ -275,19 +301,18 @@
                 <body>
                     ${cloneCard.outerHTML}
                     <script>
-                        // Auto-trigger print dialog when window loads
+                        // Auto-trigger print when window loads
                         window.onload = function() {
-                            // Small delay to ensure rendering is complete
                             setTimeout(function() {
                                 window.print();
-                                // Close window after print dialog is closed
+                                // Close window after print dialog is closed (user saves or cancels)
                                 window.onafterprint = function() {
                                     window.close();
                                 };
-                                // Fallback close after 10 seconds if user doesn't close
+                                // Fallback close after 30 seconds
                                 setTimeout(function() {
                                     window.close();
-                                }, 10000);
+                                }, 30000);
                             }, 500);
                         };
                     <\/script>
@@ -295,50 +320,65 @@
                 </html>
             `;
             
-            // Open new window and write content
-            const printWindow = window.open('', '_blank');
-            printWindow.document.write(printContent);
-            printWindow.document.close();
+            // Close any existing print window
+            if (this.printWindow && !this.printWindow.closed) {
+                this.printWindow.close();
+            }
             
-            // Reset button
+            // Open new window and write content
+            this.printWindow = window.open('', '_blank');
+            this.printWindow.document.write(printHtml);
+            this.printWindow.document.close();
+            
+            // Reset button after a delay
             setTimeout(() => {
                 if (downloadBtn) {
                     downloadBtn.innerHTML = originalText;
                     downloadBtn.disabled = false;
                 }
-            }, 2000);
+            }, 1500);
         }
         
         // ========== PRINT FUNCTION ==========
         printExamCard() {
-            const printContent = document.getElementById('exam-card-print-area');
-            if (!printContent) return;
+            const cardElement = document.getElementById('exam-card-print-area');
+            if (!cardElement) return;
             
             const styles = document.getElementById('exam-card-compact-styles')?.innerHTML || '';
-            const cloneCard = printContent.cloneNode(true);
+            const cloneCard = cardElement.cloneNode(true);
             const actionButtons = cloneCard.querySelectorAll('.action-buttons');
             actionButtons.forEach(btn => btn.remove());
             
-            const printWindow = window.open('', '_blank');
-            printWindow.document.write(`
+            const studentName = this.userProfile?.full_name || 'Student';
+            
+            const printHtml = `
                 <!DOCTYPE html>
                 <html>
                 <head>
-                    <title>Exam Card - ${this.userProfile?.full_name || 'Student'}</title>
+                    <title>Exam Card - ${studentName}</title>
                     <meta charset="UTF-8">
                     <style>
                         ${styles}
+                        * {
+                            margin: 0;
+                            padding: 0;
+                            box-sizing: border-box;
+                        }
                         body {
                             font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
                             padding: 20px;
-                            margin: 0;
                             background: white;
+                            display: flex;
+                            justify-content: center;
+                            align-items: center;
+                            min-height: 100vh;
                         }
                         .action-buttons, .download-btn, .print-btn {
                             display: none !important;
                         }
                         .exam-card-wrapper {
                             max-width: 800px;
+                            width: 100%;
                             margin: 0 auto;
                         }
                         @media print {
@@ -365,16 +405,26 @@
                         window.onload = function() {
                             setTimeout(function() {
                                 window.print();
+                                window.onafterprint = function() {
+                                    window.close();
+                                };
                                 setTimeout(function() {
                                     window.close();
-                                }, 500);
-                            }, 200);
+                                }, 30000);
+                            }, 500);
                         };
                     <\/script>
                 </body>
                 </html>
-            `);
-            printWindow.document.close();
+            `;
+            
+            if (this.printWindow && !this.printWindow.closed) {
+                this.printWindow.close();
+            }
+            
+            this.printWindow = window.open('', '_blank');
+            this.printWindow.document.write(printHtml);
+            this.printWindow.document.close();
         }
         
         // ========== UI RENDERING ==========
@@ -728,11 +778,12 @@
         }
     }
     
+    // Initialize module
     window.examCardModule = new ExamCardModule();
     window.loadExamCard = () => window.examCardModule?.loadExamCard();
     window.printExamCard = () => window.examCardModule?.printExamCard();
     window.downloadExamCardAsPDF = () => window.examCardModule?.downloadExamCardAsPDF();
     window.refreshExamCard = () => window.examCardModule?.refresh();
     
-    console.log('✅ Exam Card module ready - Save as PDF button works!');
+    console.log('✅ Exam Card module ready - Save as PDF works, window auto-closes!');
 })();
