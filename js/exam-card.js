@@ -1,4 +1,4 @@
-// js/exam-card.js - COMPACT v6.2 (Fixed)
+// js/exam-card.js - COMPACT v7.0 (Fixed: Download + Print buttons)
 
 (function() {
     'use strict';
@@ -216,6 +216,112 @@
             }
         }
         
+        // ========== DOWNLOAD FUNCTION (NEW) ==========
+        async downloadExamCardAsImage() {
+            const cardElement = document.getElementById('exam-card-print-area');
+            if (!cardElement) {
+                console.error('Card element not found');
+                return;
+            }
+            
+            // Show loading indicator on button
+            const downloadBtn = document.getElementById('downloadExamCardBtn');
+            const originalText = downloadBtn?.innerHTML || 'Download';
+            if (downloadBtn) {
+                downloadBtn.innerHTML = '⏳ Generating...';
+                downloadBtn.disabled = true;
+            }
+            
+            try {
+                // Use html2canvas to capture the card
+                const canvas = await html2canvas(cardElement, {
+                    scale: 2, // Higher quality
+                    backgroundColor: '#ffffff',
+                    logging: false,
+                    useCORS: true, // For external logo image
+                    allowTaint: false
+                });
+                
+                // Create download link
+                const link = document.createElement('a');
+                const studentName = this.userProfile?.full_name || 'Student';
+                const safeName = studentName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+                link.download = `exam_card_${safeName}_${this.formatDate().replace(/,/g, '')}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+                
+            } catch (error) {
+                console.error('Download failed:', error);
+                alert('Failed to generate image. Please try again or use Print.');
+            } finally {
+                if (downloadBtn) {
+                    downloadBtn.innerHTML = originalText;
+                    downloadBtn.disabled = false;
+                }
+            }
+        }
+        
+        // ========== PRINT FUNCTION (FIXED) ==========
+        printExamCard() {
+            const printContent = document.getElementById('exam-card-print-area');
+            if (!printContent) return;
+            
+            // Get all styles for print
+            const styles = document.getElementById('exam-card-compact-styles')?.innerHTML || '';
+            
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Exam Card - ${this.userProfile?.full_name || 'Student'}</title>
+                    <meta charset="UTF-8">
+                    <style>
+                        * {
+                            margin: 0;
+                            padding: 0;
+                            box-sizing: border-box;
+                        }
+                        body {
+                            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+                            padding: 20px;
+                            background: white;
+                        }
+                        ${styles}
+                        .action-buttons {
+                            display: none !important;
+                        }
+                        .print-btn, .download-btn {
+                            display: none !important;
+                        }
+                        .exam-card-wrapper {
+                            margin: 0 auto;
+                            max-width: 800px;
+                        }
+                        @media print {
+                            .action-buttons { display: none; }
+                            .print-btn, .download-btn { display: none; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    ${printContent.outerHTML}
+                    <script>
+                        window.onload = function() {
+                            setTimeout(function() {
+                                window.print();
+                                setTimeout(function() {
+                                    window.close();
+                                }, 500);
+                            }, 200);
+                        };
+                    <\/script>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+        }
+        
         // ========== UI RENDERING ==========
         displayExamCard() {
             if (!this.examCardContent) return;
@@ -231,7 +337,7 @@
             // Generate compact table rows with Lecturer's Sign column
             const tableRows = approvedUnits.map((unit, index) => `
                 <tr>
-                    <td>${index + 1}</td>
+                    <td class="text-center">${index + 1}</td>
                     <td><strong>${this.escapeHtml(unit.unit_code || unit.code || '')}</strong></td>
                     <td>${this.escapeHtml(unit.unit_name || unit.name || '')}</td>
                     <td class="text-center">${unit.credits || CONFIG.DEFAULT_CREDITS}</td>
@@ -294,7 +400,7 @@
                             <div class="signature"><div class="sign-line"></div><div>Finance Officer</div></div>
                         </div>
                         
-                        <!-- Footer Rules - Compact (No stamp) -->
+                        <!-- Footer Rules - Compact -->
                         <div class="card-footer">
                             <div class="rule-text">📌 Present at each exam | 🚫 No electronics | ⏰ Arrive 30 mins early</div>
                             <div class="student-sign">
@@ -303,14 +409,30 @@
                         </div>
                     </div>
                     
-                    ${isEligible ? '<button class="print-btn" id="printExamCardBtn">🖨️ Print Card</button>' : ''}
+                    <!-- ACTION BUTTONS: BOTH DOWNLOAD AND PRINT (FIXED) -->
+                    ${isEligible ? `
+                        <div class="action-buttons">
+                            <button class="download-btn" id="downloadExamCardBtn">📥 Download as Image</button>
+                            <button class="print-btn" id="printExamCardBtn">🖨️ Print Card</button>
+                        </div>
+                    ` : ''}
                 </div>
             `;
             
             this.examCardContent.innerHTML = html;
             this.addCompactStyles();
             
+            // Attach event listeners for BOTH buttons
+            const downloadBtn = document.getElementById('downloadExamCardBtn');
             const printBtn = document.getElementById('printExamCardBtn');
+            
+            if (downloadBtn) {
+                downloadBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.downloadExamCardAsImage();
+                });
+            }
+            
             if (printBtn) {
                 printBtn.addEventListener('click', (e) => {
                     e.preventDefault();
@@ -507,25 +629,53 @@
                     border-top: 1px dashed #e2e8f0;
                 }
                 
-                /* Print Button */
-                .print-btn {
-                    display: block;
-                    width: fit-content;
-                    margin: 20px auto 0;
-                    background: #1e3a5f;
-                    color: white;
+                /* ACTION BUTTONS CONTAINER - NEW */
+                .action-buttons {
+                    display: flex;
+                    gap: 15px;
+                    justify-content: center;
+                    margin-top: 20px;
+                }
+                
+                /* Download Button & Print Button styling */
+                .download-btn, .print-btn {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 8px;
+                    padding: 10px 24px;
                     border: none;
-                    padding: 10px 30px;
                     border-radius: 40px;
-                    cursor: pointer;
                     font-weight: 600;
                     font-size: 13px;
-                    transition: all 0.2s;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                    font-family: inherit;
+                }
+                
+                .download-btn {
+                    background: #059669;
+                    color: white;
+                }
+                
+                .download-btn:hover {
+                    background: #047857;
+                    transform: scale(1.02);
+                }
+                
+                .print-btn {
+                    background: #1e3a5f;
+                    color: white;
                 }
                 
                 .print-btn:hover {
                     background: #2c5a8c;
                     transform: scale(1.02);
+                }
+                
+                .download-btn:disabled, .print-btn:disabled {
+                    opacity: 0.6;
+                    cursor: not-allowed;
+                    transform: none;
                 }
                 
                 /* PRINT STYLES */
@@ -547,8 +697,8 @@
                         padding: 10px;
                     }
                     
-                    .print-btn {
-                        display: none;
+                    .action-buttons, .download-btn, .print-btn {
+                        display: none !important;
                     }
                     
                     .exam-card-compact {
@@ -603,52 +753,20 @@
                     .student-sign {
                         justify-content: center;
                     }
+                    
+                    .action-buttons {
+                        flex-direction: column;
+                        gap: 10px;
+                        padding: 0 10px;
+                    }
+                    
+                    .download-btn, .print-btn {
+                        justify-content: center;
+                        width: 100%;
+                    }
                 }
             `;
             document.head.appendChild(style);
-        }
-        
-        // ========== PRINT FUNCTION ==========
-        printExamCard() {
-            const printContent = document.getElementById('exam-card-print-area');
-            if (!printContent) return;
-            
-            const printWindow = window.open('', '_blank');
-            printWindow.document.write(`
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <title>Exam Card - ${this.userProfile?.full_name || 'Student'}</title>
-                    <meta charset="UTF-8">
-                    <style>
-                        * {
-                            margin: 0;
-                            padding: 0;
-                            box-sizing: border-box;
-                        }
-                        body {
-                            font-family: 'Segoe UI', Roboto, sans-serif;
-                            padding: 20px;
-                            background: white;
-                        }
-                        ${document.getElementById('exam-card-compact-styles')?.innerHTML || ''}
-                        .print-btn { display: none; }
-                    </style>
-                </head>
-                <body>
-                    ${printContent.outerHTML}
-                    <script>
-                        window.onload = function() {
-                            setTimeout(function() {
-                                window.print();
-                                window.close();
-                            }, ${CONFIG.PRINT_CLOSE_DELAY});
-                        };
-                    <\/script>
-                </body>
-                </html>
-            `);
-            printWindow.document.close();
         }
         
         // ========== DEMO & LOADING ==========
@@ -683,7 +801,8 @@
     window.examCardModule = new ExamCardModule();
     window.loadExamCard = () => window.examCardModule?.loadExamCard();
     window.printExamCard = () => window.examCardModule?.printExamCard();
+    window.downloadExamCard = () => window.examCardModule?.downloadExamCardAsImage();
     window.refreshExamCard = () => window.examCardModule?.refresh();
     
-    console.log('✅ Compact Exam Card module ready');
+    console.log('✅ Compact Exam Card module ready (v7.0 - Download + Print enabled)');
 })();
