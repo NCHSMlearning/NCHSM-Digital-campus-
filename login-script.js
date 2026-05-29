@@ -300,7 +300,7 @@ window.NCHSMLogin = {
                 throw new Error('Account is pending approval. Please contact administration.');
             }
             
-            console.log('✅ Profile loaded');
+            console.log('✅ Profile loaded - Role:', profileData.role);
             
             await this.completeLogin(profileData, authData.session?.access_token);
             
@@ -325,13 +325,12 @@ window.NCHSMLogin = {
     },
     
     // ============================================
-    // SESSION TRACKING - NEW!
+    // SESSION TRACKING
     // ============================================
     trackUserSession: async function(userId, email, sessionToken, userAgent) {
         try {
             console.log('🔍 Tracking session for user:', email);
             
-            // Get user's IP address
             let ipAddress = 'unknown';
             try {
                 const ipResponse = await fetch('https://api.ipify.org?format=json');
@@ -341,17 +340,13 @@ window.NCHSMLogin = {
                 console.warn('Could not fetch IP:', ipError);
             }
             
-            // Parse device info from user agent
             const deviceInfo = this.parseUserAgent(userAgent);
             
-            // Set session expiration (24 hours from now)
             const expiresAt = new Date();
             expiresAt.setHours(expiresAt.getHours() + 24);
             
-            // Generate a unique session token if not provided
             const finalSessionToken = sessionToken || this.generateSessionToken();
             
-            // Insert new session record
             const { data, error } = await this.supabase
                 .from('user_sessions')
                 .insert({
@@ -374,7 +369,6 @@ window.NCHSMLogin = {
             
             console.log('✅ Session tracked for user:', email);
             
-            // Store session info in localStorage for activity updates
             if (data && data[0]) {
                 localStorage.setItem('current_session_id', data[0].id);
                 localStorage.setItem('session_token', finalSessionToken);
@@ -388,13 +382,11 @@ window.NCHSMLogin = {
         }
     },
     
-    // Parse user agent for device info
     parseUserAgent: function(userAgent) {
         if (!userAgent) return 'Unknown Device';
         
         const ua = userAgent.toLowerCase();
         
-        // Browser detection
         let browser = 'Unknown';
         if (ua.includes('chrome') && !ua.includes('edg')) browser = 'Chrome';
         else if (ua.includes('firefox')) browser = 'Firefox';
@@ -402,7 +394,6 @@ window.NCHSMLogin = {
         else if (ua.includes('edg')) browser = 'Edge';
         else if (ua.includes('opera')) browser = 'Opera';
         
-        // OS detection
         let os = 'Unknown';
         if (ua.includes('windows')) os = 'Windows';
         else if (ua.includes('mac')) os = 'macOS';
@@ -410,7 +401,6 @@ window.NCHSMLogin = {
         else if (ua.includes('android')) os = 'Android';
         else if (ua.includes('ios') || ua.includes('iphone') || ua.includes('ipad')) os = 'iOS';
         
-        // Device type
         let device = 'Desktop';
         if (ua.includes('mobile')) device = 'Mobile';
         else if (ua.includes('tablet')) device = 'Tablet';
@@ -418,13 +408,12 @@ window.NCHSMLogin = {
         return `${browser} on ${os} (${device})`;
     },
     
-    // Generate a unique session token
     generateSessionToken: function() {
         return 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 16);
     },
     
     // ============================================
-    // LOGIN TRACKING (Non-blocking - Safe)
+    // LOGIN TRACKING
     // ============================================
     updateLastLogin: async function(userId, email) {
         try {
@@ -432,7 +421,6 @@ window.NCHSMLogin = {
             
             const now = new Date().toISOString();
             
-            // Get current login count first
             const { data: profile, error: fetchError } = await this.supabase
                 .from('consolidated_user_profiles_table')
                 .select('login_count')
@@ -446,7 +434,6 @@ window.NCHSMLogin = {
             
             const newCount = (profile?.login_count || 0) + 1;
             
-            // Update last login
             const { error: updateError } = await this.supabase
                 .from('consolidated_user_profiles_table')
                 .update({
@@ -462,20 +449,7 @@ window.NCHSMLogin = {
                 return false;
             }
             
-            // Format time for display (Kenya time)
-            const kenyaTime = new Date(now).toLocaleString('en-KE', { 
-                timeZone: 'Africa/Nairobi',
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-                hour12: true
-            });
-            
-            console.log(`✅ Last login updated: ${kenyaTime}`);
-            console.log(`📊 Total logins: ${newCount}`);
+            console.log(`✅ Last login updated - Total logins: ${newCount}`);
             return true;
             
         } catch (error) {
@@ -485,40 +459,24 @@ window.NCHSMLogin = {
     },
     
     // ============================================
-    // COMPLETE LOGIN - WITH LOGIN TRACKING AND SESSION TRACKING
+    // COMPLETE LOGIN - WITH ROLE-BASED REDIRECT
     // ============================================
     completeLogin: async function(profileData, sessionToken) {
         console.log('🎉 Completing login for:', profileData.email);
+        console.log('👤 Role:', profileData.role);
         
         try {
             // Update last login (NON-BLOCKING)
             this.updateLastLogin(profileData.user_id, profileData.email)
-                .then(result => {
-                    if (result) {
-                        console.log('✅ Login time recorded successfully');
-                    } else {
-                        console.warn('⚠️ Login time recording skipped (non-critical)');
-                    }
-                })
-                .catch(err => {
-                    console.warn('Non-critical: Login update failed', err);
-                });
+                .catch(err => console.warn('Non-critical: Login update failed', err));
             
-            // Track user session (NEW - NON-BLOCKING)
+            // Track user session (NON-BLOCKING)
             this.trackUserSession(
                 profileData.user_id,
                 profileData.email,
                 sessionToken,
                 navigator.userAgent
-            ).then(result => {
-                if (result) {
-                    console.log('✅ Session tracked successfully');
-                } else {
-                    console.warn('⚠️ Session tracking skipped (non-critical)');
-                }
-            }).catch(err => {
-                console.warn('Non-critical: Session tracking failed', err);
-            });
+            ).catch(err => console.warn('Non-critical: Session tracking failed', err));
             
             // Store profile in localStorage
             localStorage.setItem('currentUserProfile', JSON.stringify(profileData));
@@ -531,15 +489,13 @@ window.NCHSMLogin = {
             
             // Send email notification (non-blocking)
             this.sendLoginSuccessEmail(profileData.email, profileData.full_name || profileData.email)
-                .then(() => console.log('✅ Login success email initiated'))
                 .catch(err => console.warn('⚠️ Email sending failed (non-critical):', err));
             
-            // Redirect to dashboard
+            // Redirect to dashboard based on role
             this.redirectToDashboard(profileData);
             
         } catch (error) {
             console.error('❌ Complete login error:', error);
-            // Still redirect even if there's an error
             this.redirectToDashboard(profileData);
         }
     },
@@ -586,31 +542,45 @@ window.NCHSMLogin = {
     },
     
     // ============================================
-    // REDIRECT TO DASHBOARD - WITH CLEAN URLS
+    // REDIRECT TO DASHBOARD - UPDATED FOR YOUR FILES
     // ============================================
     redirectToDashboard: function(profileData) {
         console.log('🚀 Redirecting to dashboard...');
+        console.log('👤 User role:', profileData.role);
+        console.log('📧 User email:', profileData.email);
         
-        const redirects = {
-            'student': '/student',
-            'lecturer': '/lecturer',
-            'admin': '/admin',
-            'superadmin': '/superadmin',
-            'hod': '/hod-tracker',
-            'staff': '/staff'
+        // Role to HTML file mapping
+        const roleRedirects = {
+            'superadmin': 'super_admin.html',
+            'super_admin': 'super_admin.html',
+            'admin': 'admin.html',
+            'student': 'student.html',
+            'lecturer': 'lecturer.html',
+            'hod': 'hod-tracker.html',
+            'staff': 'staff.html'
         };
         
-        const role = profileData.role?.toLowerCase() || 'student';
-        const redirectUrl = redirects[role] || '/student';
+        // Get the correct dashboard file based on role
+        let redirectFile = roleRedirects[profileData.role?.toLowerCase()] || 'index.html';
         
-        console.log(`🎯 Role: ${role}, Redirecting to: ${redirectUrl}`);
+        // Special case for admin with @nchsm.ac.ke domain
+        if (profileData.email === 'admin@nchsm.ac.ke' || profileData.email === 'admin.principalnchsm@gmail.com') {
+            redirectFile = 'admin.html';
+        }
+        
+        // Special case for super admin
+        if (profileData.email === 'super_admin@nchs.edu') {
+            redirectFile = 'super_admin.html';
+        }
+        
+        console.log(`🎯 Redirecting to: ${redirectFile}`);
         
         // Smooth transition
         document.body.style.opacity = '0';
         document.body.style.transition = 'opacity 0.3s ease';
         
         setTimeout(() => {
-            window.location.href = redirectUrl;
+            window.location.href = redirectFile;
         }, 300);
     },
     
