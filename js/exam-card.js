@@ -1,4 +1,4 @@
-// js/exam-card.js - COMPACT v7.0 (Fixed: Download + Print buttons)
+// js/exam-card.js - COMPACT v7.1 (Fixed: Download as PDF + Print buttons)
 
 (function() {
     'use strict';
@@ -216,8 +216,8 @@
             }
         }
         
-        // ========== DOWNLOAD FUNCTION (NEW) ==========
-        async downloadExamCardAsImage() {
+        // ========== DOWNLOAD AS PDF FUNCTION (NEW - USING html2pdf) ==========
+        async downloadExamCardAsPDF() {
             const cardElement = document.getElementById('exam-card-print-area');
             if (!cardElement) {
                 console.error('Card element not found');
@@ -226,33 +226,49 @@
             
             // Show loading indicator on button
             const downloadBtn = document.getElementById('downloadExamCardBtn');
-            const originalText = downloadBtn?.innerHTML || 'Download';
+            const originalText = downloadBtn?.innerHTML || 'Download PDF';
             if (downloadBtn) {
-                downloadBtn.innerHTML = '⏳ Generating...';
+                downloadBtn.innerHTML = '⏳ Generating PDF...';
                 downloadBtn.disabled = true;
             }
             
             try {
-                // Use html2canvas to capture the card
-                const canvas = await html2canvas(cardElement, {
-                    scale: 2, // Higher quality
-                    backgroundColor: '#ffffff',
-                    logging: false,
-                    useCORS: true, // For external logo image
-                    allowTaint: false
-                });
+                // Check if html2pdf is available, if not load it dynamically
+                if (typeof html2pdf === 'undefined') {
+                    await this.loadHtml2Pdf();
+                }
                 
-                // Create download link
-                const link = document.createElement('a');
-                const studentName = this.userProfile?.full_name || 'Student';
-                const safeName = studentName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-                link.download = `exam_card_${safeName}_${this.formatDate().replace(/,/g, '')}.png`;
-                link.href = canvas.toDataURL('image/png');
-                link.click();
+                // Clone the card element to avoid affecting the original
+                const element = cardElement.cloneNode(true);
+                
+                // Remove buttons from clone for cleaner PDF
+                const buttons = element.querySelectorAll('.action-buttons, .download-btn, .print-btn');
+                buttons.forEach(btn => btn.remove());
+                
+                // Configure PDF options
+                const opt = {
+                    margin: [0.5, 0.5, 0.5, 0.5], // top, right, bottom, left in inches
+                    filename: `exam_card_${this.getSafeFileName()}.pdf`,
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: { 
+                        scale: 2, 
+                        useCORS: true,
+                        logging: false,
+                        letterRendering: true
+                    },
+                    jsPDF: { 
+                        unit: 'in', 
+                        format: 'a4', 
+                        orientation: 'portrait' 
+                    }
+                };
+                
+                // Generate and download PDF
+                await html2pdf().set(opt).from(element).save();
                 
             } catch (error) {
-                console.error('Download failed:', error);
-                alert('Failed to generate image. Please try again or use Print.');
+                console.error('PDF generation failed:', error);
+                alert('Failed to generate PDF. Please try again or use Print.');
             } finally {
                 if (downloadBtn) {
                     downloadBtn.innerHTML = originalText;
@@ -261,7 +277,56 @@
             }
         }
         
-        // ========== PRINT FUNCTION (FIXED) ==========
+        // Load html2pdf library dynamically if not present
+        loadHtml2Pdf() {
+            return new Promise((resolve, reject) => {
+                if (typeof html2pdf !== 'undefined') {
+                    resolve();
+                    return;
+                }
+                
+                // Check if script already added
+                if (document.querySelector('script[src*="html2pdf"]')) {
+                    const checkInterval = setInterval(() => {
+                        if (typeof html2pdf !== 'undefined') {
+                            clearInterval(checkInterval);
+                            resolve();
+                        }
+                    }, 100);
+                    setTimeout(() => {
+                        clearInterval(checkInterval);
+                        reject(new Error('html2pdf load timeout'));
+                    }, 5000);
+                    return;
+                }
+                
+                // Load html2pdf bundle
+                const script = document.createElement('script');
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+                script.integrity = 'sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==';
+                script.crossOrigin = 'anonymous';
+                script.onload = () => {
+                    setTimeout(() => {
+                        if (typeof html2pdf !== 'undefined') {
+                            resolve();
+                        } else {
+                            reject(new Error('html2pdf failed to load'));
+                        }
+                    }, 100);
+                };
+                script.onerror = () => reject(new Error('Failed to load html2pdf library'));
+                document.head.appendChild(script);
+            });
+        }
+        
+        getSafeFileName() {
+            const studentName = this.userProfile?.full_name || 'Student';
+            const safeName = studentName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+            const date = this.formatDate().replace(/[, ]/g, '_');
+            return `${safeName}_${date}`;
+        }
+        
+        // ========== PRINT FUNCTION ==========
         printExamCard() {
             const printContent = document.getElementById('exam-card-print-area');
             if (!printContent) return;
@@ -409,10 +474,10 @@
                         </div>
                     </div>
                     
-                    <!-- ACTION BUTTONS: BOTH DOWNLOAD AND PRINT (FIXED) -->
+                    <!-- ACTION BUTTONS: DOWNLOAD AS PDF AND PRINT -->
                     ${isEligible ? `
                         <div class="action-buttons">
-                            <button class="download-btn" id="downloadExamCardBtn">📥 Download as Image</button>
+                            <button class="download-btn" id="downloadExamCardBtn">📄 Download as PDF</button>
                             <button class="print-btn" id="printExamCardBtn">🖨️ Print Card</button>
                         </div>
                     ` : ''}
@@ -429,7 +494,7 @@
             if (downloadBtn) {
                 downloadBtn.addEventListener('click', (e) => {
                     e.preventDefault();
-                    this.downloadExamCardAsImage();
+                    this.downloadExamCardAsPDF();
                 });
             }
             
@@ -629,7 +694,7 @@
                     border-top: 1px dashed #e2e8f0;
                 }
                 
-                /* ACTION BUTTONS CONTAINER - NEW */
+                /* ACTION BUTTONS CONTAINER */
                 .action-buttons {
                     display: flex;
                     gap: 15px;
@@ -801,8 +866,8 @@
     window.examCardModule = new ExamCardModule();
     window.loadExamCard = () => window.examCardModule?.loadExamCard();
     window.printExamCard = () => window.examCardModule?.printExamCard();
-    window.downloadExamCard = () => window.examCardModule?.downloadExamCardAsImage();
+    window.downloadExamCardAsPDF = () => window.examCardModule?.downloadExamCardAsPDF();
     window.refreshExamCard = () => window.examCardModule?.refresh();
     
-    console.log('✅ Compact Exam Card module ready (v7.0 - Download + Print enabled)');
+    console.log('✅ Compact Exam Card module ready (v7.1 - Download as PDF + Print enabled)');
 })();
