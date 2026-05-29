@@ -1,4 +1,4 @@
-// js/exam-card.js - COMPACT v7.1 (Fixed: Download as PDF + Print buttons)
+// js/exam-card.js - COMPACT v7.2 (Fixed: Download PDF using browser print method)
 
 (function() {
     'use strict';
@@ -216,8 +216,8 @@
             }
         }
         
-        // ========== DOWNLOAD AS PDF FUNCTION (NEW - USING html2pdf) ==========
-        async downloadExamCardAsPDF() {
+        // ========== DOWNLOAD AS PDF - Using browser print method (reliable) ==========
+        downloadExamCardAsPDF() {
             const cardElement = document.getElementById('exam-card-print-area');
             if (!cardElement) {
                 console.error('Card element not found');
@@ -228,105 +228,100 @@
             const downloadBtn = document.getElementById('downloadExamCardBtn');
             const originalText = downloadBtn?.innerHTML || 'Download PDF';
             if (downloadBtn) {
-                downloadBtn.innerHTML = '⏳ Generating PDF...';
+                downloadBtn.innerHTML = '⏳ Preparing PDF...';
                 downloadBtn.disabled = true;
             }
             
-            try {
-                // Check if html2pdf is available, if not load it dynamically
-                if (typeof html2pdf === 'undefined') {
-                    await this.loadHtml2Pdf();
-                }
-                
-                // Clone the card element to avoid affecting the original
-                const element = cardElement.cloneNode(true);
-                
-                // Remove buttons from clone for cleaner PDF
-                const buttons = element.querySelectorAll('.action-buttons, .download-btn, .print-btn');
-                buttons.forEach(btn => btn.remove());
-                
-                // Configure PDF options
-                const opt = {
-                    margin: [0.5, 0.5, 0.5, 0.5], // top, right, bottom, left in inches
-                    filename: `exam_card_${this.getSafeFileName()}.pdf`,
-                    image: { type: 'jpeg', quality: 0.98 },
-                    html2canvas: { 
-                        scale: 2, 
-                        useCORS: true,
-                        logging: false,
-                        letterRendering: true
-                    },
-                    jsPDF: { 
-                        unit: 'in', 
-                        format: 'a4', 
-                        orientation: 'portrait' 
-                    }
-                };
-                
-                // Generate and download PDF
-                await html2pdf().set(opt).from(element).save();
-                
-            } catch (error) {
-                console.error('PDF generation failed:', error);
-                alert('Failed to generate PDF. Please try again or use Print.');
-            } finally {
+            // Get all styles
+            const styles = document.getElementById('exam-card-compact-styles')?.innerHTML || '';
+            
+            // Clone the card to avoid modifying original
+            const cloneCard = cardElement.cloneNode(true);
+            
+            // Remove buttons from clone
+            const buttons = cloneCard.querySelectorAll('.action-buttons, .download-btn, .print-btn');
+            buttons.forEach(btn => btn.remove());
+            
+            // Create full HTML document for PDF generation via print
+            const pdfHtml = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Exam Card - ${this.userProfile?.full_name || 'Student'}</title>
+                    <meta charset="UTF-8">
+                    <style>
+                        * {
+                            margin: 0;
+                            padding: 0;
+                            box-sizing: border-box;
+                        }
+                        body {
+                            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+                            padding: 20px;
+                            background: white;
+                        }
+                        ${styles}
+                        .action-buttons, .download-btn, .print-btn {
+                            display: none !important;
+                        }
+                        .exam-card-wrapper {
+                            margin: 0 auto;
+                            max-width: 800px;
+                        }
+                        @media print {
+                            body {
+                                padding: 0;
+                                margin: 0;
+                            }
+                            .exam-card-wrapper {
+                                margin: 0;
+                                padding: 10px;
+                            }
+                            .card-header {
+                                background: #1e3a5f !important;
+                                -webkit-print-color-adjust: exact;
+                                print-color-adjust: exact;
+                            }
+                            .status-badge.eligible {
+                                background: #10b981 !important;
+                                -webkit-print-color-adjust: exact;
+                                print-color-adjust: exact;
+                            }
+                        }
+                    </style>
+                </head>
+                <body>
+                    ${cloneCard.outerHTML}
+                    <script>
+                        // Auto-trigger print dialog which allows "Save as PDF"
+                        window.onload = function() {
+                            setTimeout(function() {
+                                window.print();
+                                setTimeout(function() {
+                                    window.close();
+                                }, 500);
+                            }, 300);
+                        };
+                    <\/script>
+                </body>
+                </html>
+            `;
+            
+            // Open new window with the content
+            const pdfWindow = window.open('', '_blank');
+            pdfWindow.document.write(pdfHtml);
+            pdfWindow.document.close();
+            
+            // Reset button after a delay
+            setTimeout(() => {
                 if (downloadBtn) {
                     downloadBtn.innerHTML = originalText;
                     downloadBtn.disabled = false;
                 }
-            }
+            }, 1000);
         }
         
-        // Load html2pdf library dynamically if not present
-        loadHtml2Pdf() {
-            return new Promise((resolve, reject) => {
-                if (typeof html2pdf !== 'undefined') {
-                    resolve();
-                    return;
-                }
-                
-                // Check if script already added
-                if (document.querySelector('script[src*="html2pdf"]')) {
-                    const checkInterval = setInterval(() => {
-                        if (typeof html2pdf !== 'undefined') {
-                            clearInterval(checkInterval);
-                            resolve();
-                        }
-                    }, 100);
-                    setTimeout(() => {
-                        clearInterval(checkInterval);
-                        reject(new Error('html2pdf load timeout'));
-                    }, 5000);
-                    return;
-                }
-                
-                // Load html2pdf bundle
-                const script = document.createElement('script');
-                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
-                script.integrity = 'sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==';
-                script.crossOrigin = 'anonymous';
-                script.onload = () => {
-                    setTimeout(() => {
-                        if (typeof html2pdf !== 'undefined') {
-                            resolve();
-                        } else {
-                            reject(new Error('html2pdf failed to load'));
-                        }
-                    }, 100);
-                };
-                script.onerror = () => reject(new Error('Failed to load html2pdf library'));
-                document.head.appendChild(script);
-            });
-        }
-        
-        getSafeFileName() {
-            const studentName = this.userProfile?.full_name || 'Student';
-            const safeName = studentName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-            const date = this.formatDate().replace(/[, ]/g, '_');
-            return `${safeName}_${date}`;
-        }
-        
-        // ========== PRINT FUNCTION ==========
+        // ========== PRINT FUNCTION (Direct print) ==========
         printExamCard() {
             const printContent = document.getElementById('exam-card-print-area');
             if (!printContent) return;
@@ -353,10 +348,7 @@
                             background: white;
                         }
                         ${styles}
-                        .action-buttons {
-                            display: none !important;
-                        }
-                        .print-btn, .download-btn {
+                        .action-buttons, .download-btn, .print-btn {
                             display: none !important;
                         }
                         .exam-card-wrapper {
@@ -364,8 +356,24 @@
                             max-width: 800px;
                         }
                         @media print {
-                            .action-buttons { display: none; }
-                            .print-btn, .download-btn { display: none; }
+                            body {
+                                padding: 0;
+                                margin: 0;
+                            }
+                            .exam-card-wrapper {
+                                margin: 0;
+                                padding: 10px;
+                            }
+                            .card-header {
+                                background: #1e3a5f !important;
+                                -webkit-print-color-adjust: exact;
+                                print-color-adjust: exact;
+                            }
+                            .status-badge.eligible {
+                                background: #10b981 !important;
+                                -webkit-print-color-adjust: exact;
+                                print-color-adjust: exact;
+                            }
                         }
                     </style>
                 </head>
@@ -869,5 +877,5 @@
     window.downloadExamCardAsPDF = () => window.examCardModule?.downloadExamCardAsPDF();
     window.refreshExamCard = () => window.examCardModule?.refresh();
     
-    console.log('✅ Compact Exam Card module ready (v7.1 - Download as PDF + Print enabled)');
+    console.log('✅ Compact Exam Card module ready (v7.2 - PDF download using browser print method)');
 })();
