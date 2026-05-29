@@ -1,4 +1,4 @@
-// js/exam-card.js - COMPACT v7.5 (FIXED: Print dialog works, window closes after)
+// js/exam-card.js - v8.0 (DIRECT DOWNLOAD - No print dialog, auto-saves PDF)
 
 (function() {
     'use strict';
@@ -10,7 +10,6 @@
         LOGO_URL: 'https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png',
         DEFAULT_CREDITS: 3,
         LOAD_DELAY: 500,
-        PRINT_CLOSE_DELAY: 500,
         DEMO_DATA: {
             full_name: 'Kevin Tiong\'i',
             student_id: 'nschm0087',
@@ -38,7 +37,6 @@
             this.userBlock = null;
             this.userId = null;
             this.isLoading = false;
-            this.printWindow = null;
             
             if (document.readyState === 'loading') {
                 document.addEventListener('DOMContentLoaded', () => this.init());
@@ -63,25 +61,29 @@
             });
         }
         
-        getExamPeriod() {
-            const now = new Date();
-            const year = now.getFullYear();
-            const month = now.getMonth();
-            
-            if (month >= 2 && month <= 5) {
-                return `March - June ${year} (Trimester 1)`;
-            }
-            if (month >= 6 && month <= 9) {
-                return `July - October ${year} (Trimester 2)`;
-            }
-            return `November - February ${year}/${year + 1} (Trimester 3)`;
-        }
-        
         // ========== INITIALIZATION ==========
         init() {
             this.cacheElements();
             this.setupEventListeners();
+            this.loadRequiredLibraries();
             setTimeout(() => this.tryLoadIfLoggedIn(), CONFIG.LOAD_DELAY);
+        }
+        
+        // Load required libraries for PDF generation
+        loadRequiredLibraries() {
+            // Load html2canvas if not present
+            if (typeof html2canvas === 'undefined') {
+                const script1 = document.createElement('script');
+                script1.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+                document.head.appendChild(script1);
+            }
+            
+            // Load jsPDF if not present
+            if (typeof jspdf === 'undefined') {
+                const script2 = document.createElement('script');
+                script2.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+                document.head.appendChild(script2);
+            }
         }
         
         cacheElements() {
@@ -217,185 +219,165 @@
             }
         }
         
-        // ========== DOWNLOAD AS PDF - WORKING WITH AUTO-CLOSE ==========
-        downloadExamCardAsPDF() {
+        // ========== DIRECT PDF DOWNLOAD - NO DIALOG, AUTO SAVES ==========
+        async downloadExamCardDirect() {
             const cardElement = document.getElementById('exam-card-print-area');
             if (!cardElement) {
                 alert('Exam card not found. Please refresh and try again.');
                 return;
             }
             
-            // Show loading state on button
+            // Show loading state
             const downloadBtn = document.getElementById('downloadExamCardBtn');
-            const originalText = downloadBtn?.innerHTML || '📄 Save as PDF';
+            const originalText = downloadBtn?.innerHTML || '📥 Download PDF';
             if (downloadBtn) {
-                downloadBtn.innerHTML = '⏳ Preparing PDF...';
+                downloadBtn.innerHTML = '⏳ Generating PDF...';
                 downloadBtn.disabled = true;
             }
             
-            // Get all styles
-            const styles = document.getElementById('exam-card-compact-styles')?.innerHTML || '';
-            
-            // Clone the card to avoid modifying original
-            const cloneCard = cardElement.cloneNode(true);
-            
-            // Remove action buttons from clone
-            const actionButtons = cloneCard.querySelectorAll('.action-buttons');
-            actionButtons.forEach(btn => btn.remove());
-            
-            const studentName = this.userProfile?.full_name || 'Student';
-            
-            // Create the print HTML
-            const printHtml = `
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <title>Exam Card - ${studentName}</title>
-                    <meta charset="UTF-8">
-                    <style>
-                        ${styles}
-                        * {
-                            margin: 0;
-                            padding: 0;
-                            box-sizing: border-box;
-                        }
-                        body {
-                            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
-                            padding: 20px;
-                            background: white;
-                            display: flex;
-                            justify-content: center;
-                            align-items: center;
-                            min-height: 100vh;
-                        }
-                        .action-buttons, .download-btn, .print-btn {
-                            display: none !important;
-                        }
-                        .exam-card-wrapper {
-                            max-width: 800px;
-                            width: 100%;
-                            margin: 0 auto;
-                        }
-                        @media print {
-                            body {
-                                padding: 0;
-                                margin: 0;
-                            }
-                            .exam-card-wrapper {
-                                margin: 0;
-                                padding: 10px;
-                            }
-                            .card-header {
-                                background: #1e3a5f !important;
-                                -webkit-print-color-adjust: exact;
-                                print-color-adjust: exact;
-                            }
-                            .status-badge.eligible {
-                                background: #10b981 !important;
-                                -webkit-print-color-adjust: exact;
-                                print-color-adjust: exact;
-                            }
-                        }
-                    </style>
-                </head>
-                <body>
-                    ${cloneCard.outerHTML}
-                    <script>
-                        // Auto-trigger print when window loads
-                        window.onload = function() {
-                            setTimeout(function() {
-                                window.print();
-                                // Close window after print dialog is closed (user saves or cancels)
-                                window.onafterprint = function() {
-                                    window.close();
-                                };
-                                // Fallback close after 30 seconds
-                                setTimeout(function() {
-                                    window.close();
-                                }, 30000);
-                            }, 500);
-                        };
-                    <\/script>
-                </body>
-                </html>
-            `;
-            
-            // Close any existing print window
-            if (this.printWindow && !this.printWindow.closed) {
-                this.printWindow.close();
-            }
-            
-            // Open new window and write content
-            this.printWindow = window.open('', '_blank');
-            this.printWindow.document.write(printHtml);
-            this.printWindow.document.close();
-            
-            // Reset button after a delay
-            setTimeout(() => {
+            try {
+                // Wait for libraries to load
+                await this.waitForLibraries();
+                
+                // Clone the card to avoid modifying original
+                const cloneCard = cardElement.cloneNode(true);
+                
+                // Remove action buttons from clone
+                const actionButtons = cloneCard.querySelectorAll('.action-buttons');
+                actionButtons.forEach(btn => btn.remove());
+                
+                // Hide buttons in clone for cleaner PDF
+                const allButtons = cloneCard.querySelectorAll('button');
+                allButtons.forEach(btn => btn.style.display = 'none');
+                
+                // Create a temporary container for rendering
+                const tempContainer = document.createElement('div');
+                tempContainer.style.position = 'absolute';
+                tempContainer.style.left = '-9999px';
+                tempContainer.style.top = '-9999px';
+                tempContainer.style.width = '800px';
+                tempContainer.style.backgroundColor = 'white';
+                tempContainer.appendChild(cloneCard);
+                document.body.appendChild(tempContainer);
+                
+                // Ensure all styles are applied
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                // Render to canvas
+                const canvas = await html2canvas(cloneCard, {
+                    scale: 2,
+                    backgroundColor: '#ffffff',
+                    logging: false,
+                    useCORS: true,
+                    allowTaint: false
+                });
+                
+                // Remove temporary container
+                document.body.removeChild(tempContainer);
+                
+                // Create PDF
+                const { jsPDF } = window.jspdf;
+                const imgData = canvas.toDataURL('image/png');
+                const imgWidth = 210; // A4 width in mm
+                const pageHeight = 297; // A4 height in mm
+                const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                let position = 0;
+                
+                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                
+                // Add new page if needed
+                if (imgHeight > pageHeight) {
+                    let heightLeft = imgHeight - pageHeight;
+                    position = -pageHeight;
+                    while (heightLeft > 0) {
+                        pdf.addPage();
+                        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                        heightLeft -= pageHeight;
+                        position -= pageHeight;
+                    }
+                }
+                
+                // Save the PDF
+                const studentName = this.userProfile?.full_name || 'Student';
+                const safeName = studentName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+                const date = this.formatDate().replace(/[, ]/g, '_');
+                pdf.save(`Exam_Card_${safeName}_${date}.pdf`);
+                
+                // Show success message briefly
+                if (downloadBtn) {
+                    downloadBtn.innerHTML = '✅ Downloaded!';
+                    setTimeout(() => {
+                        downloadBtn.innerHTML = originalText;
+                        downloadBtn.disabled = false;
+                    }, 2000);
+                }
+                
+            } catch (error) {
+                console.error('PDF generation failed:', error);
+                alert('Failed to generate PDF. Please try again or use Print button.');
                 if (downloadBtn) {
                     downloadBtn.innerHTML = originalText;
                     downloadBtn.disabled = false;
                 }
-            }, 1500);
+            }
+        }
+        
+        waitForLibraries() {
+            return new Promise((resolve) => {
+                const checkLibraries = setInterval(() => {
+                    if (typeof html2canvas !== 'undefined' && window.jspdf && window.jspdf.jsPDF) {
+                        clearInterval(checkLibraries);
+                        resolve();
+                    }
+                }, 100);
+                
+                // Timeout after 10 seconds
+                setTimeout(() => {
+                    clearInterval(checkLibraries);
+                    console.warn('Libraries loaded with timeout');
+                    resolve();
+                }, 10000);
+            });
         }
         
         // ========== PRINT FUNCTION ==========
         printExamCard() {
-            const cardElement = document.getElementById('exam-card-print-area');
-            if (!cardElement) return;
+            const printContent = document.getElementById('exam-card-print-area');
+            if (!printContent) return;
             
             const styles = document.getElementById('exam-card-compact-styles')?.innerHTML || '';
-            const cloneCard = cardElement.cloneNode(true);
+            const cloneCard = printContent.cloneNode(true);
             const actionButtons = cloneCard.querySelectorAll('.action-buttons');
             actionButtons.forEach(btn => btn.remove());
             
-            const studentName = this.userProfile?.full_name || 'Student';
-            
-            const printHtml = `
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`
                 <!DOCTYPE html>
                 <html>
                 <head>
-                    <title>Exam Card - ${studentName}</title>
+                    <title>Exam Card - ${this.userProfile?.full_name || 'Student'}</title>
                     <meta charset="UTF-8">
                     <style>
                         ${styles}
-                        * {
-                            margin: 0;
-                            padding: 0;
-                            box-sizing: border-box;
-                        }
                         body {
                             font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
                             padding: 20px;
+                            margin: 0;
                             background: white;
-                            display: flex;
-                            justify-content: center;
-                            align-items: center;
-                            min-height: 100vh;
                         }
-                        .action-buttons, .download-btn, .print-btn {
+                        .action-buttons, button {
                             display: none !important;
                         }
                         .exam-card-wrapper {
                             max-width: 800px;
-                            width: 100%;
                             margin: 0 auto;
                         }
                         @media print {
-                            body {
-                                padding: 0;
-                                margin: 0;
-                            }
-                            .card-header {
-                                background: #1e3a5f !important;
-                                -webkit-print-color-adjust: exact;
-                                print-color-adjust: exact;
-                            }
-                            .status-badge.eligible {
-                                background: #10b981 !important;
-                                -webkit-print-color-adjust: exact;
-                                print-color-adjust: exact;
-                            }
+                            body { padding: 0; margin: 0; }
+                            .card-header { background: #1e3a5f !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                            .status-badge.eligible { background: #10b981 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                         }
                     </style>
                 </head>
@@ -405,26 +387,14 @@
                         window.onload = function() {
                             setTimeout(function() {
                                 window.print();
-                                window.onafterprint = function() {
-                                    window.close();
-                                };
-                                setTimeout(function() {
-                                    window.close();
-                                }, 30000);
-                            }, 500);
+                                setTimeout(function() { window.close(); }, 500);
+                            }, 200);
                         };
                     <\/script>
                 </body>
                 </html>
-            `;
-            
-            if (this.printWindow && !this.printWindow.closed) {
-                this.printWindow.close();
-            }
-            
-            this.printWindow = window.open('', '_blank');
-            this.printWindow.document.write(printHtml);
-            this.printWindow.document.close();
+            `);
+            printWindow.document.close();
         }
         
         // ========== UI RENDERING ==========
@@ -509,7 +479,7 @@
                     
                     ${isEligible ? `
                         <div class="action-buttons">
-                            <button class="download-btn" id="downloadExamCardBtn">📄 Save as PDF</button>
+                            <button class="download-btn" id="downloadExamCardBtn">📥 Download PDF</button>
                             <button class="print-btn" id="printExamCardBtn">🖨️ Print Card</button>
                         </div>
                     ` : ''}
@@ -525,7 +495,7 @@
             if (downloadBtn) {
                 downloadBtn.addEventListener('click', (e) => {
                     e.preventDefault();
-                    this.downloadExamCardAsPDF();
+                    this.downloadExamCardDirect();
                 });
             }
             
@@ -544,196 +514,44 @@
             const style = document.createElement('style');
             style.id = 'exam-card-compact-styles';
             style.textContent = `
-                .exam-card-wrapper {
-                    max-width: 800px;
-                    margin: 0 auto;
-                    font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
-                }
-                .exam-card-compact {
-                    background: white;
-                    border: 1px solid #e2e8f0;
-                    border-radius: 12px;
-                    overflow: hidden;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-                }
-                .card-header {
-                    background: linear-gradient(135deg, #1e3a5f, #2c5a8c);
-                    color: white;
-                    padding: 12px 20px;
-                    display: flex;
-                    align-items: center;
-                    gap: 15px;
-                }
-                .card-logo {
-                    height: 50px;
-                    width: auto;
-                    background: white;
-                    padding: 5px;
-                    border-radius: 8px;
-                    object-fit: contain;
-                }
-                .header-text {
-                    flex: 1;
-                }
-                .institution {
-                    font-size: 11px;
-                    opacity: 0.9;
-                    letter-spacing: 0.5px;
-                }
-                .card-title {
-                    font-size: 18px;
-                    font-weight: 800;
-                    letter-spacing: 1px;
-                    margin-top: 2px;
-                }
-                .status-badge {
-                    padding: 4px 12px;
-                    border-radius: 20px;
-                    font-size: 11px;
-                    font-weight: 700;
-                    white-space: nowrap;
-                }
-                .status-badge.eligible {
-                    background: #10b981;
-                }
-                .status-badge.ineligible {
-                    background: #dc2626;
-                }
-                .info-grid {
-                    display: grid;
-                    grid-template-columns: repeat(3, 1fr);
-                    gap: 8px 15px;
-                    padding: 12px 20px;
-                    background: #f8fafc;
-                    border-bottom: 1px solid #e2e8f0;
-                    font-size: 12px;
-                }
-                .info-item {
-                    color: #334155;
-                }
-                .info-label {
-                    font-weight: 600;
-                    color: #64748b;
-                    margin-right: 5px;
-                }
-                .units-table {
-                    width: 100%;
-                    border-collapse: collapse;
-                    font-size: 11px;
-                }
-                .units-table th {
-                    background: #f1f5f9;
-                    padding: 8px 8px;
-                    text-align: left;
-                    font-weight: 700;
-                    color: #1e293b;
-                    border-bottom: 1px solid #e2e8f0;
-                }
-                .units-table td {
-                    padding: 6px 8px;
-                    border-bottom: 1px solid #f1f5f9;
-                }
-                .text-center {
-                    text-align: center;
-                }
-                .signature-cell {
-                    font-family: monospace;
-                    font-size: 10px;
-                    color: #94a3b8;
-                }
-                .total-row {
-                    background: #f8fafc;
-                    font-weight: 600;
-                    border-top: 1px solid #e2e8f0;
-                }
-                .no-units {
-                    padding: 20px;
-                    text-align: center;
-                    color: #ef4444;
-                    font-size: 13px;
-                }
-                .signatures-row {
-                    display: flex;
-                    justify-content: space-between;
-                    padding: 12px 20px;
-                    background: white;
-                    border-top: 1px solid #e2e8f0;
-                    gap: 15px;
-                }
-                .signature {
-                    flex: 1;
-                    text-align: center;
-                    font-size: 10px;
-                    color: #475569;
-                }
-                .sign-line {
-                    border-top: 1px solid #334155;
-                    margin-bottom: 6px;
-                    padding-top: 4px;
-                }
-                .card-footer {
-                    padding: 10px 20px;
-                    background: #fefce8;
-                    border-top: 1px solid #e2e8f0;
-                    font-size: 10px;
-                }
-                .rule-text {
-                    color: #854d0e;
-                    margin-bottom: 8px;
-                    text-align: center;
-                }
-                .student-sign {
-                    display: flex;
-                    justify-content: flex-end;
-                    align-items: center;
-                    padding-top: 5px;
-                    border-top: 1px dashed #e2e8f0;
-                }
-                .action-buttons {
-                    display: flex;
-                    gap: 15px;
-                    justify-content: center;
-                    margin-top: 20px;
-                }
-                .download-btn, .print-btn {
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 8px;
-                    padding: 10px 24px;
-                    border: none;
-                    border-radius: 40px;
-                    font-weight: 600;
-                    font-size: 13px;
-                    cursor: pointer;
-                    transition: all 0.2s ease;
-                    font-family: inherit;
-                }
-                .download-btn {
-                    background: #059669;
-                    color: white;
-                }
-                .download-btn:hover {
-                    background: #047857;
-                    transform: scale(1.02);
-                }
-                .print-btn {
-                    background: #1e3a5f;
-                    color: white;
-                }
-                .print-btn:hover {
-                    background: #2c5a8c;
-                    transform: scale(1.02);
-                }
-                .download-btn:disabled, .print-btn:disabled {
-                    opacity: 0.6;
-                    cursor: not-allowed;
-                    transform: none;
-                }
+                .exam-card-wrapper { max-width: 800px; margin: 0 auto; font-family: 'Segoe UI', Roboto, sans-serif; }
+                .exam-card-compact { background: white; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+                .card-header { background: linear-gradient(135deg, #1e3a5f, #2c5a8c); color: white; padding: 12px 20px; display: flex; align-items: center; gap: 15px; }
+                .card-logo { height: 50px; width: auto; background: white; padding: 5px; border-radius: 8px; object-fit: contain; }
+                .header-text { flex: 1; }
+                .institution { font-size: 11px; opacity: 0.9; letter-spacing: 0.5px; }
+                .card-title { font-size: 18px; font-weight: 800; letter-spacing: 1px; margin-top: 2px; }
+                .status-badge { padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+                .status-badge.eligible { background: #10b981; }
+                .status-badge.ineligible { background: #dc2626; }
+                .info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px 15px; padding: 12px 20px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-size: 12px; }
+                .info-item { color: #334155; }
+                .info-label { font-weight: 600; color: #64748b; margin-right: 5px; }
+                .units-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+                .units-table th { background: #f1f5f9; padding: 8px; text-align: left; font-weight: 700; border-bottom: 1px solid #e2e8f0; }
+                .units-table td { padding: 6px 8px; border-bottom: 1px solid #f1f5f9; }
+                .text-center { text-align: center; }
+                .signature-cell { font-family: monospace; font-size: 10px; color: #94a3b8; }
+                .total-row { background: #f8fafc; font-weight: 600; border-top: 1px solid #e2e8f0; }
+                .no-units { padding: 20px; text-align: center; color: #ef4444; font-size: 13px; }
+                .signatures-row { display: flex; justify-content: space-between; padding: 12px 20px; gap: 15px; }
+                .signature { flex: 1; text-align: center; font-size: 10px; color: #475569; }
+                .sign-line { border-top: 1px solid #334155; margin-bottom: 6px; padding-top: 4px; }
+                .card-footer { padding: 10px 20px; background: #fefce8; border-top: 1px solid #e2e8f0; font-size: 10px; }
+                .rule-text { color: #854d0e; margin-bottom: 8px; text-align: center; }
+                .student-sign { display: flex; justify-content: flex-end; padding-top: 5px; border-top: 1px dashed #e2e8f0; }
+                .action-buttons { display: flex; gap: 15px; justify-content: center; margin-top: 20px; }
+                .download-btn, .print-btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 24px; border: none; border-radius: 40px; font-weight: 600; font-size: 13px; cursor: pointer; transition: all 0.2s ease; }
+                .download-btn { background: #059669; color: white; }
+                .download-btn:hover { background: #047857; transform: scale(1.02); }
+                .print-btn { background: #1e3a5f; color: white; }
+                .print-btn:hover { background: #2c5a8c; transform: scale(1.02); }
+                .download-btn:disabled, .print-btn:disabled { opacity: 0.6; cursor: not-allowed; }
                 @media print {
                     body * { visibility: hidden; }
                     .exam-card-wrapper, .exam-card-wrapper * { visibility: visible; }
                     .exam-card-wrapper { position: absolute; top: 0; left: 0; width: 100%; margin: 0; padding: 10px; }
-                    .action-buttons, .download-btn, .print-btn { display: none !important; }
+                    .action-buttons, button { display: none !important; }
                     .card-header { background: #1e3a5f !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                     .status-badge.eligible { background: #10b981 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                 }
@@ -782,8 +600,8 @@
     window.examCardModule = new ExamCardModule();
     window.loadExamCard = () => window.examCardModule?.loadExamCard();
     window.printExamCard = () => window.examCardModule?.printExamCard();
-    window.downloadExamCardAsPDF = () => window.examCardModule?.downloadExamCardAsPDF();
+    window.downloadExamCard = () => window.examCardModule?.downloadExamCardDirect();
     window.refreshExamCard = () => window.examCardModule?.refresh();
     
-    console.log('✅ Exam Card module ready - Save as PDF works, window auto-closes!');
+    console.log('✅ Exam Card module ready - DIRECT PDF DOWNLOAD (no dialog, auto-saves)!');
 })();
