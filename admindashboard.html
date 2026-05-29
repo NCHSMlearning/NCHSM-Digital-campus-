@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NCHSM Admin Dashboard</title>
+    <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" sizes="32x32">
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/main.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Mobile Navigation Toggle -->
+        <div class="mobile-nav-toggle" id="mobileNavToggle">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <img src="images/Logo_NCHSM.png" alt="Logo" onerror="this.style.display='none'">
+                <h2>Admin Portal</h2>
+                <p class="admin-badge" style="background: #10b981; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; margin-top: 8px; display: inline-block;">Administrator</p>
+            </div>
+            <ul class="nav" id="mainNav">
+                <li><a href="#" data-tab="dashboard" class="active"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+                <li><a href="#" data-tab="users"><i class="fas fa-users"></i> Manage Users</a></li>
+                <li><a href="#" data-tab="pending"><i class="fas fa-clock"></i> Pending Approvals</a></li>
+                <li><a href="#" data-tab="enroll"><i class="fas fa-user-plus"></i> Enroll Accounts</a></li>
+                <li><a href="#" data-tab="courses"><i class="fas fa-book"></i> Courses</a></li>
+                <li><a href="#" data-tab="unit-management"><i class="fas fa-plus-circle"></i> Unit Registration</a></li>
+                <li><a href="#" data-tab="support-tickets"><i class="fas fa-ticket-alt"></i> Support Tickets</a></li>
+                <li><a href="#" data-tab="fee-accounts"><i class="fas fa-credit-card"></i> Fee Accounts</a></li>
+                <li><a href="#" data-tab="sessions"><i class="fas fa-calendar-alt"></i> Manage Sessions</a></li>
+                <li><a href="#" data-tab="attendance"><i class="fas fa-clipboard-check"></i> Attendance</a></li>
+                <li><a href="#" data-tab="cats"><i class="fas fa-file-alt"></i> CATS/Exams</a></li>
+                <li><a href="#" data-tab="resources"><i class="fas fa-file-upload"></i> Resources</a></li>
+                <li><a href="#" data-tab="messages"><i class="fas fa-inbox"></i> Inbox</a></li>
+                <li><a href="#" data-tab="calendar"><i class="fas fa-calendar"></i> System Calendar</a></li>
+                <li><a href="#" data-tab="welcome-editor"><i class="fas fa-edit"></i> Welcome Message</a></li>
+                <li><a href="#" data-tab="system-health"><i class="fas fa-heartbeat"></i> System Health</a></li>
+                <li><a href="#" data-tab="user-analytics"><i class="fas fa-chart-line"></i> User Analytics</a></li>
+                <li><a href="#" data-tab="audit"><i class="fas fa-search"></i> Audit Logs</a></li>
+                <li><a href="#" data-tab="security"><i class="fas fa-cog"></i> Security Settings</a></li>
+            </ul>
+            <div class="logout">
+                <a href="#" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</a>
+            </div>
+        </aside>
+
+        <main class="main">
+            <header>
+                <h1>Welcome, Admin!</h1>
+                <p class="subtitle">Manage students, courses, and system operations</p>
+            </header>
+
+            <!-- Dashboard Section -->
+            <section id="dashboard" class="tab-content active">
+                <div id="student-welcome-message">
+                    <div class="alert alert-info" style="background: #e0e7ff; padding: 15px; border-radius: 12px; margin-bottom: 20px;">
+                        <i class="fas fa-bell"></i> Welcome to NCHSM Admin Dashboard
+                    </div>
+                </div>
+                
+                <div class="cards">
+                    <div class="card" onclick="showTab('users')">
+                        <h3><i class="fas fa-users"></i> Total Users</h3>
+                        <p class="data" id="totalUsers">0</p>
+                        <p class="minor-data">All system users</p>
+                    </div>
+                    <div class="card" onclick="showTab('pending')">
+                        <h3><i class="fas fa-clock"></i> Pending Approvals</h3>
+                        <p class="data" id="pendingApprovals">0</p>
+                        <p class="minor-data">Waiting for approval</p>
+                    </div>
+                    <div class="card" onclick="showTab('enroll')">
+                        <h3><i class="fas fa-user-graduate"></i> Total Students</h3>
+                        <p class="data" id="totalStudents">0</p>
+                        <p class="minor-data">Active students</p>
+                    </div>
+                    <div class="card" onclick="showTab('support-tickets')">
+                        <h3><i class="fas fa-ticket-alt"></i> Support Tickets</h3>
+                        <p class="data" id="dashboardOpenTickets">0</p>
+                        <p class="minor-data">Open tickets</p>
+                    </div>
+                </div>
+                
+                <div class="cards">
+                    <div class="card" onclick="showTab('attendance')">
+                        <h3>Today's Check-ins</h3>
+                        <p class="data" id="totalDailyCheckIns">0</p>
+                        <p class="minor-data">Total Check-ins Today</p>
+                    </div>
+                    <div class="card" onclick="showTab('fee-accounts')">
+                        <h3><i class="fas fa-credit-card"></i> Outstanding Fees</h3>
+                        <p class="data" id="dashboardOutstandingFees">KES 0</p>
+                        <p class="minor-data">Total unpaid balance</p>
+                    </div>
+                    <div class="card" onclick="showTab('courses')">
+                        <h3><i class="fas fa-book"></i> Total Courses</h3>
+                        <p class="data" id="totalCourses">0</p>
+                        <p class="minor-data">Across all programs</p>
+                    </div>
+                    <div class="card" onclick="showTab('unit-management')">
+                        <h3><i class="fas fa-book"></i> Total Units</h3>
+                        <p class="data" id="dashboardTotalUnits">0</p>
+                        <p class="minor-data">Available for registration</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Users Section -->
+            <section id="users" class="tab-content">
+                <h2><i class="fas fa-users"></i> System Users</h2>
+                <div class="toolbar">
+                    <input type="text" id="user-search" placeholder="Search by Name or Email..." onkeyup="filterTable('user-search', 'users-table', [1,2,3])">
+                    <button onclick="exportTableToCSV('users-table', 'System_Users_Export.csv')" class="btn-action export-btn">Export Users (CSV)</button>
+                    <button onclick="loadUsers()" class="btn-action"><i class="fas fa-sync-alt"></i> Refresh</button>
+                </div>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th><th>Name</th><th>Email</th><th>Role</th><th>Program</th><th>Status</th><th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-table">
+                            <tr><td colspan="7"><div class="loading-spinner"></div> Loading users...<\/td><\/tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Pending Approvals -->
+            <section id="pending" class="tab-content">
+                <h2><i class="fas fa-clock"></i> Pending Approvals</h2>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Program</th><th>Registered</th><th>Actions</th></tr></thead>
+                        <tbody id="pending-table"><tr><td colspan="6">Loading pending...<\/td><\/tr><\/tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Enroll Accounts -->
+            <section id="enroll" class="tab-content">
+                <h2><i class="fas fa-user-plus"></i> Enroll Accounts</h2>
+                <form id="add-account-form" class="inline-form">
+                    <input type="text" id="account-name" placeholder="Full Name" required>
+                    <input type="email" id="account-email" placeholder="Email" required>
+                    <input type="password" id="account-password" placeholder="Password" required>
+                    <select id="account-role" required>
+                        <option value="student">Student</option>
+                        <option value="lecturer">Lecturer</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                    <input type="text" id="account-phone" placeholder="Phone">
+                    <select id="account-program">
+                        <option value="KRCHN">KRCHN</option>
+                        <option value="TVET">TVET</option>
+                    </select>
+                    <select id="account-intake">
+                        <option value="2024">2024 Intake</option>
+                        <option value="2025">2025 Intake</option>
+                        <option value="2026">2026 Intake</option>
+                    </select>
+                    <button type="submit">Enroll Account</button>
+                </form>
+                <h3>Enrolled Students</h3>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Program</th><th>Status</th><th>Actions</th></tr></thead>
+                        <tbody id="students-table"><tr><td colspan="6">Loading...<\/td><\/tr><\/tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Courses -->
+            <section id="courses" class="tab-content">
+                <h2><i class="fas fa-book"></i> Courses</h2>
+                <form id="add-course-form" class="inline-form">
+                    <input type="text" id="course-name" placeholder="Course Name" required>
+                    <input type="text" id="course-unit-code" placeholder="Unit Code" required>
+                    <textarea id="course-description" placeholder="Description" rows="2"></textarea>
+                    <select id="course-program">
+                        <option value="KRCHN">KRCHN Nursing</option>
+                        <option value="TVET">TVET Programs</option>
+                    </select>
+                    <select id="course-intake">
+                        <option value="2024">2024</option>
+                        <option value="2025">2025</option>
+                    </select>
+                    <button type="submit">Add Course</button>
+                </form>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead><tr><th>Course Name</th><th>Unit Code</th><th>Program</th><th>Intake</th><th>Actions</th></tr></thead>
+                        <tbody id="courses-table"><tr><td colspan="5">Loading...<\/td><\/tr><\/tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Unit Registration -->
+            <section id="unit-management" class="tab-content">
+                <h2><i class="fas fa-plus-circle"></i> Unit Registration Management</h2>
+                <div class="filter-bar">
+                    <input type="text" id="unit_search" placeholder="Search units by code or name...">
+                    <select id="unit_filter_program">
+                        <option value="">All Programs</option>
+                        <option value="KRCHN">KRCHN</option>
+                        <option value="TVET">TVET</option>
+                    </select>
+                    <button onclick="loadUnits()" class="btn-action">Refresh Units</button>
+                </div>
+                <div class="units-grid" id="units-list-container">
+                    <div class="loading-spinner"></div>
+                    <p>Loading units...</p>
+                </div>
+            </section>
+
+            <!-- Support Tickets -->
+            <section id="support-tickets" class="tab-content">
+                <h2><i class="fas fa-ticket-alt"></i> Support Tickets</h2>
+                <div class="cards">
+                    <div class="card"><h3>Open</h3><p class="data" id="admin_open_tickets">0</p></div>
+                    <div class="card"><h3>In Progress</h3><p class="data" id="admin_progress_tickets">0</p></div>
+                    <div class="card"><h3>Closed</h3><p class="data" id="admin_closed_tickets">0</p></div>
+                    <div class="card"><h3>Urgent</h3><p class="data" id="admin_urgent_tickets">0</p></div>
+                </div>
+                <div class="filter-bar">
+                    <input type="text" id="admin_ticket_search" placeholder="Search tickets...">
+                    <select id="admin_ticket_status_filter">
+                        <option value="all">All Status</option>
+                        <option value="open">Open</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="closed">Closed</option>
+                    </select>
+                    <button onclick="loadTickets()" class="btn-action">Refresh</button>
+                </div>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead><tr><th>Ticket #</th><th>Student</th><th>Subject</th><th>Priority</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead>
+                        <tbody id="admin-tickets-body"><tr><td colspan="7">Loading tickets...<\/td><\/tr><\/tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Fee Accounts -->
+            <section id="fee-accounts" class="tab-content">
+                <h2><i class="fas fa-credit-card"></i> Fee Accounts</h2>
+                <div class="cards">
+                    <div class="card"><h3>Outstanding Balance</h3><p class="data" id="totalOutstandingBalance">KES 0</p></div>
+                    <div class="card"><h3>Today's Collections</h3><p class="data" id="todayCollections">KES 0</p></div>
+                    <div class="card"><h3>Overdue Accounts</h3><p class="data" id="overdueAccounts">0</p></div>
+                </div>
+                <div class="filter-bar">
+                    <input type="text" id="account_search" placeholder="Search by student name...">
+                    <button onclick="loadFeeAccounts()" class="btn-action">Refresh</button>
+                </div>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead><tr><th>Student</th><th>Student ID</th><th>Total Due</th><th>Paid</th><th>Balance</th><th>Status</th><th>Actions</th></tr></thead>
+                        <tbody id="student-accounts-body"><tr><td colspan="7">Loading accounts...<\/td><\/tr><\/tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Manage Sessions -->
+            <section id="sessions" class="tab-content">
+                <h2><i class="fas fa-calendar-alt"></i> Manage Sessions</h2>
+                <form id="add-session-form" class="inline-form">
+                    <input type="text" id="session_title" placeholder="Session Title" required>
+                    <input type="date" id="session_date" required>
+                    <input type="time" id="session_start_time" required>
+                    <input type="time" id="session_end_time">
+                    <select id="session_program">
+                        <option value="KRCHN">KRCHN</option>
+                        <option value="TVET">TVET</option>
+                    </select>
+                    <button type="submit">Schedule Session</button>
+                </form>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead><tr><th>Title</th><th>Date</th><th>Time</th><th>Program</th><th>Actions</th></tr></thead>
+                        <tbody id="sessions-list"><tr><td colspan="5">Loading sessions...<\/td><\/tr><\/tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Attendance -->
+            <section id="attendance" class="tab-content">
+                <h2><i class="fas fa-clipboard-check"></i> Attendance Records</h2>
+                <div class="toolbar">
+                    <input type="date" id="attendance_date_filter">
+                    <button onclick="loadAttendance()" class="btn-action">Filter</button>
+                </div>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead><tr><th>Student</th><th>Date</th><th>Session Type</th><th>Location</th><th>Status</th></tr></thead>
+                        <tbody id="attendance-table"><tr><td colspan="5">Loading attendance...<\/td><\/tr><\/tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- CATS/Exams -->
+            <section id="cats" class="tab-content">
+                <h2><i class="fas fa-file-alt"></i> CATS & Exams</h2>
+                <form id="add-exam-form" class="inline-form">
+                    <select id="exam_type">
+                        <option value="CAT">CAT</option>
+                        <option value="EXAM">Final Exam</option>
+                        <option value="ASSIGNMENT">Assignment</option>
+                    </select>
+                    <input type="text" id="exam_title" placeholder="Title" required>
+                    <input type="date" id="exam_date" required>
+                    <input type="time" id="exam_time" required>
+                    <select id="exam_program">
+                        <option value="KRCHN">KRCHN</option>
+                        <option value="TVET">TVET</option>
+                    </select>
+                    <button type="submit">Add Assessment</button>
+                </form>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead><tr><th>Type</th><th>Title</th><th>Date</th><th>Program</th><th>Status</th><th>Actions</th></tr></thead>
+                        <tbody id="exams-list"><tr><td colspan="6">Loading exams...<\/td><\/tr><\/tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Resources -->
+            <section id="resources" class="tab-content">
+                <h2><i class="fas fa-file-upload"></i> Resource Center</h2>
+                <form id="upload-resource-form" class="inline-form">
+                    <input type="text" id="resource_title" placeholder="Resource Title" required>
+                    <select id="resource_program">
+                        <option value="KRCHN">KRCHN</option>
+                        <option value="TVET">TVET</option>
+                    </select>
+                    <input type="file" id="resource_file" accept=".pdf,.doc,.docx,.ppt,.pptx">
+                    <button type="submit">Upload Resource</button>
+                </form>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead><tr><th>Title</th><th>Program</th><th>Uploaded By</th><th>Date</th><th>Actions</th></tr></thead>
+                        <tbody id="resources-list"><tr><td colspan="5">Loading resources...<\/td><\/tr><\/tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Messages -->
+            <section id="messages" class="tab-content">
+                <h2><i class="fas fa-inbox"></i> Messages & Announcements</h2>
+                <form id="send-message-form" class="inline-form">
+                    <select id="msg_recipient">
+                        <option value="all">All Users</option>
+                        <option value="students">Students Only</option>
+                        <option value="staff">Staff Only</option>
+                    </select>
+                    <input type="text" id="msg_subject" placeholder="Subject" required>
+                    <textarea id="msg_body" placeholder="Message" rows="3" required></textarea>
+                    <button type="submit">Send Message</button>
+                </form>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead><tr><th>To</th><th>Subject</th><th>Sent By</th><th>Date</th><th>Actions</th></tr></thead>
+                        <tbody id="messages-list"><tr><td colspan="5">Loading messages...<\/td><\/tr><\/tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Calendar -->
+            <section id="calendar" class="tab-content">
+                <h2><i class="fas fa-calendar"></i> System Calendar</h2>
+                <div id="fullCalendarDisplay" style="background: white; padding: 20px; border-radius: 12px;"></div>
+            </section>
+
+            <!-- Welcome Editor -->
+            <section id="welcome-editor" class="tab-content">
+                <h2><i class="fas fa-edit"></i> Welcome Message Editor</h2>
+                <form id="edit-welcome-form">
+                    <textarea id="welcome-message-editor" rows="15" placeholder="Enter HTML welcome message here..."></textarea>
+                    <button type="submit" class="btn-action">Save Welcome Message</button>
+                </form>
+                <h3>Live Preview</h3>
+                <div id="live-preview" style="background: white; padding: 20px; border-radius: 12px; margin-top: 15px;"></div>
+            </section>
+
+            <!-- System Health -->
+            <section id="system-health" class="tab-content">
+                <h2><i class="fas fa-heartbeat"></i> System Health Monitor</h2>
+                <div class="health-cards">
+                    <div class="health-card"><h4>Server Load</h4><div class="progress-bar"><div class="progress-fill" style="width: 45%"></div></div><span>45%</span></div>
+                    <div class="health-card"><h4>Database</h4><div class="progress-bar"><div class="progress-fill" style="width: 78%"></div></div><span>Optimal</span></div>
+                    <div class="health-card"><h4>Storage</h4><div class="progress-bar"><div class="progress-fill" style="width: 62%"></div></div><span>62GB / 100GB</span></div>
+                </div>
+                <div class="cards">
+                    <div class="card"><h3>Uptime</h3><p class="data">99.8%</p></div>
+                    <div class="card"><h3>Error Rate</h3><p class="data">0.2%</p></div>
+                    <div class="card"><h3>Active Sessions</h3><p class="data" id="activeSessions">0</p></div>
+                </div>
+            </section>
+
+            <!-- User Analytics -->
+            <section id="user-analytics" class="tab-content">
+                <h2><i class="fas fa-chart-line"></i> User Analytics</h2>
+                <div class="cards">
+                    <div class="card"><h3>Daily Active Users</h3><p class="data">342</p></div>
+                    <div class="card"><h3>Avg. Session</h3><p class="data">12.4m</p></div>
+                    <div class="card"><h3>Weekly Retention</h3><p class="data">78%</p></div>
+                </div>
+            </section>
+
+            <!-- Audit Logs -->
+            <section id="audit" class="tab-content">
+                <h2><i class="fas fa-search"></i> Audit Logs</h2>
+                <div class="toolbar">
+                    <input type="date" id="audit_date_filter">
+                    <button onclick="loadAuditLogs()" class="btn-action">Filter</button>
+                    <button onclick="exportTableToCSV('audit-table', 'Audit_Logs.csv')" class="btn-action">Export CSV</button>
+                </div>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead><tr><th>Timestamp</th><th>User</th><th>Action</th><th>IP Address</th><th>Status</th></tr></thead>
+                        <tbody id="audit-table"><tr><td colspan="5">Loading audit logs...<\/td><\/tr><\/tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Security Settings -->
+            <section id="security" class="tab-content">
+                <h2><i class="fas fa-cog"></i> Security Settings</h2>
+                <div class="security-settings">
+                    <h3>System Security</h3>
+                    <label><input type="checkbox" id="force_2fa_admins"> Force 2FA for All Admins</label>
+                    <label><input type="checkbox" id="force_2fa_lecturers"> Force 2FA for Lecturers</label>
+                    <label><input type="checkbox" id="session_timeout"> Session Timeout (30 minutes)</label>
+                    <label><input type="checkbox" id="ip_restriction"> IP Restriction Enabled</label>
+                    <button onclick="saveSecuritySettings()" class="btn-action" style="margin-top: 20px;">Save Security Settings</button>
+                </div>
+                <div class="cards" style="margin-top: 20px;">
+                    <div class="card"><h3>2FA Enrollment</h3><p class="data">12/15</p><p class="minor-data">Admins enrolled</p></div>
+                    <div class="card"><h3>Active Sessions</h3><p class="data" id="securityActiveSessions">0</p></div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div id="userEditModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Edit User</h3>
+                <span class="close" onclick="closeModal('userEditModal')">&times;</span>
+            </div>
+            <form id="edit-user-form">
+                <input type="hidden" id="edit_user_id">
+                <label>Full Name</label>
+                <input type="text" id="edit_user_name" required>
+                <label>Email</label>
+                <input type="email" id="edit_user_email" required>
+                <label>Role</label>
+                <select id="edit_user_role">
+                    <option value="student">Student</option>
+                    <option value="lecturer">Lecturer</option>
+                    <option value="admin">Admin</option>
+                </select>
+                <label>Status</label>
+                <select id="edit_user_status">
+                    <option value="active">Active</option>
+                    <option value="blocked">Blocked</option>
+                </select>
+                <div class="modal-actions">
+                    <button type="submit" class="btn-action">Save Changes</button>
+                    <button type="button" onclick="closeModal('userEditModal')">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="ticketDetailModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Ticket Details</h3>
+                <span class="close" onclick="closeModal('ticketDetailModal')">&times;</span>
+            </div>
+            <div class="modal-body" id="ticketDetailBody"></div>
+        </div>
+    </div>
+
+    <!-- External Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
