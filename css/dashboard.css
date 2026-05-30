@@ -570,100 +570,53 @@
     padding-top: 12px;
     border-top: 1px solid #e5e7eb;
 }
-/* ========== SUPER CLASSY NEXT CLASS CARD ========== */
-
+/* ========== COMPACT NEXT CLASS CARD ========== */
 .next-class-card {
-    position: relative;
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-    border-radius: 24px;
-    padding: 0;
-    margin-bottom: 28px;
-    overflow: hidden;
-    box-shadow: 0 20px 35px -10px rgba(0, 0, 0, 0.3);
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    background: linear-gradient(135deg, #4C1D95, #6d28d9);
+    border-radius: 12px;
+    margin-bottom: 20px;
     cursor: pointer;
-}
-
-.next-class-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: linear-gradient(90deg, #FFD700, #FFA500, #FFD700);
-    z-index: 2;
-}
-
-.next-class-card::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: radial-gradient(circle at 20% 50%, rgba(255, 215, 0, 0.08), transparent 70%);
-    pointer-events: none;
+    transition: all 0.2s ease;
+    overflow: hidden;
 }
 
 .next-class-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 25px 40px -12px rgba(0, 0, 0, 0.4);
-}
-
-.next-class-card:hover .next-class-glow {
-    opacity: 1;
-}
-
-.next-class-glow {
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(circle, rgba(255, 215, 0, 0.15), transparent 70%);
-    opacity: 0;
-    transition: opacity 0.6s ease;
-    pointer-events: none;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(76, 29, 149, 0.3);
 }
 
 .next-class-inner {
-    position: relative;
-    padding: 20px 24px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     flex-wrap: wrap;
-    gap: 20px;
-    z-index: 1;
+    gap: 12px;
+    padding: 12px 16px;
 }
 
-/* Time Badge - Premium */
+/* Time Badge */
 .next-class-time-badge {
     display: flex;
     align-items: center;
-    gap: 12px;
-    background: rgba(255, 255, 255, 0.08);
-    backdrop-filter: blur(10px);
-    padding: 8px 20px;
-    border-radius: 60px;
-    border: 1px solid rgba(255, 215, 0, 0.3);
+    gap: 10px;
+    background: rgba(255,255,255,0.12);
+    padding: 6px 14px;
+    border-radius: 40px;
 }
 
 .next-class-time-icon {
-    width: 44px;
-    height: 44px;
-    background: linear-gradient(135deg, #FFD700, #FFA500);
+    width: 32px;
+    height: 32px;
+    background: #FFD700;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
 }
 
 .next-class-time-icon i {
-    font-size: 22px;
-    color: #1a1a2e;
+    font-size: 14px;
+    color: #4C1D95;
 }
 
 .next-class-time-text {
@@ -671,140 +624,79 @@
 }
 
 .next-class-time-label {
-    font-size: 10px;
+    font-size: 9px;
     text-transform: uppercase;
-    letter-spacing: 1.5px;
-    color: rgba(255, 255, 255, 0.6);
-    margin-bottom: 2px;
+    letter-spacing: 1px;
+    color: rgba(255,255,255,0.7);
 }
 
 .next-class-time-value {
-    font-size: 20px;
-    font-weight: 800;
+    font-size: 13px;
+    font-weight: 700;
     color: #FFD700;
-    letter-spacing: 1px;
 }
 
-/* Course Info - Premium */
+/* Course Info */
 .next-class-info {
     flex: 1;
+    min-width: 160px;
 }
 
 .next-class-course {
-    font-size: 18px;
-    font-weight: 700;
-    color: white;
-    margin-bottom: 8px;
-    letter-spacing: -0.3px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-
-.next-class-course code {
-    background: rgba(255, 215, 0, 0.2);
-    padding: 4px 10px;
-    border-radius: 20px;
-    font-size: 11px;
-    color: #FFD700;
+    font-size: 13px;
     font-weight: 600;
+    color: white;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .next-class-meta {
     display: flex;
-    flex-wrap: wrap;
-    gap: 20px;
+    gap: 12px;
+    font-size: 10px;
+    color: rgba(255,255,255,0.7);
 }
 
 .next-class-meta-item {
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-size: 13px;
-    color: rgba(255, 255, 255, 0.7);
+    gap: 4px;
 }
 
 .next-class-meta-item i {
-    width: 20px;
+    font-size: 9px;
     color: #FFD700;
-    font-size: 12px;
 }
 
-.next-class-meta-item strong {
-    color: white;
-    font-weight: 600;
-}
-
-/* Day Badge - Premium */
+/* Day Badge */
 .next-class-day-badge {
-    background: rgba(255, 215, 0, 0.15);
-    backdrop-filter: blur(10px);
-    padding: 8px 20px;
-    border-radius: 60px;
-    border: 1px solid rgba(255, 215, 0, 0.4);
+    background: rgba(255,255,255,0.12);
+    padding: 5px 12px;
+    border-radius: 40px;
+    font-size: 11px;
+    font-weight: 500;
+    color: white;
     white-space: nowrap;
 }
 
-.next-class-day-badge i {
-    color: #FFD700;
-    margin-right: 8px;
-    font-size: 12px;
-}
-
-.next-class-day-badge span {
-    font-size: 13px;
-    font-weight: 600;
-    color: #FFD700;
-}
-
 .next-class-day-badge.today {
-    background: linear-gradient(135deg, #FFD700, #FFA500);
-    border: none;
-}
-
-.next-class-day-badge.today span {
-    color: #1a1a2e;
+    background: #FFD700;
+    color: #4C1D95;
+    font-weight: 600;
 }
 
 .next-class-day-badge.today i {
-    color: #1a1a2e;
+    color: #4C1D95;
 }
 
-/* Location Card */
-.next-class-location {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: rgba(255, 255, 255, 0.05);
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: 11px;
-    color: rgba(255, 255, 255, 0.6);
-}
-
-/* Empty State */
-.next-class-empty {
-    background: linear-gradient(135deg, #1e293b, #0f172a);
-    border-radius: 20px;
-    padding: 32px;
-    text-align: center;
-    color: rgba(255, 255, 255, 0.5);
-    border: 1px dashed rgba(255, 215, 0, 0.3);
-}
-
-.next-class-empty i {
-    font-size: 48px;
-    margin-bottom: 12px;
-    opacity: 0.5;
-}
-
-/* Mobile Responsive */
-@media (max-width: 768px) {
+/* Mobile */
+@media (max-width: 640px) {
     .next-class-inner {
         flex-direction: column;
         text-align: center;
-        padding: 20px;
+        padding: 12px;
     }
     
     .next-class-time-badge {
@@ -813,24 +705,5 @@
     
     .next-class-meta {
         justify-content: center;
-    }
-    
-    .next-class-day-badge {
-        align-self: center;
-    }
-}
-
-@media (max-width: 480px) {
-    .next-class-course {
-        font-size: 15px;
-        justify-content: center;
-    }
-    
-    .next-class-meta {
-        gap: 12px;
-    }
-    
-    .next-class-meta-item {
-        font-size: 11px;
     }
 }
