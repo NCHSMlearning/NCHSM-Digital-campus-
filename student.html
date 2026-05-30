@@ -192,25 +192,23 @@
 
         <!-- QUICK SNAPSHOT -->
         <div class="section-title">📊 Quick Snapshot</div>
-
-        <!-- ATTENDANCE CARD - IDs match dashboard.js -->
-        <div class="attendance-card" data-tab="attendance">
-            <div class="attendance-header">
-                <div>
-                    <div class="attendance-label">ATTENDANCE RATE</div>
-                    <div class="attendance-percent" id="dashboard-attendance-rate">--%</div>
-                    <div class="attendance-sub">Overall attendance rate</div>
-                </div>
-                <div class="warning-badge" id="attendance-warning-badge">
-                    <i class="fas fa-exclamation-triangle"></i> <span id="warning-text">BELOW 75%</span>
-                </div>
-            </div>
-            <div class="vp-row">
-                <div><span>✅ Verified</span><br><span class="vp-number verified-number" id="dashboard-verified-count">0</span> <span>/ <span id="dashboard-total-count">0</span></span></div>
-                <div><span>⏳ Pending</span><br><span class="vp-number pending-number" id="dashboard-pending-count">0</span></div>
-            </div>
-            <div class="points-hint"><i class="fas fa-info-circle"></i> +10 points per verified attendance</div>
+<!-- ATTENDANCE CARD - -->
+<div class="attendance-card" data-tab="attendance">
+    <div class="attendance-header">
+        <div>
+            <span class="attendance-percent" id="dashboard-attendance-rate">0%</span>
+            <span class="attendance-label">Attendance</span>
         </div>
+        <div class="warning-badge" id="attendance-warning-badge">
+            <i class="fas fa-exclamation-triangle"></i> <span id="warning-text">BELOW 75%</span>
+        </div>
+    </div>
+    <div class="vp-row">
+        <span>✅ <strong id="dashboard-verified-count">0</strong>/<strong id="dashboard-total-count">0</strong></span>
+        <span>⏳ <strong id="dashboard-pending-count">0</strong></span>
+        <span><i class="fas fa-info-circle"></i> +10 pts/verified</span>
+    </div>
+</div>
 
         <!-- MINI CARDS ROW 1 - IDs match dashboard.js -->
         <div class="mini-cards">
