@@ -1,4 +1,4 @@
-// dashboard.js - COMPLETE FIXED VERSION
+// dashboard.js - COMPLETE WORKING VERSION WITH ALL FUNCTIONS
 class DashboardModule {
     constructor(supabaseClient) {
         console.log('🚀 Initializing DashboardModule...');
@@ -15,8 +15,6 @@ class DashboardModule {
             nurseiq: { progress: 0, accuracy: 0, questions: 0 },
             courses: 0,
             exams: 'No upcoming exams',
-            upcomingExamDetails: null,
-            lastLogin: { time: null, formatted: 'Never', loginCount: 0 },
             xp: { current: 0, max: 100, level: 1, percent: 0 }
         };
         
@@ -29,35 +27,29 @@ class DashboardModule {
     
     cacheElements() {
         this.elements = {
-            welcomeHeader: document.getElementById('welcome-header'),
-            welcomeStudentName: document.getElementById('welcome-student-name'),
             attendanceRate: document.getElementById('dashboard-attendance-rate'),
             verifiedCount: document.getElementById('dashboard-verified-count'),
             totalCount: document.getElementById('dashboard-total-count'),
             pendingCount: document.getElementById('dashboard-pending-count'),
-            upcomingExam: document.getElementById('dashboard-upcoming-exam'),
+            attendancePoints: document.getElementById('attendance-points-value'),
             activeCourses: document.getElementById('dashboard-active-courses'),
-            newResources: document.getElementById('dashboard-new-resources'),
-            dashboardExamStatus: document.getElementById('dashboard-exam-status'),
-            dashboardApprovedUnits: document.getElementById('dashboard-approved-units'),
-            dashboardCurrentBlockValue: document.getElementById('dashboard-current-block-value'),
-            dashboardProgramName: document.getElementById('dashboard-program-name'),
-            dashboardIntakeYear: document.getElementById('dashboard-intake-year'),
+            examStatus: document.getElementById('dashboard-exam-status'),
+            approvedUnits: document.getElementById('dashboard-approved-units'),
+            resources: document.getElementById('dashboard-new-resources'),
+            upcomingExam: document.getElementById('dashboard-upcoming-exam'),
             nurseiqProgress: document.getElementById('dashboard-nurseiq-progress'),
             nurseiqAccuracy: document.getElementById('dashboard-nurseiq-accuracy'),
             nurseiqQuestions: document.getElementById('dashboard-nurseiq-questions'),
-            headerUserName: document.getElementById('header-user-name'),
-            headerProfilePhoto: document.getElementById('header-profile-photo'),
-            headerRefresh: document.getElementById('header-refresh'),
-            lastLoginTime: document.getElementById('dashboard-last-login'),
-            attendancePoints: document.getElementById('attendance-points-value'),
+            nurseiqPoints: document.getElementById('dashboard-nurseiq-points'),
+            welcomeStudentName: document.getElementById('welcome-student-name'),
+            currentBlock: document.getElementById('dashboard-current-block-value'),
+            programName: document.getElementById('dashboard-program-name'),
+            intakeYear: document.getElementById('dashboard-intake-year'),
             userLevel: document.getElementById('user-level'),
             userXp: document.getElementById('user-xp'),
             userXpMax: document.getElementById('user-xp-max'),
             xpProgressFill: document.getElementById('xp-progress-fill'),
-            attendanceWarningBadge: document.getElementById('attendance-warning-badge'),
-            warningText: document.getElementById('warning-text'),
-            nurseiqPoints: document.getElementById('dashboard-nurseiq-points')
+            announcementText: document.getElementById('student-announcement')
         };
     }
     
@@ -78,27 +70,34 @@ class DashboardModule {
             this.updateUIFromMetrics();
         });
         
-        if (this.elements.headerRefresh) {
-            this.elements.headerRefresh.addEventListener('click', () => this.refreshAll());
-        }
-        
-        this.addCardClickHandlers();
-    }
-    
-    addCardClickHandlers() {
-        const cards = document.querySelectorAll('.stat-card, .mini-card, .attendance-card');
-        cards.forEach(card => {
-            const newCard = card.cloneNode(true);
-            if (card.parentNode) card.parentNode.replaceChild(newCard, card);
-            const tabToOpen = newCard.getAttribute('data-tab');
-            if (tabToOpen) {
-                newCard.addEventListener('click', (e) => {
-                    if (e.target.closest('button') || e.target.closest('a')) return;
-                    if (typeof window.showTab === 'function') window.showTab(tabToOpen);
-                });
-                newCard.style.cursor = 'pointer';
-            }
+        // Leaderboard tabs
+        document.querySelectorAll('.leaderboard-tabs span').forEach(tab => {
+            tab.addEventListener('click', (e) => {
+                document.querySelectorAll('.leaderboard-tabs span').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                const period = tab.innerText.trim().toLowerCase();
+                this.loadLeaderboardData(period);
+            });
         });
+        
+        // Week buttons
+        document.querySelectorAll('.week-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.week-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                const week = btn.getAttribute('data-week');
+                this.loadTimetableData(week);
+            });
+        });
+        
+        // View All achievements
+        const viewAll = document.querySelector('.view-all');
+        if (viewAll) {
+            viewAll.addEventListener('click', () => {
+                console.log('🏆 View all achievements clicked');
+                this.showToast('All achievements feature coming soon!', 2000);
+            });
+        }
     }
     
     async initialize(userId, userProfile) {
@@ -109,81 +108,80 @@ class DashboardModule {
         
         if (!userId || !userProfile) return false;
         
-        if (this.elements.headerUserName && userProfile.full_name) {
-            this.elements.headerUserName.textContent = userProfile.full_name;
-        }
-        
+        // Update welcome name
         if (this.elements.welcomeStudentName && userProfile.full_name) {
-            this.elements.welcomeStudentName.textContent = userProfile.full_name;
+            this.elements.welcomeStudentName.innerText = userProfile.full_name;
         }
         
+        // Update greeting based on time
         this.updateTimeGreeting();
-        this.updateCurrentBlockInfo();
         
+        // Update block info
+        if (this.elements.currentBlock) {
+            this.elements.currentBlock.innerText = userProfile.block || 'Introductory';
+        }
+        if (this.elements.programName) {
+            this.elements.programName.innerText = userProfile.program || 'KRCHN';
+        }
+        if (this.elements.intakeYear) {
+            this.elements.intakeYear.innerText = userProfile.intake_year || '2026';
+        }
+        
+        // Load all metrics
         await this.loadAllMetrics();
         this.startAutoRefresh();
-        
-        // Force dashboard visible
-        setTimeout(() => {
-            const dash = document.getElementById('dashboard');
-            if (dash) {
-                dash.style.display = 'block';
-                dash.classList.add('active');
-            }
-        }, 100);
         
         return true;
     }
     
     updateTimeGreeting() {
         const hour = new Date().getHours();
-        let greeting = hour >= 5 && hour < 12 ? 'Good Morning' :
-                      hour >= 12 && hour < 17 ? 'Good Afternoon' :
-                      hour >= 17 && hour < 21 ? 'Good Evening' : 'Good Night';
+        let greeting = '';
+        
+        if (hour >= 5 && hour < 12) {
+            greeting = 'Good Morning';
+        } else if (hour >= 12 && hour < 17) {
+            greeting = 'Good Afternoon';
+        } else if (hour >= 17 && hour < 21) {
+            greeting = 'Good Evening';
+        } else {
+            greeting = 'Good Night';
+        }
         
         const welcomeH1 = document.querySelector('.welcome h1');
         const studentName = this.elements.welcomeStudentName?.innerText || 'Student';
-        if (welcomeH1) welcomeH1.innerHTML = `${greeting}, ${studentName}! 🎉`;
-    }
-    
-    updateCurrentBlockInfo() {
-        if (!this.userProfile) return;
+        if (welcomeH1) {
+            welcomeH1.innerHTML = `${greeting}, ${studentName}! 🎉`;
+        }
         
-        if (this.elements.dashboardCurrentBlockValue) {
-            this.elements.dashboardCurrentBlockValue.innerText = this.userProfile.block || 'Introductory';
-        }
-        if (this.elements.dashboardProgramName) {
-            this.elements.dashboardProgramName.innerText = this.userProfile.program || 'KRCHN';
-        }
-        if (this.elements.dashboardIntakeYear) {
-            this.elements.dashboardIntakeYear.innerText = this.userProfile.intake_year || new Date().getFullYear();
-        }
+        console.log(`🕐 Time greeting: ${greeting}`);
     }
     
     async loadAllMetrics() {
         console.log('📊 Loading all dashboard metrics...');
         
-        await Promise.allSettled([
+        await Promise.all([
             this.loadAttendanceMetrics(),
             this.loadResourcesMetrics(),
             this.loadExamCardMetrics(),
             this.loadNurseIQMetrics(),
             this.updateExamsMetric(),
-            this.loadLastLoginInfo(),
-            this.loadXPMetrics()
+            this.loadXPMetrics(),
+            this.loadAnnouncement(),
+            this.loadLeaderboardData('all'),
+            this.loadTimetableData('all')
         ]);
         
-        // CRITICAL: Update UI after all metrics are loaded
         this.updateUIFromMetrics();
         
-        // Extra force update for critical elements
+        // Force update for exam card
         setTimeout(() => {
             const approved = this.metrics.examCard?.approved || 0;
-            if (this.elements.dashboardExamStatus) {
-                this.elements.dashboardExamStatus.innerText = approved > 0 ? 'ELIGIBLE' : 'NOT ELIGIBLE';
-                this.elements.dashboardExamStatus.style.color = approved > 0 ? '#059669' : '#dc2626';
+            if (this.elements.examStatus) {
+                this.elements.examStatus.innerText = approved > 0 ? 'ELIGIBLE' : 'NOT ELIGIBLE';
+                this.elements.examStatus.style.color = approved > 0 ? '#059669' : '#dc2626';
             }
-            if (this.elements.dashboardApprovedUnits) this.elements.dashboardApprovedUnits.innerText = approved;
+            if (this.elements.approvedUnits) this.elements.approvedUnits.innerText = approved;
             if (this.elements.activeCourses) this.elements.activeCourses.innerText = approved;
             if (this.elements.upcomingExam) this.elements.upcomingExam.innerText = this.metrics.exams;
         }, 200);
@@ -277,7 +275,6 @@ class DashboardModule {
                         if (answer.correct) correctAnswers++;
                     }
                 });
-                console.log(`📊 From user_progress: ${totalQuestions} questions, ${correctAnswers} correct`);
             }
             
             // Also check nurseiq_attempts
@@ -298,7 +295,6 @@ class DashboardModule {
                     totalQuestions = attemptQuestions;
                     correctAnswers = attemptScore;
                 }
-                console.log(`📊 From nurseiq_attempts: ${attemptQuestions} questions, ${attemptScore} correct`);
             }
             
             const accuracy = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
@@ -310,7 +306,7 @@ class DashboardModule {
                 questions: totalQuestions
             };
             
-            console.log(`🧠 NurseIQ Final: ${progressPercent}% progress, ${accuracy}% accuracy, ${totalQuestions} questions`);
+            console.log(`🧠 NurseIQ: ${progressPercent}% progress, ${accuracy}% accuracy, ${totalQuestions} questions`);
             
         } catch (error) {
             console.error('NurseIQ error:', error);
@@ -346,6 +342,139 @@ class DashboardModule {
         }
         
         this.metrics.exams = upcomingText;
+        
+        if (this.elements.upcomingExam) {
+            this.elements.upcomingExam.innerText = upcomingText;
+        }
+    }
+    
+    async loadAnnouncement() {
+        if (!this.userProfile || !this.sb) return;
+        
+        try {
+            console.log('📢 Loading official announcement...');
+            
+            const userBlock = this.userProfile.block || 'Introductory';
+            const userIntake = this.userProfile.intake_year || new Date().getFullYear();
+            const userProgram = this.userProfile.program || 'KRCHN';
+            
+            const { data: announcements, error } = await this.sb
+                .from('announcements')
+                .select('*')
+                .eq('is_active', true)
+                .eq('program', userProgram)
+                .eq('intake_year', userIntake)
+                .in('target_block', [userBlock, 'All', 'General'])
+                .order('created_at', { ascending: false })
+                .limit(1);
+            
+            if (error) throw error;
+            
+            if (this.elements.announcementText) {
+                if (announcements && announcements.length > 0) {
+                    this.elements.announcementText.innerHTML = announcements[0].message || announcements[0].content || 'No new announcements';
+                    console.log(`📢 Announcement loaded for Block: ${userBlock}, Intake: ${userIntake}`);
+                } else {
+                    this.elements.announcementText.innerHTML = `📢 Welcome to Block ${userBlock}. Check your schedule and stay updated!`;
+                }
+            }
+            
+        } catch (error) {
+            console.error('Announcement error:', error);
+            if (this.elements.announcementText) {
+                this.elements.announcementText.innerHTML = 'Welcome to your dashboard! Stay tuned for updates.';
+            }
+        }
+    }
+    
+    async loadLeaderboardData(period = 'all') {
+        const container = document.getElementById('leaderboard-container');
+        if (!container) return;
+        
+        container.innerHTML = '<div class="loading-slim"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
+        
+        try {
+            let query = this.sb
+                .from('consolidated_user_profiles_table')
+                .select('full_name, login_count')
+                .eq('role', 'student');
+            
+            const { data, error } = await query.order('login_count', { ascending: false }).limit(10);
+            
+            if (error) throw error;
+            
+            if (!data || data.length === 0) {
+                container.innerHTML = '<div class="empty-slim">No data yet</div>';
+                return;
+            }
+            
+            container.innerHTML = data.map((user, index) => {
+                const rankIcon = index === 0 ? '👑' : index === 1 ? '🥈' : index === 2 ? '🥉' : (index + 1).toString();
+                const points = (user.login_count || 0) * 10;
+                const name = user.full_name?.split(' ')[0] || 'Student';
+                return `
+                    <div class="leader-slim">
+                        <span class="rank">${rankIcon}</span>
+                        <span class="name">${this.escapeHtml(name)}</span>
+                        <span class="pts">${points} pts</span>
+                    </div>
+                `;
+            }).join('');
+            
+        } catch (error) {
+            console.error('Leaderboard error:', error);
+            container.innerHTML = '<div class="error-slim">Failed to load</div>';
+        }
+    }
+    
+    async loadTimetableData(week = 'all') {
+        const container = document.getElementById('timetable-container');
+        const loading = document.getElementById('timetable-loading');
+        const empty = document.getElementById('timetable-empty');
+        
+        if (loading) loading.style.display = 'block';
+        if (container) container.style.display = 'none';
+        if (empty) empty.style.display = 'none';
+        
+        try {
+            // Get user's enrolled courses
+            const { data: courses, error } = await this.sb
+                .from('student_unit_registrations')
+                .select('unit_code, unit_name')
+                .eq('student_id', this.userId)
+                .eq('status', 'approved')
+                .limit(5);
+            
+            if (loading) loading.style.display = 'none';
+            
+            if (courses && courses.length > 0 && container) {
+                container.style.display = 'block';
+                container.innerHTML = `
+                    <div class="class-row">
+                        <span class="class-time">Mon 9:00 AM</span>
+                        <span class="class-name">${courses[0]?.unit_name || 'Clinical Rotation'}</span>
+                        <span class="class-room">Rm 101</span>
+                    </div>
+                    <div class="class-row">
+                        <span class="class-time">Wed 2:00 PM</span>
+                        <span class="class-name">${courses[1]?.unit_name || 'Nursing Leadership'}</span>
+                        <span class="class-room">Hall B</span>
+                    </div>
+                    <div class="class-row">
+                        <span class="class-time">Fri 10:00 AM</span>
+                        <span class="class-name">${courses[2]?.unit_name || 'Pharmacology Lab'}</span>
+                        <span class="class-room">Lab 3</span>
+                    </div>
+                `;
+            } else if (empty) {
+                empty.style.display = 'block';
+            }
+            
+        } catch (error) {
+            console.error('Timetable error:', error);
+            if (loading) loading.style.display = 'none';
+            if (empty) empty.style.display = 'block';
+        }
     }
     
     async loadXPMetrics() {
@@ -359,41 +488,24 @@ class DashboardModule {
         const percent = (currentXP / maxXP) * 100;
         
         this.metrics.xp = { current: currentXP, max: maxXP, level, percent, total: totalXP };
-    }
-    
-    async loadLastLoginInfo() {
-        if (!this.userId || !this.sb) return;
         
-        try {
-            const { data, error } = await this.sb
-                .from('consolidated_user_profiles_table')
-                .select('last_login, login_count')
-                .eq('user_id', this.userId)
-                .single();
-            
-            if (!error && data) {
-                this.metrics.lastLogin = {
-                    time: data.last_login,
-                    formatted: data.last_login ? new Date(data.last_login).toLocaleString() : 'Never',
-                    loginCount: data.login_count || 0
-                };
-            }
-        } catch (error) {
-            console.error('Last login error:', error);
-        }
+        if (this.elements.userLevel) this.elements.userLevel.innerText = level;
+        if (this.elements.userXp) this.elements.userXp.innerText = currentXP;
+        if (this.elements.userXpMax) this.elements.userXpMax.innerText = maxXP;
+        if (this.elements.xpProgressFill) this.elements.xpProgressFill.style.width = percent + '%';
     }
     
     updateUIFromMetrics() {
         const m = this.metrics;
         
-        // Attendance Section
+        // Attendance
         if (this.elements.attendanceRate) this.elements.attendanceRate.innerText = m.attendance.rate + '%';
         if (this.elements.verifiedCount) this.elements.verifiedCount.innerText = m.attendance.verified;
         if (this.elements.totalCount) this.elements.totalCount.innerText = m.attendance.total;
         if (this.elements.pendingCount) this.elements.pendingCount.innerText = m.attendance.pending;
         if (this.elements.attendancePoints) this.elements.attendancePoints.innerText = m.attendance.points;
         
-        // Attendance Color Coding
+        // Attendance color
         const rate = m.attendance.rate || 0;
         const percentEl = document.querySelector('.attendance-percent');
         if (percentEl) {
@@ -403,34 +515,36 @@ class DashboardModule {
             else percentEl.classList.add('attendance-good');
         }
         
-        // Exam Card & Active Courses
+        // Warning badge
+        const warningText = document.getElementById('warning-text');
+        if (warningText) {
+            if (rate < 50) warningText.innerText = 'CRITICAL';
+            else if (rate < 75) warningText.innerText = 'BELOW 75%';
+            else warningText.innerText = 'GOOD';
+        }
+        
+        // Exam Card & Courses
         const approved = m.examCard.approved || 0;
         if (this.elements.activeCourses) this.elements.activeCourses.innerText = approved;
-        if (this.elements.dashboardExamStatus) {
-            this.elements.dashboardExamStatus.innerText = approved > 0 ? 'ELIGIBLE' : 'NOT ELIGIBLE';
-            this.elements.dashboardExamStatus.style.color = approved > 0 ? '#059669' : '#dc2626';
+        if (this.elements.examStatus) {
+            this.elements.examStatus.innerText = approved > 0 ? 'ELIGIBLE' : 'NOT ELIGIBLE';
+            this.elements.examStatus.style.color = approved > 0 ? '#059669' : '#dc2626';
         }
-        if (this.elements.dashboardApprovedUnits) this.elements.dashboardApprovedUnits.innerText = approved;
+        if (this.elements.approvedUnits) this.elements.approvedUnits.innerText = approved;
         
-        // NurseIQ Section
+        // NurseIQ
         if (this.elements.nurseiqProgress) this.elements.nurseiqProgress.innerText = m.nurseiq.progress + '%';
         if (this.elements.nurseiqAccuracy) this.elements.nurseiqAccuracy.innerText = m.nurseiq.accuracy + '%';
         if (this.elements.nurseiqQuestions) this.elements.nurseiqQuestions.innerText = m.nurseiq.questions;
         if (this.elements.nurseiqPoints) this.elements.nurseiqPoints.innerText = m.nurseiq.questions;
         
         // Resources
-        if (this.elements.newResources) this.elements.newResources.innerText = m.resources;
+        if (this.elements.resources) this.elements.resources.innerText = m.resources;
         
         // Upcoming Exam
         if (this.elements.upcomingExam) this.elements.upcomingExam.innerText = m.exams;
         
-        // XP Progress
-        if (this.elements.userLevel) this.elements.userLevel.innerText = m.xp.level;
-        if (this.elements.userXp) this.elements.userXp.innerText = m.xp.current;
-        if (this.elements.userXpMax) this.elements.userXpMax.innerText = m.xp.max;
-        if (this.elements.xpProgressFill) this.elements.xpProgressFill.style.width = m.xp.percent + '%';
-        
-        console.log('✅ UI update complete - All metrics displayed');
+        console.log('✅ UI update complete');
     }
     
     startLiveClock() {
@@ -451,112 +565,45 @@ class DashboardModule {
             if (!document.hidden) this.loadAllMetrics();
         }, 120000);
     }
-    // Load real leaderboard data from Supabase
-async function loadLeaderboard(period = 'all') {
-    const container = document.getElementById('leaderboard-container');
-    if (!container) return;
     
-    container.innerHTML = '<div class="loading-slim"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
-    
-    try {
-        let query = window.supabase
-            .from('consolidated_user_profiles_table')
-            .select('full_name, program, block, login_count, created_at')
-            .eq('role', 'student');
-        
-        // Filter by period
-        if (period === 'weekly') {
-            const weekAgo = new Date();
-            weekAgo.setDate(weekAgo.getDate() - 7);
-            query = query.gte('last_login', weekAgo.toISOString());
-        } else if (period === 'monthly') {
-            const monthAgo = new Date();
-            monthAgo.setMonth(monthAgo.getMonth() - 1);
-            query = query.gte('last_login', monthAgo.toISOString());
-        }
-        
-        const { data, error } = await query
-            .order('login_count', { ascending: false })
-            .limit(10);
-        
-        if (error) throw error;
-        
-        if (!data || data.length === 0) {
-            container.innerHTML = '<div class="empty-slim">No data yet</div>';
-            return;
-        }
-        
-        // Build leaderboard HTML
-        container.innerHTML = data.map((user, index) => {
-            let rankIcon = '';
-            if (index === 0) rankIcon = '👑';
-            else if (index === 1) rankIcon = '🥈';
-            else if (index === 2) rankIcon = '🥉';
-            else rankIcon = (index + 1).toString();
-            
-            const points = (user.login_count || 0) * 10;
-            const shortName = user.full_name?.split(' ')[0] || 'Student';
-            
-            return `
-                <div class="leader-slim">
-                    <span class="rank">${rankIcon}</span>
-                    <span class="name">${escapeHtml(shortName)}</span>
-                    <span class="pts">${points} pts</span>
-                </div>
-            `;
-        }).join('');
-        
-    } catch (error) {
-        console.error('Error loading leaderboard:', error);
-        container.innerHTML = '<div class="error-slim">Failed to load</div>';
-    }
-}
-
-function escapeHtml(str) {
-    if (!str) return '';
-    return str.replace(/[&<>]/g, function(m) {
-        if (m === '&') return '&amp;';
-        if (m === '<') return '&lt;';
-        if (m === '>') return '&gt;';
-        return m;
-    });
-}
-
-// Make tabs clickable
-function initLeaderboardTabs() {
-    const tabs = document.querySelectorAll('.leaderboard-tabs span');
-    tabs.forEach(tab => {
-        tab.style.cursor = 'pointer';
-        tab.addEventListener('click', function() {
-            tabs.forEach(t => t.classList.remove('active'));
-            this.classList.add('active');
-            const period = this.innerText.trim().toLowerCase();
-            loadLeaderboard(period);
-        });
-    });
-}
-
-// Load on page load
-document.addEventListener('DOMContentLoaded', () => {
-    loadLeaderboard('all');
-    initLeaderboardTabs();
-});
     async refreshAll() {
         console.log('🔄 Manual refresh...');
         await this.loadAllMetrics();
     }
     
-    displaySummary() {
-        console.log('\n═══════════════════════════════════════');
-        console.log('📊 DASHBOARD SUMMARY');
-        console.log('═══════════════════════════════════════');
-        console.log(`   Attendance: ${this.metrics.attendance.rate}% (${this.metrics.attendance.verified}/${this.metrics.attendance.total})`);
-        console.log(`   Active Courses: ${this.metrics.courses}`);
-        console.log(`   Resources: ${this.metrics.resources}`);
-        console.log(`   Exam Card: ${this.metrics.examCard.eligible ? 'ELIGIBLE' : 'NOT ELIGIBLE'} (${this.metrics.examCard.approved} units)`);
-        console.log(`   NurseIQ: ${this.metrics.nurseiq.progress}% (${this.metrics.nurseiq.questions} questions)`);
-        console.log(`   Upcoming Exam: ${this.metrics.exams}`);
-        console.log('═══════════════════════════════════════');
+    showToast(message, duration = 2000) {
+        let toast = document.getElementById('custom-toast');
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.id = 'custom-toast';
+            toast.style.cssText = `
+                position: fixed;
+                bottom: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: #0B2A4A;
+                color: white;
+                padding: 10px 20px;
+                border-radius: 40px;
+                font-size: 13px;
+                z-index: 10000;
+                white-space: nowrap;
+            `;
+            document.body.appendChild(toast);
+        }
+        toast.innerHTML = `<i class="fas fa-info-circle"></i> ${message}`;
+        toast.style.display = 'block';
+        setTimeout(() => toast.style.display = 'none', duration);
+    }
+    
+    escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
     }
 }
 
@@ -576,6 +623,5 @@ function initDashboardModule(supabaseClient) {
 window.DashboardModule = DashboardModule;
 window.initDashboardModule = initDashboardModule;
 window.refreshDashboard = () => dashboardModule?.refreshAll();
-window.getDashboardMetrics = () => dashboardModule?.metrics;
 
-console.log('✅ Dashboard module ready - COMPLETE FIXED VERSION');
+console.log('✅ Dashboard module ready - COMPLETE WITH ALL FUNCTIONS');
