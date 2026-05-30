@@ -597,7 +597,7 @@ async function loadSectionData(tabId) {
             updateBlockTermOptions('exam_program', 'exam_block_term');
             populateExamCourseSelects(); 
             break;
-             case 'support-tickets': 
+        case 'support-tickets': 
             loadAdminTickets(); 
             break;
         case 'messages': 
@@ -608,25 +608,25 @@ async function loadSectionData(tabId) {
         case 'calendar': 
             renderFullCalendar(); 
             break;
-           case 'unit-management': 
-    loadAllUnits(); 
-    loadUnitBlocks();
-    loadUnitRegistrationStats();
-    loadApprovedRegistrations();
-    break;
-            case 'fee-accounts': 
-    loadStudentAccounts();
-    loadFeeStructure();
-    break;
+        case 'unit-management': 
+            loadAllUnits(); 
+            loadUnitBlocks();
+            loadUnitRegistrationStats();
+            loadApprovedRegistrations();
+            break;
+        case 'fee-accounts': 
+            loadStudentAccounts();
+            loadFeeStructure();
+            break;
         case 'resources': 
-    if (typeof loadAllResources === 'function') {
-        loadAllResources();
-    } else if (typeof loadResources === 'function') {
-        loadResources();
-    }
-    updateProgramDropdown($('resource_program'));
-    updateBlockTermOptions('resource_program', 'resource_block');
-    break;
+            if (typeof loadAllResources === 'function') {
+                loadAllResources();
+            } else if (typeof loadResources === 'function') {
+                loadResources();
+            }
+            updateProgramDropdown($('resource_program'));
+            updateBlockTermOptions('resource_program', 'resource_block');
+            break;
         case 'welcome-editor': 
             loadWelcomeMessageForEdit(); 
             break; 
@@ -672,6 +672,15 @@ async function loadSectionData(tabId) {
         case 'data-visualization': 
             loadDataVisualization(); 
             break;
+        // ========== ADD STAFF MANAGEMENT CASE HERE ==========
+        case 'staff-management': 
+            if (typeof initStaffManagement === 'function') {
+                initStaffManagement();
+            } else if (typeof loadAllStaff === 'function') {
+                loadAllStaff();
+            }
+            break;
+        // ====================================================
     }
 }
 
@@ -8473,6 +8482,493 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 console.log('✅ Grade functions registered globally');
+// =====================================================
+// STAFF / LECTURER MANAGEMENT MODULE
+// Add this entire block to your main script.js file
+// =====================================================
+
+// Global variables for staff management
+let staffRecords = [];
+let currentStaffFilter = 'all';
+
+// Load staff from localStorage or init with demo data
+async function loadAllStaff() {
+    console.log('👥 Loading staff records...');
+    
+    const stored = localStorage.getItem('nchsm_staff_records');
+    if (stored) {
+        staffRecords = JSON.parse(stored);
+    } else {
+        // Demo staff data based on your reference image
+        staffRecords = [
+            { 
+                id: "T76", 
+                title: "Ms", 
+                firstName: "Liz", 
+                otherNames: "Nderitu", 
+                dept: "Tutors", 
+                email: "liz.nderitu@gmail.com", 
+                phone: "254706123839", 
+                nationalId: "30123456", 
+                gender: "F", 
+                designation: "Lecturer", 
+                bankName: "KCB", 
+                bankAcc: "1234567890", 
+                shif: "SHIF001", 
+                nsrf: "NSRF001", 
+                taxPin: "A0012345", 
+                loginEnabled: true, 
+                status: "active",
+                createdAt: new Date().toISOString()
+            },
+            { 
+                id: "T75", 
+                title: "Mr", 
+                firstName: "Godfrey", 
+                otherNames: "Abdi", 
+                dept: "Tutors", 
+                email: "godfrey.abdi@gmail.com", 
+                phone: "254741123041", 
+                nationalId: "30789123", 
+                gender: "M", 
+                designation: "Senior Lecturer", 
+                bankName: "Equity", 
+                bankAcc: "987654321", 
+                shif: "SHIF002", 
+                nsrf: "NSRF002", 
+                taxPin: "A0012346", 
+                loginEnabled: true, 
+                status: "active",
+                createdAt: new Date().toISOString()
+            },
+            { 
+                id: "T74", 
+                title: "Mr", 
+                firstName: "Richard", 
+                otherNames: "Mutiso", 
+                dept: "Tutors", 
+                email: "richard.mutiso@gmail.com", 
+                phone: "254758123878", 
+                nationalId: "30456789", 
+                gender: "M", 
+                designation: "Tutor", 
+                bankName: "Cooperative", 
+                bankAcc: "456789123", 
+                shif: "SHIF003", 
+                nsrf: "NSRF003", 
+                taxPin: "A0012347", 
+                loginEnabled: true, 
+                status: "active",
+                createdAt: new Date().toISOString()
+            },
+            { 
+                id: "FD001", 
+                title: "Mrs", 
+                firstName: "Jane", 
+                otherNames: "Wanjiku", 
+                dept: "Front Desk", 
+                email: "jane.wanjiku@nchsm.ac.ke", 
+                phone: "254722111222", 
+                nationalId: "29876543", 
+                gender: "F", 
+                designation: "Receptionist", 
+                bankName: "Absa", 
+                bankAcc: "1122334455", 
+                shif: "SHIF010", 
+                nsrf: "NSRF010", 
+                taxPin: "P001234X", 
+                loginEnabled: false, 
+                status: "active",
+                createdAt: new Date().toISOString()
+            }
+        ];
+        localStorage.setItem('nchsm_staff_records', JSON.stringify(staffRecords));
+    }
+    
+    updateStaffStats();
+    renderStaffTable();
+}
+
+// Update statistics cards
+function updateStaffStats() {
+    const total = staffRecords.length;
+    const active = staffRecords.filter(s => s.status === 'active').length;
+    const male = staffRecords.filter(s => s.gender === 'M').length;
+    const female = staffRecords.filter(s => s.gender === 'F').length;
+    
+    const totalEl = document.getElementById('totalStaffCount');
+    const activeEl = document.getElementById('activeStaffCount');
+    const maleEl = document.getElementById('maleStaffCount');
+    const femaleEl = document.getElementById('femaleStaffCount');
+    
+    if (totalEl) totalEl.textContent = total;
+    if (activeEl) activeEl.textContent = active;
+    if (maleEl) maleEl.textContent = male;
+    if (femaleEl) femaleEl.textContent = female;
+}
+
+// Render staff table with filters
+function renderStaffTable() {
+    const tbody = document.getElementById('staffTableBody');
+    if (!tbody) return;
+    
+    const searchTerm = (document.getElementById('staffSearchInput')?.value || '').toLowerCase();
+    const deptFilter = document.getElementById('departmentFilter')?.value || 'all';
+    const statusFilter = document.getElementById('statusFilter')?.value || 'all';
+    
+    let filtered = [...staffRecords];
+    
+    if (searchTerm) {
+        filtered = filtered.filter(s => 
+            s.firstName.toLowerCase().includes(searchTerm) || 
+            (s.otherNames && s.otherNames.toLowerCase().includes(searchTerm)) || 
+            s.id.toLowerCase().includes(searchTerm) || 
+            s.email.toLowerCase().includes(searchTerm)
+        );
+    }
+    
+    if (deptFilter !== 'all') {
+        filtered = filtered.filter(s => s.dept === deptFilter);
+    }
+    
+    if (statusFilter !== 'all') {
+        filtered = filtered.filter(s => s.status === statusFilter);
+    }
+    
+    if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="13" style="text-align: center; padding: 40px;">No staff records found</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = '';
+    
+    filtered.forEach(staff => {
+        const row = document.createElement('tr');
+        row.style.borderBottom = '1px solid #e5e7eb';
+        
+        row.innerHTML = `
+            <td style="padding: 12px;">${escapeHtml(staff.title || '')}</td>
+            <td style="padding: 12px;">${escapeHtml(staff.firstName)}</td>
+            <td style="padding: 12px;">${escapeHtml(staff.otherNames || '')}</td>
+            <td style="padding: 12px;"><span class="dept-badge">${escapeHtml(staff.dept)}</span></td>
+            <td style="padding: 12px;">${escapeHtml(staff.email)}</td>
+            <td style="padding: 12px;">${escapeHtml(staff.phone)}</td>
+            <td style="padding: 12px;"><strong>${escapeHtml(staff.id)}</strong></td>
+            <td style="padding: 12px;">${staff.gender === 'M' ? 'Male' : staff.gender === 'F' ? 'Female' : '-'}</td>
+            <td style="padding: 12px;">${escapeHtml(staff.bankName || '-')}</td>
+            <td style="padding: 12px;">${escapeHtml(staff.bankAcc || '-')}</td>
+            <td style="padding: 12px;">${escapeHtml(staff.shif || '-')}</td>
+            <td style="padding: 12px;">${escapeHtml(staff.nsrf || '-')}</td>
+            <td style="padding: 12px;">
+                <button onclick="editStaff('${escapeHtml(staff.id)}')" class="btn-sm btn-edit" style="background: #3b82f6; color: white; border: none; padding: 5px 10px; border-radius: 4px; margin-right: 5px; cursor: pointer;">
+                    <i class="fas fa-edit"></i> Edit
+                </button>
+                <button onclick="deleteStaff('${escapeHtml(staff.id)}', '${escapeHtml(staff.firstName)}')" class="btn-sm btn-delete" style="background: #ef4444; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">
+                    <i class="fas fa-trash"></i> Delete
+                </button>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+// Open Add Staff Modal
+function openAddStaffModal() {
+    const modal = document.getElementById('staffModal');
+    if (!modal) {
+        console.error('Staff modal not found');
+        return;
+    }
+    
+    // Reset form
+    const form = document.getElementById('staffForm');
+    if (form) form.reset();
+    
+    document.getElementById('modalTitle').innerHTML = '<i class="fas fa-user-plus"></i> Register New Staff';
+    document.getElementById('editStaffId').value = '';
+    
+    // Set default values
+    const dateInput = document.getElementById('staffJoinDate');
+    if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
+    
+    modal.style.display = 'flex';
+}
+
+// Close Staff Modal
+function closeStaffModal() {
+    const modal = document.getElementById('staffModal');
+    if (modal) modal.style.display = 'none';
+}
+
+// Save staff (create or update)
+async function saveStaff() {
+    const editId = document.getElementById('editStaffId').value;
+    
+    const staffData = {
+        title: document.getElementById('staffTitle').value,
+        firstName: document.getElementById('staffFirstName').value.trim(),
+        otherNames: document.getElementById('staffOtherNames').value.trim(),
+        dept: document.getElementById('staffDept').value,
+        designation: document.getElementById('staffDesignation').value,
+        email: document.getElementById('staffEmail').value.trim(),
+        phone: document.getElementById('staffPhone').value.trim(),
+        nationalId: document.getElementById('staffNationalId').value.trim(),
+        gender: document.getElementById('staffGender').value,
+        bankName: document.getElementById('staffBankName').value.trim(),
+        bankAcc: document.getElementById('staffBankAcc').value.trim(),
+        shif: document.getElementById('staffShif').value.trim(),
+        nsrf: document.getElementById('staffNsrf').value.trim(),
+        taxPin: document.getElementById('staffTaxPin').value.trim(),
+        loginEnabled: document.getElementById('staffEnableLogin').checked,
+        status: 'active'
+    };
+    
+    // Validate required fields
+    if (!staffData.firstName || !staffData.dept || !staffData.email || !staffData.phone) {
+        alert('Please fill required fields: First Name, Department, Email, Phone');
+        return;
+    }
+    
+    // Generate staff ID if new
+    if (!editId) {
+        let staffId = document.getElementById('staffId').value.trim();
+        if (!staffId) {
+            const nextNum = staffRecords.length + 101;
+            staffId = `STAFF${nextNum}`;
+        }
+        staffData.id = staffId;
+        staffData.createdAt = new Date().toISOString();
+        staffRecords.push(staffData);
+    } else {
+        // Update existing
+        const index = staffRecords.findIndex(s => s.id === editId);
+        if (index !== -1) {
+            staffData.id = editId;
+            staffData.createdAt = staffRecords[index].createdAt;
+            staffRecords[index] = staffData;
+        }
+    }
+    
+    // Save to localStorage
+    localStorage.setItem('nchsm_staff_records', JSON.stringify(staffRecords));
+    
+    // Update UI
+    updateStaffStats();
+    renderStaffTable();
+    closeStaffModal();
+    
+    alert(`Staff ${staffData.firstName} ${editId ? 'updated' : 'registered'} successfully! ID: ${staffData.id}`);
+    
+    // Log audit
+    if (typeof logAudit === 'function') {
+        logAudit(editId ? 'STAFF_UPDATE' : 'STAFF_ADD', `${editId ? 'Updated' : 'Added'} staff: ${staffData.firstName} ${staffData.otherNames || ''}`, staffData.id, 'SUCCESS');
+    }
+}
+
+// Edit staff
+function editStaff(staffId) {
+    const staff = staffRecords.find(s => s.id === staffId);
+    if (!staff) {
+        alert('Staff not found');
+        return;
+    }
+    
+    // Populate form
+    document.getElementById('editStaffId').value = staff.id;
+    document.getElementById('staffTitle').value = staff.title || '';
+    document.getElementById('staffFirstName').value = staff.firstName;
+    document.getElementById('staffOtherNames').value = staff.otherNames || '';
+    document.getElementById('staffDept').value = staff.dept;
+    document.getElementById('staffDesignation').value = staff.designation || '';
+    document.getElementById('staffEmail').value = staff.email;
+    document.getElementById('staffPhone').value = staff.phone;
+    document.getElementById('staffNationalId').value = staff.nationalId || '';
+    document.getElementById('staffGender').value = staff.gender || '';
+    document.getElementById('staffBankName').value = staff.bankName || '';
+    document.getElementById('staffBankAcc').value = staff.bankAcc || '';
+    document.getElementById('staffShif').value = staff.shif || '';
+    document.getElementById('staffNsrf').value = staff.nsrf || '';
+    document.getElementById('staffTaxPin').value = staff.taxPin || '';
+    document.getElementById('staffEnableLogin').checked = staff.loginEnabled || false;
+    document.getElementById('staffId').value = staff.id;
+    
+    document.getElementById('modalTitle').innerHTML = '<i class="fas fa-user-edit"></i> Edit Staff';
+    document.getElementById('staffModal').style.display = 'flex';
+}
+
+// Delete staff
+function deleteStaff(staffId, staffName) {
+    if (!confirm(`Are you sure you want to delete staff member "${staffName}"? This action cannot be undone.`)) {
+        return;
+    }
+    
+    staffRecords = staffRecords.filter(s => s.id !== staffId);
+    localStorage.setItem('nchsm_staff_records', JSON.stringify(staffRecords));
+    
+    updateStaffStats();
+    renderStaffTable();
+    
+    alert(`Staff ${staffName} deleted successfully!`);
+    
+    if (typeof logAudit === 'function') {
+        logAudit('STAFF_DELETE', `Deleted staff: ${staffName}`, staffId, 'SUCCESS');
+    }
+}
+
+// Filter staff table
+function filterStaffTable() {
+    renderStaffTable();
+}
+
+// Export staff to CSV
+function exportStaffToCSV() {
+    const headers = ['Staff ID', 'Title', 'First Name', 'Other Names', 'Department', 'Designation', 'Email', 'Phone', 'National ID', 'Gender', 'Bank Name', 'Bank Account', 'SHIF Number', 'NSRF Number', 'Tax PIN', 'Login Enabled', 'Status'];
+    
+    const rows = staffRecords.map(s => [
+        s.id, s.title || '', s.firstName, s.otherNames || '', s.dept, s.designation || '',
+        s.email, s.phone, s.nationalId || '', s.gender || '', s.bankName || '', s.bankAcc || '',
+        s.shif || '', s.nsrf || '', s.taxPin || '', s.loginEnabled ? 'Yes' : 'No', s.status
+    ]);
+    
+    let csv = headers.join(',') + '\n';
+    rows.forEach(row => {
+        csv += row.map(cell => `"${String(cell || '').replace(/"/g, '""')}"`).join(',') + '\n';
+    });
+    
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.href = url;
+    link.setAttribute('download', `staff_export_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    alert('Staff data exported successfully!');
+}
+
+// Import staff from CSV
+function importStaffFromCSV() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.csv';
+    input.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const text = event.target.result;
+            const lines = text.split(/\r?\n/);
+            const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
+            
+            let imported = 0;
+            let errors = 0;
+            
+            for (let i = 1; i < lines.length; i++) {
+                if (!lines[i].trim()) continue;
+                
+                const values = [];
+                let inQuote = false;
+                let current = '';
+                for (let char of lines[i]) {
+                    if (char === '"') {
+                        inQuote = !inQuote;
+                    } else if (char === ',' && !inQuote) {
+                        values.push(current.trim());
+                        current = '';
+                    } else {
+                        current += char;
+                    }
+                }
+                values.push(current.trim());
+                
+                if (values.length >= 7) {
+                    const newStaff = {
+                        id: values[0] ? values[0].replace(/"/g, '') : `IMP${Date.now()}_${i}`,
+                        title: values[1] ? values[1].replace(/"/g, '') : '',
+                        firstName: values[2] ? values[2].replace(/"/g, '') : '',
+                        otherNames: values[3] ? values[3].replace(/"/g, '') : '',
+                        dept: values[4] ? values[4].replace(/"/g, '') : 'Tutors',
+                        designation: values[5] ? values[5].replace(/"/g, '') : '',
+                        email: values[6] ? values[6].replace(/"/g, '') : '',
+                        phone: values[7] ? values[7].replace(/"/g, '') : '',
+                        nationalId: values[8] ? values[8].replace(/"/g, '') : '',
+                        gender: values[9] ? values[9].replace(/"/g, '') : '',
+                        bankName: values[10] ? values[10].replace(/"/g, '') : '',
+                        bankAcc: values[11] ? values[11].replace(/"/g, '') : '',
+                        shif: values[12] ? values[12].replace(/"/g, '') : '',
+                        nsrf: values[13] ? values[13].replace(/"/g, '') : '',
+                        taxPin: values[14] ? values[14].replace(/"/g, '') : '',
+                        loginEnabled: values[15] === 'Yes',
+                        status: 'active',
+                        createdAt: new Date().toISOString()
+                    };
+                    
+                    if (newStaff.firstName && newStaff.email) {
+                        // Check if staff ID already exists
+                        const exists = staffRecords.some(s => s.id === newStaff.id);
+                        if (!exists) {
+                            staffRecords.push(newStaff);
+                            imported++;
+                        } else {
+                            errors++;
+                        }
+                    } else {
+                        errors++;
+                    }
+                } else {
+                    errors++;
+                }
+            }
+            
+            localStorage.setItem('nchsm_staff_records', JSON.stringify(staffRecords));
+            updateStaffStats();
+            renderStaffTable();
+            
+            alert(`Import completed!\n✅ Imported: ${imported}\n⚠️ Skipped/Duplicates: ${errors}`);
+        };
+        reader.readAsText(file);
+    };
+    input.click();
+}
+
+// Initialize staff section when tab is shown
+function initStaffManagement() {
+    console.log('📋 Initializing Staff Management...');
+    loadAllStaff();
+    
+    // Setup event listeners for filters
+    const searchInput = document.getElementById('staffSearchInput');
+    if (searchInput) {
+        searchInput.addEventListener('keyup', filterStaffTable);
+    }
+    
+    const deptFilter = document.getElementById('departmentFilter');
+    if (deptFilter) {
+        deptFilter.addEventListener('change', filterStaffTable);
+    }
+    
+    const statusFilter = document.getElementById('statusFilter');
+    if (statusFilter) {
+        statusFilter.addEventListener('change', filterStaffTable);
+    }
+}
+
+// Make functions globally available
+window.loadAllStaff = loadAllStaff;
+window.openAddStaffModal = openAddStaffModal;
+window.closeStaffModal = closeStaffModal;
+window.saveStaff = saveStaff;
+window.editStaff = editStaff;
+window.deleteStaff = deleteStaff;
+window.filterStaffTable = filterStaffTable;
+window.exportStaffToCSV = exportStaffToCSV;
+window.importStaffFromCSV = importStaffFromCSV;
+window.initStaffManagement = initStaffManagement;
+
+console.log('✅ Staff Management module loaded');
 // =====================================================
 // INITIALIZE THE APPLICATION - ONLY ONE EVENT LISTENER
 // =====================================================
