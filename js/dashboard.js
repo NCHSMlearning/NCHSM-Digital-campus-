@@ -321,36 +321,41 @@ class DashboardModule {
         this.metrics.nurseiq = { progress: 0, accuracy: 0, questions: 0 };
     }
 }
-    async updateExamsMetric() {
-        let upcomingText = 'No upcoming exams';
+   async updateExamsMetric() {
+    let upcomingText = 'No upcoming exams';
+    
+    try {
+        if (!this.userProfile) return;
         
-        try {
-            if (!this.userProfile) return;
-            
-            const today = new Date().toISOString().split('T')[0];
-            
-            const { data: exams, error } = await this.sb
-                .from('exams_with_courses')
-                .select('exam_name, exam_date')
-                .eq('program_type', this.userProfile.program)
-                .gte('exam_date', today)
-                .order('exam_date', { ascending: true })
-                .limit(1);
-            
-            if (error) throw error;
-            
-            if (exams && exams.length > 0) {
-                const examDate = new Date(exams[0].exam_date).toLocaleDateString();
-                upcomingText = `${exams[0].exam_name} - ${examDate}`;
-            }
-            
-        } catch (error) {
-            console.error('Exams error:', error);
+        const today = new Date().toISOString().split('T')[0];
+        
+        const { data: exams, error } = await this.sb
+            .from('exams_with_courses')
+            .select('exam_name, exam_date')
+            .eq('program_type', this.userProfile.program)
+            .gte('exam_date', today)
+            .order('exam_date', { ascending: true })
+            .limit(1);
+        
+        if (error) throw error;
+        
+        if (exams && exams.length > 0) {
+            const examDate = new Date(exams[0].exam_date).toLocaleDateString();
+            upcomingText = `${exams[0].exam_name} - ${examDate}`;
         }
         
-        this.metrics.exams = upcomingText;
+    } catch (error) {
+        console.error('Exams error:', error);
     }
     
+    this.metrics.exams = upcomingText;
+    
+    // ========== ADD THIS LINE TO UPDATE UI ==========
+    const upcomingExamEl = document.getElementById('dashboard-upcoming-exam');
+    if (upcomingExamEl) {
+        upcomingExamEl.innerText = upcomingText;
+    }
+}
     async loadXPMetrics() {
         const attendancePoints = (this.metrics.attendance.verified || 0) * 10;
         const nurseIQPoints = this.metrics.nurseiq.questions || 0;
