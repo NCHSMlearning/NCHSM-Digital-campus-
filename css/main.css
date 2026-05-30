@@ -5504,3 +5504,329 @@ p {
         font-size: 1rem;
     }
 }
+/* ============================================
+   MODERN DASHBOARD STYLES
+   ============================================ */
+
+.dashboard-container {
+    max-width: 550px;
+    margin: 0 auto;
+    padding-bottom: 30px;
+}
+
+.welcome h1 {
+    font-size: 24px;
+    font-weight: 800;
+    background: linear-gradient(135deg, #1e293b, #4f46e5);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    margin-bottom: 6px;
+}
+
+.welcome p {
+    font-size: 14px;
+    color: #475569;
+}
+
+.stats-row {
+    background: white;
+    border-radius: 20px;
+    padding: 14px 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 16px 0;
+    border: 1px solid #edf2f7;
+}
+
+.stats-row .label {
+    font-size: 12px;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.progress-bg {
+    background: #e2e8f0;
+    border-radius: 20px;
+    height: 8px;
+    width: 130px;
+    margin-top: 6px;
+}
+
+.progress-fill {
+    background: #4f46e5;
+    width: 0%;
+    height: 100%;
+    border-radius: 20px;
+    transition: width 0.3s;
+}
+
+.announcement {
+    background: #eff6ff;
+    border-left: 5px solid #2563eb;
+    border-radius: 18px;
+    padding: 14px;
+    margin: 16px 0;
+}
+
+.announcement-title {
+    font-weight: 700;
+    font-size: 12px;
+    color: #1e40af;
+    margin-bottom: 4px;
+}
+
+.announcement-text {
+    font-size: 14px;
+    color: #1f2937;
+}
+
+.section-title {
+    font-size: 18px;
+    font-weight: 700;
+    margin: 18px 0 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.attendance-card {
+    background: white;
+    border-radius: 24px;
+    padding: 18px;
+    margin-bottom: 12px;
+    border: 1px solid #edf2f7;
+}
+
+.attendance-percent {
+    font-size: 42px;
+    font-weight: 800;
+}
+
+.attendance-critical { color: #dc2626; }
+.attendance-warning { color: #f59e0b; }
+.attendance-good { color: #10b981; }
+
+.warning-badge {
+    background: #fef2f2;
+    padding: 6px 12px;
+    border-radius: 40px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #b91c1c;
+}
+
+.vp-row {
+    display: flex;
+    gap: 24px;
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid #eef2ff;
+}
+
+.vp-number {
+    font-size: 24px;
+    font-weight: 800;
+}
+
+.verified-number { color: #10b981; }
+.pending-number { color: #f97316; }
+
+.points-hint {
+    font-size: 10px;
+    color: #94a3b8;
+    margin-top: 10px;
+}
+
+.mini-cards {
+    display: flex;
+    gap: 12px;
+    margin: 12px 0;
+    flex-wrap: wrap;
+}
+
+.mini-card {
+    flex: 1;
+    min-width: 100px;
+    background: white;
+    border-radius: 20px;
+    padding: 14px;
+    text-align: center;
+    border: 1px solid #edf2f7;
+    cursor: pointer;
+}
+
+.mini-card-value {
+    font-size: 28px;
+    font-weight: 800;
+    margin: 8px 0 4px;
+}
+
+.mini-label {
+    font-size: 12px;
+    color: #64748b;
+}
+
+.mini-sub {
+    font-size: 10px;
+    color: #94a3b8;
+}
+
+.achievements-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin: 12px 0;
+}
+
+.achieve-item {
+    background: #f8fafc;
+    border-radius: 16px;
+    padding: 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.points-badge-sm {
+    background: #fef9c3;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 10px;
+    font-weight: 700;
+    display: inline-block;
+    margin-top: 4px;
+}
+
+.leaderboard-card {
+    background: white;
+    border-radius: 24px;
+    padding: 16px;
+    margin: 16px 0;
+    border: 1px solid #edf2f7;
+}
+
+.leaderboard-entry {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid #f0f2f5;
+}
+
+.user-avatar {
+    width: 40px;
+    height: 40px;
+    background: #eef2ff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+}
+
+.user-info {
+    flex: 2;
+}
+
+.user-stats {
+    font-size: 11px;
+    color: #64748b;
+}
+
+.timetable-tabs {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin: 12px 0;
+}
+
+.week-btn {
+    background: #f1f5f9;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 40px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.week-btn.active {
+    background: #4f46e5;
+    color: white;
+}
+
+.action-card {
+    background: #fffbeb;
+    border-left: 4px solid #f59e0b;
+    border-radius: 18px;
+    padding: 14px;
+    margin: 12px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+}
+
+.action-card.alert {
+    border-left-color: #ef4444;
+    background: #fef2f2;
+}
+
+.action-content {
+    flex: 1;
+}
+
+.action-content strong {
+    font-size: 14px;
+}
+
+.action-content p {
+    font-size: 12px;
+    color: #6b7280;
+    margin: 0;
+}
+
+.action-btn {
+    background: #fef3c7;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 40px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.footer-meta {
+    text-align: center;
+    font-size: 11px;
+    color: #94a3b8;
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid #e5e7eb;
+}
+
+@media (max-width: 480px) {
+    .achievements-grid {
+        grid-template-columns: 1fr;
+    }
+    .stats-row {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .attendance-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    .action-card {
+        flex-direction: column;
+        text-align: center;
+    }
+    .action-btn {
+        width: 100%;
+    }
+}
