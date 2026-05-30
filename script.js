@@ -5038,7 +5038,146 @@ function showEventDetails(event) {
     if (existingModal) existingModal.remove();
     document.body.insertAdjacentHTML('beforeend', modalHtml);
 }
+// Add single event function
+window.addSingleEvent = async function() {
+    const title = document.getElementById('singleEventTitle')?.value;
+    const date = document.getElementById('singleEventDate')?.value;
+    const startTime = document.getElementById('singleEventStart')?.value;
+    const endTime = document.getElementById('singleEventEnd')?.value;
+    const venue = document.getElementById('singleEventVenue')?.value;
+    const type = document.getElementById('singleEventType')?.value;
+    const details = document.getElementById('singleEventDetails')?.value;
+    const program = document.getElementById('singleEventProgram')?.value;
+    const block = document.getElementById('singleEventBlock')?.value;
+    
+    if (!title || !date || !startTime) {
+        alert('Please fill required fields: Title, Date, Start Time');
+        return;
+    }
+    
+    const { error } = await sb.from('calendar_events').insert([{
+        event_name: title,
+        event_date: date,
+        start_time: startTime + ':00',
+        end_time: endTime ? endTime + ':00' : null,
+        venue: venue,
+        type: type,
+        description: details || '',
+        target_program: program || 'General',
+        target_block: block || 'General',
+        organizer: 'Admin'
+    }]);
+    
+    if (error) {
+        alert('Error: ' + error.message);
+    } else {
+        alert('✅ Event added to calendar!');
+        document.getElementById('singleEventTitle').value = '';
+        document.getElementById('singleEventVenue').value = '';
+        document.getElementById('singleEventDetails').value = '';
+        if (typeof renderFullCalendar === 'function') renderFullCalendar();
+    }
+};
 
+// Create weekly schedule function
+window.createWeeklySchedule = async function() {
+    const day = parseInt(document.getElementById('weeklyDay')?.value);
+    const startTime = document.getElementById('weeklyStartTime')?.value;
+    const endTime = document.getElementById('weeklyEndTime')?.value;
+    const course = document.getElementById('weeklyCourse')?.value;
+    const venue = document.getElementById('weeklyVenue')?.value;
+    const startDate = new Date(document.getElementById('weeklyStartDate')?.value);
+    const endDate = new Date(document.getElementById('weeklyEndDate')?.value);
+    const program = document.getElementById('weeklyProgram')?.value;
+    const block = document.getElementById('weeklyBlock')?.value;
+    
+    if (!course || !startDate || !endDate || !startTime) {
+        alert('Please fill all required fields');
+        return;
+    }
+    
+    const events = [];
+    let currentDate = new Date(startDate);
+    
+    while (currentDate <= endDate) {
+        if (currentDate.getDay() === day) {
+            events.push({
+                event_name: course,
+                event_date: currentDate.toISOString().split('T')[0],
+                start_time: startTime + ':00',
+                end_time: endTime + ':00',
+                venue: venue || '',
+                type: 'CLASS',
+                target_program: program || 'General',
+                target_block: block || 'General',
+                organizer: 'Weekly Schedule'
+            });
+        }
+        currentDate.setDate(currentDate.getDate() + 1);
+    }
+    
+    if (events.length === 0) {
+        alert('No dates found matching the selected day in the date range');
+        return;
+    }
+    
+    const { error } = await sb.from('calendar_events').insert(events);
+    
+    if (error) {
+        alert('Error: ' + error.message);
+    } else {
+        alert(`✅ Added ${events.length} class sessions to calendar!`);
+        if (typeof renderFullCalendar === 'function') renderFullCalendar();
+    }
+};
+
+// Show upload method function
+window.showUploadMethod = function(method) {
+    const excelDiv = document.getElementById('excelUploadMethod');
+    const singleDiv = document.getElementById('singleEventMethod');
+    const bulkDiv = document.getElementById('bulkScheduleMethod');
+    const excelBtn = document.getElementById('excelTabBtn');
+    const singleBtn = document.getElementById('singleTabBtn');
+    const bulkBtn = document.getElementById('bulkTabBtn');
+    
+    if (excelDiv) excelDiv.style.display = method === 'excel' ? 'block' : 'none';
+    if (singleDiv) singleDiv.style.display = method === 'single' ? 'block' : 'none';
+    if (bulkDiv) bulkDiv.style.display = method === 'bulk' ? 'block' : 'none';
+    
+    // Update button styles
+    if (excelBtn) {
+        excelBtn.style.background = method === 'excel' ? '#4C1D95' : '#e5e7eb';
+        excelBtn.style.color = method === 'excel' ? 'white' : '#374151';
+    }
+    if (singleBtn) {
+        singleBtn.style.background = method === 'single' ? '#4C1D95' : '#e5e7eb';
+        singleBtn.style.color = method === 'single' ? 'white' : '#374151';
+    }
+    if (bulkBtn) {
+        bulkBtn.style.background = method === 'bulk' ? '#4C1D95' : '#e5e7eb';
+        bulkBtn.style.color = method === 'bulk' ? 'white' : '#374151';
+    }
+    
+    // Update block dropdown for single event
+    if (method === 'single') {
+        const programSelect = document.getElementById('singleEventProgram');
+        const blockSelect = document.getElementById('singleEventBlock');
+        if (programSelect && blockSelect) {
+            updateBlockTermOptions('singleEventProgram', 'singleEventBlock');
+        }
+    }
+    
+    if (method === 'bulk') {
+        const programSelect = document.getElementById('weeklyProgram');
+        const blockSelect = document.getElementById('weeklyBlock');
+        if (programSelect && blockSelect) {
+            programSelect.addEventListener('change', function() {
+                updateBlockTermOptions('weeklyProgram', 'weeklyBlock');
+            });
+            updateBlockTermOptions('weeklyProgram', 'weeklyBlock');
+        }
+    }
+};
 // =====================================================
 // TIMETABLE UPLOAD FUNCTIONS (Supports Excel, CSV, Word, PDF)
 // =====================================================
