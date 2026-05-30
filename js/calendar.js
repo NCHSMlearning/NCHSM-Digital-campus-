@@ -1,9 +1,13 @@
-// calendar.js - UPDATED FOR STATS IN HEADERS
+// calendar.js - UPDATED WITH TIMETABLE INSIDE CALENDAR TAB
 // ============================================
 
 let cachedCalendarEvents = [];
 let isLoadingCalendar = false;
 let eventsLastLoaded = null;
+
+// Timetable variables
+let calendarTimetableData = [];
+let calendarCurrentBlock = null;
 
 document.addEventListener('DOMContentLoaded', function() {
     console.log('📅 Calendar: Initializing...');
@@ -18,6 +22,7 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
             if (!isLoadingCalendar) {
                 loadAcademicCalendar();
+                loadCalendarTimetable(); // Load timetable when tab opens
             }
         });
     }
@@ -30,6 +35,7 @@ document.addEventListener('DOMContentLoaded', function() {
         setTimeout(() => {
             if (!eventsLastLoaded || Date.now() - eventsLastLoaded > 30000) {
                 loadAcademicCalendar();
+                loadCalendarTimetable();
             }
         }, 300);
     }
@@ -62,16 +68,305 @@ function setupCalendarEventListeners() {
     // Setup refresh button
     const refreshBtn = document.getElementById('refresh-calendar');
     if (refreshBtn) {
-        refreshBtn.addEventListener('click', loadAcademicCalendar);
+        refreshBtn.addEventListener('click', function() {
+            loadAcademicCalendar();
+            loadCalendarTimetable();
+        });
     }
     
     // Setup refresh from empty state
     const refreshEmptyBtn = document.getElementById('refresh-calendar-empty');
     if (refreshEmptyBtn) {
-        refreshEmptyBtn.addEventListener('click', loadAcademicCalendar);
+        refreshEmptyBtn.addEventListener('click', function() {
+            loadAcademicCalendar();
+            loadCalendarTimetable();
+        });
     }
     
     console.log('✅ Calendar event listeners setup complete');
+}
+
+// ========== TIMETABLE FUNCTIONS ==========
+async function loadCalendarTimetable() {
+    console.log('📅 Loading timetable in Calendar tab...');
+    
+    const container = document.getElementById('timetable-container');
+    const loadingDiv = document.getElementById('timetable-loading');
+    const emptyDiv = document.getElementById('timetable-empty');
+    const weekButtonsDiv = document.getElementById('week-buttons');
+    
+    if (!container) return;
+    
+    // Show loading
+    if (loadingDiv) loadingDiv.style.display = 'block';
+    if (container) container.style.display = 'none';
+    if (emptyDiv) emptyDiv.style.display = 'none';
+    
+    try {
+        // Get student's block
+        let studentBlock = null;
+        
+        if (window.currentUserProfile?.block) {
+            studentBlock = window.currentUserProfile.block;
+        } else if (window.db?.currentUserProfile?.block) {
+            studentBlock = window.db.currentUserProfile.block;
+        } else {
+            const supabase = window.db?.supabase || window.supabase;
+            if (supabase) {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user) {
+                    const { data: profile } = await supabase
+                        .from('consolidated_user_profiles_table')
+                        .select('block')
+                        .eq('user_id', user.id)
+                        .single();
+                    studentBlock = profile?.block;
+                }
+            }
+        }
+        
+        if (!studentBlock) {
+            if (loadingDiv) loadingDiv.style.display = 'none';
+            if (emptyDiv) emptyDiv.style.display = 'block';
+            return;
+        }
+        
+        calendarCurrentBlock = studentBlock;
+        
+        // Update block title in timetable section
+        const blockTitleSpan = document.getElementById('timetable-block-title');
+        if (blockTitleSpan) blockTitleSpan.textContent = studentBlock;
+        
+        // Fetch timetable
+        const supabase = window.db?.supabase || window.supabase;
+        if (!supabase) throw new Error('No database connection');
+        
+        const { data: timetable, error } = await supabase
+            .from('timetables')
+            .select('*')
+            .eq('block', studentBlock)
+            .order('week_number', { ascending: true })
+            .order('day_of_week', { ascending: true })
+            .order('start_time', { ascending: true });
+        
+        if (error || !timetable || timetable.length === 0) {
+            if (loadingDiv) loadingDiv.style.display = 'none';
+            if (emptyDiv) emptyDiv.style.display = 'block';
+            return;
+        }
+        
+        calendarTimetableData = timetable;
+        
+        // Update class count
+        const classCountSpan = document.getElementById('class-count-display');
+        if (classCountSpan) classCountSpan.textContent = `${timetable.length} total classes`;
+        
+        // Get unique weeks and create buttons
+        const uniqueWeeks = [...new Set(timetable.map(item => item.week_number))].sort((a, b) => a - b);
+        
+        if (weekButtonsDiv) {
+            weekButtonsDiv.innerHTML = uniqueWeeks.map(week => `
+                <button class="week-btn-calendar" data-week="${week}">Week ${week}</button>
+            `).join('');
+            
+            // Add click handlers
+            weekButtonsDiv.querySelectorAll('.week-btn-calendar').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const week = parseInt(btn.dataset.week);
+                    weekButtonsDiv.querySelectorAll('.week-btn-calendar').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    renderCalendarTimetable(week);
+                });
+            });
+            
+            // Activate first week by default
+            if (uniqueWeeks.length > 0) {
+                const firstBtn = weekButtonsDiv.querySelector('.week-btn-calendar');
+                if (firstBtn) firstBtn.classList.add('active');
+                renderCalendarTimetable(uniqueWeeks[0]);
+            }
+        }
+        
+        // Hide loading, show container
+        if (loadingDiv) loadingDiv.style.display = 'none';
+        if (container) container.style.display = 'block';
+        if (emptyDiv) emptyDiv.style.display = 'none';
+        
+        console.log(`✅ Timetable loaded: ${timetable.length} entries for ${studentBlock}`);
+        
+    } catch (error) {
+        console.error('Error loading timetable:', error);
+        if (loadingDiv) loadingDiv.style.display = 'none';
+        if (emptyDiv) emptyDiv.style.display = 'block';
+    }
+}
+
+function renderCalendarTimetable(weekNumber) {
+    const container = document.getElementById('timetable-container');
+    if (!container) return;
+    
+    const filteredData = calendarTimetableData.filter(item => item.week_number === weekNumber);
+    
+    if (filteredData.length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 30px; color: #9ca3af;">
+                <i class="fas fa-calendar-week" style="font-size: 36px;"></i>
+                <p style="margin-top: 10px;">No classes scheduled for Week ${weekNumber}</p>
+            </div>
+        `;
+        return;
+    }
+    
+    // Group by day
+    const daysOrder = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+    const shortDayNames = { monday: 'Mon', tuesday: 'Tue', wednesday: 'Wed', thursday: 'Thu', friday: 'Fri' };
+    
+    const grouped = {};
+    daysOrder.forEach(day => { grouped[day] = []; });
+    
+    filteredData.forEach(cls => {
+        if (grouped[cls.day_of_week]) {
+            grouped[cls.day_of_week].push(cls);
+        }
+    });
+    
+    // Sort by time within each day
+    Object.keys(grouped).forEach(day => {
+        grouped[day].sort((a, b) => a.start_time.localeCompare(b.start_time));
+    });
+    
+    // Build HTML
+    let html = `
+        <style>
+            .timetable-compact {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 13px;
+                min-width: 600px;
+            }
+            .timetable-compact th {
+                background: #4C1D95;
+                color: white;
+                padding: 12px;
+                text-align: left;
+                font-weight: 600;
+                font-size: 12px;
+            }
+            .timetable-compact td {
+                padding: 10px 12px;
+                border-bottom: 1px solid #f0f0f0;
+                vertical-align: top;
+            }
+            .timetable-compact tr:hover td {
+                background: #faf5ff;
+            }
+            .timetable-day {
+                font-weight: 600;
+                width: 70px;
+                background: #faf5ff;
+            }
+            .timetable-time {
+                font-family: monospace;
+                font-size: 11px;
+                white-space: nowrap;
+                width: 80px;
+            }
+            .badge-tiny {
+                display: inline-block;
+                padding: 2px 6px;
+                border-radius: 4px;
+                font-size: 9px;
+                margin-left: 6px;
+                font-weight: 600;
+            }
+            .badge-exam { background: #fef3c7; color: #d97706; }
+            .badge-holiday { background: #fee2e2; color: #dc2626; }
+            .badge-pending { background: #f3f4f6; color: #6b7280; }
+            .week-btn-calendar {
+                padding: 6px 20px;
+                border-radius: 40px;
+                border: none;
+                background: transparent;
+                cursor: pointer;
+                font-size: 13px;
+                font-weight: 500;
+                color: #64748b;
+                transition: all 0.2s;
+            }
+            .week-btn-calendar:hover {
+                background: rgba(76, 29, 149, 0.1);
+                color: #4C1D95;
+            }
+            .week-btn-calendar.active {
+                background: #4C1D95;
+                color: white;
+            }
+        </style>
+        <div style="overflow-x: auto;">
+            <table class="timetable-compact">
+                <thead>
+                    <tr>
+                        <th>Day</th>
+                        <th>Time</th>
+                        <th>Course</th>
+                        <th>Lecturer</th>
+                        <th>Venue</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    
+    for (const day of daysOrder) {
+        const classes = grouped[day];
+        
+        if (classes.length === 0) {
+            html += `
+                <tr>
+                    <td class="timetable-day">${shortDayNames[day]}</td>
+                    <td colspan="4" style="color: #9ca3af; text-align: center;">— No classes —</td>
+                </tr>
+            `;
+        } else {
+            classes.forEach((cls, idx) => {
+                let badges = '';
+                if (cls.is_exam) badges += '<span class="badge-tiny badge-exam">Exam</span>';
+                if (cls.is_holiday) badges += '<span class="badge-tiny badge-holiday">Holiday</span>';
+                if (cls.pending_allocation) badges += '<span class="badge-tiny badge-pending">Pending</span>';
+                
+                const startTime = cls.start_time?.substring(0, 5) || 'TBA';
+                const endTime = cls.end_time?.substring(0, 5) || 'TBA';
+                
+                let courseDisplay = cls.session_name || cls.course_name;
+                if (courseDisplay && courseDisplay.length > 50) {
+                    courseDisplay = courseDisplay.substring(0, 47) + '...';
+                }
+                
+                let lecturerName = cls.lecturer_name || 'TBA';
+                if (lecturerName !== 'TBA' && lecturerName !== '—') {
+                    const parts = lecturerName.split(' ');
+                    lecturerName = parts.slice(0, 2).join(' ');
+                }
+                
+                html += `
+                    <tr class="${cls.is_holiday ? 'holiday-row' : ''}">
+                        ${idx === 0 ? `<td class="timetable-day" rowspan="${classes.length}">${shortDayNames[day]}</td>` : ''}
+                        <td class="timetable-time">${startTime} - ${endTime}</td>
+                        <td><strong>${escapeHtml(courseDisplay)}</strong>${badges}</td>
+                        <td>${escapeHtml(lecturerName)}</td>
+                        <td>${escapeHtml(cls.venue || 'TBD')}</td>
+                    </tr>
+                `;
+            });
+        }
+    }
+    
+    html += `
+                </tbody>
+            </table>
+        </div>
+    `;
+    
+    container.innerHTML = html;
 }
 
 // ========== MAIN LOAD FUNCTION ==========
@@ -133,7 +428,7 @@ async function loadAcademicCalendar() {
             status: getEventStatus(event.date, event.startTime)
         }));
         
-        // Update header stats (stats are IN the headers now)
+        // Update header stats
         updateHeaderStats(cachedCalendarEvents);
         
         // Hide loading, show table container
@@ -218,9 +513,6 @@ function filterCalendarEvents(filterType) {
     
     console.log(`📋 Showing ${filteredEvents.length} events for filter: ${filterType}`);
     
-    // Update header stats for filtered events
-    updateHeaderStats(filteredEvents);
-    
     if (filteredEvents.length === 0) {
         showEmptyState(`No ${filterType === 'all' ? '' : filterType + ' '}events found`);
     } else {
@@ -242,11 +534,9 @@ function renderCalendarTable(events, tableBody) {
         const isToday = event.date === today;
         const eventDate = new Date(event.date + 'T' + (event.startTime || '00:00:00'));
         const isPast = eventDate < now;
-        const isUpcoming = !isPast;
         
         html += `
             <tr class="calendar-event-row" data-id="${event.id}" ${isPast ? 'style="opacity: 0.8;"' : ''}>
-                <!-- Column 1: Date & Time -->
                 <td class="date-col">
                     <div class="date-time-container">
                         <div class="event-date">
@@ -260,13 +550,11 @@ function renderCalendarTable(events, tableBody) {
                         ${event.venue ? `
                             <div class="event-venue">
                                 <i class="fas fa-map-marker-alt"></i>
-                                ${event.venue}
+                                ${escapeHtml(event.venue)}
                             </div>
                         ` : ''}
                     </div>
                 </td>
-                
-                <!-- Column 2: Event Details -->
                 <td>
                     <div class="event-details">
                         <h3 class="event-title">
@@ -278,26 +566,22 @@ function renderCalendarTable(events, tableBody) {
                         ${event.organizer ? `
                             <div class="event-organizer">
                                 <i class="fas fa-user"></i>
-                                ${event.organizer}
+                                ${escapeHtml(event.organizer)}
                             </div>
                         ` : ''}
                         <div class="event-source">
                             <i class="fas fa-database"></i>
                             Source: ${event.source}
-                            ${event.courseName ? ` • Course: ${event.courseName}` : ''}
+                            ${event.courseName ? ` • Course: ${escapeHtml(event.courseName)}` : ''}
                         </div>
                     </div>
                 </td>
-                
-                <!-- Column 3: Type -->
                 <td class="type-col">
                     <span class="event-type-badge" style="background-color: ${event.color}15; color: ${event.color}; border-color: ${event.color}30;">
                         <i class="${event.icon}"></i>
                         ${event.type}
                     </span>
                 </td>
-                
-                <!-- Column 4: Status -->
                 <td class="status-col">
                     ${isPast ? 
                         '<span class="status-badge status-completed"><i class="fas fa-check-circle"></i> Completed</span>' :
@@ -322,6 +606,11 @@ function renderCalendarTable(events, tableBody) {
     });
     
     console.log('✅ Table rendered');
+}
+
+function showEventDetails(event) {
+    // Simple alert for now - can be expanded to a modal
+    alert(`📅 ${event.title}\n\n📆 Date: ${event.formattedDate}\n⏰ Time: ${event.formattedTime}\n📍 Venue: ${event.venue || 'TBD'}\n📝 Details: ${event.details || 'No additional details'}`);
 }
 
 // ========== DATABASE FUNCTIONS ==========
@@ -421,7 +710,7 @@ async function fetchEventsFromDatabase() {
                     source: 'exams_with_courses',
                     program: exam.program_type || userProgram,
                     block: exam.block_term || userBlock,
-                    course: exam.course_name,
+                    courseName: exam.course_name,
                     status: exam.status,
                     duration: exam.duration_minutes
                 });
@@ -429,105 +718,6 @@ async function fetchEventsFromDatabase() {
         }
     } catch (error) {
         console.error('exams_with_courses error:', error.message);
-    }
-    
-    // ===== 3. Fetch clinical_names =====
-    try {
-        console.log('🏥 Fetching clinical_names...');
-        const { data: clinicalData, error } = await supabase
-            .from('clinical_names')
-            .select('*')
-            .eq('program', userProgram)
-            .eq('intake_year', userIntakeYear)
-            .eq('block_term', userBlock);
-        
-        if (error) throw error;
-        
-        if (clinicalData && clinicalData.length > 0) {
-            console.log(`✅ Found ${clinicalData.length} clinical rotations`);
-            
-            // Create clinical events for next 14 days
-            const today = new Date();
-            for (let i = 0; i < 14; i++) {
-                const date = new Date(today);
-                date.setDate(today.getDate() + i);
-                
-                // Skip weekends
-                if (date.getDay() === 0 || date.getDay() === 6) continue;
-                
-                clinicalData.forEach(clinical => {
-                    events.push({
-                        id: `clinical_${clinical.id}_${i}`,
-                        date: date.toISOString().split('T')[0],
-                        title: `Clinical: ${clinical.clinical_area_name}`,
-                        type: 'Clinical',
-                        details: `Clinical rotation in ${clinical.clinical_area_name}`,
-                        venue: clinical.clinical_area_name,
-                        startTime: '08:00:00',
-                        endTime: '17:00:00',
-                        organizer: 'Clinical Department',
-                        color: '#10B981',
-                        icon: 'fas fa-hospital',
-                        source: 'clinical_names',
-                        program: clinical.program,
-                        block: clinical.block_term,
-                        clinicalArea: clinical.clinical_area_name
-                    });
-                });
-            }
-        }
-    } catch (error) {
-        console.error('clinical_names error:', error.message);
-    }
-    
-    // ===== 4. Create class events from courses =====
-    try {
-        console.log('📚 Creating class events from courses...');
-        const { data: coursesData, error } = await supabase
-            .from('courses')
-            .select('*')
-            .or(`target_program.eq.${userProgram},target_program.is.null`)
-            .or(`block.eq.${userBlock},block.is.null`)
-            .limit(10);
-        
-        if (error) throw error;
-        
-        if (coursesData && coursesData.length > 0) {
-            console.log(`✅ Found ${coursesData.length} courses for class schedule`);
-            
-            // Create class events for next 7 days
-            const today = new Date();
-            for (let i = 0; i < 7; i++) {
-                const date = new Date(today);
-                date.setDate(today.getDate() + i);
-                
-                // Skip weekends
-                if (date.getDay() === 0 || date.getDay() === 6) continue;
-                
-                coursesData.forEach(course => {
-                    events.push({
-                        id: `course_${course.id}_${i}`,
-                        date: date.toISOString().split('T')[0],
-                        title: `${course.course_name || course.name || 'Course'} Class`,
-                        type: 'Class',
-                        details: course.description || `${course.code || course.unit_code || ''}`,
-                        venue: 'Lecture Hall',
-                        startTime: '09:00:00',
-                        endTime: '12:00:00',
-                        organizer: 'Lecturer',
-                        color: '#3B82F6',
-                        icon: 'fas fa-chalkboard-teacher',
-                        source: 'courses',
-                        program: course.target_program || userProgram,
-                        block: course.block || userBlock,
-                        courseName: course.course_name || course.name,
-                        courseCode: course.code || course.unit_code
-                    });
-                });
-            }
-        }
-    } catch (error) {
-        console.error('courses error:', error.message);
     }
     
     console.log(`🎯 Total raw events: ${events.length}`);
@@ -566,7 +756,8 @@ function showEmptyState(message = 'No scheduled events found') {
     const tableContainer = document.getElementById('calendar-table-container');
     
     if (emptyState) {
-        emptyState.querySelector('h3').textContent = message;
+        const titleEl = emptyState.querySelector('h3');
+        if (titleEl) titleEl.textContent = message;
         emptyState.style.display = 'flex';
     }
     if (tableContainer) {
@@ -589,7 +780,7 @@ function showErrorState(message) {
                     <i class="fas fa-exclamation-triangle" style="font-size: 2rem; margin-bottom: 10px;"></i>
                     <p style="font-weight: 600; margin-bottom: 10px;">Error Loading Calendar</p>
                     <p style="margin-bottom: 15px; font-size: 0.9rem;">${escapeHtml(message)}</p>
-                    <button onclick="loadAcademicCalendar()" 
+                    <button onclick="location.reload()" 
                             style="padding: 8px 16px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer;">
                         <i class="fas fa-redo"></i> Try Again
                     </button>
@@ -657,5 +848,6 @@ function escapeHtml(str) {
 // ========== GLOBAL FUNCTIONS ==========
 window.loadAcademicCalendar = loadAcademicCalendar;
 window.filterCalendarEvents = filterCalendarEvents;
+window.loadCalendarTimetable = loadCalendarTimetable;
 
-console.log('📅 calendar.js loaded - UPDATED FOR STATS IN HEADERS');
+console.log('📅 calendar.js loaded - WITH TIMETABLE INSIDE CALENDAR TAB');
