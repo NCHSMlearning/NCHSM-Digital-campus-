@@ -268,24 +268,29 @@
     <div class="loading-slim"><i class="fas fa-spinner fa-spin"></i> Loading...</div>
 </div>
 
-        <!-- TIMETABLE -->
-        <div class="section-title">📅 My Class Schedule - <span id="timetable-block-title">Block 4</span></div>
-        <div class="timetable-tabs">
-            <button class="week-btn active" data-week="all">📅 All Weeks</button>
-            <button class="week-btn" data-week="1">Week 1</button>
-            <button class="week-btn" data-week="2">Week 2</button>
-            <button class="week-btn" data-week="3">Week 3</button>
-            <button class="week-btn" data-week="4">Week 4</button>
-        </div>
-        <div class="timetable-card">
-            <div id="timetable-loading" class="loading-state"><div class="loading-spinner"></div><p>Loading your class schedule...</p></div>
-            <div id="timetable-container" style="display: none;"></div>
-            <div id="timetable-empty" class="empty-state" style="display: none;">
-                <i class="fas fa-calendar-times"></i>
-                <h3>No Timetable Available</h3>
-                <p>Your class schedule for <strong id="empty-block-name">Block 4</strong> is not yet available.</p>
-            </div>
-        </div>
+       <!-- TIMETABLE -->
+<div class="section-title">📅 My Class Schedule - <span id="timetable-block-title">Loading...</span></div>
+<div class="timetable-tabs">
+    <button class="week-btn active" data-week="all">📅 All Weeks</button>
+    <button class="week-btn" data-week="1">Week 1</button>
+    <button class="week-btn" data-week="2">Week 2</button>
+    <button class="week-btn" data-week="3">Week 3</button>
+    <button class="week-btn" data-week="4">Week 4</button>
+    <button class="week-btn" data-week="5">Week 5</button>
+    <button class="week-btn" data-week="6">Week 6</button>
+</div>
+<div class="timetable-card">
+    <div id="timetable-loading" class="loading-state">
+        <div class="loading-spinner"></div>
+        <p>Loading your class schedule...</p>
+    </div>
+    <div id="timetable-container" style="display: none;"></div>
+    <div id="timetable-empty" class="empty-state" style="display: none;">
+        <i class="fas fa-calendar-times"></i>
+        <h3>No Timetable Available</h3>
+        <p id="empty-message-text">Your class schedule is not yet available.</p>
+    </div>
+</div>
 
         <!-- ACTION REQUIRED -->
         <div class="section-title">⚠️ Action Required</div>
