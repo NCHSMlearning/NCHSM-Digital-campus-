@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
     <style>
+        /* ========== COMPLETE STYLES MATCHING SUPER ADMIN ========== */
         * {
             margin: 0;
             padding: 0;
@@ -162,17 +163,19 @@
         /* Forms & Tables */
         .inline-form {
             display: flex;
-            gap: 10px;
+            gap: 12px;
             flex-wrap: wrap;
-            margin-bottom: 20px;
+            margin-bottom: 25px;
             padding: 20px;
             background: #f8f9fa;
             border-radius: 12px;
+            align-items: flex-end;
         }
         .inline-form input, .inline-form select, .inline-form textarea {
-            padding: 10px;
+            padding: 10px 14px;
             border: 1px solid #ddd;
-            border-radius: 6px;
+            border-radius: 8px;
+            font-size: 14px;
         }
         .toolbar {
             display: flex;
@@ -195,10 +198,16 @@
         .btn-action {
             background: #4C1D95;
             color: white;
-            padding: 8px 16px;
-            border-radius: 6px;
+            padding: 8px 20px;
+            border-radius: 8px;
             border: none;
             cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        .btn-action:hover {
+            background: #6d28d9;
+            transform: translateY(-1px);
         }
         .btn-sm {
             padding: 5px 12px;
@@ -209,6 +218,8 @@
         .btn-edit { background: #3b82f6; color: white; border: none; }
         .btn-delete { background: #ef4444; color: white; border: none; }
         .btn-success { background: #059669; color: white; }
+        .btn-danger { background: #dc2626; color: white; }
+        .btn-secondary { background: #6b7280; color: white; }
         table {
             width: 100%;
             border-collapse: collapse;
@@ -250,6 +261,7 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
+        /* Unit Cards */
         .units-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
@@ -259,9 +271,8 @@
         .unit-card {
             background: white;
             border: 1px solid #e5e7eb;
-            border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 12px;
+            border-radius: 12px;
+            padding: 16px;
             transition: all 0.2s;
         }
         .unit-card:hover {
@@ -274,8 +285,8 @@
         }
         .unit-meta {
             display: flex;
-            gap: 15px;
-            margin-top: 8px;
+            gap: 12px;
+            margin-top: 10px;
             font-size: 12px;
             color: #6b7280;
             flex-wrap: wrap;
@@ -289,7 +300,7 @@
             display: flex;
             gap: 10px;
             flex-wrap: wrap;
-            margin-bottom: 20px;
+            margin: 20px 0;
         }
         .block-btn {
             padding: 8px 16px;
@@ -297,11 +308,18 @@
             border: 1px solid #e5e7eb;
             border-radius: 20px;
             cursor: pointer;
+            transition: all 0.2s;
         }
         .block-btn.active {
             background: #4C1D95;
             color: white;
             border-color: #4C1D95;
+        }
+        .unit-form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
         }
         .modal {
             display: none;
@@ -412,14 +430,14 @@
 
         <main class="main">
             <header>
-                <h1 id="welcomeHeader">Welcome, Admin!</h1>
+                <h1>Welcome, System Administrator!</h1>
                 <p class="subtitle">Manage students, courses, and daily operations</p>
             </header>
 
             <!-- DASHBOARD SECTION -->
             <section id="dashboard" class="tab-content active">
                 <div id="student-welcome-message">
-                    <div class="alert alert-info" style="background: #e0e7ff; padding: 15px; border-radius: 12px; margin-bottom: 20px;">
+                    <div style="background: #e0e7ff; padding: 15px; border-radius: 12px; margin-bottom: 20px;">
                         <i class="fas fa-spinner fa-spin"></i> Loading welcome message...
                     </div>
                 </div>
@@ -496,15 +514,15 @@
                 <h2><i class="fas fa-clock"></i> Pending Approvals</h2>
                 <div class="table-responsive">
                     <table class="data-table" id="pending-table">
-                        <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Program</th><th>Registered</th><th>Actions</th></tr></thead>
+                        <thead></tr><th>Name</th><th>Email</th><th>Role</th><th>Program</th><th>Registered</th><th>Actions</th></tr></thead>
                         <tbody id="pending-table-body">
                             <tr><td colspan="6"><div class="loading-spinner"></div> Loading pending...<\/td><\/tr>
                         </tbody>
-                    <table>
+                    </table>
                 </div>
             </section>
 
-            <!-- ENROLL ACCOUNTS SECTION -->
+            <!-- ENROLL ACCOUNTS SECTION - COMPLETE -->
             <section id="enroll" class="tab-content">
                 <h2><i class="fas fa-user-plus"></i> Enroll Accounts</h2>
                 <form id="add-account-form" class="inline-form">
@@ -518,7 +536,7 @@
                     </select>
                     <input type="text" id="account-phone" placeholder="Phone">
                     
-                    <!-- COMPLETE PROGRAM DROPDOWN WITH ALL TVET PROGRAMS -->
+                    <!-- Complete Program Dropdown -->
                     <select id="account-program" required>
                         <option value="">-- Select Program --</option>
                         <option value="KRCHN">🎓 KRCHN Nursing</option>
@@ -573,11 +591,14 @@
                 <h3>Enrolled Students</h3>
                 <div class="toolbar">
                     <button onclick="exportTableToCSV('students-table', 'Enrolled_Students.csv')" class="btn-action">Export CSV</button>
+                    <button onclick="loadStudents()" class="btn-action">Refresh</button>
                 </div>
                 <div class="table-responsive">
                     <table class="data-table" id="students-table">
-                        <thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Program</th><th>Status</th><th>Actions</th></td></thead>
-                        <tbody id="students-table-body"><tr><td colspan="6"><div class="loading-spinner"></div> Loading...<\/td><\/tr><\/tbody>
+                        <thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Program</th><th>Status</th><th>Actions</th></tr></thead>
+                        <tbody id="students-table-body">
+                            <tr><td colspan="6"><div class="loading-spinner"></div> Loading students...<\/td><\/tr>
+                        </tbody>
                     </table>
                 </div>
             </section>
@@ -610,15 +631,7 @@
                         <option value="2027">2027</option>
                         <option value="2028">2028</option>
                     </select>
-                    <select id="course-block">
-                        <option value="Introductory">Introductory</option>
-                        <option value="Block 1">Block 1</option>
-                        <option value="Block 2">Block 2</option>
-                        <option value="Block 3">Block 3</option>
-                        <option value="Block 4">Block 4</option>
-                         <option value="Block 5">Block 5</option>
-                        <option value="Final">Final</option>
-                    </select>
+                    <select id="course-block"><option value="Introductory">Introductory</option><option value="Block 1">Block 1</option><option value="Block 2">Block 2</option><option value="Block 3">Block 3</option><option value="Block 4">Block 4</option><option value="Final">Final</option></select>
                     <button type="submit">Add Course</button>
                 </form>
                 
@@ -643,49 +656,41 @@
                 
                 <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin-bottom: 25px;">
                     <h3><i class="fas fa-plus"></i> Add New Unit</h3>
-                    <div class="inline-form" style="flex-direction: column;">
-                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                            <input type="text" id="new_unit_code" placeholder="Unit Code" style="flex:1">
-                            <input type="text" id="new_unit_name" placeholder="Unit Name" style="flex:2">
-                            <select id="new_unit_program">
-                                <option value="KRCHN">KRCHN</option>
+                    <div class="unit-form-row">
+                        <input type="text" id="new_unit_code" placeholder="Unit Code" required>
+                        <input type="text" id="new_unit_name" placeholder="Unit Name" required>
+                        <select id="new_unit_program">
+                            <option value="KRCHN">KRCHN</option>
+                            <optgroup label="TVET">
                                 <option value="DPOTT">DPOTT</option><option value="DCH">DCH</option>
                                 <option value="DHRIT">DHRIT</option><option value="DSL">DSL</option>
                                 <option value="DSW">DSW</option><option value="DCJS">DCJS</option>
                                 <option value="DHSS">DHSS</option><option value="DICT">DICT</option>
-                                <option value="DME">DME</option>
-                                <option value="CPOTT">CPOTT</option><option value="CCH">CCH</option>
-                                <option value="CHRIT">CHRIT</option><option value="CPC">CPC</option>
-                                <option value="CSL">CSL</option><option value="CSW">CSW</option>
-                                <option value="CCJS">CCJS</option><option value="CAG">CAG</option>
-                                <option value="CHSS">CHSS</option><option value="CICT">CICT</option>
-                                <option value="ACH">ACH</option><option value="AAG">AAG</option>
-                                <option value="ASW">ASW</option><option value="CCA">CCA</option>
-                                <option value="PTE">PTE</option>
-                            </select>
-                            <select id="new_unit_block">
-                                <option value="Introductory">Introductory</option>
-                               <option value="Introductory">Introductory</option>
-                        <option value="Block 1">Block 1</option>
-                        <option value="Block 2">Block 2</option>
-                        <option value="Block 3">Block 3</option>
-                        <option value="Block 4">Block 4</option>
-                         <option value="Block 5">Block 5</option>
-                                <option value="Final">Final</option>
-                            </select>
-                            <input type="number" id="new_unit_year" placeholder="Year" value="2025" style="width:80px">
-                        </div>
-                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                            <input type="number" id="new_unit_credits" placeholder="Credits" value="3" style="width:100px">
-                            <input type="number" id="new_unit_hours" placeholder="Hours" value="0" style="width:100px">
-                            <select id="new_unit_type">
-                                <option value="Core">Core Unit</option>
-                                <option value="Elective">Elective Unit</option>
-                            </select>
-                            <input type="text" id="new_unit_prerequisites" placeholder="Prerequisites" style="flex:1">
-                            <button onclick="addNewUnitRecord()" class="btn-action">Add Unit</button>
-                        </div>
+                                <option value="DME">DME</option><option value="CPOTT">CPOTT</option>
+                                <option value="CCH">CCH</option><option value="CHRIT">CHRIT</option>
+                                <option value="CPC">CPC</option><option value="CSL">CSL</option>
+                                <option value="CSW">CSW</option><option value="CCJS">CCJS</option>
+                                <option value="CAG">CAG</option><option value="CHSS">CHSS</option>
+                                <option value="CICT">CICT</option><option value="ACH">ACH</option>
+                                <option value="AAG">AAG</option><option value="ASW">ASW</option>
+                                <option value="CCA">CCA</option><option value="PTE">PTE</option>
+                            </optgroup>
+                        </select>
+                        <select id="new_unit_block">
+                            <option value="Introductory">Introductory</option>
+                            <option value="Block 1">Block 1</option>
+                            <option value="Block 2">Block 2</option>
+                            <option value="Block 3">Block 3</option>
+                            <option value="Block 4">Block 4</option>
+                            <option value="Final">Final</option>
+                        </select>
+                        <input type="number" id="new_unit_year" placeholder="Year" value="2025" min="2024" max="2028">
+                        <input type="number" id="new_unit_credits" placeholder="Credits" value="3">
+                        <input type="number" id="new_unit_hours" placeholder="Hours" value="0">
+                        <select id="new_unit_type"><option value="Core">Core</option><option value="Elective">Elective</option></select>
+                        <input type="text" id="new_unit_prerequisites" placeholder="Prerequisites">
                     </div>
+                    <button onclick="addNewUnitRecord()" class="btn-action">Add Unit</button>
                 </div>
                 
                 <div class="filter-bar">
@@ -705,7 +710,6 @@
                     <button class="block-btn" data-block="Block 2" onclick="filterUnitsByBlock('Block 2')">Block 2</button>
                     <button class="block-btn" data-block="Block 3" onclick="filterUnitsByBlock('Block 3')">Block 3</button>
                     <button class="block-btn" data-block="Block 4" onclick="filterUnitsByBlock('Block 4')">Block 4</button>
-                     <button class="block-btn" data-block="Block 5" onclick="filterUnitsByBlock('Block 5')">Block 5</button>
                     <button class="block-btn" data-block="Final" onclick="filterUnitsByBlock('Final')">Final</button>
                 </div>
                 
@@ -725,6 +729,12 @@
                 </div>
                 <div class="filter-bar">
                     <input type="text" id="admin_ticket_search" placeholder="Search tickets...">
+                    <select id="admin_ticket_status_filter">
+                        <option value="all">All Status</option>
+                        <option value="open">Open</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="closed">Closed</option>
+                    </select>
                     <button onclick="loadAdminTickets()" class="btn-action">Refresh</button>
                 </div>
                 <div class="table-responsive">
@@ -748,7 +758,7 @@
                 <div class="table-responsive">
                     <table class="data-table">
                         <thead><tr><th>Title</th><th>Date</th><th>Program</th><th>Actions</th></tr></thead>
-                        <tbody id="sessions-list"><tr><td colspan="4">Loading...<\/td><\/tr><\/tbody>
+                        <tbody id="sessions-list"><tr><td colspan="4">Loading sessions...<\/td><\/tr><\/tbody>
                     </table>
                 </div>
             </section>
@@ -763,32 +773,58 @@
                 <div class="table-responsive">
                     <table class="data-table">
                         <thead><tr><th>Student</th><th>Date</th><th>Status</th><th>Location</th></tr></thead>
-                        <tbody id="attendance-table"><tr><td colspan="4">Loading...<\/td><\/tr><\/tbody>
+                        <tbody id="attendance-table"><tr><td colspan="4">Loading attendance...<\/td><\/tr><\/tbody>
                     </table>
                 </div>
             </section>
 
-            <!-- EXAMS SECTION -->
+            <!-- EXAMS SECTION - COMPLETE -->
             <section id="cats" class="tab-content">
                 <h2><i class="fas fa-file-alt"></i> CATS & Exams</h2>
                 <form id="add-exam-form" class="inline-form">
-                    <select id="exam_type"><option value="CAT">CAT</option><option value="EXAM">Exam</option></select>
+                    <select id="exam_type" required>
+                        <option value="CAT">CAT</option>
+                        <option value="EXAM">Final Exam</option>
+                        <option value="CAT_1">CAT 1</option>
+                        <option value="CAT_2">CAT 2</option>
+                        <option value="ASSIGNMENT">Assignment</option>
+                    </select>
                     <input type="text" id="exam_title" placeholder="Title" required>
                     <input type="date" id="exam_date" required>
-                    <select id="exam_program"><option value="KRCHN">KRCHN</option><option value="TVET">TVET</option></select>
-                    <button type="submit">Add</button>
+                    <select id="exam_program" required>
+                        <option value="KRCHN">KRCHN</option>
+                        <option value="TVET">TVET</option>
+                    </select>
+                    <button type="submit">Add Assessment</button>
                 </form>
+                
+                <div class="toolbar">
+                    <input type="text" id="exam-search" placeholder="Search assessments...">
+                    <button onclick="exportTableToCSV('exams-table', 'Assessments_Export.csv')" class="btn-action">Export CSV</button>
+                    <button onclick="loadExamList()" class="btn-action">Refresh</button>
+                </div>
                 <div class="table-responsive">
-                    <table class="data-table">
-                        <thead><tr><th>Type</th><th>Title</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead>
-                        <tbody id="exams-list"><tr><td colspan="5">Loading...<\/td><\/tr><\/tbody>
-                    </table>
+                    <table class="data-table" id="exams-table">
+                        <thead>
+                            <tr>
+                                <th>Type</th>
+                                <th>Title</th>
+                                <th>Date</th>
+                                <th>Program</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="exams-list">
+                            <tr><td colspan="6"><div class="loading-spinner"></div> Loading exams...<\/td><\/tr>
+                        </tbody>
+                    <table>
                 </div>
             </section>
 
             <!-- RESOURCES SECTION -->
             <section id="resources" class="tab-content">
-                <h2><i class="fas fa-file-upload"></i> Resources</h2>
+                <h2><i class="fas fa-file-upload"></i> Resource Center</h2>
                 <form id="upload-resource-form" class="inline-form">
                     <input type="text" id="resource_title" placeholder="Title" required>
                     <select id="resource_program"><option value="KRCHN">KRCHN</option><option value="TVET">TVET</option></select>
@@ -797,8 +833,8 @@
                 </form>
                 <div class="table-responsive">
                     <table class="data-table">
-                        <thead></td><th>Title</th><th>Program</th><th>Date</th><th>Actions</th> </thead>
-                        <tbody id="resources-list"><tr><td colspan="4">Loading...<\/td><\/tr><\/tbody>
+                        <thead><tr><th>Title</th><th>Program</th><th>Date</th><th>Actions</th></tr></thead>
+                        <tbody id="resources-list"><tr><td colspan="4">Loading resources...<\/td><\/tr><\/tbody>
                     </table>
                 </div>
             </section>
@@ -815,7 +851,7 @@
                 <div class="table-responsive">
                     <table class="data-table">
                         <thead><tr><th>Subject</th><th>Date</th><th>Actions</th></tr></thead>
-                        <tbody id="messages-list"><tr><td colspan="3">Loading...<\/td><\/tr><\/tbody>
+                        <tbody id="messages-list"><tr><td colspan="3">Loading messages...<\/td><\/tr><\/tbody>
                     </table>
                 </div>
             </section>
@@ -885,6 +921,14 @@
         <div class="modal-content">
             <div class="modal-header"><h3>Ticket Details</h3><span class="close" onclick="closeModal('ticketDetailModal')">&times;</span></div>
             <div class="modal-body" id="ticketDetailBody"></div>
+        </div>
+    </div>
+
+    <div id="mapModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('mapModal')">&times;</span>
+            <h2>Geo Location Map</h2>
+            <div id="mapbox-map" style="height: 400px;"></div>
         </div>
     </div>
 
