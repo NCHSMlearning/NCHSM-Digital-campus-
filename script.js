@@ -3954,35 +3954,197 @@ async function deleteNotification(id) {
     }
 }
 
+// =====================================================
+// OFFICIAL ANNOUNCEMENT - SAVES TO announcements TABLE
+// =====================================================
+
 async function saveOfficialAnnouncement() {
-    const textarea = $('announcement-body');
-    const content = textarea.value.trim();
-    const feedback = $('announcement-feedback');
+    const textarea = document.getElementById('announcement-body');
+    const titleInput = document.getElementById('announcement-title');
+    const programSelect = document.getElementById('announcement-program');
+    const blockSelect = document.getElementById('announcement-block');
+    const intakeSelect = document.getElementById('announcement-intake');
+    const statusSelect = document.getElementById('announcement-status');
+    
+    const content = textarea?.value?.trim();
+    const title = titleInput?.value?.trim() || 'Official Announcement';
+    const program = programSelect?.value || 'KRCHN';
+    const targetBlock = blockSelect?.value || 'All';
+    const intakeYear = intakeSelect?.value;
+    const isActive = statusSelect?.value === 'true';
+    
+    const feedback = document.getElementById('announcement-feedback');
 
     if (!content) {
-        feedback.textContent = 'Announcement cannot be empty.';
+        if (feedback) {
+            feedback.textContent = '❌ Announcement cannot be empty.';
+            feedback.style.color = 'red';
+        }
         return;
     }
 
     try {
-        const { error } = await sb.from('notifications').insert({
-            target_program: null,
-            subject: 'Official Announcement',
-            message: content,
-            message_type: 'system',
-            sender_id: currentUserProfile.id
-        });
+        // SAVE TO announcements TABLE (matches student dashboard)
+        const { data, error } = await sb
+            .from('announcements')
+            .insert({
+                title: title,
+                message: content,
+                content: content,
+                program: program,
+                target_block: targetBlock,
+                intake_year: intakeYear === 'All' ? null : parseInt(intakeYear),
+                is_active: isActive,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            })
+            .select();
 
         if (error) throw error;
 
-        feedback.textContent = 'Announcement saved successfully!';
-        textarea.value = '';
+        if (feedback) {
+            feedback.textContent = '✅ Announcement saved successfully! Students will see it now.';
+            feedback.style.color = 'green';
+        }
+        
+        // Clear form
+        if (textarea) textarea.value = '';
+        if (titleInput) titleInput.value = 'Official Announcement';
+        
+        // Refresh announcements list if function exists
+        if (typeof loadAnnouncementsList === 'function') {
+            await loadAnnouncementsList();
+        }
+        
+        // Log audit
+        await logAudit('ANNOUNCEMENT_ADD', `Added announcement: ${title} for ${program} - ${targetBlock}`, data?.[0]?.id, 'SUCCESS');
+        
+        setTimeout(() => {
+            if (feedback) feedback.textContent = '';
+        }, 3000);
+        
     } catch (err) {
-        console.error(err);
-        feedback.textContent = 'Failed to save announcement: ' + err.message;
+        console.error('Error saving announcement:', err);
+        if (feedback) {
+            feedback.textContent = '❌ Failed to save: ' + err.message;
+            feedback.style.color = 'red';
+        }
+        await logAudit('ANNOUNCEMENT_ADD', `Failed: ${err.message}`, null, 'FAILURE');
     }
 }
 
+// =====================================================
+// LOAD ANNOUNCEMENTS LIST FOR ADMIN
+// =====================================================
+
+async function loadAnnouncementsList() {
+    const container = document.getElementById('announcements-list');
+    if (!container) return;
+    
+    container.innerHTML = '<div class="loading-spinner"></div> Loading announcements...';
+    
+    try {
+        const { data, error } = await sb
+            .from('announcements')
+            .select('*')
+            .order('created_at', { ascending: false });
+        
+        if (error) throw error;
+        
+        if (!data || data.length === 0) {
+            container.innerHTML = '<p>No announcements yet. Create your first announcement above.</p>';
+            return;
+        }
+        
+        container.innerHTML = data.map(ann => `
+            <div class="announcement-item" style="border:1px solid #e5e7eb; padding: 12px; margin-bottom: 10px; border-radius: 8px; background: ${ann.is_active ? '#fff' : '#fef2f2'}">
+                <div style="display: flex; justify-content: space-between; align-items: start;">
+                    <div>
+                        <strong style="font-size: 14px;">📢 ${escapeHtml(ann.title || 'Announcement')}</strong>
+                        <p style="margin: 8px 0; font-size: 13px;">${escapeHtml(ann.message)}</p>
+                        <small style="color: #6b7280;">
+                            Program: ${ann.program || 'All'} | 
+                            Block: ${ann.target_block || 'All'} | 
+                            Intake: ${ann.intake_year || 'All'} |
+                            Status: ${ann.is_active ? '🟢 Active' : '🔴 Inactive'}
+                        </small><br/>
+                        <small>Created: ${new Date(ann.created_at).toLocaleString()}</small>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button onclick="toggleAnnouncementStatus('${ann.id}', ${!ann.is_active})" class="btn-sm" style="background: ${ann.is_active ? '#f59e0b' : '#10b981'}; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer;">
+                            ${ann.is_active ? 'Deactivate' : 'Activate'}
+                        </button>
+                        <button onclick="deleteAnnouncement('${ann.id}')" class="btn-sm" style="background: #ef4444; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer;">
+                            Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+        
+    } catch (error) {
+        console.error('Error loading announcements:', error);
+        container.innerHTML = '<p style="color: red;">Error loading announcements</p>';
+    }
+}
+
+// =====================================================
+// TOGGLE ANNOUNCEMENT STATUS
+// =====================================================
+
+async function toggleAnnouncementStatus(id, newStatus) {
+    try {
+        const { error } = await sb
+            .from('announcements')
+            .update({ 
+                is_active: newStatus, 
+                updated_at: new Date().toISOString() 
+            })
+            .eq('id', id);
+        
+        if (error) throw error;
+        
+        await loadAnnouncementsList();
+        showAdminToast(`Announcement ${newStatus ? 'activated' : 'deactivated'}!`, 'success');
+        
+    } catch (error) {
+        console.error('Error:', error);
+        showAdminToast('Failed to update status', 'error');
+    }
+}
+
+// =====================================================
+// DELETE ANNOUNCEMENT
+// =====================================================
+
+async function deleteAnnouncement(id) {
+    if (!confirm('Permanently delete this announcement?')) return;
+    
+    try {
+        const { error } = await sb
+            .from('announcements')
+            .delete()
+            .eq('id', id);
+        
+        if (error) throw error;
+        
+        await loadAnnouncementsList();
+        showAdminToast('Announcement deleted!', 'success');
+        
+    } catch (error) {
+        console.error('Error:', error);
+        showAdminToast('Failed to delete', 'error');
+    }
+}
+
+// =====================================================
+// MAKE FUNCTIONS GLOBAL
+// =====================================================
+
+window.saveOfficialAnnouncement = saveOfficialAnnouncement;
+window.loadAnnouncementsList = loadAnnouncementsList;
+window.toggleAnnouncementStatus = toggleAnnouncementStatus;
+window.deleteAnnouncement = deleteAnnouncement;
 /*******************************************************
  * 15. RESOURCES MANAGEMENT - UNIFIED VERSION
  * Handles BOTH Learning Materials AND Past Papers
