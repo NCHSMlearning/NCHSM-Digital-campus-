@@ -1,4 +1,4 @@
-// js/ui.js - COMPLETE WORKING VERSION WITH FIXED LAST LOGIN
+// js/ui.js - COMPLETE WORKING VERSION WITH FIXED DASHBOARD ON REFRESH
 class UIModule {
     constructor() {
         console.log('🚀 Initializing UIModule...');
@@ -117,6 +117,25 @@ class UIModule {
         this.setupOfflineIndicator();
         this.setupMobileMenuVisibility();
         this.loadLastTab();
+        
+        // ========== FORCE DASHBOARD VISIBLE AFTER LOAD ==========
+        setTimeout(() => {
+            const dashboard = document.getElementById('dashboard');
+            if (dashboard) {
+                dashboard.style.display = 'block';
+                dashboard.classList.add('active');
+                console.log('✅ Dashboard forced visible after load');
+            }
+            
+            // Ensure other tabs are hidden
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                if (tab.id !== 'dashboard') {
+                    tab.style.display = 'none';
+                    tab.classList.remove('active');
+                }
+            });
+        }, 200);
+        
         await this.delay(800);
         await this.loadInitialUserData();
         await this.delay(800);
@@ -629,10 +648,39 @@ class UIModule {
         return this.validTabs.includes(tabId); 
     }
     
+    // ========== FIXED: ALWAYS SHOW DASHBOARD ON PAGE LOAD ==========
     loadLastTab() {
-        const lastTab = localStorage.getItem(this.storageKey);
-        if (lastTab && this.isValidTab(lastTab)) {
-            this.currentTab = lastTab;
+        // ALWAYS show dashboard on page load/refresh
+        // Do NOT restore previous tab - always start at dashboard
+        this.currentTab = 'dashboard';
+        localStorage.setItem(this.storageKey, 'dashboard');
+        
+        // Force dashboard to be active
+        const dashboard = document.getElementById('dashboard');
+        if (dashboard) {
+            dashboard.style.display = 'block';
+            dashboard.classList.add('active');
+            console.log('📊 Dashboard activated on page load');
+        }
+        
+        // Hide all other tabs
+        if (this.tabs) {
+            this.tabs.forEach(tab => {
+                if (tab.id !== 'dashboard') {
+                    tab.style.display = 'none';
+                    tab.classList.remove('active');
+                }
+            });
+        }
+        
+        // Update navigation active state
+        if (this.navLinks) {
+            this.navLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('data-tab') === 'dashboard') {
+                    link.classList.add('active');
+                }
+            });
         }
     }
     
@@ -673,7 +721,6 @@ class UIModule {
                 if (dbUserData) {
                     window.currentUserProfile = dbUserData;
                     this.updateAllUserInfo(dbUserData);
-                    // Just load last login, don't update
                     await this.loadLastLogin();
                     await this.updateProfilePhoto(dbUserData);
                 } else if (userProfile) {
@@ -831,7 +878,6 @@ class UIModule {
             if (this.headerLastLogin) {
                 if (data && data.last_login) {
                     const lastLoginDate = new Date(data.last_login);
-                    // Show actual time (e.g., "7:00 PM")
                     const timeString = lastLoginDate.toLocaleTimeString('en-US', { 
                         hour: 'numeric', 
                         minute: '2-digit',
@@ -902,14 +948,12 @@ class UIModule {
         try {
             if (!userId || !this.supabase) return false;
             
-            // Use localStorage to track last update (persists across page refreshes)
             const lastUpdateKey = `nchsm_last_update_${userId}`;
             const lastUpdateDate = localStorage.getItem(lastUpdateKey);
             const today = new Date().toDateString();
             
             console.log(`📅 Last update recorded: ${lastUpdateDate}, Today: ${today}`);
             
-            // Only update if never updated OR it's a new day
             if (lastUpdateDate !== today) {
                 console.log('🆕 New day - updating last login...');
                 localStorage.setItem(lastUpdateKey, today);
@@ -1061,4 +1105,4 @@ document.addEventListener('DOMContentLoaded', () => { if (!window.ui) window.ui 
 document.addEventListener('appReady', (e) => { if (window.ui && e.detail?.userProfile) window.ui.updateAllUserInfo(e.detail.userProfile); });
 document.addEventListener('profilePhotoUpdated', (e) => { if (window.ui && e.detail?.photoUrl) window.ui.updateProfilePhoto(); });
 
-console.log('✅ UI Module loaded successfully with fixed last login!');
+console.log('✅ UI Module loaded successfully with dashboard always showing on refresh!');
