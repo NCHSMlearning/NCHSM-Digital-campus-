@@ -1060,415 +1060,153 @@
     <script src="./js/exam-card.js"></script>
     <script src="./js/academic-reports.js"></script>
 
-    <!-- MAIN NAVIGATION HANDLER -->
-    <script>
-    (function() {
-        'use strict';
+   <!-- MAIN NAVIGATION HANDLER -->
+<script>
+(function() {
+    'use strict';
+    
+    console.log('🎯 MAIN NAVIGATION HANDLER');
+    
+    function showTab(tabId) {
+        console.log('📂 Opening tab:', tabId);
         
-        console.log('🎯 MAIN NAVIGATION HANDLER');
+        if (window.innerWidth <= 768) {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('overlay');
+            if (sidebar) sidebar.classList.remove('active', 'open');
+            if (overlay) overlay.classList.remove('active');
+            document.body.style.overflow = '';
+        }
         
-        function showTab(tabId) {
-            console.log('📂 Opening tab:', tabId);
-            
-            if (window.innerWidth <= 768) {
-                const sidebar = document.getElementById('sidebar');
-                const overlay = document.getElementById('overlay');
-                if (sidebar) sidebar.classList.remove('active', 'open');
-                if (overlay) overlay.classList.remove('active');
-                document.body.style.overflow = '';
+        document.querySelectorAll('.tab-content').forEach(tab => {
+            tab.style.display = 'none';
+            tab.classList.remove('active');
+        });
+        
+        const target = document.getElementById(tabId);
+        if (target) {
+            target.style.display = 'block';
+            target.classList.add('active');
+        }
+        
+        document.querySelectorAll('.nav a, .dropdown-submenu a').forEach(link => {
+            link.classList.remove('active');
+            if (link.getAttribute('data-tab') === tabId) {
+                link.classList.add('active');
             }
-            
-            document.querySelectorAll('.tab-content').forEach(tab => {
-                tab.style.display = 'none';
-                tab.classList.remove('active');
-            });
-            
-            const target = document.getElementById(tabId);
-            if (target) {
-                target.style.display = 'block';
-                target.classList.add('active');
+        });
+        
+        localStorage.setItem('nchsm_current_tab', tabId);
+        
+        setTimeout(() => {
+            if (tabId === 'hub-courses' && window.coursesModule?.loadCourses) window.coursesModule.loadCourses();
+            else if (tabId === 'hub-register' && window.unitRegistrationModule?.loadUnits) window.unitRegistrationModule.loadUnits();
+            else if (tabId === 'hub-exam-card' && window.examCardModule?.loadExamCard) window.examCardModule.loadExamCard();
+            else if (tabId === 'academic-reports' && window.academicReportsModule?.loadReports) window.academicReportsModule.loadReports();
+            else if (tabId === 'profile' && window.profileModule?.loadProfile) window.profileModule.loadProfile();
+            else if (tabId === 'dashboard' && window.dashboardModule?.refreshDashboard) window.dashboardModule.refreshDashboard();
+            else if (tabId === 'cats' && window.examsModule?.loadExams) window.examsModule.loadExams();
+            else if (tabId === 'resources' && window.resourcesModule?.loadAllResources) window.resourcesModule.loadAllResources();
+            else if (tabId === 'nurseiq' && window.nurseiqModule?.loadQuestionBankCards) window.nurseiqModule.loadQuestionBankCards();
+        }, 100);
+    }
+    
+    const dropdownParent = document.querySelector('.has-dropdown');
+    const dropdownToggle = document.querySelector('.has-dropdown > a');
+    const dropdownMenu = document.querySelector('.dropdown-submenu');
+    
+    if (dropdownToggle && dropdownMenu) {
+        const newToggle = dropdownToggle.cloneNode(true);
+        dropdownToggle.parentNode.replaceChild(newToggle, dropdownToggle);
+        newToggle.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const isOpen = dropdownParent.classList.contains('open');
+            if (isOpen) {
+                dropdownParent.classList.remove('open');
+                dropdownMenu.style.display = 'none';
+            } else {
+                dropdownParent.classList.add('open');
+                dropdownMenu.style.display = 'block';
             }
-            
-            document.querySelectorAll('.nav a, .dropdown-submenu a').forEach(link => {
-                link.classList.remove('active');
-                if (link.getAttribute('data-tab') === tabId) {
-                    link.classList.add('active');
-                }
-            });
-            
-            localStorage.setItem('nchsm_current_tab', tabId);
-            
-            setTimeout(() => {
-                if (tabId === 'hub-courses' && window.coursesModule?.loadCourses) window.coursesModule.loadCourses();
-                else if (tabId === 'hub-register' && window.unitRegistrationModule?.loadUnits) window.unitRegistrationModule.loadUnits();
-                else if (tabId === 'hub-exam-card' && window.examCardModule?.loadExamCard) window.examCardModule.loadExamCard();
-                else if (tabId === 'academic-reports' && window.academicReportsModule?.loadReports) window.academicReportsModule.loadReports();
-                else if (tabId === 'profile' && window.profileModule?.loadProfile) window.profileModule.loadProfile();
-                else if (tabId === 'dashboard' && window.dashboardModule?.refreshDashboard) window.dashboardModule.refreshDashboard();
-                else if (tabId === 'cats' && window.examsModule?.loadExams) window.examsModule.loadExams();
-                else if (tabId === 'resources' && window.resourcesModule?.loadAllResources) window.resourcesModule.loadAllResources();
-                else if (tabId === 'nurseiq' && window.nurseiqModule?.loadQuestionBankCards) window.nurseiqModule.loadQuestionBankCards();
-            }, 100);
-        }
-        
-        const dropdownParent = document.querySelector('.has-dropdown');
-        const dropdownToggle = document.querySelector('.has-dropdown > a');
-        const dropdownMenu = document.querySelector('.dropdown-submenu');
-        
-        if (dropdownToggle && dropdownMenu) {
-            const newToggle = dropdownToggle.cloneNode(true);
-            dropdownToggle.parentNode.replaceChild(newToggle, dropdownToggle);
-            newToggle.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                const isOpen = dropdownParent.classList.contains('open');
-                if (isOpen) {
-                    dropdownParent.classList.remove('open');
-                    dropdownMenu.style.display = 'none';
-                } else {
-                    dropdownParent.classList.add('open');
-                    dropdownMenu.style.display = 'block';
-                }
-            });
-        }
-        
-        document.querySelectorAll('.dropdown-submenu a[data-tab]').forEach(item => {
-            const tabId = item.getAttribute('data-tab');
-            const newItem = item.cloneNode(true);
-            item.parentNode.replaceChild(newItem, item);
-            newItem.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                if (dropdownParent) {
-                    dropdownParent.classList.remove('open');
-                    if (dropdownMenu) dropdownMenu.style.display = 'none';
-                }
-                showTab(tabId);
-            });
         });
-        
-        const hubLink = document.querySelector('.nav a[data-tab="learning-hub"]');
-        if (hubLink) {
-            const newLink = hubLink.cloneNode(true);
-            hubLink.parentNode.replaceChild(newLink, hubLink);
-            newLink.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                if (window.innerWidth <= 768) {
-                    showTab('hub-courses');
-                } else if (dropdownParent) {
-                    const isOpen = dropdownParent.classList.contains('open');
-                    if (isOpen) {
-                        dropdownParent.classList.remove('open');
-                        if (dropdownMenu) dropdownMenu.style.display = 'none';
-                    } else {
-                        dropdownParent.classList.add('open');
-                        if (dropdownMenu) dropdownMenu.style.display = 'block';
-                    }
-                }
-            });
-        }
-        
-        document.querySelectorAll('.nav a[data-tab]').forEach(link => {
-            if (link.getAttribute('data-tab') === 'learning-hub') return;
-            const tabId = link.getAttribute('data-tab');
-            const newLink = link.cloneNode(true);
-            link.parentNode.replaceChild(newLink, link);
-            newLink.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                showTab(tabId);
-            });
-        });
-        
-        document.querySelectorAll('.stat-card[data-tab]').forEach(card => {
-            const tabId = card.getAttribute('data-tab');
-            const newCard = card.cloneNode(true);
-            card.parentNode.replaceChild(newCard, card);
-            newCard.addEventListener('click', (e) => {
-                e.preventDefault();
-                showTab(tabId);
-            });
-        });
-        
-        document.addEventListener('click', function(e) {
-            if (dropdownParent && !dropdownParent.contains(e.target) && dropdownParent.classList.contains('open')) {
+    }
+    
+    document.querySelectorAll('.dropdown-submenu a[data-tab]').forEach(item => {
+        const tabId = item.getAttribute('data-tab');
+        const newItem = item.cloneNode(true);
+        item.parentNode.replaceChild(newItem, item);
+        newItem.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (dropdownParent) {
                 dropdownParent.classList.remove('open');
                 if (dropdownMenu) dropdownMenu.style.display = 'none';
             }
+            showTab(tabId);
         });
-        
-        const lastTab = localStorage.getItem('nchsm_current_tab');
-        if (lastTab && lastTab !== 'dashboard') {
-            setTimeout(() => showTab(lastTab), 500);
-        }
-        
-        window.showTab = showTab;
-    })();
-    </script>
-    <!-- INITIALIZATION SCRIPT -->
-    <script>
-    window.app = { config: null, supabase: null, db: null, user: null, isInitialized: false };
-    
-    async function initializeApp() {
-        try {
-            console.log('🚀 Starting app initialization...');
-            if (!window.APP_CONFIG) throw new Error('Configuration not loaded.');
-            
-            const config = window.APP_CONFIG;
-            window.app.config = config;
-            
-            if (!config.SUPABASE_URL || config.SUPABASE_URL === '%%SUPABASE_URL%%') throw new Error('SUPABASE_URL not configured');
-            if (!config.SUPABASE_ANON_KEY || config.SUPABASE_ANON_KEY === '%%SUPABASE_ANON_KEY%%') throw new Error('SUPABASE_ANON_KEY not configured');
-            
-            if (typeof window.db === 'undefined') throw new Error('Database module not loaded');
-            
-            const dbInstance = await window.db.initialize();
-            if (!dbInstance) throw new Error('Database initialization failed');
-            
-            console.log('✅ Database initialized');
-            
-            let userSession = null;
-            if (window.db.supabase) {
-                const { data, error } = await window.db.supabase.auth.getSession();
-                if (error) throw error;
-                userSession = data.session;
-            }
-            
-            if (!userSession) {
-                console.log('⚠️ No active session, redirecting...');
-                window.location.href = '/login';
-                return;
-            }
-            
-            window.db.currentUserId = userSession.user.id;
-            await window.db.loadUserProfile();
-            
-            console.log('✅ User authenticated');
-            
-            if (window.db.currentUserId && window.ui && window.ui.recordNewLogin) {
-                await window.ui.recordNewLogin(window.db.currentUserId);
-            }
-            
-            const loadingScreen = document.getElementById('loading-screen');
-            if (loadingScreen) loadingScreen.style.display = 'none';
-            const appContent = document.getElementById('app-content');
-            if (appContent) appContent.style.display = 'block';
-            
-            window.supabase = window.db.supabase;
-            window.currentUserId = window.db.currentUserId;
-            window.currentUserProfile = window.db.currentUserProfile;
-            
-            const welcomeHeader = document.getElementById('welcome-header');
-            if (welcomeHeader && window.db.currentUserProfile?.full_name) {
-                welcomeHeader.textContent = 'Welcome back, ' + window.db.currentUserProfile.full_name + '!';
-            }
-            const headerName = document.getElementById('header-user-name');
-            if (headerName && window.db.currentUserProfile?.full_name) {
-                headerName.textContent = window.db.currentUserProfile.full_name;
-            }
-            if (window.db.currentUserProfile?.full_name) {
-                const nameForAvatar = window.db.currentUserProfile.full_name.replace(/\s+/g, '');
-                const headerPhoto = document.getElementById('header-profile-photo');
-                if (headerPhoto) headerPhoto.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(nameForAvatar)}&background=667eea&color=fff&size=100`;
-            }
-            
-            if (typeof initUI === 'function') initUI();
-            if (typeof initProfileModule === 'function') setTimeout(() => initProfileModule(), 100);
-           if (typeof initDashboardModule === 'function') {
-    setTimeout(() => {
-        window.dashboardModule = initDashboardModule(window.db.supabase);
-        if (window.dashboardModule && window.currentUserId && window.currentUserProfile) {
-            window.dashboardModule.initialize(window.currentUserId, window.currentUserProfile);
-        }
-        // Force dashboard visible
-        const dash = document.getElementById('dashboard');
-        if (dash) {
-            dash.style.display = 'block';
-            dash.classList.add('active');
-        }
-    }, 200);
-}
-            
-            window.app.isInitialized = true;
-            window.app.supabase = window.db.supabase;
-            window.app.user = window.db.currentUserProfile;
-            
-            console.log('✅ Application initialized successfully');
-            document.dispatchEvent(new CustomEvent('appReady', {
-                detail: { userId: window.currentUserId, userProfile: window.currentUserProfile, database: window.db }
-            }));
-            
-        } catch (error) {
-            console.error('❌ Initialization failed:', error);
-            const loadingScreen = document.getElementById('loading-screen');
-            if (loadingScreen) loadingScreen.style.display = 'none';
-            const appContent = document.getElementById('app-content');
-            if (appContent) appContent.style.display = 'block';
-            const welcomeSection = document.getElementById('welcome-section');
-            if (welcomeSection) welcomeSection.innerHTML = '<h2>Application Error</h2><p>' + error.message + '</p><button onclick="location.reload()" class="profile-button">Retry</button>';
-        }
-    }
-    
-    document.addEventListener('DOMContentLoaded', function() {
-        console.log('📱 DOM ready, starting app initialization...');
-        document.querySelectorAll('.tab-content').forEach(tab => tab.style.removeProperty('display'));
-        initializeApp();
     });
-    </script>
-<!-- FORCE UI UPDATE - FIXES DASHBOARD DISPLAY -->
-<script>
-(function forceUIUpdate() {
-    let attempts = 0;
-    const maxAttempts = 30;
     
-    function updateUI() {
-        attempts++;
-        
-        if (window.dashboardModule && window.dashboardModule.metrics) {
-            const m = window.dashboardModule.metrics;
-            
-            // Check if UI already has data
-            const rateEl = document.getElementById('dashboard-attendance-rate');
-            if (rateEl && rateEl.innerText === '--%') {
-                console.log('🔄 Updating dashboard UI...');
-                
-                // Update attendance
-                document.getElementById('dashboard-attendance-rate').innerText = m.attendance.rate + '%';
-                document.getElementById('dashboard-verified-count').innerText = m.attendance.verified;
-                document.getElementById('dashboard-total-count').innerText = m.attendance.total;
-                document.getElementById('dashboard-pending-count').innerText = m.attendance.pending;
-                
-                // Update courses
-                document.getElementById('dashboard-active-courses').innerText = m.courses;
-                
-                // Update exam card
-                document.getElementById('dashboard-exam-status').innerText = m.examCard.eligible ? 'ELIGIBLE' : 'NOT ELIGIBLE';
-                document.getElementById('dashboard-exam-status').style.color = m.examCard.eligible ? '#059669' : '#dc2626';
-                document.getElementById('dashboard-approved-units').innerText = m.examCard.approved;
-                
-                // Update NurseIQ
-                document.getElementById('dashboard-nurseiq-progress').innerText = m.nurseiq.progress + '%';
-                document.getElementById('dashboard-nurseiq-accuracy').innerText = m.nurseiq.accuracy + '%';
-                document.getElementById('dashboard-nurseiq-questions').innerText = m.nurseiq.questions;
-                
-                // Update upcoming exam
-                document.getElementById('dashboard-upcoming-exam').innerText = m.exams || 'No upcoming exams';
-                
-                // Update current block from profile
-                if (window.currentUserProfile) {
-                    document.getElementById('dashboard-current-block-value').innerText = window.currentUserProfile.block || 'Block 4';
-                    document.getElementById('dashboard-program-name').innerText = window.currentUserProfile.program || 'KRCHN';
-                    document.getElementById('dashboard-intake-year').innerText = window.currentUserProfile.intake_year || '2024';
+    const hubLink = document.querySelector('.nav a[data-tab="learning-hub"]');
+    if (hubLink) {
+        const newLink = hubLink.cloneNode(true);
+        hubLink.parentNode.replaceChild(newLink, hubLink);
+        newLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (window.innerWidth <= 768) {
+                showTab('hub-courses');
+            } else if (dropdownParent) {
+                const isOpen = dropdownParent.classList.contains('open');
+                if (isOpen) {
+                    dropdownParent.classList.remove('open');
+                    if (dropdownMenu) dropdownMenu.style.display = 'none';
+                } else {
+                    dropdownParent.classList.add('open');
+                    if (dropdownMenu) dropdownMenu.style.display = 'block';
                 }
-                
-                console.log('✅ Dashboard UI updated!');
-                return true;
             }
-        }
-        
-        if (attempts < maxAttempts) {
-            setTimeout(updateUI, 200);
-        } else {
-            console.log('⚠️ Could not update dashboard UI after 30 attempts');
-        }
-        return false;
+        });
     }
     
-    // Start after page loads
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', function() {
-            setTimeout(updateUI, 500);
+    document.querySelectorAll('.nav a[data-tab]').forEach(link => {
+        if (link.getAttribute('data-tab') === 'learning-hub') return;
+        const tabId = link.getAttribute('data-tab');
+        const newLink = link.cloneNode(true);
+        link.parentNode.replaceChild(newLink, link);
+        newLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            showTab(tabId);
         });
-    } else {
-        setTimeout(updateUI, 500);
-    }
+    });
+    
+    document.querySelectorAll('.stat-card[data-tab]').forEach(card => {
+        const tabId = card.getAttribute('data-tab');
+        const newCard = card.cloneNode(true);
+        card.parentNode.replaceChild(newCard, card);
+        newCard.addEventListener('click', (e) => {
+            e.preventDefault();
+            showTab(tabId);
+        });
+    });
+    
+    document.addEventListener('click', function(e) {
+        if (dropdownParent && !dropdownParent.contains(e.target) && dropdownParent.classList.contains('open')) {
+            dropdownParent.classList.remove('open');
+            if (dropdownMenu) dropdownMenu.style.display = 'none';
+        }
+    });
+    
+    // ========== FIXED: ALWAYS SHOW DASHBOARD ON PAGE LOAD ==========
+    // Clear any stored preference to ensure dashboard shows first
+    localStorage.removeItem('nchsm_current_tab');
+    
+    // Show dashboard after a short delay to ensure DOM is ready
+    setTimeout(() => showTab('dashboard'), 100);
+    
+    window.showTab = showTab;
 })();
-</script>
-    <!-- PWA Service Worker Registration -->
-<script>
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then(registration => {
-        console.log('✅ Service Worker registered successfully:', registration.scope);
-        
-        // Check for updates
-        registration.addEventListener('updatefound', () => {
-          const newWorker = registration.installing;
-          console.log('🔄 New service worker installing...');
-          newWorker.addEventListener('statechange', () => {
-            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              console.log('📱 Update available! Refresh to get latest version.');
-              // Show update notification
-              const toast = document.getElementById('toast');
-              if (toast) {
-                toast.innerHTML = '<i class="fas fa-sync-alt"></i> Update available! Refresh for latest features.';
-                toast.style.display = 'flex';
-                toast.style.background = '#4f46e5';
-                setTimeout(() => {
-                  toast.style.display = 'none';
-                }, 5000);
-              }
-            }
-          });
-        });
-      })
-      .catch(error => {
-        console.log('❌ Service Worker registration failed:', error);
-      });
-  });
-}
-
-// PWA Install Prompt
-let deferredPrompt;
-const installBtn = document.createElement('button');
-
-window.addEventListener('beforeinstallprompt', (e) => {
-  e.preventDefault();
-  deferredPrompt = e;
-  
-  // Create install button
-  installBtn.innerHTML = '<i class="fab fa-windows"></i> Install NCHSM App';
-  installBtn.style.cssText = `
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    background: #4f46e5;
-    color: white;
-    border: none;
-    padding: 12px 20px;
-    border-radius: 50px;
-    font-weight: 600;
-    cursor: pointer;
-    z-index: 10000;
-    font-family: 'Inter', sans-serif;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 14px;
-  `;
-  
-  installBtn.onclick = async () => {
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === 'accepted') {
-        installBtn.style.display = 'none';
-      }
-      deferredPrompt = null;
-    }
-  };
-  
-  document.body.appendChild(installBtn);
-});
-
-// Hide install button if already installed
-window.addEventListener('appinstalled', () => {
-  if (installBtn) installBtn.style.display = 'none';
-  console.log('✅ App installed successfully');
-});
 </script>
 </body>
 </html>
