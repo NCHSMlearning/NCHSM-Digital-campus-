@@ -1,5 +1,6 @@
 // ============================================
 // SECURE LOGIN SCRIPT - HACKER PROTECTED
+// Supports: Students, Admins, SuperAdmins, Staff, Lecturers
 // ============================================
 
 // Create a namespace for our app to avoid conflicts
@@ -36,6 +37,9 @@ window.NCHSMLogin = {
     // Supabase client (will be initialized later)
     supabase: null,
     
+    // Staff records cache
+    staffRecords: [],
+    
     // ============================================
     // INITIALIZATION
     // ============================================
@@ -71,6 +75,9 @@ window.NCHSMLogin = {
         // Initialize Supabase safely
         this.initSupabase();
         
+        // Load staff records for staff login
+        this.loadStaffRecords();
+        
         // Clear sensitive data from URL
         this.clearURLParameters();
         
@@ -78,6 +85,28 @@ window.NCHSMLogin = {
         this.addHoneypot();
         
         console.log('✅ NCHSMLogin initialized securely');
+    },
+    
+    // ============================================
+    // LOAD STAFF RECORDS
+    // ============================================
+    loadStaffRecords: async function() {
+        try {
+            if (!this.supabase) return;
+            
+            const { data, error } = await this.supabase
+                .from('staff_records')
+                .select('id, email, first_name, other_names, department, designation, login_enabled, status, password_hash')
+                .eq('login_enabled', true)
+                .eq('status', 'active');
+            
+            if (!error && data) {
+                this.staffRecords = data;
+                console.log(`📋 Loaded ${this.staffRecords.length} staff records for login`);
+            }
+        } catch (error) {
+            console.error('Error loading staff records:', error);
+        }
     },
     
     // ============================================
@@ -229,7 +258,7 @@ window.NCHSMLogin = {
                         auth: {
                             persistSession: true,
                             autoRefreshToken: true,
-                            detectSessionInUrl: false // Prevent session from URL
+                            detectSessionInUrl: false
                         },
                         db: {
                             schema: 'public'
@@ -351,7 +380,7 @@ window.NCHSMLogin = {
         const trustedDevice = this.state.trustedDevices[deviceId];
         
         if (trustedDevice && new Date(trustedDevice.expires) > new Date()) {
-            const storedUser = localStorage.getItem('currentUserProfile');
+            const storedUser = localStorage.getItem('userProfile');
             if (storedUser) {
                 const profile = JSON.parse(storedUser);
                 this.redirectToDashboard(profile);
@@ -409,7 +438,33 @@ window.NCHSMLogin = {
     },
     
     // ============================================
-    // SECURE LOGIN HANDLER
+    // STAFF LOGIN VERIFICATION
+    // ============================================
+    verifyStaffLogin: async function(identifier, password) {
+        // Find staff by email or ID
+        const staff = this.staffRecords.find(s => 
+            s.email === identifier || s.id === identifier
+        );
+        
+        if (!staff) return null;
+        
+        // Verify password
+        const storedPassword = atob(staff.password_hash);
+        if (storedPassword !== password) return null;
+        
+        return {
+            user_id: staff.id,
+            email: staff.email,
+            full_name: `${staff.first_name} ${staff.other_names || ''}`.trim(),
+            role: staff.designation === 'Lecturer' || staff.designation === 'Senior Lecturer' ? 'lecturer' : 'staff',
+            program: staff.department,
+            is_staff: true,
+            staff_record: staff
+        };
+    },
+    
+    // ============================================
+    // SECURE LOGIN HANDLER (UPDATED for STAFF)
     // ============================================
     handleLogin: async function(e) {
         e.preventDefault();
@@ -419,7 +474,7 @@ window.NCHSMLogin = {
         
         if (this.state.isLoggingIn) return;
         
-        const email = document.getElementById('email').value.trim().toLowerCase();
+        const identifier = document.getElementById('email').value.trim();
         const password = document.getElementById('password').value;
         const errorMsg = document.getElementById('errorMsg');
         const loginButton = document.getElementById('loginButton');
@@ -433,8 +488,8 @@ window.NCHSMLogin = {
             return;
         }
         
-        if (!this.validateEmail(email)) {
-            this.showError(errorMsg, 'Invalid email format');
+        if (!identifier) {
+            this.showError(errorMsg, 'Please enter email or staff ID');
             this.recordFailedAttempt();
             this.addRateLimitRequest();
             return;
@@ -448,7 +503,7 @@ window.NCHSMLogin = {
         }
         
         // Check failed attempts
-        if (this.checkFailedAttempts(email)) {
+        if (this.checkFailedAttempts(identifier)) {
             this.addRateLimitRequest();
             return;
         }
@@ -470,46 +525,58 @@ window.NCHSMLogin = {
             // Add random delay to prevent timing attacks (2-4 seconds)
             await new Promise(resolve => setTimeout(resolve, 2000 + Math.random() * 2000));
             
-            const { data: authData, error: authError } = await this.supabase.auth.signInWithPassword({ 
-                email, 
-                password 
-            });
+            let profileData = null;
+            let isStaff = false;
             
-            if (authError) {
-                this.recordFailedAttempt();
-                
-                // Generic error message - don't reveal if email exists
-                if (authError.message.includes('Invalid login credentials')) {
-                    throw new Error('Invalid email or password');
-                } else if (authError.message.includes('Email not confirmed')) {
-                    throw new Error('Please verify your email');
-                } else {
-                    throw new Error('Login failed. Please try again.');
+            // FIRST: Try staff login if identifier looks like staff ID or email
+            const isStaffId = !identifier.includes('@');
+            if (isStaffId || identifier.includes('@')) {
+                const staffProfile = await this.verifyStaffLogin(identifier, password);
+                if (staffProfile) {
+                    profileData = staffProfile;
+                    isStaff = true;
+                    console.log('✅ Staff login successful');
                 }
             }
             
-            console.log('✅ Authentication successful');
-            
-            this.state.currentUser = {
-                email,
-                userId: authData.user.id,
-                session: authData.session
-            };
-            
-            const { data: profileData, error: profileError } = await this.supabase
-                .from('consolidated_user_profiles_table')
-                .select('*')
-                .eq('email', email)
-                .maybeSingle();
-            
+            // SECOND: If not staff, try regular Supabase auth
             if (!profileData) {
-                await this.supabase.auth.signOut();
-                throw new Error('Account not found');
-            }
-            
-            if (profileData.status?.toLowerCase() !== 'approved') {
-                await this.supabase.auth.signOut();
-                throw new Error('Account pending approval');
+                const { data: authData, error: authError } = await this.supabase.auth.signInWithPassword({ 
+                    email: identifier, 
+                    password 
+                });
+                
+                if (authError) {
+                    this.recordFailedAttempt();
+                    
+                    if (authError.message.includes('Invalid login credentials')) {
+                        throw new Error('Invalid email or password');
+                    } else if (authError.message.includes('Email not confirmed')) {
+                        throw new Error('Please verify your email');
+                    } else {
+                        throw new Error('Login failed. Please try again.');
+                    }
+                }
+                
+                console.log('✅ Authentication successful');
+                
+                const { data: profile, error: profileError } = await this.supabase
+                    .from('consolidated_user_profiles_table')
+                    .select('*')
+                    .eq('email', identifier)
+                    .maybeSingle();
+                
+                if (!profile || profileError) {
+                    await this.supabase.auth.signOut();
+                    throw new Error('Account not found');
+                }
+                
+                if (profile.status?.toLowerCase() !== 'approved') {
+                    await this.supabase.auth.signOut();
+                    throw new Error('Account pending approval');
+                }
+                
+                profileData = profile;
             }
             
             // Reset failed attempts on successful login
@@ -520,12 +587,12 @@ window.NCHSMLogin = {
             // Generate secure session token
             const secureToken = this.generateSecureToken();
             
-            await this.completeLogin(profileData, secureToken);
+            await this.completeLogin(profileData, secureToken, isStaff);
             
         } catch (error) {
             console.error('💥 Login error');
             
-            if (this.supabase) {
+            if (this.supabase && !error.message.includes('staff')) {
                 try {
                     await this.supabase.auth.signOut();
                 } catch (signOutError) {
@@ -554,7 +621,7 @@ window.NCHSMLogin = {
     // ============================================
     // SESSION TRACKING (Secure)
     // ============================================
-    trackUserSession: async function(userId, email, sessionToken, userAgent) {
+    trackUserSession: async function(userId, email, sessionToken, userAgent, isStaff = false) {
         try {
             console.log('🔍 Tracking session...');
             
@@ -572,7 +639,7 @@ window.NCHSMLogin = {
             const expiresAt = new Date();
             expiresAt.setHours(expiresAt.getHours() + 24);
             
-            // Hash the session token before storing (don't store raw token)
+            // Hash the session token before storing
             const hashedToken = await this.hashToken(sessionToken);
             
             const { data, error } = await this.supabase
@@ -586,7 +653,8 @@ window.NCHSMLogin = {
                     login_time: new Date().toISOString(),
                     last_activity: new Date().toISOString(),
                     expires_at: expiresAt.toISOString(),
-                    is_active: true
+                    is_active: true,
+                    login_type: isStaff ? 'staff' : 'user'
                 })
                 .select();
             
@@ -678,15 +746,17 @@ window.NCHSMLogin = {
     },
     
     // ============================================
-    // COMPLETE LOGIN - SECURE REDIRECT
+    // COMPLETE LOGIN - SECURE REDIRECT (UPDATED for STAFF)
     // ============================================
-    completeLogin: async function(profileData, sessionToken) {
+    completeLogin: async function(profileData, sessionToken, isStaff = false) {
         console.log('🎉 Completing login...');
         
         try {
             // Non-blocking updates
-            this.updateLastLogin(profileData.user_id, profileData.email).catch(() => {});
-            this.trackUserSession(profileData.user_id, profileData.email, sessionToken, navigator.userAgent).catch(() => {});
+            if (!isStaff) {
+                this.updateLastLogin(profileData.user_id, profileData.email).catch(() => {});
+            }
+            this.trackUserSession(profileData.user_id, profileData.email, sessionToken, navigator.userAgent, isStaff).catch(() => {});
             
             // Store minimal profile data (no sensitive info)
             const safeProfile = {
@@ -694,15 +764,17 @@ window.NCHSMLogin = {
                 email: profileData.email,
                 full_name: profileData.full_name,
                 role: profileData.role,
-                program: profileData.program
+                program: profileData.program || profileData.department,
+                is_staff: isStaff || false
             };
             localStorage.setItem('userProfile', JSON.stringify(safeProfile));
             
             // Store session in secure way
-            const { data: { session } } = await this.supabase.auth.getSession();
-            if (session) {
-                // Only store expiration, not the actual token in localStorage
-                localStorage.setItem('session_expires', session.expires_at);
+            if (!isStaff && this.supabase) {
+                const { data: { session } } = await this.supabase.auth.getSession();
+                if (session) {
+                    localStorage.setItem('session_expires', session.expires_at);
+                }
             }
             
             // Redirect to dashboard
@@ -715,12 +787,17 @@ window.NCHSMLogin = {
     },
     
     // ============================================
-    // REDIRECT TO DASHBOARD - SECURE
+    // REDIRECT TO DASHBOARD - SECURE (UPDATED for STAFF)
     // ============================================
     redirectToDashboard: function(profileData) {
         console.log('🚀 Redirecting...');
         
-        const role = profileData.role?.toLowerCase() || 'student';
+        let role = profileData.role?.toLowerCase() || 'student';
+        
+        // Staff role mapping
+        if (profileData.is_staff || role === 'staff') {
+            role = 'staff';
+        }
         
         // Role to dashboard mapping
         const roleRedirects = {
