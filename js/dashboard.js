@@ -122,15 +122,6 @@ class DashboardModule {
         
         await this.loadAllMetrics();
         this.startAutoRefresh();
-        this.updateUIFromMetrics();
-        
-        // Initialize interactive components
-        setTimeout(() => {
-            this.initLeaderboardTabs();
-            this.initWeekButtons();
-            this.initAchievements();
-            this.loadTimetableData('all');
-        }, 1000);
         
         // Force dashboard visible
         setTimeout(() => {
@@ -182,7 +173,20 @@ class DashboardModule {
             this.loadXPMetrics()
         ]);
         
+        // CRITICAL: Update UI after all metrics are loaded
         this.updateUIFromMetrics();
+        
+        // Extra force update for critical elements
+        setTimeout(() => {
+            const approved = this.metrics.examCard?.approved || 0;
+            if (this.elements.dashboardExamStatus) {
+                this.elements.dashboardExamStatus.innerText = approved > 0 ? 'ELIGIBLE' : 'NOT ELIGIBLE';
+                this.elements.dashboardExamStatus.style.color = approved > 0 ? '#059669' : '#dc2626';
+            }
+            if (this.elements.dashboardApprovedUnits) this.elements.dashboardApprovedUnits.innerText = approved;
+            if (this.elements.activeCourses) this.elements.activeCourses.innerText = approved;
+            if (this.elements.upcomingExam) this.elements.upcomingExam.innerText = this.metrics.exams;
+        }, 200);
     }
     
     async loadAttendanceMetrics() {
@@ -249,113 +253,101 @@ class DashboardModule {
         }
     }
     
-   async loadNurseIQMetrics() {
-    if (!this.userId || !this.sb) return;
-    
-    try {
-        console.log('🧠 Loading NurseIQ metrics from user_progress...');
+    async loadNurseIQMetrics() {
+        if (!this.userId || !this.sb) return;
         
-        // Read from user_progress table (where NurseIQ saves data)
-        const { data: progress, error } = await this.sb
-            .from('user_progress')
-            .select('progress_data')
-            .eq('user_id', this.userId)
-            .maybeSingle();
-        
-        let totalQuestions = 0;
-        let correctAnswers = 0;
-        
-        if (!error && progress && progress.progress_data) {
-            const answers = progress.progress_data.answers || {};
+        try {
+            console.log('🧠 Loading NurseIQ metrics...');
             
-            // Count answered questions
-            Object.values(answers).forEach(answer => {
-                if (answer.answered) {
-                    totalQuestions++;
-                    if (answer.correct) correctAnswers++;
-                }
-            });
+            let totalQuestions = 0;
+            let correctAnswers = 0;
             
-            console.log(`📊 Found ${totalQuestions} answered questions, ${correctAnswers} correct`);
-        }
-        
-        // Also check nurseiq_attempts for additional data
-        const { data: attempts, error: attErr } = await this.sb
-            .from('nurseiq_attempts')
-            .select('score, total_questions')
-            .eq('student_id', this.userId);
-        
-        if (!attErr && attempts && attempts.length > 0) {
-            let attemptQuestions = 0;
-            let attemptScore = 0;
-            attempts.forEach(a => {
-                attemptQuestions += a.total_questions || 0;
-                attemptScore += a.score || 0;
-            });
+            // Check user_progress table
+            const { data: progress, error: progError } = await this.sb
+                .from('user_progress')
+                .select('progress_data')
+                .eq('user_id', this.userId)
+                .maybeSingle();
             
-            if (attemptQuestions > totalQuestions) {
-                totalQuestions = attemptQuestions;
-                correctAnswers = attemptScore;
+            if (!progError && progress && progress.progress_data) {
+                const answers = progress.progress_data.answers || {};
+                Object.values(answers).forEach(answer => {
+                    if (answer.answered) {
+                        totalQuestions++;
+                        if (answer.correct) correctAnswers++;
+                    }
+                });
+                console.log(`📊 From user_progress: ${totalQuestions} questions, ${correctAnswers} correct`);
             }
+            
+            // Also check nurseiq_attempts
+            const { data: attempts, error: attError } = await this.sb
+                .from('nurseiq_attempts')
+                .select('score, total_questions')
+                .eq('student_id', this.userId);
+            
+            if (!attError && attempts && attempts.length > 0) {
+                let attemptQuestions = 0;
+                let attemptScore = 0;
+                attempts.forEach(a => {
+                    attemptQuestions += a.total_questions || 0;
+                    attemptScore += a.score || 0;
+                });
+                
+                if (attemptQuestions > totalQuestions) {
+                    totalQuestions = attemptQuestions;
+                    correctAnswers = attemptScore;
+                }
+                console.log(`📊 From nurseiq_attempts: ${attemptQuestions} questions, ${attemptScore} correct`);
+            }
+            
+            const accuracy = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
+            const progressPercent = totalQuestions > 0 ? Math.min(Math.round((totalQuestions / 105) * 100), 100) : 0;
+            
+            this.metrics.nurseiq = {
+                progress: progressPercent,
+                accuracy: accuracy,
+                questions: totalQuestions
+            };
+            
+            console.log(`🧠 NurseIQ Final: ${progressPercent}% progress, ${accuracy}% accuracy, ${totalQuestions} questions`);
+            
+        } catch (error) {
+            console.error('NurseIQ error:', error);
+            this.metrics.nurseiq = { progress: 0, accuracy: 0, questions: 0 };
+        }
+    }
+    
+    async updateExamsMetric() {
+        let upcomingText = 'No upcoming exams';
+        
+        try {
+            if (!this.userProfile) return;
+            
+            const today = new Date().toISOString().split('T')[0];
+            
+            const { data: exams, error } = await this.sb
+                .from('exams_with_courses')
+                .select('exam_name, exam_date')
+                .eq('program_type', this.userProfile.program)
+                .gte('exam_date', today)
+                .order('exam_date', { ascending: true })
+                .limit(1);
+            
+            if (error) throw error;
+            
+            if (exams && exams.length > 0) {
+                const examDate = new Date(exams[0].exam_date).toLocaleDateString();
+                upcomingText = `${exams[0].exam_name} - ${examDate}`;
+            }
+            
+        } catch (error) {
+            console.error('Exams error:', error);
         }
         
-        const accuracy = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
-        const progressPercent = totalQuestions > 0 ? Math.min(Math.round((totalQuestions / 105) * 100), 100) : 0;
-        
-        this.metrics.nurseiq = {
-            progress: progressPercent,
-            accuracy: accuracy,
-            questions: totalQuestions
-        };
-        
-        console.log(`🧠 NurseIQ: ${progressPercent}% progress, ${accuracy}% accuracy, ${totalQuestions} questions`);
-        
-        // Update UI immediately
-        if (this.elements.nurseiqProgress) this.elements.nurseiqProgress.innerText = progressPercent + '%';
-        if (this.elements.nurseiqAccuracy) this.elements.nurseiqAccuracy.innerText = accuracy + '%';
-        if (this.elements.nurseiqQuestions) this.elements.nurseiqQuestions.innerText = totalQuestions;
-        if (this.elements.nurseiqPoints) this.elements.nurseiqPoints.innerText = totalQuestions;
-        
-    } catch (error) {
-        console.error('NurseIQ error:', error);
-        this.metrics.nurseiq = { progress: 0, accuracy: 0, questions: 0 };
-    }
-}
-   async updateExamsMetric() {
-    let upcomingText = 'No upcoming exams';
-    
-    try {
-        if (!this.userProfile) return;
-        
-        const today = new Date().toISOString().split('T')[0];
-        
-        const { data: exams, error } = await this.sb
-            .from('exams_with_courses')
-            .select('exam_name, exam_date')
-            .eq('program_type', this.userProfile.program)
-            .gte('exam_date', today)
-            .order('exam_date', { ascending: true })
-            .limit(1);
-        
-        if (error) throw error;
-        
-        if (exams && exams.length > 0) {
-            const examDate = new Date(exams[0].exam_date).toLocaleDateString();
-            upcomingText = `${exams[0].exam_name} - ${examDate}`;
-        }
-        
-    } catch (error) {
-        console.error('Exams error:', error);
+        this.metrics.exams = upcomingText;
     }
     
-    this.metrics.exams = upcomingText;
-    
-    // ========== ADD THIS LINE TO UPDATE UI ==========
-    const upcomingExamEl = document.getElementById('dashboard-upcoming-exam');
-    if (upcomingExamEl) {
-        upcomingExamEl.innerText = upcomingText;
-    }
-}
     async loadXPMetrics() {
         const attendancePoints = (this.metrics.attendance.verified || 0) * 10;
         const nurseIQPoints = this.metrics.nurseiq.questions || 0;
@@ -394,14 +386,14 @@ class DashboardModule {
     updateUIFromMetrics() {
         const m = this.metrics;
         
-        // Attendance
+        // Attendance Section
         if (this.elements.attendanceRate) this.elements.attendanceRate.innerText = m.attendance.rate + '%';
         if (this.elements.verifiedCount) this.elements.verifiedCount.innerText = m.attendance.verified;
         if (this.elements.totalCount) this.elements.totalCount.innerText = m.attendance.total;
         if (this.elements.pendingCount) this.elements.pendingCount.innerText = m.attendance.pending;
         if (this.elements.attendancePoints) this.elements.attendancePoints.innerText = m.attendance.points;
         
-        // Attendance color
+        // Attendance Color Coding
         const rate = m.attendance.rate || 0;
         const percentEl = document.querySelector('.attendance-percent');
         if (percentEl) {
@@ -411,7 +403,7 @@ class DashboardModule {
             else percentEl.classList.add('attendance-good');
         }
         
-        // Exam Card & Courses
+        // Exam Card & Active Courses
         const approved = m.examCard.approved || 0;
         if (this.elements.activeCourses) this.elements.activeCourses.innerText = approved;
         if (this.elements.dashboardExamStatus) {
@@ -420,7 +412,7 @@ class DashboardModule {
         }
         if (this.elements.dashboardApprovedUnits) this.elements.dashboardApprovedUnits.innerText = approved;
         
-        // NurseIQ
+        // NurseIQ Section
         if (this.elements.nurseiqProgress) this.elements.nurseiqProgress.innerText = m.nurseiq.progress + '%';
         if (this.elements.nurseiqAccuracy) this.elements.nurseiqAccuracy.innerText = m.nurseiq.accuracy + '%';
         if (this.elements.nurseiqQuestions) this.elements.nurseiqQuestions.innerText = m.nurseiq.questions;
@@ -432,97 +424,13 @@ class DashboardModule {
         // Upcoming Exam
         if (this.elements.upcomingExam) this.elements.upcomingExam.innerText = m.exams;
         
-        // XP
+        // XP Progress
         if (this.elements.userLevel) this.elements.userLevel.innerText = m.xp.level;
         if (this.elements.userXp) this.elements.userXp.innerText = m.xp.current;
         if (this.elements.userXpMax) this.elements.userXpMax.innerText = m.xp.max;
         if (this.elements.xpProgressFill) this.elements.xpProgressFill.style.width = m.xp.percent + '%';
         
-        console.log('✅ UI update complete');
-    }
-    
-    // ========== INTERACTIVE COMPONENTS ==========
-    initLeaderboardTabs() {
-        const tabsContainer = document.querySelector('.leaderboard-tabs');
-        if (!tabsContainer) return;
-        
-        const tabs = tabsContainer.querySelectorAll('span');
-        tabs.forEach(tab => {
-            tab.style.cursor = 'pointer';
-            tab.style.padding = '4px 12px';
-            tab.style.borderRadius = '20px';
-            tab.addEventListener('click', () => {
-                tabs.forEach(t => {
-                    t.classList.remove('active');
-                    t.style.background = 'transparent';
-                });
-                tab.classList.add('active');
-                tab.style.background = '#FDB913';
-                tab.style.color = '#0B2A4A';
-                console.log(`📊 Leaderboard: ${tab.innerText}`);
-            });
-        });
-        if (tabs[0]) {
-            tabs[0].classList.add('active');
-            tabs[0].style.background = '#FDB913';
-            tabs[0].style.color = '#0B2A4A';
-        }
-    }
-    
-    initWeekButtons() {
-        const weekButtons = document.querySelectorAll('.week-btn');
-        weekButtons.forEach(btn => {
-            btn.addEventListener('click', () => {
-                weekButtons.forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                console.log(`📅 Week: ${btn.innerText}`);
-            });
-        });
-    }
-    
-    initAchievements() {
-        const items = document.querySelectorAll('.achieve-item');
-        items.forEach(item => {
-            item.style.cursor = 'pointer';
-            item.addEventListener('click', () => {
-                const name = item.querySelector('strong')?.innerText || 'Achievement';
-                console.log(`🏆 ${name}`);
-            });
-        });
-        
-        const viewAll = document.querySelector('.section-title .view-all');
-        if (viewAll) {
-            viewAll.style.cursor = 'pointer';
-            viewAll.addEventListener('click', () => console.log('🏆 View all achievements'));
-        }
-    }
-    
-    async loadTimetableData(week) {
-        const container = document.getElementById('timetable-container');
-        const loading = document.getElementById('timetable-loading');
-        const empty = document.getElementById('timetable-empty');
-        
-        if (loading) loading.style.display = 'block';
-        if (container) container.style.display = 'none';
-        
-        setTimeout(() => {
-            if (loading) loading.style.display = 'none';
-            if (container) {
-                container.style.display = 'block';
-                container.innerHTML = `
-                    <div class="timetable-entry" style="display:flex; justify-content:space-between; padding:12px 0;">
-                        <span><i class="fas fa-calendar-day"></i> Monday 9:00 AM</span>
-                        <span>Clinical Rotation</span>
-                        <span>Room 101</span>
-                    </div>
-                    <div class="timetable-entry" style="display:flex; justify-content:space-between; padding:12px 0;">
-                        <span><i class="fas fa-calendar-day"></i> Wednesday 2:00 PM</span>
-                        <span>Nursing Leadership</span>
-                        <span>Hall B</span>
-                    </div>
-                `;
-            }
-        }, 500);
+        console.log('✅ UI update complete - All metrics displayed');
     }
     
     startLiveClock() {
@@ -548,6 +456,19 @@ class DashboardModule {
         console.log('🔄 Manual refresh...');
         await this.loadAllMetrics();
     }
+    
+    displaySummary() {
+        console.log('\n═══════════════════════════════════════');
+        console.log('📊 DASHBOARD SUMMARY');
+        console.log('═══════════════════════════════════════');
+        console.log(`   Attendance: ${this.metrics.attendance.rate}% (${this.metrics.attendance.verified}/${this.metrics.attendance.total})`);
+        console.log(`   Active Courses: ${this.metrics.courses}`);
+        console.log(`   Resources: ${this.metrics.resources}`);
+        console.log(`   Exam Card: ${this.metrics.examCard.eligible ? 'ELIGIBLE' : 'NOT ELIGIBLE'} (${this.metrics.examCard.approved} units)`);
+        console.log(`   NurseIQ: ${this.metrics.nurseiq.progress}% (${this.metrics.nurseiq.questions} questions)`);
+        console.log(`   Upcoming Exam: ${this.metrics.exams}`);
+        console.log('═══════════════════════════════════════');
+    }
 }
 
 let dashboardModule = null;
@@ -566,5 +487,6 @@ function initDashboardModule(supabaseClient) {
 window.DashboardModule = DashboardModule;
 window.initDashboardModule = initDashboardModule;
 window.refreshDashboard = () => dashboardModule?.refreshAll();
+window.getDashboardMetrics = () => dashboardModule?.metrics;
 
 console.log('✅ Dashboard module ready - COMPLETE FIXED VERSION');
