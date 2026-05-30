@@ -170,48 +170,33 @@
             <p id="student-welcome-message">Access your courses, schedule, and check your attendance status.</p>
         </div>
 
-       <!-- ⭐ SUPER CLASSY NEXT CLASS CARD -->
-<div id="quick-next-class" class="next-class-card" style="display: none;">
-    <div class="next-class-glow"></div>
-    <div class="next-class-inner">
-        
-        <!-- Left: Time Badge -->
-        <div class="next-class-time-badge">
-            <div class="next-class-time-icon">
-                <i class="fas fa-hourglass-half"></i>
-            </div>
-            <div class="next-class-time-text">
-                <div class="next-class-time-label">NEXT CLASS</div>
-                <div class="next-class-time-value" id="quick-next-class-time">--:-- --:--</div>
-            </div>
-        </div>
-        
-        <!-- Center: Course Info -->
-        <div class="next-class-info">
-            <div class="next-class-course">
-                <span id="quick-next-class-name">--</span>
-                <code id="quick-next-class-code">--</code>
-            </div>
-            <div class="next-class-meta">
-                <div class="next-class-meta-item">
-                    <i class="fas fa-user-graduate"></i>
-                    <span id="quick-next-class-lecturer">--</span>
+        <!-- ⭐ SUPER CLASSY NEXT CLASS CARD -->
+        <div id="quick-next-class" class="next-class-card" style="display: none;">
+            <div class="next-class-glow"></div>
+            <div class="next-class-inner">
+                <div class="next-class-time-badge">
+                    <div class="next-class-time-icon"><i class="fas fa-hourglass-half"></i></div>
+                    <div class="next-class-time-text">
+                        <div class="next-class-time-label">NEXT CLASS</div>
+                        <div class="next-class-time-value" id="quick-next-class-time">--:-- --:--</div>
+                    </div>
                 </div>
-                <div class="next-class-meta-item">
-                    <i class="fas fa-map-marker-alt"></i>
-                    <span id="quick-next-class-venue">--</span>
+                <div class="next-class-info">
+                    <div class="next-class-course">
+                        <span id="quick-next-class-name">--</span>
+                        <code id="quick-next-class-code">--</code>
+                    </div>
+                    <div class="next-class-meta">
+                        <div class="next-class-meta-item"><i class="fas fa-user-graduate"></i> <span id="quick-next-class-lecturer">--</span></div>
+                        <div class="next-class-meta-item"><i class="fas fa-map-marker-alt"></i> <span id="quick-next-class-venue">--</span></div>
+                    </div>
+                </div>
+                <div class="next-class-day-badge" id="quick-next-class-day-container">
+                    <i class="fas fa-calendar-day"></i>
+                    <span id="quick-next-class-day">--</span>
                 </div>
             </div>
         </div>
-        
-        <!-- Right: Day Badge -->
-        <div class="next-class-day-badge" id="quick-next-class-day-container">
-            <i class="fas fa-calendar-day"></i>
-            <span id="quick-next-class-day">--</span>
-        </div>
-        
-    </div>
-</div>
 
         <!-- STATS ROW (XP, NurseIQ, Attendance) -->
         <div class="stats-row">
@@ -291,31 +276,27 @@
                 <div class="mini-sub">Approved: <span id="dashboard-approved-units">0</span> units</div>
             </div>
         </div>
-        
-    </div>
-</section>
 
-        <!-- ACHIEVEMENTS SECTION -->
-       <div class="section-title">🏆 Achievements <span class="view-all">View All →</span></div>
-<div class="achievements-slim">
-    <div class="achieve-slim"><i class="fas fa-check-circle"></i> First Step <span class="pts">+10</span></div>
-    <div class="achieve-slim"><i class="fas fa-fire"></i> On Fire! <span class="pts">+50</span></div>
-    <div class="achieve-slim"><i class="fas fa-rocket"></i> Unstoppable <span class="pts">+100</span></div>
-    <div class="achieve-slim"><i class="fas fa-crown"></i> Legendary <span class="pts">+500</span></div>
-    <div class="achieve-slim"><i class="fas fa-calendar-week"></i> Perfect Week <span class="pts">+100</span></div>
-    <div class="achieve-slim"><i class="fas fa-graduation-cap"></i> Course Master <span class="pts">+200</span></div>
-    <div class="achieve-slim"><i class="fas fa-medal"></i> Quiz Champ <span class="pts">+50</span></div>
-    <div class="achieve-slim"><i class="fas fa-stethoscope"></i> NurseIQ Master <span class="pts">+100</span></div>
-</div>
+        <!-- ========== ACHIEVEMENTS SECTION ========== -->
+        <div class="section-title">🏆 Achievements <span class="view-all">View All →</span></div>
+        <div class="achievements-slim">
+            <div class="achieve-slim"><i class="fas fa-check-circle"></i> First Step <span class="pts">+10</span></div>
+            <div class="achieve-slim"><i class="fas fa-fire"></i> On Fire! <span class="pts">+50</span></div>
+            <div class="achieve-slim"><i class="fas fa-rocket"></i> Unstoppable <span class="pts">+100</span></div>
+            <div class="achieve-slim"><i class="fas fa-crown"></i> Legendary <span class="pts">+500</span></div>
+            <div class="achieve-slim"><i class="fas fa-calendar-week"></i> Perfect Week <span class="pts">+100</span></div>
+            <div class="achieve-slim"><i class="fas fa-graduation-cap"></i> Course Master <span class="pts">+200</span></div>
+            <div class="achieve-slim"><i class="fas fa-medal"></i> Quiz Champ <span class="pts">+50</span></div>
+            <div class="achieve-slim"><i class="fas fa-stethoscope"></i> NurseIQ Master <span class="pts">+100</span></div>
+        </div>
 
-        <!-- LEADERBOARD -->
-        <!-- LEADERBOARD - SLIM WITH SUPABASE DATA -->
-<div class="section-title">🏅 Leaderboard <span class="leaderboard-tabs">Weekly · Monthly · All Time</span></div>
-<div class="leaderboard-slim" id="leaderboard-container">
-    <div class="loading-slim"><i class="fas fa-spinner fa-spin"></i> Loading...</div>
-</div>
+        <!-- ========== LEADERBOARD SECTION ========== -->
+        <div class="section-title">🏅 Leaderboard <span class="leaderboard-tabs">Weekly · Monthly · All Time</span></div>
+        <div class="leaderboard-slim" id="leaderboard-container">
+            <div class="loading-slim"><i class="fas fa-spinner fa-spin"></i> Loading...</div>
+        </div>
 
-        <!-- ACTION REQUIRED -->
+        <!-- ========== ACTION REQUIRED SECTION========== -->
         <div class="section-title">⚠️ Action Required</div>
         <div class="action-card warning">
             <i class="fas fa-book-medical"></i>
@@ -327,8 +308,10 @@
             <div class="action-content"><strong>Missing Passport Photo</strong><p>Your profile is incomplete. Please upload your passport photo.</p></div>
             <button class="action-btn" data-tab="profile">Upload →</button>
         </div>
+        
     </div>
 </section>
+<!-- END DASHBOARD SECTION -->
             <!-- ==================== PROFILE TAB ==================== -->
 <section id="profile" class="tab-content" hidden>
     <header class="profile-header">
