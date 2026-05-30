@@ -794,22 +794,19 @@ window.NCHSMLogin = {
         
         let role = profileData.role?.toLowerCase() || 'student';
         
-        // Staff role mapping
-        if (profileData.is_staff || role === 'staff') {
-            role = 'staff';
-        }
-        
-        // Role to dashboard mapping
-        const roleRedirects = {
-            'superadmin': 'superadmin.html',
-            'super_admin': 'superadmin.html',
-            'admin': 'admin.html',
-            'accounts': 'nchsmaccounts.html',
-            'student': 'student.html',
-            'lecturer': 'lecturer.html',
-            'hod': 'hod-tracker.html',
-            'staff': 'staff.html'
-        };
+        // In the redirectToDashboard function, add:
+if (profileData.is_staff || role === 'staff' || role === 'lecturer') {
+    role = 'lecturer';
+}
+
+// Then the role mapping:
+const roleRedirects = {
+    'superadmin': 'superadmin.html',
+    'admin': 'admin.html',
+    'student': 'student.html',
+    'lecturer': 'lecturer.html',  // Staff go here
+    'staff': 'lecturer.html'       // Also staff here
+};
         
         let redirectFile = roleRedirects[role] || 'index.html';
         
