@@ -601,14 +601,136 @@
     </form>
 </section>
 <!-- END PROFILE -->
+<!-- ==================== CALENDAR TAB ==================== -->
+<section id="calendar" class="tab-content" hidden>
+    <!-- EXISTING HEADER - KEPT AS IS -->
+    <div class="calendar-header">
+        <div class="header-content">
+            <h2><i class="fas fa-calendar-alt"></i> Academic Calendar</h2>
+            <p class="calendar-subtitle">A unified view of your scheduled sessions, clinical rotations, and exams.</p>
+        </div>
+        <div class="current-date">
+            <i class="fas fa-clock"></i>
+            <span id="current-date-display">Today: Loading...</span>
+        </div>
+    </div>
 
-            <!-- ==================== CALENDAR TAB ==================== -->
-            <section id="calendar" class="tab-content" hidden>
-                <div class="calendar-header"><div class="header-content"><h2><i class="fas fa-calendar-alt"></i> Academic Calendar</h2><p class="calendar-subtitle">A unified view of your scheduled sessions, clinical rotations, and exams.</p></div><div class="current-date"><i class="fas fa-clock"></i><span id="current-date-display">Today: Loading...</span></div></div>
-                <div class="calendar-controls"><div class="filter-group"><label for="calendar-filter"><i class="fas fa-filter"></i> Filter by Type:</label><div class="select-wrapper"><select id="calendar-filter" class="calendar-select"><option value="all">Show All</option><option value="Clinical">Clinical Rotations</option><option value="Class">Scheduled Sessions</option><option value="Exam">Exams/CATS</option></select><i class="fas fa-chevron-down"></i></div></div><div class="calendar-actions"><button id="refresh-calendar" class="btn-icon" title="Refresh Calendar"><i class="fas fa-redo"></i></button><button id="export-calendar" class="btn-icon" title="Export to PDF"><i class="fas fa-download"></i></button><button id="calendar-view-toggle" class="btn-secondary"><i class="fas fa-list"></i><span>List View</span></button></div></div>
-                <div class="table-container"><div id="calendar-loading" class="loading-state"><div class="loading-spinner"></div><p>Loading academic schedule...</p></div><div id="calendar-empty" class="empty-state" style="display: none;"><i class="fas fa-calendar-times"></i><h3>No Calendar Events</h3><p>No scheduled events found for the selected period.</p><button id="refresh-calendar-empty" class="btn-primary"><i class="fas fa-redo"></i> Refresh</button></div><div id="calendar-table-container" style="display: none;"><div class="horizontal-summary-row"><div class="summary-item"><div class="summary-icon"><i class="fas fa-calendar-day"></i></div><div class="summary-content"><div class="summary-value" id="total-events">0</div><div class="summary-title">Date & Time</div><div class="summary-label">Total Events</div></div></div><div class="summary-item"><div class="summary-icon"><i class="fas fa-info-circle"></i></div><div class="summary-content"><div class="summary-value" id="upcoming-events">0</div><div class="summary-title">Event / Details</div><div class="summary-label">Upcoming</div></div></div><div class="summary-item"><div class="summary-icon"><i class="fas fa-tag"></i></div><div class="summary-content"><div class="summary-value" id="week-events">0</div><div class="summary-title">Type</div><div class="summary-label">This Week</div></div></div><div class="summary-item"><div class="summary-icon"><i class="fas fa-check-circle"></i></div><div class="summary-content"><div class="summary-value exam-count" id="exam-events">0</div><div class="summary-title">Status</div><div class="summary-label">Exams</div></div></div></div><table class="calendar-table" aria-label="Academic Calendar Events"><thead><tr><th scope="col" class="date-col">Date & Time</th><th scope="col">Event / Details</th><th scope="col" class="type-col">Type</th><th scope="col" class="status-col">Status</th></tr></thead><tbody id="calendar-table"></tbody></table></div></div>
-            </section>
-            <!-- END CALENDAR -->
+    <!-- EXISTING CONTROLS - KEPT AS IS -->
+    <div class="calendar-controls">
+        <div class="filter-group">
+            <label for="calendar-filter"><i class="fas fa-filter"></i> Filter by Type:</label>
+            <div class="select-wrapper">
+                <select id="calendar-filter" class="calendar-select">
+                    <option value="all">Show All</option>
+                    <option value="Clinical">Clinical Rotations</option>
+                    <option value="Class">Scheduled Sessions</option>
+                    <option value="Exam">Exams/CATS</option>
+                </select>
+                <i class="fas fa-chevron-down"></i>
+            </div>
+        </div>
+        <div class="calendar-actions">
+            <button id="refresh-calendar" class="btn-icon" title="Refresh Calendar"><i class="fas fa-redo"></i></button>
+            <button id="export-calendar" class="btn-icon" title="Export to PDF"><i class="fas fa-download"></i></button>
+            <button id="calendar-view-toggle" class="btn-secondary"><i class="fas fa-list"></i><span>List View</span></button>
+        </div>
+    </div>
+
+    <!-- EXISTING CALENDAR CONTENT - KEPT AS IS -->
+    <div class="table-container">
+        <div id="calendar-loading" class="loading-state">
+            <div class="loading-spinner"></div>
+            <p>Loading academic schedule...</p>
+        </div>
+        <div id="calendar-empty" class="empty-state" style="display: none;">
+            <i class="fas fa-calendar-times"></i>
+            <h3>No Calendar Events</h3>
+            <p>No scheduled events found for the selected period.</p>
+            <button id="refresh-calendar-empty" class="btn-primary"><i class="fas fa-redo"></i> Refresh</button>
+        </div>
+        <div id="calendar-table-container" style="display: none;">
+            <div class="horizontal-summary-row">
+                <div class="summary-item">
+                    <div class="summary-icon"><i class="fas fa-calendar-day"></i></div>
+                    <div class="summary-content">
+                        <div class="summary-value" id="total-events">0</div>
+                        <div class="summary-title">Date & Time</div>
+                        <div class="summary-label">Total Events</div>
+                    </div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-icon"><i class="fas fa-info-circle"></i></div>
+                    <div class="summary-content">
+                        <div class="summary-value" id="upcoming-events">0</div>
+                        <div class="summary-title">Event / Details</div>
+                        <div class="summary-label">Upcoming</div>
+                    </div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-icon"><i class="fas fa-tag"></i></div>
+                    <div class="summary-content">
+                        <div class="summary-value" id="week-events">0</div>
+                        <div class="summary-title">Type</div>
+                        <div class="summary-label">This Week</div>
+                    </div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-icon"><i class="fas fa-check-circle"></i></div>
+                    <div class="summary-content">
+                        <div class="summary-value exam-count" id="exam-events">0</div>
+                        <div class="summary-title">Status</div>
+                        <div class="summary-label">Exams</div>
+                    </div>
+                </div>
+            </div>
+            <table class="calendar-table" aria-label="Academic Calendar Events">
+                <thead>
+                    <tr>
+                        <th scope="col" class="date-col">Date & Time</th>
+                        <th scope="col">Event / Details</th>
+                        <th scope="col" class="type-col">Type</th>
+                        <th scope="col" class="status-col">Status</th>
+                    </tr>
+                </thead>
+                <tbody id="calendar-table"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ========== ADDED: TIMETABLE SECTION BELOW ========== -->
+    <div style="margin-top: 40px; border-top: 2px solid #e5e7eb; padding-top: 25px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
+            <h3 style="margin: 0; display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-table-list" style="color: #4C1D95;"></i> 
+                Weekly Class Schedule - <span id="timetable-block-title" style="color: #4C1D95;">Loading...</span>
+            </h3>
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 12px; color: #6b7280;" id="class-count-display"></span>
+            </div>
+        </div>
+
+        <!-- Week Buttons -->
+        <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; background: #f1f5f9; padding: 5px; border-radius: 50px; width: fit-content;">
+            <div id="week-buttons" style="display: flex; gap: 5px; flex-wrap: wrap;">
+                <!-- Week buttons will be added dynamically -->
+            </div>
+        </div>
+
+        <!-- Timetable Table -->
+        <div id="timetable-container" style="background: white; border-radius: 12px; overflow-x: auto; box-shadow: 0 1px 3px rgba(0,0,0,0.1);"></div>
+        
+        <div id="timetable-loading" style="text-align: center; padding: 40px; display: none;">
+            <div class="loading-spinner"></div>
+            <p style="margin-top: 10px;">Loading timetable...</p>
+        </div>
+        
+        <div id="timetable-empty" style="text-align: center; padding: 40px; display: none;">
+            <i class="fas fa-calendar-times" style="font-size: 48px; color: #d1d5db;"></i>
+            <p style="margin-top: 10px;">No timetable available for your block yet.</p>
+        </div>
+    </div>
+</section>
+<!-- END CALENDAR TAB -->
 
             <!-- ==================== HUB COURSES TAB ==================== -->
             <section id="hub-courses" class="tab-content" hidden>
