@@ -249,40 +249,78 @@ class DashboardModule {
         }
     }
     
-    async loadNurseIQMetrics() {
-        if (!this.userId || !this.sb) return;
-        
-        try {
-            const { data: attempts, error } = await this.sb
-                .from('nurseiq_attempts')
-                .select('score, total_questions')
-                .eq('student_id', this.userId);
-            
-            if (error) throw error;
-            
-            let totalQuestions = 0;
-            let totalScore = 0;
-            
-            if (attempts && attempts.length > 0) {
-                attempts.forEach(attempt => {
-                    totalQuestions += attempt.total_questions || 0;
-                    totalScore += attempt.score || 0;
-                });
-            }
-            
-            const accuracy = totalQuestions > 0 ? Math.round((totalScore / totalQuestions) * 100) : 0;
-            const progress = totalQuestions > 0 ? Math.min(Math.round((totalQuestions / 105) * 100), 100) : 0;
-            
-            this.metrics.nurseiq = { progress, accuracy, questions: totalQuestions };
-            
-            console.log(`🧠 NurseIQ: ${progress}% progress, ${accuracy}% accuracy, ${totalQuestions} questions`);
-            
-        } catch (error) {
-            console.error('NurseIQ error:', error);
-            this.metrics.nurseiq = { progress: 0, accuracy: 0, questions: 0 };
-        }
-    }
+   async loadNurseIQMetrics() {
+    if (!this.userId || !this.sb) return;
     
+    try {
+        console.log('🧠 Loading NurseIQ metrics from user_progress...');
+        
+        // Read from user_progress table (where NurseIQ saves data)
+        const { data: progress, error } = await this.sb
+            .from('user_progress')
+            .select('progress_data')
+            .eq('user_id', this.userId)
+            .maybeSingle();
+        
+        let totalQuestions = 0;
+        let correctAnswers = 0;
+        
+        if (!error && progress && progress.progress_data) {
+            const answers = progress.progress_data.answers || {};
+            
+            // Count answered questions
+            Object.values(answers).forEach(answer => {
+                if (answer.answered) {
+                    totalQuestions++;
+                    if (answer.correct) correctAnswers++;
+                }
+            });
+            
+            console.log(`📊 Found ${totalQuestions} answered questions, ${correctAnswers} correct`);
+        }
+        
+        // Also check nurseiq_attempts for additional data
+        const { data: attempts, error: attErr } = await this.sb
+            .from('nurseiq_attempts')
+            .select('score, total_questions')
+            .eq('student_id', this.userId);
+        
+        if (!attErr && attempts && attempts.length > 0) {
+            let attemptQuestions = 0;
+            let attemptScore = 0;
+            attempts.forEach(a => {
+                attemptQuestions += a.total_questions || 0;
+                attemptScore += a.score || 0;
+            });
+            
+            if (attemptQuestions > totalQuestions) {
+                totalQuestions = attemptQuestions;
+                correctAnswers = attemptScore;
+            }
+        }
+        
+        const accuracy = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
+        const progressPercent = totalQuestions > 0 ? Math.min(Math.round((totalQuestions / 105) * 100), 100) : 0;
+        
+        this.metrics.nurseiq = {
+            progress: progressPercent,
+            accuracy: accuracy,
+            questions: totalQuestions
+        };
+        
+        console.log(`🧠 NurseIQ: ${progressPercent}% progress, ${accuracy}% accuracy, ${totalQuestions} questions`);
+        
+        // Update UI immediately
+        if (this.elements.nurseiqProgress) this.elements.nurseiqProgress.innerText = progressPercent + '%';
+        if (this.elements.nurseiqAccuracy) this.elements.nurseiqAccuracy.innerText = accuracy + '%';
+        if (this.elements.nurseiqQuestions) this.elements.nurseiqQuestions.innerText = totalQuestions;
+        if (this.elements.nurseiqPoints) this.elements.nurseiqPoints.innerText = totalQuestions;
+        
+    } catch (error) {
+        console.error('NurseIQ error:', error);
+        this.metrics.nurseiq = { progress: 0, accuracy: 0, questions: 0 };
+    }
+}
     async updateExamsMetric() {
         let upcomingText = 'No upcoming exams';
         
