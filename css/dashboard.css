@@ -614,3 +614,48 @@
         min-width: calc(33% - 8px);
     }
 }
+/* ============================================
+   FIX: REMOVE SIDEBAR-DASHBOARD GAP
+   ============================================ */
+
+/* Make main content take full width */
+.main {
+    padding: 20px 24px !important;
+    margin-left: 260px !important;
+    width: calc(100% - 260px) !important;
+    max-width: 100% !important;
+}
+
+/* Remove white box from tab content */
+.tab-content.active {
+    padding: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+/* Dashboard container - full width */
+.dashboard-container {
+    max-width: 100% !important;
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+/* Desktop layout improvements */
+@media (min-width: 768px) {
+    .mini-cards {
+        display: grid !important;
+        grid-template-columns: repeat(3, 1fr) !important;
+        gap: 16px !important;
+    }
+}
+
+/* Mobile fix */
+@media (max-width: 767px) {
+    .main {
+        margin-left: 0 !important;
+        width: 100% !important;
+        padding: 16px !important;
+    }
+}
