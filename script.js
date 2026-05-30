@@ -8483,113 +8483,42 @@ document.addEventListener('DOMContentLoaded', function() {
 
 console.log('✅ Grade functions registered globally');
 // =====================================================
-// STAFF / LECTURER MANAGEMENT MODULE
-// Add this entire block to your main script.js file
+// STAFF MANAGEMENT - CONNECTED TO Supabase
+// Staff register here, Students in separate table
 // =====================================================
 
-// Global variables for staff management
 let staffRecords = [];
-let currentStaffFilter = 'all';
 
-// Load staff from localStorage or init with demo data
+// Load staff from database
 async function loadAllStaff() {
     console.log('👥 Loading staff records...');
     
-    const stored = localStorage.getItem('nchsm_staff_records');
-    if (stored) {
-        staffRecords = JSON.parse(stored);
-    } else {
-        // Demo staff data based on your reference image
-        staffRecords = [
-            { 
-                id: "T76", 
-                title: "Ms", 
-                firstName: "Liz", 
-                otherNames: "Nderitu", 
-                dept: "Tutors", 
-                email: "liz.nderitu@gmail.com", 
-                phone: "254706123839", 
-                nationalId: "30123456", 
-                gender: "F", 
-                designation: "Lecturer", 
-                bankName: "KCB", 
-                bankAcc: "1234567890", 
-                shif: "SHIF001", 
-                nsrf: "NSRF001", 
-                taxPin: "A0012345", 
-                loginEnabled: true, 
-                status: "active",
-                createdAt: new Date().toISOString()
-            },
-            { 
-                id: "T75", 
-                title: "Mr", 
-                firstName: "Godfrey", 
-                otherNames: "Abdi", 
-                dept: "Tutors", 
-                email: "godfrey.abdi@gmail.com", 
-                phone: "254741123041", 
-                nationalId: "30789123", 
-                gender: "M", 
-                designation: "Senior Lecturer", 
-                bankName: "Equity", 
-                bankAcc: "987654321", 
-                shif: "SHIF002", 
-                nsrf: "NSRF002", 
-                taxPin: "A0012346", 
-                loginEnabled: true, 
-                status: "active",
-                createdAt: new Date().toISOString()
-            },
-            { 
-                id: "T74", 
-                title: "Mr", 
-                firstName: "Richard", 
-                otherNames: "Mutiso", 
-                dept: "Tutors", 
-                email: "richard.mutiso@gmail.com", 
-                phone: "254758123878", 
-                nationalId: "30456789", 
-                gender: "M", 
-                designation: "Tutor", 
-                bankName: "Cooperative", 
-                bankAcc: "456789123", 
-                shif: "SHIF003", 
-                nsrf: "NSRF003", 
-                taxPin: "A0012347", 
-                loginEnabled: true, 
-                status: "active",
-                createdAt: new Date().toISOString()
-            },
-            { 
-                id: "FD001", 
-                title: "Mrs", 
-                firstName: "Jane", 
-                otherNames: "Wanjiku", 
-                dept: "Front Desk", 
-                email: "jane.wanjiku@nchsm.ac.ke", 
-                phone: "254722111222", 
-                nationalId: "29876543", 
-                gender: "F", 
-                designation: "Receptionist", 
-                bankName: "Absa", 
-                bankAcc: "1122334455", 
-                shif: "SHIF010", 
-                nsrf: "NSRF010", 
-                taxPin: "P001234X", 
-                loginEnabled: false, 
-                status: "active",
-                createdAt: new Date().toISOString()
-            }
-        ];
-        localStorage.setItem('nchsm_staff_records', JSON.stringify(staffRecords));
+    const tbody = document.getElementById('staffTableBody');
+    if (tbody) {
+        tbody.innerHTML = '<tr><td colspan="14"><div class="loading-spinner"></div> Loading staff...<\/td><\/tr>';
     }
     
-    updateStaffStats();
-    renderStaffTable();
+    try {
+        const { data, error } = await sb
+            .from('staff_records')
+            .select('*')
+            .order('created_at', { ascending: false });
+        
+        if (error) throw error;
+        
+        staffRecords = data || [];
+        updateStaffStats();
+        renderStaffTable();
+        
+    } catch (error) {
+        console.error('Error:', error);
+        if (tbody) {
+            tbody.innerHTML = `<tr><td colspan="14" style="color: red;">Error: Table "staff_records" not found. Please create it in Supabase.<\/td><\/tr>`;
+        }
+    }
 }
 
-// Update statistics cards
+// Update stats cards
 function updateStaffStats() {
     const total = staffRecords.length;
     const active = staffRecords.filter(s => s.status === 'active').length;
@@ -8607,7 +8536,7 @@ function updateStaffStats() {
     if (femaleEl) femaleEl.textContent = female;
 }
 
-// Render staff table with filters
+// Render staff table
 function renderStaffTable() {
     const tbody = document.getElementById('staffTableBody');
     if (!tbody) return;
@@ -8620,15 +8549,14 @@ function renderStaffTable() {
     
     if (searchTerm) {
         filtered = filtered.filter(s => 
-            s.firstName.toLowerCase().includes(searchTerm) || 
-            (s.otherNames && s.otherNames.toLowerCase().includes(searchTerm)) || 
-            s.id.toLowerCase().includes(searchTerm) || 
-            s.email.toLowerCase().includes(searchTerm)
+            (s.first_name || '').toLowerCase().includes(searchTerm) || 
+            (s.id || '').toLowerCase().includes(searchTerm) || 
+            (s.email || '').toLowerCase().includes(searchTerm)
         );
     }
     
     if (deptFilter !== 'all') {
-        filtered = filtered.filter(s => s.dept === deptFilter);
+        filtered = filtered.filter(s => s.department === deptFilter);
     }
     
     if (statusFilter !== 'all') {
@@ -8636,198 +8564,261 @@ function renderStaffTable() {
     }
     
     if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="13" style="text-align: center; padding: 40px;">No staff records found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="14" style="text-align: center; padding: 40px;">No staff records found<\/td><\/tr>';
         return;
     }
     
     tbody.innerHTML = '';
     
     filtered.forEach(staff => {
-        const row = document.createElement('tr');
-        row.style.borderBottom = '1px solid #e5e7eb';
+        const loginStatus = staff.login_enabled ? 
+            '<span style="color: #10b981;">✅ Enabled</span>' : 
+            '<span style="color: #ef4444;">❌ Disabled</span>';
         
-        row.innerHTML = `
-            <td style="padding: 12px;">${escapeHtml(staff.title || '')}</td>
-            <td style="padding: 12px;">${escapeHtml(staff.firstName)}</td>
-            <td style="padding: 12px;">${escapeHtml(staff.otherNames || '')}</td>
-            <td style="padding: 12px;"><span class="dept-badge">${escapeHtml(staff.dept)}</span></td>
-            <td style="padding: 12px;">${escapeHtml(staff.email)}</td>
-            <td style="padding: 12px;">${escapeHtml(staff.phone)}</td>
-            <td style="padding: 12px;"><strong>${escapeHtml(staff.id)}</strong></td>
-            <td style="padding: 12px;">${staff.gender === 'M' ? 'Male' : staff.gender === 'F' ? 'Female' : '-'}</td>
-            <td style="padding: 12px;">${escapeHtml(staff.bankName || '-')}</td>
-            <td style="padding: 12px;">${escapeHtml(staff.bankAcc || '-')}</td>
-            <td style="padding: 12px;">${escapeHtml(staff.shif || '-')}</td>
-            <td style="padding: 12px;">${escapeHtml(staff.nsrf || '-')}</td>
-            <td style="padding: 12px;">
-                <button onclick="editStaff('${escapeHtml(staff.id)}')" class="btn-sm btn-edit" style="background: #3b82f6; color: white; border: none; padding: 5px 10px; border-radius: 4px; margin-right: 5px; cursor: pointer;">
-                    <i class="fas fa-edit"></i> Edit
-                </button>
-                <button onclick="deleteStaff('${escapeHtml(staff.id)}', '${escapeHtml(staff.firstName)}')" class="btn-sm btn-delete" style="background: #ef4444; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">
-                    <i class="fas fa-trash"></i> Delete
-                </button>
-            </td>
+        tbody.innerHTML += `
+            <tr style="border-bottom: 1px solid #e5e7eb;">
+                <td style="padding: 12px;">${escapeHtml(staff.title || '')}<\/td>
+                <td style="padding: 12px;">${escapeHtml(staff.first_name)}<\/td>
+                <td style="padding: 12px;">${escapeHtml(staff.other_names || '')}<\/td>
+                <td style="padding: 12px;">${escapeHtml(staff.department)}<\/td>
+                <td style="padding: 12px;">${escapeHtml(staff.email)}<\/td>
+                <td style="padding: 12px;">${escapeHtml(staff.phone)}<\/td>
+                <td style="padding: 12px;"><strong>${escapeHtml(staff.id)}<\/strong><\/td>
+                <td style="padding: 12px;">${staff.gender === 'M' ? 'Male' : staff.gender === 'F' ? 'Female' : '-'}<\/td>
+                <td style="padding: 12px;">${escapeHtml(staff.bank_name || '-')}<\/td>
+                <td style="padding: 12px;">${escapeHtml(staff.bank_account || '-')}<\/td>
+                <td style="padding: 12px;">${escapeHtml(staff.shif_number || '-')}<\/td>
+                <td style="padding: 12px;">${escapeHtml(staff.nsrf_number || '-')}<\/td>
+                <td style="padding: 12px;">${loginStatus}<\/td>
+                <td style="padding: 12px;">
+                    <button onclick="editStaff('${staff.id}')" class="btn-sm" style="background:#3b82f6;color:white;border:none;padding:5px 10px;border-radius:4px;margin-right:5px;cursor:pointer;">Edit</button>
+                    <button onclick="resetStaffPassword('${staff.id}', '${staff.first_name}')" class="btn-sm" style="background:#f59e0b;color:white;border:none;padding:5px 10px;border-radius:4px;margin-right:5px;cursor:pointer;">Reset Pwd</button>
+                    <button onclick="deleteStaff('${staff.id}', '${staff.first_name}')" class="btn-sm" style="background:#ef4444;color:white;border:none;padding:5px 10px;border-radius:4px;cursor:pointer;">Delete</button>
+                <\/td>
+            <\/tr>
         `;
-        tbody.appendChild(row);
     });
 }
 
 // Open Add Staff Modal
 function openAddStaffModal() {
     const modal = document.getElementById('staffModal');
-    if (!modal) {
-        console.error('Staff modal not found');
-        return;
-    }
+    if (!modal) return;
     
-    // Reset form
-    const form = document.getElementById('staffForm');
-    if (form) form.reset();
-    
-    document.getElementById('modalTitle').innerHTML = '<i class="fas fa-user-plus"></i> Register New Staff';
+    document.getElementById('staffForm')?.reset();
     document.getElementById('editStaffId').value = '';
+    document.getElementById('modalTitle').innerHTML = '<i class="fas fa-user-plus"></i> Register New Staff';
     
-    // Set default values
-    const dateInput = document.getElementById('staffJoinDate');
-    if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
+    const passwordSection = document.getElementById('staffPasswordSection');
+    if (passwordSection) passwordSection.style.display = 'none';
     
     modal.style.display = 'flex';
 }
 
-// Close Staff Modal
+// Close modal
 function closeStaffModal() {
     const modal = document.getElementById('staffModal');
     if (modal) modal.style.display = 'none';
 }
 
-// Save staff (create or update)
+// Toggle password field
+function toggleStaffPasswordField() {
+    const loginCheckbox = document.getElementById('staffEnableLogin');
+    const passwordSection = document.getElementById('staffPasswordSection');
+    
+    if (loginCheckbox && passwordSection) {
+        passwordSection.style.display = loginCheckbox.checked ? 'block' : 'none';
+    }
+}
+
+// Save staff to database
 async function saveStaff() {
     const editId = document.getElementById('editStaffId').value;
+    const loginEnabled = document.getElementById('staffEnableLogin').checked;
+    const password = document.getElementById('staffPassword')?.value;
+    const confirmPassword = document.getElementById('staffConfirmPassword')?.value;
+    
+    if (loginEnabled) {
+        if (!password) {
+            alert('Please enter a password');
+            return;
+        }
+        if (password !== confirmPassword) {
+            alert('Passwords do not match');
+            return;
+        }
+        if (password.length < 6) {
+            alert('Password must be at least 6 characters');
+            return;
+        }
+    }
     
     const staffData = {
         title: document.getElementById('staffTitle').value,
-        firstName: document.getElementById('staffFirstName').value.trim(),
-        otherNames: document.getElementById('staffOtherNames').value.trim(),
-        dept: document.getElementById('staffDept').value,
+        first_name: document.getElementById('staffFirstName').value.trim(),
+        other_names: document.getElementById('staffOtherNames').value.trim(),
+        department: document.getElementById('staffDept').value,
         designation: document.getElementById('staffDesignation').value,
         email: document.getElementById('staffEmail').value.trim(),
         phone: document.getElementById('staffPhone').value.trim(),
-        nationalId: document.getElementById('staffNationalId').value.trim(),
+        national_id: document.getElementById('staffNationalId').value.trim(),
         gender: document.getElementById('staffGender').value,
-        bankName: document.getElementById('staffBankName').value.trim(),
-        bankAcc: document.getElementById('staffBankAcc').value.trim(),
-        shif: document.getElementById('staffShif').value.trim(),
-        nsrf: document.getElementById('staffNsrf').value.trim(),
-        taxPin: document.getElementById('staffTaxPin').value.trim(),
-        loginEnabled: document.getElementById('staffEnableLogin').checked,
+        bank_name: document.getElementById('staffBankName').value.trim(),
+        bank_account: document.getElementById('staffBankAcc').value.trim(),
+        shif_number: document.getElementById('staffShif').value.trim(),
+        nsrf_number: document.getElementById('staffNsrf').value.trim(),
+        tax_pin: document.getElementById('staffTaxPin').value.trim(),
+        login_enabled: loginEnabled,
         status: 'active'
     };
     
-    // Validate required fields
-    if (!staffData.firstName || !staffData.dept || !staffData.email || !staffData.phone) {
-        alert('Please fill required fields: First Name, Department, Email, Phone');
+    if (!staffData.first_name || !staffData.department || !staffData.email || !staffData.phone) {
+        alert('Please fill required fields');
         return;
     }
     
-    // Generate staff ID if new
-    if (!editId) {
-        let staffId = document.getElementById('staffId').value.trim();
-        if (!staffId) {
-            const nextNum = staffRecords.length + 101;
-            staffId = `STAFF${nextNum}`;
+    try {
+        if (editId) {
+            // Update existing
+            if (loginEnabled && password) {
+                staffData.password_hash = btoa(password);
+            }
+            
+            const { error } = await sb
+                .from('staff_records')
+                .update(staffData)
+                .eq('id', editId);
+            
+            if (error) throw error;
+            alert(`Staff ${staffData.first_name} updated!`);
+            
+        } else {
+            // Create new - generate staff ID
+            let staffId = document.getElementById('staffId').value.trim();
+            if (!staffId) {
+                const nextNum = staffRecords.length + 101;
+                staffId = `STAFF${nextNum}`;
+            }
+            staffData.id = staffId;
+            
+            if (loginEnabled && password) {
+                staffData.password_hash = btoa(password);
+            }
+            staffData.created_at = new Date().toISOString();
+            
+            const { error } = await sb.from('staff_records').insert([staffData]);
+            if (error) throw error;
+            alert(`Staff ${staffData.first_name} registered! ID: ${staffId}`);
         }
-        staffData.id = staffId;
-        staffData.createdAt = new Date().toISOString();
-        staffRecords.push(staffData);
-    } else {
-        // Update existing
-        const index = staffRecords.findIndex(s => s.id === editId);
-        if (index !== -1) {
-            staffData.id = editId;
-            staffData.createdAt = staffRecords[index].createdAt;
-            staffRecords[index] = staffData;
-        }
-    }
-    
-    // Save to localStorage
-    localStorage.setItem('nchsm_staff_records', JSON.stringify(staffRecords));
-    
-    // Update UI
-    updateStaffStats();
-    renderStaffTable();
-    closeStaffModal();
-    
-    alert(`Staff ${staffData.firstName} ${editId ? 'updated' : 'registered'} successfully! ID: ${staffData.id}`);
-    
-    // Log audit
-    if (typeof logAudit === 'function') {
-        logAudit(editId ? 'STAFF_UPDATE' : 'STAFF_ADD', `${editId ? 'Updated' : 'Added'} staff: ${staffData.firstName} ${staffData.otherNames || ''}`, staffData.id, 'SUCCESS');
+        
+        closeStaffModal();
+        loadAllStaff();
+        
+    } catch (error) {
+        console.error('Save error:', error);
+        alert(`Error: ${error.message}`);
     }
 }
 
 // Edit staff
-function editStaff(staffId) {
+async function editStaff(staffId) {
     const staff = staffRecords.find(s => s.id === staffId);
-    if (!staff) {
-        alert('Staff not found');
-        return;
-    }
+    if (!staff) return;
     
-    // Populate form
     document.getElementById('editStaffId').value = staff.id;
     document.getElementById('staffTitle').value = staff.title || '';
-    document.getElementById('staffFirstName').value = staff.firstName;
-    document.getElementById('staffOtherNames').value = staff.otherNames || '';
-    document.getElementById('staffDept').value = staff.dept;
+    document.getElementById('staffFirstName').value = staff.first_name;
+    document.getElementById('staffOtherNames').value = staff.other_names || '';
+    document.getElementById('staffDept').value = staff.department;
     document.getElementById('staffDesignation').value = staff.designation || '';
     document.getElementById('staffEmail').value = staff.email;
     document.getElementById('staffPhone').value = staff.phone;
-    document.getElementById('staffNationalId').value = staff.nationalId || '';
+    document.getElementById('staffNationalId').value = staff.national_id || '';
     document.getElementById('staffGender').value = staff.gender || '';
-    document.getElementById('staffBankName').value = staff.bankName || '';
-    document.getElementById('staffBankAcc').value = staff.bankAcc || '';
-    document.getElementById('staffShif').value = staff.shif || '';
-    document.getElementById('staffNsrf').value = staff.nsrf || '';
-    document.getElementById('staffTaxPin').value = staff.taxPin || '';
-    document.getElementById('staffEnableLogin').checked = staff.loginEnabled || false;
+    document.getElementById('staffBankName').value = staff.bank_name || '';
+    document.getElementById('staffBankAcc').value = staff.bank_account || '';
+    document.getElementById('staffShif').value = staff.shif_number || '';
+    document.getElementById('staffNsrf').value = staff.nsrf_number || '';
+    document.getElementById('staffTaxPin').value = staff.tax_pin || '';
+    document.getElementById('staffEnableLogin').checked = staff.login_enabled || false;
     document.getElementById('staffId').value = staff.id;
+    
+    const passwordSection = document.getElementById('staffPasswordSection');
+    if (passwordSection) {
+        passwordSection.style.display = staff.login_enabled ? 'block' : 'none';
+        const pwdInput = document.getElementById('staffPassword');
+        if (pwdInput) {
+            pwdInput.required = false;
+            pwdInput.placeholder = 'Leave blank to keep current';
+        }
+    }
     
     document.getElementById('modalTitle').innerHTML = '<i class="fas fa-user-edit"></i> Edit Staff';
     document.getElementById('staffModal').style.display = 'flex';
 }
 
-// Delete staff
-function deleteStaff(staffId, staffName) {
-    if (!confirm(`Are you sure you want to delete staff member "${staffName}"? This action cannot be undone.`)) {
+// Reset staff password
+async function resetStaffPassword(staffId, staffName) {
+    const newPassword = prompt(`Reset password for ${staffName}\n\nEnter new password (min 6 chars):`);
+    if (!newPassword || newPassword.length < 6) {
+        if (newPassword) alert('Password must be at least 6 characters');
         return;
     }
     
-    staffRecords = staffRecords.filter(s => s.id !== staffId);
-    localStorage.setItem('nchsm_staff_records', JSON.stringify(staffRecords));
+    const confirmPwd = prompt('Confirm new password:');
+    if (newPassword !== confirmPwd) {
+        alert('Passwords do not match');
+        return;
+    }
     
-    updateStaffStats();
-    renderStaffTable();
-    
-    alert(`Staff ${staffName} deleted successfully!`);
-    
-    if (typeof logAudit === 'function') {
-        logAudit('STAFF_DELETE', `Deleted staff: ${staffName}`, staffId, 'SUCCESS');
+    try {
+        const { error } = await sb
+            .from('staff_records')
+            .update({ 
+                password_hash: btoa(newPassword),
+                login_enabled: true
+            })
+            .eq('id', staffId);
+        
+        if (error) throw error;
+        
+        alert(`Password for ${staffName} reset successfully!`);
+        loadAllStaff();
+        
+    } catch (error) {
+        alert(`Error: ${error.message}`);
     }
 }
 
-// Filter staff table
+// Delete staff
+async function deleteStaff(staffId, staffName) {
+    if (!confirm(`Delete staff "${staffName}"? This cannot be undone.`)) return;
+    
+    try {
+        const { error } = await sb.from('staff_records').delete().eq('id', staffId);
+        if (error) throw error;
+        
+        alert(`Staff ${staffName} deleted!`);
+        loadAllStaff();
+        
+    } catch (error) {
+        alert(`Error: ${error.message}`);
+    }
+}
+
+// Filter staff
 function filterStaffTable() {
     renderStaffTable();
 }
 
-// Export staff to CSV
+// Export to CSV
 function exportStaffToCSV() {
-    const headers = ['Staff ID', 'Title', 'First Name', 'Other Names', 'Department', 'Designation', 'Email', 'Phone', 'National ID', 'Gender', 'Bank Name', 'Bank Account', 'SHIF Number', 'NSRF Number', 'Tax PIN', 'Login Enabled', 'Status'];
+    const headers = ['Staff ID', 'Title', 'First Name', 'Other Names', 'Department', 'Designation', 'Email', 'Phone', 'National ID', 'Gender', 'Bank Name', 'Bank Account', 'SHIF', 'NSRF', 'Tax PIN', 'Login Enabled'];
     
     const rows = staffRecords.map(s => [
-        s.id, s.title || '', s.firstName, s.otherNames || '', s.dept, s.designation || '',
-        s.email, s.phone, s.nationalId || '', s.gender || '', s.bankName || '', s.bankAcc || '',
-        s.shif || '', s.nsrf || '', s.taxPin || '', s.loginEnabled ? 'Yes' : 'No', s.status
+        s.id, s.title || '', s.first_name, s.other_names || '', s.department, s.designation || '',
+        s.email, s.phone, s.national_id || '', s.gender || '', s.bank_name || '', s.bank_account || '',
+        s.shif_number || '', s.nsrf_number || '', s.tax_pin || '', s.login_enabled ? 'Yes' : 'No'
     ]);
     
     let csv = headers.join(',') + '\n';
@@ -8835,140 +8826,74 @@ function exportStaffToCSV() {
         csv += row.map(cell => `"${String(cell || '').replace(/"/g, '""')}"`).join(',') + '\n';
     });
     
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob([csv], { type: 'text/csv' });
     const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.href = url;
-    link.setAttribute('download', `staff_export_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
+    link.href = URL.createObjectURL(blob);
+    link.download = `staff_export_${new Date().toISOString().split('T')[0]}.csv`;
     link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    URL.revokeObjectURL(link.href);
+}
+
+// Staff login function
+async function staffLogin(emailOrId, password) {
+    const { data, error } = await sb
+        .from('staff_records')
+        .select('*')
+        .or(`email.eq.${emailOrId},id.eq.${emailOrId}`)
+        .eq('login_enabled', true)
+        .eq('status', 'active')
+        .single();
     
-    alert('Staff data exported successfully!');
-}
-
-// Import staff from CSV
-function importStaffFromCSV() {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.csv';
-    input.onchange = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            const text = event.target.result;
-            const lines = text.split(/\r?\n/);
-            const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
-            
-            let imported = 0;
-            let errors = 0;
-            
-            for (let i = 1; i < lines.length; i++) {
-                if (!lines[i].trim()) continue;
-                
-                const values = [];
-                let inQuote = false;
-                let current = '';
-                for (let char of lines[i]) {
-                    if (char === '"') {
-                        inQuote = !inQuote;
-                    } else if (char === ',' && !inQuote) {
-                        values.push(current.trim());
-                        current = '';
-                    } else {
-                        current += char;
-                    }
-                }
-                values.push(current.trim());
-                
-                if (values.length >= 7) {
-                    const newStaff = {
-                        id: values[0] ? values[0].replace(/"/g, '') : `IMP${Date.now()}_${i}`,
-                        title: values[1] ? values[1].replace(/"/g, '') : '',
-                        firstName: values[2] ? values[2].replace(/"/g, '') : '',
-                        otherNames: values[3] ? values[3].replace(/"/g, '') : '',
-                        dept: values[4] ? values[4].replace(/"/g, '') : 'Tutors',
-                        designation: values[5] ? values[5].replace(/"/g, '') : '',
-                        email: values[6] ? values[6].replace(/"/g, '') : '',
-                        phone: values[7] ? values[7].replace(/"/g, '') : '',
-                        nationalId: values[8] ? values[8].replace(/"/g, '') : '',
-                        gender: values[9] ? values[9].replace(/"/g, '') : '',
-                        bankName: values[10] ? values[10].replace(/"/g, '') : '',
-                        bankAcc: values[11] ? values[11].replace(/"/g, '') : '',
-                        shif: values[12] ? values[12].replace(/"/g, '') : '',
-                        nsrf: values[13] ? values[13].replace(/"/g, '') : '',
-                        taxPin: values[14] ? values[14].replace(/"/g, '') : '',
-                        loginEnabled: values[15] === 'Yes',
-                        status: 'active',
-                        createdAt: new Date().toISOString()
-                    };
-                    
-                    if (newStaff.firstName && newStaff.email) {
-                        // Check if staff ID already exists
-                        const exists = staffRecords.some(s => s.id === newStaff.id);
-                        if (!exists) {
-                            staffRecords.push(newStaff);
-                            imported++;
-                        } else {
-                            errors++;
-                        }
-                    } else {
-                        errors++;
-                    }
-                } else {
-                    errors++;
-                }
-            }
-            
-            localStorage.setItem('nchsm_staff_records', JSON.stringify(staffRecords));
-            updateStaffStats();
-            renderStaffTable();
-            
-            alert(`Import completed!\n✅ Imported: ${imported}\n⚠️ Skipped/Duplicates: ${errors}`);
-        };
-        reader.readAsText(file);
+    if (error || !data) {
+        return { success: false, message: 'Invalid credentials' };
+    }
+    
+    const storedPassword = atob(data.password_hash);
+    if (storedPassword !== password) {
+        return { success: false, message: 'Invalid password' };
+    }
+    
+    const session = {
+        staffId: data.id,
+        name: `${data.title || ''} ${data.first_name} ${data.other_names || ''}`,
+        email: data.email,
+        department: data.department,
+        role: 'staff'
     };
-    input.click();
+    
+    localStorage.setItem('staffSession', JSON.stringify(session));
+    return { success: true, staff: session };
 }
 
-// Initialize staff section when tab is shown
+// Initialize
 function initStaffManagement() {
-    console.log('📋 Initializing Staff Management...');
     loadAllStaff();
     
-    // Setup event listeners for filters
     const searchInput = document.getElementById('staffSearchInput');
-    if (searchInput) {
-        searchInput.addEventListener('keyup', filterStaffTable);
-    }
+    if (searchInput) searchInput.addEventListener('keyup', filterStaffTable);
     
     const deptFilter = document.getElementById('departmentFilter');
-    if (deptFilter) {
-        deptFilter.addEventListener('change', filterStaffTable);
-    }
+    if (deptFilter) deptFilter.addEventListener('change', filterStaffTable);
     
-    const statusFilter = document.getElementById('statusFilter');
-    if (statusFilter) {
-        statusFilter.addEventListener('change', filterStaffTable);
-    }
+    const loginCheckbox = document.getElementById('staffEnableLogin');
+    if (loginCheckbox) loginCheckbox.addEventListener('change', toggleStaffPasswordField);
 }
 
-// Make functions globally available
+// Make global
 window.loadAllStaff = loadAllStaff;
 window.openAddStaffModal = openAddStaffModal;
 window.closeStaffModal = closeStaffModal;
 window.saveStaff = saveStaff;
 window.editStaff = editStaff;
+window.resetStaffPassword = resetStaffPassword;
 window.deleteStaff = deleteStaff;
 window.filterStaffTable = filterStaffTable;
 window.exportStaffToCSV = exportStaffToCSV;
-window.importStaffFromCSV = importStaffFromCSV;
 window.initStaffManagement = initStaffManagement;
+window.toggleStaffPasswordField = toggleStaffPasswordField;
+window.staffLogin = staffLogin;
 
-console.log('✅ Staff Management module loaded');
+console.log('✅ Staff Management module ready');
 // =====================================================
 // INITIALIZE THE APPLICATION - ONLY ONE EVENT LISTENER
 // =====================================================
