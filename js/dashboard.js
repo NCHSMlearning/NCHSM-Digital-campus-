@@ -451,7 +451,96 @@ class DashboardModule {
             if (!document.hidden) this.loadAllMetrics();
         }, 120000);
     }
+    // Load real leaderboard data from Supabase
+async function loadLeaderboard(period = 'all') {
+    const container = document.getElementById('leaderboard-container');
+    if (!container) return;
     
+    container.innerHTML = '<div class="loading-slim"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
+    
+    try {
+        let query = window.supabase
+            .from('consolidated_user_profiles_table')
+            .select('full_name, program, block, login_count, created_at')
+            .eq('role', 'student');
+        
+        // Filter by period
+        if (period === 'weekly') {
+            const weekAgo = new Date();
+            weekAgo.setDate(weekAgo.getDate() - 7);
+            query = query.gte('last_login', weekAgo.toISOString());
+        } else if (period === 'monthly') {
+            const monthAgo = new Date();
+            monthAgo.setMonth(monthAgo.getMonth() - 1);
+            query = query.gte('last_login', monthAgo.toISOString());
+        }
+        
+        const { data, error } = await query
+            .order('login_count', { ascending: false })
+            .limit(10);
+        
+        if (error) throw error;
+        
+        if (!data || data.length === 0) {
+            container.innerHTML = '<div class="empty-slim">No data yet</div>';
+            return;
+        }
+        
+        // Build leaderboard HTML
+        container.innerHTML = data.map((user, index) => {
+            let rankIcon = '';
+            if (index === 0) rankIcon = '👑';
+            else if (index === 1) rankIcon = '🥈';
+            else if (index === 2) rankIcon = '🥉';
+            else rankIcon = (index + 1).toString();
+            
+            const points = (user.login_count || 0) * 10;
+            const shortName = user.full_name?.split(' ')[0] || 'Student';
+            
+            return `
+                <div class="leader-slim">
+                    <span class="rank">${rankIcon}</span>
+                    <span class="name">${escapeHtml(shortName)}</span>
+                    <span class="pts">${points} pts</span>
+                </div>
+            `;
+        }).join('');
+        
+    } catch (error) {
+        console.error('Error loading leaderboard:', error);
+        container.innerHTML = '<div class="error-slim">Failed to load</div>';
+    }
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/[&<>]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        return m;
+    });
+}
+
+// Make tabs clickable
+function initLeaderboardTabs() {
+    const tabs = document.querySelectorAll('.leaderboard-tabs span');
+    tabs.forEach(tab => {
+        tab.style.cursor = 'pointer';
+        tab.addEventListener('click', function() {
+            tabs.forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+            const period = this.innerText.trim().toLowerCase();
+            loadLeaderboard(period);
+        });
+    });
+}
+
+// Load on page load
+document.addEventListener('DOMContentLoaded', () => {
+    loadLeaderboard('all');
+    initLeaderboardTabs();
+});
     async refreshAll() {
         console.log('🔄 Manual refresh...');
         await this.loadAllMetrics();
