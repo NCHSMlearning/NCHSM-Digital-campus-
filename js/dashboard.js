@@ -387,46 +387,123 @@ class DashboardModule {
         }
     }
     
-    async loadLeaderboardData(period = 'all') {
-        const container = document.getElementById('leaderboard-container');
-        if (!container) return;
+   async loadLeaderboardData(period = 'all') {
+    const container = document.getElementById('leaderboard-container');
+    if (!container) return;
+    
+    container.innerHTML = '<div class="loading-slim"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
+    
+    try {
+        // Get all students
+        let query = this.sb
+            .from('consolidated_user_profiles_table')
+            .select('id, full_name, login_count, block, program, last_login')
+            .eq('role', 'student');
         
-        container.innerHTML = '<div class="loading-slim"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
+        // Apply period filter for logins
+        if (period === 'weekly') {
+            const weekAgo = new Date();
+            weekAgo.setDate(weekAgo.getDate() - 7);
+            query = query.gte('last_login', weekAgo.toISOString());
+        } else if (period === 'monthly') {
+            const monthAgo = new Date();
+            monthAgo.setMonth(monthAgo.getMonth() - 1);
+            query = query.gte('last_login', monthAgo.toISOString());
+        }
         
-        try {
-            let query = this.sb
-                .from('consolidated_user_profiles_table')
-                .select('full_name, login_count')
-                .eq('role', 'student');
+        const { data: students, error } = await query;
+        if (error) throw error;
+        
+        if (!students || students.length === 0) {
+            container.innerHTML = '<div class="empty-slim">No data yet</div>';
+            return;
+        }
+        
+        // Calculate points for each student (multifactor)
+        const scoredStudents = await Promise.all(students.map(async (student) => {
+            let loginPoints = 0;
+            let attendancePoints = 0;
+            let nurseIQPoints = 0;
             
-            const { data, error } = await query.order('login_count', { ascending: false }).limit(10);
+            // FACTOR 1: LOGIN POINTS (10 points per login)
+            loginPoints = (student.login_count || 0) * 10;
             
-            if (error) throw error;
+            // FACTOR 2: ATTENDANCE POINTS (10 points per verified attendance)
+            const { data: attendance } = await this.sb
+                .from('geo_attendance_logs')
+                .select('is_verified')
+                .eq('student_id', student.id);
             
-            if (!data || data.length === 0) {
-                container.innerHTML = '<div class="empty-slim">No data yet</div>';
-                return;
+            const verifiedCount = attendance?.filter(a => a.is_verified === true).length || 0;
+            attendancePoints = verifiedCount * 10;
+            
+            // FACTOR 3: NURSEIQ POINTS (1 point per question answered)
+            const { data: progress } = await this.sb
+                .from('user_progress')
+                .select('progress_data')
+                .eq('user_id', student.id)
+                .maybeSingle();
+            
+            if (progress?.progress_data?.answers) {
+                nurseIQPoints = Object.values(progress.progress_data.answers).filter(a => a.answered).length;
             }
             
-            container.innerHTML = data.map((user, index) => {
-                const rankIcon = index === 0 ? '👑' : index === 1 ? '🥈' : index === 2 ? '🥉' : (index + 1).toString();
-                const points = (user.login_count || 0) * 10;
-                const name = user.full_name?.split(' ')[0] || 'Student';
-                return `
-                    <div class="leader-slim">
-                        <span class="rank">${rankIcon}</span>
-                        <span class="name">${this.escapeHtml(name)}</span>
-                        <span class="pts">${points} pts</span>
-                    </div>
-                `;
-            }).join('');
+            // Also check nurseiq_attempts
+            const { data: attempts } = await this.sb
+                .from('nurseiq_attempts')
+                .select('score, total_questions')
+                .eq('student_id', student.id);
             
-        } catch (error) {
-            console.error('Leaderboard error:', error);
-            container.innerHTML = '<div class="error-slim">Failed to load</div>';
-        }
+            if (attempts && attempts.length > 0) {
+                let attemptPoints = 0;
+                attempts.forEach(a => {
+                    attemptPoints += a.score || 0;
+                });
+                if (attemptPoints > nurseIQPoints) nurseIQPoints = attemptPoints;
+            }
+            
+            // TOTAL POINTS = Sum of all factors
+            const totalPoints = loginPoints + attendancePoints + nurseIQPoints;
+            
+            return {
+                ...student,
+                loginPoints,
+                attendancePoints,
+                nurseIQPoints,
+                totalPoints
+            };
+        }));
+        
+        // Sort by total points (highest first)
+        scoredStudents.sort((a, b) => b.totalPoints - a.totalPoints);
+        
+        // Take top 10
+        const topStudents = scoredStudents.slice(0, 10);
+        
+        // Display leaderboard
+        container.innerHTML = topStudents.map((student, index) => {
+            const rankIcon = index === 0 ? '👑' : index === 1 ? '🥈' : index === 2 ? '🥉' : (index + 1).toString();
+            const name = student.full_name?.split(' ')[0] || 'Student';
+            
+            // Create tooltip with breakdown
+            const tooltip = `${student.full_name || 'Student'}\n📊 ${student.totalPoints} TOTAL POINTS\n━━━━━━━━━━━━━━━━━━━━\n🔐 Login: ${student.loginPoints} pts\n✅ Attendance: ${student.attendancePoints} pts\n🧠 NurseIQ: ${student.nurseIQPoints} pts`;
+            
+            return `
+                <div class="leader-slim" title="${this.escapeHtml(tooltip)}">
+                    <span class="rank">${rankIcon}</span>
+                    <span class="name">${this.escapeHtml(name)}</span>
+                    <span class="pts">${student.totalPoints} pts</span>
+                </div>
+            `;
+        }).join('');
+        
+        console.log(`📊 Multifactor Leaderboard: ${topStudents.length} students, Period: ${period}`);
+        
+    } catch (error) {
+        console.error('Leaderboard error:', error);
+        container.innerHTML = '<div class="error-slim">Failed to load</div>';
     }
-    
+}
     async loadTimetableData(week = 'all') {
         const container = document.getElementById('timetable-container');
         const loading = document.getElementById('timetable-loading');
