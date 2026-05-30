@@ -1,4 +1,6 @@
 // dashboard.js - COMPLETE WORKING VERSION WITH EXAMS FROM exams_with_courses
+// INCLUDES: Attendance Points (verified × 10), Color Coding, All Metrics
+
 class DashboardModule {
     constructor(supabaseClient) {
         console.log('🚀 Initializing DashboardModule...');
@@ -9,14 +11,15 @@ class DashboardModule {
         this.autoRefreshInterval = null;
         
         this.metrics = {
-            attendance: { rate: 0, verified: 0, total: 0, pending: 0 },
+            attendance: { rate: 0, verified: 0, total: 0, pending: 0, points: 0 },
             resources: 0,
             examCard: { approved: 0, eligible: false, semester: 'Current' },
             nurseiq: { progress: 0, accuracy: 0, questions: 0 },
             courses: 0,
             exams: 'No upcoming exams',
             upcomingExamDetails: null,
-            lastLogin: { time: null, formatted: 'Never', loginCount: 0 }
+            lastLogin: { time: null, formatted: 'Never', loginCount: 0 },
+            xp: { current: 0, max: 100, level: 1, percent: 0 }
         };
         
         this.cacheElements();
@@ -29,6 +32,7 @@ class DashboardModule {
     cacheElements() {
         this.elements = {
             welcomeHeader: document.getElementById('welcome-header'),
+            welcomeStudentName: document.getElementById('welcome-student-name'),
             attendanceRate: document.getElementById('dashboard-attendance-rate'),
             verifiedCount: document.getElementById('dashboard-verified-count'),
             totalCount: document.getElementById('dashboard-total-count'),
@@ -48,7 +52,16 @@ class DashboardModule {
             headerProfilePhoto: document.getElementById('header-profile-photo'),
             headerRefresh: document.getElementById('header-refresh'),
             lastLoginTime: document.getElementById('dashboard-last-login'),
-            lastLoginCount: document.getElementById('dashboard-login-count')
+            lastLoginCount: document.getElementById('dashboard-login-count'),
+            // NEW ELEMENTS FOR MODERN DASHBOARD
+            attendancePoints: document.getElementById('attendance-points-value'),
+            userLevel: document.getElementById('user-level'),
+            userXp: document.getElementById('user-xp'),
+            userXpMax: document.getElementById('user-xp-max'),
+            xpProgressFill: document.getElementById('xp-progress-fill'),
+            attendanceWarningBadge: document.getElementById('attendance-warning-badge'),
+            warningText: document.getElementById('warning-text'),
+            attendancePercentElement: document.querySelector('.attendance-percent')
         };
         
         const foundCount = Object.keys(this.elements).filter(key => this.elements[key]).length;
@@ -60,6 +73,7 @@ class DashboardModule {
             this.updateCoursesMetric();
             this.updateUIFromMetrics();
         });
+        
         document.addEventListener('examsModuleReady', (e) => {
             if (e.detail) {
                 this.updateExamsMetricWithDetails(e.detail);
@@ -68,12 +82,14 @@ class DashboardModule {
             }
             this.updateUIFromMetrics();
         });
+        
         document.addEventListener('nurseiqMetricsUpdated', (e) => {
             if (e.detail) {
                 this.updateNurseIQMetric(e.detail);
                 this.updateUIFromMetrics();
             }
         });
+        
         document.addEventListener('attendanceCheckedIn', () => {
             this.loadAttendanceMetrics();
             this.updateUIFromMetrics();
@@ -110,27 +126,29 @@ class DashboardModule {
             'profile': 'profile'
         };
         
-        const cards = document.querySelectorAll('.stat-card');
+        const cards = document.querySelectorAll('.stat-card, .mini-card, .attendance-card-modern');
         
         cards.forEach(card => {
             const newCard = card.cloneNode(true);
-            card.parentNode.replaceChild(newCard, card);
+            if (card.parentNode) {
+                card.parentNode.replaceChild(newCard, card);
+            }
             
             let tabToOpen = newCard.getAttribute('data-tab');
-            if (newCard.classList.contains('nurseiq-card')) tabToOpen = 'nurseiq';
-            if (newCard.classList.contains('examcard-card')) tabToOpen = 'hub-exam-card';
+            if (newCard.classList && newCard.classList.contains('nurseiq-card')) tabToOpen = 'nurseiq';
+            if (newCard.classList && newCard.classList.contains('examcard-card')) tabToOpen = 'hub-exam-card';
             
             const finalTab = tabMapping[tabToOpen] || tabToOpen;
             
-            newCard.addEventListener('click', (e) => {
-                if (e.target.closest('button') || e.target.closest('a')) return;
-                if (typeof window.showTab === 'function') {
-                    window.showTab(finalTab);
-                }
-            });
-            
-            newCard.style.cursor = 'pointer';
-            newCard.style.transition = 'all 0.2s ease';
+            if (finalTab) {
+                newCard.addEventListener('click', (e) => {
+                    if (e.target.closest('button') || e.target.closest('a')) return;
+                    if (typeof window.showTab === 'function') {
+                        window.showTab(finalTab);
+                    }
+                });
+                newCard.style.cursor = 'pointer';
+            }
         });
         
         console.log('✅ All cards clickable');
@@ -148,12 +166,16 @@ class DashboardModule {
             this.elements.headerUserName.textContent = userProfile.full_name;
         }
         
+        if (this.elements.welcomeStudentName && userProfile.full_name) {
+            this.elements.welcomeStudentName.textContent = userProfile.full_name;
+        }
+        
         const hour = new Date().getHours();
         const greeting = hour >= 5 && hour < 12 ? 'Good Morning' :
                        hour >= 12 && hour < 17 ? 'Good Afternoon' :
                        hour >= 17 && hour < 21 ? 'Good Evening' : 'Good Night';
         if (this.elements.welcomeHeader) {
-            this.elements.welcomeHeader.textContent = `${greeting}, ${userProfile.full_name || 'Student'}!`;
+            this.elements.welcomeHeader.textContent = `${greeting}, ${userProfile.full_name || 'Student'}! 🎉`;
         }
         
         this.updateCurrentBlockInfo();
@@ -176,13 +198,13 @@ class DashboardModule {
     updateCurrentBlockInfo() {
         if (!this.userProfile) return;
         
-        const blockEl = document.getElementById('dashboard-current-block-value');
+        const blockEl = this.elements.dashboardCurrentBlockValue;
         if (blockEl) blockEl.innerText = this.userProfile.block || this.userProfile.current_block || 'Introductory';
         
-        const programEl = document.getElementById('dashboard-program-name');
+        const programEl = this.elements.dashboardProgramName;
         if (programEl) programEl.innerText = this.userProfile.program || 'KRCHN';
         
-        const intakeEl = document.getElementById('dashboard-intake-year');
+        const intakeEl = this.elements.dashboardIntakeYear;
         if (intakeEl) intakeEl.innerText = this.userProfile.intake_year || new Date().getFullYear();
     }
     
@@ -196,14 +218,37 @@ class DashboardModule {
             this.loadExamCardMetrics(),
             this.loadNurseIQMetrics(),
             this.updateCoursesMetric(),
-            this.updateExamsMetric(),  // This now queries exams_with_courses
-            this.loadLastLoginInfo()
+            this.updateExamsMetric(),
+            this.loadLastLoginInfo(),
+            this.loadXPMetrics()
         ]);
         
         this.updateUIFromMetrics();
         
         console.log(`✅ All metrics loaded in ${(performance.now() - startTime).toFixed(0)}ms`);
         this.displaySummary();
+    }
+    
+    async loadXPMetrics() {
+        // Calculate XP from attendance points and NurseIQ
+        const attendancePoints = (this.metrics.attendance.verified || 0) * 10;
+        const nurseIQPoints = this.metrics.nurseiq.questions || 0;
+        const totalXP = attendancePoints + nurseIQPoints;
+        
+        const maxXP = 100;
+        const currentXP = totalXP % maxXP;
+        const level = Math.floor(totalXP / maxXP) + 1;
+        const percent = (currentXP / maxXP) * 100;
+        
+        this.metrics.xp = {
+            current: currentXP,
+            max: maxXP,
+            level: level,
+            percent: percent,
+            total: totalXP
+        };
+        
+        console.log(`⭐ XP: Level ${level} · ${currentXP}/${maxXP} XP (${percent}%)`);
     }
     
     async loadLastLoginInfo() {
@@ -230,7 +275,6 @@ class DashboardModule {
                 };
                 
                 console.log(`👤 Last login: ${kenyaTime} (${relativeTime})`);
-                console.log(`📊 Total logins: ${data.login_count || 0}`);
             } else {
                 this.metrics.lastLogin = {
                     time: null,
@@ -253,29 +297,20 @@ class DashboardModule {
     
     convertToKenyaTime(utcTimestamp) {
         if (!utcTimestamp) return 'Never';
-        
         try {
             const utcDate = new Date(utcTimestamp);
+            if (isNaN(utcDate.getTime())) return 'Invalid date';
             
-            if (isNaN(utcDate.getTime())) {
-                return 'Invalid date';
-            }
-            
-            const kenyaTime = utcDate.toLocaleString('en-KE', {
+            return utcDate.toLocaleString('en-KE', {
                 timeZone: 'Africa/Nairobi',
                 year: 'numeric',
                 month: 'short',
                 day: 'numeric',
                 hour: '2-digit',
                 minute: '2-digit',
-                second: '2-digit',
                 hour12: true
             });
-            
-            return kenyaTime;
-            
         } catch (error) {
-            console.error('Time conversion error:', error);
             return new Date(utcTimestamp).toLocaleString();
         }
     }
@@ -285,13 +320,9 @@ class DashboardModule {
         
         const now = new Date();
         const utcDate = new Date(utcTimestamp);
-        
         if (isNaN(utcDate.getTime())) return 'Invalid date';
         
-        const kenyaDate = new Date(utcDate.getTime() + (3 * 60 * 60 * 1000));
-        const kenyaNow = new Date(now.getTime() + (3 * 60 * 60 * 1000));
-        
-        const diffMs = kenyaNow - kenyaDate;
+        const diffMs = now - utcDate;
         const diffMins = Math.floor(diffMs / (1000 * 60));
         const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
         const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
@@ -306,52 +337,90 @@ class DashboardModule {
         return `${Math.floor(diffDays / 365)} year${Math.floor(diffDays / 365) === 1 ? '' : 's'} ago`;
     }
     
+    // ========== ATTENDANCE POINTS CALCULATION (NEW) ==========
+    calculateAttendancePoints() {
+        const verified = this.metrics.attendance.verified || 0;
+        const points = verified * 10;
+        this.metrics.attendance.points = points;
+        
+        // Update UI
+        if (this.elements.attendancePoints) {
+            this.elements.attendancePoints.innerText = points;
+        }
+        
+        console.log(`🎯 Attendance Points: ${points} (${verified} verified × 10)`);
+        return points;
+    }
+    
+    // ========== ATTENDANCE COLOR CODING (NEW) ==========
+    updateAttendanceColor() {
+        const rate = this.metrics.attendance.rate || 0;
+        const percentEl = this.elements.attendancePercentElement || document.querySelector('.attendance-percent');
+        const warningBadge = this.elements.attendanceWarningBadge || document.getElementById('attendance-warning-badge');
+        const warningText = this.elements.warningText || document.getElementById('warning-text');
+        
+        if (percentEl) {
+            // Remove existing classes
+            percentEl.classList.remove('attendance-critical', 'attendance-warning', 'attendance-good');
+            
+            if (rate < 50) {
+                percentEl.classList.add('attendance-critical');
+                if (warningBadge) warningBadge.style.display = 'flex';
+                if (warningText) warningText.innerText = '⚠️ CRITICAL (<50%)';
+            } else if (rate >= 50 && rate < 75) {
+                percentEl.classList.add('attendance-warning');
+                if (warningBadge) warningBadge.style.display = 'flex';
+                if (warningText) warningText.innerText = '⚠️ BELOW 75%';
+            } else {
+                percentEl.classList.add('attendance-good');
+                if (warningBadge) warningBadge.style.display = 'none';
+            }
+        }
+    }
+    
     updateUIFromMetrics() {
         console.log('🎨 Updating UI from metrics...');
         
         const m = this.metrics;
         
-        const rateEl = document.getElementById('dashboard-attendance-rate');
-        if (rateEl) rateEl.innerText = m.attendance.rate + '%';
+        // Attendance
+        if (this.elements.attendanceRate) this.elements.attendanceRate.innerText = m.attendance.rate + '%';
+        if (this.elements.verifiedCount) this.elements.verifiedCount.innerText = m.attendance.verified;
+        if (this.elements.totalCount) this.elements.totalCount.innerText = m.attendance.total;
+        if (this.elements.pendingCount) this.elements.pendingCount.innerText = m.attendance.pending;
         
-        const verifiedEl = document.getElementById('dashboard-verified-count');
-        if (verifiedEl) verifiedEl.innerText = m.attendance.verified;
+        // Attendance Points & Color
+        this.calculateAttendancePoints();
+        this.updateAttendanceColor();
         
-        const totalEl = document.getElementById('dashboard-total-count');
-        if (totalEl) totalEl.innerText = m.attendance.total;
+        // Courses
+        if (this.elements.activeCourses) this.elements.activeCourses.innerText = m.courses;
         
-        const pendingEl = document.getElementById('dashboard-pending-count');
-        if (pendingEl) pendingEl.innerText = m.attendance.pending;
-        
-        const coursesEl = document.getElementById('dashboard-active-courses');
-        if (coursesEl) coursesEl.innerText = m.courses;
-        
-        const examStatusEl = document.getElementById('dashboard-exam-status');
-        if (examStatusEl) {
-            examStatusEl.innerText = m.examCard.eligible ? 'ELIGIBLE' : 'NOT ELIGIBLE';
-            examStatusEl.style.color = m.examCard.eligible ? '#059669' : '#dc2626';
-            examStatusEl.style.fontWeight = 'bold';
-            examStatusEl.style.fontSize = '1.1rem';
+        // Exam Card
+        if (this.elements.dashboardExamStatus) {
+            this.elements.dashboardExamStatus.innerText = m.examCard.eligible ? 'ELIGIBLE' : 'NOT ELIGIBLE';
+            this.elements.dashboardExamStatus.style.color = m.examCard.eligible ? '#059669' : '#dc2626';
         }
+        if (this.elements.dashboardApprovedUnits) this.elements.dashboardApprovedUnits.innerText = m.examCard.approved;
         
-        const approvedEl = document.getElementById('dashboard-approved-units');
-        if (approvedEl) approvedEl.innerText = m.examCard.approved;
+        // NurseIQ
+        if (this.elements.nurseiqProgress) this.elements.nurseiqProgress.innerText = m.nurseiq.progress + '%';
+        if (this.elements.nurseiqAccuracy) this.elements.nurseiqAccuracy.innerText = m.nurseiq.accuracy + '%';
+        if (this.elements.nurseiqQuestions) this.elements.nurseiqQuestions.innerText = m.nurseiq.questions;
         
-        const nurseiqEl = document.getElementById('dashboard-nurseiq-progress');
-        if (nurseiqEl) nurseiqEl.innerText = m.nurseiq.progress + '%';
+        // Resources
+        if (this.elements.newResources) this.elements.newResources.innerText = m.resources;
         
-        const accuracyEl = document.getElementById('dashboard-nurseiq-accuracy');
-        if (accuracyEl) accuracyEl.innerText = m.nurseiq.accuracy + '%';
+        // Upcoming Exam
+        if (this.elements.upcomingExam) this.elements.upcomingExam.innerText = m.exams;
         
-        const questionsEl = document.getElementById('dashboard-nurseiq-questions');
-        if (questionsEl) questionsEl.innerText = m.nurseiq.questions;
+        // XP Display
+        if (this.elements.userLevel) this.elements.userLevel.innerText = m.xp.level;
+        if (this.elements.userXp) this.elements.userXp.innerText = m.xp.current;
+        if (this.elements.userXpMax) this.elements.userXpMax.innerText = m.xp.max;
+        if (this.elements.xpProgressFill) this.elements.xpProgressFill.style.width = m.xp.percent + '%';
         
-        const resourcesEl = document.getElementById('dashboard-new-resources');
-        if (resourcesEl) resourcesEl.innerText = m.resources;
-        
-        const upcomingEl = document.getElementById('dashboard-upcoming-exam');
-        if (upcomingEl) upcomingEl.innerText = m.exams;
-        
+        // Last Login
         if (this.elements.lastLoginTime) {
             this.elements.lastLoginTime.innerHTML = `
                 <div class="last-login-container">
@@ -362,15 +431,17 @@ class DashboardModule {
             `;
         }
         
+        // Profile Info
         if (this.userProfile) {
-            const blockEl = document.getElementById('dashboard-current-block-value');
-            if (blockEl) blockEl.innerText = this.userProfile.block || 'Introductory';
-            
-            const programEl = document.getElementById('dashboard-program-name');
-            if (programEl) programEl.innerText = this.userProfile.program || 'KRCHN';
-            
-            const intakeEl = document.getElementById('dashboard-intake-year');
-            if (intakeEl) intakeEl.innerText = this.userProfile.intake_year || new Date().getFullYear();
+            if (this.elements.dashboardCurrentBlockValue) {
+                this.elements.dashboardCurrentBlockValue.innerText = this.userProfile.block || 'Introductory';
+            }
+            if (this.elements.dashboardProgramName) {
+                this.elements.dashboardProgramName.innerText = this.userProfile.program || 'KRCHN';
+            }
+            if (this.elements.dashboardIntakeYear) {
+                this.elements.dashboardIntakeYear.innerText = this.userProfile.intake_year || new Date().getFullYear();
+            }
         }
         
         console.log('✅ UI update complete');
@@ -391,9 +462,9 @@ class DashboardModule {
             const verified = logs?.filter(l => l.is_verified === true).length || 0;
             const rate = total > 0 ? Math.round((verified / total) * 100) : 0;
             
-            this.metrics.attendance = { rate, verified, total, pending: total - verified };
+            this.metrics.attendance = { rate, verified, total, pending: total - verified, points: verified * 10 };
             
-            console.log(`📊 Attendance: ${rate}% (${verified}/${total})`);
+            console.log(`📊 Attendance: ${rate}% (${verified}/${total}) → ${verified * 10} points`);
             
         } catch (error) {
             console.error('Attendance error:', error);
@@ -414,7 +485,6 @@ class DashboardModule {
             
             if (!progError && programResources) {
                 allResources = [...programResources];
-                console.log(`📁 Program resources: ${programResources.length}`);
             }
             
             const { data: generalResources, error: genError } = await this.sb
@@ -425,7 +495,6 @@ class DashboardModule {
             
             if (!genError && generalResources) {
                 allResources = [...allResources, ...generalResources];
-                console.log(`📁 General resources: ${generalResources.length}`);
             }
             
             const uniqueIds = new Set();
@@ -455,7 +524,7 @@ class DashboardModule {
             const approved = registrations?.length || 0;
             this.metrics.examCard = { approved, eligible: approved > 0 };
             
-            console.log(`📇 Exam Card: ${approved} approved units - ${approved > 0 ? 'ELIGIBLE' : 'NOT ELIGIBLE'}`);
+            console.log(`📇 Exam Card: ${approved} approved units`);
             
         } catch (error) {
             console.error('Exam card error:', error);
@@ -469,7 +538,6 @@ class DashboardModule {
                 const data = JSON.parse(cached);
                 if (Date.now() - (data.timestamp || 0) < 300000) {
                     this.updateNurseIQMetric(data);
-                    console.log(`🧠 NurseIQ (cached): ${data.progress || 0}% progress`);
                     return;
                 }
             }
@@ -479,7 +547,6 @@ class DashboardModule {
             const metrics = window.getNurseIQDashboardMetrics();
             if (metrics) {
                 this.updateNurseIQMetric(metrics);
-                console.log(`🧠 NurseIQ: ${metrics.progress || 0}% progress`);
                 return;
             }
         }
@@ -529,20 +596,12 @@ class DashboardModule {
                 return;
             }
             
-            console.log('Student profile for exam filter:', {
-                program: this.userProfile.program,
-                block: this.userProfile.block,
-                intake: this.userProfile.intake_year
-            });
-            
-            // Get today's date in YYYY-MM-DD format
             const today = new Date().toISOString().split('T')[0];
             
-            // Query exams_with_courses table
             const { data: exams, error } = await this.sb
                 .from('exams_with_courses')
                 .select('*')
-                .in('status', ['published', 'Upcoming', 'InProgress'])  // ← KEY CHANGE
+                .in('status', ['published', 'Upcoming', 'InProgress'])
                 .gte('exam_date', today)
                 .order('exam_date', { ascending: true })
                 .limit(10);
@@ -553,62 +612,41 @@ class DashboardModule {
                 return;
             }
             
-            console.log('All upcoming exams found:', exams?.length || 0);
-            console.log('Exams data:', exams);
+            console.log(`Found ${exams?.length || 0} upcoming exams`);
             
             if (!exams || exams.length === 0) {
-                console.log('No upcoming exams in database');
                 this.metrics.exams = upcomingText;
                 return;
             }
             
-            // Filter exams that match student's program and block
             const matchingExams = exams.filter(exam => {
-                // Check program match
                 let programMatch = true;
                 if (exam.program_type && exam.program_type !== 'General') {
                     programMatch = exam.program_type === this.userProfile.program;
                 }
                 
-                // Check block match
                 let blockMatch = true;
                 if (exam.block_term && exam.block_term !== 'General') {
                     blockMatch = exam.block_term === this.userProfile.block;
                 }
                 
-                // Check intake year match
-              // Check intake year match (type-insensitive)
-let intakeMatch = true;
-if (exam.intake_year && exam.intake_year != this.userProfile.intake_year) {
-    intakeMatch = false;
-}
-                
-                const isMatch = programMatch && blockMatch && intakeMatch;
-                if (!isMatch) {
-                    console.log(`Exam ${exam.exam_name} filtered out:`, {
-                        examProgram: exam.program_type,
-                        studentProgram: this.userProfile.program,
-                        examBlock: exam.block_term,
-                        studentBlock: this.userProfile.block,
-                        examIntake: exam.intake_year,
-                        studentIntake: this.userProfile.intake_year
-                    });
+                let intakeMatch = true;
+                if (exam.intake_year && exam.intake_year != this.userProfile.intake_year) {
+                    intakeMatch = false;
                 }
                 
-                return isMatch;
+                return programMatch && blockMatch && intakeMatch;
             });
             
-            console.log('Matching exams for student:', matchingExams.length);
+            console.log(`Matching exams: ${matchingExams.length}`);
             
             if (matchingExams && matchingExams.length > 0) {
                 const upcomingExam = matchingExams[0];
                 
-                // Format the date
                 const examDate = new Date(upcomingExam.exam_date);
                 const options = { weekday: 'short', month: 'short', day: 'numeric' };
                 const formattedDate = examDate.toLocaleDateString('en-KE', options);
                 
-                // Format the time if available
                 let timeString = '';
                 if (upcomingExam.exam_start_time) {
                     const timeParts = upcomingExam.exam_start_time.split(':');
@@ -629,9 +667,7 @@ if (exam.intake_year && exam.intake_year != this.userProfile.intake_year) {
                     formatted: upcomingText
                 };
                 
-                console.log(`📝 Upcoming exam found: ${upcomingText}`);
-            } else {
-                console.log('No matching exams found for this student\'s program/block');
+                console.log(`📝 Upcoming exam: ${upcomingText}`);
             }
             
         } catch (error) {
@@ -641,18 +677,15 @@ if (exam.intake_year && exam.intake_year != this.userProfile.intake_year) {
         this.metrics.exams = upcomingText;
         this.metrics.upcomingExamDetails = examDetails;
         
-        // Update UI element
         if (this.elements.upcomingExam) {
             this.elements.upcomingExam.textContent = upcomingText;
         }
     }
     
-    // Alternative method to update with pre-fetched details
     updateExamsMetricWithDetails(details) {
         if (details && details.upcomingExam) {
             this.metrics.exams = details.upcomingExam;
             this.metrics.upcomingExamDetails = details;
-            
             if (this.elements.upcomingExam) {
                 this.elements.upcomingExam.textContent = details.upcomingExam;
             }
@@ -666,14 +699,13 @@ if (exam.intake_year && exam.intake_year != this.userProfile.intake_year) {
         console.log('📊 DASHBOARD SUMMARY');
         console.log('═══════════════════════════════════════');
         console.log(`   Attendance Rate: ${this.metrics.attendance.rate}% (${this.metrics.attendance.verified}/${this.metrics.attendance.total})`);
+        console.log(`   Attendance Points: ${this.metrics.attendance.points} (${this.metrics.attendance.verified} × 10)`);
         console.log(`   Active Courses: ${this.metrics.courses}`);
         console.log(`   Resources: ${this.metrics.resources}`);
         console.log(`   Exam Card: ${this.metrics.examCard.eligible ? 'ELIGIBLE' : 'NOT ELIGIBLE'} (${this.metrics.examCard.approved} units)`);
         console.log(`   NurseIQ: ${this.metrics.nurseiq.progress}% progress, ${this.metrics.nurseiq.accuracy}% accuracy`);
         console.log(`   Upcoming Exam: ${this.metrics.exams}`);
-        if (this.metrics.upcomingExamDetails) {
-            console.log(`   Exam Details:`, this.metrics.upcomingExamDetails);
-        }
+        console.log(`   XP: Level ${this.metrics.xp.level} · ${this.metrics.xp.current}/${this.metrics.xp.max} XP`);
         console.log(`   Last Login: ${this.metrics.lastLogin.formatted} (${this.metrics.lastLogin.loginCount} logins)`);
         if (this.userProfile) {
             console.log(`   Current Block: ${this.userProfile.block || 'Introductory'}`);
@@ -691,6 +723,8 @@ if (exam.intake_year && exam.intake_year != this.userProfile.intake_year) {
         console.log(`📚 Block: ${this.userProfile?.block || 'Unknown'}`);
         console.log(`📅 Intake: ${this.userProfile?.intake_year || 'Unknown'}`);
         console.log(`📝 Upcoming Exam: ${this.metrics.exams}`);
+        console.log(`🎯 Attendance Points: ${this.metrics.attendance.points}`);
+        console.log(`⭐ XP Level: ${this.metrics.xp.level}`);
         console.log(`🕐 Last Login: ${this.metrics.lastLogin.formatted}`);
         console.log('═══════════════════════════════════════');
         console.log('🎯 All systems operational!');
@@ -744,7 +778,6 @@ function initDashboardModule(supabaseClient) {
     return dashboardModule;
 }
 
-// Global function to get upcoming exam metrics (for other modules)
 window.getExamsDashboardMetrics = async function() {
     if (dashboardModule && dashboardModule.metrics.upcomingExamDetails) {
         return dashboardModule.metrics.upcomingExamDetails;
@@ -752,8 +785,22 @@ window.getExamsDashboardMetrics = async function() {
     return { upcomingExam: 'No upcoming exams' };
 };
 
+window.getAttendancePoints = function() {
+    if (dashboardModule) {
+        return dashboardModule.metrics.attendance.points;
+    }
+    return 0;
+};
+
+window.getXPMetrics = function() {
+    if (dashboardModule) {
+        return dashboardModule.metrics.xp;
+    }
+    return { level: 1, current: 0, max: 100, percent: 0 };
+};
+
 window.DashboardModule = DashboardModule;
 window.initDashboardModule = initDashboardModule;
 window.refreshDashboard = () => dashboardModule?.refreshAll();
 
-console.log('✅ Dashboard module ready - QUERIES exams_with_courses table');
+console.log('✅ Dashboard module ready - QUERIES exams_with_courses table | INCLUDES attendance points');
