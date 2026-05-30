@@ -582,37 +582,73 @@ class DashboardModule {
     }
     
     findNextClassPremium(timetable) {
-        const now = new Date();
-        const currentHour = now.getHours();
-        const currentMinute = now.getMinutes();
-        const currentTime = `${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`;
-        const dayMap = { 1: 'monday', 2: 'tuesday', 3: 'wednesday', 4: 'thursday', 5: 'friday' };
-        const currentDay = dayMap[now.getDay()];
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+    const currentTime = `${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`;
+    const dayMap = { 
+        1: 'monday', 
+        2: 'tuesday', 
+        3: 'wednesday', 
+        4: 'thursday', 
+        5: 'friday' 
+    };
+    const currentDayIndex = now.getDay(); // 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
+    const currentDay = dayMap[currentDayIndex];
+    
+    console.log(`🔍 Finding next class - Current day index: ${currentDayIndex}, Current time: ${currentTime}`);
+    
+    // STEP 1: Check today's upcoming classes (if weekday and before last class)
+    if (currentDay) {
+        const todayClasses = timetable.filter(c => 
+            c.day_of_week === currentDay && 
+            c.start_time > currentTime && 
+            !c.is_holiday
+        ).sort((a, b) => a.start_time.localeCompare(b.start_time));
         
-        if (currentDay) {
-            const todayClasses = timetable.filter(c => 
-                c.day_of_week === currentDay && 
-                c.start_time > currentTime && 
-                !c.is_holiday
-            ).sort((a, b) => a.start_time.localeCompare(b.start_time));
-            
-            if (todayClasses.length > 0) return todayClasses[0];
+        if (todayClasses.length > 0) {
+            console.log(`✅ Found today's class at ${todayClasses[0].start_time}`);
+            return todayClasses[0];
         }
-        
-        for (let i = now.getDay() + 1; i <= 5; i++) {
-            const nextDay = dayMap[i];
-            if (nextDay) {
-                const nextClasses = timetable.filter(c => 
-                    c.day_of_week === nextDay && !c.is_holiday
-                ).sort((a, b) => a.start_time.localeCompare(b.start_time));
-                
-                if (nextClasses.length > 0) return nextClasses[0];
-            }
-        }
-        
-        return null;
+        console.log(`📅 No more classes today on ${currentDay}`);
+    } else {
+        console.log(`📅 Weekend day - no classes today`);
     }
     
+    // STEP 2: Find the next available class on any future weekday
+    // Order of days to check (start from tomorrow, wrap around)
+    const weekdayOrder = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+    
+    // Determine starting point based on current day
+    let startIndex = 0;
+    if (currentDay) {
+        // If weekday but no more classes today, start from tomorrow
+        const currentDayIndexInOrder = weekdayOrder.indexOf(currentDay);
+        startIndex = currentDayIndexInOrder + 1;
+    } else if (currentDayIndex === 6) { // Saturday
+        startIndex = 0; // Start from Monday
+    } else if (currentDayIndex === 0) { // Sunday
+        startIndex = 0; // Start from Monday
+    }
+    
+    // Loop through weekdays starting from tomorrow
+    for (let i = startIndex; i < weekdayOrder.length + startIndex; i++) {
+        const dayIndex = i % weekdayOrder.length;
+        const nextDay = weekdayOrder[dayIndex];
+        
+        const nextClasses = timetable.filter(c => 
+            c.day_of_week === nextDay && !c.is_holiday
+        ).sort((a, b) => a.start_time.localeCompare(b.start_time));
+        
+        if (nextClasses.length > 0) {
+            console.log(`✅ Found next class on ${nextDay} at ${nextClasses[0].start_time}`);
+            return nextClasses[0];
+        }
+    }
+    
+    console.log('❌ No upcoming classes found in timetable');
+    return null;
+}
     formatTimeRangePremium(start, end) {
         const format12Hour = (time) => {
             if (!time || time === 'TBA') return time;
