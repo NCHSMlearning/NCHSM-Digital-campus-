@@ -32,7 +32,7 @@
             padding: 20px;
         }
 
-        /* FULL SCREEN BACKGROUND IMAGE - Using the exact image URL provided, with overlay */
+        /* FULL SCREEN BACKGROUND IMAGE */
         body::before {
             content: "";
             position: fixed;
@@ -46,7 +46,6 @@
             z-index: -2;
         }
         
-        /* Additional subtle overlay for text readability */
         body::after {
             content: "";
             position: fixed;
@@ -66,7 +65,7 @@
             border-radius: 32px;
             box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255,255,255,0.2);
             width: 100%;
-            max-width: 580px;
+            max-width: 650px;
             padding: 2rem 2rem 2.2rem;
             transition: all 0.3s ease;
             animation: fadeSlideUp 0.5s ease-out;
@@ -174,6 +173,11 @@
             background: rgba(56, 161, 105, 0.05);
             border-color: rgba(56, 161, 105, 0.3);
         }
+        .two-columns {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
         button {
             background: linear-gradient(105deg, #0A3D62 0%, #073450 100%);
             border: none;
@@ -221,9 +225,10 @@
         option { font-weight: 400; }
         
         @media (max-width: 550px) {
-            .register-container { padding: 1.5rem; }
+            .register-container { padding: 1.5rem; max-width: 100%; }
             .college-title { font-size: 1rem; }
             .role-fields { padding: 0.8rem; }
+            .two-columns { grid-template-columns: 1fr; gap: 0; }
         }
         
         /* Loading animation inside button */
@@ -279,7 +284,7 @@
             <input type="email" id="email" name="email" placeholder="Enter your email address" required>
         </div>
 
-        <!-- STUDENT FIELDS (exactly as original, with full program list) -->
+        <!-- STUDENT FIELDS -->
         <div id="student-fields" class="role-fields">
             <div class="form-group">
                 <label><i data-feather="id"></i> Admission / Student ID</label>
@@ -352,6 +357,21 @@
                 </select>
                 <div class="help-text">Your year of admission to the college</div>
             </div>
+
+            <!-- Guardian/Parent Name -->
+            <div class="form-group">
+                <label><i data-feather="heart"></i> Parent/Guardian Name</label>
+                <input type="text" id="guardian_name" name="guardian_name" placeholder="Parent or guardian full name">
+                <div class="help-text">For emergency contact purposes</div>
+            </div>
+
+            <!-- Guardian Phone Number -->
+            <div class="form-group">
+                <label><i data-feather="phone"></i> Guardian Phone Number</label>
+                <input type="tel" id="guardian_phone" name="guardian_phone" placeholder="e.g., 07XXXXXXXX">
+                <div class="help-text">Guardian's contact number for emergencies</div>
+            </div>
+            
             <div class="help-text">📌 Block will be set by Admin after approval (e.g., Introductory, Main, Final)</div>
         </div>
 
@@ -375,22 +395,71 @@
             </div>
         </div>
 
-        <!-- Phone -->
-        <div class="form-group">
-            <label><i data-feather="phone"></i> Phone Number</label>
-            <input type="tel" id="phone" name="phone" placeholder="07XXXXXXXX" required>
+        <!-- Contact Information Section -->
+        <div class="two-columns">
+            <!-- Phone Number -->
+            <div class="form-group">
+                <label><i data-feather="phone"></i> Phone Number</label>
+                <input type="tel" id="phone" name="phone" placeholder="07XXXXXXXX" required>
+            </div>
+
+            <!-- Alternative Phone Number -->
+            <div class="form-group">
+                <label><i data-feather="phone-call"></i> Alternative Phone</label>
+                <input type="tel" id="alt_phone" name="alt_phone" placeholder="Alternative contact number">
+                <div class="help-text">Emergency or alternative contact</div>
+            </div>
         </div>
 
-        <!-- Password & Confirm -->
-        <div class="form-group">
-            <label><i data-feather="lock"></i> Password</label>
-            <input type="password" id="password" name="password" placeholder="Create a strong password" required>
-            <div class="help-text">Minimum 6 characters</div>
+        <!-- Personal Information Section -->
+        <div class="two-columns">
+            <!-- National ID / Passport -->
+            <div class="form-group">
+                <label><i data-feather="credit-card"></i> National ID / Passport No.</label>
+                <input type="text" id="national_id" name="national_id" placeholder="e.g., 12345678">
+                <div class="help-text">Your National ID or Passport number</div>
+            </div>
+
+            <!-- Date of Birth -->
+            <div class="form-group">
+                <label><i data-feather="calendar"></i> Date of Birth</label>
+                <input type="date" id="dob" name="dob">
+                <div class="help-text">Your date of birth</div>
+            </div>
         </div>
 
-        <div class="form-group">
-            <label><i data-feather="lock"></i> Confirm Password</label>
-            <input type="password" id="confirm_password" name="confirm_password" placeholder="Confirm your password" required>
+        <div class="two-columns">
+            <!-- Gender -->
+            <div class="form-group">
+                <label><i data-feather="users"></i> Gender</label>
+                <select id="gender" name="gender" required>
+                    <option value="">-- Select Gender --</option>
+                    <option value="M">Male</option>
+                    <option value="F">Female</option>
+                </select>
+                <div class="help-text">Select your gender for records</div>
+            </div>
+
+            <!-- Physical Address -->
+            <div class="form-group">
+                <label><i data-feather="map-pin"></i> Physical Address</label>
+                <input type="text" id="address" name="address" placeholder="Your residential address">
+                <div class="help-text">Town/Area where you reside</div>
+            </div>
+        </div>
+
+        <!-- Password Section -->
+        <div class="two-columns">
+            <div class="form-group">
+                <label><i data-feather="lock"></i> Password</label>
+                <input type="password" id="password" name="password" placeholder="Create a strong password" required>
+                <div class="help-text">Minimum 6 characters</div>
+            </div>
+
+            <div class="form-group">
+                <label><i data-feather="lock"></i> Confirm Password</label>
+                <input type="password" id="confirm_password" name="confirm_password" placeholder="Confirm your password" required>
+            </div>
         </div>
 
         <button type="submit" id="register-btn">
@@ -417,7 +486,7 @@
         window.history.replaceState({}, '', cleanPath);
     }
 
-    // Supabase Configuration (same as original)
+    // Supabase Configuration
     const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -506,10 +575,34 @@
         const full_name = document.getElementById('full_name').value.trim();
         const email = document.getElementById('email').value.trim();
         const phone = document.getElementById('phone').value.trim();
+        const alt_phone = document.getElementById('alt_phone')?.value.trim() || '';
+        const national_id = document.getElementById('national_id')?.value.trim() || '';
+        const dob = document.getElementById('dob')?.value || '';
+        const gender = document.getElementById('gender').value;
+        const address = document.getElementById('address')?.value.trim() || '';
         const password = document.getElementById('password').value;
         const confirmPassword = document.getElementById('confirm_password').value;
         
+        // Student specific values
+        const student_id_number = document.getElementById('student_id_number').value.trim();
+        const program_type = document.getElementById('program_type').value;
+        const intake_year = document.getElementById('intake_year')?.value || '';
+        const guardian_name = document.getElementById('guardian_name')?.value.trim() || '';
+        const guardian_phone = document.getElementById('guardian_phone')?.value.trim() || '';
+        
+        // Lecturer specific values
+        const staff_id = document.getElementById('staff_id').value.trim();
+        const department = document.getElementById('department').value;
+        
         // Validations
+        if (!gender) {
+            messageDiv.textContent = '❌ Please select your gender.';
+            messageDiv.classList.add('error');
+            registerBtn.disabled = false;
+            buttonTextSpan.textContent = 'Create Account';
+            return;
+        }
+        
         if (password !== confirmPassword) {
             messageDiv.textContent = '❌ Passwords do not match.';
             messageDiv.classList.add('error');
@@ -532,15 +625,6 @@
             return;
         }
         
-        // Student specific values
-        const student_id_number = document.getElementById('student_id_number').value.trim();
-        const program_type = document.getElementById('program_type').value;
-        const intake_year = document.getElementById('intake_year')?.value || '';
-        
-        // Lecturer specific values
-        const staff_id = document.getElementById('staff_id').value.trim();
-        const department = document.getElementById('department').value;
-        
         const today = new Date();
         const admissionDate = today.toISOString().split('T')[0];
         const defaultBlock = 'Introductory';
@@ -551,6 +635,11 @@
                 full_name,
                 role,
                 phone,
+                alt_phone,
+                national_id,
+                date_of_birth: dob,
+                gender,
+                address,
                 status: 'pending'
             };
             
@@ -562,6 +651,8 @@
                     course: program_type,
                     intake_year: intake_year,
                     current_block: defaultBlock,
+                    guardian_name: guardian_name,
+                    guardian_phone: guardian_phone,
                     admission_date: admissionDate,
                     admission_year: today.getFullYear().toString()
                 };
@@ -591,6 +682,11 @@
                 full_name: full_name,
                 role: role,
                 phone: phone,
+                alt_phone: alt_phone,
+                national_id: national_id,
+                date_of_birth: dob,
+                gender: gender,
+                address: address,
                 status: 'pending',
                 user_id: authData.user.id,
                 created_at: new Date().toISOString()
@@ -603,6 +699,8 @@
                     program: program_type,
                     intake_year: intake_year,
                     block: defaultBlock,
+                    guardian_name: guardian_name,
+                    guardian_phone: guardian_phone,
                     admission_date: admissionDate,
                     admission_year: today.getFullYear().toString()
                 };
