@@ -1060,151 +1060,192 @@
     <script src="./js/exam-card.js"></script>
     <script src="./js/academic-reports.js"></script>
 
- <!-- MAIN NAVIGATION HANDLER -->
-    <script>
-    (function() {
-        'use strict';
+<!-- MAIN NAVIGATION HANDLER -->
+<script>
+(function() {
+    'use strict';
+    
+    console.log('🎯 MAIN NAVIGATION HANDLER');
+    
+    function showTab(tabId) {
+        console.log('📂 Opening tab:', tabId);
         
-        console.log('🎯 MAIN NAVIGATION HANDLER');
+        if (window.innerWidth <= 768) {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('overlay');
+            if (sidebar) sidebar.classList.remove('active', 'open');
+            if (overlay) overlay.classList.remove('active');
+            document.body.style.overflow = '';
+        }
         
-        function showTab(tabId) {
-            console.log('📂 Opening tab:', tabId);
-            
-            if (window.innerWidth <= 768) {
-                const sidebar = document.getElementById('sidebar');
-                const overlay = document.getElementById('overlay');
-                if (sidebar) sidebar.classList.remove('active', 'open');
-                if (overlay) overlay.classList.remove('active');
-                document.body.style.overflow = '';
+        document.querySelectorAll('.tab-content').forEach(tab => {
+            tab.style.display = 'none';
+            tab.classList.remove('active');
+        });
+        
+        const target = document.getElementById(tabId);
+        if (target) {
+            target.style.display = 'block';
+            target.classList.add('active');
+        }
+        
+        document.querySelectorAll('.nav a, .dropdown-submenu a').forEach(link => {
+            link.classList.remove('active');
+            if (link.getAttribute('data-tab') === tabId) {
+                link.classList.add('active');
             }
+        });
+        
+        localStorage.setItem('nchsm_current_tab', tabId);
+        
+        setTimeout(() => {
+            if (tabId === 'hub-courses' && window.coursesModule?.loadCourses) window.coursesModule.loadCourses();
+            else if (tabId === 'hub-register' && window.unitRegistrationModule?.loadUnits) window.unitRegistrationModule.loadUnits();
+            else if (tabId === 'hub-exam-card' && window.examCardModule?.loadExamCard) window.examCardModule.loadExamCard();
+            else if (tabId === 'academic-reports' && window.academicReportsModule?.loadReports) window.academicReportsModule.loadReports();
+            else if (tabId === 'profile' && window.profileModule?.loadProfile) window.profileModule.loadProfile();
+            else if (tabId === 'dashboard' && window.dashboardModule?.refreshDashboard) window.dashboardModule.refreshDashboard();
+            else if (tabId === 'cats' && window.examsModule?.loadExams) window.examsModule.loadExams();
+            else if (tabId === 'resources' && window.resourcesModule?.loadAllResources) window.resourcesModule.loadAllResources();
+            else if (tabId === 'nurseiq' && window.nurseiqModule?.loadQuestionBankCards) window.nurseiqModule.loadQuestionBankCards();
+        }, 100);
+    }
+    
+    const dropdownParent = document.querySelector('.has-dropdown');
+    const dropdownToggle = document.querySelector('.has-dropdown > a');
+    const dropdownMenu = document.querySelector('.dropdown-submenu');
+    
+    if (dropdownToggle && dropdownMenu) {
+        const newToggle = dropdownToggle.cloneNode(true);
+        dropdownToggle.parentNode.replaceChild(newToggle, dropdownToggle);
+        newToggle.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const isOpen = dropdownParent.classList.contains('open');
+            if (isOpen) {
+                dropdownParent.classList.remove('open');
+                dropdownMenu.style.display = 'none';
+            } else {
+                dropdownParent.classList.add('open');
+                dropdownMenu.style.display = 'block';
+            }
+        });
+    }
+    
+    document.querySelectorAll('.dropdown-submenu a[data-tab]').forEach(item => {
+        const tabId = item.getAttribute('data-tab');
+        const newItem = item.cloneNode(true);
+        item.parentNode.replaceChild(newItem, item);
+        newItem.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (dropdownParent) {
+                dropdownParent.classList.remove('open');
+                if (dropdownMenu) dropdownMenu.style.display = 'none';
+            }
+            showTab(tabId);
+        });
+    });
+    
+    const hubLink = document.querySelector('.nav a[data-tab="learning-hub"]');
+    if (hubLink) {
+        const newLink = hubLink.cloneNode(true);
+        hubLink.parentNode.replaceChild(newLink, hubLink);
+        newLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (window.innerWidth <= 768) {
+                showTab('hub-courses');
+            } else if (dropdownParent) {
+                const isOpen = dropdownParent.classList.contains('open');
+                if (isOpen) {
+                    dropdownParent.classList.remove('open');
+                    if (dropdownMenu) dropdownMenu.style.display = 'none';
+                } else {
+                    dropdownParent.classList.add('open');
+                    if (dropdownMenu) dropdownMenu.style.display = 'block';
+                }
+            }
+        });
+    }
+    
+    document.querySelectorAll('.nav a[data-tab]').forEach(link => {
+        if (link.getAttribute('data-tab') === 'learning-hub') return;
+        const tabId = link.getAttribute('data-tab');
+        const newLink = link.cloneNode(true);
+        link.parentNode.replaceChild(newLink, link);
+        newLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            showTab(tabId);
+        });
+    });
+    
+    document.querySelectorAll('.stat-card[data-tab]').forEach(card => {
+        const tabId = card.getAttribute('data-tab');
+        const newCard = card.cloneNode(true);
+        card.parentNode.replaceChild(newCard, card);
+        newCard.addEventListener('click', (e) => {
+            e.preventDefault();
+            showTab(tabId);
+        });
+    });
+    
+    document.addEventListener('click', function(e) {
+        if (dropdownParent && !dropdownParent.contains(e.target) && dropdownParent.classList.contains('open')) {
+            dropdownParent.classList.remove('open');
+            if (dropdownMenu) dropdownMenu.style.display = 'none';
+        }
+    });
+    
+    // ========== FIXED: ALWAYS SHOW DASHBOARD ON PAGE LOAD ==========
+    // Clear any stored preference and force dashboard
+    localStorage.setItem('nchsm_current_tab', 'dashboard');
+    
+    // Wait for DOM to be fully ready before showing dashboard
+    function showDashboardOnLoad() {
+        console.log('🔄 Showing dashboard on load...');
+        const dashboard = document.getElementById('dashboard');
+        if (dashboard) {
+            // Force dashboard to be visible
+            dashboard.style.display = 'block';
+            dashboard.classList.add('active');
             
+            // Hide all other tabs
             document.querySelectorAll('.tab-content').forEach(tab => {
-                tab.style.display = 'none';
-                tab.classList.remove('active');
+                if (tab.id !== 'dashboard') {
+                    tab.style.display = 'none';
+                    tab.classList.remove('active');
+                }
             });
             
-            const target = document.getElementById(tabId);
-            if (target) {
-                target.style.display = 'block';
-                target.classList.add('active');
-            }
-            
+            // Update active nav link
             document.querySelectorAll('.nav a, .dropdown-submenu a').forEach(link => {
                 link.classList.remove('active');
-                if (link.getAttribute('data-tab') === tabId) {
+                if (link.getAttribute('data-tab') === 'dashboard') {
                     link.classList.add('active');
                 }
             });
             
-            localStorage.setItem('nchsm_current_tab', tabId);
-            
-            setTimeout(() => {
-                if (tabId === 'hub-courses' && window.coursesModule?.loadCourses) window.coursesModule.loadCourses();
-                else if (tabId === 'hub-register' && window.unitRegistrationModule?.loadUnits) window.unitRegistrationModule.loadUnits();
-                else if (tabId === 'hub-exam-card' && window.examCardModule?.loadExamCard) window.examCardModule.loadExamCard();
-                else if (tabId === 'academic-reports' && window.academicReportsModule?.loadReports) window.academicReportsModule.loadReports();
-                else if (tabId === 'profile' && window.profileModule?.loadProfile) window.profileModule.loadProfile();
-                else if (tabId === 'dashboard' && window.dashboardModule?.refreshDashboard) window.dashboardModule.refreshDashboard();
-                else if (tabId === 'cats' && window.examsModule?.loadExams) window.examsModule.loadExams();
-                else if (tabId === 'resources' && window.resourcesModule?.loadAllResources) window.resourcesModule.loadAllResources();
-                else if (tabId === 'nurseiq' && window.nurseiqModule?.loadQuestionBankCards) window.nurseiqModule.loadQuestionBankCards();
-            }, 100);
+            console.log('✅ Dashboard is now visible');
+        } else {
+            console.log('⚠️ Dashboard not found, retrying...');
+            setTimeout(showDashboardOnLoad, 100);
         }
-        
-        const dropdownParent = document.querySelector('.has-dropdown');
-        const dropdownToggle = document.querySelector('.has-dropdown > a');
-        const dropdownMenu = document.querySelector('.dropdown-submenu');
-        
-        if (dropdownToggle && dropdownMenu) {
-            const newToggle = dropdownToggle.cloneNode(true);
-            dropdownToggle.parentNode.replaceChild(newToggle, dropdownToggle);
-            newToggle.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                const isOpen = dropdownParent.classList.contains('open');
-                if (isOpen) {
-                    dropdownParent.classList.remove('open');
-                    dropdownMenu.style.display = 'none';
-                } else {
-                    dropdownParent.classList.add('open');
-                    dropdownMenu.style.display = 'block';
-                }
-            });
-        }
-        
-        document.querySelectorAll('.dropdown-submenu a[data-tab]').forEach(item => {
-            const tabId = item.getAttribute('data-tab');
-            const newItem = item.cloneNode(true);
-            item.parentNode.replaceChild(newItem, item);
-            newItem.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                if (dropdownParent) {
-                    dropdownParent.classList.remove('open');
-                    if (dropdownMenu) dropdownMenu.style.display = 'none';
-                }
-                showTab(tabId);
-            });
+    }
+    
+    // Start showing dashboard after a short delay
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(showDashboardOnLoad, 200);
         });
-        
-        const hubLink = document.querySelector('.nav a[data-tab="learning-hub"]');
-        if (hubLink) {
-            const newLink = hubLink.cloneNode(true);
-            hubLink.parentNode.replaceChild(newLink, hubLink);
-            newLink.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                if (window.innerWidth <= 768) {
-                    showTab('hub-courses');
-                } else if (dropdownParent) {
-                    const isOpen = dropdownParent.classList.contains('open');
-                    if (isOpen) {
-                        dropdownParent.classList.remove('open');
-                        if (dropdownMenu) dropdownMenu.style.display = 'none';
-                    } else {
-                        dropdownParent.classList.add('open');
-                        if (dropdownMenu) dropdownMenu.style.display = 'block';
-                    }
-                }
-            });
-        }
-        
-        document.querySelectorAll('.nav a[data-tab]').forEach(link => {
-            if (link.getAttribute('data-tab') === 'learning-hub') return;
-            const tabId = link.getAttribute('data-tab');
-            const newLink = link.cloneNode(true);
-            link.parentNode.replaceChild(newLink, link);
-            newLink.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                showTab(tabId);
-            });
-        });
-        
-        document.querySelectorAll('.stat-card[data-tab]').forEach(card => {
-            const tabId = card.getAttribute('data-tab');
-            const newCard = card.cloneNode(true);
-            card.parentNode.replaceChild(newCard, card);
-            newCard.addEventListener('click', (e) => {
-                e.preventDefault();
-                showTab(tabId);
-            });
-        });
-        
-        document.addEventListener('click', function(e) {
-            if (dropdownParent && !dropdownParent.contains(e.target) && dropdownParent.classList.contains('open')) {
-                dropdownParent.classList.remove('open');
-                if (dropdownMenu) dropdownMenu.style.display = 'none';
-            }
-        });
-        
-       // ALWAYS SHOW DASHBOARD ON PAGE LOAD
-localStorage.setItem('nchsm_current_tab', 'dashboard');
-setTimeout(() => showTab('dashboard'), 100);
-        
-        window.showTab = showTab;
-    })();
-    </script>
+    } else {
+        setTimeout(showDashboardOnLoad, 200);
+    }
+    
+    window.showTab = showTab;
+})();
+</script>
     <!-- INITIALIZATION SCRIPT -->
     <script>
     window.app = { config: null, supabase: null, db: null, user: null, isInitialized: false };
@@ -1308,7 +1349,22 @@ setTimeout(() => showTab('dashboard'), 100);
             if (welcomeSection) welcomeSection.innerHTML = '<h2>Application Error</h2><p>' + error.message + '</p><button onclick="location.reload()" class="profile-button">Retry</button>';
         }
     }
-    
+    // FORCE DASHBOARD VISIBLE AFTER INITIALIZATION
+setTimeout(function() {
+    const dashboard = document.getElementById('dashboard');
+    if (dashboard) {
+        dashboard.style.display = 'block';
+        dashboard.classList.add('active');
+        console.log('✅ Dashboard forced visible from initializeApp');
+    }
+    // Hide other tabs
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        if (tab.id !== 'dashboard') {
+            tab.style.display = 'none';
+            tab.classList.remove('active');
+        }
+    });
+}, 300);
     document.addEventListener('DOMContentLoaded', function() {
         console.log('📱 DOM ready, starting app initialization...');
         document.querySelectorAll('.tab-content').forEach(tab => tab.style.removeProperty('display'));
