@@ -159,7 +159,7 @@
 
         <!-- MAIN CONTENT AREA -->
         <main class="main" id="main-content">
-<!-- ==================== DASHBOARD SECTION - DEMO DESIGN + SUPABASE DATA ==================== -->
+<!-- ==================== DASHBOARD SECTION ==================== -->
 <section id="dashboard" class="tab-content active" role="region">
     
     <div class="dashboard-container">
@@ -170,7 +170,24 @@
             <p id="student-welcome-message">Access your courses, schedule, and check your attendance status.</p>
         </div>
 
-        <!-- STATS ROW - IDs match dashboard.js -->
+        <!-- ⭐ NEXT CLASS CARD - BEST PLACEMENT (RIGHT AFTER WELCOME) -->
+        <div id="quick-next-class" class="next-class-card" style="display: none;">
+            <div class="next-class-header">
+                <i class="fas fa-hourglass-half"></i>
+                <span>NEXT CLASS</span>
+            </div>
+            <div class="next-class-content">
+                <div class="next-class-name" id="quick-next-class-name">--</div>
+                <div class="next-class-details">
+                    <span><i class="fas fa-clock"></i> <span id="quick-next-class-time">--</span></span>
+                    <span><i class="fas fa-user"></i> <span id="quick-next-class-lecturer">--</span></span>
+                    <span><i class="fas fa-map-marker-alt"></i> <span id="quick-next-class-venue">--</span></span>
+                </div>
+            </div>
+            <div class="next-class-day" id="quick-next-class-day">--</div>
+        </div>
+
+        <!-- STATS ROW (XP, NurseIQ, Attendance) -->
         <div class="stats-row">
             <div class="xp-area">
                 <div class="label"><i class="fas fa-star"></i> Level <span id="user-level">1</span> · <span id="user-xp">0</span>/<span id="user-xp-max">100</span> XP to Level <span id="next-level">2</span></div>
@@ -192,25 +209,26 @@
 
         <!-- QUICK SNAPSHOT -->
         <div class="section-title">📊 Quick Snapshot</div>
-<!-- ATTENDANCE CARD - -->
-<div class="attendance-card" data-tab="attendance">
-    <div class="attendance-header">
-        <div>
-            <span class="attendance-percent" id="dashboard-attendance-rate">0%</span>
-            <span class="attendance-label">Attendance</span>
-        </div>
-        <div class="warning-badge" id="attendance-warning-badge">
-            <i class="fas fa-exclamation-triangle"></i> <span id="warning-text">BELOW 75%</span>
-        </div>
-    </div>
-    <div class="vp-row">
-        <span>✅ <strong id="dashboard-verified-count">0</strong>/<strong id="dashboard-total-count">0</strong></span>
-        <span>⏳ <strong id="dashboard-pending-count">0</strong></span>
-        <span><i class="fas fa-info-circle"></i> +10 pts/verified</span>
-    </div>
-</div>
 
-        <!-- MINI CARDS ROW 1 - IDs match dashboard.js -->
+        <!-- ATTENDANCE CARD -->
+        <div class="attendance-card" data-tab="attendance">
+            <div class="attendance-header">
+                <div>
+                    <span class="attendance-percent" id="dashboard-attendance-rate">0%</span>
+                    <span class="attendance-label">Attendance</span>
+                </div>
+                <div class="warning-badge" id="attendance-warning-badge">
+                    <i class="fas fa-exclamation-triangle"></i> <span id="warning-text">BELOW 75%</span>
+                </div>
+            </div>
+            <div class="vp-row">
+                <span>✅ <strong id="dashboard-verified-count">0</strong>/<strong id="dashboard-total-count">0</strong></span>
+                <span>⏳ <strong id="dashboard-pending-count">0</strong></span>
+                <span><i class="fas fa-info-circle"></i> +10 pts/verified</span>
+            </div>
+        </div>
+
+        <!-- MINI CARDS ROW 1 -->
         <div class="mini-cards">
             <div class="mini-card" data-tab="cats">
                 <div class="mini-label">📝 Upcoming Exam</div>
@@ -229,7 +247,7 @@
             </div>
         </div>
 
-        <!-- MINI CARDS ROW 2 - IDs match dashboard.js -->
+        <!-- MINI CARDS ROW 2 -->
         <div class="mini-cards">
             <div class="mini-card" data-tab="resources">
                 <i class="fas fa-folder-open"></i>
@@ -247,6 +265,9 @@
                 <div class="mini-sub">Approved: <span id="dashboard-approved-units">0</span> units</div>
             </div>
         </div>
+        
+    </div>
+</section>
 
         <!-- ACHIEVEMENTS SECTION -->
        <div class="section-title">🏆 Achievements <span class="view-all">View All →</span></div>
@@ -266,52 +287,6 @@
 <div class="section-title">🏅 Leaderboard <span class="leaderboard-tabs">Weekly · Monthly · All Time</span></div>
 <div class="leaderboard-slim" id="leaderboard-container">
     <div class="loading-slim"><i class="fas fa-spinner fa-spin"></i> Loading...</div>
-</div>
-
-<!-- TIMETABLE SECTION - SUPER COMPACT -->
-<div class="section-title" style="font-size: 18px; margin-bottom: 12px;">
-    📅 My Schedule - <span id="timetable-block-title" style="color: #4C1D95;">Loading...</span>
-</div>
-
-<!-- Quick Next Class (Tiny Banner) -->
-<div id="next-class-snap" style="background: #f0fdf4; border-left: 4px solid #10b981; padding: 8px 12px; border-radius: 8px; margin-bottom: 12px; display: none; font-size: 13px;">
-    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-        <span style="background: #10b98120; padding: 4px 8px; border-radius: 20px;">
-            <i class="fas fa-hourglass-half" style="color: #10b981; font-size: 12px;"></i> <strong>Next:</strong>
-        </span>
-        <span><strong id="next-class-name">-</strong></span>
-        <span><i class="fas fa-user"></i> <span id="next-class-lecturer">-</span></span>
-        <span><i class="fas fa-clock"></i> <span id="next-class-time">-</span></span>
-        <span><i class="fas fa-map-marker-alt"></i> <span id="next-class-venue">-</span></span>
-        <span id="next-class-day" style="color: #10b981;"></span>
-    </div>
-</div>
-
-<!-- Week Filter - Tiny Dropdown -->
-<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;">
-    <select id="week-filter-select" style="padding: 5px 10px; font-size: 12px; border-radius: 6px; border: 1px solid #e5e7eb; background: white;">
-        <option value="all">📅 All Weeks</option>
-        <option value="1">Week 1</option>
-        <option value="2">Week 2</option>
-        <option value="3">Week 3</option>
-        <option value="4">Week 4</option>
-        <option value="5">Week 5</option>
-        <option value="6">Week 6</option>
-    </select>
-    <span style="font-size: 11px; color: #9ca3af;" id="class-count-display"></span>
-</div>
-
-<!-- Tiny Timetable Table -->
-<div id="timetable-container" style="background: white; border-radius: 8px; overflow-x: auto;"></div>
-
-<!-- Loading & Empty States -->
-<div id="timetable-loading" style="text-align: center; padding: 20px;">
-    <div class="loading-spinner" style="width: 24px; height: 24px;"></div>
-    <p style="font-size: 12px; margin-top: 8px;">Loading...</p>
-</div>
-<div id="timetable-empty" style="display: none; text-align: center; padding: 30px;">
-    <i class="fas fa-calendar-times" style="font-size: 32px; color: #d1d5db;"></i>
-    <p style="font-size: 13px; margin-top: 8px;">No timetable yet</p>
 </div>
 
         <!-- ACTION REQUIRED -->
