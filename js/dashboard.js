@@ -503,23 +503,23 @@ class DashboardModule {
         }
     }
     
-    getClassDate(classItem) {
-        // Anchor: June 3, 2025 is Tuesday of Week 1 at 11:00 AM
-        const anchorDate = new Date(2025, 5, 3, 11, 0, 0);
-        const dayOrder = { monday: 0, tuesday: 1, wednesday: 2, thursday: 3, friday: 4 };
-        
-        const weekDiff = (classItem.week_number || 1) - 1;
-        const dayDiff = (dayOrder[classItem.day_of_week] || 1) - 1;
-        const totalDays = (weekDiff * 7) + dayDiff;
-        
-        const classDate = new Date(anchorDate);
-        classDate.setDate(anchorDate.getDate() + totalDays);
-        
-        const [hours, minutes] = (classItem.start_time || '11:00:00').split(':');
-        classDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-        
-        return classDate;
-    }
+   getClassDate(classItem) {
+    // Anchor: June 3, 2026 is Tuesday of Week 1 at 11:00 AM (CHANGED TO 2026)
+    const anchorDate = new Date(2026, 5, 3, 11, 0, 0);
+    const dayOrder = { monday: 0, tuesday: 1, wednesday: 2, thursday: 3, friday: 4 };
+    
+    const weekDiff = (classItem.week_number || 1) - 1;
+    const dayDiff = (dayOrder[classItem.day_of_week] || 1) - 1;
+    const totalDays = (weekDiff * 7) + dayDiff;
+    
+    const classDate = new Date(anchorDate);
+    classDate.setDate(anchorDate.getDate() + totalDays);
+    
+    const [hours, minutes] = (classItem.start_time || '11:00:00').split(':');
+    classDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+    
+    return classDate;
+}
     
     findNextClass(timetable) {
         const now = new Date();
