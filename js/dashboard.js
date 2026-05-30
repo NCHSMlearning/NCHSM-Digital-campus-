@@ -1,4 +1,4 @@
-// dashboard.js - COMPLETE WORKING VERSION WITH SUPER CLASSY NEXT CLASS CARD
+// dashboard.js - COMPLETE WORKING VERSION WITH COMPACT NEXT CLASS CARD
 class DashboardModule {
     constructor(supabaseClient) {
         console.log('🚀 Initializing DashboardModule...');
@@ -70,7 +70,6 @@ class DashboardModule {
             this.updateUIFromMetrics();
         });
         
-        // Leaderboard tabs
         document.querySelectorAll('.leaderboard-tabs span').forEach(tab => {
             tab.addEventListener('click', (e) => {
                 document.querySelectorAll('.leaderboard-tabs span').forEach(t => t.classList.remove('active'));
@@ -80,7 +79,6 @@ class DashboardModule {
             });
         });
         
-        // Week buttons
         document.querySelectorAll('.week-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('.week-btn').forEach(b => b.classList.remove('active'));
@@ -90,11 +88,9 @@ class DashboardModule {
             });
         });
         
-        // View All achievements
         const viewAll = document.querySelector('.view-all');
         if (viewAll) {
             viewAll.addEventListener('click', () => {
-                console.log('🏆 View all achievements clicked');
                 this.showToast('All achievements feature coming soon!', 2000);
             });
         }
@@ -108,15 +104,12 @@ class DashboardModule {
         
         if (!userId || !userProfile) return false;
         
-        // Update welcome name
         if (this.elements.welcomeStudentName && userProfile.full_name) {
             this.elements.welcomeStudentName.innerText = userProfile.full_name;
         }
         
-        // Update greeting based on time
         this.updateTimeGreeting();
         
-        // Update block info
         if (this.elements.currentBlock) {
             this.elements.currentBlock.innerText = userProfile.block || 'Introductory';
         }
@@ -127,7 +120,6 @@ class DashboardModule {
             this.elements.intakeYear.innerText = userProfile.intake_year || '2026';
         }
         
-        // Load all metrics
         await this.loadAllMetrics();
         this.startAutoRefresh();
         
@@ -138,23 +130,16 @@ class DashboardModule {
         const hour = new Date().getHours();
         let greeting = '';
         
-        if (hour >= 5 && hour < 12) {
-            greeting = 'Good Morning';
-        } else if (hour >= 12 && hour < 17) {
-            greeting = 'Good Afternoon';
-        } else if (hour >= 17 && hour < 21) {
-            greeting = 'Good Evening';
-        } else {
-            greeting = 'Good Night';
-        }
+        if (hour >= 5 && hour < 12) greeting = 'Good Morning';
+        else if (hour >= 12 && hour < 17) greeting = 'Good Afternoon';
+        else if (hour >= 17 && hour < 21) greeting = 'Good Evening';
+        else greeting = 'Good Night';
         
         const welcomeH1 = document.querySelector('.welcome h1');
         const studentName = this.elements.welcomeStudentName?.innerText || 'Student';
         if (welcomeH1) {
             welcomeH1.innerHTML = `${greeting}, ${studentName}! 🎉`;
         }
-        
-        console.log(`🕐 Time greeting: ${greeting}`);
     }
     
     async loadAllMetrics() {
@@ -169,12 +154,11 @@ class DashboardModule {
             this.loadXPMetrics(),
             this.loadAnnouncement(),
             this.loadLeaderboardData('all'),
-            this.loadQuickNextClass()  // Load the next class card
+            this.loadQuickNextClass()
         ]);
         
         this.updateUIFromMetrics();
         
-        // Force update for exam card
         setTimeout(() => {
             const approved = this.metrics.examCard?.approved || 0;
             if (this.elements.examStatus) {
@@ -204,8 +188,6 @@ class DashboardModule {
             
             this.metrics.attendance = { rate, verified, total, pending: total - verified, points: verified * 10 };
             
-            console.log(`📊 Attendance: ${rate}% (${verified}/${total}) → ${verified * 10} points`);
-            
         } catch (error) {
             console.error('Attendance error:', error);
         }
@@ -226,8 +208,6 @@ class DashboardModule {
             this.metrics.examCard = { approved, eligible: approved > 0 };
             this.metrics.courses = approved;
             
-            console.log(`📇 Exam Card: ${approved} approved units - ${approved > 0 ? 'ELIGIBLE' : 'NOT ELIGIBLE'}`);
-            
         } catch (error) {
             console.error('Exam card error:', error);
             this.metrics.examCard = { approved: 0, eligible: false };
@@ -243,8 +223,6 @@ class DashboardModule {
                 .select('*', { count: 'exact', head: true });
             
             this.metrics.resources = count || 0;
-            console.log(`📁 Resources: ${this.metrics.resources}`);
-            
         } catch (error) {
             console.error('Resources error:', error);
             this.metrics.resources = 0;
@@ -255,8 +233,6 @@ class DashboardModule {
         if (!this.userId || !this.sb) return;
         
         try {
-            console.log('🧠 Loading NurseIQ metrics...');
-            
             let totalQuestions = 0;
             let correctAnswers = 0;
             
@@ -298,13 +274,7 @@ class DashboardModule {
             const accuracy = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
             const progressPercent = totalQuestions > 0 ? Math.min(Math.round((totalQuestions / 105) * 100), 100) : 0;
             
-            this.metrics.nurseiq = {
-                progress: progressPercent,
-                accuracy: accuracy,
-                questions: totalQuestions
-            };
-            
-            console.log(`🧠 NurseIQ: ${progressPercent}% progress, ${accuracy}% accuracy, ${totalQuestions} questions`);
+            this.metrics.nurseiq = { progress: progressPercent, accuracy: accuracy, questions: totalQuestions };
             
         } catch (error) {
             console.error('NurseIQ error:', error);
@@ -340,18 +310,13 @@ class DashboardModule {
         }
         
         this.metrics.exams = upcomingText;
-        
-        if (this.elements.upcomingExam) {
-            this.elements.upcomingExam.innerText = upcomingText;
-        }
+        if (this.elements.upcomingExam) this.elements.upcomingExam.innerText = upcomingText;
     }
     
     async loadAnnouncement() {
         if (!this.userProfile || !this.sb) return;
         
         try {
-            console.log('📢 Loading official announcement...');
-            
             const userBlock = this.userProfile.block || 'Introductory';
             const userIntake = this.userProfile.intake_year || new Date().getFullYear();
             const userProgram = this.userProfile.program || 'KRCHN';
@@ -371,7 +336,6 @@ class DashboardModule {
             if (this.elements.announcementText) {
                 if (announcements && announcements.length > 0) {
                     this.elements.announcementText.innerHTML = announcements[0].message || announcements[0].content || 'No new announcements';
-                    console.log(`📢 Announcement loaded for Block: ${userBlock}, Intake: ${userIntake}`);
                 } else {
                     this.elements.announcementText.innerHTML = `📢 Welcome to Block ${userBlock}. Check your schedule and stay updated!`;
                 }
@@ -451,7 +415,6 @@ class DashboardModule {
                 }
                 
                 const totalPoints = loginPoints + attendancePoints + nurseIQPoints;
-                
                 return { ...student, loginPoints, attendancePoints, nurseIQPoints, totalPoints };
             }));
             
@@ -461,10 +424,8 @@ class DashboardModule {
             container.innerHTML = topStudents.map((student, index) => {
                 const rankIcon = index === 0 ? '👑' : index === 1 ? '🥈' : index === 2 ? '🥉' : (index + 1).toString();
                 const name = student.full_name?.split(' ')[0] || 'Student';
-                const tooltip = `${student.full_name || 'Student'}\n📊 ${student.totalPoints} TOTAL POINTS\n━━━━━━━━━━━━━━━━━━━━\n🔐 Login: ${student.loginPoints} pts\n✅ Attendance: ${student.attendancePoints} pts\n🧠 NurseIQ: ${student.nurseIQPoints} pts`;
-                
                 return `
-                    <div class="leader-slim" title="${this.escapeHtml(tooltip)}">
+                    <div class="leader-slim">
                         <span class="rank">${rankIcon}</span>
                         <span class="name">${this.escapeHtml(name)}</span>
                         <span class="pts">${student.totalPoints} pts</span>
@@ -472,202 +433,112 @@ class DashboardModule {
                 `;
             }).join('');
             
-            console.log(`📊 Multifactor Leaderboard: ${topStudents.length} students, Period: ${period}`);
-            
         } catch (error) {
             console.error('Leaderboard error:', error);
             container.innerHTML = '<div class="error-slim">Failed to load</div>';
         }
     }
     
-    // ========== SUPER CLASSY NEXT CLASS CARD (FIXED VERSION) ==========
+    // ========== COMPACT NEXT CLASS CARD ==========
     async loadQuickNextClass() {
-        console.log('✨ Loading super classy next class card...');
+        console.log('📅 Loading next class card...');
         
         try {
-            const studentBlock = this.userProfile?.block || null;
-            
-            if (!studentBlock) {
-                console.log('No block found for student');
-                return;
-            }
+            const studentBlock = this.userProfile?.block;
+            if (!studentBlock) return;
             
             const { data: timetable, error } = await this.sb
                 .from('timetables')
                 .select('*')
                 .eq('block', studentBlock);
             
-            if (error || !timetable || timetable.length === 0) {
-                console.log('No timetable found for block:', studentBlock);
-                return;
-            }
+            if (error || !timetable || timetable.length === 0) return;
             
-            const nextClass = this.findNextClassPremium(timetable);
+            const nextClass = this.findNextClass(timetable);
             const card = document.getElementById('quick-next-class');
             
             if (!card || !nextClass) {
                 if (card) card.style.display = 'none';
-                console.log('No upcoming class found');
                 return;
             }
             
-            // Animate entrance
-            card.style.opacity = '0';
-            card.style.transform = 'translateY(20px)';
+            const classDate = this.getClassDate(nextClass);
+            const isToday = classDate && classDate.toDateString() === new Date().toDateString();
+            const startTime = nextClass.start_time?.substring(0,5) || 'TBA';
+            const endTime = nextClass.end_time?.substring(0,5) || 'TBA';
+            
+            // Update card content
+            document.getElementById('quick-next-class-time').innerHTML = `${startTime} — ${endTime}`;
+            document.getElementById('quick-next-class-name').innerHTML = this.truncateText(nextClass.session_name || nextClass.course_name, 40);
+            
+            let lecturerName = nextClass.lecturer_name || 'TBA';
+            if (lecturerName !== 'TBA' && lecturerName !== '—') {
+                lecturerName = lecturerName.split(' ').slice(0,2).join(' ');
+            }
+            document.getElementById('quick-next-class-lecturer').innerHTML = lecturerName;
+            document.getElementById('quick-next-class-venue').innerHTML = nextClass.venue || 'TBD';
+            
+            const daySpan = document.getElementById('quick-next-class-day');
+            const dayContainer = document.getElementById('quick-next-class-day-container');
+            
+            if (isToday) {
+                if (dayContainer) dayContainer.classList.add('today');
+                if (daySpan) daySpan.innerHTML = 'TODAY';
+            } else if (classDate) {
+                if (dayContainer) dayContainer.classList.remove('today');
+                const formatted = classDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                if (daySpan) daySpan.innerHTML = formatted;
+            }
+            
             card.style.display = 'block';
             
-            setTimeout(() => {
-                card.style.transition = 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
-                card.style.opacity = '1';
-                card.style.transform = 'translateY(0)';
-            }, 100);
-            
-            const startTime = nextClass.start_time?.substring(0, 5) || 'TBA';
-            const endTime = nextClass.end_time?.substring(0, 5) || 'TBA';
-            
-            // Calculate actual date for the class
-            const classDate = this.calculateClassDate(nextClass, timetable);
-            const isToday = classDate && classDate.toDateString() === new Date().toDateString();
-            
-            const timeDisplay = this.formatTimeRangePremium(startTime, endTime);
-            const timeElement = document.getElementById('quick-next-class-time');
-            if (timeElement) timeElement.innerHTML = timeDisplay;
-            
-            let courseName = nextClass.session_name || nextClass.course_name;
-            let courseCode = nextClass.course_name !== courseName ? nextClass.course_name : '';
-            
-            const nameElement = document.getElementById('quick-next-class-name');
-            const codeElement = document.getElementById('quick-next-class-code');
-            if (nameElement) nameElement.innerHTML = this.truncateTextPremium(courseName, 50);
-            if (codeElement) codeElement.innerHTML = courseCode || studentBlock;
-            
-            let lecturerName = nextClass.lecturer_name || 'To be assigned';
-            if (lecturerName !== 'TBA' && lecturerName !== '—' && lecturerName !== 'To be assigned') {
-                const parts = lecturerName.split(' ');
-                lecturerName = parts.slice(0, 2).join(' ');
-            }
-            const lecturerElement = document.getElementById('quick-next-class-lecturer');
-            if (lecturerElement) lecturerElement.innerHTML = lecturerName;
-            
-            const venueElement = document.getElementById('quick-next-class-venue');
-            if (venueElement) venueElement.innerHTML = nextClass.venue || 'To be confirmed';
-            
-            const dayContainer = document.getElementById('quick-next-class-day-container');
-            const daySpan = document.getElementById('quick-next-class-day');
-            
-            if (dayContainer && daySpan) {
-                if (isToday) {
-                    dayContainer.classList.add('today');
-                    daySpan.innerHTML = 'TODAY';
-                } else if (classDate) {
-                    dayContainer.classList.remove('today');
-                    const formattedDate = classDate.toLocaleDateString('en-US', { 
-                        weekday: 'long', 
-                        month: 'short', 
-                        day: 'numeric'
-                    });
-                    daySpan.innerHTML = formattedDate;
-                } else {
-                    dayContainer.classList.remove('today');
-                    daySpan.innerHTML = 'UPCOMING';
-                }
-            }
-            
-            // Add click handler to go to calendar
+            // Click to go to calendar
             card.onclick = () => {
                 const calendarTab = document.querySelector('[data-tab="calendar"]');
                 if (calendarTab) calendarTab.click();
-                this.showToast('📅 Opening full timetable...', 1500);
             };
             
-            console.log('✅ Next class card loaded:', courseName);
-            
         } catch (error) {
-            console.error('Error loading next class:', error);
-            const card = document.getElementById('quick-next-class');
-            if (card) card.style.display = 'none';
+            console.error('Next class error:', error);
         }
     }
     
-    // Calculate actual date for a class based on week_number and day_of_week
-    calculateClassDate(classItem, allTimetable) {
-        // Find the first class in Week 1 to use as anchor
-        const firstClass = allTimetable.find(c => 
-            c.week_number === 1 && 
-            c.day_of_week === 'tuesday' && 
-            c.start_time === '11:00:00'
-        );
-        
-        if (!firstClass) {
-            // Fallback: Assume June 3, 2025 is Week 1 Tuesday
-            const anchorDate = new Date(2025, 5, 3, 11, 0, 0);
-            const dayOrder = { monday: 0, tuesday: 1, wednesday: 2, thursday: 3, friday: 4 };
-            const weekDiff = classItem.week_number - 1;
-            const dayDiff = dayOrder[classItem.day_of_week] - 1; // Tuesday is index 1
-            const totalDays = (weekDiff * 7) + dayDiff;
-            const classDate = new Date(anchorDate);
-            classDate.setDate(anchorDate.getDate() + totalDays);
-            return classDate;
-        }
-        
-        // Use first class as anchor
-        const anchorDate = new Date(2025, 5, 3, 11, 0, 0); // June 3, 2025 11:00 AM
+    getClassDate(classItem) {
+        // Anchor: June 3, 2025 is Tuesday of Week 1 at 11:00 AM
+        const anchorDate = new Date(2025, 5, 3, 11, 0, 0);
         const dayOrder = { monday: 0, tuesday: 1, wednesday: 2, thursday: 3, friday: 4 };
-        const anchorDayIndex = dayOrder[firstClass.day_of_week];
-        const weekDiff = classItem.week_number - firstClass.week_number;
-        const dayDiff = dayOrder[classItem.day_of_week] - anchorDayIndex;
+        
+        const weekDiff = (classItem.week_number || 1) - 1;
+        const dayDiff = (dayOrder[classItem.day_of_week] || 1) - 1;
         const totalDays = (weekDiff * 7) + dayDiff;
         
         const classDate = new Date(anchorDate);
         classDate.setDate(anchorDate.getDate() + totalDays);
         
-        // Set the time
-        const [hours, minutes] = classItem.start_time.split(':');
+        const [hours, minutes] = (classItem.start_time || '11:00:00').split(':');
         classDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
         
         return classDate;
     }
     
-    findNextClassPremium(timetable) {
+    findNextClass(timetable) {
         const now = new Date();
-        const currentHour = now.getHours();
-        const currentMinute = now.getMinutes();
-        const currentTime = `${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`;
-        const dayMap = { 1: 'monday', 2: 'tuesday', 3: 'wednesday', 4: 'thursday', 5: 'friday' };
-        const currentDayIndex = now.getDay();
-        const currentDay = dayMap[currentDayIndex];
-        
-        // Calculate actual date for each class and find the next one
         let nextClass = null;
-        let nextClassDate = null;
+        let nextDate = null;
         
         for (const cls of timetable) {
-            const classDate = this.calculateClassDate(cls, timetable);
+            const classDate = this.getClassDate(cls);
             if (classDate > now) {
-                if (!nextClass || classDate < nextClassDate) {
+                if (!nextClass || classDate < nextDate) {
                     nextClass = cls;
-                    nextClassDate = classDate;
+                    nextDate = classDate;
                 }
             }
         }
-        
         return nextClass;
     }
     
-    formatTimeRangePremium(start, end) {
-        const format12Hour = (time) => {
-            if (!time || time === 'TBA') return time;
-            const [hours, minutes] = time.split(':');
-            const hour = parseInt(hours);
-            const ampm = hour >= 12 ? 'PM' : 'AM';
-            const hour12 = hour % 12 || 12;
-            return `${hour12}:${minutes} ${ampm}`;
-        };
-        
-        return `${format12Hour(start)} — ${format12Hour(end)}`;
-    }
-    
-    truncateTextPremium(text, maxLength) {
+    truncateText(text, maxLength) {
         if (!text) return '—';
         if (text.length <= maxLength) return text;
         return text.substring(0, maxLength - 3) + '...';
@@ -780,8 +651,6 @@ class DashboardModule {
         
         if (this.elements.resources) this.elements.resources.innerText = m.resources;
         if (this.elements.upcomingExam) this.elements.upcomingExam.innerText = m.exams;
-        
-        console.log('✅ UI update complete');
     }
     
     startLiveClock() {
@@ -820,12 +689,11 @@ class DashboardModule {
                 transform: translateX(-50%);
                 background: #0B2A4A;
                 color: white;
-                padding: 10px 20px;
+                padding: 8px 16px;
                 border-radius: 40px;
-                font-size: 13px;
+                font-size: 12px;
                 z-index: 10000;
                 white-space: nowrap;
-                box-shadow: 0 4px 15px rgba(0,0,0,0.2);
             `;
             document.body.appendChild(toast);
         }
@@ -862,4 +730,4 @@ window.DashboardModule = DashboardModule;
 window.initDashboardModule = initDashboardModule;
 window.refreshDashboard = () => dashboardModule?.refreshAll();
 
-console.log('✅ Dashboard module ready - COMPLETE WITH SUPER CLASSY NEXT CLASS CARD');
+console.log('✅ Dashboard module ready');
