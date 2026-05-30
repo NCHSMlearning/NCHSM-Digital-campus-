@@ -1983,7 +1983,7 @@
                 </table>
             </section>
 
-         <!-- Calendar Section WITH TIMETABLE UPLOAD (UPDATED WITH BLOCK & UNLIMITED WEEKS) -->
+ <!-- Calendar Section WITH TIMETABLE UPLOAD -->
 <section id="calendar" class="tab-content">
     <h2><i class="fas fa-calendar-alt"></i> System Calendar & Timetable Management</h2>
     
@@ -2009,9 +2009,9 @@
                 <option value="TVET">TVET Programs</option>
             </select>
             
-            <input type="file" id="adminTimetableFile" accept=".xlsx,.xls,.csv" style="padding: 8px;">
+            <input type="file" id="timetableExcelFile" accept=".xlsx,.xls,.csv,.pdf,.doc,.docx" style="padding: 8px;">
             
-            <button onclick="uploadTimetableToSupabase()" class="btn-action" style="background: #4C1D95;">
+            <button onclick="uploadExcelTimetable()" class="btn-action" style="background: #4C1D95;">
                 <i class="fas fa-cloud-upload-alt"></i> Upload & Replace
             </button>
             
@@ -2023,13 +2023,83 @@
         <!-- CSV Format Info -->
         <div style="background: white; padding: 12px; border-radius: 8px; margin-top: 10px;">
             <p style="margin: 0; font-size: 12px; color: #6b7280;">
-                <i class="fas fa-info-circle"></i> <strong>CSV Format:</strong> day_of_week, week_number, start_time, end_time, session_name, course_name, lecturer_name, venue, is_holiday, is_exam
+                <i class="fas fa-info-circle"></i> <strong>CSV/Excel Format:</strong> day_of_week, week_number, start_time, end_time, session_name, course_name, lecturer_name, venue, is_holiday, is_exam
                 <br>
                 <strong>Example:</strong> monday,1,08:00,10:30,Medical Surgical III,Dermatology/Burns,Mr. Job Juma,Lecture Hall 1,FALSE,FALSE
             </p>
             <a href="#" onclick="downloadTimetableTemplate()" style="color: #4C1D95; font-size: 12px; margin-top: 8px; display: inline-block;">
                 <i class="fas fa-download"></i> Download CSV Template
             </a>
+        </div>
+    </div>
+    
+    <!-- Alternative Single Event Entry -->
+    <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 25px;">
+        <div style="display: flex; gap: 10px; border-bottom: 1px solid #e5e7eb; margin-bottom: 15px;">
+            <button id="excelTabBtn" class="tab-btn active" onclick="showUploadMethod('excel')" style="padding: 8px 16px; background: #4C1D95; color: white; border: none; border-radius: 6px;">📁 Excel Upload</button>
+            <button id="singleTabBtn" class="tab-btn" onclick="showUploadMethod('single')" style="padding: 8px 16px; background: #e5e7eb; border: none; border-radius: 6px;">➕ Single Event</button>
+            <button id="bulkTabBtn" class="tab-btn" onclick="showUploadMethod('bulk')" style="padding: 8px 16px; background: #e5e7eb; border: none; border-radius: 6px;">📆 Bulk Schedule</button>
+        </div>
+        
+        <!-- Excel Upload Method -->
+        <div id="excelUploadMethod">
+            <p>Upload Excel/CSV file with timetable data. <a href="#" onclick="downloadTimetableTemplate()">Download template</a></p>
+        </div>
+        
+        <!-- Single Event Method -->
+        <div id="singleEventMethod" style="display: none;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                <input type="text" id="singleEventTitle" placeholder="Event Title *" style="padding: 8px; border-radius: 6px;">
+                <input type="date" id="singleEventDate" style="padding: 8px; border-radius: 6px;">
+                <input type="time" id="singleEventStart" style="padding: 8px; border-radius: 6px;">
+                <input type="time" id="singleEventEnd" style="padding: 8px; border-radius: 6px;">
+                <input type="text" id="singleEventVenue" placeholder="Venue" style="padding: 8px; border-radius: 6px;">
+                <select id="singleEventType" style="padding: 8px; border-radius: 6px;">
+                    <option value="CLASS">📚 Class</option>
+                    <option value="CLINICAL">🏥 Clinical</option>
+                    <option value="EXAM">📝 Exam</option>
+                    <option value="EVENT">🎉 Event</option>
+                </select>
+                <input type="text" id="singleEventDetails" placeholder="Description" style="padding: 8px; border-radius: 6px;">
+                <select id="singleEventProgram" style="padding: 8px; border-radius: 6px;">
+                    <option value="KRCHN">KRCHN</option>
+                    <option value="TVET">TVET</option>
+                    <option value="General">All Programs</option>
+                </select>
+                <select id="singleEventBlock" style="padding: 8px; border-radius: 6px;">
+                    <option value="General">All Blocks</option>
+                </select>
+                <button onclick="addSingleEvent()" class="btn-action" style="background: #4C1D95;">Add Event</button>
+            </div>
+        </div>
+        
+        <!-- Bulk Schedule Method -->
+        <div id="bulkScheduleMethod" style="display: none;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
+                <select id="weeklyDay">
+                    <option value="0">Sunday</option>
+                    <option value="1">Monday</option>
+                    <option value="2">Tuesday</option>
+                    <option value="3">Wednesday</option>
+                    <option value="4">Thursday</option>
+                    <option value="5">Friday</option>
+                    <option value="6">Saturday</option>
+                </select>
+                <input type="time" id="weeklyStartTime" placeholder="Start Time">
+                <input type="time" id="weeklyEndTime" placeholder="End Time">
+                <input type="text" id="weeklyCourse" placeholder="Course Name *">
+                <input type="text" id="weeklyVenue" placeholder="Venue">
+                <input type="date" id="weeklyStartDate">
+                <input type="date" id="weeklyEndDate">
+                <select id="weeklyProgram">
+                    <option value="KRCHN">KRCHN</option>
+                    <option value="TVET">TVET</option>
+                </select>
+                <select id="weeklyBlock">
+                    <option value="">Select Block</option>
+                </select>
+                <button onclick="createWeeklySchedule()" class="btn-action">Create Weekly Schedule</button>
+            </div>
         </div>
     </div>
     
