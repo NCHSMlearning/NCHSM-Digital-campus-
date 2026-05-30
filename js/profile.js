@@ -1119,10 +1119,14 @@ class ProfileModule {
             const { data: urlData } = supabase.storage.from('passports').getPublicUrl(filePath);
             const publicUrl = urlData.publicUrl;
             
-            const { error: updateError } = await supabase
-                .from('consolidated_user_profiles_table')
-                .upsert({ user_id: this.userId, passport_url: publicUrl, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
-            
+           // NEW (works correctly)
+const { error: updateError } = await supabase
+    .from('consolidated_user_profiles_table')
+    .update({ 
+        passport_url: publicUrl, 
+        updated_at: new Date().toISOString()
+    })
+    .eq('user_id', this.userId);
             if (updateError) throw updateError;
             
             this.showStatus('Photo uploaded successfully!', 'success');
