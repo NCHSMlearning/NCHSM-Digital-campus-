@@ -1904,13 +1904,72 @@
                     <button type="submit">Send Message</button>
                 </form>
                 
-                <div id="admin-official-announcement">
-                    <h3>Official Announcement</h3>
-                    <textarea id="announcement-body" rows="4" placeholder="Type announcement here..."></textarea>
-                    <br/>
-                    <button id="save-announcement">Save Announcement</button>
-                    <span id="announcement-feedback"></span>
-                </div>
+             <div id="admin-official-announcement">
+    <h3>Official Announcement</h3>
+    
+    <div class="form-group">
+        <label>Announcement Title</label>
+        <input type="text" id="announcement-title" class="form-control" placeholder="e.g., Important Update" value="Official Announcement">
+    </div>
+    
+    <div class="form-group">
+        <label>Target Program</label>
+        <select id="announcement-program" class="form-control">
+            <option value="KRCHN">KRCHN Nursing</option>
+            <option value="TVET">TVET Programs</option>
+            <option value="All">All Programs</option>
+        </select>
+    </div>
+    
+    <div class="form-group">
+        <label>Target Block/Semester</label>
+        <select id="announcement-block" class="form-control">
+            <option value="All">All Blocks</option>
+            <option value="Introductory">Introductory Block</option>
+            <option value="Block 1">Block 1</option>
+            <option value="Block 2">Block 2</option>
+            <option value="Block 3">Block 3</option>
+            <option value="Block 4">Block 4</option>
+            <option value="Block 5">Block 5</option>
+            <option value="Final">Final Block</option>
+        </select>
+    </div>
+    
+    <div class="form-group">
+        <label>Target Intake Year</label>
+        <select id="announcement-intake" class="form-control">
+            <option value="2024">2024</option>
+            <option value="2025">2025</option>
+            <option value="2026" selected>2026</option>
+            <option value="2027">2027</option>
+            <option value="All">All Years</option>
+        </select>
+    </div>
+    
+    <div class="form-group">
+        <label>Announcement Message</label>
+        <textarea id="announcement-body" rows="4" class="form-control" placeholder="Type announcement message here..."></textarea>
+    </div>
+    
+    <div class="form-group">
+        <label>Active Status</label>
+        <select id="announcement-status" class="form-control">
+            <option value="true">Active (Visible to Students)</option>
+            <option value="false">Inactive (Hidden)</option>
+        </select>
+    </div>
+    
+    <br/>
+    <button id="save-announcement" class="btn btn-primary">Save Announcement</button>
+    <button id="test-announcement" class="btn btn-secondary">Test as Student</button>
+    <span id="announcement-feedback"></span>
+</div>
+
+<!-- Display existing announcements -->
+<div id="existing-announcements" style="margin-top: 20px;">
+    <h4>Existing Announcements</h4>
+    <div id="announcements-list"></div>
+</div>
                 
                 <h3>Recent Messages</h3>
                 <div class="toolbar">
