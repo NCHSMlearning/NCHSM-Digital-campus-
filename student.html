@@ -158,346 +158,345 @@
 
         <!-- MAIN CONTENT AREA -->
         <main class="main" id="main-content">
-            
-      <!-- ==================== MODERN DASHBOARD - NO STYLES ==================== -->
+  <!-- ==================== DASHBOARD SECTION - COMPLETE ==================== -->
 <section id="dashboard" class="tab-content active" role="region">
     
-    <!-- WELCOME SECTION -->
-    <div class="welcome">
-        <h1>Good Morning, <span id="welcome-student-name">Kevin Tiong'i</span>! 🎉</h1>
-        <p>Access your courses, schedule, and check your attendance status.</p>
-    </div>
-
-    <!-- STATS ROW: XP + NurseIQ + Attendance Points -->
-    <div class="stats-row">
-        <div class="xp-area">
-            <div class="label">
-                <i class="fas fa-star"></i> 
-                Level <span id="user-level">1</span> · 
-                <span id="user-xp">0</span>/<span id="user-xp-max">100</span> XP to Level <span id="next-level">2</span>
+    <div class="dashboard-container">
+        
+        <!-- WELCOME CARD -->
+        <div class="welcome-card">
+            <div class="welcome-header">
+                <h2>
+                    <i class="fas fa-graduation-cap"></i> 
+                    Good Morning, <span id="welcome-student-name">Student</span>! 🎉
+                </h2>
+                <p class="welcome-subtitle" id="student-welcome-message">
+                    Access your courses, schedule, and check your attendance status.
+                </p>
             </div>
-            <div class="progress-bg">
-                <div class="progress-fill" id="xp-progress-fill"></div>
+            <div class="welcome-time">
+                <i class="fas fa-clock"></i>
+                <span id="dashboard-time"></span>
             </div>
         </div>
-        <div class="nurseiq-area">
+
+        <!-- ANNOUNCEMENT BANNER -->
+        <div class="announcement-banner" id="announcement-banner">
+            <div class="announcement-icon">
+                <i class="fas fa-bullhorn"></i>
+            </div>
+            <div class="announcement-content">
+                <h3 class="announcement-title">Official Announcement</h3>
+                <p class="announcement-text" id="student-announcement">Loading latest announcement...</p>
+            </div>
+        </div>
+
+        <!-- STATS ROW (XP + NurseIQ + ATTENDANCE POINTS) -->
+        <div class="stats-row">
+            <div class="label">
+                <i class="fas fa-star" style="color: #FDB913;"></i> 
+                Level <span id="user-level">1</span> · <span id="user-xp">0</span>/<span id="user-xp-max">100</span> XP to Level <span id="next-level">2</span>
+            </div>
             <div class="label">
                 <i class="fas fa-brain"></i> 
                 NurseIQ: <span id="dashboard-nurseiq-points">0</span> pts
             </div>
-        </div>
-        <div class="attendance-points-area">
             <div class="label">
-                <i class="fas fa-calendar-check"></i> 
+                <i class="fas fa-calendar-check" style="color: #0B2A4A;"></i> 
                 🎯 Attendance: <span id="attendance-points-value">0</span> pts
             </div>
         </div>
-    </div>
 
-    <!-- ANNOUNCEMENT BANNER -->
-    <div class="announcement-modern">
-        <div class="announcement-title">
-            <i class="fas fa-bullhorn"></i> Official Announcement
+        <!-- QUICK SNAPSHOT HEADER -->
+        <div class="section-header">
+            <h2><i class="fas fa-chart-simple"></i> Quick Snapshot</h2>
         </div>
-        <div class="announcement-text" id="student-announcement">
-            Loading latest announcement...
-        </div>
-    </div>
 
-    <!-- QUICK SNAPSHOT HEADER -->
-    <div class="section-title">
-        <span>📊 Quick Snapshot</span>
-    </div>
-
-    <!-- ATTENDANCE CARD -->
-    <div class="attendance-card-modern" data-tab="attendance">
-        <div class="attendance-header">
-            <div class="attendance-left">
-                <div class="attendance-label">ATTENDANCE RATE</div>
-                <div class="attendance-percent" id="dashboard-attendance-rate">--%</div>
-                <div class="attendance-sub">Overall attendance rate</div>
-            </div>
-            <div class="warning-badge-modern" id="attendance-warning-badge">
-                <i class="fas fa-exclamation-triangle"></i>
-                <span id="warning-text">BELOW 75%</span>
-            </div>
-        </div>
-        <div class="vp-row">
-            <div class="verified-box">
-                <div class="vp-label">✅ Verified</div>
-                <div class="vp-number">
-                    <strong id="dashboard-verified-count">0</strong> 
-                    <span class="vp-total">/ <span id="dashboard-total-count">0</span></span>
+        <!-- CARDS GRID - 6 CARDS -->
+        <div class="cards-grid">
+            
+            <!-- 1. ATTENDANCE CARD -->
+            <div class="stat-card" data-tab="attendance">
+                <div class="card-header">
+                    <div class="card-icon attendance">
+                        <i class="fas fa-calendar-check"></i>
+                    </div>
+                    <h3>Attendance Rate</h3>
+                </div>
+                <div class="card-body">
+                    <div class="stat-value" id="dashboard-attendance-rate">--%</div>
+                    <p class="stat-subtitle">Overall attendance rate</p>
+                    <div class="stat-details">
+                        <p>Verified: <strong id="dashboard-verified-count">0</strong> / <strong id="dashboard-total-count">0</strong></p>
+                        <p class="pending-text">Pending: <strong id="dashboard-pending-count">0</strong></p>
+                    </div>
                 </div>
             </div>
-            <div class="pending-box">
-                <div class="vp-label">⏳ Pending</div>
-                <div class="vp-number">
-                    <strong id="dashboard-pending-count">0</strong>
+
+            <!-- 2. UPCOMING EXAM CARD -->
+            <div class="stat-card" data-tab="cats">
+                <div class="card-header">
+                    <div class="card-icon exam">
+                        <i class="fas fa-file-alt"></i>
+                    </div>
+                    <h3>Upcoming Exam</h3>
+                </div>
+                <div class="card-body">
+                    <div class="stat-value" id="dashboard-upcoming-exam">Loading...</div>
+                    <p class="stat-subtitle">Next CAT/Exam date</p>
+                </div>
+            </div>
+
+            <!-- 3. ACTIVE COURSES CARD -->
+            <div class="stat-card" data-tab="hub-courses">
+                <div class="card-header">
+                    <div class="card-icon courses">
+                        <i class="fas fa-book-open"></i>
+                    </div>
+                    <h3>Active Courses</h3>
+                </div>
+                <div class="card-body">
+                    <div class="stat-value" id="dashboard-active-courses">0</div>
+                    <p class="stat-subtitle">Currently enrolled</p>
+                </div>
+            </div>
+
+            <!-- 4. CURRENT BLOCK CARD -->
+            <div class="stat-card" data-tab="profile">
+                <div class="card-header">
+                    <div class="card-icon" style="background: linear-gradient(135deg, #FDB913, #FECA4C);">
+                        <i class="fas fa-calendar-alt"></i>
+                    </div>
+                    <h3>Current Block</h3>
+                </div>
+                <div class="card-body">
+                    <div class="stat-value" id="dashboard-current-block-value" style="font-size: 1rem;">--</div>
+                    <p class="stat-subtitle">Current academic period</p>
+                    <div class="stat-details">
+                        <p>Program: <strong id="dashboard-program-name">--</strong></p>
+                        <p>Intake: <strong id="dashboard-intake-year">--</strong></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 5. RESOURCES CARD -->
+            <div class="stat-card" data-tab="resources">
+                <div class="card-header">
+                    <div class="card-icon resources">
+                        <i class="fas fa-folder-open"></i>
+                    </div>
+                    <h3>Resources</h3>
+                </div>
+                <div class="card-body">
+                    <div class="stat-value" id="dashboard-new-resources">0</div>
+                    <p class="stat-subtitle">Total resources available</p>
+                </div>
+            </div>
+
+            <!-- 6. NURSEIQ CARD -->
+            <div class="stat-card nurseiq-card" data-tab="nurseiq">
+                <div class="card-header">
+                    <div class="card-icon nurseiq">
+                        <i class="fas fa-brain"></i>
+                    </div>
+                    <h3>NurseIQ Progress</h3>
+                </div>
+                <div class="card-body">
+                    <div class="stat-value" id="dashboard-nurseiq-progress">--%</div>
+                    <p class="stat-subtitle">Overall progress</p>
+                    <div class="stat-details">
+                        <p>Accuracy: <strong id="dashboard-nurseiq-accuracy">--%</strong></p>
+                        <p>Questions: <strong id="dashboard-nurseiq-questions">0</strong> completed</p>
+                    </div>
                 </div>
             </div>
         </div>
-        <div class="points-hint">
-            <i class="fas fa-info-circle"></i> +10 points per verified attendance
-        </div>
-    </div>
 
-    <!-- MINI CARDS ROW 1 -->
-    <div class="mini-cards">
-        <div class="mini-card" data-tab="cats">
-            <div class="mini-label">📝 Upcoming Exam</div>
-            <div class="mini-card-value" id="dashboard-upcoming-exam">--</div>
-            <div class="mini-sub">Next CAT/Exam date</div>
-        </div>
-        <div class="mini-card" data-tab="hub-courses">
-            <div class="mini-label">📚 Active Courses</div>
-            <div class="mini-card-value" id="dashboard-active-courses">0</div>
-            <div class="mini-sub">Currently enrolled</div>
-        </div>
-        <div class="mini-card" data-tab="profile">
-            <div class="mini-label">📖 Current Block</div>
-            <div class="mini-card-value small" id="dashboard-current-block-value">--</div>
-            <div class="mini-sub">
-                <span id="dashboard-program-name">--</span> · 
-                <span id="dashboard-intake-year">--</span>
+        <!-- EXAM CARD (Separate row - full width on mobile) -->
+        <div class="cards-grid" style="margin-top: 0;">
+            <div class="stat-card examcard-card" data-tab="hub-exam-card">
+                <div class="card-header">
+                    <div class="card-icon examcard">
+                        <i class="fas fa-id-card"></i>
+                    </div>
+                    <h3>Exam Card</h3>
+                </div>
+                <div class="card-body">
+                    <div class="stat-value" id="dashboard-exam-status">--</div>
+                    <p class="stat-subtitle">Exam eligibility status</p>
+                    <div class="stat-details">
+                        <p>Approved Units: <strong id="dashboard-approved-units">0</strong></p>
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
 
-    <!-- MINI CARDS ROW 2 -->
-    <div class="mini-cards">
-        <div class="mini-card" data-tab="resources">
-            <i class="fas fa-folder-open"></i>
-            <div class="mini-card-value" id="dashboard-new-resources">0</div>
-            <div class="mini-sub">Total Resources</div>
+        <!-- ACHIEVEMENTS SECTION -->
+        <div class="section-header">
+            <h2><i class="fas fa-trophy"></i> 🏆 Your Achievements</h2>
+            <span class="view-all-link" style="font-size: 11px; color: #FDB913; cursor: pointer;">View All →</span>
         </div>
-        <div class="mini-card" data-tab="nurseiq">
-            <i class="fas fa-brain"></i>
-            <div class="mini-card-value" id="dashboard-nurseiq-progress">--%</div>
-            <div class="mini-sub">Accuracy: <span id="dashboard-nurseiq-accuracy">--</span>%</div>
+        <div class="achievements-grid">
+            <div class="achieve-item"><i class="fas fa-check-circle"></i><div><strong>First Step</strong><div class="points-badge-sm">+10 pts</div></div></div>
+            <div class="achieve-item"><i class="fas fa-fire"></i><div><strong>On Fire!</strong><div class="points-badge-sm">+50 pts</div></div></div>
+            <div class="achieve-item"><i class="fas fa-rocket"></i><div><strong>Unstoppable</strong><div class="points-badge-sm">+100 pts</div></div></div>
+            <div class="achieve-item"><i class="fas fa-crown"></i><div><strong>Legendary</strong><div class="points-badge-sm">+500 pts</div></div></div>
+            <div class="achieve-item"><i class="fas fa-calendar-week"></i><div><strong>Perfect Week</strong><div class="points-badge-sm">+100 pts</div></div></div>
+            <div class="achieve-item"><i class="fas fa-graduation-cap"></i><div><strong>Course Master</strong><div class="points-badge-sm">+200 pts</div></div></div>
+            <div class="achieve-item"><i class="fas fa-medal"></i><div><strong>Quiz Champion</strong><div class="points-badge-sm">+50 pts</div></div></div>
+            <div class="achieve-item"><i class="fas fa-stethoscope"></i><div><strong>NurseIQ Master</strong><div class="points-badge-sm">+100 pts</div></div></div>
+            <div class="achieve-item"><i class="fas fa-sun"></i><div><strong>Early Bird</strong><div class="points-badge-sm">+20 pts</div></div></div>
+            <div class="achieve-item"><i class="fas fa-moon"></i><div><strong>Night Owl</strong><div class="points-badge-sm">+20 pts</div></div></div>
         </div>
-        <div class="mini-card" data-tab="hub-exam-card">
-            <i class="fas fa-id-card"></i>
-            <div class="mini-card-value exam-status" id="dashboard-exam-status">--</div>
-            <div class="mini-sub">Approved: <span id="dashboard-approved-units">0</span> units</div>
-        </div>
-    </div>
 
-    <!-- ACHIEVEMENTS SECTION -->
-    <div class="section-title">
-        <span>🏆 Your Achievements</span>
-        <span class="view-all">View All →</span>
-    </div>
-    <div class="achievements-grid">
-        <div class="achieve-item">
-            <i class="fas fa-check-circle"></i>
-            <div>
-                <strong>First Step</strong>
-                <div class="achieve-desc">First attendance check-in</div>
-                <div class="points-badge-sm">+10 pts</div>
+        <!-- CLASS LEADERBOARD -->
+        <div class="section-header">
+            <h2><i class="fas fa-chart-line"></i> 🏅 Class Leaderboard</h2>
+            <div class="leaderboard-tabs" style="display: flex; gap: 8px;">
+                <span style="font-size: 11px; color: #FDB913; font-weight: 600;">Weekly</span>
+                <span style="font-size: 11px; color: #9ca3af;">Monthly</span>
+                <span style="font-size: 11px; color: #9ca3af;">All Time</span>
             </div>
         </div>
-        <div class="achieve-item">
-            <i class="fas fa-fire"></i>
-            <div>
-                <strong>On Fire!</strong>
-                <div class="achieve-desc">5-day streak</div>
-                <div class="points-badge-sm">+50 pts</div>
+        <div class="leaderboard-card">
+            <div class="leaderboard-entry">
+                <div class="rank-icon">👑</div>
+                <div class="user-avatar">MC</div>
+                <div class="user-info">
+                    <strong>MERCY CHEROTICH KRC</strong>
+                    <div class="user-stats">5 day streak · Level 2 · Block 2</div>
+                </div>
+                <div class="points-badge-sm">370 pts</div>
+            </div>
+            <div class="leaderboard-entry">
+                <div class="rank-icon">🥈</div>
+                <div class="user-avatar">SN</div>
+                <div class="user-info">
+                    <strong>Shalom Nkatha Mukubia</strong>
+                    <div class="user-stats">Level 2 · Introductory</div>
+                </div>
+                <div class="points-badge-sm">100 pts</div>
+            </div>
+            <div class="leaderboard-entry">
+                <div class="rank-icon">🥉</div>
+                <div class="user-avatar">FM</div>
+                <div class="user-info">
+                    <strong>Florence Muhengere</strong>
+                    <div class="user-stats">Level 2 · Introductory</div>
+                </div>
+                <div class="points-badge-sm">100 pts</div>
+            </div>
+            <div class="leaderboard-entry">
+                <div class="rank-icon">4</div>
+                <div class="user-avatar">CD</div>
+                <div class="user-info">
+                    <strong>Chemutai Dorcas</strong>
+                    <div class="user-stats">Introductory</div>
+                </div>
+                <div class="points-badge-sm">100 pts</div>
+            </div>
+            <div class="leaderboard-entry">
+                <div class="rank-icon">5</div>
+                <div class="user-avatar">AK</div>
+                <div class="user-info">
+                    <strong>Augustine Kimeu</strong>
+                    <div class="user-stats">Introductory</div>
+                </div>
+                <div class="points-badge-sm">100 pts</div>
             </div>
         </div>
-        <div class="achieve-item">
-            <i class="fas fa-rocket"></i>
-            <div>
-                <strong>Unstoppable</strong>
-                <div class="achieve-desc">10-day streak</div>
-                <div class="points-badge-sm">+100 pts</div>
-            </div>
-        </div>
-        <div class="achieve-item">
-            <i class="fas fa-crown"></i>
-            <div>
-                <strong>Legendary</strong>
-                <div class="achieve-desc">30-day streak</div>
-                <div class="points-badge-sm">+500 pts</div>
-            </div>
-        </div>
-        <div class="achieve-item">
-            <i class="fas fa-calendar-week"></i>
-            <div>
-                <strong>Perfect Week</strong>
-                <div class="achieve-desc">All sessions in week</div>
-                <div class="points-badge-sm">+100 pts</div>
-            </div>
-        </div>
-        <div class="achieve-item">
-            <i class="fas fa-graduation-cap"></i>
-            <div>
-                <strong>Course Master</strong>
-                <div class="achieve-desc">Complete all units</div>
-                <div class="points-badge-sm">+200 pts</div>
-            </div>
-        </div>
-        <div class="achieve-item">
-            <i class="fas fa-medal"></i>
-            <div>
-                <strong>Quiz Champion</strong>
-                <div class="achieve-desc">100% on any quiz</div>
-                <div class="points-badge-sm">+50 pts</div>
-            </div>
-        </div>
-        <div class="achieve-item">
-            <i class="fas fa-stethoscope"></i>
-            <div>
-                <strong>NurseIQ Master</strong>
-                <div class="achieve-desc">50 questions completed</div>
-                <div class="points-badge-sm">+100 pts</div>
-            </div>
-        </div>
-        <div class="achieve-item">
-            <i class="fas fa-sun"></i>
-            <div>
-                <strong>Early Bird</strong>
-                <div class="achieve-desc">Check in before 8 AM</div>
-                <div class="points-badge-sm">+20 pts</div>
-            </div>
-        </div>
-        <div class="achieve-item">
-            <i class="fas fa-moon"></i>
-            <div>
-                <strong>Night Owl</strong>
-                <div class="achieve-desc">Check in after 6 PM</div>
-                <div class="points-badge-sm">+20 pts</div>
-            </div>
-        </div>
-    </div>
 
-    <!-- CLASS LEADERBOARD -->
-    <div class="section-title">
-        <span>🏅 Class Leaderboard</span>
-        <div class="leaderboard-tabs">
-            <span class="tab-active">Weekly</span>
-            <span>Monthly</span>
-            <span>All Time</span>
+        <!-- TIMETABLE SECTION -->
+        <div class="section-header">
+            <h2><i class="fas fa-calendar-week"></i> 📅 My Class Schedule - <span id="timetable-block-title">Block 4</span></h2>
         </div>
-    </div>
-    <div class="leaderboard-card">
-        <div class="leaderboard-entry">
-            <div class="rank-icon">👑</div>
-            <div class="user-avatar">MC</div>
-            <div class="user-info">
-                <strong>MERCY CHEROTICH KRC</strong>
-                <div class="user-stats">5 day streak · Level 2 · Block 2</div>
+        <div class="timetable-tabs">
+            <button class="week-btn active" data-week="all">📅 All Weeks</button>
+            <button class="week-btn" data-week="1">Week 1</button>
+            <button class="week-btn" data-week="2">Week 2</button>
+            <button class="week-btn" data-week="3">Week 3</button>
+            <button class="week-btn" data-week="4">Week 4</button>
+        </div>
+        <div class="timetable-card">
+            <div id="timetable-loading" class="loading-state">
+                <div class="loading-spinner"></div>
+                <p>Loading your class schedule...</p>
             </div>
-            <div class="points-badge-sm">370 pts</div>
-        </div>
-        <div class="leaderboard-entry">
-            <div class="rank-icon">🥈</div>
-            <div class="user-avatar">SN</div>
-            <div class="user-info">
-                <strong>Shalom Nkatha Mukubia</strong>
-                <div class="user-stats">Level 2 · Introductory</div>
+            <div id="timetable-container" style="display: none;"></div>
+            <div id="timetable-empty" class="empty-state" style="display: none;">
+                <i class="fas fa-calendar-times"></i>
+                <h3>No Timetable Available</h3>
+                <p>Your class schedule for <strong id="empty-block-name">Block 4</strong> is not yet available.</p>
             </div>
-            <div class="points-badge-sm">100 pts</div>
         </div>
-        <div class="leaderboard-entry">
-            <div class="rank-icon">🥉</div>
-            <div class="user-avatar">FM</div>
-            <div class="user-info">
-                <strong>Florence Muhengere</strong>
-                <div class="user-stats">Level 2 · Introductory</div>
-            </div>
-            <div class="points-badge-sm">100 pts</div>
-        </div>
-        <div class="leaderboard-entry">
-            <div class="rank-icon">4</div>
-            <div class="user-avatar">CD</div>
-            <div class="user-info">
-                <strong>Chemutai Dorcas</strong>
-                <div class="user-stats">Introductory</div>
-            </div>
-            <div class="points-badge-sm">100 pts</div>
-        </div>
-        <div class="leaderboard-entry">
-            <div class="rank-icon">5</div>
-            <div class="user-avatar">AK</div>
-            <div class="user-info">
-                <strong>Augustine Kimeu</strong>
-                <div class="user-stats">Introductory</div>
-            </div>
-            <div class="points-badge-sm">100 pts</div>
-        </div>
-    </div>
 
-    <!-- TIMETABLE SECTION -->
-    <div class="section-title">
-        <span>📅 My Class Schedule - <span id="timetable-block-title">Block 4</span></span>
-    </div>
-    <div class="timetable-tabs">
-        <button class="week-btn active" data-week="all">📅 All Weeks</button>
-        <button class="week-btn" data-week="1">Week 1</button>
-        <button class="week-btn" data-week="2">Week 2</button>
-        <button class="week-btn" data-week="3">Week 3</button>
-        <button class="week-btn" data-week="4">Week 4</button>
-    </div>
-    <div class="timetable-card">
-        <div class="timetable-loading" id="timetable-loading">
-            <div class="loading-spinner"></div>
-            <p>Loading your class schedule...</p>
+        <!-- ACTION REQUIRED SECTION -->
+        <div class="section-header">
+            <h2><i class="fas fa-bell"></i> ⚠️ Action Required</h2>
+            <p class="section-subtitle">Items needing your attention</p>
         </div>
-        <div class="timetable-content" id="timetable-container" style="display: none;"></div>
-        <div class="timetable-empty" id="timetable-empty" style="display: none;">
-            <i class="fas fa-calendar-times"></i>
-            <h3>No Timetable Available</h3>
-            <p>Your class schedule for <strong id="empty-block-name">Block 4</strong> is not yet available.</p>
+        <div class="actions-grid" id="dashboard-actions">
+            <div class="action-card alert" id="action-passport" style="display: none;">
+                <div class="action-header">
+                    <i class="fas fa-id-card"></i>
+                    <h3>Missing Passport Photo</h3>
+                </div>
+                <div class="action-body">
+                    <p>Your profile is incomplete. Please upload your passport photo immediately.</p>
+                </div>
+                <div class="action-footer">
+                    <button class="btn-action" data-tab="profile"><i class="fas fa-user-edit"></i> Go to Profile</button>
+                </div>
+            </div>
+            <div class="action-card warning">
+                <div class="action-header">
+                    <i class="fas fa-book-medical"></i>
+                    <h3>Review New Course Material</h3>
+                </div>
+                <div class="action-body">
+                    <p>New study materials have been posted for this block.</p>
+                </div>
+                <div class="action-footer">
+                    <button class="btn-action" data-tab="resources"><i class="fas fa-external-link-alt"></i> View Resources</button>
+                </div>
+            </div>
+            <div class="action-card success" id="latest-announcement-card" style="display: none;">
+                <div class="action-header">
+                    <i class="fas fa-bullhorn"></i>
+                    <h3 id="announcement-title">Latest Announcement</h3>
+                </div>
+                <div class="action-body">
+                    <p id="announcement-body">Loading message body...</p>
+                    <div class="announcement-meta">
+                        <span id="announcement-date"></span> • <span id="announcement-status"></span>
+                    </div>
+                </div>
+                <div class="action-footer">
+                    <button class="btn-action" data-tab="messages"><i class="fas fa-comments"></i> Go to Messages</button>
+                </div>
+            </div>
+            <div class="action-card nurseiq" id="nurseiq-action-card" style="display: none;">
+                <div class="action-header">
+                    <i class="fas fa-brain"></i>
+                    <h3>NurseIQ Practice Needed</h3>
+                </div>
+                <div class="action-body">
+                    <p id="nurseiq-action-message">Complete your NurseIQ assessments to improve your scores.</p>
+                </div>
+                <div class="action-footer">
+                    <button class="btn-action nurseiq-btn" data-tab="nurseiq"><i class="fas fa-play-circle"></i> Start Practicing</button>
+                </div>
+            </div>
         </div>
-    </div>
 
-    <!-- ACTION REQUIRED SECTION -->
-    <div class="section-title">
-        <span>⚠️ Action Required</span>
-        <span class="section-subtitle">Items needing your attention</span>
-    </div>
-    <div class="actions-list" id="dashboard-actions">
-        <div class="action-card action-warning" id="action-missing-passport" style="display: none;">
-            <i class="fas fa-id-card"></i>
-            <div class="action-content">
-                <strong>Missing Passport Photo</strong>
-                <p>Your profile is incomplete. Please upload your passport photo immediately.</p>
-            </div>
-            <button class="action-btn" data-tab="profile">Go to Profile →</button>
+        <!-- FOOTER NOTE -->
+        <div class="dashboard-footer">
+            <i class="fas fa-mobile-alt"></i> NCHSM Portal v2.1 | +10 pts per verified attendance
         </div>
-        <div class="action-card action-warning">
-            <i class="fas fa-book-medical"></i>
-            <div class="action-content">
-                <strong>Review New Course Material</strong>
-                <p>New study materials have been posted for this block.</p>
-            </div>
-            <button class="action-btn" data-tab="resources">View Resources →</button>
-        </div>
-        <div class="action-card action-success" id="latest-announcement-card" style="display: none;">
-            <i class="fas fa-bullhorn"></i>
-            <div class="action-content">
-                <strong id="announcement-title">Latest Announcement</strong>
-                <p id="announcement-body">Loading message body...</p>
-            </div>
-            <button class="action-btn" data-tab="messages">Go to Messages →</button>
-        </div>
-        <div class="action-card action-nurseiq" id="nurseiq-action-card" style="display: none;">
-            <i class="fas fa-brain"></i>
-            <div class="action-content">
-                <strong>NurseIQ Practice Needed</strong>
-                <p id="nurseiq-action-message">Complete your NurseIQ assessments to improve your scores.</p>
-            </div>
-            <button class="action-btn" data-tab="nurseiq">Start Practicing →</button>
-        </div>
-    </div>
 
-    <!-- FOOTER -->
-    <div class="dashboard-footer">
-        <i class="fas fa-mobile-alt"></i> NCHSM Portal v2.1 | +10 pts per verified attendance
     </div>
-
 </section>
+
             <!-- ==================== PROFILE TAB ==================== -->
 <section id="profile" class="tab-content" hidden>
     <header class="profile-header">
