@@ -1,50 +1,43 @@
 // =====================================================
-// STUDENT TIMETABLE MODULE
-// Displays class schedule based on student's assigned block
+// STUDENT TIMETABLE MODULE - SUPER COMPACT VERSION
+// Displays next class + compact timetable by week
 // =====================================================
 
-// Global variables
 let studentTimetableData = [];
 let currentStudentBlock = null;
 
-// Initialize timetable when profile is ready
+// Initialize timetable when page loads
 async function initStudentTimetable() {
-    console.log('📅 Initializing student timetable...');
+    console.log('📅 Loading student timetable...');
     
     const container = document.getElementById('timetable-container');
     const loadingDiv = document.getElementById('timetable-loading');
     const emptyDiv = document.getElementById('timetable-empty');
     
-    if (!container) {
-        console.log('Timetable container not found on this page');
-        return;
-    }
+    if (!container) return;
     
     try {
-        // Get student's block from profile (wait for profile to load)
+        // Get student's block from profile
         let studentBlock = null;
-        let studentProgram = null;
         let retryCount = 0;
         const maxRetries = 10;
         
         while (!studentBlock && retryCount < maxRetries) {
-            // Try to get from global profile
-            if (window.currentUserProfile && window.currentUserProfile.block) {
+            // Check currentUserProfile
+            if (window.currentUserProfile?.block) {
                 studentBlock = window.currentUserProfile.block;
-                studentProgram = window.currentUserProfile.program;
-                console.log(`📌 Got block from currentUserProfile: ${studentBlock} (attempt ${retryCount + 1})`);
+                console.log(`📌 Block from currentUserProfile: ${studentBlock}`);
                 break;
             }
             
-            // Try from db.currentUserProfile
-            if (window.db && window.db.currentUserProfile && window.db.currentUserProfile.block) {
+            // Check db.currentUserProfile
+            if (window.db?.currentUserProfile?.block) {
                 studentBlock = window.db.currentUserProfile.block;
-                studentProgram = window.db.currentUserProfile.program;
-                console.log(`📌 Got block from db.currentUserProfile: ${studentBlock} (attempt ${retryCount + 1})`);
+                console.log(`📌 Block from db.currentUserProfile: ${studentBlock}`);
                 break;
             }
             
-            // Try direct database query
+            // Direct database query
             try {
                 const { data: { user } } = await supabase.auth.getUser();
                 if (user) {
@@ -54,28 +47,27 @@ async function initStudentTimetable() {
                         .eq('user_id', user.id)
                         .single();
                     
-                    if (profile && profile.block) {
+                    if (profile?.block) {
                         studentBlock = profile.block;
-                        studentProgram = profile.program;
-                        console.log(`📌 Got block from direct DB: ${studentBlock} (attempt ${retryCount + 1})`);
+                        console.log(`📌 Block from direct DB: ${studentBlock}`);
                         break;
                     }
                 }
             } catch (e) {
-                console.log('DB query not ready yet');
+                console.log('DB not ready, retrying...');
             }
             
             retryCount++;
             await new Promise(resolve => setTimeout(resolve, 500));
         }
         
-        // If no block found after retries
+        // If no block found
         if (!studentBlock || studentBlock === 'null' || studentBlock === '') {
-            console.error('❌ No block assigned to student after', maxRetries, 'attempts');
+            console.error('❌ No block assigned to student');
             if (loadingDiv) loadingDiv.style.display = 'none';
             if (emptyDiv) {
                 const msgElement = emptyDiv.querySelector('#empty-message-text') || emptyDiv.querySelector('p');
-                if (msgElement) msgElement.innerHTML = 'Your block has not been assigned yet. Please contact the administrator.';
+                if (msgElement) msgElement.innerHTML = 'Your block has not been assigned yet. Please contact administrator.';
                 emptyDiv.style.display = 'block';
             }
             return;
@@ -83,18 +75,9 @@ async function initStudentTimetable() {
         
         currentStudentBlock = studentBlock;
         
-        // UPDATE THE BLOCK TITLE
+        // Update block title
         const blockTitleSpan = document.getElementById('timetable-block-title');
-        if (blockTitleSpan) {
-            blockTitleSpan.textContent = studentBlock;
-            console.log(`✅ Updated block title to: ${studentBlock}`);
-        }
-        
-        // Update empty state block name
-        const emptyBlockName = document.getElementById('empty-block-name');
-        if (emptyBlockName) emptyBlockName.textContent = studentBlock;
-        
-        console.log(`🎓 Student Block: ${studentBlock}, Program: ${studentProgram || 'KRCHN'}`);
+        if (blockTitleSpan) blockTitleSpan.textContent = studentBlock;
         
         // Fetch timetable from database
         const { data: timetable, error } = await supabase
@@ -107,6 +90,7 @@ async function initStudentTimetable() {
         
         if (error) {
             console.error('Timetable fetch error:', error);
+            if (loadingDiv) loadingDiv.style.display = 'none';
             if (emptyDiv) {
                 const msgElement = emptyDiv.querySelector('#empty-message-text') || emptyDiv.querySelector('p');
                 if (msgElement) msgElement.innerHTML = 'Error loading schedule. Please try again.';
@@ -120,24 +104,27 @@ async function initStudentTimetable() {
             if (loadingDiv) loadingDiv.style.display = 'none';
             if (emptyDiv) {
                 const msgElement = emptyDiv.querySelector('#empty-message-text') || emptyDiv.querySelector('p');
-                if (msgElement) msgElement.innerHTML = `No schedule available for ${studentBlock} yet. Please check back later.`;
+                if (msgElement) msgElement.innerHTML = `No schedule available for ${studentBlock} yet.`;
                 emptyDiv.style.display = 'block';
             }
             return;
         }
         
         studentTimetableData = timetable;
-        console.log(`✅ Loaded ${timetable.length} timetable entries for ${studentBlock}`);
+        console.log(`✅ Loaded ${timetable.length} entries for ${studentBlock}`);
         
-        // Get unique weeks
-        const uniqueWeeks = [...new Set(timetable.map(item => item.week_number))].sort((a, b) => a - b);
-        console.log(`📅 Weeks available: ${uniqueWeeks.join(', ')}`);
+        // Update class count
+        const countDisplay = document.getElementById('class-count-display');
+        if (countDisplay) countDisplay.textContent = `${timetable.length} classes`;
         
-        // Update week buttons
-        updateWeekButtons(uniqueWeeks);
+        // Show next class widget
+        showNextClassWidget(timetable);
+        
+        // Update week dropdown
+        updateWeekDropdown(timetable);
         
         // Render timetable (all weeks by default)
-        renderTimetableByWeek('all');
+        renderTimetable('all');
         
         // Hide loading, show container
         if (loadingDiv) loadingDiv.style.display = 'none';
@@ -147,51 +134,111 @@ async function initStudentTimetable() {
     } catch (error) {
         console.error('Error loading timetable:', error);
         if (loadingDiv) loadingDiv.style.display = 'none';
-        if (emptyDiv) {
-            const msgElement = emptyDiv.querySelector('#empty-message-text') || emptyDiv.querySelector('p');
-            if (msgElement) msgElement.innerHTML = 'Unable to load your schedule. Please try again later.';
-            emptyDiv.style.display = 'block';
-        }
+        if (emptyDiv) emptyDiv.style.display = 'block';
     }
 }
 
-// Update week filter buttons
-function updateWeekButtons(availableWeeks) {
-    const weekBtns = document.querySelectorAll('.week-btn');
+// Show next class widget
+function showNextClassWidget(timetable) {
+    const nextClass = findNextClass(timetable);
+    const snapWidget = document.getElementById('next-class-snap');
     
-    weekBtns.forEach(btn => {
-        const weekValue = btn.getAttribute('data-week');
-        if (weekValue !== 'all') {
-            const weekNum = parseInt(weekValue);
-            if (availableWeeks.includes(weekNum)) {
-                btn.style.display = 'inline-flex';
-                btn.removeEventListener('click', handleWeekClick);
-                btn.addEventListener('click', handleWeekClick);
-            } else {
-                btn.style.display = 'none';
-            }
-        } else {
-            btn.removeEventListener('click', handleWeekClick);
-            btn.addEventListener('click', handleWeekClick);
+    if (!snapWidget) return;
+    
+    if (!nextClass) {
+        snapWidget.style.display = 'none';
+        return;
+    }
+    
+    snapWidget.style.display = 'block';
+    
+    const startTime = nextClass.start_time ? nextClass.start_time.substring(0, 5) : 'TBA';
+    const endTime = nextClass.end_time ? nextClass.end_time.substring(0, 5) : 'TBA';
+    
+    document.getElementById('next-class-name').innerHTML = escapeHtml(nextClass.session_name || nextClass.course_name);
+    document.getElementById('next-class-lecturer').innerHTML = escapeHtml(nextClass.lecturer_name || 'TBA');
+    document.getElementById('next-class-time').innerHTML = `${startTime} - ${endTime}`;
+    document.getElementById('next-class-venue').innerHTML = escapeHtml(nextClass.venue || 'TBD');
+    
+    const dayNames = { monday: 'Monday', tuesday: 'Tuesday', wednesday: 'Wednesday', thursday: 'Thursday', friday: 'Friday' };
+    const today = new Date();
+    const todayDay = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][today.getDay()];
+    
+    if (nextClass.day_of_week === todayDay) {
+        document.getElementById('next-class-day').innerHTML = '🟢 Today';
+    } else {
+        document.getElementById('next-class-day').innerHTML = `📅 ${dayNames[nextClass.day_of_week] || nextClass.day_of_week}`;
+    }
+}
+
+// Find next upcoming class
+function findNextClass(timetable) {
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+    const currentTime = `${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`;
+    
+    const dayMap = { 1: 'monday', 2: 'tuesday', 3: 'wednesday', 4: 'thursday', 5: 'friday' };
+    const currentDayIndex = now.getDay();
+    const currentDay = dayMap[currentDayIndex];
+    
+    // Check today's upcoming classes (not holiday)
+    if (currentDay) {
+        const todayClasses = timetable.filter(c => 
+            c.day_of_week === currentDay && !c.is_holiday && c.start_time > currentTime
+        );
+        todayClasses.sort((a, b) => a.start_time.localeCompare(b.start_time));
+        
+        if (todayClasses.length > 0) {
+            return todayClasses[0];
         }
+    }
+    
+    // Check next days
+    for (let i = currentDayIndex + 1; i <= 5; i++) {
+        const nextDay = dayMap[i];
+        if (nextDay) {
+            const nextClasses = timetable.filter(c => 
+                c.day_of_week === nextDay && !c.is_holiday
+            );
+            nextClasses.sort((a, b) => a.start_time.localeCompare(b.start_time));
+            
+            if (nextClasses.length > 0) {
+                return nextClasses[0];
+            }
+        }
+    }
+    
+    return null;
+}
+
+// Update week dropdown with available weeks
+function updateWeekDropdown(timetable) {
+    const dropdown = document.getElementById('week-filter-select');
+    if (!dropdown) return;
+    
+    const uniqueWeeks = [...new Set(timetable.map(item => item.week_number))].sort((a, b) => a - b);
+    
+    let options = '<option value="all">📅 All Weeks</option>';
+    uniqueWeeks.forEach(week => {
+        options += `<option value="${week}">Week ${week}</option>`;
     });
+    
+    dropdown.innerHTML = options;
+    
+    // Remove old listener and add new one
+    dropdown.removeEventListener('change', handleWeekChange);
+    dropdown.addEventListener('change', handleWeekChange);
 }
 
-// Handle week button click
-function handleWeekClick(e) {
-    const btn = e.currentTarget;
-    const weekValue = btn.getAttribute('data-week');
-    
-    // Update active state
-    document.querySelectorAll('.week-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    
-    // Render filtered timetable
-    renderTimetableByWeek(weekValue);
+// Handle week dropdown change
+function handleWeekChange(e) {
+    const weekValue = e.target.value;
+    renderTimetable(weekValue);
 }
 
-// Render timetable by week filter
-function renderTimetableByWeek(weekFilter) {
+// Render compact timetable
+function renderTimetable(weekFilter) {
     const container = document.getElementById('timetable-container');
     if (!container) return;
     
@@ -202,9 +249,9 @@ function renderTimetableByWeek(weekFilter) {
     
     if (filteredData.length === 0) {
         container.innerHTML = `
-            <div class="empty-state-small" style="text-align: center; padding: 40px;">
-                <i class="fas fa-calendar-week" style="font-size: 48px; color: #9ca3af;"></i>
-                <p style="margin-top: 10px;">No classes scheduled for ${weekFilter === 'all' ? 'any week' : `Week ${weekFilter}`}</p>
+            <div style="text-align: center; padding: 30px; color: #9ca3af;">
+                <i class="fas fa-calendar-week" style="font-size: 28px;"></i>
+                <p style="margin-top: 8px; font-size: 13px;">No classes this week</p>
             </div>
         `;
         return;
@@ -212,10 +259,7 @@ function renderTimetableByWeek(weekFilter) {
     
     // Group by day
     const daysOrder = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
-    const dayNames = {
-        monday: 'Monday', tuesday: 'Tuesday', wednesday: 'Wednesday',
-        thursday: 'Thursday', friday: 'Friday'
-    };
+    const dayNames = { monday: 'Mon', tuesday: 'Tue', wednesday: 'Wed', thursday: 'Thu', friday: 'Fri' };
     
     const grouped = {};
     daysOrder.forEach(day => { grouped[day] = []; });
@@ -233,18 +277,86 @@ function renderTimetableByWeek(weekFilter) {
     
     // Build HTML
     let html = `
-        <div class="timetable-wrapper" style="overflow-x: auto;">
-            <table class="timetable-table" style="width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                <thead>
-                    <tr style="background: #4C1D95; color: white;">
-                        <th style="padding: 14px; text-align: left; font-weight: 600;">Day</th>
-                        <th style="padding: 14px; text-align: left; font-weight: 600;">Time</th>
-                        <th style="padding: 14px; text-align: left; font-weight: 600;">Course/Session</th>
-                        <th style="padding: 14px; text-align: left; font-weight: 600;">Lecturer</th>
-                        <th style="padding: 14px; text-align: left; font-weight: 600;">Venue</th>
-                    </tr>
-                </thead>
-                <tbody>
+        <style>
+            .timetable-compact {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 12px;
+                background: white;
+                border-radius: 8px;
+                overflow: hidden;
+            }
+            .timetable-compact th {
+                background: #f8f9fa;
+                padding: 8px 10px;
+                text-align: left;
+                font-weight: 600;
+                color: #374151;
+                border-bottom: 1px solid #e5e7eb;
+                font-size: 11px;
+            }
+            .timetable-compact td {
+                padding: 8px 10px;
+                border-bottom: 1px solid #f0f0f0;
+                vertical-align: top;
+            }
+            .timetable-compact tr:hover {
+                background: #faf5ff;
+            }
+            .timetable-day {
+                font-weight: 600;
+                width: 55px;
+                background: #faf5ff;
+            }
+            .timetable-time {
+                font-family: monospace;
+                font-size: 11px;
+                white-space: nowrap;
+                width: 70px;
+            }
+            .timetable-course {
+                font-weight: 500;
+                font-size: 12px;
+            }
+            .timetable-lecturer, .timetable-venue {
+                font-size: 11px;
+                color: #6b7280;
+            }
+            .badge-tiny {
+                display: inline-block;
+                padding: 1px 5px;
+                border-radius: 3px;
+                font-size: 9px;
+                margin-left: 5px;
+            }
+            .badge-exam { background: #fef3c7; color: #d97706; }
+            .badge-holiday { background: #fee2e2; color: #dc2626; }
+            .badge-pending { background: #f3f4f6; color: #6b7280; }
+            @media (max-width: 768px) {
+                .timetable-compact th,
+                .timetable-compact td {
+                    padding: 6px 8px;
+                }
+                .timetable-day {
+                    width: 45px;
+                }
+                .timetable-time {
+                    font-size: 10px;
+                    width: 60px;
+                }
+            }
+        </style>
+        <table class="timetable-compact">
+            <thead>
+                <tr>
+                    <th>Day</th>
+                    <th>Time</th>
+                    <th>Course</th>
+                    <th>Lecturer</th>
+                    <th>Venue</th>
+                </tr>
+            </thead>
+            <tbody>
     `;
     
     for (const day of daysOrder) {
@@ -252,37 +364,37 @@ function renderTimetableByWeek(weekFilter) {
         
         if (classes.length === 0) {
             html += `
-                <tr style="border-bottom: 1px solid #e5e7eb;">
-                    <td style="padding: 12px; background: #faf5ff; font-weight: 600; width: 100px;">${dayNames[day]}</td>
-                    <td colspan="4" style="padding: 12px; color: #9ca3af; text-align: center;">No classes scheduled</td>
+                <tr>
+                    <td class="timetable-day">${dayNames[day]}</td>
+                    <td colspan="4" style="color: #9ca3af; text-align: center;">—</td>
                 </tr>
             `;
         } else {
             classes.forEach((cls, idx) => {
-                const holidayBadge = cls.is_holiday ? '<span style="background: #dc2626; color: white; padding: 2px 8px; border-radius: 4px; font-size: 10px; margin-left: 8px; display: inline-block;">🔴 HOLIDAY</span>' : '';
-                const examBadge = cls.is_exam ? '<span style="background: #f59e0b; color: white; padding: 2px 8px; border-radius: 4px; font-size: 10px; margin-left: 8px; display: inline-block;">📝 EXAM</span>' : '';
-                const pendingBadge = cls.pending_allocation ? '<span style="background: #94a3b8; color: white; padding: 2px 8px; border-radius: 4px; font-size: 10px; margin-left: 8px; display: inline-block;">⏳ Pending</span>' : '';
+                let badges = '';
+                if (cls.is_exam) badges += '<span class="badge-tiny badge-exam">Exam</span>';
+                if (cls.is_holiday) badges += '<span class="badge-tiny badge-holiday">Holiday</span>';
+                if (cls.pending_allocation) badges += '<span class="badge-tiny badge-pending">Pending</span>';
                 
-                // Format time (remove seconds)
                 const startTime = cls.start_time ? cls.start_time.substring(0, 5) : 'TBA';
                 const endTime = cls.end_time ? cls.end_time.substring(0, 5) : 'TBA';
                 
-                const rowClass = cls.is_holiday ? 'style="background: #fef2f2;"' : '';
+                // Shorten lecturer name (first two words)
+                let lecturerName = cls.lecturer_name || 'TBA';
+                if (lecturerName !== 'TBA') {
+                    const nameParts = lecturerName.split(' ');
+                    lecturerName = nameParts.slice(0, 2).join(' ');
+                }
                 
                 html += `
-                    <tr style="border-bottom: 1px solid #e5e7eb;" ${rowClass}>
-                        ${idx === 0 ? `<td style="padding: 12px; background: #faf5ff; font-weight: 600; vertical-align: top;" rowspan="${classes.length}">${dayNames[day]}</td>` : ''}
-                        <td style="padding: 12px; vertical-align: top;"><strong>${startTime} - ${endTime}</strong></td>
-                        <td style="padding: 12px; vertical-align: top;">
-                            <strong>${escapeHtml(cls.session_name || cls.course_name)}</strong>
-                            ${holidayBadge}${examBadge}
-                            ${cls.course_name && cls.course_name !== cls.session_name ? `<br><small style="color: #6b7280;">${escapeHtml(cls.course_name)}</small>` : ''}
+                    <tr>
+                        ${idx === 0 ? `<td class="timetable-day" rowspan="${classes.length}">${dayNames[day]}</td>` : ''}
+                        <td class="timetable-time">${startTime}-${endTime}</td>
+                        <td class="timetable-course">
+                            <strong>${escapeHtml(cls.session_name || cls.course_name)}</strong>${badges}
                         </td>
-                        <td style="padding: 12px; vertical-align: top;">
-                            ${escapeHtml(cls.lecturer_name || 'TBA')}
-                            ${pendingBadge}
-                        </td>
-                        <td style="padding: 12px; vertical-align: top;">${escapeHtml(cls.venue || 'TBD')}</td>
+                        <td class="timetable-lecturer">${escapeHtml(lecturerName)}</td>
+                        <td class="timetable-venue">${escapeHtml(cls.venue || 'TBD')}</td>
                     </tr>
                 `;
             });
@@ -290,15 +402,14 @@ function renderTimetableByWeek(weekFilter) {
     }
     
     html += `
-                </tbody>
-            </table>
-        </div>
+            </tbody>
+        </table>
     `;
     
     container.innerHTML = html;
 }
 
-// Helper function
+// Helper: escape HTML
 function escapeHtml(text) {
     if (!text) return '';
     const div = document.createElement('div');
@@ -308,7 +419,7 @@ function escapeHtml(text) {
 
 // Manual override for testing
 window.forceRefreshTimetable = async function(blockName = null) {
-    const block = blockName || (window.currentUserProfile?.block);
+    const block = blockName || window.currentUserProfile?.block;
     
     if (!block) {
         console.error('No block specified');
@@ -317,25 +428,39 @@ window.forceRefreshTimetable = async function(blockName = null) {
     
     console.log(`🔄 Force refreshing timetable for ${block}`);
     
-    const { data: timetable } = await supabase
+    const { data: timetable, error } = await supabase
         .from('timetables')
         .select('*')
         .eq('block', block);
+    
+    if (error) {
+        console.error('Fetch error:', error);
+        return false;
+    }
     
     if (timetable && timetable.length > 0) {
         studentTimetableData = timetable;
         currentStudentBlock = block;
         
+        // Update UI
         const blockTitleSpan = document.getElementById('timetable-block-title');
         if (blockTitleSpan) blockTitleSpan.textContent = block;
         
-        const uniqueWeeks = [...new Set(timetable.map(item => item.week_number))];
-        updateWeekButtons(uniqueWeeks);
-        renderTimetableByWeek('all');
+        const countDisplay = document.getElementById('class-count-display');
+        if (countDisplay) countDisplay.textContent = `${timetable.length} classes`;
         
-        document.getElementById('timetable-loading').style.display = 'none';
-        document.getElementById('timetable-container').style.display = 'block';
-        document.getElementById('timetable-empty').style.display = 'none';
+        showNextClassWidget(timetable);
+        updateWeekDropdown(timetable);
+        renderTimetable('all');
+        
+        // Hide loading/empty
+        const loadingDiv = document.getElementById('timetable-loading');
+        const container = document.getElementById('timetable-container');
+        const emptyDiv = document.getElementById('timetable-empty');
+        
+        if (loadingDiv) loadingDiv.style.display = 'none';
+        if (container) container.style.display = 'block';
+        if (emptyDiv) emptyDiv.style.display = 'none';
         
         console.log(`✅ Rendered ${timetable.length} entries for ${block}`);
         return true;
@@ -347,25 +472,24 @@ window.forceRefreshTimetable = async function(blockName = null) {
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
-    // Check if we're on a page with timetable
     if (document.getElementById('timetable-container')) {
-        // Wait for profile to load (db.js initializes)
+        // Wait for profile to load
         setTimeout(() => {
             initStudentTimetable();
         }, 1500);
     }
 });
 
-// Also listen for profile tab clicks to refresh
-document.addEventListener('click', function(e) {
-    const tabLink = e.target.closest('[data-tab="profile"]');
-    if (tabLink) {
+// Also refresh when profile tab is clicked
+const profileTab = document.querySelector('[data-tab="profile"]');
+if (profileTab) {
+    profileTab.addEventListener('click', function() {
         setTimeout(() => {
             if (window.currentUserProfile?.block) {
                 forceRefreshTimetable(window.currentUserProfile.block);
             }
         }, 500);
-    }
-});
+    });
+}
 
-console.log('✅ Student timetable module loaded');
+console.log('✅ Student timetable module loaded (compact version)');
