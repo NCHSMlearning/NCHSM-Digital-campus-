@@ -1,4 +1,4 @@
-// dashboard.js - COMPLETE WORKING VERSION WITH ALL FUNCTIONS
+// dashboard.js - COMPLETE WORKING VERSION WITH SUPER CLASSY NEXT CLASS CARD
 class DashboardModule {
     constructor(supabaseClient) {
         console.log('🚀 Initializing DashboardModule...');
@@ -169,7 +169,7 @@ class DashboardModule {
             this.loadXPMetrics(),
             this.loadAnnouncement(),
             this.loadLeaderboardData('all'),
-            this.loadTimetableData('all')
+            this.loadQuickNextClass()  // ADDED: Load next class card
         ]);
         
         this.updateUIFromMetrics();
@@ -260,7 +260,6 @@ class DashboardModule {
             let totalQuestions = 0;
             let correctAnswers = 0;
             
-            // Check user_progress table
             const { data: progress, error: progError } = await this.sb
                 .from('user_progress')
                 .select('progress_data')
@@ -277,7 +276,6 @@ class DashboardModule {
                 });
             }
             
-            // Also check nurseiq_attempts
             const { data: attempts, error: attError } = await this.sb
                 .from('nurseiq_attempts')
                 .select('score, total_questions')
@@ -387,123 +385,253 @@ class DashboardModule {
         }
     }
     
-   async loadLeaderboardData(period = 'all') {
-    const container = document.getElementById('leaderboard-container');
-    if (!container) return;
-    
-    container.innerHTML = '<div class="loading-slim"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
-    
-    try {
-        // Get all students
-        let query = this.sb
-            .from('consolidated_user_profiles_table')
-            .select('id, full_name, login_count, block, program, last_login')
-            .eq('role', 'student');
+    async loadLeaderboardData(period = 'all') {
+        const container = document.getElementById('leaderboard-container');
+        if (!container) return;
         
-        // Apply period filter for logins
-        if (period === 'weekly') {
-            const weekAgo = new Date();
-            weekAgo.setDate(weekAgo.getDate() - 7);
-            query = query.gte('last_login', weekAgo.toISOString());
-        } else if (period === 'monthly') {
-            const monthAgo = new Date();
-            monthAgo.setMonth(monthAgo.getMonth() - 1);
-            query = query.gte('last_login', monthAgo.toISOString());
-        }
+        container.innerHTML = '<div class="loading-slim"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
         
-        const { data: students, error } = await query;
-        if (error) throw error;
-        
-        if (!students || students.length === 0) {
-            container.innerHTML = '<div class="empty-slim">No data yet</div>';
-            return;
-        }
-        
-        // Calculate points for each student (multifactor)
-        const scoredStudents = await Promise.all(students.map(async (student) => {
-            let loginPoints = 0;
-            let attendancePoints = 0;
-            let nurseIQPoints = 0;
+        try {
+            let query = this.sb
+                .from('consolidated_user_profiles_table')
+                .select('id, full_name, login_count, block, program, last_login')
+                .eq('role', 'student');
             
-            // FACTOR 1: LOGIN POINTS (10 points per login)
-            loginPoints = (student.login_count || 0) * 10;
-            
-            // FACTOR 2: ATTENDANCE POINTS (10 points per verified attendance)
-            const { data: attendance } = await this.sb
-                .from('geo_attendance_logs')
-                .select('is_verified')
-                .eq('student_id', student.id);
-            
-            const verifiedCount = attendance?.filter(a => a.is_verified === true).length || 0;
-            attendancePoints = verifiedCount * 10;
-            
-            // FACTOR 3: NURSEIQ POINTS (1 point per question answered)
-            const { data: progress } = await this.sb
-                .from('user_progress')
-                .select('progress_data')
-                .eq('user_id', student.id)
-                .maybeSingle();
-            
-            if (progress?.progress_data?.answers) {
-                nurseIQPoints = Object.values(progress.progress_data.answers).filter(a => a.answered).length;
+            if (period === 'weekly') {
+                const weekAgo = new Date();
+                weekAgo.setDate(weekAgo.getDate() - 7);
+                query = query.gte('last_login', weekAgo.toISOString());
+            } else if (period === 'monthly') {
+                const monthAgo = new Date();
+                monthAgo.setMonth(monthAgo.getMonth() - 1);
+                query = query.gte('last_login', monthAgo.toISOString());
             }
             
-            // Also check nurseiq_attempts
-            const { data: attempts } = await this.sb
-                .from('nurseiq_attempts')
-                .select('score, total_questions')
-                .eq('student_id', student.id);
+            const { data: students, error } = await query;
+            if (error) throw error;
             
-            if (attempts && attempts.length > 0) {
-                let attemptPoints = 0;
-                attempts.forEach(a => {
-                    attemptPoints += a.score || 0;
-                });
-                if (attemptPoints > nurseIQPoints) nurseIQPoints = attemptPoints;
+            if (!students || students.length === 0) {
+                container.innerHTML = '<div class="empty-slim">No data yet</div>';
+                return;
             }
             
-            // TOTAL POINTS = Sum of all factors
-            const totalPoints = loginPoints + attendancePoints + nurseIQPoints;
+            const scoredStudents = await Promise.all(students.map(async (student) => {
+                let loginPoints = (student.login_count || 0) * 10;
+                
+                const { data: attendance } = await this.sb
+                    .from('geo_attendance_logs')
+                    .select('is_verified')
+                    .eq('student_id', student.id);
+                
+                const verifiedCount = attendance?.filter(a => a.is_verified === true).length || 0;
+                const attendancePoints = verifiedCount * 10;
+                
+                let nurseIQPoints = 0;
+                const { data: progress } = await this.sb
+                    .from('user_progress')
+                    .select('progress_data')
+                    .eq('user_id', student.id)
+                    .maybeSingle();
+                
+                if (progress?.progress_data?.answers) {
+                    nurseIQPoints = Object.values(progress.progress_data.answers).filter(a => a.answered).length;
+                }
+                
+                const { data: attempts } = await this.sb
+                    .from('nurseiq_attempts')
+                    .select('score, total_questions')
+                    .eq('student_id', student.id);
+                
+                if (attempts && attempts.length > 0) {
+                    let attemptPoints = 0;
+                    attempts.forEach(a => {
+                        attemptPoints += a.score || 0;
+                    });
+                    if (attemptPoints > nurseIQPoints) nurseIQPoints = attemptPoints;
+                }
+                
+                const totalPoints = loginPoints + attendancePoints + nurseIQPoints;
+                
+                return { ...student, loginPoints, attendancePoints, nurseIQPoints, totalPoints };
+            }));
             
-            return {
-                ...student,
-                loginPoints,
-                attendancePoints,
-                nurseIQPoints,
-                totalPoints
-            };
-        }));
-        
-        // Sort by total points (highest first)
-        scoredStudents.sort((a, b) => b.totalPoints - a.totalPoints);
-        
-        // Take top 10
-        const topStudents = scoredStudents.slice(0, 10);
-        
-        // Display leaderboard
-        container.innerHTML = topStudents.map((student, index) => {
-            const rankIcon = index === 0 ? '👑' : index === 1 ? '🥈' : index === 2 ? '🥉' : (index + 1).toString();
-            const name = student.full_name?.split(' ')[0] || 'Student';
+            scoredStudents.sort((a, b) => b.totalPoints - a.totalPoints);
+            const topStudents = scoredStudents.slice(0, 10);
             
-            // Create tooltip with breakdown
-            const tooltip = `${student.full_name || 'Student'}\n📊 ${student.totalPoints} TOTAL POINTS\n━━━━━━━━━━━━━━━━━━━━\n🔐 Login: ${student.loginPoints} pts\n✅ Attendance: ${student.attendancePoints} pts\n🧠 NurseIQ: ${student.nurseIQPoints} pts`;
+            container.innerHTML = topStudents.map((student, index) => {
+                const rankIcon = index === 0 ? '👑' : index === 1 ? '🥈' : index === 2 ? '🥉' : (index + 1).toString();
+                const name = student.full_name?.split(' ')[0] || 'Student';
+                const tooltip = `${student.full_name || 'Student'}\n📊 ${student.totalPoints} TOTAL POINTS\n━━━━━━━━━━━━━━━━━━━━\n🔐 Login: ${student.loginPoints} pts\n✅ Attendance: ${student.attendancePoints} pts\n🧠 NurseIQ: ${student.nurseIQPoints} pts`;
+                
+                return `
+                    <div class="leader-slim" title="${this.escapeHtml(tooltip)}">
+                        <span class="rank">${rankIcon}</span>
+                        <span class="name">${this.escapeHtml(name)}</span>
+                        <span class="pts">${student.totalPoints} pts</span>
+                    </div>
+                `;
+            }).join('');
             
-            return `
-                <div class="leader-slim" title="${this.escapeHtml(tooltip)}">
-                    <span class="rank">${rankIcon}</span>
-                    <span class="name">${this.escapeHtml(name)}</span>
-                    <span class="pts">${student.totalPoints} pts</span>
-                </div>
-            `;
-        }).join('');
-        
-        console.log(`📊 Multifactor Leaderboard: ${topStudents.length} students, Period: ${period}`);
-        
-    } catch (error) {
-        console.error('Leaderboard error:', error);
-        container.innerHTML = '<div class="error-slim">Failed to load</div>';
+            console.log(`📊 Multifactor Leaderboard: ${topStudents.length} students, Period: ${period}`);
+            
+        } catch (error) {
+            console.error('Leaderboard error:', error);
+            container.innerHTML = '<div class="error-slim">Failed to load</div>';
+        }
     }
-}
+    
+    // ========== SUPER CLASSY NEXT CLASS CARD ==========
+    async loadQuickNextClass() {
+        console.log('✨ Loading super classy next class card...');
+        
+        try {
+            const studentBlock = this.userProfile?.block || null;
+            
+            if (!studentBlock) {
+                console.log('No block found for student');
+                return;
+            }
+            
+            const { data: timetable, error } = await this.sb
+                .from('timetables')
+                .select('*')
+                .eq('block', studentBlock);
+            
+            if (error || !timetable || timetable.length === 0) {
+                console.log('No timetable found for block:', studentBlock);
+                return;
+            }
+            
+            const nextClass = this.findNextClassPremium(timetable);
+            const card = document.getElementById('quick-next-class');
+            
+            if (!card || !nextClass) {
+                if (card) card.style.display = 'none';
+                return;
+            }
+            
+            // Animate entrance
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(20px)';
+            card.style.display = 'block';
+            
+            setTimeout(() => {
+                card.style.transition = 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
+                card.style.opacity = '1';
+                card.style.transform = 'translateY(0)';
+            }, 100);
+            
+            const startTime = nextClass.start_time?.substring(0, 5) || 'TBA';
+            const endTime = nextClass.end_time?.substring(0, 5) || 'TBA';
+            
+            const timeDisplay = this.formatTimeRangePremium(startTime, endTime);
+            const timeElement = document.getElementById('quick-next-class-time');
+            if (timeElement) timeElement.innerHTML = timeDisplay;
+            
+            let courseName = nextClass.session_name || nextClass.course_name;
+            let courseCode = nextClass.course_name !== courseName ? nextClass.course_name : '';
+            
+            const nameElement = document.getElementById('quick-next-class-name');
+            const codeElement = document.getElementById('quick-next-class-code');
+            if (nameElement) nameElement.innerHTML = this.truncateTextPremium(courseName, 50);
+            if (codeElement) codeElement.innerHTML = courseCode || studentBlock;
+            
+            let lecturerName = nextClass.lecturer_name || 'To be assigned';
+            if (lecturerName !== 'TBA' && lecturerName !== '—' && lecturerName !== 'To be assigned') {
+                const parts = lecturerName.split(' ');
+                lecturerName = parts.slice(0, 2).join(' ');
+            }
+            const lecturerElement = document.getElementById('quick-next-class-lecturer');
+            if (lecturerElement) lecturerElement.innerHTML = lecturerName;
+            
+            const venueElement = document.getElementById('quick-next-class-venue');
+            if (venueElement) venueElement.innerHTML = nextClass.venue || 'To be confirmed';
+            
+            const now = new Date();
+            const dayMap = { 1: 'monday', 2: 'tuesday', 3: 'wednesday', 4: 'thursday', 5: 'friday' };
+            const currentDay = dayMap[now.getDay()];
+            const dayNames = { monday: 'Monday', tuesday: 'Tuesday', wednesday: 'Wednesday', thursday: 'Thursday', friday: 'Friday' };
+            
+            const dayContainer = document.getElementById('quick-next-class-day-container');
+            const daySpan = document.getElementById('quick-next-class-day');
+            
+            if (dayContainer && daySpan) {
+                if (nextClass.day_of_week === currentDay) {
+                    dayContainer.classList.add('today');
+                    daySpan.innerHTML = 'TODAY';
+                } else {
+                    dayContainer.classList.remove('today');
+                    daySpan.innerHTML = dayNames[nextClass.day_of_week]?.toUpperCase() || 'UPCOMING';
+                }
+            }
+            
+            // Add click handler to go to calendar
+            card.onclick = () => {
+                const calendarTab = document.querySelector('[data-tab="calendar"]');
+                if (calendarTab) calendarTab.click();
+                this.showToast('📅 Opening full timetable...', 1500);
+            };
+            
+            console.log('✅ Next class card loaded:', courseName);
+            
+        } catch (error) {
+            console.error('Error loading next class:', error);
+            const card = document.getElementById('quick-next-class');
+            if (card) card.style.display = 'none';
+        }
+    }
+    
+    findNextClassPremium(timetable) {
+        const now = new Date();
+        const currentHour = now.getHours();
+        const currentMinute = now.getMinutes();
+        const currentTime = `${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`;
+        const dayMap = { 1: 'monday', 2: 'tuesday', 3: 'wednesday', 4: 'thursday', 5: 'friday' };
+        const currentDay = dayMap[now.getDay()];
+        
+        if (currentDay) {
+            const todayClasses = timetable.filter(c => 
+                c.day_of_week === currentDay && 
+                c.start_time > currentTime && 
+                !c.is_holiday
+            ).sort((a, b) => a.start_time.localeCompare(b.start_time));
+            
+            if (todayClasses.length > 0) return todayClasses[0];
+        }
+        
+        for (let i = now.getDay() + 1; i <= 5; i++) {
+            const nextDay = dayMap[i];
+            if (nextDay) {
+                const nextClasses = timetable.filter(c => 
+                    c.day_of_week === nextDay && !c.is_holiday
+                ).sort((a, b) => a.start_time.localeCompare(b.start_time));
+                
+                if (nextClasses.length > 0) return nextClasses[0];
+            }
+        }
+        
+        return null;
+    }
+    
+    formatTimeRangePremium(start, end) {
+        const format12Hour = (time) => {
+            if (!time || time === 'TBA') return time;
+            const [hours, minutes] = time.split(':');
+            const hour = parseInt(hours);
+            const ampm = hour >= 12 ? 'PM' : 'AM';
+            const hour12 = hour % 12 || 12;
+            return `${hour12}:${minutes} ${ampm}`;
+        };
+        
+        return `${format12Hour(start)} — ${format12Hour(end)}`;
+    }
+    
+    truncateTextPremium(text, maxLength) {
+        if (!text) return '—';
+        if (text.length <= maxLength) return text;
+        return text.substring(0, maxLength - 3) + '...';
+    }
+    
     async loadTimetableData(week = 'all') {
         const container = document.getElementById('timetable-container');
         const loading = document.getElementById('timetable-loading');
@@ -514,7 +642,6 @@ class DashboardModule {
         if (empty) empty.style.display = 'none';
         
         try {
-            // Get user's enrolled courses
             const { data: courses, error } = await this.sb
                 .from('student_unit_registrations')
                 .select('unit_code, unit_name')
@@ -575,14 +702,12 @@ class DashboardModule {
     updateUIFromMetrics() {
         const m = this.metrics;
         
-        // Attendance
         if (this.elements.attendanceRate) this.elements.attendanceRate.innerText = m.attendance.rate + '%';
         if (this.elements.verifiedCount) this.elements.verifiedCount.innerText = m.attendance.verified;
         if (this.elements.totalCount) this.elements.totalCount.innerText = m.attendance.total;
         if (this.elements.pendingCount) this.elements.pendingCount.innerText = m.attendance.pending;
         if (this.elements.attendancePoints) this.elements.attendancePoints.innerText = m.attendance.points;
         
-        // Attendance color
         const rate = m.attendance.rate || 0;
         const percentEl = document.querySelector('.attendance-percent');
         if (percentEl) {
@@ -592,7 +717,6 @@ class DashboardModule {
             else percentEl.classList.add('attendance-good');
         }
         
-        // Warning badge
         const warningText = document.getElementById('warning-text');
         if (warningText) {
             if (rate < 50) warningText.innerText = 'CRITICAL';
@@ -600,7 +724,6 @@ class DashboardModule {
             else warningText.innerText = 'GOOD';
         }
         
-        // Exam Card & Courses
         const approved = m.examCard.approved || 0;
         if (this.elements.activeCourses) this.elements.activeCourses.innerText = approved;
         if (this.elements.examStatus) {
@@ -609,16 +732,12 @@ class DashboardModule {
         }
         if (this.elements.approvedUnits) this.elements.approvedUnits.innerText = approved;
         
-        // NurseIQ
         if (this.elements.nurseiqProgress) this.elements.nurseiqProgress.innerText = m.nurseiq.progress + '%';
         if (this.elements.nurseiqAccuracy) this.elements.nurseiqAccuracy.innerText = m.nurseiq.accuracy + '%';
         if (this.elements.nurseiqQuestions) this.elements.nurseiqQuestions.innerText = m.nurseiq.questions;
         if (this.elements.nurseiqPoints) this.elements.nurseiqPoints.innerText = m.nurseiq.questions;
         
-        // Resources
         if (this.elements.resources) this.elements.resources.innerText = m.resources;
-        
-        // Upcoming Exam
         if (this.elements.upcomingExam) this.elements.upcomingExam.innerText = m.exams;
         
         console.log('✅ UI update complete');
@@ -665,6 +784,7 @@ class DashboardModule {
                 font-size: 13px;
                 z-index: 10000;
                 white-space: nowrap;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.2);
             `;
             document.body.appendChild(toast);
         }
@@ -701,4 +821,4 @@ window.DashboardModule = DashboardModule;
 window.initDashboardModule = initDashboardModule;
 window.refreshDashboard = () => dashboardModule?.refreshAll();
 
-console.log('✅ Dashboard module ready - COMPLETE WITH ALL FUNCTIONS');
+console.log('✅ Dashboard module ready - COMPLETE WITH SUPER CLASSY NEXT CLASS CARD');
