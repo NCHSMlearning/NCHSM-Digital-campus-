@@ -509,60 +509,112 @@ class DashboardModule {
         }
     }
     
-    async loadExamCardMetrics() {
-        if (!this.userId || !this.sb) return;
-        
-        try {
-            const { data: registrations, error } = await this.sb
-                .from('student_unit_registrations')
-                .select('id')
-                .eq('student_id', this.userId)
-                .eq('status', 'approved');
-            
-            if (error) throw error;
-            
-            const approved = registrations?.length || 0;
-            this.metrics.examCard = { approved, eligible: approved > 0 };
-            
-            console.log(`📇 Exam Card: ${approved} approved units`);
-            
-        } catch (error) {
-            console.error('Exam card error:', error);
-        }
-    }
+  async loadExamCardMetrics() {
+    if (!this.userId || !this.sb) return;
     
-    async loadNurseIQMetrics() {
-        try {
-            const cached = localStorage.getItem('nurseiq_dashboard_metrics');
-            if (cached) {
-                const data = JSON.parse(cached);
-                if (Date.now() - (data.timestamp || 0) < 300000) {
-                    this.updateNurseIQMetric(data);
-                    return;
-                }
-            }
-        } catch (e) {}
+    try {
+        console.log('📇 Loading exam card metrics...');
         
-        if (typeof window.getNurseIQDashboardMetrics === 'function') {
-            const metrics = window.getNurseIQDashboardMetrics();
-            if (metrics) {
-                this.updateNurseIQMetric(metrics);
-                return;
-            }
-        }
+        const { data: registrations, error } = await this.sb
+            .from('student_unit_registrations')
+            .select('id, status, approved')
+            .eq('student_id', this.userId);
         
-        this.updateNurseIQMetric({ progress: 0, accuracy: 0, totalAnswered: 0 });
-    }
-    
-    updateNurseIQMetric(metrics) {
-        if (!metrics) return;
-        this.metrics.nurseiq = {
-            progress: metrics.progress || 0,
-            accuracy: metrics.accuracy || 0,
-            questions: metrics.totalAnswered || 0
+        if (error) throw error;
+        
+        // Count approved units
+        const approved = registrations?.filter(r => 
+            r.status === 'approved' || r.approved === true
+        ).length || 0;
+        
+        this.metrics.examCard = { 
+            approved: approved, 
+            eligible: approved > 0 
         };
+        
+        console.log(`📇 Exam Card: ${approved} approved units - ${approved > 0 ? 'ELIGIBLE' : 'NOT ELIGIBLE'}`);
+        
+        // FORCE UI UPDATE - Direct DOM manipulation
+        const examStatusEl = document.getElementById('dashboard-exam-status');
+        const approvedUnitsEl = document.getElementById('dashboard-approved-units');
+        
+        if (examStatusEl) {
+            examStatusEl.innerText = approved > 0 ? 'ELIGIBLE' : 'NOT ELIGIBLE';
+            examStatusEl.style.color = approved > 0 ? '#059669' : '#dc2626';
+        }
+        if (approvedUnitsEl) {
+            approvedUnitsEl.innerText = approved;
+        }
+        
+    } catch (error) {
+        console.error('Exam card error:', error);
     }
+}
+  async loadNurseIQMetrics() {
+    if (!this.userId || !this.sb) return;
     
+    try {
+        console.log('🧠 Loading NurseIQ metrics from nurseiq_attempts...');
+        
+        // Query from correct table: nurseiq_attempts
+        const { data: attempts, error } = await this.sb
+            .from('nurseiq_attempts')
+            .select('score, total_questions, is_correct')
+            .eq('student_id', this.userId);
+        
+        if (error) {
+            console.error('NurseIQ query error:', error);
+            this.metrics.nurseiq = { progress: 0, accuracy: 0, questions: 0 };
+            return;
+        }
+        
+        const totalAttempts = attempts?.length || 0;
+        
+        // Calculate total questions answered
+        let totalQuestions = 0;
+        let correctAnswers = 0;
+        
+        if (attempts && attempts.length > 0) {
+            attempts.forEach(attempt => {
+                totalQuestions += attempt.total_questions || 1;
+                if (attempt.is_correct === true) correctAnswers++;
+                if (attempt.score) correctAnswers += Math.round((attempt.score / 100) * (attempt.total_questions || 1));
+            });
+        }
+        
+        const accuracy = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
+        
+        // Get total questions in bank for progress
+        const { count: totalBank, error: countError } = await this.sb
+            .from('nurseiq_questions')
+            .select('*', { count: 'exact', head: true });
+        
+        const progress = totalBank > 0 ? Math.round((totalQuestions / totalBank) * 100) : 0;
+        
+        this.metrics.nurseiq = {
+            progress: progress,
+            accuracy: accuracy,
+            questions: totalQuestions
+        };
+        
+        console.log(`🧠 NurseIQ: ${progress}% progress, ${accuracy}% accuracy, ${totalQuestions} questions`);
+        
+        // Update UI
+        const progressEl = document.getElementById('dashboard-nurseiq-progress');
+        const accuracyEl = document.getElementById('dashboard-nurseiq-accuracy');
+        const questionsEl = document.getElementById('dashboard-nurseiq-questions');
+        const pointsEl = document.getElementById('dashboard-nurseiq-points');
+        
+        if (progressEl) progressEl.innerText = progress + '%';
+        if (accuracyEl) accuracyEl.innerText = accuracy + '%';
+        if (questionsEl) questionsEl.innerText = totalQuestions;
+        if (pointsEl) pointsEl.innerText = totalQuestions;
+        
+    } catch (error) {
+        console.error('NurseIQ error:', error);
+        this.metrics.nurseiq = { progress: 0, accuracy: 0, questions: 0 };
+    }
+}
     async updateCoursesMetric() {
         if (!this.userId || !this.sb) return;
         
