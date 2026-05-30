@@ -169,7 +169,7 @@ class DashboardModule {
             this.loadXPMetrics(),
             this.loadAnnouncement(),
             this.loadLeaderboardData('all'),
-            this.loadQuickNextClass()  // ADDED: Load next class card
+            this.loadQuickNextClass()  // Load the next class card
         ]);
         
         this.updateUIFromMetrics();
@@ -480,7 +480,7 @@ class DashboardModule {
         }
     }
     
-    // ========== SUPER CLASSY NEXT CLASS CARD ==========
+    // ========== SUPER CLASSY NEXT CLASS CARD (FIXED VERSION) ==========
     async loadQuickNextClass() {
         console.log('✨ Loading super classy next class card...');
         
@@ -507,6 +507,7 @@ class DashboardModule {
             
             if (!card || !nextClass) {
                 if (card) card.style.display = 'none';
+                console.log('No upcoming class found');
                 return;
             }
             
@@ -523,6 +524,10 @@ class DashboardModule {
             
             const startTime = nextClass.start_time?.substring(0, 5) || 'TBA';
             const endTime = nextClass.end_time?.substring(0, 5) || 'TBA';
+            
+            // Calculate actual date for the class
+            const classDate = this.calculateClassDate(nextClass, timetable);
+            const isToday = classDate && classDate.toDateString() === new Date().toDateString();
             
             const timeDisplay = this.formatTimeRangePremium(startTime, endTime);
             const timeElement = document.getElementById('quick-next-class-time');
@@ -547,21 +552,24 @@ class DashboardModule {
             const venueElement = document.getElementById('quick-next-class-venue');
             if (venueElement) venueElement.innerHTML = nextClass.venue || 'To be confirmed';
             
-            const now = new Date();
-            const dayMap = { 1: 'monday', 2: 'tuesday', 3: 'wednesday', 4: 'thursday', 5: 'friday' };
-            const currentDay = dayMap[now.getDay()];
-            const dayNames = { monday: 'Monday', tuesday: 'Tuesday', wednesday: 'Wednesday', thursday: 'Thursday', friday: 'Friday' };
-            
             const dayContainer = document.getElementById('quick-next-class-day-container');
             const daySpan = document.getElementById('quick-next-class-day');
             
             if (dayContainer && daySpan) {
-                if (nextClass.day_of_week === currentDay) {
+                if (isToday) {
                     dayContainer.classList.add('today');
                     daySpan.innerHTML = 'TODAY';
+                } else if (classDate) {
+                    dayContainer.classList.remove('today');
+                    const formattedDate = classDate.toLocaleDateString('en-US', { 
+                        weekday: 'long', 
+                        month: 'short', 
+                        day: 'numeric'
+                    });
+                    daySpan.innerHTML = formattedDate;
                 } else {
                     dayContainer.classList.remove('today');
-                    daySpan.innerHTML = dayNames[nextClass.day_of_week]?.toUpperCase() || 'UPCOMING';
+                    daySpan.innerHTML = 'UPCOMING';
                 }
             }
             
@@ -581,74 +589,71 @@ class DashboardModule {
         }
     }
     
+    // Calculate actual date for a class based on week_number and day_of_week
+    calculateClassDate(classItem, allTimetable) {
+        // Find the first class in Week 1 to use as anchor
+        const firstClass = allTimetable.find(c => 
+            c.week_number === 1 && 
+            c.day_of_week === 'tuesday' && 
+            c.start_time === '11:00:00'
+        );
+        
+        if (!firstClass) {
+            // Fallback: Assume June 3, 2025 is Week 1 Tuesday
+            const anchorDate = new Date(2025, 5, 3, 11, 0, 0);
+            const dayOrder = { monday: 0, tuesday: 1, wednesday: 2, thursday: 3, friday: 4 };
+            const weekDiff = classItem.week_number - 1;
+            const dayDiff = dayOrder[classItem.day_of_week] - 1; // Tuesday is index 1
+            const totalDays = (weekDiff * 7) + dayDiff;
+            const classDate = new Date(anchorDate);
+            classDate.setDate(anchorDate.getDate() + totalDays);
+            return classDate;
+        }
+        
+        // Use first class as anchor
+        const anchorDate = new Date(2025, 5, 3, 11, 0, 0); // June 3, 2025 11:00 AM
+        const dayOrder = { monday: 0, tuesday: 1, wednesday: 2, thursday: 3, friday: 4 };
+        const anchorDayIndex = dayOrder[firstClass.day_of_week];
+        const weekDiff = classItem.week_number - firstClass.week_number;
+        const dayDiff = dayOrder[classItem.day_of_week] - anchorDayIndex;
+        const totalDays = (weekDiff * 7) + dayDiff;
+        
+        const classDate = new Date(anchorDate);
+        classDate.setDate(anchorDate.getDate() + totalDays);
+        
+        // Set the time
+        const [hours, minutes] = classItem.start_time.split(':');
+        classDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+        
+        return classDate;
+    }
+    
     findNextClassPremium(timetable) {
-    const now = new Date();
-    const currentHour = now.getHours();
-    const currentMinute = now.getMinutes();
-    const currentTime = `${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`;
-    const dayMap = { 
-        1: 'monday', 
-        2: 'tuesday', 
-        3: 'wednesday', 
-        4: 'thursday', 
-        5: 'friday' 
-    };
-    const currentDayIndex = now.getDay(); // 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
-    const currentDay = dayMap[currentDayIndex];
-    
-    console.log(`🔍 Finding next class - Current day index: ${currentDayIndex}, Current time: ${currentTime}`);
-    
-    // STEP 1: Check today's upcoming classes (if weekday and before last class)
-    if (currentDay) {
-        const todayClasses = timetable.filter(c => 
-            c.day_of_week === currentDay && 
-            c.start_time > currentTime && 
-            !c.is_holiday
-        ).sort((a, b) => a.start_time.localeCompare(b.start_time));
+        const now = new Date();
+        const currentHour = now.getHours();
+        const currentMinute = now.getMinutes();
+        const currentTime = `${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`;
+        const dayMap = { 1: 'monday', 2: 'tuesday', 3: 'wednesday', 4: 'thursday', 5: 'friday' };
+        const currentDayIndex = now.getDay();
+        const currentDay = dayMap[currentDayIndex];
         
-        if (todayClasses.length > 0) {
-            console.log(`✅ Found today's class at ${todayClasses[0].start_time}`);
-            return todayClasses[0];
+        // Calculate actual date for each class and find the next one
+        let nextClass = null;
+        let nextClassDate = null;
+        
+        for (const cls of timetable) {
+            const classDate = this.calculateClassDate(cls, timetable);
+            if (classDate > now) {
+                if (!nextClass || classDate < nextClassDate) {
+                    nextClass = cls;
+                    nextClassDate = classDate;
+                }
+            }
         }
-        console.log(`📅 No more classes today on ${currentDay}`);
-    } else {
-        console.log(`📅 Weekend day - no classes today`);
-    }
-    
-    // STEP 2: Find the next available class on any future weekday
-    // Order of days to check (start from tomorrow, wrap around)
-    const weekdayOrder = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
-    
-    // Determine starting point based on current day
-    let startIndex = 0;
-    if (currentDay) {
-        // If weekday but no more classes today, start from tomorrow
-        const currentDayIndexInOrder = weekdayOrder.indexOf(currentDay);
-        startIndex = currentDayIndexInOrder + 1;
-    } else if (currentDayIndex === 6) { // Saturday
-        startIndex = 0; // Start from Monday
-    } else if (currentDayIndex === 0) { // Sunday
-        startIndex = 0; // Start from Monday
-    }
-    
-    // Loop through weekdays starting from tomorrow
-    for (let i = startIndex; i < weekdayOrder.length + startIndex; i++) {
-        const dayIndex = i % weekdayOrder.length;
-        const nextDay = weekdayOrder[dayIndex];
         
-        const nextClasses = timetable.filter(c => 
-            c.day_of_week === nextDay && !c.is_holiday
-        ).sort((a, b) => a.start_time.localeCompare(b.start_time));
-        
-        if (nextClasses.length > 0) {
-            console.log(`✅ Found next class on ${nextDay} at ${nextClasses[0].start_time}`);
-            return nextClasses[0];
-        }
+        return nextClass;
     }
     
-    console.log('❌ No upcoming classes found in timetable');
-    return null;
-}
     formatTimeRangePremium(start, end) {
         const format12Hour = (time) => {
             if (!time || time === 'TBA') return time;
