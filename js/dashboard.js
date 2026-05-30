@@ -1,4 +1,4 @@
-// dashboard.js - COMPLETE WORKING VERSION WITH ALL FIXES
+// dashboard.js - COMPLETE WORKING VERSION for YOUR database schema
 class DashboardModule {
     constructor(supabaseClient) {
         console.log('🚀 Initializing DashboardModule...');
@@ -11,7 +11,7 @@ class DashboardModule {
         this.metrics = {
             attendance: { rate: 0, verified: 0, total: 0, pending: 0, points: 0 },
             resources: 0,
-            examCard: { approved: 0, eligible: false, semester: 'Current' },
+            examCard: { approved: 0, eligible: false },
             nurseiq: { progress: 0, accuracy: 0, questions: 0 },
             courses: 0,
             exams: 'No upcoming exams',
@@ -59,29 +59,16 @@ class DashboardModule {
             warningText: document.getElementById('warning-text'),
             nurseiqPoints: document.getElementById('dashboard-nurseiq-points')
         };
-        
-        const foundCount = Object.keys(this.elements).filter(key => this.elements[key]).length;
-        console.log(`🔍 Elements found: ${foundCount}/${Object.keys(this.elements).length}`);
     }
     
     setupEventListeners() {
-        document.addEventListener('coursesModuleReady', () => {
-            this.updateCoursesMetric();
-            this.updateUIFromMetrics();
-        });
-        
-        document.addEventListener('examsModuleReady', (e) => {
-            if (e.detail) {
-                this.updateExamsMetricWithDetails(e.detail);
-            } else {
-                this.updateExamsMetric();
-            }
-            this.updateUIFromMetrics();
-        });
-        
         document.addEventListener('nurseiqMetricsUpdated', (e) => {
             if (e.detail) {
-                this.updateNurseIQMetric(e.detail);
+                this.metrics.nurseiq = {
+                    progress: e.detail.progress || 0,
+                    accuracy: e.detail.accuracy || 0,
+                    questions: e.detail.totalQuestions || 0
+                };
                 this.updateUIFromMetrics();
             }
         });
@@ -91,12 +78,6 @@ class DashboardModule {
             this.updateUIFromMetrics();
         });
         
-        document.addEventListener('approvedUnitsLoaded', (e) => {
-            if (e.detail && e.detail.count !== undefined) {
-                this.updateExamCardDisplay(e.detail.count);
-            }
-        });
-        
         if (this.elements.headerRefresh) {
             this.elements.headerRefresh.addEventListener('click', () => this.refreshAll());
         }
@@ -104,55 +85,20 @@ class DashboardModule {
         this.addCardClickHandlers();
     }
     
-    updateExamCardDisplay(approvedCount) {
-        const examStatusEl = this.elements.dashboardExamStatus;
-        const approvedUnitsEl = this.elements.dashboardApprovedUnits;
-        const coursesEl = this.elements.activeCourses;
-        
-        if (examStatusEl) {
-            examStatusEl.innerText = approvedCount > 0 ? 'ELIGIBLE' : 'NOT ELIGIBLE';
-            examStatusEl.style.color = approvedCount > 0 ? '#059669' : '#dc2626';
-        }
-        if (approvedUnitsEl) approvedUnitsEl.innerText = approvedCount;
-        if (coursesEl) coursesEl.innerText = approvedCount;
-        
-        this.metrics.examCard = { approved: approvedCount, eligible: approvedCount > 0 };
-        this.metrics.courses = approvedCount;
-    }
-    
     addCardClickHandlers() {
-        const tabMapping = {
-            'attendance': 'attendance',
-            'cats': 'cats',
-            'hub-courses': 'hub-courses',
-            'resources': 'resources',
-            'nurseiq': 'nurseiq',
-            'hub-exam-card': 'hub-exam-card',
-            'profile': 'profile'
-        };
-        
         const cards = document.querySelectorAll('.stat-card, .mini-card, .attendance-card');
-        
         cards.forEach(card => {
             const newCard = card.cloneNode(true);
             if (card.parentNode) card.parentNode.replaceChild(newCard, card);
-            
-            let tabToOpen = newCard.getAttribute('data-tab');
-            if (newCard.classList?.contains('nurseiq-card')) tabToOpen = 'nurseiq';
-            if (newCard.classList?.contains('examcard-card')) tabToOpen = 'hub-exam-card';
-            
-            const finalTab = tabMapping[tabToOpen] || tabToOpen;
-            
-            if (finalTab) {
+            const tabToOpen = newCard.getAttribute('data-tab');
+            if (tabToOpen) {
                 newCard.addEventListener('click', (e) => {
                     if (e.target.closest('button') || e.target.closest('a')) return;
-                    if (typeof window.showTab === 'function') window.showTab(finalTab);
+                    if (typeof window.showTab === 'function') window.showTab(tabToOpen);
                 });
                 newCard.style.cursor = 'pointer';
             }
         });
-        
-        console.log('✅ All cards clickable');
     }
     
     async initialize(userId, userProfile) {
@@ -185,14 +131,22 @@ class DashboardModule {
         this.startAutoRefresh();
         this.updateUIFromMetrics();
         
-        // Force dashboard visible
-        const dash = document.getElementById('dashboard');
-        if (dash) {
-            dash.style.display = 'block';
-            dash.classList.add('active');
-        }
-        
-        setTimeout(() => this.runDiagnostic(), 1000);
+        // FORCE DASHBOARD VISIBLE ON LOAD - FIX FOR REFRESH ISSUE
+        setTimeout(() => {
+            const dash = document.getElementById('dashboard');
+            if (dash) {
+                dash.style.display = 'block';
+                dash.classList.add('active');
+                console.log('✅ Dashboard forced visible');
+            }
+            // Also hide other tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                if (tab.id !== 'dashboard') {
+                    tab.style.display = 'none';
+                    tab.classList.remove('active');
+                }
+            });
+        }, 100);
         
         return true;
     }
@@ -200,26 +154,26 @@ class DashboardModule {
     updateCurrentBlockInfo() {
         if (!this.userProfile) return;
         
-        const blockEl = this.elements.dashboardCurrentBlockValue;
-        if (blockEl) blockEl.innerText = this.userProfile.block || this.userProfile.current_block || 'Introductory';
-        
-        const programEl = this.elements.dashboardProgramName;
-        if (programEl) programEl.innerText = this.userProfile.program || 'KRCHN';
-        
-        const intakeEl = this.elements.dashboardIntakeYear;
-        if (intakeEl) intakeEl.innerText = this.userProfile.intake_year || new Date().getFullYear();
+        if (this.elements.dashboardCurrentBlockValue) {
+            this.elements.dashboardCurrentBlockValue.innerText = this.userProfile.block || 'Introductory';
+        }
+        if (this.elements.dashboardProgramName) {
+            this.elements.dashboardProgramName.innerText = this.userProfile.program || 'KRCHN';
+        }
+        if (this.elements.dashboardIntakeYear) {
+            this.elements.dashboardIntakeYear.innerText = this.userProfile.intake_year || new Date().getFullYear();
+        }
     }
     
     async loadAllMetrics() {
         console.log('📊 Loading all dashboard metrics...');
-        const startTime = performance.now();
         
         await Promise.allSettled([
             this.loadAttendanceMetrics(),
             this.loadResourcesMetrics(),
-            this.loadExamCardMetrics(),  // FIXED
-            this.loadNurseIQMetrics(),    // FIXED
-            this.updateCoursesMetric(),   // FIXED
+            this.loadExamCardMetrics(),
+            this.loadNurseIQMetrics(),
+            this.updateCoursesMetric(),
             this.updateExamsMetric(),
             this.loadLastLoginInfo(),
             this.loadXPMetrics()
@@ -230,11 +184,13 @@ class DashboardModule {
         // Extra force update for exam card
         setTimeout(() => {
             const approved = this.metrics.examCard?.approved || 0;
-            this.updateExamCardDisplay(approved);
+            if (this.elements.dashboardExamStatus) {
+                this.elements.dashboardExamStatus.innerText = approved > 0 ? 'ELIGIBLE' : 'NOT ELIGIBLE';
+                this.elements.dashboardExamStatus.style.color = approved > 0 ? '#059669' : '#dc2626';
+            }
+            if (this.elements.dashboardApprovedUnits) this.elements.dashboardApprovedUnits.innerText = approved;
+            if (this.elements.activeCourses) this.elements.activeCourses.innerText = approved;
         }, 200);
-        
-        console.log(`✅ All metrics loaded in ${(performance.now() - startTime).toFixed(0)}ms`);
-        this.displaySummary();
     }
     
     async loadExamCardMetrics() {
@@ -243,6 +199,7 @@ class DashboardModule {
         try {
             console.log('📇 Loading exam card metrics...');
             
+            // Use status = 'approved' (matches your database)
             const { data: registrations, error } = await this.sb
                 .from('student_unit_registrations')
                 .select('id, status')
@@ -256,11 +213,9 @@ class DashboardModule {
             
             console.log(`📇 Exam Card: ${approved} approved units - ${approved > 0 ? 'ELIGIBLE' : 'NOT ELIGIBLE'}`);
             
-            // Update UI immediately
-            this.updateExamCardDisplay(approved);
-            
         } catch (error) {
             console.error('Exam card error:', error);
+            this.metrics.examCard = { approved: 0, eligible: false };
         }
     }
     
@@ -279,10 +234,6 @@ class DashboardModule {
             
             console.log(`📚 Active Courses: ${count}`);
             
-            if (this.elements.activeCourses) {
-                this.elements.activeCourses.innerText = count;
-            }
-            
         } catch (error) {
             console.error('Courses error:', error);
         }
@@ -297,12 +248,7 @@ class DashboardModule {
                 .select('*', { count: 'exact', head: true });
             
             this.metrics.resources = count || 0;
-            
             console.log(`📁 Resources: ${this.metrics.resources}`);
-            
-            if (this.elements.newResources) {
-                this.elements.newResources.innerText = this.metrics.resources;
-            }
             
         } catch (error) {
             console.error('Resources error:', error);
@@ -314,22 +260,25 @@ class DashboardModule {
         if (!this.userId || !this.sb) return;
         
         try {
-            console.log('🧠 Loading NurseIQ metrics...');
-            
-            const { data: answers, error } = await this.sb
-                .from('nurseiq_answers')
-                .select('is_correct')
+            // Use nurseiq_attempts table (which EXISTS in your database)
+            const { data: attempts, error } = await this.sb
+                .from('nurseiq_attempts')
+                .select('score, total_questions')
                 .eq('student_id', this.userId);
             
-            if (error) {
-                console.error('NurseIQ query error:', error);
-                this.metrics.nurseiq = { progress: 0, accuracy: 0, questions: 0 };
-                return;
+            if (error) throw error;
+            
+            let totalQuestions = 0;
+            let totalScore = 0;
+            
+            if (attempts && attempts.length > 0) {
+                attempts.forEach(attempt => {
+                    totalQuestions += attempt.total_questions || 0;
+                    totalScore += attempt.score || 0;
+                });
             }
             
-            const totalQuestions = answers?.length || 0;
-            const correctAnswers = answers?.filter(a => a.is_correct === true).length || 0;
-            const accuracy = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
+            const accuracy = totalQuestions > 0 ? Math.round((totalScore / totalQuestions) * 100) : 0;
             const progress = totalQuestions > 0 ? Math.min(Math.round((totalQuestions / 105) * 100), 100) : 0;
             
             this.metrics.nurseiq = {
@@ -339,12 +288,6 @@ class DashboardModule {
             };
             
             console.log(`🧠 NurseIQ: ${progress}% progress, ${accuracy}% accuracy, ${totalQuestions} questions`);
-            
-            // Update UI
-            if (this.elements.nurseiqProgress) this.elements.nurseiqProgress.innerText = progress + '%';
-            if (this.elements.nurseiqAccuracy) this.elements.nurseiqAccuracy.innerText = accuracy + '%';
-            if (this.elements.nurseiqQuestions) this.elements.nurseiqQuestions.innerText = totalQuestions;
-            if (this.elements.nurseiqPoints) this.elements.nurseiqPoints.innerText = totalQuestions;
             
         } catch (error) {
             console.error('NurseIQ error:', error);
@@ -371,19 +314,6 @@ class DashboardModule {
             
             console.log(`📊 Attendance: ${rate}% (${verified}/${total}) → ${verified * 10} points`);
             
-            if (this.elements.attendancePoints) {
-                this.elements.attendancePoints.innerText = verified * 10;
-            }
-            
-            // Update attendance color
-            const percentEl = document.querySelector('.attendance-percent');
-            if (percentEl) {
-                percentEl.classList.remove('attendance-critical', 'attendance-warning', 'attendance-good');
-                if (rate < 50) percentEl.classList.add('attendance-critical');
-                else if (rate < 75) percentEl.classList.add('attendance-warning');
-                else percentEl.classList.add('attendance-good');
-            }
-            
         } catch (error) {
             console.error('Attendance error:', error);
         }
@@ -391,11 +321,8 @@ class DashboardModule {
     
     async updateExamsMetric() {
         let upcomingText = 'No upcoming exams';
-        let examDetails = null;
         
         try {
-            console.log('🔍 Fetching upcoming exams...');
-            
             if (!this.userProfile) return;
             
             const today = new Date().toISOString().split('T')[0];
@@ -416,18 +343,13 @@ class DashboardModule {
                     if (exam.program_type && exam.program_type !== 'General') {
                         programMatch = exam.program_type === this.userProfile.program;
                     }
-                    let blockMatch = true;
-                    if (exam.block_term && exam.block_term !== 'General') {
-                        blockMatch = exam.block_term === this.userProfile.block;
-                    }
-                    return programMatch && blockMatch;
+                    return programMatch;
                 });
                 
                 if (matchingExams.length > 0) {
                     const upcomingExam = matchingExams[0];
                     const examDate = new Date(upcomingExam.exam_date).toLocaleDateString();
                     upcomingText = `${upcomingExam.exam_name} - ${examDate}`;
-                    examDetails = upcomingExam;
                 }
             }
             
@@ -436,89 +358,10 @@ class DashboardModule {
         }
         
         this.metrics.exams = upcomingText;
-        this.metrics.upcomingExamDetails = examDetails;
         
         if (this.elements.upcomingExam) {
             this.elements.upcomingExam.textContent = upcomingText;
         }
-    }
-    
-    calculateAttendancePoints() {
-        const verified = this.metrics.attendance.verified || 0;
-        const points = verified * 10;
-        this.metrics.attendance.points = points;
-        
-        if (this.elements.attendancePoints) {
-            this.elements.attendancePoints.innerText = points;
-        }
-        
-        return points;
-    }
-    
-    updateAttendanceColor() {
-        const rate = this.metrics.attendance.rate || 0;
-        const percentEl = document.querySelector('.attendance-percent');
-        const warningBadge = this.elements.attendanceWarningBadge;
-        const warningText = this.elements.warningText;
-        
-        if (percentEl) {
-            percentEl.classList.remove('attendance-critical', 'attendance-warning', 'attendance-good');
-            if (rate < 50) {
-                percentEl.classList.add('attendance-critical');
-                if (warningBadge) warningBadge.style.display = 'flex';
-                if (warningText) warningText.innerText = '⚠️ CRITICAL (<50%)';
-            } else if (rate >= 50 && rate < 75) {
-                percentEl.classList.add('attendance-warning');
-                if (warningBadge) warningBadge.style.display = 'flex';
-                if (warningText) warningText.innerText = '⚠️ BELOW 75%';
-            } else {
-                percentEl.classList.add('attendance-good');
-                if (warningBadge) warningBadge.style.display = 'none';
-            }
-        }
-    }
-    
-    updateUIFromMetrics() {
-        console.log('🎨 Updating UI from metrics...');
-        
-        const m = this.metrics;
-        
-        // Attendance
-        if (this.elements.attendanceRate) this.elements.attendanceRate.innerText = m.attendance.rate + '%';
-        if (this.elements.verifiedCount) this.elements.verifiedCount.innerText = m.attendance.verified;
-        if (this.elements.totalCount) this.elements.totalCount.innerText = m.attendance.total;
-        if (this.elements.pendingCount) this.elements.pendingCount.innerText = m.attendance.pending;
-        
-        this.calculateAttendancePoints();
-        this.updateAttendanceColor();
-        
-        // Courses & Exam Card
-        if (this.elements.activeCourses) this.elements.activeCourses.innerText = m.courses;
-        if (this.elements.dashboardExamStatus) {
-            this.elements.dashboardExamStatus.innerText = m.examCard.eligible ? 'ELIGIBLE' : 'NOT ELIGIBLE';
-            this.elements.dashboardExamStatus.style.color = m.examCard.eligible ? '#059669' : '#dc2626';
-        }
-        if (this.elements.dashboardApprovedUnits) this.elements.dashboardApprovedUnits.innerText = m.examCard.approved;
-        
-        // NurseIQ
-        if (this.elements.nurseiqProgress) this.elements.nurseiqProgress.innerText = m.nurseiq.progress + '%';
-        if (this.elements.nurseiqAccuracy) this.elements.nurseiqAccuracy.innerText = m.nurseiq.accuracy + '%';
-        if (this.elements.nurseiqQuestions) this.elements.nurseiqQuestions.innerText = m.nurseiq.questions;
-        if (this.elements.nurseiqPoints) this.elements.nurseiqPoints.innerText = m.nurseiq.questions;
-        
-        // Resources
-        if (this.elements.newResources) this.elements.newResources.innerText = m.resources;
-        
-        // Upcoming Exam
-        if (this.elements.upcomingExam) this.elements.upcomingExam.innerText = m.exams;
-        
-        // XP Display
-        if (this.elements.userLevel) this.elements.userLevel.innerText = m.xp.level;
-        if (this.elements.userXp) this.elements.userXp.innerText = m.xp.current;
-        if (this.elements.userXpMax) this.elements.userXpMax.innerText = m.xp.max;
-        if (this.elements.xpProgressFill) this.elements.xpProgressFill.style.width = m.xp.percent + '%';
-        
-        console.log('✅ UI update complete');
     }
     
     async loadXPMetrics() {
@@ -544,31 +387,66 @@ class DashboardModule {
                 .eq('user_id', this.userId)
                 .single();
             
-            if (error) throw error;
-            
-            if (data && data.last_login) {
+            if (!error && data) {
                 this.metrics.lastLogin = {
                     time: data.last_login,
-                    formatted: new Date(data.last_login).toLocaleString(),
-                    relative: this.getRelativeTime(data.last_login),
+                    formatted: data.last_login ? new Date(data.last_login).toLocaleString() : 'Never',
                     loginCount: data.login_count || 0
                 };
             }
         } catch (error) {
-            console.error('Failed to load last login:', error);
+            console.error('Last login error:', error);
         }
     }
     
-    getRelativeTime(utcTimestamp) {
-        if (!utcTimestamp) return 'Never';
-        const diffMs = new Date() - new Date(utcTimestamp);
-        const diffMins = Math.floor(diffMs / (1000 * 60));
-        if (diffMins < 1) return 'Just now';
-        if (diffMins < 60) return `${diffMins} minutes ago`;
-        const diffHours = Math.floor(diffMins / 60);
-        if (diffHours < 24) return `${diffHours} hours ago`;
-        const diffDays = Math.floor(diffHours / 24);
-        return `${diffDays} days ago`;
+    updateUIFromMetrics() {
+        const m = this.metrics;
+        
+        // Attendance
+        if (this.elements.attendanceRate) this.elements.attendanceRate.innerText = m.attendance.rate + '%';
+        if (this.elements.verifiedCount) this.elements.verifiedCount.innerText = m.attendance.verified;
+        if (this.elements.totalCount) this.elements.totalCount.innerText = m.attendance.total;
+        if (this.elements.pendingCount) this.elements.pendingCount.innerText = m.attendance.pending;
+        if (this.elements.attendancePoints) this.elements.attendancePoints.innerText = (m.attendance.verified || 0) * 10;
+        
+        // Attendance color
+        const rate = m.attendance.rate || 0;
+        const percentEl = document.querySelector('.attendance-percent');
+        if (percentEl) {
+            percentEl.classList.remove('attendance-critical', 'attendance-warning', 'attendance-good');
+            if (rate < 50) percentEl.classList.add('attendance-critical');
+            else if (rate < 75) percentEl.classList.add('attendance-warning');
+            else percentEl.classList.add('attendance-good');
+        }
+        
+        // Courses & Exam Card
+        const approved = m.examCard.approved || 0;
+        if (this.elements.activeCourses) this.elements.activeCourses.innerText = approved;
+        if (this.elements.dashboardExamStatus) {
+            this.elements.dashboardExamStatus.innerText = approved > 0 ? 'ELIGIBLE' : 'NOT ELIGIBLE';
+            this.elements.dashboardExamStatus.style.color = approved > 0 ? '#059669' : '#dc2626';
+        }
+        if (this.elements.dashboardApprovedUnits) this.elements.dashboardApprovedUnits.innerText = approved;
+        
+        // NurseIQ
+        if (this.elements.nurseiqProgress) this.elements.nurseiqProgress.innerText = m.nurseiq.progress + '%';
+        if (this.elements.nurseiqAccuracy) this.elements.nurseiqAccuracy.innerText = m.nurseiq.accuracy + '%';
+        if (this.elements.nurseiqQuestions) this.elements.nurseiqQuestions.innerText = m.nurseiq.questions;
+        if (this.elements.nurseiqPoints) this.elements.nurseiqPoints.innerText = m.nurseiq.questions;
+        
+        // Resources
+        if (this.elements.newResources) this.elements.newResources.innerText = m.resources;
+        
+        // Upcoming Exam
+        if (this.elements.upcomingExam) this.elements.upcomingExam.innerText = m.exams;
+        
+        // XP
+        if (this.elements.userLevel) this.elements.userLevel.innerText = m.xp.level;
+        if (this.elements.userXp) this.elements.userXp.innerText = m.xp.current;
+        if (this.elements.userXpMax) this.elements.userXpMax.innerText = m.xp.max;
+        if (this.elements.xpProgressFill) this.elements.xpProgressFill.style.width = m.xp.percent + '%';
+        
+        console.log('✅ UI update complete');
     }
     
     startLiveClock() {
@@ -606,15 +484,6 @@ class DashboardModule {
         console.log(`   NurseIQ: ${this.metrics.nurseiq.progress}% (${this.metrics.nurseiq.questions} questions)`);
         console.log(`   Upcoming Exam: ${this.metrics.exams}`);
         console.log('═══════════════════════════════════════');
-    }
-    
-    runDiagnostic() {
-        console.log('\n🔍 DASHBOARD DIAGNOSTIC');
-        console.log(`   User: ${this.userProfile?.full_name || 'Unknown'}`);
-        console.log(`   Program: ${this.userProfile?.program || 'Unknown'}`);
-        console.log(`   Block: ${this.userProfile?.block || 'Unknown'}`);
-        console.log(`   Approved Units: ${this.metrics.examCard.approved}`);
-        console.log(`   Exam Status: ${this.metrics.examCard.eligible ? 'ELIGIBLE' : 'NOT ELIGIBLE'}`);
     }
 }
 
